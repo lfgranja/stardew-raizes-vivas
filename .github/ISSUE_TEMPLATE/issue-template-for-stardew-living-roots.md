@@ -54,11 +54,11 @@ List the specific, testable conditions that must be met for the issue to be cons
 ### Possible Implementation (for features/refactoring)
 If you have ideas on how to implement this feature or fix the bug, describe them here. Consider the project's architecture (Domain-Driven Design, SOLID principles, TDD).
 
-### Priority
+### **Priority**
 How important is this issue?
-- High
-- Medium
-- Low
+- [ ] High
+- [ ] Medium
+- [ ] Low
 
 ### Related Issues
 Link to any related issues (e.g., "Related to #XX", "Blocks #YY", "Part of epic #ZZ").
