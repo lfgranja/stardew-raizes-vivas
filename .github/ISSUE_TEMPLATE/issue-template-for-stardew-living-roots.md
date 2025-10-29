@@ -13,9 +13,9 @@ assignees: ''
 Thank you for contributing to the Living Roots mod! Please follow this template when reporting issues or suggesting features to ensure clarity and efficient resolution.
 
 ### Type of Issue
+> **Note:** For Bug Reports or Feature Requests, please use the appropriate templates.
+
 - [ ] Refactoring Task
-- [ ] Other
-- for Bug Reports or Feature Requests, please use the appropriated templates.
 - [ ] Documentation Improvement
 - [ ] Other (please specify)
 
