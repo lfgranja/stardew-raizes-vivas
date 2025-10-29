@@ -31,7 +31,7 @@ A clear and concise description of what actually happened.
 - **Living Roots Mod Version:** (e.g., 0.0.1)
 - **Operating System:** (e.g., Windows 10, macOS 12, Ubuntu 22.04)
 - **Game Language/Locale:** (e.g., en-US, pt-BR)
-- **Other Mods Installed:** (if relevant to the bug)
+- **Other Mods Installed:** Please list all other mods you have installed.
 
 ### **Screenshots or Logs**
 If applicable, add screenshots to help explain your problem.
