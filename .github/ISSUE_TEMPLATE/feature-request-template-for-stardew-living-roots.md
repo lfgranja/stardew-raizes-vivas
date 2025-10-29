@@ -9,8 +9,6 @@ assignees: ''
 
 ## Feature Request Template for Stardew Living Roots
 
-Use this template to suggest new features for the Living Roots mod. Following this format helps us understand your idea and its alignment with the mod's agroecological philosophy.
-
 ### **Is your feature request related to a problem? Please describe.**
 A clear and concise description of what the problem is. Ex. "I'm always frustrated when [...]" or "The current system lacks [...]."
 
