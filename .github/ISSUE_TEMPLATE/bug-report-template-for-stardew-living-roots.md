@@ -10,8 +10,6 @@ assignees: ''
 
 ## Bug Report Template for Stardew Living Roots
 
-Use this template to report bugs in the Living Roots mod. Following this format helps us understand and fix issues faster.
-
 ### **Describe the Bug**
 A clear and concise description of what the bug is.
 
