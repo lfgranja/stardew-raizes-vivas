@@ -2,7 +2,7 @@
 name: Issue Template for Stardew Living Roots
 about: Please follow this template when reporting issues or suggesting features to
   ensure clarity and efficient resolution.
-title: ''
+title: '[Issue]: <short summary>'
 labels: 'triage'
 assignees: ''
 
