@@ -19,11 +19,11 @@ A clear and detailed description of what you want to happen. Include how this fe
 A clear and concise description of any alternative solutions or features you've considered.
 
 ### **Agroecological Alignment**
-Explain how this feature aligns with the principles of agroecology as implemented in the Living Roots mod. Consider:
-- Soil health and biodiversity
-- Sustainability and resilience
-- Social justice and community aspects
-- Connection to real-world agroecological practices
+Explain how this feature aligns with the principles of agroecology as implemented in the Living Roots mod. Check all that apply and provide a brief explanation for each:
+- [ ] **Soil health and biodiversity:** 
+- [ ] **Sustainability and resilience:** 
+- [ ] **Social justice and community aspects:** 
+- [ ] **Connection to real-world agroecological practices:** 
 
 ### **Describe the acceptance criteria**
 List specific, testable conditions that would indicate this feature is successfully implemented:
