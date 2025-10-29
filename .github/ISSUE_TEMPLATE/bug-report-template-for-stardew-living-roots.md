@@ -35,7 +35,7 @@ A clear and concise description of what actually happened.
 
 ### **Screenshots or Logs**
 If applicable, add screenshots to help explain your problem.
-- For SMAPI issues, please upload your full log to https://smapi.io/log and paste the resulting URL here (required for errors/crashes): <log url here>
+- For SMAPI issues, please upload your full log to <https://smapi.io/log> and paste only the resulting URL here (required for errors/crashes): <log url here>
 
 ### **Additional Context**
 Add any other context about the problem here. How does this bug impact gameplay or the agroecological principles of the mod?
