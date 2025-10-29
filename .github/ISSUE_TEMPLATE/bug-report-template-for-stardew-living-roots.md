@@ -30,7 +30,8 @@ A clear and concise description of what actually happened.
 - **SMAPI Version:** (e.g., 4.0.0)
 - **Living Roots Mod Version:** (e.g., 0.0.1)
 - **Operating System:** (e.g., Windows 10, macOS 12, Ubuntu 22.04)
-- **Other Mods Installed:** (Please list any other mods you have installed. This is crucial for diagnosing conflicts and is included in your SMAPI log.)
+- **Game Language/Locale:** (e.g., en-US, pt-BR)
+- **Other Mods Installed:** (if relevant to the bug)
 
 ### **Screenshots or Logs**
 If applicable, add screenshots to help explain your problem. For SMAPI logs, please upload your full log to https://smapi.io/log and share the link here.
