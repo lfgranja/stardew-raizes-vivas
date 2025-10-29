@@ -1,5 +1,9 @@
 ---
 name: Feature Request Template for Stardew Living Roots
+description: "Use this template to suggest new features for the Living Roots mod. Following this format helps us understand your idea and its alignment with the mod's agroecological philosophy."
+title: '[Feature]: <short summary>'
+labels: 'enhancement'
+assignees: ''
 description: Use this template to suggest new features for the Living Roots mod. Following this format helps us understand your idea and its alignment with the mod's agroecological philosophy.
 title: '[Feature]: <short summary>'
 labels: 'enhancement'
