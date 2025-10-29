@@ -26,23 +26,8 @@ Briefly describe the issue or feature request.
 Explain the context or background for this issue. What led to this problem?
 For feature requests: Why is this feature important for the agroecological philosophy of the mod?
 
-### Expected Behavior (for bugs/features)
+### Expected Behavior
 Describe what should happen in an ideal scenario.
-
-### Actual Behavior (for bugs)
-Describe what actually happens when the issue occurs.
-
-### Steps to Reproduce (for bugs)
-Provide a clear list of steps to reproduce the issue:
-1. Start the game with SMAPI
-2. ...
-3. ...
-
-### Environment (for bugs)
-- Stardew Valley Version:
-- SMAPI Version:
-- Living Roots Mod Version:
-- Operating System:
 
 ### Acceptance Criteria (for features/refactoring)
 List the specific, testable conditions that must be met for the issue to be considered resolved:
