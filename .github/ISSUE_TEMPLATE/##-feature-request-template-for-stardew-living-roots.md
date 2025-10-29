@@ -1,5 +1,5 @@
 ---
-name: "## Feature Request Template for Stardew Living Roots"
+name: "Feature Request Template for Stardew Living Roots"
 about: Use this template to suggest new features for the Living Roots mod. Following
   this format helps us understand your idea and its alignment with the mod's agroecological
   philosophy.
