@@ -2,7 +2,7 @@
 name: Bug Report Template for Stardew Living Roots
 description: Use this template to report bugs in the Living Roots mod. Following this format
   helps us understand and fix issues faster.
-title: '[Bug]: [short summary]'
+title: 'Bug: <short summary>'
 labels: 'bug'
 assignees: ''
 
