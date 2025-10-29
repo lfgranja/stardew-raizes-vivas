@@ -47,9 +47,9 @@ Provide a clear list of steps to reproduce the issue:
 ### Acceptance Criteria (for features/refactoring)
 List the specific, testable conditions that must be met for the issue to be considered resolved:
 
-- [ ]
-- [ ]
-- [ ]
+- [ ] Criterion 1
+- [ ] Criterion 2
+- [ ] Criterion 3
 
 ### Possible Implementation (for features/refactoring)
 If you have ideas on how to implement this feature or fix the bug, describe them here. Consider the project's architecture (Domain-Driven Design, SOLID principles, TDD).
