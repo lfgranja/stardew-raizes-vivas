@@ -162,7 +162,7 @@ namespace LivingRoots.Tests
             Assert.Throws<System.IO.IOException>(() => service.DataExists("test_key"));
         }
 
-
+        
         [Fact]
         public void RemoveData_WithExistingData_RemovesData()
         {
@@ -392,6 +392,338 @@ namespace LivingRoots.Tests
             
             // Assert - Non-reserved names should not be modified
             _mockDataHelper.Verify(x => x.WriteJsonFile("data/normal.txt.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void GetFilePath_WithUnicodeHomoglyphs_SanitizesPath()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act - Using homoglyphs that look like normal characters but are different Unicode
+            service.SaveData(testData, "test\u0435xamplе"); // Cyrillic 'е' instead of Latin 'e'
+            
+            // Assert - Should be normalized and sanitized appropriately
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/testexampl_.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void GetFilePath_WithMixedSeparators_SanitizesPath()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act - Mixed forward and backward slashes
+            service.SaveData(testData, "test/key\\path");
+            
+            // Assert - All separators should be replaced with underscores
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_key_path.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void GetFilePath_WithMultipleDots_SanitizesPath()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act - Multiple dots that could collapse
+            service.SaveData(testData, "file....name");
+            
+            // Assert - Multiple dots should be handled properly
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/file._.name.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void GetFilePath_WithLeadingTrailingWhitespace_SanitizesPath()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act - Leading and trailing whitespace
+            service.SaveData(testData, "  test_key  ");
+            
+            // Assert - Whitespace should be trimmed
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_key.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void GetFilePath_WithOnlyWhitespace_ThrowsArgumentException()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act & Assert - Only whitespace should throw an exception
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "   "));
+        }
+        
+        [Fact]
+        public void GetFilePath_WithPathTraversalAttempt_ThrowsArgumentException()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act & Assert - Path traversal should be blocked
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "../../../etc/passwd"));
+        }
+        
+        [Fact]
+        public void GetFilePath_WithComplexPathTraversalAttempt_ThrowsArgumentException()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act & Assert - Complex path traversal should be blocked
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "..\\..\\windows\\system32"));
+        }
+        
+        [Fact]
+        public void GetFilePath_WithSpecialCharacters_SanitizesPath()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act - Various special characters
+            service.SaveData(testData, "file<name>with:special\"chars|and?wildcards*");
+            
+            // Assert - Special characters should be replaced with underscores
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/file_name_with_special_chars_and_wildcards_.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void GetFilePath_WithMultipleUnderscores_SanitizesPath()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act - Multiple consecutive underscores
+            service.SaveData(testData, "file__with___multiple____underscores");
+            
+            // Assert - Multiple underscores should be collapsed to single underscore
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/file_with_multiple_underscores.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void GetFilePath_WithUnicodeNormalization_SanitizesPath()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act - Unicode that normalizes differently
+            service.SaveData(testData, "café"); // Could be represented with combining characters
+            
+            // Assert - Should be normalized appropriately
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/caf_.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void GetFilePath_WithEmptyStringAfterSanitization_ThrowsArgumentException()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act & Assert - Keys that sanitize to empty should throw an exception
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, ""));
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "."));
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, ".."));
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "___"));
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "..."));
+        }
+        
+        [Fact]
+        public void GetFilePath_WithVeryLongPath_SanitizesPath()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act - Very long path with special characters
+            var longPath = new string('a', 300) + "<>:\"|?*" + new string('b', 300);
+            var expected = new string('a', 300) + "_______" + new string('b', 300);
+            
+            service.SaveData(testData, longPath);
+            
+            // Assert - Should handle long paths with invalid characters
+            _mockDataHelper.Verify(x => x.WriteJsonFile($"data/{expected}.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void SanitizeKey_WithUnicodeDiacritics_HandlesAccentsProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Various diacritics that should be handled
+            service.SaveData(testData, "café"); // e with acute accent
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/caf_.json", testData), Times.Once);
+
+            service.SaveData(testData, "naïve"); // i with diaeresis
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/na_ve.json", testData), Times.Once);
+
+            service.SaveData(testData, "résumé"); // r with acute, e with acute
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/r_sum_.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithSpecialCharactersAtEnd_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Special characters at the end that should be trimmed
+            service.SaveData(testData, "test_key.");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_key.json", testData), Times.Once);
+
+            service.SaveData(testData, "test_key_");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_key.json", testData), Times.Once);
+
+            service.SaveData(testData, "test_key___");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_key.json", testData), Times.Once);
+
+            service.SaveData(testData, "test_key...");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_key.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithReservedWindowsNamesWithComplexExtensions_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Reserved names with complex extensions
+            service.SaveData(testData, "CON.txt.bak");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/CON_.txt.bak.json", testData), Times.Once);
+
+            service.SaveData(testData, "PRN..double..extension");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/PRN_..double..extension.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithMultipleDotsInComplexPatterns_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Multiple dots in various patterns
+            service.SaveData(testData, "file.....name");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/file._.name.json", testData), Times.Once);
+
+            service.SaveData(testData, "....leading.dots");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/_.leading.dots.json", testData), Times.Once);
+
+            service.SaveData(testData, "trailing.dots....");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/trailing.dots.json", testData), Times.Once);
+
+            service.SaveData(testData, "..double..dot..pattern..");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/_.double._.dot._.pattern.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithPathTraversalComplexPatterns_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act & Assert - Complex path traversal patterns should still be blocked
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, ".../../path"));
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "file...\\..\\path"));
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "normal.../../path"));
+        }
+
+        [Fact]
+        public void SanitizeKey_WithComplexUnicodeNormalization_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Complex Unicode normalization cases
+            // Combining characters that should be handled
+            service.SaveData(testData, "a\u0300"); // a with grave accent (combining)
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/a_.json", testData), Times.Once);
+
+            service.SaveData(testData, "e\u0301"); // e with acute accent (combining)
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/e_.json", testData), Times.Once);
+
+            // Multiple combining marks
+            service.SaveData(testData, "o\u0302\u0301"); // o with circumflex and acute (multiple combining)
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/o_.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithHomoglyphAndDiacriticsTogether_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Combining homoglyphs and diacritics
+            service.SaveData(testData, "tеst\u0301"); // Cyrillic 'е' with acute accent
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_.json", testData), Times.Once);
+
+            service.SaveData(testData, "cafe\u0435\u0301"); // Latin 'cafe' with Cyrillic 'e' and acute accent
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/cafe_.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithComplexSpecialCharacterSequences_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Complex sequences of special characters
+            service.SaveData(testData, "file<:>name");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/file___name.json", testData), Times.Once);
+
+            service.SaveData(testData, "name\"|?*test");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/name____test.json", testData), Times.Once);
+
+            service.SaveData(testData, "mixed<>/:\"|?*chars");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/mixed_______chars.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithMultipleNormalizationOperationsTogether_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Multiple operations happening in sequence
+            service.SaveData(testData, "tеst\u0301<>/...file");
+            // This should: convert Cyrillic 'е' to 'e', handle diacritic with underscore, 
+            // replace special chars with underscores, handle multiple dots
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test____._file.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithEdgeCaseEmptyResultsAfterSanitization_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act & Assert - Various patterns that might result in empty strings after sanitization
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "<>:\"|?*")); // All invalid chars
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, ".........")); // All dots
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "___")); // All underscores after trimming
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "   ")); // All spaces after trimming
         }
     }
 }
