@@ -19,7 +19,15 @@ namespace LivingRoots.Controllers
         private readonly object _registrationLock = new object();
         
         private bool _eventsRegistered = false;
+        
+        /// <summary>
+        /// Tracks whether the 'lr_version' console command has been registered to prevent duplicate registrations.
+        /// Note: SMAPI does not provide a direct method to remove console commands, so once registered,
+        /// the command remains active until the mod is disposed. This flag ensures the command is only
+        /// registered once even if the GameLaunched event fires multiple times or during mod reloads.
+        /// </summary>
         private bool _commandRegistered = false;
+        
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
 
         public ModController(IModHelper helper, IMonitor monitor, IManifest manifest)
@@ -120,6 +128,15 @@ namespace LivingRoots.Controllers
             }
         }
 
+        /// <summary>
+        /// Handles the GameLaunched event to register the 'lr_version' console command.
+        /// This method ensures the command is only registered once using the <see cref="_commandRegistered"/> flag
+        /// to prevent double-registration across multiple GameLaunched events or mod reloads.
+        /// Note: SMAPI does not provide a method to remove console commands directly, so the command
+        /// lifecycle is tied to the mod's lifecycle (registered on mod load, removed on mod disposal).
+        /// </summary>
+        /// <param name="sender">The event sender</param>
+        /// <param name="e">The event arguments</param>
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
             try
@@ -130,6 +147,8 @@ namespace LivingRoots.Controllers
                 if (_helper?.ConsoleCommands != null)
                 {
                     // Check if command is already registered to prevent duplicate registration
+                    // This is important because SMAPI doesn't provide a way to remove console commands directly
+                    // The _commandRegistered flag ensures idempotent behavior across reloads or multiple Entry calls
                     if (!_commandRegistered)
                     {
                         _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);

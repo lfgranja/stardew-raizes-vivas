@@ -401,7 +401,5 @@ namespace LivingRoots.Tests
             Assert.Contains("Attempted to unregister events after disposal", loggedMessage);
             Assert.Equal(LogLevel.Trace, loggedLevel);
         }
-        
-        
     }
 }
