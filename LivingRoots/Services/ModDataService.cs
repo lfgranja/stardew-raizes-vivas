@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Globalization;
 
 namespace LivingRoots.Services
 {
@@ -159,9 +160,7 @@ namespace LivingRoots.Services
         
         private static readonly HashSet<char> InvalidFileNameChars = new HashSet<char>(Path.GetInvalidFileNameChars())
         {
-            Path.DirectorySeparatorChar,
-            Path.AltDirectorySeparatorChar,
-            '<', '>', ':', '"', '/', '\\', '|', '?', '*'
+            '<', '>', ':', '"', '|', '?', '*'
         };
 
         private static readonly HashSet<string> ReservedWindowsFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -178,25 +177,75 @@ namespace LivingRoots.Services
         /// <returns>The sanitized key with invalid characters replaced</returns>
         private static string SanitizeKey(string key)
         {
-            // Normalize input key to Unicode Form C to prevent Unicode trickery
+            // First, normalize the Unicode to handle homoglyphs and normalize forms
             key = key.Normalize(NormalizationForm.FormC);
 
+            // Process the string character by character to handle all special cases
             var sanitizedKeyBuilder = new StringBuilder(key.Length);
             foreach (char c in key)
             {
-                if (InvalidFileNameChars.Contains(c))
+                // Handle Unicode homoglyphs by converting common Cyrillic lookalikes to Latin
+                char processedChar = c switch
+                {
+                    // Cyrillic characters that look like Latin ones
+                    '\u0435' => 'e', // Cyrillic 'е' to Latin 'e'
+                    '\u0430' => 'a', // Cyrillic 'а' to Latin 'a'
+                    '\u043e' => 'o', // Cyrillic 'о' to Latin 'o'
+                    '\u0440' => 'p', // Cyrillic 'р' to Latin 'p'
+                    '\u0441' => 'c', // Cyrillic 'с' to Latin 'c'
+                    '\u0445' => 'x', // Cyrillic 'х' to Latin 'x'
+                    _ => c
+                };
+
+                if (InvalidFileNameChars.Contains(processedChar))
                     sanitizedKeyBuilder.Append('_');
                 else
-                    sanitizedKeyBuilder.Append(c);
+                    sanitizedKeyBuilder.Append(processedChar);
             }
 
             var sanitized = sanitizedKeyBuilder.ToString();
 
-            // Explicitly block path traversal patterns
-            sanitized = sanitized.Replace("..", "_");
+            // After handling homoglyphs, process diacritics by decomposing and removing combining marks
+            // First normalize to FormD to decompose diacritics
+            sanitized = sanitized.Normalize(NormalizationForm.FormD);
+            var sb = new StringBuilder();
+            
+            for (int i = 0; i < sanitized.Length; i++)
+            {
+                char c = sanitized[i];
+                
+                // Check if this is a combining diacritical mark (accent)
+                if (CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark)
+                {
+                    // This is a diacritic mark, add an underscore if the last character wasn't already an underscore
+                    if (sb.Length > 0 && sb[sb.Length - 1] != '_')
+                    {
+                        sb.Append('_');
+                    }
+                }
+                else
+                {
+                    // This is a base character, append it
+                    sb.Append(c);
+                }
+            }
+            
+            sanitized = sb.ToString();
 
-            // Collapse multiple underscores and trim whitespace, dots, and underscores at ends
-            sanitized = Regex.Replace(sanitized, "_{2,}", "_").Trim(' ', '.', '_');
+            // Replace any remaining directory separators that might have been missed
+            sanitized = sanitized.Replace(Path.DirectorySeparatorChar, '_').Replace(Path.AltDirectorySeparatorChar, '_');
+            
+            // Handle consecutive dots: replace sequences of 2 or more dots with "_."
+            sanitized = Regex.Replace(sanitized, @"\.{2,}", "_.");
+            
+            // Replace any remaining single dots with underscores
+            sanitized = sanitized.Replace('.', '_');
+
+            // Collapse multiple underscores that might result from the above operations
+            sanitized = Regex.Replace(sanitized, "_{2,}", "_");
+
+            // Trim whitespace, dots, and underscores at ends
+            sanitized = sanitized.Trim(' ', '.', '_');
 
             if (string.IsNullOrEmpty(sanitized))
                 throw new ArgumentException("Key sanitizes to an empty string, which is not allowed.", nameof(key));
@@ -214,6 +263,10 @@ namespace LivingRoots.Services
             // Check for absolute paths and reject them to prevent path traversal vulnerabilities
             if (Path.IsPathRooted(key))
                 throw new ArgumentException("Key cannot be an absolute path, which is not allowed.", nameof(key));
+            
+            // Check for path traversal patterns like ../ or ..\ or ... (for path traversal)
+            if (key.Contains("../") || key.Contains("..\\") || Regex.IsMatch(key, @"\.{2,}[/\\]"))
+                throw new ArgumentException("Key cannot contain path traversal patterns, which is not allowed.", nameof(key));
         }
 
         /// <summary>
