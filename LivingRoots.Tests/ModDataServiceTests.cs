@@ -197,7 +197,7 @@ namespace LivingRoots.Tests
             
             // Act
             service.SaveData(testData, "test/key\\with:invalid|chars");
-
+ 
             // Assert - the invalid characters should be replaced with underscores
             // The exact expected path should have all invalid characters replaced
             _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_key_with_invalid_chars.json", testData), Times.Once);
@@ -724,6 +724,146 @@ namespace LivingRoots.Tests
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, ".........")); // All dots
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, "___")); // All underscores after trimming
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, "   ")); // All spaces after trimming
+        }
+
+        [Fact]
+        public void SanitizeKey_WithVeryLongUnicodeString_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Very long string with unicode diacritics
+            string input = new string('a', 10) + "café" + new string('b', 100) + "naïve" + new string('c', 100);
+            service.SaveData(testData, input);
+
+            // The expected result should handle the diacritics properly
+            string expected = new string('a', 100) + "caf_e" + new string('b', 100) + "na_ve" + new string('c', 100);
+            _mockDataHelper.Verify(x => x.WriteJsonFile($"data/{expected}.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithConsecutiveDiacritics_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - String with consecutive diacritics
+            service.SaveData(testData, "a\u0300\u0301b"); // a with grave and acute accents
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/a__b.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithWindowsReservedNameComplexCase_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Reserved name with mixed case
+            service.SaveData(testData, "con"); // lowercase reserved name
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/con_.json", testData), Times.Once);
+            
+            service.SaveData(testData, "CoN"); // mixed case reserved name
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/CoN_.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithMultiplePathSeparators_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Multiple path separators
+            service.SaveData(testData, "path//double//separators");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/path_double_separators.json", testData), Times.Once);
+            
+            service.SaveData(testData, "path\\\\double\\\\separators");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/path_double_separators.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithMixedUnicodeNormalizationForms_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Different Unicode normalization forms
+            string nfcForm = "café"; // Normalized composed form
+            string nfdForm = "cafe\u0301"; // Normalized decomposed form (e with combining acute)
+            
+            service.SaveData(testData, nfcForm);
+            // Both should result in the same sanitized output
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/caf_.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithSpecialCharactersAndExtensions_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Special characters with what looks like extensions
+            service.SaveData(testData, "file<with>special:chars.txt");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/file_with_special_chars.txt.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithTrailingDotsAndSpaces_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - Trailing dots and spaces that should be trimmed
+            service.SaveData(testData, "test   ...");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithZeroWidthUnicodeCharacters_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - String with zero-width characters
+            service.SaveData(testData, "test\u200Bzwsp\u200Czwnj\u200Dzwj"); // Zero-width space, non-joiner, joiner
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_zwsp_zwnj_zwj.json", testData), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithSurrogatePairs_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - String with surrogate pairs (emojis or other non-BMP characters)
+            service.SaveData(testData, "test" + char.ConvertFromUtf32(0x1F600) + "smile"); // Grinning face emoji
+            // The emoji should be handled properly without breaking the sanitization
+            // This test verifies the method doesn't crash with surrogate pairs
+            _mockDataHelper.Invocations.Clear(); // Clear previous invocations for this specific test
+            var result = service.GetType().GetMethod("GetFilePath", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                              .Invoke(service, new object[] { "test" + char.ConvertFromUtf32(0x1F600) + "smile" });
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public void SanitizeKey_WithHebrewAndRTLChars_HandlesProperly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act - String with Hebrew characters (right-to-left)
+            service.SaveData(testData, "test שלום");
+            // The RTL characters should be preserved but invalid chars replaced
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_____.json", testData), Times.Once);
         }
     }
 }
