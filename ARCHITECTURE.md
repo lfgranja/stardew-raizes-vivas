@@ -50,7 +50,7 @@ LivingRoots.Tests/          # Unit Tests Project
     *   This is the main class that SMAPI loads.
     *   Its primary responsibility is to initialize the mod, register SMAPI events, and **orchestrate the creation and injection of dependencies** for other components (following the D of SOLID principle).
     *   Example:
-        ``````csharp
+        ```csharp
         public override void Entry(IModHelper helper)
         {
             // Create controller with dependency injection
@@ -59,8 +59,7 @@ LivingRoots.Tests/          # Unit Tests Project
             // Register events through the controller
             _controller.RegisterEvents();
         }
-        ```
-        ```
+```
         
 
 2. **`Domain/` (Pure Business Logic)**
