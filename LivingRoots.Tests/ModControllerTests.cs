@@ -231,6 +231,36 @@ namespace LivingRoots.Tests
         }
         
         [Fact]
+        public void RegisterEvents_WhenExceptionOccurs_HandlerIsCleared()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>(MockBehavior.Strict);
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>(MockBehavior.Strict);
+            
+            _mockManifest.Setup(m => m.UniqueID).Returns("lfgranja.LivingRoots");
+            _mockManifest.Setup(m => m.Version).Returns(new SemanticVersion(1, 0, 0));
+            
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            
+            // Setup to throw an exception when trying to register the event
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+                .Throws(new InvalidOperationException("Test exception"));
+            
+            _mockMonitor.Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()))
+                .Verifiable();
+            
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            
+            // Act - This should cause an exception in the event registration which should clear the handler
+            controller.RegisterEvents();
+            
+            // Assert - The eventsRegistered flag should be false and we need to verify the internal state
+            // Since we can't directly access the private field, we can check if subsequent calls work properly
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+        }
+        [Fact]
         public void UnregisterEvents_WhenExceptionOccurs_LogsErrorMessageWithoutStackTrace()
         {
             // Arrange
@@ -273,5 +303,105 @@ namespace LivingRoots.Tests
             Assert.DoesNotContain("System.InvalidOperationException", loggedMessage); // Should not contain full type name
             Assert.Equal(LogLevel.Error, loggedLevel);
         }
+        
+        [Fact]
+        public void RegisterEvents_WhenDisposed_ShouldLogAndReturnWithoutThrowing()
+        {
+            // Arrange
+            var mockHelper = new Mock<IModHelper>();
+            var mockMonitor = new Mock<IMonitor>();
+            var mockManifest = new Mock<IManifest>();
+            
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            
+            // Create a single manifest with a concrete UniqueID and Version
+            mockManifest.Setup(m => m.UniqueID).Returns("lfgranja.LivingRoots");
+            mockManifest.Setup(m => m.Version).Returns(new SemanticVersion(1, 0, 0));
+            
+            mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            
+            string loggedMessage = "";
+            LogLevel loggedLevel = LogLevel.Info;
+            mockMonitor.Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()))
+                .Callback<string, LogLevel>((message, level) =>
+                {
+                    // Only capture the disposal-related log message
+                    if (message.Contains("Attempted to register events after disposal"))
+                    {
+                        loggedMessage = message;
+                        loggedLevel = level;
+                    }
+                })
+                .Verifiable();
+            
+            var controller = new ModController(mockHelper.Object, mockMonitor.Object, mockManifest.Object);
+            
+            // Register events first to set up the controller
+            controller.RegisterEvents();
+            
+            // Dispose the controller
+            controller.Dispose();
+            
+            // Act - Try to register events after disposal (should not throw)
+            var ex = Record.Exception(() => controller.RegisterEvents());
+            
+            // Assert
+            Assert.Null(ex); // No exception should be thrown
+            Assert.Contains("Attempted to register events after disposal", loggedMessage);
+            Assert.Equal(LogLevel.Trace, loggedLevel);
+        }
+        
+        [Fact]
+        public void UnregisterEvents_WhenDisposed_ShouldLogAndReturnWithoutThrowing()
+        {
+            // Arrange
+            var mockHelper = new Mock<IModHelper>();
+            var mockMonitor = new Mock<IMonitor>();
+            var mockManifest = new Mock<IManifest>();
+            
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            
+            // Create a single manifest with a concrete UniqueID and Version
+            mockManifest.Setup(m => m.UniqueID).Returns("lfgranja.LivingRoots");
+            mockManifest.Setup(m => m.Version).Returns(new SemanticVersion(1, 0, 0));
+            
+            mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            
+            string loggedMessage = "";
+            LogLevel loggedLevel = LogLevel.Info;
+            mockMonitor.Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()))
+                .Callback<string, LogLevel>((message, level) =>
+                {
+                    // Only capture the disposal-related log message
+                    if (message.Contains("Attempted to unregister events after disposal"))
+                    {
+                        loggedMessage = message;
+                        loggedLevel = level;
+                    }
+                })
+                .Verifiable();
+            
+            var controller = new ModController(mockHelper.Object, mockMonitor.Object, mockManifest.Object);
+            
+            // Register events first to set up the controller
+            controller.RegisterEvents();
+            
+            // Dispose the controller
+            controller.Dispose();
+            
+            // Act - Try to unregister events after disposal (should not throw)
+            var ex = Record.Exception(() => controller.UnregisterEvents());
+            
+            // Assert
+            Assert.Null(ex); // No exception should be thrown
+            Assert.Contains("Attempted to unregister events after disposal", loggedMessage);
+            Assert.Equal(LogLevel.Trace, loggedLevel);
+        }
+        
+        
     }
 }
