@@ -32,7 +32,10 @@ namespace LivingRoots.Controllers
         public void RegisterEvents()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(ModController));
+            {
+                _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
+                return;
+            }
             
             // Defensive null checks
             if (_helper?.Events?.GameLoop == null)
@@ -63,7 +66,9 @@ namespace LivingRoots.Controllers
                 }
                 catch (Exception ex)
                 {
+                    // Log concise error without stack trace/type name; clear handler to avoid stale reference
                     _monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
+                    _onGameLaunchedHandler = null;
                     _eventsRegistered = false;
                 }
             }
@@ -72,7 +77,10 @@ namespace LivingRoots.Controllers
         public void UnregisterEvents()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(ModController));
+            {
+                _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
+                return;
+            }
             
             lock (_registrationLock)
             {
@@ -98,7 +106,7 @@ namespace LivingRoots.Controllers
                         // In SMAPI, there's no direct method to remove a console command
                         // The command will be automatically removed when the mod is disposed
                         // We just reset the flag to indicate it's unregistered
-                        _monitor.Log("Console command 'lr_version' unregistered successfully.", LogLevel.Trace);
+                        _monitor.Log("Controller state for command 'lr_version' has been reset. The command will be removed on mod disposal.", LogLevel.Trace);
                     }
                     
                     _eventsRegistered = false;

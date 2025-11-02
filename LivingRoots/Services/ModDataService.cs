@@ -171,16 +171,15 @@ namespace LivingRoots.Services
             "LPT1","LPT2","LPT3","LPT4","LPT5","LPT6","LPT7","LPT8","LPT9"
         };
 
-        private static string GetFilePath(string key)
+        /// <summary>
+        /// Sanitizes the key by normalizing Unicode and replacing invalid characters
+        /// </summary>
+        /// <param name="key">The input key to sanitize</param>
+        /// <returns>The sanitized key with invalid characters replaced</returns>
+        private static string SanitizeKey(string key)
         {
-            if (key is null) throw new ArgumentNullException(nameof(key));
-
             // Normalize input key to Unicode Form C to prevent Unicode trickery
             key = key.Normalize(NormalizationForm.FormC);
-
-            // Check for absolute paths and reject them to prevent path traversal vulnerabilities
-            if (Path.IsPathRooted(key))
-                throw new ArgumentException("Key cannot be an absolute path, which is not allowed.", nameof(key));
 
             var sanitizedKeyBuilder = new StringBuilder(key.Length);
             foreach (char c in key)
@@ -193,7 +192,7 @@ namespace LivingRoots.Services
 
             var sanitized = sanitizedKeyBuilder.ToString();
 
-            // Explicitly block path traversal patterns and normalize
+            // Explicitly block path traversal patterns
             sanitized = sanitized.Replace("..", "_");
 
             // Collapse multiple underscores and trim whitespace, dots, and underscores at ends
@@ -202,10 +201,32 @@ namespace LivingRoots.Services
             if (string.IsNullOrEmpty(sanitized))
                 throw new ArgumentException("Key sanitizes to an empty string, which is not allowed.", nameof(key));
 
+            return sanitized;
+        }
+
+        /// <summary>
+        /// Validates that the key doesn't contain path traversal patterns
+        /// </summary>
+        /// <param name="key">The key to validate</param>
+        /// <exception cref="ArgumentException">Thrown if path traversal is detected</exception>
+        private static void ValidatePathTraversal(string key)
+        {
+            // Check for absolute paths and reject them to prevent path traversal vulnerabilities
+            if (Path.IsPathRooted(key))
+                throw new ArgumentException("Key cannot be an absolute path, which is not allowed.", nameof(key));
+        }
+
+        /// <summary>
+        /// Handles reserved Windows filenames by appending an underscore to the base name
+        /// </summary>
+        /// <param name="sanitizedKey">The sanitized key to check for reserved names</param>
+        /// <returns>A filename with reserved names handled appropriately</returns>
+        private static string HandleReservedWindowsFilenames(string sanitizedKey)
+        {
             // Guard against reserved device names on Windows
             // Reference: https://learn.microsoft.com/windows/win32/fileio/naming-a-file
-            string baseName = Path.GetFileNameWithoutExtension(sanitized);
-            string sanitizedExtension = Path.GetExtension(sanitized);
+            string baseName = Path.GetFileNameWithoutExtension(sanitizedKey);
+            string sanitizedExtension = Path.GetExtension(sanitizedKey);
             string extension = "json";
 
             if (ReservedWindowsFileNames.Contains(baseName))
@@ -214,6 +235,20 @@ namespace LivingRoots.Services
             }
 
             return Path.Combine("data", $"{baseName}{sanitizedExtension}.{extension}");
+        }
+
+        private static string GetFilePath(string key)
+        {
+            if (key is null) throw new ArgumentNullException(nameof(key));
+
+            // Validate path traversal first to prevent security issues
+            ValidatePathTraversal(key);
+
+            // Sanitize the key to handle invalid characters
+            string sanitizedKey = SanitizeKey(key);
+
+            // Handle reserved Windows filenames
+            return HandleReservedWindowsFilenames(sanitizedKey);
         }
     }
 }
