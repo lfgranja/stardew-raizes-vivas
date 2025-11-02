@@ -24,8 +24,8 @@ If manual testing was performed, please explain what steps you took to verify th
 
 ### **Checklist**
 Please confirm the following:
-- [ ] I have read the [CONTRIBUTING.md](../../CONTRIBUTING.md) document
-- [ ] My code follows the project's architecture principles (SOLID, TDD, DDD) as described in [ARCHITECTURE.md](../../ARCHITECTURE.md)
+- [ ] I have read the [CONTRIBUTING.md](CONTRIBUTING.md) document
+- [ ] My code follows the project's architecture principles (SOLID, TDD, DDD) as described in [ARCHITECTURE.md](ARCHITECTURE.md)
 - [ ] I have performed a self-review of my own code
 - [ ] I have commented my code, particularly in complex areas
 - [ ] I have made corresponding changes to the documentation (if applicable)
