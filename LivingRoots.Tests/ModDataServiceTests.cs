@@ -151,6 +151,17 @@ namespace LivingRoots.Tests
             // Act & Assert
             Assert.Throws<Newtonsoft.Json.JsonException>(() => service.DataExists("test_key"));
         }
+        [Fact]
+        public void DataExists_WithIOException_ThrowsException()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(new System.IO.IOException());
+            
+            // Act & Assert
+            Assert.Throws<System.IO.IOException>(() => service.DataExists("test_key"));
+        }
+
 
         [Fact]
         public void RemoveData_WithExistingData_RemovesData()
@@ -319,6 +330,68 @@ namespace LivingRoots.Tests
             
             // Act & Assert - Test with platform-appropriate absolute path
             Assert.Throws<ArgumentException>(() => service.RemoveData("/absolute/path")); // Unix-style absolute path
+        }
+        [Fact]
+        public void GetFilePath_WithReservedWindowsName_AddsUnderscore()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act
+            service.SaveData(testData, "CON");
+            
+            // Assert
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/CON_.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void GetFilePath_WithReservedWindowsNameWithExtension_ExtractsBaseNameAndAddsUnderscore()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act
+            service.SaveData(testData, "CON.txt");
+            
+            // Assert - The extension should be preserved, and underscore added to base name
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/CON_.txt.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void GetFilePath_WithMultipleReservedWindowsNamesWithExtensions()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act & Assert for various reserved names with extensions
+            service.SaveData(testData, "PRN.txt");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/PRN_.txt.json", testData), Times.Once);
+            
+            service.SaveData(testData, "AUX.log");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/AUX_.log.json", testData), Times.Once);
+            
+            service.SaveData(testData, "COM1.xml");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/COM1_.xml.json", testData), Times.Once);
+            
+            service.SaveData(testData, "LPT1.dat");
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/LPT1_.dat.json", testData), Times.Once);
+        }
+        
+        [Fact]
+        public void GetFilePath_WithNonReservedNameWithExtension_DoesNotAddUnderscore()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            
+            // Act
+            service.SaveData(testData, "normal.txt");
+            
+            // Assert - Non-reserved names should not be modified
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/normal.txt.json", testData), Times.Once);
         }
     }
 }

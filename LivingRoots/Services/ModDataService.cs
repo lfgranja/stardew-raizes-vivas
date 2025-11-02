@@ -119,7 +119,7 @@ namespace LivingRoots.Services
             catch (System.IO.IOException ex)
             {
                 _monitor.Log($"IOException while checking data existence for key '{key}': {ex.Message}", LogLevel.Warn);
-                return false; // Return false for IO errors
+                throw; // Re-throw IO errors to prevent potential data loss
             }
             catch (Newtonsoft.Json.JsonException ex)
             {
@@ -182,12 +182,8 @@ namespace LivingRoots.Services
             if (Path.IsPathRooted(key))
                 throw new ArgumentException("Key cannot be an absolute path, which is not allowed.", nameof(key));
 
-            // Replace directory separators with underscores before checking for invalid characters
-            var normalizedKey = key.Replace(Path.DirectorySeparatorChar, '_')
-                                  .Replace(Path.AltDirectorySeparatorChar, '_');
-
-            var sanitizedKeyBuilder = new StringBuilder(normalizedKey.Length);
-            foreach (char c in normalizedKey)
+            var sanitizedKeyBuilder = new StringBuilder(key.Length);
+            foreach (char c in key)
             {
                 if (InvalidFileNameChars.Contains(c))
                     sanitizedKeyBuilder.Append('_');
@@ -208,15 +204,16 @@ namespace LivingRoots.Services
 
             // Guard against reserved device names on Windows
             // Reference: https://learn.microsoft.com/windows/win32/fileio/naming-a-file
-            string baseName = sanitized;
+            string baseName = Path.GetFileNameWithoutExtension(sanitized);
+            string sanitizedExtension = Path.GetExtension(sanitized);
             string extension = "json";
 
             if (ReservedWindowsFileNames.Contains(baseName))
             {
-                baseName = baseName + "_";
+                baseName += "_";
             }
 
-            return Path.Combine("data", $"{baseName}.{extension}");
+            return Path.Combine("data", $"{baseName}{sanitizedExtension}.{extension}");
         }
     }
 }
