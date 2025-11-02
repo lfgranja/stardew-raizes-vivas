@@ -74,38 +74,41 @@ namespace LivingRoots.Controllers
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ModController));
             
-            try
+            lock (_registrationLock)
             {
-                var gameLoop = _helper?.Events?.GameLoop;
-                if (gameLoop == null)
+                try
                 {
-                    _monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Trace);
-                    return;
-                }
+                    var gameLoop = _helper?.Events?.GameLoop;
+                    if (gameLoop == null)
+                    {
+                        _monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Trace);
+                        return;
+                    }
 
-                // Always attempt to detach to avoid leaked handlers even if the flag is out of sync
-                if (_onGameLaunchedHandler != null)
-                {
-                    gameLoop.GameLaunched -= _onGameLaunchedHandler;
-                    _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
-                }
+                    // Always attempt to detach to avoid leaked handlers even if the flag is out of sync
+                    if (_onGameLaunchedHandler != null)
+                    {
+                        gameLoop.GameLaunched -= _onGameLaunchedHandler;
+                        _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
+                    }
 
-                // Unregister console command if it was registered
-                if (_commandRegistered && _helper?.ConsoleCommands != null)
-                {
-                    // In SMAPI, there's no direct method to remove a console command
-                    // The command will be automatically removed when the mod is disposed
-                    // We just reset the flag to indicate it's unregistered
-                    _monitor.Log("Console command 'lr_version' unregistered successfully.", LogLevel.Trace);
+                    // Unregister console command if it was registered
+                    if (_commandRegistered && _helper?.ConsoleCommands != null)
+                    {
+                        // In SMAPI, there's no direct method to remove a console command
+                        // The command will be automatically removed when the mod is disposed
+                        // We just reset the flag to indicate it's unregistered
+                        _monitor.Log("Console command 'lr_version' unregistered successfully.", LogLevel.Trace);
+                    }
+                    
+                    _eventsRegistered = false;
+                    _commandRegistered = false;
+                    _monitor.Log("Events unregistered successfully.", LogLevel.Trace);
                 }
-                
-                _eventsRegistered = false;
-                _commandRegistered = false;
-                _monitor.Log("Events unregistered successfully.", LogLevel.Trace);
-            }
-            catch (Exception ex)
-            {
-                _monitor.Log($"Error while unregistering events: {ex}", LogLevel.Error);
+                catch (Exception ex)
+                {
+                    _monitor.Log($"Error while unregistering events: {ex}", LogLevel.Error);
+                }
             }
         }
 

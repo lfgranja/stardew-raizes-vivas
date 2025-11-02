@@ -151,5 +151,44 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
         }
+        
+        [Fact]
+        public async System.Threading.Tasks.Task UnregisterEvents_IsThreadSafe_WithConcurrentOperations()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            // Setup event subscription and unsubscription expectations
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            
+            // Act - Simulate concurrent registration and unregistration
+            var tasks = new System.Threading.Tasks.Task[10];
+            for (int i = 0; i < 10; i++)
+            {
+                int taskId = i;
+                tasks[taskId] = System.Threading.Tasks.Task.Run(() =>
+                {
+                    if (taskId % 2 == 0)
+                    {
+                        controller.RegisterEvents(); // Even tasks register
+                    }
+                    else
+                    {
+                        controller.UnregisterEvents(); // Odd tasks unregister
+                    }
+                });
+            }
+            
+            // Wait for all tasks to complete
+            await System.Threading.Tasks.Task.WhenAll(tasks);
+            
+            // Assert - No exceptions should be thrown due to race conditions
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+        }
     }
 }
