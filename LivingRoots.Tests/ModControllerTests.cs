@@ -6,7 +6,6 @@ using LivingRoots.Services;
 using Xunit;
 using System;
 
-
 namespace LivingRoots.Tests
 {
     public class ModControllerTests
@@ -189,6 +188,90 @@ namespace LivingRoots.Tests
             
             // Assert - No exceptions should be thrown due to race conditions
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+        }
+        
+        [Fact]
+        public void RegisterEvents_WhenExceptionOccurs_LogsErrorMessageWithoutStackTrace()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>(MockBehavior.Strict);
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>(MockBehavior.Strict);
+            
+            _mockManifest.Setup(m => m.UniqueID).Returns("lfgranja.LivingRoots");
+            _mockManifest.Setup(m => m.Version).Returns(new SemanticVersion(1, 0, 0));
+            
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            
+            // Setup to throw an exception when trying to register the event
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+                .Throws(new InvalidOperationException("Test exception"));
+            
+            string loggedMessage = "";
+            LogLevel loggedLevel = LogLevel.Info;
+            _mockMonitor.Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()))
+                .Callback<string, LogLevel>((message, level) =>
+                {
+                    loggedMessage = message;
+                    loggedLevel = level;
+                })
+                .Verifiable();
+            
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            
+            // Act & Assert
+            var ex = Record.Exception(() => controller.RegisterEvents());
+            Assert.Null(ex); // Exception should be caught and logged, not thrown
+            
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.Once);
+            Assert.Contains("Test exception", loggedMessage);
+            Assert.DoesNotContain("System.InvalidOperationException", loggedMessage); // Should not contain full type name
+            Assert.Equal(LogLevel.Error, loggedLevel);
+        }
+        
+        [Fact]
+        public void UnregisterEvents_WhenExceptionOccurs_LogsErrorMessageWithoutStackTrace()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>(MockBehavior.Strict);
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>(MockBehavior.Strict);
+            
+            _mockManifest.Setup(m => m.UniqueID).Returns("lfgranja.LivingRoots");
+            _mockManifest.Setup(m => m.Version).Returns(new SemanticVersion(1, 0, 0));
+            
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            
+            // Setup to throw an exception when trying to unregister the event
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+                .Throws(new InvalidOperationException("Test exception for unregister"));
+            
+            string loggedMessage = "";
+            LogLevel loggedLevel = LogLevel.Info;
+            _mockMonitor.Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()))
+                .Callback<string, LogLevel>((message, level) =>
+                {
+                    loggedMessage = message;
+                    loggedLevel = level;
+                })
+                .Verifiable();
+            
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            
+            // First register events to set up the handler
+            controller.RegisterEvents();
+            
+            // Act & Assert
+            var ex = Record.Exception(() => controller.UnregisterEvents());
+            Assert.Null(ex); // Exception should be caught and logged, not thrown
+            
+            // Verify logging occurred with the exception message but not the full stack trace
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+            Assert.Contains("Test exception for unregister", loggedMessage);
+            Assert.DoesNotContain("System.InvalidOperationException", loggedMessage); // Should not contain full type name
+            Assert.Equal(LogLevel.Error, loggedLevel);
         }
     }
 }

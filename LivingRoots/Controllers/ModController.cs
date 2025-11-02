@@ -63,7 +63,7 @@ namespace LivingRoots.Controllers
                 }
                 catch (Exception ex)
                 {
-                    _monitor.Log($"Error registering events: {ex}", LogLevel.Error);
+                    _monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
                     _eventsRegistered = false;
                 }
             }
@@ -107,7 +107,7 @@ namespace LivingRoots.Controllers
                 }
                 catch (Exception ex)
                 {
-                    _monitor.Log($"Error while unregistering events: {ex}", LogLevel.Error);
+                    _monitor.Log($"Error while unregistering events: {ex.Message}", LogLevel.Error);
                 }
             }
         }
@@ -136,7 +136,7 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error in OnGameLaunched: {ex}", LogLevel.Error);
+                _monitor.Log($"Error in OnGameLaunched: {ex.Message}", LogLevel.Error);
             }
         }
 
@@ -168,7 +168,7 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error in PrintVersion: {ex}", LogLevel.Error);
+                _monitor.Log($"Error in PrintVersion: {ex.Message}", LogLevel.Error);
             }
         }
 
