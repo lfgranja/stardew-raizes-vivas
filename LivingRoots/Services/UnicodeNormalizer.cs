@@ -1,3 +1,4 @@
+
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -109,7 +110,6 @@ namespace LivingRoots.Services
                     }
                     else
                     {
-                        // For certain precomposed characters that should be simplified (like 'ø' -> 'o'), 
                         // we need special handling
                         char simplified = SimplifyCharacter(c);
                         resultBuilder.Append(simplified);
@@ -182,14 +182,14 @@ namespace LivingRoots.Services
             if (c == '\u200B' || c == '\u200C' || c == '\u200D') // Zero-width space, zero-width non-joiner, zero-width joiner
                 return true;
                 
-            // Additional zero-width characters for enhanced security
-            if (c == '\u200E' || c == '\u200F') // Left-to-right mark, Right-to-left mark
-                return true;
-                
+            // Bidirectional override characters
             if (c == '\u202A' || c == '\u202B' || c == '\u202C' || c == '\u202D' || c == '\u202E') // LRE, RLE, PDF, LRO, RLO
                 return true;
                 
-            // Additional bidirectional control characters
+            // Additional zero-width and bidirectional control characters for enhanced security
+            if (c == '\u200E' || c == '\u200F') // Left-to-right mark, Right-to-left mark
+                return true;
+                
             if (c == '\u2066' || c == '\u2067' || c == '\u2068' || c == '\u2069') // First strong isolate, Left-to-right isolate, Right-to-left isolate, Pop directional isolate
                 return true;
                 
