@@ -11,9 +11,7 @@ namespace LivingRoots.Services
     /// </summary>
     public class FileNameSanitizer : IFileNameSanitizer
     {
-        private const int MaxPathLength = 260; // Standard Windows path length limit
         private const int MaxFileNameLength = 240; // Maximum filename length for truncation tests
-        private const int JsonExtensionLength = 5; // Length of ".json" extension
         
         private readonly IUnicodeNormalizer _unicodeNormalizer;
 
@@ -36,21 +34,57 @@ namespace LivingRoots.Services
             if (filename.Contains('\0'))
                 throw new ArgumentException("Filename cannot contain null characters.", nameof(filename));
 
-            // First, normalize the Unicode characters to handle diacritics, homoglyphs, etc.
+            // Normalize Unicode characters
             string normalized = _unicodeNormalizer.Normalize(filename);
 
-            // Apply sanitization processing (replacing invalid characters with underscores, etc.)
+            // Sanitize characters by replacing invalid ones
+            string sanitized = SanitizeInvalidCharacters(normalized);
+
+            // Process consecutive dots
+            string processed = ProcessConsecutiveDots(sanitized);
+
+            // Determine if this should be treated as a hidden file
+            bool shouldBeHiddenFile = ShouldPreserveHiddenFilePrefix(filename, processed);
+
+            // Trim leading/trailing problematic characters
+            string trimmed = processed.Trim('_', ' ', '.');
+
+            // Preserve leading dots for hidden files
+            if (shouldBeHiddenFile && !trimmed.StartsWith(".") && !string.IsNullOrEmpty(trimmed))
+            {
+                trimmed = "." + trimmed;
+            }
+
+            // Apply truncation
+            string truncated = TruncateToMaxLength(trimmed);
+
+            // Final cleanup after truncation
+            string result = PerformFinalCleanup(truncated, shouldBeHiddenFile);
+
+            if (string.IsNullOrWhiteSpace(result))
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+
+            return result;
+        }
+
+        /// <summary>
+        /// Sanitizes invalid characters by replacing them with underscores.
+        /// </summary>
+        /// <param name="input">The input string to sanitize</param>
+        /// <returns>The sanitized string</returns>
+        private static string SanitizeInvalidCharacters(string input)
+        {
             var sanitizedBuilder = new StringBuilder();
             
-            for (int i = 0; i < normalized.Length; i++)
+            for (int i = 0; i < input.Length; i++)
             {
-                char c = normalized[i];
+                char c = input[i];
                 
                 // Handle surrogate pairs (emojis and other multi-byte Unicode characters)
-                if (char.IsHighSurrogate(c) && i + 1 < normalized.Length && char.IsLowSurrogate(normalized[i + 1]))
+                if (char.IsHighSurrogate(c) && i + 1 < input.Length && char.IsLowSurrogate(input[i + 1]))
                 {
                     // Preserve valid surrogate pairs (emojis, etc.)
-                    char lowSurrogate = normalized[i + 1];
+                    char lowSurrogate = input[i + 1];
                     int codePoint = char.ConvertToUtf32(c, lowSurrogate);
                     
                     // Check if this is a valid Unicode character
@@ -81,15 +115,22 @@ namespace LivingRoots.Services
                 }
             }
 
-            string sanitized = sanitizedBuilder.ToString();
-            
-            // Process consecutive dots: replace multiple consecutive dots with a single dot
+            return sanitizedBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Processes consecutive dots by replacing multiple consecutive dots with a single dot.
+        /// </summary>
+        /// <param name="input">The input string to process</param>
+        /// <returns>The processed string</returns>
+        private static string ProcessConsecutiveDots(string input)
+        {
             StringBuilder processedBuilder = new StringBuilder();
             int consecutiveDotCount = 0;
             
-            for (int i = 0; i < sanitized.Length; i++)
+            for (int i = 0; i < input.Length; i++)
             {
-                char c = sanitized[i];
+                char c = input[i];
                 
                 if (c == '.')
                 {
@@ -114,80 +155,74 @@ namespace LivingRoots.Services
                 processedBuilder.Append('.');
             }
             
-            string processed = processedBuilder.ToString();
-            
-            // Trim leading and trailing underscores, spaces, and dots
-            string trimmed = processed.Trim('_', ' ', '.');
-            
-            // Preserve leading dots for hidden files
-            if (filename.StartsWith(".") && !trimmed.StartsWith(".") && !string.IsNullOrEmpty(trimmed))
+            return processedBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Determines if the filename should preserve the hidden file prefix.
+        /// </summary>
+        /// <param name="originalFilename">The original filename</param>
+        /// <param name="processedFilename">The processed filename</param>
+        /// <returns>True if the hidden file prefix should be preserved</returns>
+        private static bool ShouldPreserveHiddenFilePrefix(string originalFilename, string processedFilename)
+        {
+            return originalFilename.StartsWith(".") && !string.IsNullOrEmpty(processedFilename.Trim('_', ' ', '.'));
+        }
+
+        /// <summary>
+        /// Truncates the filename to the maximum allowed length, handling hidden files properly.
+        /// </summary>
+        /// <param name="filename">The filename to truncate</param>
+        /// <returns>The truncated filename</returns>
+        private static string TruncateToMaxLength(string filename)
+        {
+            if (filename.Length <= MaxFileNameLength)
+                return filename;
+
+            // If the filename is too long, truncate it
+            if (filename.StartsWith("."))
             {
-                trimmed = "." + trimmed;
-            }
-            
-            // Now handle truncation after all other processing
-            if (trimmed.Length > MaxFileNameLength)
-            {
-                // If the trimmed string is too long, we need to truncate
-                // For hidden files, we need to account for the dot
-                if (trimmed.StartsWith("."))
-                {
-                    // Keep the dot and truncate the content part
-                    string contentPart = trimmed.Substring(1);
-                    string truncatedContent = SafeSubstring(contentPart, 0, MaxFileNameLength - 1);
-                    trimmed = "." + truncatedContent;
-                }
-                else
-                {
-                    // Truncate to max length
-                    trimmed = SafeSubstring(trimmed, 0, MaxFileNameLength);
-                }
-            }
-            
-            // FINAL check: if the result is exactly at MaxFileNameLength, we should not trim anything else
-            // But if it's shorter than MaxFileNameLength and we have leading/trailing chars to trim,
-            // we can trim them. However, if it's at the max length, we must preserve it.
-            if (trimmed.Length == MaxFileNameLength)
-            {
-                // If already at max length, we can't trim more without going below the limit
-                // But we should ensure it doesn't end with problematic characters if possible
-                // Actually, if it's at max length, we have to accept it as is to maintain the length
+                // For hidden files, keep the dot and truncate the content part
+                string contentPart = filename.Substring(1);
+                string truncatedContent = SafeSubstring(contentPart, 0, MaxFileNameLength - 1);
+                return "." + truncatedContent;
             }
             else
             {
-                // If not at max length, we can trim again if needed
-                string doubleTrimmed = trimmed.Trim('_', ' ', '.');
-                if (!string.IsNullOrEmpty(doubleTrimmed) && !doubleTrimmed.Equals(trimmed))
+                // Truncate to max length
+                return SafeSubstring(filename, 0, MaxFileNameLength);
+            }
+        }
+
+        /// <summary>
+        /// Performs final cleanup after truncation.
+        /// </summary>
+        /// <param name="filename">The filename after truncation</param>
+        /// <param name="shouldBeHiddenFile">Whether this should be treated as a hidden file</param>
+        /// <returns>The cleaned up filename</returns>
+        private static string PerformFinalCleanup(string filename, bool shouldBeHiddenFile)
+        {
+            // After truncation, ensure we don't have trailing problematic characters
+            // but only if we're not at the maximum length
+            if (filename.Length < MaxFileNameLength)
+            {
+                string postTruncationTrimmed = filename.TrimEnd('_', ' ', '.');
+                
+                // If it was a hidden file and we lost the dot, add it back
+                if (shouldBeHiddenFile && !postTruncationTrimmed.StartsWith(".") && !string.IsNullOrEmpty(postTruncationTrimmed))
                 {
-                    // If trimming changed the string and it's not empty, use the trimmed version
-                    trimmed = doubleTrimmed;
-                    
-                    // If it was a hidden file and we lost the dot, add it back
-                    if (filename.StartsWith(".") && !trimmed.StartsWith(".") && trimmed.Length < MaxFileNameLength)
+                    postTruncationTrimmed = "." + postTruncationTrimmed.TrimStart('.');
+                    // Ensure we don't exceed max length after adding the dot back
+                    if (postTruncationTrimmed.Length > MaxFileNameLength)
                     {
-                        trimmed = "." + trimmed;
+                        postTruncationTrimmed = TruncateToMaxLength(postTruncationTrimmed);
                     }
                 }
+                
+                return postTruncationTrimmed;
             }
 
-            if (string.IsNullOrWhiteSpace(trimmed))
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
-
-            // Final check to ensure we don't exceed the max length
-            if (trimmed.Length > MaxFileNameLength)
-            {
-                if (trimmed.StartsWith("."))
-                {
-                    // For hidden files, keep the dot and truncate the rest
-                    trimmed = "." + SafeSubstring(trimmed.Substring(1), 0, MaxFileNameLength - 1);
-                }
-                else
-                {
-                    trimmed = SafeSubstring(trimmed, 0, MaxFileNameLength);
-                }
-            }
-
-            return trimmed;
+            return filename;
         }
 
         /// <summary>
