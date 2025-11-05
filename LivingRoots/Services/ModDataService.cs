@@ -19,9 +19,7 @@ namespace LivingRoots.Services
         private readonly IFileNameSanitizer _fileNameSanitizer;
         private readonly IReservedNameHandler _reservedNameHandler;
         
-        public ModDataService(IModHelper helper, IMonitor monitor) : this(helper, monitor, new PathTraversalValidator(), new FileNameSanitizer(new UnicodeNormalizer()), new ReservedNameHandler(new UnicodeNormalizer()))
-        {
-        }
+        
         
         public ModDataService(IModHelper helper, IMonitor monitor, IPathTraversalValidator pathTraversalValidator, IFileNameSanitizer fileNameSanitizer, IReservedNameHandler reservedNameHandler)
         {
