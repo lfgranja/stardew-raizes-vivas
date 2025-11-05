@@ -134,8 +134,8 @@ namespace LivingRoots.Services
             }
             catch (Newtonsoft.Json.JsonException ex)
             {
-                _monitor.Log($"JSON parsing error while checking data existence for key '{key}': {ex.Message}", LogLevel.Error);
-                throw; // Re-throw JsonException as expected by tests
+                _monitor.Log($"JSON parsing error while checking data existence for key '{key}': {ex.Message}", LogLevel.Warn);
+                return false; // Return false instead of throwing when JSON is invalid
             }
         }
         
