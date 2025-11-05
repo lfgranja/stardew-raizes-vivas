@@ -81,7 +81,14 @@ namespace LivingRoots.Services
             var path = GetFilePath(key);
             try
             {
-                return _helper.Data.ReadJsonFile<T>(path);
+                var result = _helper.Data.ReadJsonFile<T>(path);
+                if (result == null)
+                {
+                    // Log when ReadJsonFile returns null (which can happen when file exists but is empty/corrupted)
+                    _monitor.Log($"Data is null while loading for key '{key}'", LogLevel.Trace);
+                    return null;
+                }
+                return result;
             }
             catch (System.IO.FileNotFoundException ex)
             {
