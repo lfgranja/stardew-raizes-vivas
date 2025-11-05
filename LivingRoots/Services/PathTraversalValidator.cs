@@ -46,10 +46,13 @@ namespace LivingRoots.Services
                 throw new ArgumentException("Path cannot be an absolute path.", nameof(path));
 
             // 5. Check for traversal patterns in segments.
-            string[] segments = decodedPath.Split('/');
+            // Split on both forward slash and backslash separators
+            string[] segments = decodedPath.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (string segment in segments)
             {
-                if (segment == ".." || segment == ".")
+                // Only check for ".." (parent directory traversal), not "." (current directory)
+                // Current directory is not a security risk
+                if (segment.Equals("..", StringComparison.Ordinal))
                     throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
             }
 
