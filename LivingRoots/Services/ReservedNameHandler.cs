@@ -27,7 +27,7 @@ namespace LivingRoots.Services
         /// </summary>
         /// <param name="filename">The filename to check for reserved names.</param>
         /// <returns>A filename with reserved names handled appropriately.</returns>
-        public string Handle(string filename)
+        public string? Handle(string? filename)
         {
             if (string.IsNullOrWhiteSpace(filename))
                 return filename;
@@ -36,15 +36,15 @@ namespace LivingRoots.Services
             string? directoryPath = Path.GetDirectoryName(filename);
             string fullFileName = Path.GetFileName(filename);
             
-            // Find the last dot to separate the base name from the extension
+            // Find the first dot to separate the base name from all extensions
             // For "CON.txt.bak", the reserved name is "CON" and extension is ".txt.bak"
-            int lastDotIndex = fullFileName.LastIndexOf('.');
+            int firstDotIndex = fullFileName.IndexOf('.');
             string namePart, extensionPart;
             
-            if (lastDotIndex > 0)
+            if (firstDotIndex > 0)
             {
-                namePart = fullFileName.Substring(0, lastDotIndex);
-                extensionPart = fullFileName.Substring(lastDotIndex); // includes the dot
+                namePart = fullFileName.Substring(0, firstDotIndex);
+                extensionPart = fullFileName.Substring(firstDotIndex); // includes the dot
             }
             else
             {
@@ -52,15 +52,29 @@ namespace LivingRoots.Services
                 extensionPart = "";
             }
 
-            // Trim the name part to handle cases like " CON " that should be treated as "CON"
-            string trimmedNamePart = namePart.Trim();
+            // Trim leading spaces for initial check
+            string trimmedLeadingSpaces = namePart.TrimStart();
             
-            bool isReserved = ReservedWindowsFileNames.Contains(trimmedNamePart) 
-                              || ReservedWindowsFileNames.Contains(_unicodeNormalizer.Normalize(trimmedNamePart));
+            // Trim trailing dots and spaces since Windows treats them as insignificant
+            // This gives us the core name to check against reserved names
+            string baseNameForCheck = trimmedLeadingSpaces.TrimEnd('.', ' ', '\t');
+            
+            // Get the trailing dots and spaces that were removed
+            int trailingInsignificantLength = trimmedLeadingSpaces.Length - baseNameForCheck.Length;
+            string trailingDotsAndSpaces = trailingInsignificantLength > 0 ? 
+                trimmedLeadingSpaces.Substring(trimmedLeadingSpaces.Length - trailingInsignificantLength) : "";
+            
+            bool isReserved = !string.IsNullOrEmpty(baseNameForCheck) && 
+                              (ReservedWindowsFileNames.Contains(baseNameForCheck) 
+                              || ReservedWindowsFileNames.Contains(_unicodeNormalizer.Normalize(baseNameForCheck)));
 
             if (isReserved)
             {
-                string modifiedFileName = namePart + "_" + extensionPart;
+                // Insert underscore after core name: leading spaces + core name + underscore + trailing dots/spaces
+                // This handles both trailing spaces and trailing dots consistently according to Windows behavior
+                string leadingSpaces = namePart.Substring(0, namePart.Length - trimmedLeadingSpaces.Length);
+                string modifiedNamePart = leadingSpaces + baseNameForCheck + "_" + trailingDotsAndSpaces;
+                string modifiedFileName = modifiedNamePart + extensionPart;
                 return !string.IsNullOrEmpty(directoryPath)
                     ? Path.Combine(directoryPath, modifiedFileName)
                     : modifiedFileName;

@@ -10,6 +10,6 @@ namespace LivingRoots.Services
         /// </summary>
         /// <param name="filename">The filename to check for reserved names</param>
         /// <returns>A filename with reserved names handled appropriately</returns>
-        string Handle(string filename);
+        string? Handle(string? filename);
     }
 }

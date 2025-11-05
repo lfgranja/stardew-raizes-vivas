@@ -91,7 +91,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(input);
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
             Assert.Equal(input, result);
@@ -128,7 +128,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
             Assert.Equal("CОN_", result); // The original name with underscore added
@@ -145,10 +145,61 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizer.Setup(x => x.Normalize(trimmed)).Returns(trimmed);
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert - With the new logic, trailing spaces are treated as insignificant like dots
+            Assert.Equal(" CON_ ", result); // The original string with underscore added after core name, preserving trailing space
+        }
+
+        [Fact]
+        public void Handle_WithReservedNameWithTrailingDotsAndSpaces_HandlesProperly()
+        {
+            // Arrange
+            string input = "CON   ...";
+            string baseName = "CON"; // After trimming
+            
+            // Setup mock to return the same string for normalization
+            _mockUnicodeNormalizer.Setup(x => x.Normalize(baseName)).Returns(baseName);
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
-            Assert.Equal(" CON _", result); // The original string with underscore added to the trimmed part
+            Assert.Equal("CON_   ...", result); // The original string with underscore added to the reserved part
+        }
+
+        [Fact]
+        public void Handle_WithReservedNameWithTrailingSpaces_HandlesProperly()
+        {
+            // Arrange
+            string input = "CON   "; // CON with trailing spaces
+            string baseName = "CON"; // After trimming
+            
+            // Setup mock to return the same string for normalization
+            _mockUnicodeNormalizer.Setup(x => x.Normalize(baseName)).Returns(baseName);
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert
+            Assert.Equal("CON_   ", result); // The original string with underscore added to the reserved part
+        }
+
+        [Fact]
+        public void Handle_WithReservedNameWithTrailingDots_HandlesProperly()
+        {
+            // Arrange
+            string input = "CON..."; // CON with trailing dots
+            string baseName = "CON"; // After trimming
+            
+            // Setup mock to return the same string for normalization
+            _mockUnicodeNormalizer.Setup(x => x.Normalize(baseName)).Returns(baseName);
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert
+            Assert.Equal("CON_...", result); // The original string with underscore added to the reserved part
         }
 
         [Fact]
@@ -162,7 +213,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
             Assert.Equal("CÓÑ_", result); // The original name with underscore added
@@ -175,7 +226,7 @@ namespace LivingRoots.Tests
             string input = "";
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
             Assert.Equal(input, result);
@@ -185,10 +236,10 @@ namespace LivingRoots.Tests
         public void Handle_WithNullString_ReturnsNullString()
         {
             // Arrange
-            string input = null;
+            string? input = null;
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
             Assert.Null(result);
@@ -201,7 +252,7 @@ namespace LivingRoots.Tests
             string input = "   ";
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
             Assert.Equal(input, result);
@@ -217,7 +268,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
             Assert.Equal(input, result);
@@ -234,7 +285,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizer.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
             Assert.Equal("path/to/CON_.txt", result);
@@ -250,22 +301,20 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
             Assert.Equal(input, result);
         }
 
         [Fact]
-        public void Handle_WithMultipleExtensionsAndReservedName_HandlesCorrectly()
+        public void Handle_WithMultipleExtensionsAndReservedName_AddsUnderscore()
         {
             // Arrange & Act
             string result = _reservedNameHandler.Handle("COM1.tar.gz");
-
-            // Based on the actual test failure, the current behavior is that COM1.tar.gz remains unchanged
-            // This might indicate an issue with how the reserved name check works in this specific case
-            // For now, let's update the test to reflect the actual behavior, then we can investigate further
-            Assert.Equal("COM1.tar.gz", result);
+            
+            // Assert - This should add an underscore after COM1 to make it COM1_.tar.gz
+            Assert.Equal("COM1_.tar.gz", result);
         }
 
         [Fact]
@@ -278,7 +327,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(input);
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
             Assert.Equal("LPT9_", result);
@@ -294,7 +343,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(input);
 
             // Act
-            string result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input);
 
             // Assert
             Assert.Equal("COM9_", result);
