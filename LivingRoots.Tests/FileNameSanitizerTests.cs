@@ -37,13 +37,13 @@ namespace LivingRoots.Tests
             _fileNameSanitizer = new FileNameSanitizer(_mockUnicodeNormalizer.Object);
             
             // Configure the reserved name handler to return the input as-is for these tests
-            _mockReservedNameHandler.Setup(x => x.Handle(It.IsAny<string>())).Returns<string>(input => input);
+            _mockReservedNameHandler.Setup(x => x.Handle(It.IsAny<string?>())).Returns<string?>(input => input);
             
             // Configure the path traversal validator to not throw for valid paths in these tests
             _mockPathTraversalValidator.Setup(x => x.Validate(It.IsAny<string>())).Verifiable();
             
             // Setup the mock UnicodeNormalizer to return the input by default (for most tests)
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+            _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string?>())).Returns<string?>(input => input);
         }
 
         [Fact]
@@ -344,6 +344,45 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.Equal(".file", result);
+        }
+        [Fact]
+        public void Sanitize_WithDotFollowedByTrailingChars_ThrowsArgumentException()
+        {
+            // Arrange
+            string input = ".   "; // dot followed by spaces that would be trimmed
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+        }
+
+        [Fact]
+        public void Sanitize_WithDotDotFollowedByTrailingChars_ThrowsArgumentException()
+        {
+            // Arrange
+            string input = "..   "; // dot-dot followed by spaces that would be trimmed
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+        }
+
+        [Fact]
+        public void Sanitize_WithDotFollowedByDotsAndSpaces_ThrowsArgumentException()
+        {
+            // Arrange
+            string input = ". . "; // dot with spaces and dots that would be trimmed
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+        }
+
+        [Fact]
+        public void Sanitize_WithDotDotFollowedByDotsAndSpaces_ThrowsArgumentException()
+        {
+            // Arrange
+            string input = ".. . "; // dot-dot with spaces and dots that would be trimmed
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
         }
 
         [Fact]

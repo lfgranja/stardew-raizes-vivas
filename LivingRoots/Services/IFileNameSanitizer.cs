@@ -13,6 +13,6 @@ namespace LivingRoots.Services
         /// <param name="filename">The filename to sanitize</param>
         /// <returns>The sanitized filename</returns>
         /// <exception cref="ArgumentException">Thrown when the filename sanitizes to an empty string</exception>
-        string Sanitize(string filename);
+        string? Sanitize(string? filename);
     }
 }

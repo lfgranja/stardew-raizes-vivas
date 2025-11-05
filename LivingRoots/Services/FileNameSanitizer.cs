@@ -26,10 +26,13 @@ namespace LivingRoots.Services
         /// <param name="filename">The filename to sanitize.</param>
         /// <returns>The sanitized filename.</returns>
         /// <exception cref="ArgumentException">Thrown when filename sanitizes to an empty string or is too long.</exception>
-        public string Sanitize(string filename)
+        public string? Sanitize(string? filename)
         {
+            if (filename == null)
+                return null;
+                
             if (string.IsNullOrWhiteSpace(filename))
-                throw new ArgumentException("Filename cannot be null, empty, or whitespace-only.", nameof(filename));
+                throw new ArgumentException("Filename cannot be empty or whitespace-only.", nameof(filename));
 
             if (filename.Contains('\0'))
                 throw new ArgumentException("Filename cannot contain null characters.", nameof(filename));
@@ -43,17 +46,31 @@ namespace LivingRoots.Services
             // Process consecutive dots
             string processed = ProcessConsecutiveDots(sanitized);
 
+            // Check if the processed filename would become "." or ".." after trimming problematic characters
+            // This validation must happen before any trimming to prevent bypassing safeguards
+            string processedTrimmed = processed.Trim('_', ' ', '.');
+            if (processedTrimmed == "." || processedTrimmed == "..")
+                throw new ArgumentException($"Filename sanitizes to invalid path component '{processedTrimmed}'.", nameof(filename));
+
             // Determine if this should be treated as a hidden file
             bool shouldBeHiddenFile = ShouldPreserveHiddenFilePrefix(filename, processed);
 
-            // Trim leading/trailing problematic characters
-            string trimmed = processed.Trim('_', ' ', '.');
+            // Trim leading/trailing problematic characters (but preserve leading dots for hidden files)
+            string trimmed;
+            if (shouldBeHiddenFile && processed.StartsWith("."))
+            {
+                // For hidden files, preserve the leading dot and only trim the rest
+                string contentAfterDot = processed.Substring(1);
+                string trimmedContent = contentAfterDot.TrimEnd('_', ' ', '.');
+                trimmed = "." + trimmedContent;
+            }
+            else
+            {
+                // For non-hidden files, trim from both ends
+                trimmed = processed.Trim('_', ' ', '.');
+            }
 
-            // Check if the result after trimming is a solitary dot, which could lead to path traversal issues
-            if (trimmed == "." || trimmed == "..")
-                throw new ArgumentException($"Filename sanitizes to invalid path component '{trimmed}'.", nameof(filename));
-
-            // Preserve leading dots for hidden files
+            // Preserve leading dots for hidden files if not already present and content is not empty
             if (shouldBeHiddenFile && !trimmed.StartsWith(".") && !string.IsNullOrEmpty(trimmed))
             {
                 trimmed = "." + trimmed;
@@ -80,8 +97,11 @@ namespace LivingRoots.Services
         /// </summary>
         /// <param name="input">The input string to sanitize</param>
         /// <returns>The sanitized string</returns>
-        private static string SanitizeInvalidCharacters(string input)
+        private static string SanitizeInvalidCharacters(string? input)
         {
+            if (input == null)
+                return null!;
+                
             var sanitizedBuilder = new StringBuilder();
             
             for (int i = 0; i < input.Length; i++)
