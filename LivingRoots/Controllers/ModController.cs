@@ -174,6 +174,9 @@ namespace LivingRoots.Controllers
                 // Add null check for args parameter and use case-insensitive comparison
                 args = args ?? Array.Empty<string>();
                 
+                // Filter out whitespace-only arguments to normalize the input
+                var normalizedArgs = args.Where(arg => !string.IsNullOrWhiteSpace(arg)).ToArray();
+                
                 // Define help flags in a HashSet for better maintainability
                 var helpFlags = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
@@ -183,7 +186,7 @@ namespace LivingRoots.Controllers
                 };
                 
                 // Check if any argument matches a help flag
-                if (args.Any(arg => helpFlags.Contains(arg)))
+                if (normalizedArgs.Any(arg => helpFlags.Contains(arg)))
                 {
                     _monitor.Log("Usage: lr_version", LogLevel.Info);
                     _monitor.Log("Shows the Living Roots mod version and UniqueID.", LogLevel.Info);
@@ -191,7 +194,13 @@ namespace LivingRoots.Controllers
                 }
                 
                 // Include the mod's UniqueID in the output for better usability and clarity
-                _monitor.Log($"Living Roots Mod Version: {_manifest?.Version?.ToString() ?? "unknown"} (UniqueID: {_manifest?.UniqueID ?? "unknown"})", LogLevel.Info);
+                // Explicitly format the version string using MajorVersion, MinorVersion, and PatchVersion properties for consistent output
+                var version = _manifest?.Version;
+                string versionString = version != null 
+                    ? $"{version.MajorVersion}.{version.MinorVersion}.{version.PatchVersion}" 
+                    : "unknown";
+                    
+                _monitor.Log($"Living Roots Mod Version: {versionString} (UniqueID: {_manifest?.UniqueID ?? "unknown"})", LogLevel.Info);
             }
             catch (Exception ex)
             {
