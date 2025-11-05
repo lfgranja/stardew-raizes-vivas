@@ -108,10 +108,81 @@ namespace LivingRoots.Services
                     // Convert homoglyphs if they appear in a context that might be deceptive
                     if (SecurityConfusables.TryGetValue(c, out var replacement))
                     {
-                        // Apply the conversion for potential security homoglyph
-                        // For security purposes, we should convert all homoglyphs regardless of context
-                        // to prevent homoglyph attacks
-                        resultBuilder.Append(replacement);
+                        // Apply context-aware conversion for security homoglyphs
+                        // Only convert if the character is not in a legitimate Cyrillic context
+                        bool shouldConvert = true;
+                        
+                        // Check if this is a Cyrillic character that should be preserved in certain contexts
+                        if (IsCyrillicLetter(c))
+                        {
+                            // Get the previous and next characters to determine context
+                            char prevChar = i > 0 ? decomposed[i - 1] : '\0';
+                            char nextChar = i < decomposed.Length - 1 ? decomposed[i + 1] : '\0';
+                            
+                            // The issue is about boundary handling - legitimate Cyrillic characters at start/end of string
+                            // being incorrectly converted. We should be more selective about when to preserve Cyrillic characters.
+                            // The main boundary case: if we're at start/end AND have a Cyrillic neighbor, check if the context suggests
+                            // it's part of legitimate non-Latin script vs. a homoglyph attack.
+                            bool atStartWithCyrillicNeighbor = (i == 0) && IsCyrillicLetter(nextChar);
+                            bool atEndWithCyrillicNeighbor = (i == decomposed.Length - 1) && IsCyrillicLetter(prevChar);
+                            
+                            // For the boundary case, preserve if the neighbor is Cyrillic but don't preserve for middle characters
+                            // just because both neighbors are Cyrillic (that would be too permissive)
+                            if (atStartWithCyrillicNeighbor || atEndWithCyrillicNeighbor)
+                            {
+                                // Check if the broader context suggests this is part of legitimate Cyrillic text
+                                // For boundary cases, look further into the string to determine if it's predominantly Cyrillic
+                                int cyrillicCount = 0;
+                                int nonLatinLetterCount = 0;
+                                
+                                if (atStartWithCyrillicNeighbor) {
+                                    // Look ahead to see if there are more Cyrillic characters
+                                    for (int j = 1; j < decomposed.Length && j < Math.Min(decomposed.Length, 5); j++) {
+                                        if (IsCyrillicLetter(decomposed[j])) {
+                                            cyrillicCount++;
+                                        } else if (char.IsLetter(decomposed[j]) && !IsCyrillicLetter(decomposed[j]) && !IsGreekLetter(decomposed[j])) {
+                                            nonLatinLetterCount++;
+                                        }
+                                    }
+                                } else if (atEndWithCyrillicNeighbor) {
+                                    // Look back to see if there are more Cyrillic characters
+                                    for (int j = decomposed.Length - 2; j >= 0 && j > decomposed.Length - 6; j--) {
+                                        if (IsCyrillicLetter(decomposed[j])) {
+                                            cyrillicCount++;
+                                        } else if (char.IsLetter(decomposed[j]) && !IsCyrillicLetter(decomposed[j]) && !IsGreekLetter(decomposed[j])) {
+                                            nonLatinLetterCount++;
+                                        }
+                                    }
+                                }
+                                
+                                // If the context is predominantly Cyrillic, preserve the character
+                                if (atStartWithCyrillicNeighbor && cyrillicCount > 0 && cyrillicCount > nonLatinLetterCount) {
+                                    shouldConvert = false;
+                                } else if (atEndWithCyrillicNeighbor && cyrillicCount > 0 && cyrillicCount > nonLatinLetterCount) {
+                                    shouldConvert = false;
+                                }
+                            }
+                        }
+                        
+                        if (shouldConvert)
+                        {
+                            // DEFENSIVE CODING: Check if replacement is multi-character to avoid breaking normalization invariants
+                            // Multi-character mappings should be applied in a separate post-process if needed
+                            if (replacement.Length == 1)
+                            {
+                                resultBuilder.Append(replacement);
+                            }
+                            else
+                            {
+                                // For multi-character replacements, append the original character to avoid breaking the per-character pipeline
+                                resultBuilder.Append(c);
+                            }
+                        }
+                        else
+                        {
+                            // Preserve the original Cyrillic character in legitimate contexts
+                            resultBuilder.Append(c);
+                        }
                     }
                     else
                     {
@@ -126,17 +197,7 @@ namespace LivingRoots.Services
             return resultBuilder.ToString().Normalize(NormalizationForm.FormC);
         }
 
-        /// <summary>
-        /// Determines if a diacritic should be removed based on the previous character.
-        /// Diacritics are removed from Latin and Greek letters but preserved for other scripts.
-        /// </summary>
-        /// <param name="builder">The StringBuilder containing processed characters so far.</param>
-        /// <returns>True if the diacritic should be removed, false otherwise.</returns>
-        private static bool ShouldRemoveDiacritic(StringBuilder builder)
-        {
-            char prevChar = GetPreviousNonMarkChar(builder);
-            return IsLatinLetter(prevChar) || IsGreekLetter(prevChar);
-        }
+        
 
         
 
