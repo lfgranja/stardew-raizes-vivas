@@ -12,6 +12,6 @@ namespace LivingRoots.Services
         /// </summary>
         /// <param name="input">The input string to normalize</param>
         /// <returns>The normalized string</returns>
-        string Normalize(string input);
+        string? Normalize(string? input);
     }
 }
