@@ -170,7 +170,8 @@ namespace LivingRoots.Services
         
         private string GetFilePath(string key)
         {
-            if (key is null) throw new ArgumentNullException(nameof(key));
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("Key cannot be null or empty", nameof(key));
 
             // Validate path traversal first to prevent security issues
             _pathTraversalValidator.Validate(key);

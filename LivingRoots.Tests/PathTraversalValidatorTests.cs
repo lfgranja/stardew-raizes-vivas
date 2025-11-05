@@ -61,7 +61,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => service.SaveData(testData, path));
-            Assert.Contains("Path cannot be an absolute path", exception.Message);
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
         }
 
         [Fact]
@@ -73,7 +73,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "http://example.com/file"));
-            Assert.Contains("Path cannot be an absolute URI", exception.Message);
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
         }
 
         [Theory]
@@ -115,11 +115,22 @@ namespace LivingRoots.Tests
             _mockDataHelper.Verify(x => x.WriteJsonFile("data/.hidden_file.json", testData), Times.Once);
         }
 
+        [Fact]
+        public void ValidatePathTraversal_WithNullKey_ThrowsArgumentException()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            string nullKey = null; // Explicitly assign null to avoid CS8625 warning
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => service.SaveData(testData, nullKey));
+        }
+
         [Theory]
-        [InlineData(null)]
         [InlineData("")]
         [InlineData("   ")]
-        public void ValidatePathTraversal_WithNullOrWhitespaceKey_ThrowsArgumentException(string key)
+        public void ValidatePathTraversal_WithEmptyOrWhitespaceKey_ThrowsArgumentException(string key)
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object);
