@@ -29,7 +29,7 @@ namespace LivingRoots.Services
         public string Sanitize(string filename)
         {
             if (string.IsNullOrWhiteSpace(filename))
-                return filename;
+                throw new ArgumentException("Filename cannot be null, empty, or whitespace-only.", nameof(filename));
 
             if (filename.Contains('\0'))
                 throw new ArgumentException("Filename cannot contain null characters.", nameof(filename));
@@ -49,6 +49,10 @@ namespace LivingRoots.Services
             // Trim leading/trailing problematic characters
             string trimmed = processed.Trim('_', ' ', '.');
 
+            // Check if the result after trimming is a solitary dot, which could lead to path traversal issues
+            if (trimmed == "." || trimmed == "..")
+                throw new ArgumentException($"Filename sanitizes to invalid path component '{trimmed}'.", nameof(filename));
+
             // Preserve leading dots for hidden files
             if (shouldBeHiddenFile && !trimmed.StartsWith(".") && !string.IsNullOrEmpty(trimmed))
             {
@@ -63,6 +67,10 @@ namespace LivingRoots.Services
 
             if (string.IsNullOrWhiteSpace(result))
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+
+            // Final check to ensure we don't return "." or ".." which could lead to path traversal issues
+            if (result == "." || result == "..")
+                throw new ArgumentException($"Filename sanitizes to invalid path component '{result}'.", nameof(filename));
 
             return result;
         }
