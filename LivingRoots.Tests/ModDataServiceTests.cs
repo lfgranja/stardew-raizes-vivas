@@ -3,6 +3,7 @@ using Moq;
 using LivingRoots.Services;
 using Xunit;
 using System;
+using Newtonsoft.Json;
 
 namespace LivingRoots.Tests
 {
@@ -278,6 +279,50 @@ namespace LivingRoots.Tests
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, "<>:\"|?*"));
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, "........."));
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, "___"));
+        }
+        
+        [Fact]
+        public void LoadData_WithJsonParsingError_ReturnsNull()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var jsonException = new Newtonsoft.Json.JsonException("Invalid JSON format");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(jsonException);
+
+            // Act
+            var result = service.LoadData<object>("test_key");
+
+            // Assert
+            Assert.Null(result);
+        }
+        [Fact]
+        public void LoadData_WithDirectoryNotFoundException_ReturnsNull()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var directoryNotFoundException = new System.IO.DirectoryNotFoundException("Directory does not exist");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(directoryNotFoundException);
+
+            // Act
+            var result = service.LoadData<object>("test_key");
+
+            // Assert
+            Assert.Null(result);
+        }
+        
+        [Fact]
+        public void LoadData_WithUnauthorizedAccessException_ReturnsNull()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var unauthorizedAccessException = new System.UnauthorizedAccessException("Access denied");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(unauthorizedAccessException);
+
+            // Act
+            var result = service.LoadData<object>("test_key");
+
+            // Assert
+            Assert.Null(result);
         }
     }
 }

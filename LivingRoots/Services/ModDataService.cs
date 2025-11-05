@@ -96,6 +96,18 @@ namespace LivingRoots.Services
                 _monitor.Log($"File not found while loading data for key '{key}': {ex.Message}", LogLevel.Trace);
                 return null; // Return null instead of throwing when file doesn't exist
             }
+            catch (System.IO.DirectoryNotFoundException ex)
+            {
+                // Log DirectoryNotFoundException as Warn to reduce log noise from non-critical issues
+                _monitor.Log($"Directory not found while loading data for key '{key}': {ex.Message}", LogLevel.Warn);
+                return null; // Return null instead of throwing when directory doesn't exist
+            }
+            catch (System.UnauthorizedAccessException ex)
+            {
+                // Log UnauthorizedAccessException as Warn to reduce log noise from non-critical issues
+                _monitor.Log($"Access denied while loading data for key '{key}': {ex.Message}", LogLevel.Warn);
+                return null; // Return null instead of throwing when access is denied
+            }
             catch (System.IO.IOException ex)
             {
                 // Log other IOExceptions as Warn to reduce log noise from non-critical issues
@@ -106,7 +118,7 @@ namespace LivingRoots.Services
             {
                 // Log JsonException instead of silently swallowing it
                 _monitor.Log($"JSON parsing error while loading data for key '{key}': {ex.Message}", LogLevel.Error);
-                throw;
+                return null; // Return null instead of throwing when JSON is invalid (consistent with DataExists behavior)
             }
         }
         
@@ -182,10 +194,10 @@ namespace LivingRoots.Services
             _pathTraversalValidator.Validate(key);
 
             // Sanitize the key to handle invalid characters and security concerns
-            string sanitizedKey = _fileNameSanitizer.Sanitize(key);
+            string sanitizedKey = _fileNameSanitizer.Sanitize(key)!;
 
             // Handle reserved Windows filenames
-            string handledKey = _reservedNameHandler.Handle(sanitizedKey);
+            string handledKey = _reservedNameHandler.Handle(sanitizedKey)!;
 
             // Return the final path with the .json extension
             return Path.Combine("data", $"{handledKey}.json");
