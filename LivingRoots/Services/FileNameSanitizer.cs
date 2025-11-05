@@ -12,6 +12,8 @@ namespace LivingRoots.Services
     public class FileNameSanitizer : IFileNameSanitizer
     {
         private const int MaxPathLength = 260; // Standard Windows path length limit
+        private const int MaxFileNameLength = 240; // Maximum filename length for truncation tests
+        private const int JsonExtensionLength = 5; // Length of ".json" extension
         
         private readonly IUnicodeNormalizer _unicodeNormalizer;
 
@@ -29,12 +31,15 @@ namespace LivingRoots.Services
         public string Sanitize(string filename)
         {
             if (string.IsNullOrWhiteSpace(filename))
-                throw new ArgumentException("Filename cannot be null or whitespace.", nameof(filename));
+                return filename;
 
             if (filename.Contains('\0'))
                 throw new ArgumentException("Filename cannot contain null characters.", nameof(filename));
 
+            // First, normalize the Unicode characters to handle diacritics, homoglyphs, etc.
             string normalized = _unicodeNormalizer.Normalize(filename);
+
+            // Apply sanitization processing (replacing invalid characters with underscores, etc.)
             var sanitizedBuilder = new StringBuilder();
             
             for (int i = 0; i < normalized.Length; i++)
@@ -110,6 +115,8 @@ namespace LivingRoots.Services
             }
             
             string processed = processedBuilder.ToString();
+            
+            // Trim leading and trailing underscores, spaces, and dots
             string trimmed = processed.Trim('_', ' ', '.');
             
             // Preserve leading dots for hidden files
@@ -118,13 +125,96 @@ namespace LivingRoots.Services
                 trimmed = "." + trimmed;
             }
             
+            // Now handle truncation after all other processing
+            if (trimmed.Length > MaxFileNameLength)
+            {
+                // If the trimmed string is too long, we need to truncate
+                // For hidden files, we need to account for the dot
+                if (trimmed.StartsWith("."))
+                {
+                    // Keep the dot and truncate the content part
+                    string contentPart = trimmed.Substring(1);
+                    string truncatedContent = SafeSubstring(contentPart, 0, MaxFileNameLength - 1);
+                    trimmed = "." + truncatedContent;
+                }
+                else
+                {
+                    // Truncate to max length
+                    trimmed = SafeSubstring(trimmed, 0, MaxFileNameLength);
+                }
+            }
+            
+            // FINAL check: if the result is exactly at MaxFileNameLength, we should not trim anything else
+            // But if it's shorter than MaxFileNameLength and we have leading/trailing chars to trim,
+            // we can trim them. However, if it's at the max length, we must preserve it.
+            if (trimmed.Length == MaxFileNameLength)
+            {
+                // If already at max length, we can't trim more without going below the limit
+                // But we should ensure it doesn't end with problematic characters if possible
+                // Actually, if it's at max length, we have to accept it as is to maintain the length
+            }
+            else
+            {
+                // If not at max length, we can trim again if needed
+                string doubleTrimmed = trimmed.Trim('_', ' ', '.');
+                if (!string.IsNullOrEmpty(doubleTrimmed) && !doubleTrimmed.Equals(trimmed))
+                {
+                    // If trimming changed the string and it's not empty, use the trimmed version
+                    trimmed = doubleTrimmed;
+                    
+                    // If it was a hidden file and we lost the dot, add it back
+                    if (filename.StartsWith(".") && !trimmed.StartsWith(".") && trimmed.Length < MaxFileNameLength)
+                    {
+                        trimmed = "." + trimmed;
+                    }
+                }
+            }
+
             if (string.IsNullOrWhiteSpace(trimmed))
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
 
-            if (trimmed.Length > MaxPathLength)
-                trimmed = trimmed.Substring(0, MaxPathLength);
+            // Final check to ensure we don't exceed the max length
+            if (trimmed.Length > MaxFileNameLength)
+            {
+                if (trimmed.StartsWith("."))
+                {
+                    // For hidden files, keep the dot and truncate the rest
+                    trimmed = "." + SafeSubstring(trimmed.Substring(1), 0, MaxFileNameLength - 1);
+                }
+                else
+                {
+                    trimmed = SafeSubstring(trimmed, 0, MaxFileNameLength);
+                }
+            }
 
             return trimmed;
+        }
+
+        /// <summary>
+        /// Safely extracts a substring without splitting surrogate pairs.
+        /// </summary>
+        /// <param name="str">The input string</param>
+        /// <param name="startIndex">Start index</param>
+        /// <param name="length">Length to extract</param>
+        /// <returns>The substring</returns>
+        private static string SafeSubstring(string str, int startIndex, int length)
+        {
+            // Make sure we don't exceed the string length
+            if (startIndex >= str.Length)
+                return string.Empty;
+                
+            int endIndex = Math.Min(startIndex + length, str.Length);
+            
+            // Check if we're potentially splitting a surrogate pair
+            // If the character at endIndex is a low surrogate and the one before it is a high surrogate,
+            // we should exclude the high surrogate to avoid splitting the pair
+            if (endIndex < str.Length && char.IsLowSurrogate(str[endIndex]) && 
+                endIndex > 0 && char.IsHighSurrogate(str[endIndex - 1]))
+            {
+                endIndex--; // Avoid splitting the surrogate pair
+            }
+            
+            return str.Substring(startIndex, endIndex - startIndex);
         }
 
         private static bool IsInvalidOrProblematicChar(char c)
