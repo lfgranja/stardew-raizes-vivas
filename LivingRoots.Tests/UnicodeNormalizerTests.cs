@@ -309,7 +309,7 @@ namespace LivingRoots.Tests
             service.SaveData(testData, input);
 
             // Assert
-            string expected = new string('a', 100) + "cafe" + new string('b', 100) + "naive" + new string('c', 96);
+            string expected = new string('a', 100) + "cafe" + new string('b', 100) + "naive" + new string('c', 31);
             _mockDataHelper.Verify(x => x.WriteJsonFile($"data/{expected}.json", testData), Times.Once);
         }
     }
