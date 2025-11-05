@@ -125,8 +125,11 @@ namespace LivingRoots.Services
         /// <returns>The processed string</returns>
         private static string ProcessConsecutiveDots(string input)
         {
-            StringBuilder processedBuilder = new StringBuilder();
-            int consecutiveDotCount = 0;
+            if (string.IsNullOrEmpty(input))
+                return input;
+                
+            // Replace multiple consecutive dots with a single dot
+            var result = new StringBuilder();
             
             for (int i = 0; i < input.Length; i++)
             {
@@ -134,28 +137,20 @@ namespace LivingRoots.Services
                 
                 if (c == '.')
                 {
-                    consecutiveDotCount++;
+                    // Add the dot only if the previous character wasn't a dot
+                    if (result.Length == 0 || result[result.Length - 1] != '.')
+                    {
+                        result.Append('.');
+                    }
+                    // If previous character was a dot, skip this one
                 }
                 else
                 {
-                    // If we had consecutive dots, add a single dot for each group
-                    if (consecutiveDotCount > 0)
-                    {
-                        // Add one dot for each group of consecutive dots
-                        processedBuilder.Append('.');
-                        consecutiveDotCount = 0;
-                    }
-                    processedBuilder.Append(c);
+                    result.Append(c);
                 }
             }
             
-            // Handle any trailing consecutive dots
-            if (consecutiveDotCount > 0)
-            {
-                processedBuilder.Append('.');
-            }
-            
-            return processedBuilder.ToString();
+            return result.ToString();
         }
 
         /// <summary>
@@ -203,26 +198,21 @@ namespace LivingRoots.Services
         private static string PerformFinalCleanup(string filename, bool shouldBeHiddenFile)
         {
             // After truncation, ensure we don't have trailing problematic characters
-            // but only if we're not at the maximum length
-            if (filename.Length < MaxFileNameLength)
+            string postTruncationTrimmed = filename.TrimEnd('_', ' ', '.');
+            
+            // If it was a hidden file and we lost the dot, add it back
+            if (shouldBeHiddenFile && !postTruncationTrimmed.StartsWith(".") && !string.IsNullOrEmpty(postTruncationTrimmed))
             {
-                string postTruncationTrimmed = filename.TrimEnd('_', ' ', '.');
-                
-                // If it was a hidden file and we lost the dot, add it back
-                if (shouldBeHiddenFile && !postTruncationTrimmed.StartsWith(".") && !string.IsNullOrEmpty(postTruncationTrimmed))
-                {
-                    postTruncationTrimmed = "." + postTruncationTrimmed.TrimStart('.');
-                    // Ensure we don't exceed max length after adding the dot back
-                    if (postTruncationTrimmed.Length > MaxFileNameLength)
-                    {
-                        postTruncationTrimmed = TruncateToMaxLength(postTruncationTrimmed);
-                    }
-                }
-                
-                return postTruncationTrimmed;
+                postTruncationTrimmed = "." + postTruncationTrimmed.TrimStart('.');
             }
-
-            return filename;
+            
+            // If the final result is still longer than max length, truncate again
+            if (postTruncationTrimmed.Length > MaxFileNameLength)
+            {
+                return TruncateToMaxLength(postTruncationTrimmed);
+            }
+            
+            return postTruncationTrimmed;
         }
 
         /// <summary>
