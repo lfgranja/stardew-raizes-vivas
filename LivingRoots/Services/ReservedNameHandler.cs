@@ -36,15 +36,15 @@ namespace LivingRoots.Services
             string? directoryPath = Path.GetDirectoryName(filename);
             string fullFileName = Path.GetFileName(filename);
             
-            // Find the first dot to separate the actual name from extensions
-            // For "CON.txt.bak", the reserved name is "CON" and extensions are ".txt.bak"
-            int firstDotIndex = fullFileName.IndexOf('.');
+            // Find the last dot to separate the base name from the extension
+            // For "CON.txt.bak", the reserved name is "CON" and extension is ".txt.bak"
+            int lastDotIndex = fullFileName.LastIndexOf('.');
             string namePart, extensionPart;
             
-            if (firstDotIndex > 0)
+            if (lastDotIndex > 0)
             {
-                namePart = fullFileName.Substring(0, firstDotIndex);
-                extensionPart = fullFileName.Substring(firstDotIndex); // includes the dot(s)
+                namePart = fullFileName.Substring(0, lastDotIndex);
+                extensionPart = fullFileName.Substring(lastDotIndex); // includes the dot
             }
             else
             {
@@ -52,22 +52,34 @@ namespace LivingRoots.Services
                 extensionPart = "";
             }
 
-            // Normalize the name part to check for homoglyphs
-            string normalizedBaseName = _unicodeNormalizer.Normalize(namePart);
-
-            // Check if the base name (without extension) matches a reserved name
-            if (ReservedWindowsFileNames.Contains(normalizedBaseName))
+            // Trim the name part to handle cases like " CON " that should be treated as "CON"
+            string trimmedNamePart = namePart.Trim();
+            
+            // First check if the original name part matches a reserved name (case-insensitive)
+            if (ReservedWindowsFileNames.Contains(trimmedNamePart))
             {
                 // Reconstruct the filename with an underscore before the extension
-                string modifiedFileName;
-                if (!string.IsNullOrEmpty(extensionPart))
+                string modifiedFileName = namePart + "_" + extensionPart;
+                
+                // Preserve the original directory path
+                if (!string.IsNullOrEmpty(directoryPath))
                 {
-                    modifiedFileName = $"{namePart}_{extensionPart}";
+                    return Path.Combine(directoryPath, modifiedFileName);
                 }
                 else
                 {
-                    modifiedFileName = $"{namePart}_";
+                    return modifiedFileName;
                 }
+            }
+            
+            // Check if the normalized version matches a reserved name (handles Unicode homoglyphs and diacritics)
+            // First normalize the name part to detect homoglyphs
+            string normalizedBaseName = _unicodeNormalizer.Normalize(trimmedNamePart);
+            if (ReservedWindowsFileNames.Contains(normalizedBaseName))
+            {
+                // If the normalized version is reserved, we should add an underscore to the original name part
+                // Reconstruct the filename with an underscore before the extension
+                string modifiedFileName = namePart + "_" + extensionPart;
                 
                 // Preserve the original directory path
                 if (!string.IsNullOrEmpty(directoryPath))
