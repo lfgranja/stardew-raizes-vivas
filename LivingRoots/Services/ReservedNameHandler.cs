@@ -32,7 +32,8 @@ namespace LivingRoots.Services
             if (string.IsNullOrWhiteSpace(filename))
                 return filename;
 
-            // Extract the full filename without path
+            // Extract the directory path and filename separately
+            string? directoryPath = Path.GetDirectoryName(filename);
             string fullFileName = Path.GetFileName(filename);
             
             // Find the first dot to separate the actual name from extensions
@@ -58,13 +59,24 @@ namespace LivingRoots.Services
             if (ReservedWindowsFileNames.Contains(normalizedBaseName))
             {
                 // Reconstruct the filename with an underscore before the extension
+                string modifiedFileName;
                 if (!string.IsNullOrEmpty(extensionPart))
                 {
-                    return $"{namePart}_{extensionPart}";
+                    modifiedFileName = $"{namePart}_{extensionPart}";
                 }
                 else
                 {
-                    return $"{namePart}_";
+                    modifiedFileName = $"{namePart}_";
+                }
+                
+                // Preserve the original directory path
+                if (!string.IsNullOrEmpty(directoryPath))
+                {
+                    return Path.Combine(directoryPath, modifiedFileName);
+                }
+                else
+                {
+                    return modifiedFileName;
                 }
             }
 
