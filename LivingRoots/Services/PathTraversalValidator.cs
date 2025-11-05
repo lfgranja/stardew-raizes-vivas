@@ -15,6 +15,11 @@ namespace LivingRoots.Services
         /// <exception cref="ArgumentException">Thrown if path traversal is detected.</exception>
         public void Validate(string path)
         {
+            if (path == null)
+                throw new ArgumentException("Path cannot be null or empty.", nameof(path));
+            
+            path = path.Trim();
+            
             if (string.IsNullOrEmpty(path))
                 throw new ArgumentException("Path cannot be null or empty.", nameof(path));
 
@@ -48,14 +53,7 @@ namespace LivingRoots.Services
                 normalized.StartsWith("ftp://") || normalized.StartsWith("file://"))
                 throw new ArgumentException("Path cannot be an absolute path or URI.", nameof(path));
 
-            // Check for relative path traversal patterns using string-based checks
-            if (normalized.Contains("/../") || normalized.StartsWith("../") || normalized.EndsWith("/..") || normalized == "..")
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
-
-            if (normalized.Contains("/./") || normalized.EndsWith("/.") || normalized.StartsWith("./"))
-                throw new ArgumentException("Path cannot contain relative path navigation.", nameof(path));
-
-            // Additional check using path segments to detect traversal by simulating directory navigation
+            // Split path into segments and validate each segment
             string[] segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
             int depth = 0;
             
@@ -70,11 +68,22 @@ namespace LivingRoots.Services
                         throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
                     }
                 }
-                else if (segment != "." && !string.IsNullOrEmpty(segment))
+                else if (segment == ".")
+                {
+                    // Block explicit "." segments which represent current directory navigation
+                    throw new ArgumentException("Path cannot contain relative path navigation.", nameof(path));
+                }
+                else if (!string.IsNullOrEmpty(segment))
                 {
                     // Going into a subdirectory increases depth
                     depth++;
                 }
+            }
+
+            // Additional check for explicit "." patterns at start/end of path
+            if (normalized.StartsWith("./") || normalized.EndsWith("/.") || normalized == ".")
+            {
+                throw new ArgumentException("Path cannot contain relative path navigation.", nameof(path));
             }
         }
     }
