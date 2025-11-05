@@ -39,21 +39,43 @@ namespace LivingRoots.Services
             // Normalize all separators to '/'
             string normalized = path.Replace('\\', '/');
 
-            // Check for Unix-style absolute paths
-            if (Path.IsPathRooted(normalized) || normalized.StartsWith("/"))
+            // Check for Unix-style absolute paths (starting with '/')
+            if (normalized.StartsWith("/"))
                 throw new ArgumentException("Path cannot be an absolute path or URI.", nameof(path));
 
-            // Split and check segments for traversal
-            var segments = normalized.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var segment in segments)
-            {
-                if (segment == "..")
-                    throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
-            }
+            // Check for URL patterns that might not be caught by Uri.IsWellFormedUriString
+            if (normalized.StartsWith("http://") || normalized.StartsWith("https://") || 
+                normalized.StartsWith("ftp://") || normalized.StartsWith("file://"))
+                throw new ArgumentException("Path cannot be an absolute path or URI.", nameof(path));
 
-            // Also reject strings that attempt obfuscated traversal like sequences ending with '/.' or starting with './'
+            // Check for relative path traversal patterns using string-based checks
+            if (normalized.Contains("/../") || normalized.StartsWith("../") || normalized.EndsWith("/..") || normalized == "..")
+                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
+
             if (normalized.Contains("/./") || normalized.EndsWith("/.") || normalized.StartsWith("./"))
                 throw new ArgumentException("Path cannot contain relative path navigation.", nameof(path));
+
+            // Additional check using path segments to detect traversal by simulating directory navigation
+            string[] segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            int depth = 0;
+            
+            foreach (string segment in segments)
+            {
+                if (segment == "..")
+                {
+                    depth--;
+                    // If depth goes negative, it means we're trying to go above the current directory
+                    if (depth < 0)
+                    {
+                        throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
+                    }
+                }
+                else if (segment != "." && !string.IsNullOrEmpty(segment))
+                {
+                    // Going into a subdirectory increases depth
+                    depth++;
+                }
+            }
         }
     }
 }

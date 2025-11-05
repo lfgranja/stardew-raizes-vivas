@@ -32,16 +32,16 @@ namespace LivingRoots.Tests
             // Configure the reserved name handler to return the input as-is for these tests
             _mockReservedNameHandler.Setup(x => x.Handle(It.IsAny<string>())).Returns<string>(input => input);
             
-            // Configure the path traversal validator to throw for path traversal patterns
-            _mockPathTraversalValidator.Setup(x => x.Validate(It.Is<string>(s => s.Contains("../") || s.Contains("..\\") || s.Contains("../../../") || s.Contains("..\\..\\") || s.Contains("http://") || s.Contains("https://")))).Throws<ArgumentException>();
+            // Default setup for the path traversal validator - no exception by default
             _mockPathTraversalValidator.Setup(x => x.Validate(It.IsAny<string>())).Verifiable();
         }
 
         [Fact]
         public void ValidatePathTraversal_WithValidRelativePath_DoesNotThrow()
         {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathTraversalValidator implementation
+            var realValidator = new PathTraversalValidator();
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -58,8 +58,9 @@ namespace LivingRoots.Tests
         [InlineData("normal/../../../path")]
         public void ValidatePathTraversal_WithPathTraversalPatterns_ThrowsArgumentException(string path)
         {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathTraversalValidator implementation
+            var realValidator = new PathTraversalValidator();
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -72,8 +73,9 @@ namespace LivingRoots.Tests
         [InlineData("C:\\Windows\\System32")]
         public void ValidatePathTraversal_WithAbsolutePaths_ThrowsArgumentException(string path)
         {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathTraversalValidator implementation
+            var realValidator = new PathTraversalValidator();
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -84,8 +86,9 @@ namespace LivingRoots.Tests
         [Fact]
         public void ValidatePathTraversal_WithUrlPath_ThrowsArgumentException()
         {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathTraversalValidator implementation
+            var realValidator = new PathTraversalValidator();
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -98,8 +101,9 @@ namespace LivingRoots.Tests
         [InlineData("..%5C..%5Csecret")]
         public void ValidatePathTraversal_WithEncodedPathTraversal_ThrowsArgumentException(string path)
         {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathTraversalValidator implementation
+            var realValidator = new PathTraversalValidator();
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -110,8 +114,9 @@ namespace LivingRoots.Tests
         [Fact]
         public void ValidatePathTraversal_WithValidDotInFilename_DoesNotThrow()
         {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathTraversalValidator implementation
+            var realValidator = new PathTraversalValidator();
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -123,8 +128,9 @@ namespace LivingRoots.Tests
         [Fact]
         public void ValidatePathTraversal_WithValidDotAtBeginning_DoesNotThrow()
         {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathTraversalValidator implementation
+            var realValidator = new PathTraversalValidator();
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -135,8 +141,9 @@ namespace LivingRoots.Tests
         [Fact]
         public void ValidatePathTraversal_WithNullKey_ThrowsArgumentException()
         {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathTraversalValidator implementation
+            var realValidator = new PathTraversalValidator();
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
             var testData = new { Name = "Test", Value = 123 };
             string nullKey = null; // Explicitly assign null to avoid CS8625 warning
 
@@ -149,8 +156,9 @@ namespace LivingRoots.Tests
         [InlineData("   ")]
         public void ValidatePathTraversal_WithEmptyOrWhitespaceKey_ThrowsArgumentException(string key)
         {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathTraversalValidator implementation
+            var realValidator = new PathTraversalValidator();
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
