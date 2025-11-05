@@ -55,41 +55,15 @@ namespace LivingRoots.Services
             // Trim the name part to handle cases like " CON " that should be treated as "CON"
             string trimmedNamePart = namePart.Trim();
             
-            // First check if the original name part matches a reserved name (case-insensitive)
-            if (ReservedWindowsFileNames.Contains(trimmedNamePart))
+            bool isReserved = ReservedWindowsFileNames.Contains(trimmedNamePart) 
+                              || ReservedWindowsFileNames.Contains(_unicodeNormalizer.Normalize(trimmedNamePart));
+
+            if (isReserved)
             {
-                // Reconstruct the filename with an underscore before the extension
                 string modifiedFileName = namePart + "_" + extensionPart;
-                
-                // Preserve the original directory path
-                if (!string.IsNullOrEmpty(directoryPath))
-                {
-                    return Path.Combine(directoryPath, modifiedFileName);
-                }
-                else
-                {
-                    return modifiedFileName;
-                }
-            }
-            
-            // Check if the normalized version matches a reserved name (handles Unicode homoglyphs and diacritics)
-            // First normalize the name part to detect homoglyphs
-            string normalizedBaseName = _unicodeNormalizer.Normalize(trimmedNamePart);
-            if (ReservedWindowsFileNames.Contains(normalizedBaseName))
-            {
-                // If the normalized version is reserved, we should add an underscore to the original name part
-                // Reconstruct the filename with an underscore before the extension
-                string modifiedFileName = namePart + "_" + extensionPart;
-                
-                // Preserve the original directory path
-                if (!string.IsNullOrEmpty(directoryPath))
-                {
-                    return Path.Combine(directoryPath, modifiedFileName);
-                }
-                else
-                {
-                    return modifiedFileName;
-                }
+                return !string.IsNullOrEmpty(directoryPath)
+                    ? Path.Combine(directoryPath, modifiedFileName)
+                    : modifiedFileName;
             }
 
             return filename;
