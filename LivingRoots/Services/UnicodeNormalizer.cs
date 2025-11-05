@@ -45,6 +45,7 @@ namespace LivingRoots.Services
             string decomposed = input.Normalize(NormalizationForm.FormD);
             
             var resultBuilder = new StringBuilder();
+            char lastBaseChar = '\0'; // Track the last base character for diacritic processing
 
             for (int i = 0; i < decomposed.Length; i++)
             {
@@ -56,6 +57,8 @@ namespace LivingRoots.Services
                     // For surrogate pairs (like emojis), preserve them as-is
                     resultBuilder.Append(c);
                     resultBuilder.Append(decomposed[i + 1]);
+                    // For surrogate pairs, use the high surrogate as the base character (imperfect but functional)
+                    lastBaseChar = c;
                     i++; // Skip low surrogate since we've processed it
                     continue;
                 }
@@ -65,8 +68,10 @@ namespace LivingRoots.Services
                 if (category == UnicodeCategory.NonSpacingMark)
                 {
                     // This is a combining mark (like a diacritic)
-                    // For the Greek test case, we need to remove diacritics from Greek letters too
-                    if (ShouldRemoveDiacritic(resultBuilder))
+                    // For security, remove diacritics from Latin and Greek letters
+                    // But preserve diacritics for other scripts like Hebrew, Arabic, etc.
+                    // Use the last known base character to determine if diacritic should be removed
+                    if (IsLatinLetter(lastBaseChar) || IsGreekLetter(lastBaseChar))
                     {
                         // Remove diacritics from Latin and Greek letters
                         continue;
@@ -79,34 +84,34 @@ namespace LivingRoots.Services
                 }
                 else if (category == UnicodeCategory.Control || category == UnicodeCategory.Format)
                 {
-                    // Handle different types of control/format characters differently:
-                    // - Zero-width characters and bidirectional overrides should be removed completely
-                    // - Other control characters should be replaced with underscores
-                    ProcessControlOrFormatCharacter(resultBuilder, c);
+                    // Check if this is a zero-width or bidirectional character that should be removed completely
+                    if (IsZeroWidthOrBidirectional(c))
+                    {
+                        // Remove zero-width characters and bidirectional overrides completely
+                        continue;
+                    }
+                    else
+                    {
+                        // Replace other control and format characters with underscores to maintain spacing
+                        // Only add underscore if it's not already the last character
+                        if (resultBuilder.Length == 0 || resultBuilder[resultBuilder.Length - 1] != '_')
+                            resultBuilder.Append('_');
+                    }
                 }
                 else
                 {
+                    // Update the last base character for any non-combining, non-control/format character
+                    lastBaseChar = c;
+                    
                     // Check for security confusables (homoglyphs that should be converted)
                     // For better security, we need to be more careful about when to convert
                     // Convert homoglyphs if they appear in a context that might be deceptive
                     if (SecurityConfusables.TryGetValue(c, out var replacement))
                     {
-                        // Check if this might be a legitimate non-Latin script context
-                        // If the surrounding characters are from the same script family, preserve it
-                        char prevChar = GetPreviousNonMarkChar(resultBuilder);
-                        char nextChar = GetNextNonMarkChar(decomposed, i + 1);
-                        
-                        // If both neighbors are from the same non-Latin script, preserve the character
-                        if (IsCyrillicLetter(prevChar) && IsCyrillicLetter(nextChar))
-                        {
-                            // Both neighbors are Cyrillic, so this is likely part of a legitimate Cyrillic word
-                            resultBuilder.Append(c);
-                        }
-                        else
-                        {
-                            // Apply the conversion for potential security homoglyph
-                            resultBuilder.Append(replacement);
-                        }
+                        // Apply the conversion for potential security homoglyph
+                        // For security purposes, we should convert all homoglyphs regardless of context
+                        // to prevent homoglyph attacks
+                        resultBuilder.Append(replacement);
                     }
                     else
                     {
@@ -133,28 +138,7 @@ namespace LivingRoots.Services
             return IsLatinLetter(prevChar) || IsGreekLetter(prevChar);
         }
 
-        /// <summary>
-        /// Processes control and format characters according to security rules.
-        /// Zero-width characters and bidirectional overrides are removed completely.
-        /// Other control characters are replaced with underscores to maintain spacing.
-        /// </summary>
-        /// <param name="resultBuilder">The StringBuilder to append results to.</param>
-        /// <param name="c">The control or format character to process.</param>
-        private static void ProcessControlOrFormatCharacter(StringBuilder resultBuilder, char c)
-        {
-            if (IsZeroWidthOrBidirectional(c))
-            {
-                // Remove zero-width characters and bidirectional overrides completely
-                return;
-            }
-            else
-            {
-                // Replace other control and format characters with underscores to maintain spacing
-                // Only add underscore if it's not already the last character
-                if (resultBuilder.Length == 0 || resultBuilder[resultBuilder.Length - 1] != '_')
-                    resultBuilder.Append('_');
-            }
-        }
+        
 
         /// <summary>
         /// Gets the next non-mark character in the decomposed string.
@@ -265,6 +249,7 @@ namespace LivingRoots.Services
                 return true;
                 
             // Other format characters that should be removed
+            // Note: Specific format characters are handled above, so this is a safety net
             var category = CharUnicodeInfo.GetUnicodeCategory(c);
             if (category == UnicodeCategory.Format)
                 return true;

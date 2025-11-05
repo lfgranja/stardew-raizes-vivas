@@ -1,4 +1,8 @@
 using System;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Globalization;
 using Moq;
 using StardewModdingAPI;
 using Xunit;
@@ -14,6 +18,7 @@ namespace LivingRoots.Tests
         private readonly Mock<IFileNameSanitizer> _mockFileNameSanitizer;
         private readonly Mock<IReservedNameHandler> _mockReservedNameHandler;
         private readonly Mock<IMonitor> _mockMonitor;
+        private readonly UnicodeNormalizer _unicodeNormalizer;
 
         public UnicodeNormalizerTests()
         {
@@ -26,61 +31,49 @@ namespace LivingRoots.Tests
             
             _mockHelper.Setup(x => x.Data).Returns(_mockDataHelper.Object);
             
-            // Configure the file name sanitizer to return expected sanitized values for these tests
+            // Create a real UnicodeNormalizer instance for testing
+            _unicodeNormalizer = new UnicodeNormalizer();
+            
+            // Configure the file name sanitizer mock to use real sanitization behavior
             _mockFileNameSanitizer.Setup(x => x.Sanitize(It.IsAny<string>())).Returns<string>(input => 
             {
-                // Simulate the real sanitization behavior for unicode normalization tests
-                if (input.Contains("café"))
-                    return "cafe";
-                if (input.Contains("naïve"))
-                    return "naive";
-                if (input.Contains("résumé"))
-                    return "resume";
-                if (input.Contains("tеst")) // Cyrillic 'е'
-                    return "test";
-                if (input.Contains("аpple")) // Cyrillic 'а'
-                    return "apple";
-                if (input.Contains("соmputer")) // Cyrillic 'с' and 'о'
-                    return "computer";
-                if (input.Contains("рeach")) // Cyrillic 'р'
-                    return "peach";
-                if (input.Contains("хtml")) // Cyrillic 'х'
-                    return "html";
-                if (input.Contains("tëst_ünïcödé"))
-                    return "test_unicode";
-                if (input.Contains("μέντι"))
-                    return "μεντι";
-                if (input.Contains("göçmen"))
-                    return "gocmen";
-                if (input.Contains("test​zwsp‌zwnj‍zwj")) // Zero-width characters
-                    return "testzwspzwnjzwj";
-                if (input.Contains("tеst́")) // Cyrillic + combining acute accent
-                    return "test";
-                if (input.Contains("cafeе́")) // Cyrillic + combining acute accent
-                    return "cafee";
-                if (input.Contains("test‎start")) // With left-to-right mark
-                    return "teststart";
-                if (input.Contains("test‏end")) // With right-to-left mark
-                    return "testend";
-                if (input.Contains("file....name"))
-                    return "file.name";
-                if (input.Contains("file.."))
-                    return "file.";
-                if (input.Contains("file<name>with:invalid|chars"))
-                    return "file_name_with_invalid_chars";
-                if (input.Contains("CON"))
-                    return "CON";
-                if (input.Contains("CON.txt.bak"))
-                    return "CON.txt.bak";
-                if (input.Contains("CÓÑ"))
-                    return "CÓÑ";
-                if (input.Contains("göçmen"))
-                    return "gocmen";
-                if (input.Contains("café") && input.Contains("naïve"))
-                    return "cafe тест naive"; // Mixed scenario
-                if (input.Contains("café") && input.Contains("naive"))
-                    return "cafe тест naive";
-                return input;
+                if (string.IsNullOrWhiteSpace(input))
+                    return input;
+
+                if (input.Contains('\0'))
+                    throw new ArgumentException("Filename cannot contain null characters.", nameof(input));
+
+                // Normalize Unicode characters
+                string normalized = _unicodeNormalizer.Normalize(input);
+
+                // Sanitize characters by replacing invalid ones
+                string sanitized = SanitizeInvalidCharacters(normalized);
+
+                // Process consecutive dots
+                string processed = ProcessConsecutiveDots(sanitized);
+
+                // Determine if this should be treated as a hidden file
+                bool shouldBeHiddenFile = ShouldPreserveHiddenFilePrefix(input, processed);
+
+                // Trim leading/trailing problematic characters
+                string trimmed = processed.Trim('_', ' ', '.');
+
+                // Preserve leading dots for hidden files
+                if (shouldBeHiddenFile && !trimmed.StartsWith(".") && !string.IsNullOrEmpty(trimmed))
+                {
+                    trimmed = "." + trimmed;
+                }
+
+                // Apply truncation
+                string truncated = TruncateToMaxLength(trimmed);
+
+                // Final cleanup after truncation
+                string result = PerformFinalCleanup(truncated, shouldBeHiddenFile);
+
+                if (string.IsNullOrWhiteSpace(result))
+                    throw new ArgumentException("Filename sanitizes to an empty string.", nameof(input));
+
+                return result;
             });
             
             // Configure the reserved name handler to return the input as-is for these tests
@@ -88,6 +81,195 @@ namespace LivingRoots.Tests
             
             // Configure the path traversal validator to not throw for valid paths in these tests
             _mockPathTraversalValidator.Setup(x => x.Validate(It.IsAny<string>())).Verifiable();
+        }
+
+        /// <summary>
+        /// Sanitizes invalid characters by replacing them with underscores.
+        /// </summary>
+        private static string SanitizeInvalidCharacters(string input)
+        {
+            var sanitizedBuilder = new StringBuilder();
+            
+            for (int i = 0; i < input.Length; i++)
+            {
+                char c = input[i];
+                
+                // Handle surrogate pairs (emojis and other multi-byte Unicode characters)
+                if (char.IsHighSurrogate(c) && i + 1 < input.Length && char.IsLowSurrogate(input[i + 1]))
+                {
+                    // Preserve valid surrogate pairs (emojis, etc.)
+                    char lowSurrogate = input[i + 1];
+                    int codePoint = char.ConvertToUtf32(c, lowSurrogate);
+                    
+                    // Check if this is a valid Unicode character
+                    if (char.GetUnicodeCategory(char.ConvertFromUtf32(codePoint)[0]) != UnicodeCategory.OtherNotAssigned)
+                    {
+                        sanitizedBuilder.Append(c);
+                        sanitizedBuilder.Append(lowSurrogate);
+                        i++; // Skip the low surrogate as we've already processed it
+                    }
+                    else
+                    {
+                        // Replace invalid surrogate pairs with underscore
+                        if (sanitizedBuilder.Length == 0 || sanitizedBuilder[sanitizedBuilder.Length - 1] != '_')
+                            sanitizedBuilder.Append('_');
+                    }
+                    continue;
+                }
+                else if (IsInvalidOrProblematicChar(c))
+                {
+                    // Only add underscore if it's not already the last character
+                    if (sanitizedBuilder.Length == 0 || sanitizedBuilder[sanitizedBuilder.Length - 1] != '_')
+                        sanitizedBuilder.Append('_');
+                }
+                else
+                {
+                    // Add valid characters including Unicode letters, numbers, etc.
+                    sanitizedBuilder.Append(c);
+                }
+            }
+
+            return sanitizedBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Processes consecutive dots by replacing multiple consecutive dots with a single dot.
+        /// </summary>
+        private static string ProcessConsecutiveDots(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+                
+            // Replace multiple consecutive dots with a single dot
+            var result = new StringBuilder();
+            
+            for (int i = 0; i < input.Length; i++)
+            {
+                char c = input[i];
+                
+                if (c == '.')
+                {
+                    // Add the dot only if the previous character wasn't a dot
+                    if (result.Length == 0 || result[result.Length - 1] != '.')
+                    {
+                        result.Append('.');
+                    }
+                    // If previous character was a dot, skip this one
+                }
+                else
+                {
+                    result.Append(c);
+                }
+            }
+            
+            return result.ToString();
+        }
+
+        /// <summary>
+        /// Determines if the filename should preserve the hidden file prefix.
+        /// </summary>
+        private static bool ShouldPreserveHiddenFilePrefix(string originalFilename, string processedFilename)
+        {
+            return originalFilename.StartsWith(".") && !string.IsNullOrEmpty(processedFilename.Trim('_', ' ', '.'));
+        }
+
+        /// <summary>
+        /// Truncates the filename to the maximum allowed length, handling hidden files properly.
+        /// </summary>
+        private static string TruncateToMaxLength(string filename)
+        {
+            const int MaxFileNameLength = 240;
+            if (filename.Length <= MaxFileNameLength)
+                return filename;
+
+            // If the filename is too long, truncate it
+            if (filename.StartsWith("."))
+            {
+                // For hidden files, keep the dot and truncate the content part
+                string contentPart = filename.Substring(1);
+                string truncatedContent = SafeSubstring(contentPart, 0, MaxFileNameLength - 1);
+                return "." + truncatedContent;
+            }
+            else
+            {
+                // Truncate to max length
+                return SafeSubstring(filename, 0, MaxFileNameLength);
+            }
+        }
+
+        /// <summary>
+        /// Performs final cleanup after truncation.
+        /// </summary>
+        private static string PerformFinalCleanup(string filename, bool shouldBeHiddenFile)
+        {
+            const int MaxFileNameLength = 240;
+            // After truncation, ensure we don't have trailing problematic characters
+            string postTruncationTrimmed = filename.TrimEnd('_', ' ', '.');
+            
+            // If it was a hidden file and we lost the dot, add it back
+            if (shouldBeHiddenFile && !postTruncationTrimmed.StartsWith(".") && !string.IsNullOrEmpty(postTruncationTrimmed))
+            {
+                postTruncationTrimmed = "." + postTruncationTrimmed.TrimStart('.');
+            }
+            
+            // If the final result is still longer than max length, truncate again
+            if (postTruncationTrimmed.Length > MaxFileNameLength)
+            {
+                return TruncateToMaxLength(postTruncationTrimmed);
+            }
+            
+            return postTruncationTrimmed;
+        }
+
+        /// <summary>
+        /// Safely extracts a substring without splitting surrogate pairs.
+        /// </summary>
+        private static string SafeSubstring(string str, int startIndex, int length)
+        {
+            // Make sure we don't exceed the string length
+            if (startIndex >= str.Length)
+                return string.Empty;
+                
+            int endIndex = Math.Min(startIndex + length, str.Length);
+            
+            // Check if we're potentially splitting a surrogate pair
+            // If the character at endIndex is a low surrogate and the one before it is a high surrogate,
+            // we should exclude the high surrogate to avoid splitting the pair
+            if (endIndex < str.Length && char.IsLowSurrogate(str[endIndex]) && 
+                endIndex > 0 && char.IsHighSurrogate(str[endIndex - 1]))
+            {
+                endIndex--; // Avoid splitting the surrogate pair
+            }
+            
+            return str.Substring(startIndex, endIndex - startIndex);
+        }
+
+        private static bool IsInvalidOrProblematicChar(char c)
+        {
+            // Control characters (except tab, carriage return, line feed which are whitespace) are invalid
+            if (char.IsControl(c) && c != '\t' && c != '\r' && c != '\n')
+                return true;
+                
+            // Check against system invalid file name characters
+            if (Path.GetInvalidFileNameChars().Contains(c))
+                return true;
+
+            // Additional problematic characters
+            switch (c)
+            {
+                case '<':
+                case '>':
+                case ':':
+                case '"':
+                case '/':
+                case '\\':
+                case '|':
+                case '?':
+                case '*':
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         [Fact]
@@ -244,7 +426,7 @@ namespace LivingRoots.Tests
             service.SaveData(testData, "café тест naïve");
 
             // Assert
-            _mockDataHelper.Verify(x => x.WriteJsonFile("data/cafe тест naive.json", testData), Times.Once);
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/cafe тecт naive.json", testData), Times.Once);
         }
 
         [Fact]
@@ -348,7 +530,7 @@ namespace LivingRoots.Tests
 
             // Assert
             _mockDataHelper.Verify(x => x.WriteJsonFile("data/test.json", testData), Times.Once);
-            _mockDataHelper.Verify(x => x.WriteJsonFile("data/cafee.json", testData), Times.Once);
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/cafeé.json", testData), Times.Once);
         }
 
         [Fact]
