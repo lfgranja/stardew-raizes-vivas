@@ -45,17 +45,18 @@ namespace LivingRoots.Controllers
                 return;
             }
             
-            // Defensive null checks
-            if (_helper?.Events?.GameLoop == null)
-            {
-                _monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
-                return;
-            }
-
             lock (_registrationLock)
             {
                 try
                 {
+                    // Move null check inside the lock to prevent race condition
+                    var gameLoop = _helper?.Events?.GameLoop;
+                    if (gameLoop == null)
+                    {
+                        _monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
+                        return;
+                    }
+
                     // Check if events are already registered to avoid duplicate registrations
                     if (_eventsRegistered)
                     {
@@ -66,8 +67,8 @@ namespace LivingRoots.Controllers
                     // Initialize the handler once using null-coalescing assignment
                     _onGameLaunchedHandler ??= OnGameLaunched;
                     
-                    // Subscribe to events
-                    _helper.Events.GameLoop.GameLaunched += _onGameLaunchedHandler;
+                    // Subscribe to events using the local variable to avoid potential race condition
+                    gameLoop.GameLaunched += _onGameLaunchedHandler;
                     
                     _eventsRegistered = true;
                     _monitor.Log("Events registered successfully.", LogLevel.Trace);
