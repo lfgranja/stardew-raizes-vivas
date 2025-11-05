@@ -24,7 +24,7 @@ namespace LivingRoots.Services
             // Characters that are commonly used in homoglyph attacks (always converted for security)
             // Cyrillic lookalikes that can be used to disguise Latin text
             { 'а', "a" }, { 'е', "e" }, { 'о', "o" }, { 'р', "p" }, { 'с', "c" }, { 'х', "h" }, { 'у', "y" },  // Cyrillic lowercase lookalikes
-            { 'А', "A" }, { 'Е', "E" }, { 'О', "O" }, { 'Р', "P" }, { 'С', "C" }, { 'Х', "H" }, { 'У', "Y" },  // Cyrillic uppercase lookalikes
+            { 'А', "A" }, { 'Е', "E" }, { 'О', "O" }, { 'Р', "P" }, { 'С', "C" }, { 'Х', "H" }, { 'У', "Y" }, // Cyrillic uppercase lookalikes
             { 'і', "i" }, { 'І', "I" }, // Additional Cyrillic lookalikes
             // Other confusable characters
             { '–', "-" }, { '—', "-" }, { '\'', "'" }, { '"', "\"" }, // Different types of quotes and dashes
@@ -36,7 +36,7 @@ namespace LivingRoots.Services
         /// </summary>
         /// <param name="input">The input string to normalize.</param>
         /// <returns>The normalized string.</returns>
-        public string Normalize(string input)
+        public string? Normalize(string? input)
         {
             if (string.IsNullOrEmpty(input))
                 return input;
@@ -92,10 +92,9 @@ namespace LivingRoots.Services
                     }
                     else
                     {
-                        // Replace other control and format characters with underscores to maintain spacing
-                        // Only add underscore if it's not already the last character
-                        if (resultBuilder.Length == 0 || resultBuilder[resultBuilder.Length - 1] != '_')
-                            resultBuilder.Append('_');
+                        // Remove other control and format characters completely to avoid creating false word boundaries
+                        // This prevents format characters from being replaced with underscores which could alter string semantics
+                        continue;
                     }
                 }
                 else
@@ -119,48 +118,38 @@ namespace LivingRoots.Services
                             char prevChar = i > 0 ? decomposed[i - 1] : '\0';
                             char nextChar = i < decomposed.Length - 1 ? decomposed[i + 1] : '\0';
                             
-                            // The issue is about boundary handling - legitimate Cyrillic characters at start/end of string
-                            // being incorrectly converted. We should be more selective about when to preserve Cyrillic characters.
-                            // The main boundary case: if we're at start/end AND have a Cyrillic neighbor, check if the context suggests
-                            // it's part of legitimate non-Latin script vs. a homoglyph attack.
-                            bool atStartWithCyrillicNeighbor = (i == 0) && IsCyrillicLetter(nextChar);
-                            bool atEndWithCyrillicNeighbor = (i == decomposed.Length - 1) && IsCyrillicLetter(prevChar);
+                            // For confusable Cyrillic characters, preserve them if they are part of a sequence of Cyrillic characters
+                            // This fixes the issue where "тест" was incorrectly converted to "тecт"
                             
-                            // For the boundary case, preserve if the neighbor is Cyrillic but don't preserve for middle characters
-                            // just because both neighbors are Cyrillic (that would be too permissive)
-                            if (atStartWithCyrillicNeighbor || atEndWithCyrillicNeighbor)
+                            // Find the start of the current word (sequence of letters)
+                            int wordStart = i;
+                            while (wordStart > 0 && char.IsLetter(decomposed[wordStart - 1]))
                             {
-                                // Check if the broader context suggests this is part of legitimate Cyrillic text
-                                // For boundary cases, look further into the string to determine if it's predominantly Cyrillic
-                                int cyrillicCount = 0;
-                                int nonLatinLetterCount = 0;
-                                
-                                if (atStartWithCyrillicNeighbor) {
-                                    // Look ahead to see if there are more Cyrillic characters
-                                    for (int j = 1; j < decomposed.Length && j < Math.Min(decomposed.Length, 5); j++) {
-                                        if (IsCyrillicLetter(decomposed[j])) {
-                                            cyrillicCount++;
-                                        } else if (char.IsLetter(decomposed[j]) && !IsCyrillicLetter(decomposed[j]) && !IsGreekLetter(decomposed[j])) {
-                                            nonLatinLetterCount++;
-                                        }
-                                    }
-                                } else if (atEndWithCyrillicNeighbor) {
-                                    // Look back to see if there are more Cyrillic characters
-                                    for (int j = decomposed.Length - 2; j >= 0 && j > decomposed.Length - 6; j--) {
-                                        if (IsCyrillicLetter(decomposed[j])) {
-                                            cyrillicCount++;
-                                        } else if (char.IsLetter(decomposed[j]) && !IsCyrillicLetter(decomposed[j]) && !IsGreekLetter(decomposed[j])) {
-                                            nonLatinLetterCount++;
-                                        }
-                                    }
+                                wordStart--;
+                            }
+                            
+                            // Find the end of the current word (sequence of letters)
+                            int wordEnd = i;
+                            while (wordEnd < decomposed.Length - 1 && char.IsLetter(decomposed[wordEnd + 1]))
+                            {
+                                wordEnd++;
+                            }
+                            
+                            // Check if the word contains multiple Cyrillic characters
+                            int cyrillicInWord = 0;
+                            for (int j = wordStart; j <= wordEnd; j++)
+                            {
+                                if (IsCyrillicLetter(decomposed[j]))
+                                {
+                                    cyrillicInWord++;
                                 }
-                                
-                                // If the context is predominantly Cyrillic, preserve the character
-                                if (atStartWithCyrillicNeighbor && cyrillicCount > 0 && cyrillicCount > nonLatinLetterCount) {
-                                    shouldConvert = false;
-                                } else if (atEndWithCyrillicNeighbor && cyrillicCount > 0 && cyrillicCount > nonLatinLetterCount) {
-                                    shouldConvert = false;
-                                }
+                            }
+                            
+                            // If there are multiple Cyrillic characters in the word, preserve this one
+                            // This handles "тест" -> "тест" (preserve all Cyrillic characters in the word)
+                            if (cyrillicInWord > 1)
+                            {
+                                shouldConvert = false;
                             }
                         }
                         
@@ -187,7 +176,7 @@ namespace LivingRoots.Services
                     else
                     {
                         // we need special handling
-                        char simplified = SimplifyCharacter(c);
+                        string simplified = SimplifyCharacter(c);
                         resultBuilder.Append(simplified);
                     }
                 }
@@ -196,9 +185,8 @@ namespace LivingRoots.Services
             // Return in composed form to properly handle combined characters
             return resultBuilder.ToString().Normalize(NormalizationForm.FormC);
         }
-
         
-
+        
         
 
         /// <summary>
@@ -225,26 +213,26 @@ namespace LivingRoots.Services
         /// Simplifies specific precomposed characters that should be converted to simpler forms.
         /// </summary>
         /// <param name="c">The character to simplify.</param>
-        /// <returns>The simplified character.</returns>
-        private static char SimplifyCharacter(char c)
+        /// <returns>The simplified character or string.</returns>
+        private static string SimplifyCharacter(char c)
         {
             // Handle specific precomposed characters that should be simplified
             switch (c)
             {
                 case 'ø': // Latin small letter o with stroke
-                    return 'o';
+                    return "o";
                 case 'Ø': // Latin capital letter O with stroke
-                    return 'O';
+                    return "O";
                 case 'æ': // Latin small letter ae
-                    return 'a';
+                    return "ae";
                 case 'Æ': // Latin capital letter AE
-                    return 'A';
+                    return "AE";
                 case 'œ': // Latin small letter oe
-                    return 'o';
+                    return "oe";
                 case 'Œ': // Latin capital letter OE
-                    return 'O';
+                    return "OE";
                 default:
-                    return c;
+                    return c.ToString();
             }
         }
 
