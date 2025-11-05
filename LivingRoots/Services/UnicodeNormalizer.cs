@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
 
@@ -18,7 +19,7 @@ namespace LivingRoots.Services
     /// </remarks>
     public class UnicodeNormalizer : IUnicodeNormalizer
     {
-        private static readonly Dictionary<char, string> SecurityConfusables = new Dictionary<char, string>
+        private static readonly ImmutableDictionary<char, string> SecurityConfusables = ImmutableDictionary.CreateRange<char, string>(new Dictionary<char, string>
         {
             // Characters that are commonly used in homoglyph attacks (always converted for security)
             // Cyrillic lookalikes that can be used to disguise Latin text
@@ -27,7 +28,7 @@ namespace LivingRoots.Services
             { 'і', "i" }, { 'І', "I" }, // Additional Cyrillic lookalikes
             // Other confusable characters
             { '–', "-" }, { '—', "-" }, { '\'', "'" }, { '"', "\"" }, // Different types of quotes and dashes
-        };
+        });
 
         /// <summary>
         /// Normalizes Unicode characters by handling diacritics, homoglyphs, and other Unicode security concerns.
