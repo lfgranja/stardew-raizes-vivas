@@ -112,7 +112,7 @@ namespace LivingRoots.Services
             {
                 // Log other IOExceptions as Warn to reduce log noise from non-critical issues
                 _monitor.Log($"IOException while loading data for key '{key}': {ex.Message}", LogLevel.Warn);
-                throw;
+                return null; // Return null instead of throwing when IO error occurs
             }
             catch (Newtonsoft.Json.JsonException ex) // Catch broader JsonException instead of JsonReaderException
             {
@@ -144,10 +144,20 @@ namespace LivingRoots.Services
                 _monitor.Log($"File not found while checking data existence for key '{key}': {ex.Message}", LogLevel.Trace);
                 return false; // Return false instead of throwing when file doesn't exist
             }
+            catch (System.IO.DirectoryNotFoundException ex)
+            {
+                _monitor.Log($"Directory not found while checking data existence for key '{key}': {ex.Message}", LogLevel.Warn);
+                return false; // Return false instead of throwing when directory doesn't exist
+            }
+            catch (System.UnauthorizedAccessException ex)
+            {
+                _monitor.Log($"Access denied while checking data existence for key '{key}': {ex.Message}", LogLevel.Warn);
+                return false; // Return false instead of throwing when access is denied
+            }
             catch (System.IO.IOException ex)
             {
                 _monitor.Log($"IOException while checking data existence for key '{key}': {ex.Message}", LogLevel.Warn);
-                throw; // Re-throw IO errors to prevent potential data loss
+                return false; // Return false instead of throwing when IO error occurs
             }
             catch (Newtonsoft.Json.JsonException ex)
             {
