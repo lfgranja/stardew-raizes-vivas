@@ -14,7 +14,7 @@ namespace LivingRoots.Services
     /// 1. Diacritics: Removed from Latin and Greek letters, preserved for other scripts
     /// 2. Security Confusables: Cyrillic lookalikes are converted to Latin equivalents unless they appear in legitimate non-Latin script contexts
     /// 3. Zero-width and bidirectional characters: Removed completely for security
-    /// 4. Control characters: Replaced with underscores to maintain spacing
+    /// 4. Control characters: Removed completely to avoid creating false word boundaries
     /// 5. Precomposed characters: Simplified to base forms (e.g., 'ø' → 'o')
     /// </remarks>
     public class UnicodeNormalizer : IUnicodeNormalizer
@@ -27,7 +27,7 @@ namespace LivingRoots.Services
             { 'А', "A" }, { 'Е', "E" }, { 'О', "O" }, { 'Р', "P" }, { 'С', "C" }, { 'Х', "H" }, { 'У', "Y" }, // Cyrillic uppercase lookalikes
             { 'і', "i" }, { 'І', "I" }, // Additional Cyrillic lookalikes
             // Other confusable characters
-            { '–', "-" }, { '—', "-" }, { '\'', "'" }, { '"', "\"" }, // Different types of quotes and dashes
+            { '–', "-" }, { '—', "-" }, // Different types of dashes (en dash and em dash to regular hyphen)
         });
 
         /// <summary>
@@ -185,7 +185,6 @@ namespace LivingRoots.Services
             // Return in composed form to properly handle combined characters
             return resultBuilder.ToString().Normalize(NormalizationForm.FormC);
         }
-        
         
         
 
