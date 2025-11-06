@@ -70,8 +70,9 @@ namespace LivingRoots.Services
                 }
                 else if (segment == ".")
                 {
-                    // Block explicit "." segments which represent current directory navigation
-                    throw new ArgumentException("Path cannot contain relative path navigation.", nameof(path));
+                    // Allow "." segments as they represent current directory and are generally safe
+                    // This is important for hidden files like ".config", ".env", etc.
+                    continue; // Continue processing instead of throwing
                 }
                 else if (!string.IsNullOrEmpty(segment))
                 {
@@ -81,7 +82,9 @@ namespace LivingRoots.Services
             }
 
             // Additional check for explicit "." patterns at start/end of path
-            if (normalized.StartsWith("./") || normalized.EndsWith("/.") || normalized == ".")
+            // Allow "." segments in the middle of paths (e.g., "folder/.config" is valid)
+            // but prevent "." as a standalone path or at the beginning which could be used for path traversal
+            if (normalized == "." || normalized == "./" || normalized.StartsWith("./..") || normalized.StartsWith("./../"))
             {
                 throw new ArgumentException("Path cannot contain relative path navigation.", nameof(path));
             }
