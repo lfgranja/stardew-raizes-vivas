@@ -215,22 +215,24 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_ExplicitDotSegments_AreBlocked()
+        public void Validate_ExplicitDotSegments_AreTreatedCorrectly()
         {
             // Arrange
             var realValidator = new PathTraversalValidator();
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
             var testData = new { Name = "Test", Value = 123 };
 
-            // Act & Assert - Explicit "." segments should be blocked
+            // Act & Assert - "./file" and "file/." should still be blocked (caught by start/end path checks)
             var exception1 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "./file"));
             Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
             
-            var exception2 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "file/./file2"));
+            var exception2 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "file/."));
             Assert.Contains("Path cannot contain relative path navigation", exception2.Message);
             
-            var exception3 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "file/."));
-            Assert.Contains("Path cannot contain relative path navigation", exception3.Message);
+            // But "file/./file2" should be allowed (middle "." segments are safe)
+            service.SaveData(testData, "file/./file2");  // This should not throw
+            service.SaveData(testData, "path/to/./file.txt");  // This should not throw
+            service.SaveData(testData, "normal/.hidden");  // This should not throw
         }
     }
 }

@@ -324,5 +324,35 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Null(result);
         }
+        
+        [Fact]
+        public void LoadData_WithIOException_ReturnsNull()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var ioException = new System.IO.IOException("Access denied or file locked");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(ioException);
+
+            // Act
+            var result = service.LoadData<object>("test_key");
+
+            // Assert
+            Assert.Null(result);
+        }
+        
+        [Fact]
+        public void DataExists_WithIOException_ReturnsFalse()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var ioException = new System.IO.IOException("Access denied or file locked");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(ioException);
+
+            // Act
+            var result = service.DataExists("test_key");
+
+            // Assert
+            Assert.False(result);
+        }
     }
 }

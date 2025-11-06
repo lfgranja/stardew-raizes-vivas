@@ -21,6 +21,26 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
+        public void SecurityConfusables_DoesNotContainRedundantMappings()
+        {
+            // Test that the SecurityConfusables dictionary does not contain mappings
+            // where a character maps to itself (redundant mappings)
+            var confusables = typeof(UnicodeNormalizer)
+                .GetField("SecurityConfusables", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                .GetValue(null) as System.Collections.Generic.IDictionary<char, string>;
+
+            // Check for any mappings where the key and value are the same
+            foreach (var kvp in confusables)
+            {
+                // If the value is a single character and it's the same as the key, it's redundant
+                if (kvp.Value.Length == 1 && kvp.Value[0] == kvp.Key)
+                {
+                    Assert.Fail($"Found redundant mapping: {{ '{kvp.Key}', \"{kvp.Value}\" }} maps character to itself");
+                }
+            }
+        }
+
+        [Fact]
         public void Normalize_WithUnicodeDiacritics_RemovesAccentsProperly()
         {
             // Arrange
