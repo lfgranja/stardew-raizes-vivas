@@ -4,30 +4,27 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Text;
 using System.Globalization;
+using LivingRoots.Domain;
 
 namespace LivingRoots.Services
 {
     /// <summary>
     /// Service for handling mod data persistence and SMAPI interactions
     /// Following the architecture pattern described in ARCHITECTURE.md
+    /// Now following the Dependency Inversion Principle by depending on domain abstractions
     /// </summary>
     public class ModDataService : IModDataService
     {
         private readonly IModHelper _helper;
         private readonly IMonitor _monitor;
-        private readonly IPathTraversalValidator _pathTraversalValidator;
-        private readonly IFileNameSanitizer _fileNameSanitizer;
-        private readonly IReservedNameHandler _reservedNameHandler;
+        private readonly IModLogic _modLogic;
         
         
-        
-        public ModDataService(IModHelper helper, IMonitor monitor, IPathTraversalValidator pathTraversalValidator, IFileNameSanitizer fileNameSanitizer, IReservedNameHandler reservedNameHandler)
+        public ModDataService(IModHelper helper, IMonitor monitor, IModLogic modLogic)
         {
             _helper = helper ?? throw new ArgumentNullException(nameof(helper));
             _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-            _pathTraversalValidator = pathTraversalValidator ?? throw new ArgumentNullException(nameof(pathTraversalValidator));
-            _fileNameSanitizer = fileNameSanitizer ?? throw new ArgumentNullException(nameof(fileNameSanitizer));
-            _reservedNameHandler = reservedNameHandler ?? throw new ArgumentNullException(nameof(reservedNameHandler));
+            _modLogic = modLogic ?? throw new ArgumentNullException(nameof(modLogic));
         }
         
         /// <summary>
@@ -48,7 +45,9 @@ namespace LivingRoots.Services
             try
             {
                 _helper.Data.WriteJsonFile(path, data);
-                _monitor.Log($"Saved data for key '{key}'.", LogLevel.Trace);
+                // Use sanitized key for logging to avoid exposing raw input
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"Saved data for key '{sanitizedKey}'.", LogLevel.Trace);
             }
             catch (System.IO.IOException ex)
             {
@@ -200,17 +199,18 @@ namespace LivingRoots.Services
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Key cannot be null or empty", nameof(key));
 
-            // Validate path traversal first to prevent security issues
-            _pathTraversalValidator.Validate(key);
+            // Validate path traversal first to prevent security issues using domain service
+            _modLogic.ValidatePath(key);
 
-            // Sanitize the key to handle invalid characters and security concerns
-            string sanitizedKey = _fileNameSanitizer.Sanitize(key)!;
-
-            // Handle reserved Windows filenames
-            string handledKey = _reservedNameHandler.Handle(sanitizedKey)!;
+            // Sanitize the key to handle invalid characters and security concerns using domain service
+            string? sanitizedKey = _modLogic.SanitizeFileName(key);
+            
+            // Prevent nulls in path building as per security requirement
+            if (sanitizedKey == null)
+                throw new InvalidOperationException("Sanitized key cannot be null");
 
             // Return the final path with the .json extension
-            return Path.Combine("data", $"{handledKey}.json");
+            return Path.Combine("data", $"{sanitizedKey}.json");
         }
     }
 }
