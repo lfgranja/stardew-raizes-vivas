@@ -1,6 +1,4 @@
-using System.Text;
-
-namespace LivingRoots.Services
+namespace LivingRoots.Domain
 {
     /// <summary>
     /// Interface for sanitizing filenames to make them safe for file system operations

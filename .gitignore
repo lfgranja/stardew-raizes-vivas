@@ -3,6 +3,12 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Additional debug and temporary files specific to this project
+debug_*.cs
+temp_debug/
+VerifyInvalidChars/
+*.exe
+
 # User-specific files
 *.rsuser
 *.suo
@@ -420,3 +426,22 @@ FodyWeavers.xsd
 # Agentic files
 GEMINI.md
 QWEN.md
+# Stardew Valley SMAPI mod specific files
+**/bin/Debug/
+**/bin/Release/
+**/obj/
+*.zip
+*.dll
+*.deps.json
+*.runtimeconfig.json
+
+# Temporary files
+temp_*.cs
+tmp_*.cs
+*.tmp
+*.temp
+# Debug test files
+*Debug*.cs
+Debug*.cs
+*_debug.cs
+debug*.cs

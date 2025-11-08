@@ -7,6 +7,7 @@ using Moq;
 using StardewModdingAPI;
 using Xunit;
 using LivingRoots.Services;
+using LivingRoots.Domain;
 
 namespace LivingRoots.Tests
 {
@@ -19,7 +20,7 @@ namespace LivingRoots.Tests
         {
             _mockUnicodeNormalizer = new Mock<IUnicodeNormalizer>();
             _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string?>())).Returns<string?>(input => input);
-            _fileNameSanitizer = new FileNameSanitizer(_mockUnicodeNormalizer.Object);
+            _fileNameSanitizer = new FileNameSanitizer(new FileNameSanitizationService(new UnicodeNormalizationService()));
         }
 
         // Test 1: Extension smuggling prevention - now blocks dangerous extensions
@@ -105,7 +106,7 @@ namespace LivingRoots.Tests
         {
             // Arrange - Test that the system handles legitimate Cyrillic properly
             // The Unicode normalizer has context-aware logic to preserve Cyrillic in proper contexts
-            var realNormalizer = new UnicodeNormalizer();
+            var realNormalizer = new UnicodeNormalizer(new UnicodeNormalizationService());
             
             // Test that a mixed context with both Cyrillic and Latin characters works appropriately
             string mixedInput = "file_тест_data"; // Mix of Latin and Cyrillic
@@ -118,7 +119,7 @@ namespace LivingRoots.Tests
             Assert.NotEmpty(result);
             
             // Now test with the filename sanitizer
-            var realFileNameSanitizer = new FileNameSanitizer(realNormalizer);
+            var realFileNameSanitizer = new FileNameSanitizer(new FileNameSanitizationService(new UnicodeNormalizationService()));
             string sanitizedResult = realFileNameSanitizer.Sanitize(mixedInput);
             
             Assert.NotNull(sanitizedResult);
@@ -165,11 +166,9 @@ namespace LivingRoots.Tests
             // Arrange - Path traversal attempts
             string input = "../etc/passwd";
             
-            // Act
-            string result = _fileNameSanitizer.Sanitize(input);
-            
-            // Assert - Path traversal should be prevented, double dots become single dot
-            Assert.Equal("._etc_passwd", result); // The double dots are processed to single dot
+            // Act & Assert - Path traversal should throw an exception
+            var exception = Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+            Assert.Contains("Filename cannot contain path traversal sequences", exception.Message);
         }
 
         // Test 10: Zero-width character removal

@@ -1,4 +1,4 @@
-namespace LivingRoots.Services
+namespace LivingRoots.Domain
 {
     /// <summary>
     /// Interface for validating and preventing path traversal attacks

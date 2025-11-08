@@ -3,6 +3,7 @@ using Moq;
 using StardewModdingAPI;
 using Xunit;
 using LivingRoots.Services;
+using LivingRoots.Domain;
 
 namespace LivingRoots.Tests
 {
@@ -14,7 +15,7 @@ namespace LivingRoots.Tests
         private readonly Mock<IFileNameSanitizer> _mockFileNameSanitizer;
         private readonly Mock<IReservedNameHandler> _mockReservedNameHandler;
         private readonly Mock<IMonitor> _mockMonitor;
-        private readonly Mock<IUnicodeNormalizer> _mockUnicodeNormalizer;
+        private readonly Mock<IUnicodeNormalizationService> _mockUnicodeNormalizationService;
         private readonly ReservedNameHandler _reservedNameHandler;
 
         public ReservedNameHandlerTests()
@@ -25,12 +26,12 @@ namespace LivingRoots.Tests
             _mockPathTraversalValidator = new Mock<IPathTraversalValidator>();
             _mockFileNameSanitizer = new Mock<IFileNameSanitizer>();
             _mockReservedNameHandler = new Mock<IReservedNameHandler>();
-            _mockUnicodeNormalizer = new Mock<IUnicodeNormalizer>();
+            _mockUnicodeNormalizationService = new Mock<IUnicodeNormalizationService>();
             
             _mockHelper.Setup(x => x.Data).Returns(_mockDataHelper.Object);
             
-            // Create a real ReservedNameHandler instance with mocked UnicodeNormalizer dependency
-            _reservedNameHandler = new ReservedNameHandler(_mockUnicodeNormalizer.Object);
+            // Create a real ReservedNameHandler instance with mocked UnicodeNormalizationService dependency
+            _reservedNameHandler = new ReservedNameHandler(_mockUnicodeNormalizationService.Object);
             
             // Configure the file name sanitizer to return the input as-is for these tests
             _mockFileNameSanitizer.Setup(x => x.Sanitize(It.IsAny<string>())).Returns<string>(input => input);
@@ -38,8 +39,8 @@ namespace LivingRoots.Tests
             // Configure the path traversal validator to not throw for valid paths in these tests
             _mockPathTraversalValidator.Setup(x => x.Validate(It.IsAny<string>())).Verifiable();
             
-            // Setup the mock UnicodeNormalizer to return the input by default
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+            // Setup the mock UnicodeNormalizationService to return the input by default
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
         }
 
         [Theory]
@@ -55,7 +56,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             // Setup mock to return the same string for normalization (no change for basic reserved names)
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(reservedName)).Returns(reservedName);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(reservedName)).Returns(reservedName);
 
             // Act
             string result = _reservedNameHandler.Handle(reservedName);
@@ -72,7 +73,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             // Setup mock to return the same string for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
 
             // Act
             string result = _reservedNameHandler.Handle(reservedName);
@@ -88,7 +89,7 @@ namespace LivingRoots.Tests
             string input = "normal_name";
             
             // Setup mock to return the same string for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(input);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(input);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
@@ -105,8 +106,8 @@ namespace LivingRoots.Tests
             string input2 = "ACOM123.xml";
             
             // Setup mock to return the same strings for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input1)).Returns(input1);
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input2)).Returns(input2);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input1)).Returns(input1);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input2)).Returns(input2);
 
             // Act
             string result1 = _reservedNameHandler.Handle(input1);
@@ -125,7 +126,7 @@ namespace LivingRoots.Tests
             string normalized = "CON";
             
             // Setup mock to return the normalized version
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(normalized);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
@@ -142,7 +143,7 @@ namespace LivingRoots.Tests
             string trimmed = "CON";
             
             // Setup mock to return the same string for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(trimmed)).Returns(trimmed);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(trimmed)).Returns(trimmed);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
@@ -159,7 +160,7 @@ namespace LivingRoots.Tests
             string baseName = "CON"; // After trimming
             
             // Setup mock to return the same string for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(baseName)).Returns(baseName);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(baseName)).Returns(baseName);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
@@ -176,7 +177,7 @@ namespace LivingRoots.Tests
             string baseName = "CON"; // After trimming
             
             // Setup mock to return the same string for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(baseName)).Returns(baseName);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(baseName)).Returns(baseName);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
@@ -193,7 +194,7 @@ namespace LivingRoots.Tests
             string baseName = "CON"; // After trimming
             
             // Setup mock to return the same string for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(baseName)).Returns(baseName);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(baseName)).Returns(baseName);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
@@ -210,7 +211,7 @@ namespace LivingRoots.Tests
             string normalized = "CON"; // Should normalize to CON
             
             // Setup mock to return the normalized version
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(normalized);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
@@ -265,7 +266,7 @@ namespace LivingRoots.Tests
             string input = "path/to/file.txt";
             
             // Setup mock to return the same string for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
@@ -282,7 +283,7 @@ namespace LivingRoots.Tests
             string fileNamePart = "CON";
             
             // Setup mock to return the same string for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
@@ -298,7 +299,7 @@ namespace LivingRoots.Tests
             string input = "path/to/CONSOLE.txt";
             
             // Setup mock to return the same string for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
@@ -324,7 +325,7 @@ namespace LivingRoots.Tests
             string input = "LPT9";
             
             // Setup mock to return the same string for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(input);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(input);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
@@ -340,7 +341,7 @@ namespace LivingRoots.Tests
             string input = "COM9";
             
             // Setup mock to return the same string for normalization
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(input);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(input);
 
             // Act
             string? result = _reservedNameHandler.Handle(input);

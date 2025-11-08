@@ -1,6 +1,4 @@
-using System.Text;
-
-namespace LivingRoots.Services
+namespace LivingRoots.Domain
 {
     /// <summary>
     /// Interface for normalizing Unicode characters to handle diacritics, homoglyphs, and other Unicode security issues

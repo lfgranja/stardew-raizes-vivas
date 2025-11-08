@@ -1,4 +1,4 @@
-namespace LivingRoots.Services
+namespace LivingRoots.Domain
 {
     /// <summary>
     /// Interface for handling reserved Windows filenames to prevent conflicts with system files

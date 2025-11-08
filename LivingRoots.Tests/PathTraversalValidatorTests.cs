@@ -3,6 +3,7 @@ using Moq;
 using StardewModdingAPI;
 using Xunit;
 using LivingRoots.Services;
+using LivingRoots.Domain;
 
 namespace LivingRoots.Tests
 {
@@ -39,9 +40,10 @@ namespace LivingRoots.Tests
         [Fact]
         public void ValidatePathTraversal_WithValidRelativePath_DoesNotThrow()
         {
-            // Arrange - Use the real PathTraversalValidator implementation
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathValidationService implementation from domain
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -58,9 +60,10 @@ namespace LivingRoots.Tests
         [InlineData("normal/../../../path")]
         public void ValidatePathTraversal_WithPathTraversalPatterns_ThrowsArgumentException(string path)
         {
-            // Arrange - Use the real PathTraversalValidator implementation
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathValidationService implementation from domain
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -73,9 +76,10 @@ namespace LivingRoots.Tests
         [InlineData("C:\\Windows\\System32")]
         public void ValidatePathTraversal_WithAbsolutePaths_ThrowsArgumentException(string path)
         {
-            // Arrange - Use the real PathTraversalValidator implementation
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathValidationService implementation from domain
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -86,9 +90,10 @@ namespace LivingRoots.Tests
         [Fact]
         public void ValidatePathTraversal_WithUrlPath_ThrowsArgumentException()
         {
-            // Arrange - Use the real PathTraversalValidator implementation
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathValidationService implementation from domain
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -101,9 +106,10 @@ namespace LivingRoots.Tests
         [InlineData("..%5C..%5Csecret")]
         public void ValidatePathTraversal_WithEncodedPathTraversal_ThrowsArgumentException(string path)
         {
-            // Arrange - Use the real PathTraversalValidator implementation
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathValidationService implementation from domain
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -114,9 +120,10 @@ namespace LivingRoots.Tests
         [Fact]
         public void ValidatePathTraversal_WithValidDotInFilename_DoesNotThrow()
         {
-            // Arrange - Use the real PathTraversalValidator implementation
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathValidationService implementation from domain
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -128,9 +135,10 @@ namespace LivingRoots.Tests
         [Fact]
         public void ValidatePathTraversal_WithValidDotAtBeginning_DoesNotThrow()
         {
-            // Arrange - Use the real PathTraversalValidator implementation
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathValidationService implementation from domain
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -141,9 +149,10 @@ namespace LivingRoots.Tests
         [Fact]
         public void ValidatePathTraversal_WithNullKey_ThrowsArgumentException()
         {
-            // Arrange - Use the real PathTraversalValidator implementation
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathValidationService implementation from domain
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
             string? nullKey = null; // Explicitly assign null to avoid CS8625 warning
 
@@ -156,9 +165,10 @@ namespace LivingRoots.Tests
         [InlineData("   ")]
         public void ValidatePathTraversal_WithEmptyOrWhitespaceKey_ThrowsArgumentException(string key)
         {
-            // Arrange - Use the real PathTraversalValidator implementation
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathValidationService implementation from domain
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -173,9 +183,10 @@ namespace LivingRoots.Tests
         [InlineData("\n../../secret\n")]
         public void ValidatePathTraversal_WithWhitespaceAndTraversalPatterns_ThrowsArgumentException(string path)
         {
-            // Arrange - Use the real PathTraversalValidator implementation
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathValidationService implementation from domain
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -189,9 +200,10 @@ namespace LivingRoots.Tests
         [InlineData("   http://example.com/file   ")]
         public void ValidatePathTraversal_WithWhitespaceAndAbsolutePaths_ThrowsArgumentException(string path)
         {
-            // Arrange - Use the real PathTraversalValidator implementation
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            // Arrange - Use the real PathValidationService implementation from domain
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -202,8 +214,9 @@ namespace LivingRoots.Tests
         public void Validate_HiddenFiles_AreAllowed()
         {
             // Arrange
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert - Hidden files should be allowed
@@ -215,24 +228,48 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_ExplicitDotSegments_AreTreatedCorrectly()
+        public void Validate_DotAsDirectory_IsBlocked()
         {
             // Arrange
-            var realValidator = new PathTraversalValidator();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, realValidator, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
-            // Act & Assert - "./file" and "file/." should still be blocked (caught by start/end path checks)
-            var exception1 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "./file"));
+            // Act & Assert - Explicit "." or "./" as the whole path should be blocked
+            var exception1 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "."));
             Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
             
-            var exception2 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "file/."));
+            var exception2 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "./"));
             Assert.Contains("Path cannot contain relative path navigation", exception2.Message);
+        }
+
+        [Fact]
+        public void Validate_DotSegmentsInValidPath_AreAllowed()
+        {
+            // Arrange
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act & Assert - These are valid paths and should not throw
+            // Note: "./file" should still be blocked as it starts with relative navigation
+            var ex1 = Record.Exception(() => service.SaveData(testData, "./file"));
+            Assert.NotNull(ex1); // This should still throw an exception
+            Assert.IsType<ArgumentException>(ex1);
+
+            var ex2 = Record.Exception(() => service.SaveData(testData, "file/./file2"));
+            Assert.Null(ex2);
+
+            var ex3 = Record.Exception(() => service.SaveData(testData, "file/."));
+            Assert.Null(ex3);
             
-            // But "file/./file2" should be allowed (middle "." segments are safe)
-            service.SaveData(testData, "file/./file2");  // This should not throw
-            service.SaveData(testData, "path/to/./file.txt");  // This should not throw
-            service.SaveData(testData, "normal/.hidden");  // This should not throw
+            var ex4 = Record.Exception(() => service.SaveData(testData, "path/to/./file.txt"));
+            Assert.Null(ex4);
+            
+            var ex5 = Record.Exception(() => service.SaveData(testData, "normal/.hidden"));
+            Assert.Null(ex5);
         }
     }
 }

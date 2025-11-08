@@ -2,14 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace LivingRoots.Services
+namespace LivingRoots.Domain
 {
     /// <summary>
     /// Implementation for handling reserved Windows filenames to prevent conflicts with system files.
+    /// This implementation follows the Dependency Inversion Principle by depending on abstractions.
     /// </summary>
     public class ReservedNameHandler : IReservedNameHandler
     {
-        private readonly IUnicodeNormalizer _unicodeNormalizer;
+        private readonly IUnicodeNormalizationService _unicodeNormalizationService;
         private static readonly HashSet<string> ReservedWindowsFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "CON", "PRN", "AUX", "NUL",
@@ -17,9 +18,9 @@ namespace LivingRoots.Services
             "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
         };
 
-        public ReservedNameHandler(IUnicodeNormalizer unicodeNormalizer)
+        public ReservedNameHandler(IUnicodeNormalizationService unicodeNormalizationService)
         {
-            _unicodeNormalizer = unicodeNormalizer ?? throw new ArgumentNullException(nameof(unicodeNormalizer));
+            _unicodeNormalizationService = unicodeNormalizationService ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
         }
 
         /// <summary>
@@ -66,7 +67,7 @@ namespace LivingRoots.Services
             
             bool isReserved = !string.IsNullOrEmpty(baseNameForCheck) && 
                               (ReservedWindowsFileNames.Contains(baseNameForCheck) 
-                              || ReservedWindowsFileNames.Contains(_unicodeNormalizer.Normalize(baseNameForCheck)));
+                              || ReservedWindowsFileNames.Contains(_unicodeNormalizationService.Normalize(baseNameForCheck)));
 
             if (isReserved)
             {

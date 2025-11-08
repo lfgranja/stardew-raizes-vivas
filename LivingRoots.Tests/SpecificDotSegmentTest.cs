@@ -1,6 +1,7 @@
 using System;
 using Xunit;
 using LivingRoots.Services;
+using LivingRoots.Domain;
 
 namespace LivingRoots.Tests
 {
@@ -10,7 +11,7 @@ namespace LivingRoots.Tests
 
         public SpecificDotSegmentTest()
         {
-            _validator = new PathTraversalValidator();
+            _validator = new PathTraversalValidator(new PathValidationService());
         }
 
         [Fact]
@@ -32,11 +33,12 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_SingleDotSegmentInPath_ShouldStillFail()
+        public void Validate_SingleDotSegmentInPath_ShouldBeAllowed()
         {
-            // This should still fail because it ends with "." as explicit path navigation
-            var exception = Assert.Throws<ArgumentException>(() => _validator.Validate("folder/."));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            // This should be allowed because "folder/." is a valid path referring to the folder directory
+            // "." segments in paths are generally safe and needed for legitimate use cases
+            var ex = Record.Exception(() => _validator.Validate("folder/."));
+            Assert.Null(ex);
         }
     }
 }

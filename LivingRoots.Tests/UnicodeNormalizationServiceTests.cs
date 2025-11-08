@@ -1,0 +1,186 @@
+using System;
+using LivingRoots.Domain;
+using Xunit;
+
+namespace LivingRoots.Tests
+{
+    public class UnicodeNormalizationServiceTests
+    {
+        private readonly UnicodeNormalizationService _service;
+
+        public UnicodeNormalizationServiceTests()
+        {
+            _service = new UnicodeNormalizationService();
+        }
+
+        [Fact]
+        public void Normalize_WithNullInput_ReturnsNull()
+        {
+            // Act
+            var result = _service.Normalize(null);
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public void Normalize_WithEmptyInput_ReturnsEmpty()
+        {
+            // Act
+            var result = _service.Normalize("");
+
+            // Assert
+            Assert.Equal("", result);
+        }
+
+        [Fact]
+        public void Normalize_WithWhitespaceInput_ReturnsWhitespace()
+        {
+            // Act
+            var result = _service.Normalize("  ");
+
+            // Assert
+            Assert.Equal("  ", result);
+        }
+
+        [Fact]
+        public void Normalize_WithBasicLatinText_ReturnsSameText()
+        {
+            // Act
+            var result = _service.Normalize("test.txt");
+
+            // Assert
+            Assert.Equal("test.txt", result);
+        }
+
+        [Fact]
+        public void Normalize_WithDiacritics_RemovesDiacriticsFromLatin()
+        {
+            // Act
+            var result = _service.Normalize("café.txt");
+
+            // Assert
+            Assert.Equal("cafe.txt", result);
+        }
+
+        [Fact]
+        public void Normalize_WithCyrillicLookalikes_ConvertsToLatin()
+        {
+            // Act
+            var result = _service.Normalize("pаssword.txt"); // "a" is Cyrillic
+
+            // Assert
+            Assert.Equal("password.txt", result);
+        }
+
+        [Fact]
+        public void Normalize_WithCyrillicWord_PreservesInCyrillicContext()
+        {
+            // Act
+            var result = _service.Normalize("тест"); // This should remain as "тест" in proper context
+
+            // Assert
+            Assert.Equal("тест", result);
+        }
+
+        [Fact]
+        public void Normalize_WithMixedCyrillicLatin_ConvertsLookalikes()
+        {
+            // Act
+            var result = _service.Normalize("pаsswordтест"); // "a" is Cyrillic but followed by Cyrillic
+
+            // For this case, we expect the lookalike to be converted
+            Assert.Equal("passwordтест", result);
+        }
+
+        [Fact]
+        public void Normalize_WithZeroWidthCharacters_RemovesThem()
+        {
+            // Act
+            var result = _service.Normalize("test\u200Bfile.txt"); // Zero-width character
+
+            // Assert
+            Assert.Equal("testfile.txt", result);
+        }
+
+        [Fact]
+        public void Normalize_WithBidirectionalCharacters_RemovesThem()
+        {
+            // Act
+            var result = _service.Normalize("test\u202Afile.txt"); // Bidirectional override
+
+            // Assert
+            Assert.Equal("testfile.txt", result);
+        }
+
+        [Fact]
+        public void Normalize_WithControlCharacters_RemovesThem()
+        {
+            // Act
+            var result = _service.Normalize("test\u0001file.txt"); // Control character
+
+            // Assert
+            Assert.Equal("testfile.txt", result);
+        }
+
+        [Fact]
+        public void Normalize_WithPrecomposedCharacters_Simplifies()
+        {
+            // Act
+            var result = _service.Normalize("testøfile.txt"); // o with stroke
+
+            // Assert
+            Assert.Equal("testofile.txt", result);
+        }
+
+        [Fact]
+        public void Normalize_WithAEligature_Simplifies()
+        {
+            // Act
+            var result = _service.Normalize("testæfile.txt"); // ae ligature
+
+            // Assert
+            Assert.Equal("testaefile.txt", result);
+        }
+
+        [Fact]
+        public void Normalize_WithDifferentDashes_Normalizes()
+        {
+            // Act
+            var result = _service.Normalize("test–file.txt"); // En dash
+
+            // Assert
+            Assert.Equal("test-file.txt", result);
+        }
+
+        [Fact]
+        public void Normalize_WithEmoji_Preserves()
+        {
+            // Act
+            var result = _service.Normalize("test😀file.txt"); // Emoji
+
+            // Assert
+            Assert.Equal("test😀file.txt", result);
+        }
+
+        [Fact]
+        public void Normalize_WithGreekLetters_PreservesDiacritics()
+        {
+            // Greek letters with diacritics should be preserved differently than Latin
+            var result = _service.Normalize("αβγ.txt"); // Greek letters
+
+            // Assert
+            Assert.Equal("αβγ.txt", result);
+        }
+
+        [Fact]
+        public void Normalize_WithHebrewLetters_Preserves()
+        {
+            // Hebrew letters should be preserved
+            var result = _service.Normalize("テスト.txt"); // Hebrew characters
+
+            // Assert
+            Assert.Equal("テスト.txt", result);
+        }
+    }
+}

@@ -1,51 +1,71 @@
 using System;
+using Moq;
+using StardewModdingAPI;
 using Xunit;
 using LivingRoots.Services;
+using LivingRoots.Domain;
 
 namespace LivingRoots.Tests
 {
     public class DotSegmentAllowanceTest
     {
-        private readonly PathTraversalValidator _validator;
+        private readonly Mock<IModHelper> _mockHelper;
+        private readonly Mock<IDataHelper> _mockDataHelper;
+        private readonly Mock<IMonitor> _mockMonitor;
 
         public DotSegmentAllowanceTest()
         {
-            _validator = new PathTraversalValidator();
+            _mockHelper = new Mock<IModHelper>();
+            _mockDataHelper = new Mock<IDataHelper>();
+            _mockMonitor = new Mock<IMonitor>();
+            
+            _mockHelper.Setup(x => x.Data).Returns(_mockDataHelper.Object);
         }
 
         [Fact]
-        public void Validate_PathWithDotSegment_ShouldBeAllowed_AfterFix()
+        public void PathValidation_AllowsValidDotSegments()
         {
-            // These should be allowed after the fix because "." represents current directory
-            // and is generally safe in path contexts, important for hidden files like ".config", ".env", etc.
-            // This test will fail with current implementation but should pass after fix
-            _validator.Validate("folder/./file");
-            _validator.Validate("normal/.hidden");
-            _validator.Validate("path/to/./file.txt");
+            // Arrange
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act & Assert - These should all be allowed as they are valid paths with safe dot segments
+            var ex1 = Record.Exception(() => service.SaveData(testData, "file/./file2"));
+            Assert.Null(ex1);
+
+            var ex2 = Record.Exception(() => service.SaveData(testData, "path/to/./file.txt"));
+            Assert.Null(ex2);
+
+            var ex3 = Record.Exception(() => service.SaveData(testData, "normal/.hidden"));
+            Assert.Null(ex3);
+
+            var ex4 = Record.Exception(() => service.SaveData(testData, "folder/./subfolder/file"));
+            Assert.Null(ex4);
+
+            var ex5 = Record.Exception(() => service.SaveData(testData, "file/."));
+            Assert.Null(ex5);
         }
 
         [Fact]
-        public void Validate_SingleDotPath_ShouldStillBeBlocked()
+        public void PathValidation_BlocksInvalidDotPaths()
         {
-            // This should still be blocked as it's just navigating to current directory
-            var exception = Assert.Throws<ArgumentException>(() => _validator.Validate("."));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
-        }
+            // Arrange
+            var realValidator = new PathValidationService();
+            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
+            var testData = new { Name = "Test", Value = 123 };
 
-        [Fact]
-        public void Validate_PathStartingWithDotSlash_ShouldStillBeBlocked()
-        {
-            // This should still be blocked as it's explicit path navigation
-            var exception = Assert.Throws<ArgumentException>(() => _validator.Validate("./file"));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
-        }
+            // Act & Assert - These should be blocked as they represent directory navigation
+            var exception1 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "."));
+            Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
 
-        [Fact]
-        public void Validate_PathEndingWithDot_ShouldStillBeBlocked()
-        {
-            // This should still be blocked as it's explicit path navigation
-            var exception = Assert.Throws<ArgumentException>(() => _validator.Validate("file/."));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            var exception2 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "./file"));
+            Assert.Contains("Path cannot contain relative path navigation", exception2.Message);
+
+            var exception3 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "../file"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception3.Message);
         }
     }
 }

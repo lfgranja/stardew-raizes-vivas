@@ -1,6 +1,7 @@
 using StardewModdingAPI;
 using Moq;
 using LivingRoots.Services;
+using LivingRoots.Domain;
 using Xunit;
 using System;
 using Newtonsoft.Json;
@@ -11,9 +12,7 @@ namespace LivingRoots.Tests
     {
         private readonly Mock<IModHelper> _mockHelper;
         private readonly Mock<IDataHelper> _mockDataHelper;
-        private readonly Mock<IPathTraversalValidator> _mockPathTraversalValidator;
-        private readonly Mock<IFileNameSanitizer> _mockFileNameSanitizer;
-        private readonly Mock<IReservedNameHandler> _mockReservedNameHandler;
+        private readonly Mock<IModLogic> _mockModLogic;
         private readonly Mock<IMonitor> _mockMonitor;
 
         public ModDataServiceTests()
@@ -21,15 +20,13 @@ namespace LivingRoots.Tests
             _mockHelper = new Mock<IModHelper>();
             _mockDataHelper = new Mock<IDataHelper>();
             _mockMonitor = new Mock<IMonitor>();
-            _mockPathTraversalValidator = new Mock<IPathTraversalValidator>();
-            _mockFileNameSanitizer = new Mock<IFileNameSanitizer>();
-            _mockReservedNameHandler = new Mock<IReservedNameHandler>();
+            _mockModLogic = new Mock<IModLogic>();
             
             _mockHelper.Setup(x => x.Data).Returns(_mockDataHelper.Object);
             
-            // Configure the file name sanitizer to return expected sanitized values for testing
+            // Configure the mod logic to return expected sanitized values for testing
             // and throw exceptions for cases that would result in empty strings
-            _mockFileNameSanitizer.Setup(x => x.Sanitize(It.IsAny<string>())).Returns<string>(input => 
+            _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(input => 
             {
                 // Simulate the real sanitization behavior
                 if (input.Contains("test/key\\with:invalid|chars"))
@@ -49,29 +46,17 @@ namespace LivingRoots.Tests
                 return input;
             });
             
-            // Configure the reserved name handler to return expected values for testing
-            _mockReservedNameHandler.Setup(x => x.Handle(It.IsAny<string>())).Returns<string>(input => 
-            {
-                // Simulate the real reserved name handling behavior
-                if (input.Equals("CON", StringComparison.OrdinalIgnoreCase) && 
-                    !input.Contains(".") && !input.Contains("_"))
-                    return "CON_";
-                if (input.Equals("CON.txt", StringComparison.OrdinalIgnoreCase))
-                    return "CON_.txt";
-                return input;
-            });
-            
-            // Configure the path traversal validator to not throw for valid paths in most tests
+            // Configure the path validation to not throw for valid paths in most tests
             // but throw for path traversal attempts
-            _mockPathTraversalValidator.Setup(x => x.Validate(It.Is<string>(s => s.Contains("../") || s.Contains("..\\") || s.Contains("../../../") || s.Contains("..\\..\\") || s.Contains("http://") || s.Contains("https://")))).Throws<ArgumentException>();
-            _mockPathTraversalValidator.Setup(x => x.Validate(It.IsAny<string>())).Verifiable();
+            _mockModLogic.Setup(x => x.ValidatePath(It.Is<string>(s => s.Contains("../") || s.Contains("..\\") || s.Contains("../../../") || s.Contains("..\\..\\") || s.Contains("http://") || s.Contains("https://")))).Throws<ArgumentException>();
+            _mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Verifiable();
         }
 
         [Fact]
         public void SaveData_WithValidData_CallsWriteJsonFile()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act
@@ -85,7 +70,7 @@ namespace LivingRoots.Tests
         public void SaveData_WithNullKey_ThrowsArgumentException()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -98,7 +83,7 @@ namespace LivingRoots.Tests
         public void SaveData_WithNullData_ThrowsArgumentNullException()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() => service.SaveData<object>(null!, "test_key"));
@@ -109,7 +94,7 @@ namespace LivingRoots.Tests
         public void LoadData_WithValidKey_CallsReadJsonFile()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var expectedData = new { Name = "Test", Value = 123 };
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Returns(expectedData);
 
@@ -124,7 +109,7 @@ namespace LivingRoots.Tests
         public void LoadData_WithFileNotFound_ReturnsNull()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>(It.IsAny<string>())).Returns(default(object));
 
             // Act
@@ -138,7 +123,7 @@ namespace LivingRoots.Tests
         public void DataExists_WithExistingData_ReturnsTrue()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Returns(new object());
 
             // Act
@@ -152,7 +137,7 @@ namespace LivingRoots.Tests
         public void DataExists_WithNonExistingData_ReturnsFalse()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>(It.IsAny<string>())).Returns(default(object));
 
             // Act
@@ -166,7 +151,7 @@ namespace LivingRoots.Tests
         public void RemoveData_WithExistingData_RemovesData()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
 
             // Act
             service.RemoveData("test_key");
@@ -179,7 +164,7 @@ namespace LivingRoots.Tests
         public void GetFilePath_WithInvalidChars_Sanitizes()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act
@@ -190,78 +175,11 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void GetFilePath_WithReservedName_AddsUnderscore()
-        {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
-            var testData = new { Name = "Test", Value = 123 };
-
-            // Act
-            service.SaveData(testData, "CON");
-
-            // Assert
-            _mockDataHelper.Verify(x => x.WriteJsonFile("data/CON_.json", testData), Times.Once);
-        }
-
-        [Fact]
-        public void GetFilePath_WithReservedNameAndExtension_HandlesCorrectly()
-        {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
-            var testData = new { Name = "Test", Value = 123 };
-
-            // Act
-            service.SaveData(testData, "CON.txt");
-
-            // Assert
-            _mockDataHelper.Verify(x => x.WriteJsonFile("data/CON_.txt.json", testData), Times.Once);
-        }
-
-        [Fact]
-        public void GetFilePath_WithMultipleDots_Sanitizes()
-        {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
-            var testData = new { Name = "Test", Value = 123 };
-
-            // Act
-            service.SaveData(testData, "file....name");
-
-            // Assert
-            _mockDataHelper.Verify(x => x.WriteJsonFile("data/file.name.json", testData), Times.Once);
-        }
-
-        [Fact]
-        public void GetFilePath_WithLeadingAndTrailingWhitespace_Trims()
-        {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
-            var testData = new { Name = "Test", Value = 123 };
-
-            // Act
-            service.SaveData(testData, "  test_key  ");
-
-            // Assert
-            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_key.json", testData), Times.Once);
-        }
-
-        [Fact]
-        public void GetFilePath_WithOnlyWhitespace_ThrowsArgumentException()
-        {
-            // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
-            var testData = new { Name = "Test", Value = 123 };
-
-            // Act & Assert
-            Assert.Throws<ArgumentException>(() => service.SaveData(testData, "   "));
-        }
-
-        [Fact]
         public void GetFilePath_WithPathTraversal_ThrowsArgumentException()
         {
             // Arrange - Configure the validator to throw for path traversal
-            _mockPathTraversalValidator.Setup(x => x.Validate(It.Is<string>(s => s.Contains("../../../")))).Throws<ArgumentException>();
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            _mockModLogic.Setup(x => x.ValidatePath(It.Is<string>(s => s.Contains("../../../")))).Throws<ArgumentException>();
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -272,7 +190,7 @@ namespace LivingRoots.Tests
         public void SanitizeKey_WithEdgeCaseEmptyResults_ThrowsArgumentException()
         {
             // Arrange - The mock is already configured to throw for these cases
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var testData = new { Name = "Test", Value = 123 };
 
             // Act & Assert
@@ -285,7 +203,7 @@ namespace LivingRoots.Tests
         public void LoadData_WithJsonParsingError_ReturnsNull()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var jsonException = new Newtonsoft.Json.JsonException("Invalid JSON format");
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(jsonException);
 
@@ -295,11 +213,12 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Null(result);
         }
+        
         [Fact]
         public void LoadData_WithDirectoryNotFoundException_ReturnsNull()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var directoryNotFoundException = new System.IO.DirectoryNotFoundException("Directory does not exist");
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(directoryNotFoundException);
 
@@ -314,7 +233,7 @@ namespace LivingRoots.Tests
         public void LoadData_WithUnauthorizedAccessException_ReturnsNull()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var unauthorizedAccessException = new System.UnauthorizedAccessException("Access denied");
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(unauthorizedAccessException);
 
@@ -329,7 +248,7 @@ namespace LivingRoots.Tests
         public void LoadData_WithIOException_ReturnsNull()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var ioException = new System.IO.IOException("Access denied or file locked");
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(ioException);
 
@@ -344,7 +263,7 @@ namespace LivingRoots.Tests
         public void DataExists_WithIOException_ReturnsFalse()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockPathTraversalValidator.Object, _mockFileNameSanitizer.Object, _mockReservedNameHandler.Object);
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var ioException = new System.IO.IOException("Access denied or file locked");
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(ioException);
 

@@ -7,6 +7,7 @@ using Moq;
 using StardewModdingAPI;
 using Xunit;
 using LivingRoots.Services;
+using LivingRoots.Domain;
 
 namespace LivingRoots.Tests
 {
@@ -14,36 +15,31 @@ namespace LivingRoots.Tests
     {
         private readonly Mock<IModHelper> _mockHelper;
         private readonly Mock<IDataHelper> _mockDataHelper;
-        private readonly Mock<IPathTraversalValidator> _mockPathTraversalValidator;
         private readonly Mock<IFileNameSanitizer> _mockFileNameSanitizer;
         private readonly Mock<IReservedNameHandler> _mockReservedNameHandler;
         private readonly Mock<IMonitor> _mockMonitor;
-        private readonly Mock<IUnicodeNormalizer> _mockUnicodeNormalizer;
-        private readonly FileNameSanitizer _fileNameSanitizer;
+        private readonly Mock<IUnicodeNormalizationService> _mockUnicodeNormalizationService;
+        private readonly FileNameSanitizationService _fileNameSanitizationService;
 
         public FileNameSanitizerTests()
         {
             _mockHelper = new Mock<IModHelper>();
             _mockDataHelper = new Mock<IDataHelper>();
             _mockMonitor = new Mock<IMonitor>();
-            _mockPathTraversalValidator = new Mock<IPathTraversalValidator>();
             _mockFileNameSanitizer = new Mock<IFileNameSanitizer>();
             _mockReservedNameHandler = new Mock<IReservedNameHandler>();
-            _mockUnicodeNormalizer = new Mock<IUnicodeNormalizer>();
+            _mockUnicodeNormalizationService = new Mock<IUnicodeNormalizationService>();
             
             _mockHelper.Setup(x => x.Data).Returns(_mockDataHelper.Object);
             
-            // Create real FileNameSanitizer instance with mocked UnicodeNormalizer dependency
-            _fileNameSanitizer = new FileNameSanitizer(_mockUnicodeNormalizer.Object);
+            // Create real FileNameSanitizationService instance with mocked UnicodeNormalizationService dependency
+            _fileNameSanitizationService = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object);
             
             // Configure the reserved name handler to return the input as-is for these tests
             _mockReservedNameHandler.Setup(x => x.Handle(It.IsAny<string?>())).Returns<string?>(input => input);
             
-            // Configure the path traversal validator to not throw for valid paths in these tests
-            _mockPathTraversalValidator.Setup(x => x.Validate(It.IsAny<string>())).Verifiable();
-            
-            // Setup the mock UnicodeNormalizer to return the input by default (for most tests)
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string?>())).Returns<string?>(input => input);
+            // Setup the mock UnicodeNormalizationService to return the input by default (for most tests)
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string?>())).Returns<string?>(input => input);
         }
 
         [Fact]
@@ -53,7 +49,7 @@ namespace LivingRoots.Tests
             string input = "valid_filename";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("valid_filename", result);
@@ -66,7 +62,7 @@ namespace LivingRoots.Tests
             string input = "file<name>with:invalid|chars";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("file_name_with_invalid_chars", result);
@@ -79,7 +75,7 @@ namespace LivingRoots.Tests
             string input = "path/with/separators";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("path_with_separators", result);
@@ -92,7 +88,7 @@ namespace LivingRoots.Tests
             string input = "file....name";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("file.name", result);
@@ -105,7 +101,7 @@ namespace LivingRoots.Tests
             var longName = new string('a', 300);
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(longName);
+            string result = _fileNameSanitizationService.Sanitize(longName);
 
             // Assert
             Assert.Equal(240, result.Length);
@@ -118,10 +114,10 @@ namespace LivingRoots.Tests
             string input = "test\u200Bzwsp\u200Czwnj\u200Dzwj";
             
             // Setup mock to return the same string (zero-width chars should be removed by UnicodeNormalizer)
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns("testzwspzwnjzwj");
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns("testzwspzwnjzwj");
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("testzwspzwnjzwj", result);
@@ -135,7 +131,7 @@ namespace LivingRoots.Tests
             string input = $"test{emoji}smile";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal($"test{emoji}smile", result);
@@ -149,10 +145,10 @@ namespace LivingRoots.Tests
             string normalized = "cafe";
             
             // Setup mock to return normalized version
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(normalized);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("cafe", result);
@@ -166,10 +162,10 @@ namespace LivingRoots.Tests
             string normalized = "test";
             
             // Setup mock to return normalized version
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(normalized);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("test", result);
@@ -182,7 +178,7 @@ namespace LivingRoots.Tests
             string input = "document.txt";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("document.txt", result);
@@ -195,7 +191,7 @@ namespace LivingRoots.Tests
             string input = "archive.tar.gz";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("archive.tar.gz", result);
@@ -208,7 +204,7 @@ namespace LivingRoots.Tests
             string input = ".config";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal(".config", result);
@@ -221,7 +217,7 @@ namespace LivingRoots.Tests
             string input = "file.";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("file", result);
@@ -234,7 +230,7 @@ namespace LivingRoots.Tests
             string input = "file..name";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("file.name", result);
@@ -247,7 +243,7 @@ namespace LivingRoots.Tests
             string input = "<>:\"|?*";
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
         }
 
         [Fact]
@@ -257,7 +253,7 @@ namespace LivingRoots.Tests
             string input = "   ";
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
         }
 
         [Fact]
@@ -268,10 +264,10 @@ namespace LivingRoots.Tests
             string normalized = "test_unicode";
             
             // Setup mock to return normalized version
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(normalized);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("test_unicode", result);
@@ -284,7 +280,7 @@ namespace LivingRoots.Tests
             string input = "file<with>mixed:chars|and?wildcards*";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("file_with_mixed_chars_and_wildcards", result);
@@ -297,7 +293,7 @@ namespace LivingRoots.Tests
             string input = "test" + (char)0x01 + "control" + (char)0x1F + "chars";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal("test_control_chars", result);
@@ -310,7 +306,7 @@ namespace LivingRoots.Tests
             string input = "test\0test";
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
         }
 
         [Fact]
@@ -320,17 +316,17 @@ namespace LivingRoots.Tests
             string input = ".";
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
         }
 
         [Fact]
-        public void Sanitize_WithDotDot_ThrowsArgumentException()
+        public void Sanitize_WithDot_ThrowsArgumentException()
         {
             // Arrange
             string input = "..";
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
         }
 
         [Fact]
@@ -340,11 +336,12 @@ namespace LivingRoots.Tests
             string input = ".file.";
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
             Assert.Equal(".file", result);
         }
+        
         [Fact]
         public void Sanitize_WithDotFollowedByTrailingChars_ThrowsArgumentException()
         {
@@ -352,7 +349,7 @@ namespace LivingRoots.Tests
             string input = ".   "; // dot followed by spaces that would be trimmed
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
         }
 
         [Fact]
@@ -362,7 +359,7 @@ namespace LivingRoots.Tests
             string input = "..   "; // dot-dot followed by spaces that would be trimmed
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
         }
 
         [Fact]
@@ -372,7 +369,7 @@ namespace LivingRoots.Tests
             string input = ". . "; // dot with spaces and dots that would be trimmed
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
         }
 
         [Fact]
@@ -382,7 +379,7 @@ namespace LivingRoots.Tests
             string input = ".. . "; // dot-dot with spaces and dots that would be trimmed
 
             // Act & Assert
-            Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
+            Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
         }
 
         [Fact]
@@ -392,10 +389,10 @@ namespace LivingRoots.Tests
             string input = "file___name";
             
             // Setup mock to return the same string (no change expected from UnicodeNormalizer)
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns(input);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(input);
 
             // Act
-            string result = _fileNameSanitizer.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input);
 
             // According to the actual test result, multiple underscores are not being consolidated
             // The SanitizeInvalidCharacters method does not consolidate multiple underscores

@@ -1,6 +1,7 @@
 using System;
 using Xunit;
 using LivingRoots.Services;
+using LivingRoots.Domain;
 
 namespace LivingRoots.Tests
 {
@@ -10,7 +11,7 @@ namespace LivingRoots.Tests
 
         public CurrentDotIssueTest()
         {
-            _validator = new PathTraversalValidator();
+            _validator = new PathTraversalValidator(new PathValidationService());
         }
 
         [Fact]

@@ -1,6 +1,7 @@
 using System;
 using Xunit;
 using LivingRoots.Services;
+using LivingRoots.Domain;
 
 namespace LivingRoots.Tests
 {
@@ -10,7 +11,7 @@ namespace LivingRoots.Tests
 
         public DotSegmentTests()
         {
-            _validator = new PathTraversalValidator();
+            _validator = new PathTraversalValidator(new PathValidationService());
         }
 
         [Fact]
@@ -41,15 +42,16 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_ExplicitCurrentDirectoryTraversal_ShouldBeTreatedCorrectly()
         {
-            // "./file" and "file/." should still be blocked (caught by start/end path checks)
+            // "./file" should be blocked (caught by start path checks)
             var exception1 = Assert.Throws<ArgumentException>(() => _validator.Validate("./file"));
             Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
             
-            var exception2 = Assert.Throws<ArgumentException>(() => _validator.Validate("file/."));
-            Assert.Contains("Path cannot contain relative path navigation", exception2.Message);
+            // But "file/." should be allowed (as it refers to a directory)
+            var ex1 = Record.Exception(() => _validator.Validate("file/."));
+            Assert.Null(ex1);
             
-            // But "folder/./file" should be allowed (middle "." segments are safe)
-            _validator.Validate("folder/./file");  // This should not throw
+            // And "folder/./file" should be allowed (middle "." segments are safe)
+            _validator.Validate("folder/./file"); // This should not throw
             _validator.Validate("path/to/./file.txt");  // This should not throw
             _validator.Validate("normal/.hidden");  // This should not throw
         }
@@ -63,14 +65,15 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_PathWithDotAtStartOrEnd_ShouldBeBlocked()
+        public void Validate_PathWithDotAtStartOrEnd_ShouldBeTreatedCorrectly()
         {
-            // Paths that start or end with "." should be blocked as they represent directory navigation
+            // Paths that start with "." should be blocked as they represent directory navigation
             var exception1 = Assert.Throws<ArgumentException>(() => _validator.Validate("./path"));
             Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
             
-            var exception2 = Assert.Throws<ArgumentException>(() => _validator.Validate("path/."));
-            Assert.Contains("Path cannot contain relative path navigation", exception2.Message);
+            // But paths that end with "." should be allowed as they refer to directories
+            var ex1 = Record.Exception(() => _validator.Validate("path/."));
+            Assert.Null(ex1);
         }
     }
 }

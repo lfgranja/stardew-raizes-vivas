@@ -7,17 +7,18 @@ using Moq;
 using StardewModdingAPI;
 using Xunit;
 using LivingRoots.Services;
+using LivingRoots.Domain;
 
 namespace LivingRoots.Tests
 {
     public class UnicodeNormalizerTests
     {
-        private readonly UnicodeNormalizer _unicodeNormalizer;
+        private readonly UnicodeNormalizationService _unicodeNormalizationService;
 
         public UnicodeNormalizerTests()
         {
-            // Create a real UnicodeNormalizer instance for testing
-            _unicodeNormalizer = new UnicodeNormalizer();
+            // Create a real UnicodeNormalizationService instance for testing
+            _unicodeNormalizationService = new UnicodeNormalizationService();
         }
 
         [Fact]
@@ -25,7 +26,7 @@ namespace LivingRoots.Tests
         {
             // Test that the SecurityConfusables dictionary does not contain mappings
             // where a character maps to itself (redundant mappings)
-            var confusables = typeof(UnicodeNormalizer)
+            var confusables = typeof(UnicodeNormalizationService)
                 .GetField("SecurityConfusables", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
                 .GetValue(null) as System.Collections.Generic.IDictionary<char, string>;
 
@@ -47,7 +48,7 @@ namespace LivingRoots.Tests
             string input = "café";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("cafe", result);
@@ -60,7 +61,7 @@ namespace LivingRoots.Tests
             string input = "tеst"; // Cyrillic 'е'
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("test", result);
@@ -73,7 +74,7 @@ namespace LivingRoots.Tests
             string input = "cafe\u0301"; // 'e' with combining acute accent
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("cafe", result);
@@ -86,7 +87,7 @@ namespace LivingRoots.Tests
             string input = "café";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("cafe", result);
@@ -99,7 +100,7 @@ namespace LivingRoots.Tests
             string input = "test\u200Bzwsp\u200Czwnj\u200Dzwj";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("testzwspzwnjzwj", result);
@@ -112,7 +113,7 @@ namespace LivingRoots.Tests
             string input = "test שלום";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("test שלום", result);
@@ -125,7 +126,7 @@ namespace LivingRoots.Tests
             string input = "test كتاب";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("test كتاب", result);
@@ -138,7 +139,7 @@ namespace LivingRoots.Tests
             string input = "test 你好";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("test 你好", result);
@@ -152,7 +153,7 @@ namespace LivingRoots.Tests
             string input = $"test {emoji} smile";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal($"test {emoji} smile", result);
@@ -165,7 +166,7 @@ namespace LivingRoots.Tests
             string input = "café тест naïve";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("cafe тест naive", result);
@@ -178,7 +179,7 @@ namespace LivingRoots.Tests
             string input = "a\u0300\u0301b"; // 'a' with grave and acute accents
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("ab", result);
@@ -191,7 +192,7 @@ namespace LivingRoots.Tests
             string input = "μέντι";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("μεντι", result);
@@ -204,7 +205,7 @@ namespace LivingRoots.Tests
             string input = "göçmen";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("gocmen", result);
@@ -217,7 +218,7 @@ namespace LivingRoots.Tests
             string input = "คํา";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("คํา", result);
@@ -230,7 +231,7 @@ namespace LivingRoots.Tests
             string input = "नमस्ते";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("नमस्ते", result);
@@ -244,8 +245,8 @@ namespace LivingRoots.Tests
             string nfdForm = "cafe\u0301";
 
             // Act
-            string resultNfc = _unicodeNormalizer.Normalize(nfcForm);
-            string resultNfd = _unicodeNormalizer.Normalize(nfdForm);
+            string resultNfc = _unicodeNormalizationService.Normalize(nfcForm);
+            string resultNfd = _unicodeNormalizationService.Normalize(nfdForm);
 
             // Assert
             Assert.Equal("cafe", resultNfc);
@@ -260,8 +261,8 @@ namespace LivingRoots.Tests
             string input2 = "cafe\u0435\u0301"; // 'e' with Cyrillic 'e' and combining acute
 
             // Act
-            string result1 = _unicodeNormalizer.Normalize(input1);
-            string result2 = _unicodeNormalizer.Normalize(input2);
+            string result1 = _unicodeNormalizationService.Normalize(input1);
+            string result2 = _unicodeNormalizationService.Normalize(input2);
 
             // Assert
             Assert.Equal("test", result1);
@@ -276,8 +277,8 @@ namespace LivingRoots.Tests
             string input2 = "test\u200Fend"; // Right-to-left mark
 
             // Act
-            string result1 = _unicodeNormalizer.Normalize(input1);
-            string result2 = _unicodeNormalizer.Normalize(input2);
+            string result1 = _unicodeNormalizationService.Normalize(input1);
+            string result2 = _unicodeNormalizationService.Normalize(input2);
 
             // Assert
             Assert.Equal("teststart", result1);
@@ -291,7 +292,7 @@ namespace LivingRoots.Tests
             string input = new string('a', 100) + "café" + new string('b', 100) + "naïve" + new string('c', 100);
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             string expected = new string('a', 100) + "cafe" + new string('b', 100) + "naive" + new string('c', 100);
@@ -305,7 +306,7 @@ namespace LivingRoots.Tests
             string input = "ØÆŒ"; // Precomposed characters
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("OAEOE", result); // Updated to reflect ligature expansion: Ø->O, Æ->AE, Œ->OE
@@ -318,7 +319,7 @@ namespace LivingRoots.Tests
             string input = "";
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal("", result);
@@ -331,7 +332,7 @@ namespace LivingRoots.Tests
             string? input = null;
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Null(result);
@@ -350,13 +351,13 @@ namespace LivingRoots.Tests
             string input7 = "у"; // Cyrillic 'y'
 
             // Act
-            string result1 = _unicodeNormalizer.Normalize(input1);
-            string result2 = _unicodeNormalizer.Normalize(input2);
-            string result3 = _unicodeNormalizer.Normalize(input3);
-            string result4 = _unicodeNormalizer.Normalize(input4);
-            string result5 = _unicodeNormalizer.Normalize(input5);
-            string result6 = _unicodeNormalizer.Normalize(input6);
-            string result7 = _unicodeNormalizer.Normalize(input7);
+            string result1 = _unicodeNormalizationService.Normalize(input1);
+            string result2 = _unicodeNormalizationService.Normalize(input2);
+            string result3 = _unicodeNormalizationService.Normalize(input3);
+            string result4 = _unicodeNormalizationService.Normalize(input4);
+            string result5 = _unicodeNormalizationService.Normalize(input5);
+            string result6 = _unicodeNormalizationService.Normalize(input6);
+            string result7 = _unicodeNormalizationService.Normalize(input7);
 
             // Assert
             Assert.Equal("a", result1);
@@ -378,10 +379,10 @@ namespace LivingRoots.Tests
             string input4 = "test\"dquote"; // double quote
 
             // Act
-            string result1 = _unicodeNormalizer.Normalize(input1);
-            string result2 = _unicodeNormalizer.Normalize(input2);
-            string result3 = _unicodeNormalizer.Normalize(input3);
-            string result4 = _unicodeNormalizer.Normalize(input4);
+            string result1 = _unicodeNormalizationService.Normalize(input1);
+            string result2 = _unicodeNormalizationService.Normalize(input2);
+            string result3 = _unicodeNormalizationService.Normalize(input3);
+            string result4 = _unicodeNormalizationService.Normalize(input4);
 
             // Assert
             Assert.Equal("test-dash", result1);
@@ -398,7 +399,7 @@ namespace LivingRoots.Tests
             string expected = "тест"; // Should remain as Cyrillic, not converted to "тecт"
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
             Assert.Equal(expected, result);
@@ -416,12 +417,12 @@ namespace LivingRoots.Tests
             string input6 = "cœur"; // Contains œ ligature
 
             // Act
-            string result1 = _unicodeNormalizer.Normalize(input1);
-            string result2 = _unicodeNormalizer.Normalize(input2);
-            string result3 = _unicodeNormalizer.Normalize(input3);
-            string result4 = _unicodeNormalizer.Normalize(input4);
-            string result5 = _unicodeNormalizer.Normalize(input5);
-            string result6 = _unicodeNormalizer.Normalize(input6);
+            string result1 = _unicodeNormalizationService.Normalize(input1);
+            string result2 = _unicodeNormalizationService.Normalize(input2);
+            string result3 = _unicodeNormalizationService.Normalize(input3);
+            string result4 = _unicodeNormalizationService.Normalize(input4);
+            string result5 = _unicodeNormalizationService.Normalize(input5);
+            string result6 = _unicodeNormalizationService.Normalize(input6);
 
             // Assert
             Assert.Equal("Cafe", result1); // Note: This is currently failing because æ -> a instead of ae
@@ -439,7 +440,7 @@ namespace LivingRoots.Tests
             string input = "test\u200Eformat\u200Ftest\u0001control\u0002test"; // LRM, RLM, control chars
 
             // Act
-            string? result = _unicodeNormalizer.Normalize(input);
+            string? result = _unicodeNormalizationService.Normalize(input);
 
             // Assert - format and control characters should be removed completely, not replaced with underscores
             Assert.Equal("testformattestcontroltest", result);

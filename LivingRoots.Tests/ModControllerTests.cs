@@ -50,7 +50,8 @@ namespace LivingRoots.Tests
             mockGameLoopEvents
                 .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
             
             // Act & Assert
             var ex = Record.Exception(() => controller.RegisterEvents());
@@ -71,7 +72,8 @@ namespace LivingRoots.Tests
             mockGameLoopEvents
                 .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
             
             // Act
             controller.RegisterEvents();
@@ -93,7 +95,8 @@ namespace LivingRoots.Tests
                 .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Callback<EventHandler<GameLaunchedEventArgs>>(handler => { eventHandler = handler; });
             
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
             
             // Act
             controller.RegisterEvents();
@@ -113,7 +116,8 @@ namespace LivingRoots.Tests
             mockGameLoopEvents
                 .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
                 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
             
             // Act - Register events twice
             controller.RegisterEvents();
@@ -137,7 +141,8 @@ namespace LivingRoots.Tests
             mockGameLoopEvents
                 .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
             
             // First register events to set _eventsRegistered to true
             controller.RegisterEvents();
@@ -163,7 +168,8 @@ namespace LivingRoots.Tests
             mockGameLoopEvents
                 .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
             
             // Act - Simulate concurrent registration and unregistration
             var tasks = new System.Threading.Tasks.Task[10];
@@ -218,7 +224,8 @@ namespace LivingRoots.Tests
                 })
                 .Verifiable();
             
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
             
             // Act & Assert
             var ex = Record.Exception(() => controller.RegisterEvents());
@@ -251,7 +258,8 @@ namespace LivingRoots.Tests
             _mockMonitor.Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()))
                 .Verifiable();
             
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
             
             // Act - This should cause an exception in the event registration which should clear the handler
             controller.RegisterEvents();
@@ -288,7 +296,8 @@ namespace LivingRoots.Tests
                 })
                 .Verifiable();
             
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object);
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
             
             // First register events to set up the handler
             controller.RegisterEvents();
@@ -336,7 +345,8 @@ namespace LivingRoots.Tests
                 })
                 .Verifiable();
             
-            var controller = new ModController(mockHelper.Object, mockMonitor.Object, mockManifest.Object);
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(mockHelper.Object, mockMonitor.Object, mockManifest.Object, mockModDataService.Object);
             
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -385,7 +395,8 @@ namespace LivingRoots.Tests
                 })
                 .Verifiable();
             
-            var controller = new ModController(mockHelper.Object, mockMonitor.Object, mockManifest.Object);
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(mockHelper.Object, mockMonitor.Object, mockManifest.Object, mockModDataService.Object);
             
             // Register events first to set up the controller
             controller.RegisterEvents();
