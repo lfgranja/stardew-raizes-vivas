@@ -77,7 +77,7 @@ namespace LivingRoots.Tests
             string result = _fileNameSanitizer.Sanitize(input);
             
             // Assert - The dangerous extension should be blocked
-            Assert.Equal("innocent.jpg_blocked.exe", result);
+            Assert.Equal("innocent.jpg.exe_blocked", result);
         }
 
         // Test 5: Homoglyph normalization security

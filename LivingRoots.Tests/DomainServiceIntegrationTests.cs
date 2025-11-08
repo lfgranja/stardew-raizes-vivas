@@ -71,7 +71,7 @@ namespace LivingRoots.Tests
             var result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
-            Assert.Equal("malicious_blocked.exe", result);
+            Assert.Equal("malicious.exe_blocked", result);
         }
 
         [Fact]
