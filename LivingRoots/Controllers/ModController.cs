@@ -2,8 +2,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using System;
 using System.Linq;
-
-
+using LivingRoots.Services;
 
 namespace LivingRoots.Controllers
 {
@@ -16,6 +15,7 @@ namespace LivingRoots.Controllers
         private readonly IModHelper _helper;
         private readonly IMonitor _monitor;
         private readonly IManifest _manifest;
+        private readonly IModDataService _modDataService;
         private readonly object _registrationLock = new object();
         
         private bool _eventsRegistered = false;
@@ -30,11 +30,12 @@ namespace LivingRoots.Controllers
         
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
 
-        public ModController(IModHelper helper, IMonitor monitor, IManifest manifest)
+        public ModController(IModHelper helper, IMonitor monitor, IManifest manifest, IModDataService modDataService)
         {
             _helper = helper ?? throw new ArgumentNullException(nameof(helper));
             _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
             _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
+            _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
         }
 
         public void RegisterEvents()
@@ -54,6 +55,9 @@ namespace LivingRoots.Controllers
                     if (gameLoop == null)
                     {
                         _monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
+                        // Reset flags to prevent inconsistent state even when gameLoop is null
+                        _eventsRegistered = false;
+                        _commandRegistered = false;
                         return;
                     }
 
