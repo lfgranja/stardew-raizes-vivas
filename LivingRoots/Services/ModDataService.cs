@@ -85,7 +85,8 @@ namespace LivingRoots.Services
                 if (result == null)
                 {
                     // Log when ReadJsonFile returns null (which can happen when file exists but is empty/corrupted)
-                    _monitor.Log($"Data is null while loading for key '{key}'", LogLevel.Trace);
+                    string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"Data is null while loading for key '{sanitizedKey}'.", LogLevel.Trace);
                     return null;
                 }
                 return result;
@@ -93,31 +94,36 @@ namespace LivingRoots.Services
             catch (System.IO.FileNotFoundException ex)
             {
                 // Log FileNotFoundException as Trace to reduce log noise
-                _monitor.Log($"File not found while loading data for key '{key}': {ex.Message}", LogLevel.Trace);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"File not found while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
                 return null; // Return null instead of throwing when file doesn't exist
             }
             catch (System.IO.DirectoryNotFoundException ex)
             {
                 // Log DirectoryNotFoundException as Warn to reduce log noise from non-critical issues
-                _monitor.Log($"Directory not found while loading data for key '{key}': {ex.Message}", LogLevel.Warn);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"Directory not found while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return null; // Return null instead of throwing when directory doesn't exist
             }
             catch (System.UnauthorizedAccessException ex)
             {
                 // Log UnauthorizedAccessException as Warn to reduce log noise from non-critical issues
-                _monitor.Log($"Access denied while loading data for key '{key}': {ex.Message}", LogLevel.Warn);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"Access denied while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return null; // Return null instead of throwing when access is denied
             }
             catch (System.IO.IOException ex)
             {
                 // Log other IOExceptions as Warn to reduce log noise from non-critical issues
-                _monitor.Log($"IOException while loading data for key '{key}': {ex.Message}", LogLevel.Warn);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"IOException while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return null; // Return null instead of throwing when IO error occurs
             }
             catch (Newtonsoft.Json.JsonException ex) // Catch broader JsonException instead of JsonReaderException
             {
                 // Log JsonException instead of silently swallowing it
-                _monitor.Log($"JSON parsing error while loading data for key '{key}': {ex.Message}", LogLevel.Error);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"JSON parsing error while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
                 return null; // Return null instead of throwing when JSON is invalid (consistent with DataExists behavior)
             }
         }
@@ -141,27 +147,32 @@ namespace LivingRoots.Services
             }
             catch (System.IO.FileNotFoundException ex)
             {
-                _monitor.Log($"File not found while checking data existence for key '{key}': {ex.Message}", LogLevel.Trace);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"File not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
                 return false; // Return false instead of throwing when file doesn't exist
             }
             catch (System.IO.DirectoryNotFoundException ex)
             {
-                _monitor.Log($"Directory not found while checking data existence for key '{key}': {ex.Message}", LogLevel.Warn);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"Directory not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false; // Return false instead of throwing when directory doesn't exist
             }
             catch (System.UnauthorizedAccessException ex)
             {
-                _monitor.Log($"Access denied while checking data existence for key '{key}': {ex.Message}", LogLevel.Warn);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"Access denied while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false; // Return false instead of throwing when access is denied
             }
             catch (System.IO.IOException ex)
             {
-                _monitor.Log($"IOException while checking data existence for key '{key}': {ex.Message}", LogLevel.Warn);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"IOException while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false; // Return false instead of throwing when IO error occurs
             }
             catch (Newtonsoft.Json.JsonException ex)
             {
-                _monitor.Log($"JSON parsing error while checking data existence for key '{key}': {ex.Message}", LogLevel.Warn);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"JSON parsing error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false; // Return false instead of throwing when JSON is invalid
             }
         }
@@ -181,16 +192,19 @@ namespace LivingRoots.Services
             {
                 // Always use SMAPI's API for consistency and cross-platform compatibility
                 _helper.Data.WriteJsonFile<object>(filePath, null);
-                _monitor.Log($"Removed data for key '{key}' by writing null.", LogLevel.Trace);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"Removed data for key '{sanitizedKey}' by writing null.", LogLevel.Trace);
             }
             catch (System.IO.IOException ex)
             {
-                _monitor.Log($"IOException while removing data for key '{key}': {ex.Message}", LogLevel.Warn);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"IOException while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 throw;
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Unexpected error while removing data for key '{key}': {ex.Message}", LogLevel.Error);
+                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+                _monitor.Log($"Unexpected error while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
                 throw;
             }
         }

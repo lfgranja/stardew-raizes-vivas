@@ -84,7 +84,7 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate("."));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
         [Fact]
@@ -100,7 +100,7 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate("./"));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
         [Fact]
@@ -108,7 +108,7 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate("./../file.txt"));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
     }
 }

@@ -1,11 +1,13 @@
 using System;
 using System.Globalization;
+using System.Text;
 
 namespace LivingRoots.Domain
 {
     /// <summary>
     /// Implementation for validating and preventing path traversal attacks.
     /// This implementation follows the Dependency Inversion Principle by depending on abstractions.
+    /// Uses simplified depth-based traversal detection for better maintainability.
     /// </summary>
     public class PathValidationService : IPathValidationService
     {
@@ -18,6 +20,7 @@ namespace LivingRoots.Domain
         
         /// <summary>
         /// Validates that a path does not contain path traversal patterns.
+        /// Uses depth tracking to detect traversal attempts above the root directory.
         /// </summary>
         /// <param name="path">The path to validate.</param>
         /// <exception cref="ArgumentException">Thrown if path traversal is detected.</exception>
@@ -77,123 +80,95 @@ namespace LivingRoots.Domain
             if (normalized == ".." || 
                 normalized.StartsWith("../"))      // Block "../" patterns
             {
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
+                throw new ArgumentException("Path cannot contain relative path navigation.", nameof(path));
             }
 
-            // Split path into segments and validate each segment
-            string[] segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            
-            // Additional check: count actual directory levels vs parent directory references
-            // This catches cases like "folder/./../file.txt" where we enter one directory and then exit it
-            int actualDirLevels = 0; // Count of actual directory names (not "." or "..")
-            int parentDirRefs = 0;   // Count of ".." segments
-            
-            foreach (string segment in segments)
-            {
-                if (segment == "..")
-                {
-                    parentDirRefs++;
-                }
-                else if (segment != ".")
-                {
-                    actualDirLevels++;
-                }
-            }
-            
-            // Process segments to detect path traversal attempts
+            // Use depth tracking to detect traversal attempts
+            ValidatePathDepth(normalized);
+        }
+        
+        /// <summary>
+        /// Validates path using depth tracking to prevent traversal above root.
+        /// This is the simplified approach that replaces multiple overlapping checks.
+        /// </summary>
+        /// <param name="normalizedPath">The normalized path with '/' separators</param>
+        /// <exception cref="ArgumentException">Thrown if path traversal is detected.</exception>
+        private void ValidatePathDepth(string normalizedPath)
+        {
+            string[] segments = normalizedPath.Split('/');
             int depth = 0;
+            bool previousWasDotDot = false;
+
             foreach (string segment in segments)
             {
+                if (string.IsNullOrEmpty(segment))
+                    continue; // Skip empty segments (can happen with consecutive slashes)
+                
                 if (segment == "..")
                 {
+                    // Check for consecutive ".." segments (complex traversal pattern)
+                    if (previousWasDotDot)
+                    {
+                        throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(normalizedPath));
+                    }
+                    
                     depth--;
-                    // If depth goes negative, it means we're trying to go above the current directory
-                    // This happens when we encounter more ".." segments than directory levels we've gone into
+                    previousWasDotDot = true;
+                    
+                    // If depth goes negative, we're trying to traverse above root
                     if (depth < 0)
                     {
-                        throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
+                        throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(normalizedPath));
                     }
                 }
                 else if (segment == ".")
                 {
-                    // Allow "." segments as they represent current directory and are generally safe
-                    // This is important for paths like "folder/.config/file.txt" where ".config" is a hidden directory
-                    // The check above already blocks paths that start or end with "." or "./"
-                    continue; // Continue processing instead of throwing
+                    // Current directory - no change in depth
+                    previousWasDotDot = false;
+                    continue;
                 }
-                else if (!string.IsNullOrEmpty(segment))
+                else
                 {
-                    // Going into a subdirectory increases depth
+                    // Normal directory or file - increment depth
                     depth++;
+                    previousWasDotDot = false;
                 }
             }
-            
-            // Additional check: If final depth is 0 or negative and we had ".." segments,
-            // it means we've potentially traversed out of the intended directory context
-            if (parentDirRefs > 0 && depth <= 0)
+
+            // Check if the last segment is ".." which would indicate traversal
+            if (normalizedPath.EndsWith("/..") || normalizedPath.EndsWith(".."))
             {
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
-            }
-            
-            // If we have more parent directory references than actual directory levels we've entered,
-            // it indicates an attempt to traverse above the current directory context
-            // This includes disguised traversal attempts like "folder/./../file.txt" where we enter one directory and then exit it
-            if (parentDirRefs > actualDirLevels)
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
-            }
-            
-            // Special case: if we have parent directory references equal to or greater than 
-            // the number of directory levels we entered before the final component,
-            // and we've entered at least one directory, it's also a traversal attempt
-            // e.g. "folder/../file.txt" (1 ".." >= 1 dir "folder")  
-            // e.g. "folder/subfolder/../../file.txt" (2 ".." >= 2 dirs "folder","subfolder")
-            if (parentDirRefs > 0)
-            {
-                // Count directories we went into (excluding final component if it's likely a file)
-                int dirsBeforeFinal = 0;
-                for (int i = 0; i < segments.Length - 1; i++)
-                {
-                    if (segments[i] != ".." && segments[i] != ".")
-                    {
-                        dirsBeforeFinal++;
-                    }
-                }
-                
-                // If parent directory references are >= directories before final component, it's a traversal
-                if (parentDirRefs >= dirsBeforeFinal)
-                {
-                    throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
-                }
+                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(normalizedPath));
             }
         }
         
         /// <summary>
-        /// Normalizes Unicode homoglyphs of path separators and rejects invisible characters.
+        /// Normalizes Unicode homoglyphs of path separators and rejects invisible characters
         /// </summary>
-        /// <param name="path">The path to normalize.</param>
-        /// <returns>The normalized path.</returns>
-        private static string NormalizePathSeparators(string path)
+        /// <param name="path">The path to normalize</param>
+        /// <returns>The normalized path</returns>
+        private string NormalizePathSeparators(string path)
         {
             if (string.IsNullOrEmpty(path))
                 return path;
                 
-            // Normalize Unicode homoglyphs of path separators
-            // Replace common Unicode path separators with standard forward slash
-            path = path.Replace('\u2215', '/'); // Division slash
-            path = path.Replace('\u2044', '/'); // Fraction slash
+            var result = new StringBuilder();
             
-            // Reject invisible characters that could be used for obfuscation
-            var result = new System.Text.StringBuilder();
             foreach (char c in path)
             {
-                // Check if character is invisible (control characters except whitespace)
-                if (char.IsControl(c) && c != '\t' && c != '\r' && c != '\n')
+                // Reject invisible characters (control characters except tab, newline, carriage return)
+                if (char.IsControl(c) && c != '\t' && c != '\n' && c != '\r')
                 {
-                    // Reject invisible characters
                     throw new ArgumentException("Path cannot contain invisible characters.", nameof(path));
                 }
-                result.Append(c);
+                
+                // Normalize Unicode homoglyphs of path separators
+                if (c == '／') // Fullwidth solidus (U+FF0F)
+                    result.Append('/');
+                else if (c == '＼') // Fullwidth reverse solidus (U+FF3C)
+                    result.Append('/');
+                else
+                    result.Append(c);
             }
             
             return result.ToString();

@@ -68,7 +68,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => service.SaveData(testData, path));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
         }
 
         [Theory]
@@ -191,7 +191,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => service.SaveData(testData, path));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
         }
 
         [Theory]

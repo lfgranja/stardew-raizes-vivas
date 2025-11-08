@@ -273,5 +273,143 @@ namespace LivingRoots.Tests
             // Assert
             Assert.False(result);
         }
+        
+        [Fact]
+        public void LoadData_WithFileNotFoundException_LogsSanitizedKey()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var fileNotFoundException = new System.IO.FileNotFoundException("File not found");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(fileNotFoundException);
+
+            // Act
+            service.LoadData<object>("test_key");
+
+            // Assert - Verify that the log message contains the sanitized key, not the raw key
+            _mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("test_key.json")),
+                LogLevel.Trace), Times.Once);
+        }
+        
+        [Fact]
+        public void LoadData_WithIOException_LogsSanitizedKey()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var ioException = new System.IO.IOException("IO error");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(ioException);
+
+            // Act
+            service.LoadData<object>("test_key");
+
+            // Assert - Verify that the log message contains the sanitized key, not the raw key
+            _mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("test_key.json")),
+                LogLevel.Warn), Times.Once);
+        }
+        
+        [Fact]
+        public void LoadData_WithJsonException_LogsSanitizedKey()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var jsonException = new Newtonsoft.Json.JsonException("JSON error");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(jsonException);
+
+            // Act
+            service.LoadData<object>("test_key");
+
+            // Assert - Verify that the log message contains the sanitized key, not the raw key
+            _mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("test_key.json")),
+                LogLevel.Error), Times.Once);
+        }
+        
+        [Fact]
+        public void DataExists_WithFileNotFoundException_LogsSanitizedKey()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var fileNotFoundException = new System.IO.FileNotFoundException("File not found");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(fileNotFoundException);
+
+            // Act
+            service.DataExists("test_key");
+
+            // Assert - Verify that the log message contains the sanitized key, not the raw key
+            _mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("test_key.json")),
+                LogLevel.Trace), Times.Once);
+        }
+        
+        [Fact]
+        public void DataExists_WithIOException_LogsSanitizedKey()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var ioException = new System.IO.IOException("IO error");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(ioException);
+
+            // Act
+            service.DataExists("test_key");
+
+            // Assert - Verify that the log message contains the sanitized key, not the raw key
+            _mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("test_key.json")),
+                LogLevel.Warn), Times.Once);
+        }
+        
+        [Fact]
+        public void DataExists_WithJsonException_LogsSanitizedKey()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var jsonException = new Newtonsoft.Json.JsonException("JSON error");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(jsonException);
+
+            // Act
+            service.DataExists("test_key");
+
+            // Assert - Verify that the log message contains the sanitized key, not the raw key
+            _mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("test_key.json")),
+                LogLevel.Warn), Times.Once);
+        }
+        
+        [Fact]
+        public void SaveData_WithIOException_LogsSanitizedPath()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            var ioException = new System.IO.IOException("IO error");
+            _mockDataHelper.Setup(x => x.WriteJsonFile("data/test_key.json", testData)).Throws(ioException);
+
+            // Act & Assert
+            Assert.Throws<System.IO.IOException>(() => service.SaveData(testData, "test_key"));
+
+            // Assert - Verify that the log message contains the full sanitized path
+            _mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("data/test_key.json")),
+                LogLevel.Warn), Times.Once);
+        }
+        
+        [Fact]
+        public void SaveData_WithJsonException_LogsSanitizedPath()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var testData = new { Name = "Test", Value = 123 };
+            var jsonException = new Newtonsoft.Json.JsonException("JSON error");
+            _mockDataHelper.Setup(x => x.WriteJsonFile("data/test_key.json", testData)).Throws(jsonException);
+
+            // Act & Assert
+            Assert.Throws<Newtonsoft.Json.JsonException>(() => service.SaveData(testData, "test_key"));
+
+            // Assert - Verify that the log message contains the full sanitized path
+            _mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("data/test_key.json")),
+                LogLevel.Error), Times.Once);
+        }
     }
 }

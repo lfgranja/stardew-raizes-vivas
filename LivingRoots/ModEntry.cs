@@ -13,7 +13,7 @@ namespace LivingRoots
     public sealed class ModEntry : Mod
     {
         private ModController? _controller;
-        
+        private bool _disposed = false;
 
         /*********
         ** Public methods
@@ -29,12 +29,6 @@ namespace LivingRoots
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
             var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
             
-            // Create adapters for backward compatibility
-            var fileNameSanitizer = new FileNameSanitizer(fileNameSanitizationService);
-            var pathTraversalValidator = new PathTraversalValidator(pathValidationService);
-            var unicodeNormalizer = new UnicodeNormalizer(unicodeNormalizationService);
-            var reservedNameHandlerAdapter = reservedNameHandler;
-            
             // Create application services
             var modDataService = new ModDataService(helper, this.Monitor, modLogic);
             
@@ -48,14 +42,24 @@ namespace LivingRoots
         /*********
         ** Protected methods
         *********/
+        
         /// <summary>Clean up resources when the mod is unloaded.</summary>
         /// <param name="disposing">Whether the instance is being disposed.</param>
         protected override void Dispose(bool disposing)
         {
-            _controller?.Dispose();
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources only when disposing is true
+                    _controller?.Dispose();
+                    _controller = null;
+                }
+
+                _disposed = true;
+            }
+            
             base.Dispose(disposing);
         }
-        
-        
     }
 }

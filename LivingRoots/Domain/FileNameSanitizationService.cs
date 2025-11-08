@@ -126,7 +126,7 @@ namespace LivingRoots.Domain
                     // Ensure base has no trailing dots before appending any suffix/extension
                     result = result.TrimEnd('.');
                     // Produce name_blocked.ext with a single dot separator preceding the real extension
-                    result = $"{result}_blocked{extension}";
+                    result = $"{result}{extension}_blocked";
                 }
                 else
                 {

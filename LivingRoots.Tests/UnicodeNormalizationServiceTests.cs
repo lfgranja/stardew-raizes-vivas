@@ -177,10 +177,10 @@ namespace LivingRoots.Tests
         public void Normalize_WithHebrewLetters_Preserves()
         {
             // Hebrew letters should be preserved
-            var result = _service.Normalize("テスト.txt"); // Hebrew characters
+            var result = _service.Normalize("בדיקה.txt"); // Hebrew characters for "test"
 
             // Assert
-            Assert.Equal("テスト.txt", result);
+            Assert.Equal("בדיקה.txt", result);
         }
     }
 }
