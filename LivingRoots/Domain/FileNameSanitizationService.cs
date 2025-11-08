@@ -48,16 +48,11 @@ namespace LivingRoots.Domain
             // Block the specific case of ".." (current directory reference)
             // Block strings that start with ".." followed by anything other than a path separator (like "..test", ".. ", etc.)
             // Block strings that end with ".." preceded by anything other than a path separator (like "test..", " ..", etc.)
-            // But specifically allow "..." (three consecutive dots) as a legitimate string
-            if (filename == "...")
-            {
-                // Allow "..." to pass through to later validation
-            }
-            else if (filename == ".." ||  // Block the specific case of ".." alone
-                     (filename.Length > 2 && filename.StartsWith("..") && 
-                      !(filename[2] == '/' || filename[2] == '\\' || char.IsWhiteSpace(filename[2]))) ||
-                     (filename.Length > 2 && filename.EndsWith("..") && 
-                      !(filename[filename.Length-3] == '/' || filename[filename.Length-3] == '\\' || char.IsWhiteSpace(filename[filename.Length-3]))))
+            if (filename == ".." ||  // Block the specific case of ".." alone
+                (filename.Length > 2 && filename.StartsWith("..") && 
+                 !(filename[2] == '/' || filename[2] == '\\' || char.IsWhiteSpace(filename[2]))) ||
+                (filename.Length > 2 && filename.EndsWith("..") && 
+                 !(filename[filename.Length-3] == '/' || filename[filename.Length-3] == '\\' || char.IsWhiteSpace(filename[filename.Length-3]))))
             {
                 throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
             }
@@ -153,7 +148,7 @@ namespace LivingRoots.Domain
         private static string SanitizeInvalidCharacters(string? input)
         {
             if (input == null)
-                return null!;
+                return string.Empty;
                 
             var resultBuilder = new StringBuilder();
             

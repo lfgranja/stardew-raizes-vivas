@@ -49,19 +49,20 @@ namespace LivingRoots.Services
                 string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"Saved data for key '{sanitizedKey}'.", LogLevel.Trace);
             }
+            
             catch (System.IO.IOException ex)
             {
-                _monitor.Log($"IOException while saving data for key '{key}' to '{path}': {ex.Message}", LogLevel.Warn);
+                _monitor.Log($"IOException while saving data to '{path}': {ex.Message}", LogLevel.Warn);
                 throw; // Keep rethrowing for save operations as these are critical
             }
             catch (Newtonsoft.Json.JsonException ex)
             {
-                _monitor.Log($"JSON error while saving data for key '{key}' to '{path}': {ex.Message}", LogLevel.Error);
+                _monitor.Log($"JSON error while saving data to '{path}': {ex.Message}", LogLevel.Error);
                 throw; // Keep rethrowing for save operations as these are critical
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Unexpected error while saving data for key '{key}' to '{path}': {ex.Message}", LogLevel.Error);
+                _monitor.Log($"Unexpected error while saving data to '{path}': {ex.Message}", LogLevel.Error);
                 throw; // Keep rethrowing for save operations as these are critical
             }
         }

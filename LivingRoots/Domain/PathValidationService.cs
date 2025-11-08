@@ -143,14 +143,6 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
             }
             
-            // If we have more parent directory references than actual directory levels we've entered,
-            // it indicates an attempt to traverse above the current directory context
-            // This includes disguised traversal attempts like "folder/./../file.txt" where we enter one directory and then exit it
-            if (parentDirRefs > actualDirLevels)
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
-            }
-            
             // Special case: if we have parent directory references equal to or greater than 
             // the number of directory levels we entered before the final component,
             // and we've entered at least one directory, it's also a traversal attempt
@@ -190,11 +182,6 @@ namespace LivingRoots.Domain
             // Replace common Unicode path separators with standard forward slash
             path = path.Replace('\u2215', '/'); // Division slash
             path = path.Replace('\u2044', '/'); // Fraction slash
-            path = path.Replace('\u00A1', '/'); // Inverted exclamation mark (could be misused)
-            path = path.Replace('\u00B6', '/'); // Paragraph sign (could be misused)
-            path = path.Replace('\u00F7', '/'); // Division sign (could be misused)
-            path = path.Replace('\u2216', '/'); // Set minus (could be misused)
-            path = path.Replace('\u2214', '/'); // Dot plus (could be misused)
             
             // Reject invisible characters that could be used for obfuscation
             var result = new System.Text.StringBuilder();

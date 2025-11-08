@@ -33,7 +33,7 @@ namespace LivingRoots
             var fileNameSanitizer = new FileNameSanitizer(fileNameSanitizationService);
             var pathTraversalValidator = new PathTraversalValidator(pathValidationService);
             var unicodeNormalizer = new UnicodeNormalizer(unicodeNormalizationService);
-            var reservedNameHandlerAdapter = new ReservedNameHandler(unicodeNormalizationService);
+            var reservedNameHandlerAdapter = reservedNameHandler;
             
             // Create application services
             var modDataService = new ModDataService(helper, this.Monitor, modLogic);

@@ -65,9 +65,14 @@ namespace LivingRoots.Domain
             string trailingDotsAndSpaces = trailingInsignificantLength > 0 ? 
                 trimmedLeadingSpaces.Substring(trimmedLeadingSpaces.Length - trailingInsignificantLength) : "";
             
-            bool isReserved = !string.IsNullOrEmpty(baseNameForCheck) && 
-                              (ReservedWindowsFileNames.Contains(baseNameForCheck) 
-                              || ReservedWindowsFileNames.Contains(_unicodeNormalizationService.Normalize(baseNameForCheck)));
+            // Normalize safely to avoid passing null to Contains
+            string? normalizedForCheck = string.IsNullOrEmpty(baseNameForCheck)
+                ? null
+                : _unicodeNormalizationService.Normalize(baseNameForCheck);
+
+            bool isReserved = !string.IsNullOrEmpty(baseNameForCheck) &&
+                              (ReservedWindowsFileNames.Contains(baseNameForCheck) ||
+                               (!string.IsNullOrEmpty(normalizedForCheck) && ReservedWindowsFileNames.Contains(normalizedForCheck)));
 
             if (isReserved)
             {
