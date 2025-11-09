@@ -26,17 +26,27 @@ namespace LivingRoots.Tests
         {
             // Test that the SecurityConfusables dictionary does not contain mappings
             // where a character maps to itself (redundant mappings)
-            var confusables = typeof(UnicodeNormalizationService)
-                .GetField("SecurityConfusables", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
-                .GetValue(null) as System.Collections.Generic.IDictionary<char, string>;
+            var confusablesField = typeof(UnicodeNormalizationService)
+                .GetField("SecurityConfusables", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            if (confusablesField == null)
+            {
+                Assert.Fail("SecurityConfusables field not found");
+                return;
+            }
+            
+            var confusables = confusablesField.GetValue(null) as System.Collections.Generic.IDictionary<char, string>;
 
             // Check for any mappings where the key and value are the same
-            foreach (var kvp in confusables)
+            if (confusables != null)
             {
-                // If the value is a single character and it's the same as the key, it's redundant
-                if (kvp.Value.Length == 1 && kvp.Value[0] == kvp.Key)
+                foreach (var kvp in confusables)
                 {
-                    Assert.Fail($"Found redundant mapping: {{ '{kvp.Key}', \"{kvp.Value}\" }} maps character to itself");
+                    // If the value is a single character and it's the same as the key, it's redundant
+                    if (kvp.Value.Length == 1 && kvp.Value[0] == kvp.Key)
+                    {
+                        Assert.Fail($"Found redundant mapping: {{ '{kvp.Key}', \"{kvp.Value}\" }} maps character to itself");
+                    }
                 }
             }
         }
@@ -245,8 +255,8 @@ namespace LivingRoots.Tests
             string nfdForm = "cafe\u0301";
 
             // Act
-            string resultNfc = _unicodeNormalizationService.Normalize(nfcForm);
-            string resultNfd = _unicodeNormalizationService.Normalize(nfdForm);
+            string resultNfc = _unicodeNormalizationService.Normalize(nfcForm)!;
+            string resultNfd = _unicodeNormalizationService.Normalize(nfdForm)!;
 
             // Assert
             Assert.Equal("cafe", resultNfc);
@@ -261,8 +271,8 @@ namespace LivingRoots.Tests
             string input2 = "cafe\u0435\u0301"; // 'e' with Cyrillic 'e' and combining acute
 
             // Act
-            string result1 = _unicodeNormalizationService.Normalize(input1);
-            string result2 = _unicodeNormalizationService.Normalize(input2);
+            string result1 = _unicodeNormalizationService.Normalize(input1)!;
+            string result2 = _unicodeNormalizationService.Normalize(input2)!;
 
             // Assert
             Assert.Equal("test", result1);
@@ -277,8 +287,8 @@ namespace LivingRoots.Tests
             string input2 = "test\u200Fend"; // Right-to-left mark
 
             // Act
-            string result1 = _unicodeNormalizationService.Normalize(input1);
-            string result2 = _unicodeNormalizationService.Normalize(input2);
+            string result1 = _unicodeNormalizationService.Normalize(input1)!;
+            string result2 = _unicodeNormalizationService.Normalize(input2)!;
 
             // Assert
             Assert.Equal("teststart", result1);
@@ -351,13 +361,13 @@ namespace LivingRoots.Tests
             string input7 = "у"; // Cyrillic 'y'
 
             // Act
-            string result1 = _unicodeNormalizationService.Normalize(input1);
-            string result2 = _unicodeNormalizationService.Normalize(input2);
-            string result3 = _unicodeNormalizationService.Normalize(input3);
-            string result4 = _unicodeNormalizationService.Normalize(input4);
-            string result5 = _unicodeNormalizationService.Normalize(input5);
-            string result6 = _unicodeNormalizationService.Normalize(input6);
-            string result7 = _unicodeNormalizationService.Normalize(input7);
+            string result1 = _unicodeNormalizationService.Normalize(input1)!;
+            string result2 = _unicodeNormalizationService.Normalize(input2)!;
+            string result3 = _unicodeNormalizationService.Normalize(input3)!;
+            string result4 = _unicodeNormalizationService.Normalize(input4)!;
+            string result5 = _unicodeNormalizationService.Normalize(input5)!;
+            string result6 = _unicodeNormalizationService.Normalize(input6)!;
+            string result7 = _unicodeNormalizationService.Normalize(input7)!;
 
             // Assert
             Assert.Equal("a", result1);
@@ -379,10 +389,10 @@ namespace LivingRoots.Tests
             string input4 = "test\"dquote"; // double quote
 
             // Act
-            string result1 = _unicodeNormalizationService.Normalize(input1);
-            string result2 = _unicodeNormalizationService.Normalize(input2);
-            string result3 = _unicodeNormalizationService.Normalize(input3);
-            string result4 = _unicodeNormalizationService.Normalize(input4);
+            string result1 = _unicodeNormalizationService.Normalize(input1)!;
+            string result2 = _unicodeNormalizationService.Normalize(input2)!;
+            string result3 = _unicodeNormalizationService.Normalize(input3)!;
+            string result4 = _unicodeNormalizationService.Normalize(input4)!;
 
             // Assert
             Assert.Equal("test-dash", result1);
@@ -417,12 +427,12 @@ namespace LivingRoots.Tests
             string input6 = "cœur"; // Contains œ ligature
 
             // Act
-            string result1 = _unicodeNormalizationService.Normalize(input1);
-            string result2 = _unicodeNormalizationService.Normalize(input2);
-            string result3 = _unicodeNormalizationService.Normalize(input3);
-            string result4 = _unicodeNormalizationService.Normalize(input4);
-            string result5 = _unicodeNormalizationService.Normalize(input5);
-            string result6 = _unicodeNormalizationService.Normalize(input6);
+            string result1 = _unicodeNormalizationService.Normalize(input1)!;
+            string result2 = _unicodeNormalizationService.Normalize(input2)!;
+            string result3 = _unicodeNormalizationService.Normalize(input3)!;
+            string result4 = _unicodeNormalizationService.Normalize(input4)!;
+            string result5 = _unicodeNormalizationService.Normalize(input5)!;
+            string result6 = _unicodeNormalizationService.Normalize(input6)!;
 
             // Assert
             Assert.Equal("Cafe", result1); // Note: This is currently failing because æ -> a instead of ae
