@@ -85,18 +85,9 @@ namespace LivingRoots.Domain
                 }
                 else if (category == UnicodeCategory.Control || category == UnicodeCategory.Format)
                 {
-                    // Check if this is a zero-width or bidirectional character that should be removed completely
-                    if (IsZeroWidthOrBidirectional(c))
-                    {
-                        // Remove zero-width characters and bidirectional overrides completely
-                        continue;
-                    }
-                    else
-                    {
-                        // Remove other control and format characters completely to avoid creating false word boundaries
-                        // This prevents format characters from being replaced with underscores which could alter string semantics
-                        continue;
-                    }
+                    // Remove control and format characters completely to avoid creating false word boundaries
+                    // This prevents format characters from being replaced with underscores which could alter string semantics
+                    continue;
                 }
                 else
                 {
@@ -246,18 +237,38 @@ namespace LivingRoots.Domain
             // For example, if a Cyrillic 'е' is surrounded by other Cyrillic characters, preserve it
             // But if it's surrounded by Latin characters, convert it (as it's likely a homoglyph attack)
             
+            // Handle boundary cases: when at the beginning or end of the string
             bool prevIsCyrillic = index > 0 && IsCyrillicLetter(text[index - 1]);
             bool nextIsCyrillic = index < text.Length - 1 && IsCyrillicLetter(text[index + 1]);
             
-            // If the character is surrounded by Cyrillic letters on BOTH sides, preserve it as part of legitimate Cyrillic text
-            if (prevIsCyrillic && nextIsCyrillic)
+            // If at the beginning of the string (no previous character), consider only the next neighbor
+            if (index == 0)
             {
-                return false; // Don't convert - it's part of legitimate Cyrillic text
+                // If the next character is Cyrillic, preserve this character (return false)
+                if (nextIsCyrillic)
+                    return false;
+            }
+            // If at the end of the string (no next character), consider only the previous neighbor
+            else if (index == text.Length - 1)
+            {
+                // If the previous character is Cyrillic, preserve this character (return false)
+                if (prevIsCyrillic)
+                    return false;
+            }
+            // If not at boundaries, check both neighbors as before
+            else
+            {
+                // If the character is surrounded by Cyrillic letters on BOTH sides, preserve it as part of legitimate Cyrillic text
+                if (prevIsCyrillic && nextIsCyrillic)
+                {
+                    return false; // Don't convert - it's part of legitimate Cyrillic text
+                }
             }
             
-            // If only one neighbor is Cyrillic or if there are no Cyrillic neighbors on both sides,
-            // convert the confusable character to prevent spoofing at script boundaries
-            // This strengthens security by requiring BOTH sides to be Cyrillic to preserve the character
+            // Convert the confusable character to prevent spoofing
+            // This includes cases where:
+            // - Character is at beginning/end and neighbor is not Cyrillic
+            // - Character is in middle and not surrounded by Cyrillic on both sides
             return true;
         }
     }
