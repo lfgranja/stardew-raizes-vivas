@@ -29,7 +29,7 @@ namespace LivingRoots.Domain
             // Other confusable characters
             { '–', "-" }, { '—', "-" }, // Different types of dashes (en dash and em dash to regular hyphen)
         });
-
+        
         
         /// <summary>
         /// Normalizes Unicode characters by handling diacritics, homoglyphs, and other Unicode security concerns.
@@ -108,16 +108,20 @@ namespace LivingRoots.Domain
                     // The goal is to convert confusable characters when they're used to disguise other scripts
                     if (SecurityConfusables.TryGetValue(c, out var replacement))
                     {
-                        // Convert confusable characters - always convert when they're in the mapping
-                        // DEFENSIVE CODING: Check if replacement is multi-character to avoid breaking normalization invariants
-                        // Multi-character mappings should be applied in a separate post-process if needed
-                        if (replacement.Length == 1)
+                        // For context-aware conversion, we need to check if this confusable character is being used in a context
+                        // where it might be disguising another script. If it's surrounded by other non-Latin characters that are
+                        // part of the same script (like Cyrillic), we should preserve it.
+                        
+                        bool shouldConvert = ShouldConvertConfusable(c, decomposed, i);
+                        
+                        if (shouldConvert)
                         {
+                            // Convert confusable characters when they're being used to disguise other scripts
                             resultBuilder.Append(replacement);
                         }
                         else
                         {
-                            // For multi-character replacements, append the original character to avoid breaking the per-character pipeline
+                            // Preserve the original character when it's in a legitimate script context
                             resultBuilder.Append(c);
                         }
                     }
@@ -228,6 +232,49 @@ namespace LivingRoots.Domain
                 return true;
                 
             return false;
+        }
+        /// <summary>
+        /// Determines whether a confusable character should be converted based on its context.
+        /// </summary>
+        /// <param name="c">The confusable character</param>
+        /// <param name="text">The full text being processed</param>
+        /// <param name="index">The index of the character in the text</param>
+        /// <returns>True if the character should be converted, false if it should be preserved</returns>
+        private static bool ShouldConvertConfusable(char c, string text, int index)
+        {
+            // Check if this character is part of a legitimate non-Latin script context
+            // For example, if a Cyrillic 'е' is surrounded by other Cyrillic characters, preserve it
+            // But if it's surrounded by Latin characters, convert it (as it's likely a homoglyph attack)
+            
+            bool prevIsCyrillic = index > 0 && IsCyrillicLetter(text[index - 1]);
+            bool nextIsCyrillic = index < text.Length - 1 && IsCyrillicLetter(text[index + 1]);
+            
+            // If the character is surrounded by Cyrillic letters, preserve it as part of legitimate Cyrillic text
+            if (prevIsCyrillic && nextIsCyrillic)
+            {
+                return false; // Don't convert - it's part of legitimate Cyrillic text
+            }
+            
+            // If the character is surrounded by Latin letters or is at the boundary between scripts,
+            // check if it's being used as a homoglyph
+            bool prevIsLatin = index > 0 && IsLatinLetter(text[index - 1]);
+            bool nextIsLatin = index < text.Length - 1 && IsLatinLetter(text[index + 1]);
+            
+            // If surrounded by Latin characters, convert it (likely a homoglyph attack)
+            if (prevIsLatin && nextIsLatin)
+            {
+                return true;
+            }
+            
+            // If it's a mix, be more conservative and convert if it's clearly a confusable
+            // For example, if a Cyrillic lookalike is mixed with Latin, convert it
+            if (prevIsLatin || nextIsLatin)
+            {
+                return true;
+            }
+            
+            // Default behavior: convert confusables unless clearly in a legitimate script context
+            return true;
         }
     }
 }
