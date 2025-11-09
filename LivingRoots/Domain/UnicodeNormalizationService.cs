@@ -249,31 +249,15 @@ namespace LivingRoots.Domain
             bool prevIsCyrillic = index > 0 && IsCyrillicLetter(text[index - 1]);
             bool nextIsCyrillic = index < text.Length - 1 && IsCyrillicLetter(text[index + 1]);
             
-            // If the character is surrounded by Cyrillic letters, preserve it as part of legitimate Cyrillic text
+            // If the character is surrounded by Cyrillic letters on BOTH sides, preserve it as part of legitimate Cyrillic text
             if (prevIsCyrillic && nextIsCyrillic)
             {
                 return false; // Don't convert - it's part of legitimate Cyrillic text
             }
             
-            // If the character is surrounded by Latin letters or is at the boundary between scripts,
-            // check if it's being used as a homoglyph
-            bool prevIsLatin = index > 0 && IsLatinLetter(text[index - 1]);
-            bool nextIsLatin = index < text.Length - 1 && IsLatinLetter(text[index + 1]);
-            
-            // If surrounded by Latin characters, convert it (likely a homoglyph attack)
-            if (prevIsLatin && nextIsLatin)
-            {
-                return true;
-            }
-            
-            // If it's a mix, be more conservative and convert if it's clearly a confusable
-            // For example, if a Cyrillic lookalike is mixed with Latin, convert it
-            if (prevIsLatin || nextIsLatin)
-            {
-                return true;
-            }
-            
-            // Default behavior: convert confusables unless clearly in a legitimate script context
+            // If only one neighbor is Cyrillic or if there are no Cyrillic neighbors on both sides,
+            // convert the confusable character to prevent spoofing at script boundaries
+            // This strengthens security by requiring BOTH sides to be Cyrillic to preserve the character
             return true;
         }
     }
