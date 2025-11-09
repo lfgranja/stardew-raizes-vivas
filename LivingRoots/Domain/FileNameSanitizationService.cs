@@ -166,7 +166,13 @@ namespace LivingRoots.Domain
             }
 
             // Handle reserved Windows filenames
-            result = _reservedNameHandler.Handle(result);
+            string? reservedResult = _reservedNameHandler.Handle(result);
+            
+            // Check if the reserved name handler returned null
+            if (reservedResult == null)
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+                
+            result = reservedResult;
 
             return result;
         }

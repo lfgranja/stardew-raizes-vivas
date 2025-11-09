@@ -290,5 +290,31 @@ namespace LivingRoots.Tests
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("..."));
             Assert.Contains("Filename sanitizes to an empty string.", exception.Message);
         }
+        
+        [Fact]
+        public void Sanitize_WithReservedNameHandlerReturningNull_ThrowsArgumentException()
+        {
+            // Arrange
+            var mockUnicodeNormalizationService = new Mock<IUnicodeNormalizationService>();
+            var mockReservedNameHandler = new Mock<IReservedNameHandler>();
+            
+            // Setup the reserved name handler to return null
+            mockReservedNameHandler
+                .Setup(x => x.Handle(It.IsAny<string>()))
+                .Returns((string)null);
+            
+            var service = new FileNameSanitizationService(
+                mockUnicodeNormalizationService.Object, 
+                mockReservedNameHandler.Object);
+            
+            // Setup Unicode normalization to return the input
+            mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(input => input);
+            
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => service.Sanitize("test.txt"));
+            Assert.Contains("Filename sanitizes to an empty string.", exception.Message);
+        }
     }
 }
