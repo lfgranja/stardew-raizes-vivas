@@ -24,9 +24,9 @@ namespace LivingRoots
         {
             // Create domain services - Composition Root
             var unicodeNormalizationService = new UnicodeNormalizationService();
-            var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService);
-            var pathValidationService = new PathValidationService();
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
+            var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
+            var pathValidationService = new PathValidationService();
             var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
             
             // Create application services
