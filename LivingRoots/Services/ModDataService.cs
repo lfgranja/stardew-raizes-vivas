@@ -41,12 +41,16 @@ namespace LivingRoots.Services
             if (data == null)
                 throw new ArgumentNullException(nameof(data), "Data cannot be null");
             
-            var path = GetFilePath(key);
+            // Validate the raw key first to catch path traversal attempts
+            _modLogic.ValidatePath(key);
+            
+            // Sanitize the key once before try-catch block to prevent exceptions during error handling
+            string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+            var path = GetFilePath(sanitizedKey);
             try
             {
                 _helper.Data.WriteJsonFile(path, data);
                 // Use sanitized key for logging to avoid exposing raw input
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"Saved data for key '{sanitizedKey}'.", LogLevel.Trace);
             }
             
@@ -78,15 +82,19 @@ namespace LivingRoots.Services
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Key cannot be null or empty", nameof(key));
             
-            var path = GetFilePath(key);
+            // Validate the raw key first to catch path traversal attempts
+            _modLogic.ValidatePath(key);
+            
+            // Sanitize the key once before try-catch block to prevent exceptions during error handling
+            string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+            var path = GetFilePath(sanitizedKey);
             try
             {
                 var result = _helper.Data.ReadJsonFile<T>(path);
                 if (result == null)
                 {
                     // Log when ReadJsonFile returns null (which can happen when file exists but is empty/corrupted)
-                    string sanitizedKey = _modLogic.SanitizeFileName(key)!;
-                _monitor.Log($"Data is null while loading for key '{sanitizedKey}'.", LogLevel.Trace);
+                    _monitor.Log($"Data is null while loading for key '{sanitizedKey}'.", LogLevel.Trace);
                     return null;
                 }
                 return result;
@@ -94,35 +102,30 @@ namespace LivingRoots.Services
             catch (System.IO.FileNotFoundException ex)
             {
                 // Log FileNotFoundException as Trace to reduce log noise
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"File not found while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
                 return null; // Return null instead of throwing when file doesn't exist
             }
             catch (System.IO.DirectoryNotFoundException ex)
             {
                 // Log DirectoryNotFoundException as Warn to reduce log noise from non-critical issues
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"Directory not found while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return null; // Return null instead of throwing when directory doesn't exist
             }
             catch (System.UnauthorizedAccessException ex)
             {
                 // Log UnauthorizedAccessException as Warn to reduce log noise from non-critical issues
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"Access denied while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return null; // Return null instead of throwing when access is denied
             }
             catch (System.IO.IOException ex)
             {
                 // Log other IOExceptions as Warn to reduce log noise from non-critical issues
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"IOException while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return null; // Return null instead of throwing when IO error occurs
             }
             catch (Newtonsoft.Json.JsonException ex) // Catch broader JsonException instead of JsonReaderException
             {
                 // Log JsonException instead of silently swallowing it
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"JSON parsing error while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
                 return null; // Return null instead of throwing when JSON is invalid (consistent with DataExists behavior)
             }
@@ -138,7 +141,12 @@ namespace LivingRoots.Services
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Key cannot be null or empty", nameof(key));
 
-            string relativePath = GetFilePath(key);
+            // Validate the raw key first to catch path traversal attempts
+            _modLogic.ValidatePath(key);
+            
+            // Sanitize the key once before try-catch block to prevent exceptions during error handling
+            string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+            string relativePath = GetFilePath(sanitizedKey);
             
             try
             {
@@ -147,31 +155,26 @@ namespace LivingRoots.Services
             }
             catch (System.IO.FileNotFoundException ex)
             {
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"File not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
                 return false; // Return false instead of throwing when file doesn't exist
             }
             catch (System.IO.DirectoryNotFoundException ex)
             {
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"Directory not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false; // Return false instead of throwing when directory doesn't exist
             }
             catch (System.UnauthorizedAccessException ex)
             {
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"Access denied while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                return false; // Return false instead of throwing when access is denied
+                return false; // Return null instead of throwing when access is denied
             }
             catch (System.IO.IOException ex)
             {
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"IOException while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false; // Return false instead of throwing when IO error occurs
             }
             catch (Newtonsoft.Json.JsonException ex)
             {
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"JSON parsing error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false; // Return false instead of throwing when JSON is invalid
             }
@@ -186,24 +189,26 @@ namespace LivingRoots.Services
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Key cannot be null or empty", nameof(key));
             
+            // Validate the raw key first to catch path traversal attempts
+            _modLogic.ValidatePath(key);
+            
+            // Sanitize the key once before try-catch block to prevent exceptions during error handling
+            string sanitizedKey = _modLogic.SanitizeFileName(key)!;
             // Delete the data file to properly remove the stored data
-            var filePath = GetFilePath(key);
+            var filePath = GetFilePath(sanitizedKey);
             try
             {
                 // Always use SMAPI's API for consistency and cross-platform compatibility
                 _helper.Data.WriteJsonFile<object>(filePath, null);
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"Removed data for key '{sanitizedKey}' by writing null.", LogLevel.Trace);
             }
             catch (System.IO.IOException ex)
             {
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"IOException while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 throw;
             }
             catch (Exception ex)
             {
-                string sanitizedKey = _modLogic.SanitizeFileName(key)!;
                 _monitor.Log($"Unexpected error while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
                 throw;
             }
@@ -214,18 +219,15 @@ namespace LivingRoots.Services
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Key cannot be null or empty", nameof(key));
 
-            // Validate path traversal first to prevent security issues using domain service
-            _modLogic.ValidatePath(key);
+            // The key should already be sanitized at this point, so we just return the path
+            // The validation already happened when SanitizeFileName was called in the public methods
 
-            // Sanitize the key to handle invalid characters and security concerns using domain service
-            string? sanitizedKey = _modLogic.SanitizeFileName(key);
-            
-            // Prevent nulls in path building as per security requirement
-            if (sanitizedKey == null)
+            // Sanitized key should not be null by this point due to check in public methods
+            if (key == null)
                 throw new InvalidOperationException("Sanitized key cannot be null");
 
             // Return the final path with the .json extension
-            return Path.Combine("data", $"{sanitizedKey}.json");
+            return Path.Combine("data", $"{key}.json");
         }
     }
 }
