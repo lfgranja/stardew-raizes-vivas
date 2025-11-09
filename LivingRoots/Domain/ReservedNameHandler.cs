@@ -82,7 +82,7 @@ namespace LivingRoots.Domain
                 string modifiedNamePart = leadingSpaces + baseNameForCheck + "_" + trailingDotsAndSpaces;
                 string modifiedFileName = modifiedNamePart + extensionPart;
                 return !string.IsNullOrEmpty(directoryPath)
-                    ? Path.Combine(directoryPath, modifiedFileName)
+                    ? directoryPath + Path.DirectorySeparatorChar + modifiedFileName
                     : modifiedFileName;
             }
 
