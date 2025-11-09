@@ -44,7 +44,7 @@ namespace LivingRoots.Tests
         {
             // "./file" should be blocked (caught by start path checks)
             var exception1 = Assert.Throws<ArgumentException>(() => _validator.Validate("./file"));
-            Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
             // But "file/." should be allowed (as it refers to a directory)
             var ex1 = Record.Exception(() => _validator.Validate("file/."));
@@ -61,7 +61,7 @@ namespace LivingRoots.Tests
         {
             // A single "." represents current directory navigation and should be blocked
             var exception = Assert.Throws<ArgumentException>(() => _validator.Validate("."));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
         [Fact]
@@ -69,7 +69,7 @@ namespace LivingRoots.Tests
         {
             // Paths that start with "." should be blocked as they represent directory navigation
             var exception1 = Assert.Throws<ArgumentException>(() => _validator.Validate("./path"));
-            Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
             // But paths that end with "." should be allowed as they refer to directories
             var ex1 = Record.Exception(() => _validator.Validate("path/."));

@@ -59,13 +59,13 @@ namespace LivingRoots.Tests
 
             // Act & Assert - These should be blocked as they represent directory navigation
             var exception1 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "."));
-            Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
 
             var exception2 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "./file"));
-            Assert.Contains("Path cannot contain relative path navigation", exception2.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
 
             var exception3 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "../file"));
-            Assert.Contains("Path cannot contain relative path navigation", exception3.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception3.Message);
         }
     }
 }

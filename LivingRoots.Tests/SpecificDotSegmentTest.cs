@@ -29,7 +29,7 @@ namespace LivingRoots.Tests
         {
             // This should still fail because it's just "." representing current directory navigation
             var exception = Assert.Throws<ArgumentException>(() => _validator.Validate("."));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
         [Fact]

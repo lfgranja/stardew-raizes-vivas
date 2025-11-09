@@ -49,7 +49,7 @@ namespace LivingRoots.Tests
             string input = "valid_filename";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("valid_filename", result);
@@ -62,7 +62,7 @@ namespace LivingRoots.Tests
             string input = "file<name>with:invalid|chars";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("file_name_with_invalid_chars", result);
@@ -75,7 +75,7 @@ namespace LivingRoots.Tests
             string input = "path/with/separators";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("path_with_separators", result);
@@ -88,7 +88,7 @@ namespace LivingRoots.Tests
             string input = "file....name";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("file.name", result);
@@ -101,7 +101,7 @@ namespace LivingRoots.Tests
             var longName = new string('a', 300);
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(longName);
+            string result = _fileNameSanitizationService.Sanitize(longName) ?? string.Empty;
 
             // Assert
             Assert.Equal(240, result.Length);
@@ -117,7 +117,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns("testzwspzwnjzwj");
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("testzwspzwnjzwj", result);
@@ -131,7 +131,7 @@ namespace LivingRoots.Tests
             string input = $"test{emoji}smile";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal($"test{emoji}smile", result);
@@ -148,7 +148,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("cafe", result);
@@ -165,7 +165,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("test", result);
@@ -178,7 +178,7 @@ namespace LivingRoots.Tests
             string input = "document.txt";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("document.txt", result);
@@ -191,7 +191,7 @@ namespace LivingRoots.Tests
             string input = "archive.tar.gz";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("archive.tar.gz", result);
@@ -204,7 +204,7 @@ namespace LivingRoots.Tests
             string input = ".config";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal(".config", result);
@@ -217,7 +217,7 @@ namespace LivingRoots.Tests
             string input = "file.";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("file", result);
@@ -230,7 +230,7 @@ namespace LivingRoots.Tests
             string input = "file..name";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("file.name", result);
@@ -267,7 +267,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("test_unicode", result);
@@ -280,7 +280,7 @@ namespace LivingRoots.Tests
             string input = "file<with>mixed:chars|and?wildcards*";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("file_with_mixed_chars_and_wildcards", result);
@@ -293,7 +293,7 @@ namespace LivingRoots.Tests
             string input = "test" + (char)0x01 + "control" + (char)0x1F + "chars";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal("test_control_chars", result);
@@ -336,7 +336,7 @@ namespace LivingRoots.Tests
             string input = ".file.";
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // Assert
             Assert.Equal(".file", result);
@@ -392,7 +392,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(input);
 
             // Act
-            string result = _fileNameSanitizationService.Sanitize(input);
+            string result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;
 
             // According to the actual test result, multiple underscores are not being consolidated
             // The SanitizeInvalidCharacters method does not consolidate multiple underscores

@@ -59,7 +59,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService.Setup(x => x.Normalize(reservedName)).Returns(reservedName);
 
             // Act
-            string result = _reservedNameHandler.Handle(reservedName);
+            string? result = _reservedNameHandler.Handle(reservedName);
 
             // Assert
             Assert.Equal(expectedName, result);
@@ -76,7 +76,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
 
             // Act
-            string result = _reservedNameHandler.Handle(reservedName);
+            string? result = _reservedNameHandler.Handle(reservedName);
 
             // Assert
             Assert.Equal(expectedName, result);
@@ -110,8 +110,8 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService.Setup(x => x.Normalize(input2)).Returns(input2);
 
             // Act
-            string result1 = _reservedNameHandler.Handle(input1);
-            string result2 = _reservedNameHandler.Handle(input2);
+            string? result1 = _reservedNameHandler.Handle(input1);
+            string? result2 = _reservedNameHandler.Handle(input2);
 
             // Assert
             Assert.Equal(input1, result1);
@@ -240,7 +240,7 @@ namespace LivingRoots.Tests
             string? input = null;
 
             // Act
-            string? result = _reservedNameHandler.Handle(input);
+            string? result = _reservedNameHandler.Handle(input!); // Use null-forgiving operator to indicate intentional null usage
 
             // Assert
             Assert.Null(result);
@@ -312,7 +312,7 @@ namespace LivingRoots.Tests
         public void Handle_WithMultipleExtensionsAndReservedName_AddsUnderscore()
         {
             // Arrange & Act
-            string result = _reservedNameHandler.Handle("COM1.tar.gz");
+            string? result = _reservedNameHandler.Handle("COM1.tar.gz");
             
             // Assert - This should add an underscore after COM1 to make it COM1_.tar.gz
             Assert.Equal("COM1_.tar.gz", result);

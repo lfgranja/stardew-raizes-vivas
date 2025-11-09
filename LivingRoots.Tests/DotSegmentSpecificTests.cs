@@ -60,10 +60,10 @@ namespace LivingRoots.Tests
         {
             // These should be blocked - explicit current directory navigation at start
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("./file"));
-            Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
             var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("./path/to/file.txt"));
-            Assert.Contains("Path cannot contain relative path navigation", exception2.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
 
         [Fact]
@@ -82,10 +82,10 @@ namespace LivingRoots.Tests
         {
             // These should be blocked - standalone navigation
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("."));
-            Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
             var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("./"));
-            Assert.Contains("Path cannot contain relative path navigation", exception2.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
 
         [Fact]
@@ -93,10 +93,10 @@ namespace LivingRoots.Tests
         {
             // These should still be blocked - path traversal with ".."
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("../file.txt"));
-            Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
             var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("../../file.txt"));
-            Assert.Contains("Path cannot contain relative path navigation", exception2.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
             
             var exception3 = Assert.Throws<ArgumentException>(() => _service.Validate("folder/../file.txt"));
             Assert.Contains("Path cannot contain path traversal patterns", exception3.Message);
@@ -107,10 +107,10 @@ namespace LivingRoots.Tests
         {
             // These should be blocked - combinations that include ".." for traversal
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("folder/./../file.txt"));
-            Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
             var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("./../file.txt"));
-            Assert.Contains("Path cannot contain relative path navigation", exception2.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
 
         [Fact]
@@ -123,7 +123,7 @@ namespace LivingRoots.Tests
             
             // Invalid cases - "." at start only
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("./file"));
-            Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
         }
     }
 }

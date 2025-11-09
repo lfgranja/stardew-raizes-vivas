@@ -68,7 +68,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => service.SaveData(testData, path));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
         [Theory]
@@ -191,7 +191,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => service.SaveData(testData, path));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
         [Theory]
@@ -238,10 +238,10 @@ namespace LivingRoots.Tests
 
             // Act & Assert - Explicit "." or "./" as the whole path should be blocked
             var exception1 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "."));
-            Assert.Contains("Path cannot contain relative path navigation", exception1.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
             var exception2 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "./"));
-            Assert.Contains("Path cannot contain relative path navigation", exception2.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
 
         [Fact]
