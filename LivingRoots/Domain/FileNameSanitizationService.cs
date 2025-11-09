@@ -137,11 +137,6 @@ namespace LivingRoots.Domain
             if (result == "." || result == "..")
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
             
-            // Check for path traversal patterns that should result in empty string message
-            // But first check if it's exactly "." or ".." which should give the empty string error
-            if (result == "." || result == "..")
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
-            
             // Only check for path traversal patterns if result is not empty
             if (!string.IsNullOrEmpty(result) && (result.Contains(".._") || result.StartsWith("..") || result.EndsWith(".."))) {
                 throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
