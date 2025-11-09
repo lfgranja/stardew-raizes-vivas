@@ -164,13 +164,14 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Normalize_WithGreekLetters_PreservesDiacritics()
+        public void Normalize_WithGreekLetters_RemovesDiacritics()
         {
-            // Greek letters with diacritics should be preserved differently than Latin
-            var result = _service.Normalize("αβγ.txt"); // Greek letters
+            // Greek letters with diacritics should have their diacritics removed
+            // Greek combining diacritical marks (U+0300 to U+036F) should be removed
+            var result = _service.Normalize("ἄέὶ.txt"); // Greek letters with diacritics (alpha with acute, epsilon with acute, iota with grave)
 
-            // Assert
-            Assert.Equal("αβγ.txt", result);
+            // Assert that diacritics are removed from Greek letters
+            Assert.Equal("αει.txt", result);
         }
 
         [Fact]

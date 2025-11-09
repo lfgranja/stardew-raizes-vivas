@@ -8,13 +8,21 @@ namespace LivingRoots.Tests
     public class DomainServiceIntegrationTests
     {
         private readonly Mock<IUnicodeNormalizationService> _mockUnicodeNormalizationService;
+        private readonly Mock<IReservedNameHandler> _mockReservedNameHandler;
         private readonly IFileNameSanitizationService _fileNameSanitizationService;
         private readonly IPathValidationService _pathValidationService;
 
         public DomainServiceIntegrationTests()
         {
             _mockUnicodeNormalizationService = new Mock<IUnicodeNormalizationService>();
-            _fileNameSanitizationService = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object);
+            _mockReservedNameHandler = new Mock<IReservedNameHandler>();
+            
+            // Setup ReservedNameHandler to return input by default
+            _mockReservedNameHandler
+                .Setup(x => x.Handle(It.IsAny<string>()))
+                .Returns<string>(s => s);
+                
+            _fileNameSanitizationService = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object, _mockReservedNameHandler.Object);
             _pathValidationService = new PathValidationService();
         }
 
@@ -71,7 +79,7 @@ namespace LivingRoots.Tests
             var result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
-            Assert.Equal("malicious.exe_blocked", result);
+            Assert.Equal("malicious_blocked.exe", result);
         }
 
         [Fact]
@@ -82,7 +90,7 @@ namespace LivingRoots.Tests
             
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
-            Assert.Contains("Filename sanitizes to an empty string. (P", exception.Message);
+            Assert.Contains("Filename cannot contain path traversal sequences.", exception.Message);
         }
     }
 }

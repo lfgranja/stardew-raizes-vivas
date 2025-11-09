@@ -33,7 +33,7 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.Data).Returns(_mockDataHelper.Object);
             
             // Create real FileNameSanitizationService instance with mocked UnicodeNormalizationService dependency
-            _fileNameSanitizationService = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object);
+            _fileNameSanitizationService = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object, _mockReservedNameHandler.Object);
             
             // Configure the reserved name handler to return the input as-is for these tests
             _mockReservedNameHandler.Setup(x => x.Handle(It.IsAny<string?>())).Returns<string?>(input => input);

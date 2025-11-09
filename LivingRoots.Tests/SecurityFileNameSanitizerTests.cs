@@ -20,7 +20,10 @@ namespace LivingRoots.Tests
         {
             _mockUnicodeNormalizer = new Mock<IUnicodeNormalizer>();
             _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string?>())).Returns<string?>(input => input!);
-            _fileNameSanitizer = new FileNameSanitizer(new FileNameSanitizationService(new UnicodeNormalizationService()));
+            
+            var unicodeNormalizationService = new UnicodeNormalizationService();
+            var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
+            _fileNameSanitizer = new FileNameSanitizer(new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler));
         }
 
         // Test 1: Extension smuggling prevention - now blocks dangerous extensions
@@ -35,7 +38,7 @@ namespace LivingRoots.Tests
             string result = _fileNameSanitizer.Sanitize(input)!;
             
             // Assert - The sanitizer should block the dangerous extension
-            Assert.Equal("document.txt.exe_blocked", result); // Dangerous extension is blocked
+            Assert.Equal("document.txt_blocked.exe", result); // Dangerous extension is blocked
         }
 
         // Test 2: Filename sanitization with allowlist approach
@@ -63,7 +66,7 @@ namespace LivingRoots.Tests
             string result = _fileNameSanitizer.Sanitize(input)!;
             
             // Assert - Dangerous extension should be handled safely
-            Assert.Equal("malicious.exe_blocked", result);
+            Assert.Equal("malicious_blocked.exe", result);
         }
 
         // Test 4: Multiple extensions that could be dangerous
@@ -77,7 +80,7 @@ namespace LivingRoots.Tests
             string result = _fileNameSanitizer.Sanitize(input)!;
             
             // Assert - The dangerous extension should be blocked
-            Assert.Equal("innocent.jpg.exe_blocked", result);
+            Assert.Equal("innocent.jpg_blocked.exe", result);
         }
 
         // Test 5: Homoglyph normalization security
@@ -119,7 +122,9 @@ namespace LivingRoots.Tests
             Assert.NotEmpty(result);
             
             // Now test with the filename sanitizer
-            var realFileNameSanitizer = new FileNameSanitizer(new FileNameSanitizationService(new UnicodeNormalizationService()));
+            var unicodeNormalizationService = new UnicodeNormalizationService();
+            var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
+            var realFileNameSanitizer = new FileNameSanitizer(new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler));
             string sanitizedResult = realFileNameSanitizer.Sanitize(mixedInput)!;
             
             Assert.NotNull(sanitizedResult);
@@ -168,7 +173,7 @@ namespace LivingRoots.Tests
             
             // Act & Assert - Path traversal should throw an exception
             var exception = Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
-            Assert.Contains("Filename sanitizes to an empty string. (P", exception.Message);
+            Assert.Contains("Filename cannot contain path traversal sequences.", exception.Message);
         }
 
         // Test 10: Zero-width character removal

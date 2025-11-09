@@ -27,7 +27,9 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var realValidator = new PathValidationService();
-            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var unicodeNormalizationService = new UnicodeNormalizationService();
+            var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
+            var modLogic = new ModLogic(new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler), realValidator);
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
@@ -53,7 +55,9 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var realValidator = new PathValidationService();
-            var modLogic = new ModLogic(new FileNameSanitizationService(new UnicodeNormalizationService()), realValidator);
+            var unicodeNormalizationService = new UnicodeNormalizationService();
+            var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
+            var modLogic = new ModLogic(new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler), realValidator);
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
