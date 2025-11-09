@@ -17,7 +17,7 @@ namespace LivingRoots.Tests
         public void Validate_WithNullPath_ThrowsArgumentException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate(null));
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate(null!));
             Assert.Contains("Path cannot be null or empty", exception.Message);
         }
 
@@ -97,7 +97,7 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate("./file.txt"));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
         [Fact]
@@ -136,7 +136,7 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate("."));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
         [Fact]
@@ -144,7 +144,7 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate("./"));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
         [Fact]
@@ -152,7 +152,7 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate("./../file.txt"));
-            Assert.Contains("Path cannot contain relative path navigation", exception.Message);
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
         [Fact]
@@ -182,6 +182,35 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             _service.Validate("folder1/folder2/folder3/file.txt"); // Should not throw
+        }
+
+        [Fact]
+        public void Validate_WithDepthTraversal_GoesNegative_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("folder/../../file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+        }
+
+        [Fact]
+        public void Validate_WithComplexDepthTraversal_DoesNotGoNegative_DoesNotThrow()
+        {
+            // Act & Assert - This should be valid as it doesn't go above root
+            _service.Validate("folder/subfolder/../file.txt"); // Should not throw
+        }
+
+        [Fact]
+        public void Validate_WithMultipleDotSegmentsInMiddle_DoesNotThrow()
+        {
+            // Act & Assert
+            _service.Validate("folder/././file.txt"); // Should not throw
+        }
+
+        [Fact]
+        public void Validate_WithMixedDotAndDotDotSegments_DoesNotGoNegative_DoesNotThrow()
+        {
+            // Act & Assert
+            _service.Validate("folder/../subfolder/file.txt"); // Should not throw - ends at root level
         }
     }
 }
