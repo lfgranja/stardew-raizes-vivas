@@ -16,10 +16,12 @@ namespace LivingRoots.Domain
         private const int MaxFileNameLength = 240; // Maximum filename length for truncation tests
         
         private readonly IUnicodeNormalizationService _unicodeNormalizationService;
+        private readonly IReservedNameHandler _reservedNameHandler;
 
-        public FileNameSanitizationService(IUnicodeNormalizationService unicodeNormalizationService)
+        public FileNameSanitizationService(IUnicodeNormalizationService unicodeNormalizationService, IReservedNameHandler reservedNameHandler)
         {
             _unicodeNormalizationService = unicodeNormalizationService ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
+            _reservedNameHandler = reservedNameHandler ?? throw new ArgumentNullException(nameof(reservedNameHandler));
         }
 
         /// <summary>
@@ -42,20 +44,21 @@ namespace LivingRoots.Domain
             // Additional security check for potential path traversal
             
             // Check for path traversal sequences that should be blocked
+            // Check for path traversal sequences that should be blocked early (these are obvious cases)
             if (filename.Contains("../") || filename.Contains("..\\"))
-                throw new ArgumentException("Filename sanitizes to an empty string. (P", nameof(filename));
-            // Check for path traversal patterns
-            // Check for specific patterns that suggest path traversal attempts
-            // Block the specific case of ".." (current directory reference)
-            // Block strings that start with ".." followed by anything other than a path separator (like "..test", ".. ", etc.)
-            // Block strings that end with ".." preceded by anything other than a path separator (like "test..", " ..", etc.)
-            if (filename == ".." ||  // Block the specific case of ".." alone
-                (filename.Length > 2 && filename.StartsWith("..") && 
-                 !(filename[2] == '/' || filename[2] == '\\' || char.IsWhiteSpace(filename[2]))) ||
+                throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
+            // Check for path traversal patterns that suggest directory traversal attempts
+            // Block strings that start with ".." followed by anything other than a path separator or whitespace (like "..test", ".. ", etc.)
+            // Block strings that end with ".." preceded by anything other than a path separator or whitespace (like "test..", " ..", etc.)
+            // However, allow pure sequences of dots like "..." to be processed normally, as they'll be handled as empty strings later
+            if ((filename.Length > 2 && filename.StartsWith("..") && 
+                 !(filename[2] == '/' || filename[2] == '\\' || char.IsWhiteSpace(filename[2])) &&
+                 !filename.All(c => c == '.')) ||  // Allow pure sequences of dots
                 (filename.Length > 2 && filename.EndsWith("..") && 
-                 !(filename[filename.Length-3] == '/' || filename[filename.Length-3] == '\\' || char.IsWhiteSpace(filename[filename.Length-3]))))
+                 !(filename[filename.Length-3] == '/' || filename[filename.Length-3] == '\\' || char.IsWhiteSpace(filename[filename.Length-3])) &&
+                 !filename.All(c => c == '.')))  // Allow pure sequences of dots
             {
-                throw new ArgumentException("Filename sanitizes to an empty string. (P", nameof(filename));
+                throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
             }
 
             // Normalize Unicode characters first using the domain service
@@ -125,16 +128,24 @@ namespace LivingRoots.Domain
             // Final cleanup after truncation
             string result = PerformFinalCleanup(truncated, shouldBeHiddenFile);
 
+            // Check for empty result after all processing is done
             if (string.IsNullOrWhiteSpace(result))
-                throw new ArgumentException("Filename sanitizes to an empty string. (P", nameof(filename));
-
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+                
             // Check for path traversal patterns that should result in empty string message
-            if (result.Contains(".._") || result.StartsWith("..") || result.EndsWith("..")) {
-                throw new ArgumentException("Filename sanitizes to an empty string. (P", nameof(filename));
-            }
-            // Final check to ensure we don't return "." or ".." which could lead to path traversal issues
+            // But first check if it's exactly "." or ".." which should give the empty string error
             if (result == "." || result == "..")
-                throw new ArgumentException($"Filename sanitizes to invalid path component '{result}'.", nameof(filename));
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+            
+            // Check for path traversal patterns that should result in empty string message
+            // But first check if it's exactly "." or ".." which should give the empty string error
+            if (result == "." || result == "..")
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+            
+            // Only check for path traversal patterns if result is not empty
+            if (!string.IsNullOrEmpty(result) && (result.Contains(".._") || result.StartsWith("..") || result.EndsWith(".."))) {
+                throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
+            }
 
             // Add extension back if it was present and safe
             if (!string.IsNullOrEmpty(extension))
@@ -145,14 +156,17 @@ namespace LivingRoots.Domain
                     // Replace dangerous extension with a safe indicator
                     // Ensure base has no trailing dots before appending any suffix/extension
                     result = result.TrimEnd('.');
-                    // Produce name_blocked.ext with a single dot separator preceding the real extension
-                    result = $"{result}{extension}_blocked";
+                    // Produce name_blocked.ext with _blocked before the extension for security
+                    result = $"{result}_blocked{extension}";
                 }
                 else
                 {
                     result = $"{result}{extension}";
                 }
             }
+
+            // Handle reserved Windows filenames
+            result = _reservedNameHandler.Handle(result);
 
             return result;
         }
