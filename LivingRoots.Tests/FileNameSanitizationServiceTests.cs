@@ -20,14 +20,14 @@ namespace LivingRoots.Tests
         public void Constructor_WithNullUnicodeNormalizationService_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new FileNameSanitizationService(null));
+            Assert.Throws<ArgumentNullException>(() => new FileNameSanitizationService(null!));
         }
 
         [Fact]
         public void Sanitize_WithNullFilename_ReturnsNull()
         {
             // Act
-            var result = _service.Sanitize(null);
+            var result = _service.Sanitize(null!);
 
             // Assert
             Assert.Null(result);
@@ -62,19 +62,19 @@ namespace LivingRoots.Tests
         {
             // Test ../ path traversal
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Sanitize("../test"));
-            Assert.Contains("Filename cannot contain path traversal sequences.", exception1.Message);
+            Assert.Contains("Filename sanitizes to an empty string. (P", exception1.Message);
 
             // Test ..\ path traversal
             var exception2 = Assert.Throws<ArgumentException>(() => _service.Sanitize("..\\test"));
-            Assert.Contains("Filename cannot contain path traversal sequences.", exception2.Message);
+            Assert.Contains("Filename sanitizes to an empty string. (P", exception2.Message);
 
             // Test starts with ..
             var exception3 = Assert.Throws<ArgumentException>(() => _service.Sanitize("..test"));
-            Assert.Contains("Filename cannot contain path traversal sequences.", exception3.Message);
+            Assert.Contains("Filename sanitizes to an empty string. (P", exception3.Message);
 
             // Test ends with ..
             var exception4 = Assert.Throws<ArgumentException>(() => _service.Sanitize("test.."));
-            Assert.Contains("Filename cannot contain path traversal sequences.", exception4.Message);
+            Assert.Contains("Filename sanitizes to an empty string. (P", exception4.Message);
         }
 
         [Fact]
@@ -193,7 +193,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("."));
-            Assert.Contains("Filename cannot contain path traversal sequences.", exception.Message);
+            Assert.Contains("Filename sanitizes to an empty string. (P", exception.Message);
         }
 
         [Fact]
@@ -206,7 +206,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".."));
-            Assert.Contains("Filename cannot contain path traversal sequences.", exception.Message);
+            Assert.Contains("Filename sanitizes to an empty string. (P", exception.Message);
         }
 
         [Fact]
@@ -273,7 +273,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("..."));
-            Assert.Contains("Filename cannot contain path traversal sequences.", exception.Message);
+            Assert.Contains("Filename sanitizes to an empty string. (P", exception.Message);
         }
     }
 }

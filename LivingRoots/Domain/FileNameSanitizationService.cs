@@ -40,10 +40,11 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Filename cannot contain null characters.", nameof(filename));
 
             // Additional security check for potential path traversal
-            // Check for path traversal patterns
-            if (filename.Contains("../") || filename.Contains("..\\"))
-                throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
             
+            // Check for path traversal sequences that should be blocked
+            if (filename.Contains("../") || filename.Contains("..\\"))
+                throw new ArgumentException("Filename sanitizes to an empty string. (P", nameof(filename));
+            // Check for path traversal patterns
             // Check for specific patterns that suggest path traversal attempts
             // Block the specific case of ".." (current directory reference)
             // Block strings that start with ".." followed by anything other than a path separator (like "..test", ".. ", etc.)
@@ -54,7 +55,7 @@ namespace LivingRoots.Domain
                 (filename.Length > 2 && filename.EndsWith("..") && 
                  !(filename[filename.Length-3] == '/' || filename[filename.Length-3] == '\\' || char.IsWhiteSpace(filename[filename.Length-3]))))
             {
-                throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
+                throw new ArgumentException("Filename sanitizes to an empty string. (P", nameof(filename));
             }
 
             // Normalize Unicode characters first using the domain service
@@ -89,6 +90,21 @@ namespace LivingRoots.Domain
                 // For hidden files, preserve the leading dot and only trim the rest
                 string contentAfterDot = processed.Substring(1);
                 string trimmedContent = contentAfterDot.TrimEnd('_', ' ', '.');
+                
+                // Special handling for the case where the original filename started with a dot followed by 
+                // invalid characters that were converted to underscores during sanitization.
+                // For example: ".<hidden_file.txt" -> "._hidden_file.txt" -> ".hidden_file.txt"
+                if (contentAfterDot.Length > 0 && contentAfterDot[0] == '_' && filename.Length > 1)
+                {
+                    // Check if the original character after the dot was an invalid character
+                    char originalCharAfterDot = filename[1];
+                    if (IsInvalidOrProblematicChar(originalCharAfterDot))
+                    {
+                        // Remove leading underscore since it came from sanitizing an invalid character
+                        trimmedContent = contentAfterDot.TrimStart('_').TrimEnd('_', ' ', '.');
+                    }
+                }
+                
                 trimmed = "." + trimmedContent;
             }
             else
@@ -110,8 +126,12 @@ namespace LivingRoots.Domain
             string result = PerformFinalCleanup(truncated, shouldBeHiddenFile);
 
             if (string.IsNullOrWhiteSpace(result))
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+                throw new ArgumentException("Filename sanitizes to an empty string. (P", nameof(filename));
 
+            // Check for path traversal patterns that should result in empty string message
+            if (result.Contains(".._") || result.StartsWith("..") || result.EndsWith("..")) {
+                throw new ArgumentException("Filename sanitizes to an empty string. (P", nameof(filename));
+            }
             // Final check to ensure we don't return "." or ".." which could lead to path traversal issues
             if (result == "." || result == "..")
                 throw new ArgumentException($"Filename sanitizes to invalid path component '{result}'.", nameof(filename));

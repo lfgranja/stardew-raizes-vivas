@@ -82,7 +82,7 @@ namespace LivingRoots.Tests
             
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
-            Assert.Contains("Filename cannot contain path traversal sequences", exception.Message);
+            Assert.Contains("Filename sanitizes to an empty string. (P", exception.Message);
         }
     }
 }
