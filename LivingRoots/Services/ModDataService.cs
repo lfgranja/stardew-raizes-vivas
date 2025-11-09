@@ -45,7 +45,10 @@ namespace LivingRoots.Services
             _modLogic.ValidatePath(key);
             
             // Sanitize the key once before try-catch block to prevent exceptions during error handling
-            string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+            string sanitizedKey = _modLogic.SanitizeFileName(key);
+            if (string.IsNullOrWhiteSpace(sanitizedKey))
+                throw new InvalidOperationException($"Failed to sanitize key '{key}'. Sanitized key cannot be null or whitespace.");
+            
             var path = GetFilePath(sanitizedKey);
             try
             {
@@ -86,7 +89,10 @@ namespace LivingRoots.Services
             _modLogic.ValidatePath(key);
             
             // Sanitize the key once before try-catch block to prevent exceptions during error handling
-            string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+            string sanitizedKey = _modLogic.SanitizeFileName(key);
+            if (string.IsNullOrWhiteSpace(sanitizedKey))
+                throw new InvalidOperationException($"Failed to sanitize key '{key}'. Sanitized key cannot be null or whitespace.");
+            
             var path = GetFilePath(sanitizedKey);
             try
             {
@@ -145,7 +151,10 @@ namespace LivingRoots.Services
             _modLogic.ValidatePath(key);
             
             // Sanitize the key once before try-catch block to prevent exceptions during error handling
-            string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+            string sanitizedKey = _modLogic.SanitizeFileName(key);
+            if (string.IsNullOrWhiteSpace(sanitizedKey))
+                throw new InvalidOperationException($"Failed to sanitize key '{key}'. Sanitized key cannot be null or whitespace.");
+            
             string relativePath = GetFilePath(sanitizedKey);
             
             try
@@ -193,7 +202,13 @@ namespace LivingRoots.Services
             _modLogic.ValidatePath(key);
             
             // Sanitize the key once before try-catch block to prevent exceptions during error handling
-            string sanitizedKey = _modLogic.SanitizeFileName(key)!;
+            string sanitizedKey = _modLogic.SanitizeFileName(key);
+            if (string.IsNullOrWhiteSpace(sanitizedKey))
+            {
+                _monitor.Log($"Failed to sanitize key '{key}'. Cannot remove data with null or whitespace sanitized key.", LogLevel.Warn);
+                return; // Return early if sanitized key is null or whitespace
+            }
+            
             // Delete the data file to properly remove the stored data
             var filePath = GetFilePath(sanitizedKey);
             try
