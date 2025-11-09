@@ -419,7 +419,7 @@ namespace LivingRoots.Tests
         public void Normalize_WithLigatures_ExpandsToTwoCharacterEquivalents()
         {
             // Arrange
-            string input1 = "Café"; // Contains æ ligature
+            string input1 = "Cæsar"; // Contains æ ligature
             string input2 = "Œdipus"; // Contains Œ ligature
             string input3 = "coöperation"; // Contains ö with diaeresis (not a ligature, should remain as is)
             string input4 = "naïve"; // Contains ï with diaeresis (not a ligature, should remain as is)
@@ -435,12 +435,12 @@ namespace LivingRoots.Tests
             string result6 = _unicodeNormalizationService.Normalize(input6)!;
 
             // Assert
-            Assert.Equal("Cafe", result1); // Note: This is currently failing because æ -> a instead of ae
-            Assert.Equal("OEdipus", result2); // Note: This is currently failing because Œ -> O instead of OE
-            Assert.Equal("cooperation", result3); // This should work after fix
-            Assert.Equal("naive", result4); // This should work after fix
-            Assert.Equal("aeon", result5); // This is the key test: æ should become ae, not just a
-            Assert.Equal("coeur", result6); // This is the key test: œ should become eu, not just o
+            Assert.Equal("Caesar", result1); // æ should expand to "ae"
+            Assert.Equal("OEdipus", result2); // Œ should expand to "OE"
+            Assert.Equal("cooperation", result3); // ö diaeresis should become o after diacritic removal
+            Assert.Equal("naive", result4); // ï diaeresis should become i after diacritic removal
+            Assert.Equal("aeon", result5); // æ should expand to "ae"
+            Assert.Equal("coeur", result6); // œ should expand to "oe"
         }
 
         [Fact]
