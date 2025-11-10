@@ -28,21 +28,26 @@ namespace LivingRoots.Tests
             // and throw exceptions for cases that would result in empty strings
             _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(input => 
             {
-                // Simulate the real sanitization behavior
-                if (input.Contains("test/key\\with:invalid|chars"))
-                    return "test_key_with_invalid_chars";
-                if (input.Contains("file....name"))
+                // Simulate the real sanitization behavior for individual segments
+                if (input == "with:invalid|chars")
+                    return "with_invalid_chars";
+                if (input == "file....name")
                     return "file.name";
-                if (input.Contains("  test_key  "))
+                if (input == "  test_key  " || input == "test_key  " || input == " test_key")
                     return "test_key";
-                if (input.Contains("<>:\"|?*"))
+                if (input == "<>:\"|?*" || input == "........." || input == "___" || input == "   ")
                     throw new ArgumentException("Filename sanitizes to an empty string.", nameof(input)); // This should throw like the real implementation
-                if (input.Contains("........."))
-                    throw new ArgumentException("Filename sanitizes to an empty string.", nameof(input)); // This should throw like the real implementation
-                if (input.Contains("___"))
-                    throw new ArgumentException("Filename sanitizes to an empty string.", nameof(input)); // This should throw like the real implementation
-                if (input.Contains("   "))
-                    throw new ArgumentException("Filename sanitizes to an empty string.", nameof(input)); // This should throw like the real implementation
+                // For individual segments with invalid characters, replace them with underscores
+                if (input.Contains(':') || input.Contains('|') || input.Contains('?') || input.Contains('*') || input.Contains('<') || input.Contains('>') || input.Contains('"'))
+                {
+                    return input.Replace(':', '_').Replace('|', '_').Replace('?', '_').Replace('*', '_')
+                               .Replace('<', '_').Replace('>', '_').Replace('"', '_');
+                }
+                // For segments with multiple dots, process them appropriately
+                if (input.Contains("...."))
+                {
+                    return input.Replace("....", ".").Replace("...", "."); // Simplified processing for test
+                }
                 return input;
             });
             
@@ -170,8 +175,8 @@ namespace LivingRoots.Tests
             // Act
             service.SaveData(testData, "test/key\\with:invalid|chars");
 
-            // Assert
-            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_key_with_invalid_chars.json", testData), Times.Once);
+            // Assert - With segment-based sanitization, this should be "data/test/key/with_invalid_chars.json"
+            _mockDataHelper.Verify(x => x.WriteJsonFile("data/test/key/with_invalid_chars.json", testData), Times.Once);
         }
 
         [Fact]

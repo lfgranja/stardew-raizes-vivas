@@ -45,7 +45,7 @@ namespace LivingRoots.Services
             _modLogic.ValidatePath(key);
             
             // Sanitize the key once before try-catch block to prevent exceptions during error handling
-            string sanitizedKey = _modLogic.SanitizeFileName(key);
+            string sanitizedKey = SanitizePathSegments(key);
             if (string.IsNullOrWhiteSpace(sanitizedKey))
                 throw new InvalidOperationException($"Failed to sanitize key '{key}'. Sanitized key cannot be null or whitespace.");
             
@@ -69,7 +69,7 @@ namespace LivingRoots.Services
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Unexpected error while saving data to '{path}': {ex.Message}", LogLevel.Error);
+                _monitor.Log($"Unexpected error while saving data to '{sanitizedKey}': {ex.Message}", LogLevel.Error);
                 throw; // Keep rethrowing for save operations as these are critical
             }
         }
@@ -89,13 +89,13 @@ namespace LivingRoots.Services
             _modLogic.ValidatePath(key);
             
             // Sanitize the key once before try-catch block to prevent exceptions during error handling
-            string sanitizedKey = _modLogic.SanitizeFileName(key);
+            string sanitizedKey = SanitizePathSegments(key);
             if (string.IsNullOrWhiteSpace(sanitizedKey))
                 throw new InvalidOperationException($"Failed to sanitize key '{key}'. Sanitized key cannot be null or whitespace.");
             
-            var path = GetFilePath(sanitizedKey);
             try
             {
+                var path = GetFilePath(sanitizedKey);
                 var result = _helper.Data.ReadJsonFile<T>(path);
                 if (result == null)
                 {
@@ -104,6 +104,11 @@ namespace LivingRoots.Services
                     return null;
                 }
                 return result;
+            }
+            catch (ArgumentException ex)
+            {
+                _monitor.Log($"Invalid key provided to LoadData: {ex.Message}", LogLevel.Warn);
+                return null; // Return null instead of throwing when key is invalid
             }
             catch (System.IO.FileNotFoundException ex)
             {
@@ -151,16 +156,26 @@ namespace LivingRoots.Services
             _modLogic.ValidatePath(key);
             
             // Sanitize the key once before try-catch block to prevent exceptions during error handling
-            string sanitizedKey = _modLogic.SanitizeFileName(key);
+            string sanitizedKey = SanitizePathSegments(key);
             if (string.IsNullOrWhiteSpace(sanitizedKey))
                 throw new InvalidOperationException($"Failed to sanitize key '{key}'. Sanitized key cannot be null or whitespace.");
             
-            string relativePath = GetFilePath(sanitizedKey);
-            
             try
             {
+                string relativePath = GetFilePath(sanitizedKey);
+                
                 var data = _helper.Data.ReadJsonFile<object>(relativePath);
                 return data != null;
+            }
+            catch (ArgumentException ex)
+            {
+                _monitor.Log($"Invalid key provided to DataExists: {ex.Message}", LogLevel.Warn);
+                return false; // Return false instead of throwing when key is invalid
+            }
+            catch (InvalidOperationException ex)
+            {
+                _monitor.Log($"Operation invalid while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                return false; // Return false instead of throwing when operation is invalid
             }
             catch (System.IO.FileNotFoundException ex)
             {
@@ -202,7 +217,7 @@ namespace LivingRoots.Services
             _modLogic.ValidatePath(key);
             
             // Sanitize the key once before try-catch block to prevent exceptions during error handling
-            string sanitizedKey = _modLogic.SanitizeFileName(key);
+            string sanitizedKey = SanitizePathSegments(key);
             if (string.IsNullOrWhiteSpace(sanitizedKey))
             {
                 _monitor.Log($"Failed to sanitize key '{key}'. Cannot remove data with null or whitespace sanitized key.", LogLevel.Warn);
@@ -243,6 +258,44 @@ namespace LivingRoots.Services
 
             // Return the final path with the .json extension
             return Path.Combine("data", $"{key}.json");
+        }
+        
+        /// <summary>
+        /// Sanitizes each segment of a path separately to preserve directory structure
+        /// </summary>
+        /// <param name="path">The path to sanitize</param>
+        /// <returns>The sanitized path with each segment properly sanitized</returns>
+        private string SanitizePathSegments(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return path;
+            
+            // Split the path by both forward and backward slashes
+            string[] segments = path.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            // Sanitize each segment individually
+            for (int i = 0; i < segments.Length; i++)
+            {
+                // Handle special path segments that should be preserved
+                if (segments[i] == "." || segments[i] == "..")
+                {
+                    // These are valid path components and should be preserved as-is
+                    // They will be handled by the path validation layer
+                    continue;
+                }
+                
+                // Use the existing SanitizeFileName method for other segments
+                string sanitizedSegment = _modLogic.SanitizeFileName(segments[i]);
+                
+                // If any segment becomes null or whitespace after sanitization, throw an exception
+                if (string.IsNullOrWhiteSpace(sanitizedSegment))
+                    throw new InvalidOperationException($"Failed to sanitize path segment '{segments[i]}'. Sanitized segment cannot be null or whitespace.");
+                
+                segments[i] = sanitizedSegment;
+            }
+            
+            // Join the sanitized segments back together using the system's directory separator
+            return string.Join(Path.DirectorySeparatorChar.ToString(), segments);
         }
     }
 }
