@@ -72,7 +72,13 @@ namespace LivingRoots.Domain
                     // For security, remove diacritics from Latin and Greek letters
                     // But preserve diacritics for other scripts like Hebrew, Arabic, etc.
                     // Use the last known base character to determine if diacritic should be removed
-                    if (IsLatinLetter(lastBaseChar) || IsGreekLetter(lastBaseChar))
+                    if (lastBaseChar == '\0')
+                    {
+                        // Skip orphan combining marks that don't have a valid base character
+                        // This prevents leading or orphan combining marks from being preserved
+                        continue;
+                    }
+                    else if (IsLatinLetter(lastBaseChar) || IsGreekLetter(lastBaseChar))
                     {
                         // Remove diacritics from Latin and Greek letters
                         continue;
