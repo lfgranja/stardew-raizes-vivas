@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Net;
 using System.Text;
 
 namespace LivingRoots.Domain
@@ -41,11 +42,41 @@ namespace LivingRoots.Domain
             if (Uri.IsWellFormedUriString(path, UriKind.Absolute))
                 throw new ArgumentException("Path cannot be an absolute path or URI.", nameof(path));
 
-            // Check for encoded traversal patterns first by looking for encoded dots and slashes
-            string lowerPath = path.ToLowerInvariant();
-            if (lowerPath.Contains("%2e%2e") || lowerPath.Contains("%2e%2e%") || 
-                lowerPath.Contains("..%2f") || lowerPath.Contains("..%5c") || 
-                lowerPath.Contains("%2f..") || lowerPath.Contains("%5c.."))
+            // Check for encoded traversal patterns by attempting URL decoding once
+            string decodedPath;
+            try
+            {
+                decodedPath = Uri.UnescapeDataString(path);
+            }
+            catch (Exception)
+            {
+                // If decoding fails, conservatively reject the path
+                throw new ArgumentException("Path contains invalid encoded characters.", nameof(path));
+            }
+            
+            // Normalize all separators to '/'
+            string normalized = path.Replace('\\', '/');
+            
+            // Check for path traversal patterns at the beginning (these should always be blocked)
+            if (normalized == ".." || 
+                normalized.StartsWith("../"))      // Block "../" patterns at the start
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
+            }
+
+            // Check the decoded string for encoded traversal patterns
+            string lowerDecodedPath = decodedPath.ToLowerInvariant();
+            if (decodedPath != path && (lowerDecodedPath.Contains("..") || 
+                lowerDecodedPath.Contains("../") || 
+                lowerDecodedPath.Contains("..\\")))
+            {
+                throw new ArgumentException("Path cannot contain encoded path traversal patterns.", nameof(path));
+            }
+            
+            // Also check the original raw path as an extra layer of security
+            if (path.ToLowerInvariant().Contains("%2e%2e") || path.ToLowerInvariant().Contains("%2e%2e%") || 
+                path.ToLowerInvariant().Contains("..%2f") || path.ToLowerInvariant().Contains("..%5c") || 
+                path.ToLowerInvariant().Contains("%2f..") || path.ToLowerInvariant().Contains("%5c.."))
             {
                 throw new ArgumentException("Path cannot contain encoded path traversal patterns.", nameof(path));
             }
@@ -54,9 +85,6 @@ namespace LivingRoots.Domain
             if (path.Length >= 2 && char.IsLetter(path[0]) && path[1] == ':' && 
                 (path.Length > 2 && (path[2] == '\\' || path[2] == '/')))
                 throw new ArgumentException("Path cannot be an absolute path or URI.", nameof(path));
-            
-            // Normalize all separators to '/'
-            string normalized = path.Replace('\\', '/');
 
             // Check for Unix-style absolute paths (starting with '/')
             if (normalized.StartsWith("/"))
@@ -76,12 +104,7 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
             }
             
-            // Check for path traversal patterns at the beginning
-            if (normalized == ".." || 
-                normalized.StartsWith("../"))      // Block "../" patterns
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
-            }
+            
             
             // Check for problematic explicit current directory followed by parent directory patterns
             if (normalized.Contains("./../"))
@@ -159,15 +182,7 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(normalizedPath));
             }
             
-            // Additional check: specifically for the pattern "folder/../file.txt" which should be blocked
-            // This pattern has exactly 3 segments with ".." in the middle
-            string[] originalSegments = normalizedPath.Split('/');
-            if (originalSegments.Length == 3 && originalSegments[1] == ".." && 
-                !string.IsNullOrEmpty(originalSegments[0]) && !string.IsNullOrEmpty(originalSegments[2]))
-            {
-                // This is the specific case: "dir/../file" - block this
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(normalizedPath));
-            }
+            
         }
         
         /// <summary>
