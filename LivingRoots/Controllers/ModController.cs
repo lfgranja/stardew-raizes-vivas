@@ -164,13 +164,14 @@ namespace LivingRoots.Controllers
                     {
                         _monitor.Log("Console command 'lr_version' is already registered, skipping registration.", LogLevel.Trace);
                     }
-                } // Added missing closing brace for the if statement
+                }
                 
                 // Unsubscribe from the GameLaunched event to ensure this handler runs only once
                 // This prevents multiple invocations during mod reloads, making the "run-once" behavior more robust
                 if (_helper?.Events?.GameLoop != null && _onGameLaunchedHandler != null)
                 {
                     _helper.Events.GameLoop.GameLaunched -= _onGameLaunchedHandler;
+                    _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
                     _monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
                 }
             }
