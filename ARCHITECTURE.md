@@ -68,7 +68,7 @@ LivingRoots.Tests/          # Unit Tests Project
     *   They will be highly testable via TDD, as they will have no complex external dependencies.
     *   Planned to contain `IModLogic.cs` interface for future domain logic implementations.
 
-3.  **`Services/` (SMAPI Interaction and Persistence)**
+3. **`Services/` (SMAPI Interaction and Persistence)**
     *   Responsible for interacting with SMAPI APIs to:
         *   Persist and load mod data (e.g., `helper.Data.WriteJsonFile`).
         *   Access game information (locations, tiles, objects).

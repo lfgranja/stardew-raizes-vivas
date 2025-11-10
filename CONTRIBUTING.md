@@ -28,7 +28,7 @@ Our goal is to build a robust, extensible, and easily maintainable mod. To achie
 
 To start developing "Living Roots," follow the steps below:
 
-1.  **Install the Game:** Have Stardew Valley (via Steam or GOG) installed on your machine.
+1. **Install the Game:** Have Stardew Valley (via Steam or GOG) installed on your machine.
 
 2.  **Install SMAPI:** Download and install the [Stardew Modding API (SMAPI)](https://smapi.io/) for your operating system. Follow the official installation instructions.
 
@@ -82,7 +82,7 @@ To start developing "Living Roots," follow the steps below:
     ```bash
     git checkout -b feature/your-feature-name
     ```
-3.  **Develop with TDD:** Write tests before implementing the functionality. Ensure your tests fail initially and pass after implementation.
+3. **Develop with TDD:** Write tests before implementing the functionality. Ensure your tests fail initially and pass after implementation.
 4.  **Follow SOLID and DDD Principles:** Keep your code clean, modular, and aligned with the ubiquitous language of the agroecological domain.
 5.  **Test in Game:** After implementing and testing your logic with unit tests, test the functionality in Stardew Valley to ensure everything works as expected.
 6.  **Commit:** Make small, atomic commits with clear and descriptive messages.

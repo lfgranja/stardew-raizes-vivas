@@ -41,7 +41,7 @@ Every tillable plot on your farm now has a new property: Soil Health (visible wh
 1.  **Install SMAPI:** If you don't have it already, download and install the [Stardew Modding API (SMAPI)](https://smapi.io/) for your operating system.
 2.  **Download the Mod:** Download the latest version of "Living Roots" from the releases page (or Nexus Mods, when available).
 3.  **Extract:** Unzip the mod file into your Stardew Valley `Mods` folder (usually located in `Stardew Valley/Mods`).
-4.  **Play!** Launch the game through SMAPI.
+4. **Play!** Launch the game through SMAPI.
 
 ## Compatibility
 
