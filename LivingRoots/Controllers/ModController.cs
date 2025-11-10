@@ -164,6 +164,14 @@ namespace LivingRoots.Controllers
                     {
                         _monitor.Log("Console command 'lr_version' is already registered, skipping registration.", LogLevel.Trace);
                     }
+                } // Added missing closing brace for the if statement
+                
+                // Unsubscribe from the GameLaunched event to ensure this handler runs only once
+                // This prevents multiple invocations during mod reloads, making the "run-once" behavior more robust
+                if (_helper?.Events?.GameLoop != null && _onGameLaunchedHandler != null)
+                {
+                    _helper.Events.GameLoop.GameLaunched -= _onGameLaunchedHandler;
+                    _monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
                 }
             }
             catch (Exception ex)
@@ -201,9 +209,7 @@ namespace LivingRoots.Controllers
                 // Include the mod's UniqueID in the output for better usability and clarity
                 // Explicitly format the version string using MajorVersion, MinorVersion, and PatchVersion properties for consistent output
                 var version = _manifest?.Version;
-                string versionString = version != null 
-                    ? $"{version.MajorVersion}.{version.MinorVersion}.{version.PatchVersion}" 
-                    : "unknown";
+                string versionString = version?.ToString() ?? "unknown";
                     
                 _monitor.Log($"Living Roots Mod Version: {versionString} (UniqueID: {_manifest?.UniqueID ?? "unknown"})", LogLevel.Info);
             }
