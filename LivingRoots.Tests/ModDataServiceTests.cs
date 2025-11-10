@@ -5,6 +5,7 @@ using LivingRoots.Domain;
 using Xunit;
 using System;
 using Newtonsoft.Json;
+using System.IO;
 
 namespace LivingRoots.Tests
 {
@@ -33,10 +34,13 @@ namespace LivingRoots.Tests
                     return "with_invalid_chars";
                 if (input == "file....name")
                     return "file.name";
-                if (input == "  test_key  " || input == "test_key  " || input == " test_key")
+                if (input == "  test_key  " || input == "test_key " || input == " test_key")
                     return "test_key";
                 if (input == "<>:\"|?*" || input == "........." || input == "___" || input == "   ")
                     throw new ArgumentException("Filename sanitizes to an empty string.", nameof(input)); // This should throw like the real implementation
+                // Special handling for "." and ".." which should be blocked at the path segment level
+                if (input == "." || input == "..")
+                    throw new ArgumentException($"Filename sanitizes to invalid path component '{input}'.", nameof(input));
                 // For individual segments with invalid characters, replace them with underscores
                 if (input.Contains(':') || input.Contains('|') || input.Contains('?') || input.Contains('*') || input.Contains('<') || input.Contains('>') || input.Contains('"'))
                 {
@@ -53,8 +57,9 @@ namespace LivingRoots.Tests
             
             // Configure the path validation to not throw for valid paths in most tests
             // but throw for path traversal attempts
-            _mockModLogic.Setup(x => x.ValidatePath(It.Is<string>(s => s.Contains("../") || s.Contains("..\\") || s.Contains("../../../") || s.Contains("..\\..\\") || s.Contains("http://") || s.Contains("https://")))).Throws<ArgumentException>();
+            // The more specific setup (with conditions) must come after the general one to avoid being overridden
             _mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Verifiable();
+            _mockModLogic.Setup(x => x.ValidatePath(It.Is<string>(s => s.Contains("../") || s.Contains("..\\") || s.Contains("../../../") || s.Contains("..\\..\\") || s.Contains("http://") || s.Contains("https://")))).Throws<ArgumentException>();
         }
 
         [Fact]
@@ -393,9 +398,9 @@ namespace LivingRoots.Tests
             // Act & Assert
             Assert.Throws<System.IO.IOException>(() => service.SaveData(testData, "test_key"));
 
-            // Assert - Verify that the log message contains the full sanitized path
+            // Assert - Verify that the log message contains the sanitized key, not the full path
             _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("data/test_key.json")),
+                It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("data/test_key.json")),
                 LogLevel.Warn), Times.Once);
         }
         
@@ -411,10 +416,83 @@ namespace LivingRoots.Tests
             // Act & Assert
             Assert.Throws<Newtonsoft.Json.JsonException>(() => service.SaveData(testData, "test_key"));
 
-            // Assert - Verify that the log message contains the full sanitized path
+            // Assert - Verify that the log message contains the sanitized key, not the full path
             _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("data/test_key.json")),
+                It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("data/test_key.json")),
                 LogLevel.Error), Times.Once);
+        }
+        
+        [Fact]
+        public void SaveData_WithDangerousPathKey_DoesNotLogFullFilePath()
+        {
+            // Arrange - Setup the mod logic to allow the path to pass validation for this test
+            // and to properly sanitize the filename segments
+            _mockModLogic.Setup(x => x.ValidatePath("dangerous/path.exe")).Verifiable();
+            // Mock the SanitizeFileName to return a sanitized version of the segments
+            _mockModLogic.Setup(x => x.SanitizeFileName("dangerous")).Returns("dangerous");
+            _mockModLogic.Setup(x => x.SanitizeFileName("path.exe")).Returns("path.blocked");
+            _mockModLogic.Setup(x => x.SanitizeFileName(It.Is<string>(s => s != "dangerous" && s != "path.exe"))).Returns<string>(s => s);
+            
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var testData = new { TestValue = "test" };
+            
+            // Setup helper to throw an exception to trigger the error logging
+            _mockDataHelper.Setup(x => x.WriteJsonFile(It.IsAny<string>(), testData))
+                .Throws(new System.IO.IOException("Test exception"));
+
+            // Act & Assert
+            var exception = Assert.Throws<System.IO.IOException>(() => service.SaveData(testData, "dangerous/path.exe"));
+            
+            // Verify that the monitor did NOT log the original dangerous path in the error message
+            _mockMonitor.Verify(m => m.Log(
+                It.Is<string>(msg => msg.Contains("dangerous/path.exe")), 
+                It.IsAny<LogLevel>()), Times.Never);
+                
+            // Verify that the monitor logged the sanitized key instead (should be "dangerous/path.blocked")
+            _mockMonitor.Verify(m => m.Log(
+                It.Is<string>(msg => msg.Contains("dangerous/path.blocked") && msg.Contains("IOException while saving data for key")), 
+                LogLevel.Warn), Times.Once);
+        }
+
+        [Fact]
+        public void SanitizePathSegments_WithDotSegment_SkipsSegment()
+        {
+            // This test addresses the second issue: Eliminate Dot-Segment Traversal Risk
+            // In SanitizePathSegments, we should skip . segments instead of preserving them
+            // The path should pass validation and the . segments should be skipped during sanitization
+
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            
+            // Act & Assert - This should NOT throw because . segments in the middle are allowed by PathValidationService
+            // The method should complete successfully without exceptions
+            var method = service.GetType()
+                .GetMethod("GetValidatedAndSanitizedKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            // This should not throw - the path "segment1/./segment2" should be valid
+            var result = method?.Invoke(service, new object[] { "segment1/./segment2" });
+            
+            // Should complete without throwing an exception
+            Assert.NotNull(result);
+        }
+
+        [Fact]
+        public void SanitizePathSegments_WithDotDotSegment_ThrowsArgumentException()
+        {
+            // This test addresses the second issue: Eliminate Dot-Segment Traversal Risk
+            // Path traversal with ".." segments should be caught by PathValidationService first
+
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            
+            // Act & Assert - This should throw because PathValidationService will reject ".." as path traversal
+            // Since we're using reflection, the exception will be wrapped in a TargetInvocationException
+            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() => service.GetType()
+                .GetMethod("GetValidatedAndSanitizedKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(service, new object[] { "../.." }));
+            
+            // The actual exception should be an ArgumentException from PathValidationService
+            Assert.IsType<ArgumentException>(exception.InnerException);
         }
     }
 }
