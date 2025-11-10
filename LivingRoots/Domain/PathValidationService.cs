@@ -130,7 +130,7 @@ namespace LivingRoots.Domain
         {
             string[] segments = normalizedPath.Split('/');
             int depth = 0;
-            int minDepth = 0; // Track minimum depth reached to detect traversal attempts
+            
             bool previousWasDotDot = false;
 
             foreach (string segment in segments)
@@ -147,7 +147,7 @@ namespace LivingRoots.Domain
                     }
                     
                     depth--;
-                    minDepth = Math.Min(minDepth, depth); // Track if we go below starting depth
+                    
                     previousWasDotDot = true;
                     
                     // If depth goes negative, we're trying to traverse above root
@@ -176,11 +176,7 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(normalizedPath));
             }
             
-            // Check if we had any net traversal attempt (minDepth < 0 means we went above root at some point)
-            if (minDepth < 0)
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(normalizedPath));
-            }
+            
             
             
         }
