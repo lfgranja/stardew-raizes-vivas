@@ -45,18 +45,14 @@ namespace LivingRoots.Domain
             
             // Check for path traversal sequences that should be blocked
             // Check for path traversal sequences that should be blocked early (these are obvious cases)
-            if (filename.Contains("../") || filename.Contains("..\\"))
+            if (filename.Contains("../", StringComparison.Ordinal) || 
+                filename.Contains("..\\", StringComparison.Ordinal) ||
+                filename.Contains("..\\/", StringComparison.Ordinal) ||
+                filename.Contains("../\\", StringComparison.Ordinal))
                 throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
-            // Check for path traversal patterns that suggest directory traversal attempts
-            // Block strings that start with ".." followed by anything other than a path separator or whitespace (like "..test", ".. ", etc.)
-            // Block strings that end with ".." preceded by anything other than a path separator or whitespace (like "test..", " ..", etc.)
-            // However, allow pure sequences of dots like "..." to be processed normally, as they'll be handled as empty strings later
-            if ((filename.Length > 2 && filename.StartsWith("..") && 
-                 !(filename[2] == '/' || filename[2] == '\\' || char.IsWhiteSpace(filename[2])) &&
-                 !filename.All(c => c == '.')) ||  // Allow pure sequences of dots
-                (filename.Length > 2 && filename.EndsWith("..") && 
-                 !(filename[filename.Length-3] == '/' || filename[filename.Length-3] == '\\' || char.IsWhiteSpace(filename[filename.Length-3])) &&
-                 !filename.All(c => c == '.')))  // Allow pure sequences of dots
+            
+            // Check for suspicious path traversal patterns using a dedicated method
+            if (IsSuspiciousPathTraversalPattern(filename))
             {
                 throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
             }
@@ -88,7 +84,7 @@ namespace LivingRoots.Domain
 
             // Trim leading/trailing problematic characters (but preserve leading dots for hidden files)
             string trimmed;
-            if (shouldBeHiddenFile && processed.StartsWith("."))
+            if (shouldBeHiddenFile && processed.StartsWith(".", StringComparison.Ordinal))
             {
                 // For hidden files, preserve the leading dot and only trim the rest
                 string contentAfterDot = processed.Substring(1);
@@ -117,7 +113,7 @@ namespace LivingRoots.Domain
             }
 
             // Preserve leading dots for hidden files if not already present and content is not empty
-            if (shouldBeHiddenFile && !trimmed.StartsWith(".") && !string.IsNullOrEmpty(trimmed))
+            if (shouldBeHiddenFile && !trimmed.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(trimmed))
             {
                 trimmed = "." + trimmed;
             }
@@ -138,8 +134,19 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
             
             // Only check for path traversal patterns if result is not empty
-            if (!string.IsNullOrEmpty(result) && (result.Contains(".._") || result.StartsWith("..") || result.EndsWith(".."))) {
-                throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
+            // Allow hidden files (single leading dot followed by non-dot content) but block other traversal patterns
+            if (!string.IsNullOrEmpty(result))
+            {
+                // Check for path traversal patterns, but allow hidden files (single dot at start followed by non-dot content)
+                bool isHiddenFile = result.Length > 1 && result.StartsWith(".", StringComparison.Ordinal) && result[1] != '.';
+                
+                if (!isHiddenFile && 
+                    (result.Contains(".._", StringComparison.Ordinal) || 
+                     (result.StartsWith("..", StringComparison.Ordinal) && result.Length > 2 && result[2] != '.') ||
+                     (result.EndsWith("..", StringComparison.Ordinal) && result.Length > 2 && result[result.Length-3] != '.')))
+                {
+                    throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
+                }
             }
 
             // Add extension back if it was present and safe
@@ -264,7 +271,7 @@ namespace LivingRoots.Domain
         {
             // If original starts with a dot and the processed filename is not empty,
             // we should preserve the leading dot
-            return originalFilename.StartsWith(".") && !string.IsNullOrEmpty(processedFilename);
+            return originalFilename.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(processedFilename);
         }
 
         /// <summary>
@@ -278,7 +285,7 @@ namespace LivingRoots.Domain
                 return filename;
 
             // If the filename is too long, truncate it
-            if (filename.StartsWith("."))
+            if (filename.StartsWith(".", StringComparison.Ordinal))
             {
                 // For hidden files, keep the dot and truncate the content part
                 string contentPart = filename.Substring(1);
@@ -304,7 +311,7 @@ namespace LivingRoots.Domain
             string postTruncationTrimmed = filename.TrimEnd('_', ' ', '.');
             
             // If it was a hidden file and we lost the dot, add it back
-            if (shouldBeHiddenFile && !postTruncationTrimmed.StartsWith(".") && !string.IsNullOrEmpty(postTruncationTrimmed))
+            if (shouldBeHiddenFile && !postTruncationTrimmed.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(postTruncationTrimmed))
             {
                 postTruncationTrimmed = "." + postTruncationTrimmed.TrimStart('.');
             }
@@ -334,7 +341,7 @@ namespace LivingRoots.Domain
                 
                 // Check if the extension portion contains directory separators
                 // This prevents cases like "file/path.ext" where the extension detection would be wrong
-                if (potentialExtension.Contains('/') || potentialExtension.Contains('\\'))
+                if (potentialExtension.Contains('/', StringComparison.Ordinal) || potentialExtension.Contains('\\', StringComparison.Ordinal))
                 {
                     return string.Empty; // Not a valid extension if it contains path separators
                 }
@@ -364,7 +371,7 @@ namespace LivingRoots.Domain
                 
                 // Check if the extension portion contains directory separators
                 // This prevents cases like "file/path.ext" where the extension detection would be wrong
-                if (potentialExtension.Contains('/') || potentialExtension.Contains('\\'))
+                if (potentialExtension.Contains('/', StringComparison.Ordinal) || potentialExtension.Contains('\\', StringComparison.Ordinal))
                 {
                     return filename; // Return original if it's not a valid extension
                 }
@@ -453,6 +460,24 @@ namespace LivingRoots.Domain
             }
             
             return str.Substring(startIndex, endIndex - startIndex);
+        }
+        
+        /// <summary>
+        /// Checks if the filename contains suspicious path traversal patterns.
+        /// Block strings that start with ".." followed by anything other than a path separator or whitespace (like "..test", ".. ", etc.)
+        /// Block strings that end with ".." preceded by anything other than a path separator or whitespace (like "test..", " ..", etc.)
+        /// However, allow pure sequences of dots like "..." to be processed normally, as they'll be handled as empty strings later
+        /// </summary>
+        /// <param name="filename">The filename to check</param>
+        /// <returns>True if the filename contains suspicious path traversal patterns, false otherwise</returns>
+        private static bool IsSuspiciousPathTraversalPattern(string filename)
+        {
+            return (filename.Length > 2 && filename.StartsWith("..") && 
+                 !(filename[2] == '/' || filename[2] == '\\' || char.IsWhiteSpace(filename[2])) &&
+                 !filename.All(c => c == '.')) ||  // Allow pure sequences of dots
+                (filename.Length > 2 && filename.EndsWith("..") && 
+                 !(filename[filename.Length-3] == '/' || filename[filename.Length-3] == '\\' || char.IsWhiteSpace(filename[filename.Length-3])) &&
+                 !filename.All(c => c == '.'));  // Allow pure sequences of dots
         }
     }
 }

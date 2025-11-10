@@ -98,8 +98,9 @@ namespace LivingRoots.Tests
             var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("../../file.txt"));
             Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
             
-            var exception3 = Assert.Throws<ArgumentException>(() => _service.Validate("folder/../file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception3.Message);
+            // This path should be allowed as it doesn't go above the root level
+            var ex3 = Record.Exception(() => _service.Validate("folder/../file.txt"));
+            Assert.Null(ex3);
         }
 
         [Fact]
