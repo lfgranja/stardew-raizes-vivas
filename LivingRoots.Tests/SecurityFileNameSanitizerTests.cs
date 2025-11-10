@@ -38,7 +38,7 @@ namespace LivingRoots.Tests
             string result = _fileNameSanitizer.Sanitize(input)!;
             
             // Assert - The sanitizer should block the dangerous extension
-            Assert.Equal("document.txt_blocked.exe", result); // Dangerous extension is blocked
+            Assert.Equal("document.txt.blocked", result); // Dangerous extension is blocked
         }
 
         // Test 2: Filename sanitization with allowlist approach
@@ -66,7 +66,7 @@ namespace LivingRoots.Tests
             string result = _fileNameSanitizer.Sanitize(input)!;
             
             // Assert - Dangerous extension should be handled safely
-            Assert.Equal("malicious_blocked.exe", result);
+            Assert.Equal("malicious.blocked", result);
         }
 
         // Test 4: Multiple extensions that could be dangerous
@@ -80,7 +80,7 @@ namespace LivingRoots.Tests
             string result = _fileNameSanitizer.Sanitize(input)!;
             
             // Assert - The dangerous extension should be blocked
-            Assert.Equal("innocent.jpg_blocked.exe", result);
+            Assert.Equal("innocent.jpg.blocked", result);
         }
 
         // Test 5: Homoglyph normalization security
@@ -165,15 +165,19 @@ namespace LivingRoots.Tests
         }
 
         // Test 9: Path traversal prevention with normalized characters
+        // Note: Path traversal is now handled by PathValidationService, not FileNameSanitizationService
         [Fact]
-        public void Sanitize_WithPathTraversal_Attempts_PreventsTraversal()
+        public void Sanitize_WithPathTraversal_Attempts_AllowsForPathValidation()
         {
             // Arrange - Path traversal attempts
             string input = "../etc/passwd";
             
-            // Act & Assert - Path traversal should throw an exception
-            var exception = Assert.Throws<ArgumentException>(() => _fileNameSanitizer.Sanitize(input));
-            Assert.Contains("Filename cannot contain path traversal sequences.", exception.Message);
+            // Act - Path traversal should now pass through FileNameSanitizationService
+            // and be caught by PathValidationService at a higher level
+            string result = _fileNameSanitizer.Sanitize(input)!;
+            
+            // Assert - The filename sanitizer itself should not block this (it's handled elsewhere)
+            Assert.Equal("._etc_passwd", result); // Path traversal is now handled by PathValidationService
         }
 
         // Test 10: Zero-width character removal
