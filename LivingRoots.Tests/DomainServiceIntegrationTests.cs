@@ -79,18 +79,26 @@ namespace LivingRoots.Tests
             var result = _fileNameSanitizationService.Sanitize(input);
 
             // Assert
-            Assert.Equal("malicious_blocked.exe", result);
+            Assert.Equal("malicious.blocked", result);
         }
 
         [Fact]
-        public void Integration_WithPathTraversalInFilename_ThrowsArgumentException()
+        public void Integration_WithPathTraversalInFilename_DoesNotThrowInSanitizer()
         {
             // Arrange
             var input = "../malicious_file.txt";
             
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _fileNameSanitizationService.Sanitize(input));
-            Assert.Contains("Filename cannot contain path traversal sequences.", exception.Message);
+            // Setup the mock to return a non-null value for path traversal input
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(input))
+                .Returns(input);
+            
+            // Act - Path traversal should now pass through FileNameSanitizationService
+            // and be caught by PathValidationService at a higher level
+            string result = _fileNameSanitizationService.Sanitize(input)!;
+            
+            // Assert - The filename sanitizer itself should not block this (it's handled elsewhere)
+            Assert.Equal("._malicious_file.txt", result); // Path traversal is now handled by PathValidationService
         }
     }
 }

@@ -13,27 +13,27 @@ namespace LivingRoots.Domain
             
             // Test 1: Cyrillic character at the beginning followed by Cyrillic
             string test1 = "еtest"; // Cyrillic 'е' at beginning followed by Latin
-            string result1 = service.Normalize(test1);
+            string? result1 = service.Normalize(test1);
             Console.WriteLine($"Test 1 - Input: '{test1}', Output: '{result1}'");
             
             // Test 2: Cyrillic character at the end preceded by Cyrillic  
             string test2 = "стest"; // Assuming 'с' is Cyrillic, at beginning followed by Latin
-            string result2 = service.Normalize(test2);
+            string? result2 = service.Normalize(test2);
             Console.WriteLine($"Test 2 - Input: '{test2}', Output: '{result2}'");
             
             // Test 3: Single Cyrillic character (both beginning and end)
             string test3 = "а"; // Single Cyrillic character
-            string result3 = service.Normalize(test3);
+            string? result3 = service.Normalize(test3);
             Console.WriteLine($"Test 3 - Input: '{test3}', Output: '{result3}'");
             
             // Test 4: Cyrillic at beginning followed by Cyrillic (should preserve)
             string test4 = "ест"; // Cyrillic 'е' followed by Cyrillic 'с' and 'т'
-            string result4 = service.Normalize(test4);
+            string? result4 = service.Normalize(test4);
             Console.WriteLine($"Test 4 - Input: '{test4}', Output: '{result4}'");
             
             // Test 5: Latin 'e' at beginning followed by Latin (should convert if it's a confusable in a different context)
             string test5 = "eLatin"; // Latin 'e' at beginning
-            string result5 = service.Normalize(test5);
+            string? result5 = service.Normalize(test5);
             Console.WriteLine($"Test 5 - Input: '{test5}', Output: '{result5}'");
         }
         
