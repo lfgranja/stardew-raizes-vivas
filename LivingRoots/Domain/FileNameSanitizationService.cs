@@ -41,24 +41,10 @@ namespace LivingRoots.Domain
             if (filename.Contains('\0'))
                 throw new ArgumentException("Filename cannot contain null characters.", nameof(filename));
 
-            // Additional security check for potential path traversal
-            
-            // Check for path traversal sequences that should be blocked
-            // Check for path traversal sequences that should be blocked early (these are obvious cases)
-            if (filename.Contains("../", StringComparison.Ordinal) || 
-                filename.Contains("..\\", StringComparison.Ordinal) ||
-                filename.Contains("..\\/", StringComparison.Ordinal) ||
-                filename.Contains("../\\", StringComparison.Ordinal))
-                throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
-            
-            // Check for suspicious path traversal patterns using a dedicated method
-            if (IsSuspiciousPathTraversalPattern(filename))
-            {
-                throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
-            }
+            // Path traversal checks have been centralized in PathValidationService
 
             // Normalize Unicode characters first using the domain service
-            string normalized = _unicodeNormalizationService.Normalize(filename) ?? filename;
+            string? normalized = _unicodeNormalizationService.Normalize(filename);
             
             if (normalized == null)
                 throw new ArgumentException("Normalized filename is null.", nameof(filename));
@@ -104,6 +90,11 @@ namespace LivingRoots.Domain
                     }
                 }
                 
+                // Check if the content after the dot becomes empty after trimming
+                // This prevents a hidden filename like ".   " from becoming "." after sanitization
+                if (string.IsNullOrEmpty(trimmedContent))
+                    throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+                
                 trimmed = "." + trimmedContent;
             }
             else
@@ -133,22 +124,6 @@ namespace LivingRoots.Domain
             if (result == "." || result == "..")
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
             
-            // Only check for path traversal patterns if result is not empty
-            // Allow hidden files (single leading dot followed by non-dot content) but block other traversal patterns
-            if (!string.IsNullOrEmpty(result))
-            {
-                // Check for path traversal patterns, but allow hidden files (single dot at start followed by non-dot content)
-                bool isHiddenFile = result.Length > 1 && result.StartsWith(".", StringComparison.Ordinal) && result[1] != '.';
-                
-                if (!isHiddenFile && 
-                    (result.Contains(".._", StringComparison.Ordinal) || 
-                     (result.StartsWith("..", StringComparison.Ordinal) && result.Length > 2 && result[2] != '.') ||
-                     (result.EndsWith("..", StringComparison.Ordinal) && result.Length > 2 && result[result.Length-3] != '.')))
-                {
-                    throw new ArgumentException("Filename cannot contain path traversal sequences.", nameof(filename));
-                }
-            }
-
             // Add extension back if it was present and safe
             if (!string.IsNullOrEmpty(extension))
             {
@@ -158,8 +133,8 @@ namespace LivingRoots.Domain
                     // Replace dangerous extension with a safe indicator
                     // Ensure base has no trailing dots before appending any suffix/extension
                     result = result.TrimEnd('.');
-                    // Produce name_blocked.ext with _blocked before the extension for security
-                    result = $"{result}_blocked{extension}";
+                    // Replace dangerous extension entirely with a safe extension to prevent security issues
+                    result = $"{result}.blocked";
                 }
                 else
                 {
@@ -326,11 +301,11 @@ namespace LivingRoots.Domain
         }
 
         /// <summary>
-        /// Gets the file extension from a filename.
+        /// Helper method to find the start index of a valid file extension.
         /// </summary>
-        /// <param name="filename">The filename to extract extension from.</param>
-        /// <returns>The file extension or empty string if no extension.</returns>
-        private static string GetFileExtension(string filename)
+        /// <param name="filename">The filename to check.</param>
+        /// <returns>The start index of the extension (including the dot) if valid, or -1 if no valid extension found.</returns>
+        private static int FindExtensionStartIndex(string filename)
         {
             int lastDotIndex = filename.LastIndexOf('.');
             if (lastDotIndex > 0 && lastDotIndex < filename.Length - 1) // Ensure dot is not at the beginning or end
@@ -343,14 +318,29 @@ namespace LivingRoots.Domain
                 // This prevents cases like "file/path.ext" where the extension detection would be wrong
                 if (potentialExtension.Contains('/', StringComparison.Ordinal) || potentialExtension.Contains('\\', StringComparison.Ordinal))
                 {
-                    return string.Empty; // Not a valid extension if it contains path separators
+                    return -1; // Not a valid extension if it contains path separators
                 }
                 
                 // Make sure the part after the last dot looks like an extension (not part of a directory path)
                 if (potentialExtension.IndexOfAny(Path.GetInvalidFileNameChars()) == -1)
                 {
-                    return potentialExtension;
+                    return lastDotIndex;
                 }
+            }
+            return -1;
+        }
+        
+        /// <summary>
+        /// Gets the file extension from a filename.
+        /// </summary>
+        /// <param name="filename">The filename to extract extension from.</param>
+        /// <returns>The file extension or empty string if no extension.</returns>
+        private static string GetFileExtension(string filename)
+        {
+            int extensionStartIndex = FindExtensionStartIndex(filename);
+            if (extensionStartIndex != -1)
+            {
+                return filename.Substring(extensionStartIndex);
             }
             return string.Empty;
         }
@@ -362,25 +352,10 @@ namespace LivingRoots.Domain
         /// <returns>The filename without extension.</returns>
         private static string RemoveFileExtension(string filename)
         {
-            int lastDotIndex = filename.LastIndexOf('.');
-            if (lastDotIndex > 0 && lastDotIndex < filename.Length - 1)
+            int extensionStartIndex = FindExtensionStartIndex(filename);
+            if (extensionStartIndex != -1)
             {
-                // Check that the last dot is not part of a directory path segment
-                // Look for directory separators after the last dot to ensure it's really an extension
-                string potentialExtension = filename.Substring(lastDotIndex);
-                
-                // Check if the extension portion contains directory separators
-                // This prevents cases like "file/path.ext" where the extension detection would be wrong
-                if (potentialExtension.Contains('/', StringComparison.Ordinal) || potentialExtension.Contains('\\', StringComparison.Ordinal))
-                {
-                    return filename; // Return original if it's not a valid extension
-                }
-                
-                string extension = filename.Substring(lastDotIndex);
-                if (extension.IndexOfAny(Path.GetInvalidFileNameChars()) == -1)
-                {
-                    return filename.Substring(0, lastDotIndex);
-                }
+                return filename.Substring(0, extensionStartIndex);
             }
             return filename;
         }
@@ -460,24 +435,6 @@ namespace LivingRoots.Domain
             }
             
             return str.Substring(startIndex, endIndex - startIndex);
-        }
-        
-        /// <summary>
-        /// Checks if the filename contains suspicious path traversal patterns.
-        /// Block strings that start with ".." followed by anything other than a path separator or whitespace (like "..test", ".. ", etc.)
-        /// Block strings that end with ".." preceded by anything other than a path separator or whitespace (like "test..", " ..", etc.)
-        /// However, allow pure sequences of dots like "..." to be processed normally, as they'll be handled as empty strings later
-        /// </summary>
-        /// <param name="filename">The filename to check</param>
-        /// <returns>True if the filename contains suspicious path traversal patterns, false otherwise</returns>
-        private static bool IsSuspiciousPathTraversalPattern(string filename)
-        {
-            return (filename.Length > 2 && filename.StartsWith("..") && 
-                 !(filename[2] == '/' || filename[2] == '\\' || char.IsWhiteSpace(filename[2])) &&
-                 !filename.All(c => c == '.')) ||  // Allow pure sequences of dots
-                (filename.Length > 2 && filename.EndsWith("..") && 
-                 !(filename[filename.Length-3] == '/' || filename[filename.Length-3] == '\\' || char.IsWhiteSpace(filename[filename.Length-3])) &&
-                 !filename.All(c => c == '.'));  // Allow pure sequences of dots
         }
     }
 }
