@@ -349,5 +349,104 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal("COM9_", result);
         }
+
+        [Fact]
+        public void Handle_WithFilenameThatBecomesEmptyAfterTrimming_ReturnsOriginal()
+        {
+            // This test addresses the third issue: Prevent Malformed Names After Trimming
+            // If baseNameForCheck is empty after trimming, return the original filename to prevent malformed outputs
+
+            // Arrange
+            string input = "   "; // This becomes empty after trimming leading/trailing spaces
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert - Should return the original input instead of causing malformed output
+            Assert.Equal(input, result);
+        }
+
+        [Fact]
+        public void Handle_WithFilenameThatBecomesEmptyAfterTrimmingDotsAndSpaces_ReturnsOriginal()
+        {
+            // This test addresses the third issue: Prevent Malformed Names After Trimming
+            // If baseNameForCheck is empty after trimming, return the original filename to prevent malformed outputs
+
+            // Arrange
+            string input = "..."; // This becomes empty after trimming dots and spaces
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert - Should return the original input instead of causing malformed output
+            Assert.Equal(input, result);
+        }
+
+        [Fact]
+        public void Handle_WithFilenameThatBecomesEmptyAfterTrimmingMixedChars_ReturnsOriginal()
+        {
+            // This test addresses the third issue: Prevent Malformed Names After Trimming
+            // If baseNameForCheck is empty after trimming, return the original filename to prevent malformed outputs
+
+            // Arrange
+            string input = " . . "; // This becomes empty after trimming leading/trailing spaces and dots
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert - Should return the original input instead of causing malformed output
+            Assert.Equal(input, result);
+        }
+
+        [Fact]
+        public void Handle_WithDirectoryPathEndingWithSeparator_ReturnsOriginal()
+        {
+            // This test addresses the fourth issue: Avoid Mutating Directory-Only Paths
+            // If Path.GetFileName results in an empty string (directory path ending with separator),
+            // return the original path without modification
+
+            // Arrange
+            string input = "path/to/directory/"; // Path ending with directory separator
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert - Should return the original input since Path.GetFileName would return empty string
+            Assert.Equal(input, result);
+        }
+
+        [Fact]
+        public void Handle_WithAnotherDirectoryPathEndingWithSeparator_ReturnsOriginal()
+        {
+            // This test addresses the fourth issue: Avoid Mutating Directory-Only Paths
+            // If Path.GetFileName results in an empty string (directory path ending with separator),
+            // return the original path without modification
+
+            // Arrange
+            string input = "CON/"; // Directory path ending with separator, where base name is reserved
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert - Should return the original input since it's a directory path (Path.GetFileName returns empty)
+            Assert.Equal(input, result);
+        }
+
+        [Fact]
+        public void Handle_WithDirectoryPathWithBackslashSeparator_ReturnsOriginal()
+        {
+            // This test addresses the fourth issue: Avoid Mutating Directory-Only Paths
+            // If Path.GetFileName results in an empty string (directory path ending with separator),
+            // return the original path without modification
+
+            // Arrange
+            string input = "path\\to\\directory\\"; // Path ending with backslash separator
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert - Should return the original input since Path.GetFileName would return empty string
+            Assert.Equal(input, result);
+        }
     }
 }

@@ -37,6 +37,11 @@ namespace LivingRoots.Domain
             string? directoryPath = Path.GetDirectoryName(filename);
             string fullFileName = Path.GetFileName(filename);
             
+            // If Path.GetFileName returns an empty string, this means the input ends with a directory separator
+            // In this case, we should return the original filename to avoid incorrect mutation of directory paths
+            if (string.IsNullOrEmpty(fullFileName))
+                return filename;
+            
             // Find the first dot to separate the base name from all extensions
             // For "CON.txt.bak", the reserved name is "CON" and extension is ".txt.bak"
             int firstDotIndex = fullFileName.IndexOf('.');
@@ -60,19 +65,21 @@ namespace LivingRoots.Domain
             // This gives us the core name to check against reserved names
             string baseNameForCheck = trimmedLeadingSpaces.TrimEnd('.', ' ', '\t');
             
+            // If baseNameForCheck is empty after trimming, return the original filename to prevent malformed outputs
+            if (string.IsNullOrEmpty(baseNameForCheck))
+                return filename;
+            
             // Get the trailing dots and spaces that were removed
             int trailingInsignificantLength = trimmedLeadingSpaces.Length - baseNameForCheck.Length;
             string trailingDotsAndSpaces = trailingInsignificantLength > 0 ? 
                 trimmedLeadingSpaces.Substring(trimmedLeadingSpaces.Length - trailingInsignificantLength) : "";
             
-            // Normalize safely to avoid passing null to Contains
-            string? normalizedForCheck = string.IsNullOrEmpty(baseNameForCheck)
-                ? null
-                : _unicodeNormalizationService.Normalize(baseNameForCheck);
+            // Normalize for comparison
+            string? normalizedForCheck = _unicodeNormalizationService.Normalize(baseNameForCheck);
 
-            bool isReserved = !string.IsNullOrEmpty(baseNameForCheck) &&
-                              (ReservedWindowsFileNames.Contains(baseNameForCheck) ||
-                               (!string.IsNullOrEmpty(normalizedForCheck) && ReservedWindowsFileNames.Contains(normalizedForCheck)));
+            // Check if it's reserved, handling potential null from normalization
+            bool isReserved = ReservedWindowsFileNames.Contains(baseNameForCheck) ||
+                              (!string.IsNullOrEmpty(normalizedForCheck) && ReservedWindowsFileNames.Contains(normalizedForCheck));
 
             if (isReserved)
             {
