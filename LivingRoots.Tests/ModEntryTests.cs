@@ -171,5 +171,40 @@ namespace LivingRoots.Tests
             var controllerAfterDispose = controllerField?.GetValue(modEntry);
             Assert.Null(controllerAfterDispose);
         }
+        
+        [Fact]
+        public void Dispose_WhenCalledFromMultipleThreads_IsThreadSafe()
+        {
+            // Arrange
+            var modEntry = new ModEntry();
+            var tasks = new System.Threading.Tasks.Task[10];
+            var disposedFlags = new bool[10];
+            
+            // Act
+            for (int i = 0; i < 10; i++)
+            {
+                int index = i; // Capture for closure
+                tasks[index] = System.Threading.Tasks.Task.Run(() =>
+                {
+                    modEntry.Dispose();
+                    // Check the disposed state after disposal
+                    var disposedField = typeof(ModEntry).GetField("_disposed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    disposedFlags[index] = (bool)(disposedField?.GetValue(modEntry) ?? false);
+                });
+            }
+            
+            System.Threading.Tasks.Task.WaitAll(tasks);
+            
+            // Assert - Only one disposal should have happened effectively, but the flag should be true
+            var disposedField = typeof(ModEntry).GetField("_disposed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var finalDisposedState = (bool)(disposedField?.GetValue(modEntry) ?? false);
+            Assert.True(finalDisposedState);
+            
+            // Ensure no exceptions were thrown during concurrent disposal
+            foreach (var task in tasks)
+            {
+                Assert.Equal(System.Threading.Tasks.TaskStatus.RanToCompletion, task.Status);
+            }
+        }
     }
 }

@@ -75,7 +75,7 @@ namespace LivingRoots.Domain
                 // For hidden files, preserve the leading dot and only trim the rest
                 string contentAfterDot = processed.Substring(1);
                 string trimmedContent = contentAfterDot.TrimEnd('_', ' ', '.');
-                
+
                 // Special handling for the case where the original filename started with a dot followed by 
                 // invalid characters that were converted to underscores during sanitization.
                 // For example: ".<hidden_file.txt" -> "._hidden_file.txt" -> ".hidden_file.txt"
@@ -89,12 +89,12 @@ namespace LivingRoots.Domain
                         trimmedContent = contentAfterDot.TrimStart('_').TrimEnd('_', ' ', '.');
                     }
                 }
-                
+
                 // Check if the content after the dot becomes empty after trimming
                 // This prevents a hidden filename like ".   " from becoming "." after sanitization
                 if (string.IsNullOrEmpty(trimmedContent))
                     throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
-                
+
                 trimmed = "." + trimmedContent;
             }
             else
@@ -118,12 +118,12 @@ namespace LivingRoots.Domain
             // Check for empty result after all processing is done
             if (string.IsNullOrWhiteSpace(result))
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
-                
+
             // Check for path traversal patterns that should result in empty string message
             // But first check if it's exactly "." or ".." which should give the empty string error
             if (result == "." || result == "..")
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
-            
+
             // Add extension back if it was present and safe
             if (!string.IsNullOrEmpty(extension))
             {
@@ -140,15 +140,71 @@ namespace LivingRoots.Domain
                 {
                     result = $"{result}{extension}";
                 }
+
+                // After adding the extension, ensure the total length does not exceed the maximum
+                // This is necessary because the truncation happens before extension is added
+                if (result.Length > MaxFileNameLength)
+                {
+                    // Extract the extension again to preserve it during truncation
+                    string finalExtension = GetFileExtension(result);
+                    string namePart = RemoveFileExtension(result);
+
+                    // Truncate the name part to leave room for the extension
+                    if (!string.IsNullOrEmpty(finalExtension))
+                    {
+                        // Calculate how much space is left for the name part
+                        int availableLength = MaxFileNameLength - finalExtension.Length;
+                        if (availableLength > 0)
+                        {
+                            // Truncate the name part to fit within available space
+                            if (namePart.StartsWith(".", StringComparison.Ordinal))
+                            {
+                                // For hidden files, keep the dot and truncate the content part
+                                string contentPart = namePart.Substring(1);
+                                string truncatedContent = SafeSubstring(contentPart, 0, availableLength - 1);
+                                if (truncatedContent.Length > 0)
+                                {
+                                    namePart = "." + truncatedContent;
+                                }
+                                else
+                                {
+                                    // If truncation results in empty content, ensure we have at least a minimal name
+                                    namePart = "." + SafeSubstring(contentPart, 0, Math.Max(1, availableLength - 1));
+                                }
+                            }
+                            else
+                            {
+                                namePart = SafeSubstring(namePart, 0, availableLength);
+                            }
+
+                            result = namePart + finalExtension;
+                        }
+                        else
+                        {
+                            // If there's no space for the name part, just use the extension
+                            // But since we need a name, use a minimal safe name instead
+                            result = SafeSubstring("file", 0, Math.Max(1, MaxFileNameLength - finalExtension.Length)) + finalExtension;
+                        }
+                    }
+                    else
+                    {
+                        // If somehow there's no extension, just truncate the result
+                        result = TruncateToMaxLength(result);
+                    }
+                }
             }
+
+            // Perform final cleanup after all processing including post-extension truncation
+            // This ensures that any trailing characters are properly cleaned up after all operations
+            result = PerformFinalCleanup(result, shouldBeHiddenFile);
 
             // Handle reserved Windows filenames
             string? reservedResult = _reservedNameHandler.Handle(result);
-            
+
             // Check if the reserved name handler returned null
             if (reservedResult == null)
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
-                
+
             result = reservedResult;
 
             return result;
@@ -166,13 +222,13 @@ namespace LivingRoots.Domain
         {
             if (input == null)
                 return string.Empty;
-                
+
             var resultBuilder = new StringBuilder();
-            
+
             for (int i = 0; i < input.Length; i++)
             {
                 char c = input[i];
-                
+
                 // Handle surrogate pairs (needed for emojis and other characters outside BMP)
                 if (char.IsHighSurrogate(c) && i + 1 < input.Length && char.IsLowSurrogate(input[i + 1]))
                 {
@@ -182,7 +238,7 @@ namespace LivingRoots.Domain
                     i++; // Skip the low surrogate since we've already processed it
                     continue;
                 }
-                
+
                 // Only allow safe characters: alphanumeric, dots, hyphens, underscores
                 if (char.IsLetterOrDigit(c) || c == '.' || c == '-' || c == '_')
                 {
@@ -210,14 +266,14 @@ namespace LivingRoots.Domain
         {
             if (string.IsNullOrEmpty(input))
                 return input;
-                
+
             // Replace multiple consecutive dots with a single dot
             var result = new StringBuilder();
-            
+
             for (int i = 0; i < input.Length; i++)
             {
                 char c = input[i];
-                
+
                 if (c == '.')
                 {
                     // Add the dot only if the previous character wasn't a dot
@@ -232,7 +288,7 @@ namespace LivingRoots.Domain
                     result.Append(c);
                 }
             }
-            
+
             return result.ToString();
         }
 
@@ -284,19 +340,19 @@ namespace LivingRoots.Domain
         {
             // After truncation, ensure we don't have trailing problematic characters
             string postTruncationTrimmed = filename.TrimEnd('_', ' ', '.');
-            
+
             // If it was a hidden file and we lost the dot, add it back
             if (shouldBeHiddenFile && !postTruncationTrimmed.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(postTruncationTrimmed))
             {
                 postTruncationTrimmed = "." + postTruncationTrimmed.TrimStart('.');
             }
-            
+
             // If the final result is still longer than max length, truncate again
             if (postTruncationTrimmed.Length > MaxFileNameLength)
             {
                 return TruncateToMaxLength(postTruncationTrimmed);
             }
-            
+
             return postTruncationTrimmed;
         }
 
@@ -321,6 +377,18 @@ namespace LivingRoots.Domain
                     return -1; // Not a valid extension if it contains path separators
                 }
                 
+                // Extract the part after the dot (excluding the dot itself)
+                string extensionPart = potentialExtension.Substring(1);
+                
+                // Stricter extension qualification: require at least one alphanumeric character in the extension
+                // This prevents incorrect classifications for names with trailing dots like "file..."
+                bool hasAlphanumeric = extensionPart.Any(c => char.IsLetterOrDigit(c));
+                
+                if (!hasAlphanumeric)
+                {
+                    return -1; // Not a valid extension if it doesn't contain at least one alphanumeric character
+                }
+                
                 // Make sure the part after the last dot looks like an extension (not part of a directory path)
                 if (potentialExtension.IndexOfAny(Path.GetInvalidFileNameChars()) == -1)
                 {
@@ -329,7 +397,7 @@ namespace LivingRoots.Domain
             }
             return -1;
         }
-        
+
         /// <summary>
         /// Gets the file extension from a filename.
         /// </summary>
@@ -371,7 +439,7 @@ namespace LivingRoots.Domain
             // Control characters (except tab, carriage return, line feed which are whitespace) are invalid
             if (char.IsControl(c) && c != '\t' && c != '\r' && c != '\n')
                 return true;
-                
+
             // Check against system invalid file name characters
             if (Path.GetInvalidFileNameChars().Contains(c))
                 return true;
@@ -406,7 +474,7 @@ namespace LivingRoots.Domain
                 ".exe", ".dll", ".bat", ".sh", ".ps1", ".cmd", ".com", ".scr", ".pif", ".lnk", 
                 ".msi", ".msp", ".vbs", ".js", ".jse", ".wsf", ".wsh", ".hta", ".cpl", ".msc", ".inf"
             };
-            
+
             return blockedExtensions.Contains(extension);
         }
 
@@ -422,9 +490,9 @@ namespace LivingRoots.Domain
             // Make sure we don't exceed the string length
             if (startIndex >= str.Length)
                 return string.Empty;
-                
+
             int endIndex = Math.Min(startIndex + length, str.Length);
-            
+
             // Check if we're potentially splitting a surrogate pair
             // If the character at endIndex is a low surrogate and the one before it is a high surrogate,
             // we should exclude the high surrogate to avoid splitting the pair
@@ -433,7 +501,7 @@ namespace LivingRoots.Domain
             {
                 endIndex--; // Avoid splitting the surrogate pair
             }
-            
+
             return str.Substring(startIndex, endIndex - startIndex);
         }
     }

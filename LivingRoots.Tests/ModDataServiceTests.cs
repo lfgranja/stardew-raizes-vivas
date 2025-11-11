@@ -494,5 +494,102 @@ namespace LivingRoots.Tests
             // The actual exception should be an ArgumentException from PathValidationService
             Assert.IsType<ArgumentException>(exception.InnerException);
         }
+
+        [Fact]
+        public void LoadData_WithValidationExceptionInGetValidatedAndSanitizedKey_ReturnsNull()
+        {
+            // Arrange
+            _mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Throws(new ArgumentException("Invalid path provided"));
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+
+            // Act
+            var result = service.LoadData<object>("invalid_key");
+
+            // Assert
+            Assert.Null(result);
+            _mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("Invalid key provided to LoadData")),
+                LogLevel.Warn), Times.Once);
+        }
+        
+        [Fact]
+        public void DataExists_WithValidationExceptionInGetValidatedAndSanitizedKey_ReturnsFalse()
+        {
+            // Arrange
+            _mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Throws(new ArgumentException("Invalid path provided"));
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+
+            // Act
+            var result = service.DataExists("invalid_key");
+
+            // Assert
+            Assert.False(result);
+            _mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("Invalid key provided to DataExists")),
+                LogLevel.Warn), Times.Once);
+        }
+        
+        [Fact]
+        public void GetValidatedAndSanitizedKey_WithEmptySanitizedResult_ThrowsArgumentException()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            
+            // Configure the mock to return null for a specific input that would cause empty sanitization
+            _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(input => 
+            {
+                if (input == "<>:\"|?*")
+                    return null; // This simulates the case where sanitization results in null
+                return input;
+            });
+            
+            // Act & Assert
+            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() => service.GetType()
+                .GetMethod("GetValidatedAndSanitizedKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(service, new object[] { "<>:\"|?*" }));
+                
+            // The actual exception should be an ArgumentException from GetValidatedAndSanitizedKey
+            Assert.IsType<ArgumentException>(exception.InnerException);
+        }
+        
+        [Fact]
+        public void SanitizePathSegments_WithDotDotSegment_ThrowsArgumentException_Verify()
+        {
+            // This test verifies that SanitizePathSegments throws ArgumentException instead of InvalidOperationException
+            // when encountering .. segments
+
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            
+            // Act & Assert - This should throw because .. segments should be blocked in SanitizePathSegments
+            var exception = Assert.Throws<System.Reflection.TargetInvocationException>(() => service.GetType()
+                .GetMethod("GetValidatedAndSanitizedKey", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(service, new object[] { "../test" }));
+            
+            // The actual exception should be an ArgumentException (after the fix)
+            Assert.IsType<ArgumentException>(exception.InnerException);
+        }
+        
+        [Fact]
+        public void SanitizePathSegments_WithMultipleSegments_JoinsCorrectly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            
+            // Configure the mock to return expected sanitized values
+            _mockModLogic.Setup(x => x.SanitizeFileName("segment1")).Returns("segment1");
+            _mockModLogic.Setup(x => x.SanitizeFileName("segment2")).Returns("segment2");
+            _mockModLogic.Setup(x => x.SanitizeFileName("segment3")).Returns("segment3");
+            
+            // Use reflection to access the private SanitizePathSegments method
+            var method = service.GetType()
+                .GetMethod("SanitizePathSegments", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            // Act
+            var result = method?.Invoke(service, new object[] { "segment1/segment2/segment3" });
+            
+            // Assert
+            Assert.Equal($"segment1{Path.DirectorySeparatorChar}segment2{Path.DirectorySeparatorChar}segment3", result);
+        }
     }
 }

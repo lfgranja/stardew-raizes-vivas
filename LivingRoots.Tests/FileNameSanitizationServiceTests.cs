@@ -99,7 +99,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".<>"))
                 .Returns(".<>");
-
+ 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<>"));
             Assert.Contains("Filename sanitizes to an empty string.", exception.Message);
@@ -347,7 +347,7 @@ namespace LivingRoots.Tests
             // Assert - Should not keep the dangerous extension
             Assert.Equal("my_file.blocked", result); // This test will fail with current implementation
         }
-
+        
         [Fact]
         public void Sanitize_WithValidExtension_KeepsExtension()
         {
@@ -394,7 +394,9 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var longFilename = new string('a', 300) + ".txt";
-            var expected = new string('a', 240) + ".txt";
+            // After truncation of the name part to 240 chars, adding ".txt" would exceed max length
+            // So it should be further truncated to ensure total length <= 240
+            var expected = new string('a', 236) + ".txt"; // 236 + 4 = 240 chars total
             
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
@@ -412,7 +414,9 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var longHiddenFilename = "." + new string('a', 300) + ".txt";
-            var expected = "." + new string('a', 239) + ".txt";
+            // After truncation of the name part to 239 chars (leaving 1 char for the dot), adding ".txt" would exceed max length
+            // So it should be further truncated to ensure total length <= 240
+            var expected = "." + new string('a', 235) + ".txt"; // 1 + 235 + 4 = 240 chars total
             
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
@@ -480,6 +484,149 @@ namespace LivingRoots.Tests
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => service.Sanitize("test.txt"));
             Assert.Contains("Filename sanitizes to an empty string.", exception.Message);
+        }
+        
+        [Fact]
+        public void Sanitize_WithLongFilenameAndExtension_EnforcesMaxLengthAfterAddingExtension()
+        {
+            // Arrange: Create a filename that when combined with extension exceeds MaxFileNameLength
+            var baseName = new string('a', 240); // This is at the max length limit
+            var extension = ".txt";
+            var longFilename = baseName + extension; // This exceeds the limit when extension is added back
+            
+            // Setup the mock to return the input unchanged for normalization
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            // Act
+            var result = _service.Sanitize(longFilename);
+            
+            // Assert: The result should be truncated to fit within MaxFileNameLength
+            Assert.True(result.Length <= 240);
+            Assert.EndsWith(".txt", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithLongHiddenFilenameAndExtension_EnforcesMaxLengthAfterAddingExtension()
+        {
+            // Arrange: Create a hidden filename that when combined with extension exceeds MaxFileNameLength
+            var hiddenBase = "." + new string('a', 239); // Max length - 1 for the dot
+            var extension = ".txt";
+            var longHiddenFilename = hiddenBase + extension; // This exceeds the limit when extension is added back
+            
+            // Setup the mock to return the input unchanged for normalization
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            // Act
+            var result = _service.Sanitize(longHiddenFilename);
+            
+            // Assert: The result should be truncated to fit within MaxFileNameLength
+            Assert.True(result.Length <= 240);
+            Assert.StartsWith(".", result);
+            Assert.EndsWith(".txt", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithLongFilenameThatExceedsMaxLengthAfterAddingExtension_EnforcesMaxLength()
+        {
+            // Arrange: Create a filename that is just under the limit without extension
+            // Max length is 240, so create a base name of 236 chars + ".txt" (4 chars) = 240 chars
+            // But what if we have a name that when truncated to 236 chars still results in exceeding the limit when extension is added?
+            var baseName = new string('a', 238); // 238 chars
+            var extension = ".exe"; // 4 chars, will be replaced with ".blocked"
+            var longFilename = baseName + extension; // 238 + 4 = 242 chars total, which exceeds max
+            
+            // Setup the mock to return the input unchanged for normalization
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            // Act
+            var result = _service.Sanitize(longFilename);
+            
+            // Assert: The result should be truncated to fit within MaxFileNameLength
+            Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
+            Assert.EndsWith(".blocked", result); // Dangerous extension should be replaced
+        }
+        
+        [Fact]
+        public void Sanitize_WithMaxFilenameLengthThatBecomesTooLongAfterExtensionHandling_EnforcesMaxLength()
+        {
+            // Arrange: Create a filename that after all processing (including trimming) is exactly at the limit
+            // Then adding an extension should still respect the max length
+            var baseName = new string('a', 236); // 236 chars + ".txt" (4 chars) = 240 chars (at the limit)
+            var extension = ".txt";
+            var longFilename = baseName + "..." + extension; // Add trailing dots that will be trimmed, then extension added back
+            
+            // Setup the mock to return the input unchanged for normalization
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            // Act
+            var result = _service.Sanitize(longFilename);
+            
+            // Assert: The result should be truncated to fit within MaxFileNameLength
+            Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
+            Assert.EndsWith(".txt", result); // Extension should be preserved
+        }
+        
+        [Fact]
+        public void Sanitize_WithLongFilenameAndExtensionThatRequiresPostExtensionTruncation_DoesNotLeaveTrailingChars()
+        {
+            // Arrange: Create a filename that after extension addition requires truncation which could leave trailing chars
+            // This would happen if the truncation happens in the middle of trailing characters that should be cleaned up
+            var baseName = new string('a', 237) + "   "; // 237 + 3 = 240 chars, then add extension
+            var extension = ".txt";
+            var longFilename = baseName + extension; // This will exceed the limit when extension is added back after processing
+            
+            // Setup the mock to return the input unchanged for normalization
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            // Act
+            var result = _service.Sanitize(longFilename);
+            
+            // Assert: The result should be truncated to fit within MaxFileNameLength and not have trailing spaces/dots
+            Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
+            Assert.EndsWith(".txt", result); // Extension should be preserved
+            // Should not end with spaces, dots or underscores after extension
+            Assert.False(result.EndsWith(" "), "Result should not end with spaces");
+            Assert.False(result.EndsWith("."), "Result should not end with dots unless part of extension");
+            Assert.False(result.EndsWith("_"), "Result should not end with underscores");
+        }
+        
+        [Fact]
+        public void Sanitize_WithExtensionAddedAfterTruncation_DoesFinalCleanup()
+        {
+            // Arrange: Create a filename that will be truncated after extension is added
+            // This tests the specific scenario where truncation happens after extension addition
+            // and ensures that final cleanup is performed after that truncation
+            var baseName = new string('a', 238) + ".."; // This will become 240 chars + extension exceeds limit
+            var extension = ".txt";
+            var longFilename = baseName + extension; // Total exceeds MaxFileNameLength
+            
+            // Setup the mock to return the input unchanged for normalization
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            // Act
+            var result = _service.Sanitize(longFilename);
+            
+            // Assert: The result should not end with trailing dots (other than in extension)
+            Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
+            Assert.EndsWith(".txt", result); // Extension should be preserved
+            // After truncation and extension addition, there should be no trailing dots except in extension
+            if (result.Length > 4) // If result is longer than just the extension
+            {
+                var withoutExtension = result.Substring(0, result.Length - 4); // Remove .txt
+                Assert.False(withoutExtension.EndsWith("."), "Should not end with dots after truncation");
+            }
         }
     }
 }

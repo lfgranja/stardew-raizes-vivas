@@ -33,6 +33,10 @@ namespace LivingRoots.Domain
             if (string.IsNullOrWhiteSpace(filename))
                 return filename;
 
+            // Guard against absolute/UNC paths - return unchanged if Path.IsPathRooted
+            if (Path.IsPathRooted(filename))
+                return filename;
+
             // Extract the directory path and filename separately
             string? directoryPath = Path.GetDirectoryName(filename);
             string fullFileName = Path.GetFileName(filename);
@@ -65,9 +69,19 @@ namespace LivingRoots.Domain
             // This gives us the core name to check against reserved names
             string baseNameForCheck = trimmedLeadingSpaces.TrimEnd('.', ' ', '\t');
             
-            // If baseNameForCheck is empty after trimming, return the original filename to prevent malformed outputs
+            // If baseNameForCheck is empty after trimming, replace with a safe placeholder to avoid ambiguous filenames
             if (string.IsNullOrEmpty(baseNameForCheck))
-                return filename;
+            {
+                // Extract directory path to preserve it
+                if (!string.IsNullOrEmpty(directoryPath))
+                {
+                    return directoryPath + Path.DirectorySeparatorChar + "_" + extensionPart;
+                }
+                else
+                {
+                    return "_" + extensionPart; // Replace fully insignificant names with underscore, keeping extension if present
+                }
+            }
             
             // Get the trailing dots and spaces that were removed
             int trailingInsignificantLength = trimmedLeadingSpaces.Length - baseNameForCheck.Length;
@@ -83,10 +97,11 @@ namespace LivingRoots.Domain
 
             if (isReserved)
             {
-                // Insert underscore after core name: leading spaces + core name + underscore + trailing dots/spaces
-                // This handles both trailing spaces and trailing dots consistently according to Windows behavior
+                // Insert underscore after core name: leading spaces + core name + underscore
+                // IMPORTANT: Do NOT re-apply trailing dots and spaces that Windows treats as insignificant,
+                // as they could recreate the reserved name condition when stripped by the OS
                 string leadingSpaces = namePart.Substring(0, namePart.Length - trimmedLeadingSpaces.Length);
-                string modifiedNamePart = leadingSpaces + baseNameForCheck + "_" + trailingDotsAndSpaces;
+                string modifiedNamePart = leadingSpaces + baseNameForCheck + "_";
                 string modifiedFileName = modifiedNamePart + extensionPart;
                 return !string.IsNullOrEmpty(directoryPath)
                     ? directoryPath + Path.DirectorySeparatorChar + modifiedFileName

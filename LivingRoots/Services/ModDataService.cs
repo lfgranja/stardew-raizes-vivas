@@ -74,7 +74,16 @@ namespace LivingRoots.Services
         /// <returns>Loaded data or default value if not found</returns>
         public T? LoadData<T>(string key) where T : class
         {
-            string sanitizedKey = GetValidatedAndSanitizedKey(key);
+            string sanitizedKey;
+            try
+            {
+                sanitizedKey = GetValidatedAndSanitizedKey(key);
+            }
+            catch (ArgumentException ex)
+            {
+                _monitor.Log($"Invalid key provided to LoadData: {ex.Message}", LogLevel.Warn);
+                return null; // Return null instead of throwing when key is invalid
+            }
             
             try
             {
@@ -132,49 +141,41 @@ namespace LivingRoots.Services
         /// <returns>True if data exists, false otherwise</returns>
         public bool DataExists(string key)
         {
-            string sanitizedKey = GetValidatedAndSanitizedKey(key);
-            
+            string sanitizedKey;
             try
             {
-                string relativePath = GetFilePath(sanitizedKey);
-                
-                var data = _helper.Data.ReadJsonFile<object>(relativePath);
-                return data != null;
+                sanitizedKey = GetValidatedAndSanitizedKey(key);
             }
             catch (ArgumentException ex)
             {
                 _monitor.Log($"Invalid key provided to DataExists: {ex.Message}", LogLevel.Warn);
                 return false; // Return false instead of throwing when key is invalid
             }
-            catch (InvalidOperationException ex)
+            
+            try
             {
-                _monitor.Log($"Operation invalid while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                return false; // Return false instead of throwing when operation is invalid
+                string relativePath = GetFilePath(sanitizedKey);
+                
+                // Convert relative path to absolute path for direct file system check
+                string absolutePath = Path.Combine(_helper.DirectoryPath, relativePath);
+                
+                // Use direct file existence check instead of attempting to read the file
+                return File.Exists(absolutePath);
             }
-            catch (System.IO.FileNotFoundException ex)
+            catch (ArgumentException ex)
             {
-                _monitor.Log($"File not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
-                return false; // Return false instead of throwing when file doesn't exist
-            }
-            catch (System.IO.DirectoryNotFoundException ex)
-            {
-                _monitor.Log($"Directory not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                return false; // Return false instead of throwing when directory doesn't exist
-            }
-            catch (System.UnauthorizedAccessException ex)
-            {
-                _monitor.Log($"Access denied while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                return false; // Return null instead of throwing when access is denied
+                _monitor.Log($"Invalid key provided to DataExists: {ex.Message}", LogLevel.Warn);
+                return false; // Return false instead of throwing when key is invalid
             }
             catch (System.IO.IOException ex)
             {
                 _monitor.Log($"IOException while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false; // Return false instead of throwing when IO error occurs
             }
-            catch (Newtonsoft.Json.JsonException ex)
+            catch (Exception ex)
             {
-                _monitor.Log($"JSON parsing error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                return false; // Return false instead of throwing when JSON is invalid
+                _monitor.Log($"Unexpected error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                return false; // Return false instead of throwing when unexpected error occurs
             }
         }
         
@@ -226,7 +227,7 @@ namespace LivingRoots.Services
             // Sanitize the key once before try-catch block to prevent exceptions during error handling
             string sanitizedKey = SanitizePathSegments(key);
             if (string.IsNullOrWhiteSpace(sanitizedKey))
-                throw new InvalidOperationException($"Failed to sanitize key '{key}'. Sanitized key cannot be null or whitespace.");
+                throw new ArgumentException($"Failed to sanitize key '{key}'. Sanitized key cannot be null or whitespace.", nameof(key));
             
             return sanitizedKey;
         }
@@ -265,7 +266,7 @@ namespace LivingRoots.Services
 
             // Sanitized key should not be null by this point due to check in public methods
             if (key == null)
-                throw new InvalidOperationException("Sanitized key cannot be null");
+                throw new ArgumentException("Sanitized key cannot be null", nameof(key));
 
             // Return the final path with the .json extension
             return Path.Combine("data", $"{key}.json");
@@ -297,7 +298,7 @@ namespace LivingRoots.Services
                 else if (segments[i] == "..")
                 {
                     // Throw an exception for .. segments to prevent path traversal
-                    throw new InvalidOperationException($"Failed to sanitize path segment '{segments[i]}'. Path traversal segments are not allowed.");
+                    throw new ArgumentException($"Failed to sanitize path segment '{segments[i]}'. Path traversal segments are not allowed.", nameof(path));
                 }
                 
                 // Use the existing SanitizeFileName method for other segments
@@ -305,17 +306,14 @@ namespace LivingRoots.Services
                 
                 // If any segment becomes null or whitespace after sanitization, throw an exception
                 if (string.IsNullOrWhiteSpace(sanitizedSegment))
-                    throw new InvalidOperationException($"Failed to sanitize path segment '{segments[i]}'. Sanitized segment cannot be null or whitespace.");
+                    throw new ArgumentException($"Failed to sanitize path segment '{segments[i]}'. Sanitized segment cannot be null or whitespace.", nameof(path));
                 
                 validSegments.Add(sanitizedSegment);
             }
             
-            // Explicitly convert List<string> to string[] to avoid nullable warning
-                string[] sanitizedSegments = validSegments.ToArray();
-                segments = sanitizedSegments;
-            
             // Join the sanitized segments back together using the system's directory separator
-            return string.Join(Path.DirectorySeparatorChar.ToString(), segments);
+            // Use IEnumerable<string> directly instead of converting to array
+            return string.Join(Path.DirectorySeparatorChar.ToString(), validSegments);
         }
     }
 }

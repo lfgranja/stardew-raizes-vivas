@@ -2,6 +2,7 @@ using StardewModdingAPI;
 using LivingRoots.Controllers;
 using LivingRoots.Services;
 using LivingRoots.Domain;
+using System.Threading;
 
 namespace LivingRoots
 {
@@ -14,6 +15,7 @@ namespace LivingRoots
     {
         private ModController? _controller;
         private bool _disposed = false;
+        private readonly object _disposeLock = new object();
 
         /*********
         ** Public methods
@@ -47,16 +49,20 @@ namespace LivingRoots
         /// <param name="disposing">Whether the instance is being disposed.</param>
         protected override void Dispose(bool disposing)
         {
-            if (!_disposed)
+            // Use a lock to ensure thread-safe disposal
+            lock (_disposeLock)
             {
-                if (disposing)
+                if (!_disposed)
                 {
-                    // Dispose managed resources only when disposing is true
-                    _controller?.Dispose();
-                    _controller = null;
-                }
+                    if (disposing)
+                    {
+                        // Dispose managed resources only when disposing is true
+                        _controller?.Dispose();
+                        _controller = null;
+                    }
 
-                _disposed = true;
+                    _disposed = true;
+                }
             }
             
             base.Dispose(disposing);

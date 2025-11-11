@@ -148,8 +148,8 @@ namespace LivingRoots.Tests
             // Act
             string? result = _reservedNameHandler.Handle(input);
 
-            // Assert - With the new logic, trailing spaces are treated as insignificant like dots
-            Assert.Equal(" CON_ ", result); // The original string with underscore added after core name, preserving trailing space
+            // After fix: Trailing spaces should not be re-applied since they're insignificant in Windows
+            Assert.Equal(" CON_", result); // The original string with underscore added after core name, but trailing spaces removed
         }
 
         [Fact]
@@ -165,8 +165,8 @@ namespace LivingRoots.Tests
             // Act
             string? result = _reservedNameHandler.Handle(input);
 
-            // Assert
-            Assert.Equal("CON_   ...", result); // The original string with underscore added to the reserved part
+            // After fix: Trailing insignificant characters should not be re-applied
+            Assert.Equal("CON_", result); // The original string with underscore added to the reserved part, but trailing spaces/dots removed
         }
 
         [Fact]
@@ -182,8 +182,8 @@ namespace LivingRoots.Tests
             // Act
             string? result = _reservedNameHandler.Handle(input);
 
-            // Assert
-            Assert.Equal("CON_   ", result); // The original string with underscore added to the reserved part
+            // After fix: Trailing spaces should not be re-applied since they're insignificant in Windows
+            Assert.Equal("CON_", result); // The original string with underscore added to the reserved part, but trailing spaces removed
         }
 
         [Fact]
@@ -199,8 +199,8 @@ namespace LivingRoots.Tests
             // Act
             string? result = _reservedNameHandler.Handle(input);
 
-            // Assert
-            Assert.Equal("CON_...", result); // The original string with underscore added to the reserved part
+            // After fix: Trailing dots should not be re-applied since they're insignificant in Windows
+            Assert.Equal("CON_", result); // The original string with underscore added to the reserved part, but trailing dots removed
         }
 
         [Fact]
@@ -447,6 +447,49 @@ namespace LivingRoots.Tests
 
             // Assert - Should return the original input since Path.GetFileName would return empty string
             Assert.Equal(input, result);
+        }
+        
+        [Fact]
+        public void Handle_WithReservedNameFollowedByTrailingCharacters_AvoidsRecreatingReservedNames()
+        {
+            // This test addresses the issue: Avoid recreating reserved names via trailing characters
+            // After detecting a reserved name and adding an underscore, we need to sanitize
+            // the trailing characters to prevent them from recreating the reserved name condition
+            // This means sanitizing trailing characters before re-applying them
+            
+            // Arrange
+            string input = "CON..."; // Reserved name with trailing dots
+            string baseName = "CON"; // After trimming trailing dots and spaces for check
+            
+            // Setup mock to return the same string for normalization
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(baseName)).Returns(baseName);
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // After fix: The trailing characters should be sanitized to avoid recreating the issue
+            // Trailing insignificant characters (dots and spaces) should not be re-applied
+            // so "CON..." should become "CON_" (not "CON_...")
+            Assert.Equal("CON_", result);
+        }
+        [Fact]
+        public void Handle_WithFullyInsignificantName_ReplacesWithSafePlaceholder()
+        {
+            // This test addresses the issue: Replace fully-insignificant names with safe placeholder
+            // Filenames that become empty after trimming dots and spaces should be replaced with underscore
+            // instead of returning the original ambiguous filename
+            
+            // Arrange
+            var testCases = new[] { "   ", "...", " . ", " . . ", "   ...   " };
+            
+            foreach (var input in testCases)
+            {
+                // Act
+                string? result = _reservedNameHandler.Handle(input);
+                
+                // Assert - should return underscore instead of original ambiguous filename
+                Assert.Equal("_", result);
+            }
         }
     }
 }
