@@ -156,21 +156,41 @@ namespace LivingRoots.Services
             {
                 string relativePath = GetFilePath(sanitizedKey);
                 
-                // Convert relative path to absolute path for direct file system check
-                string absolutePath = Path.Combine(_helper.DirectoryPath, relativePath);
+                // Use SMAPI's Data API to check for data existence instead of direct file system access
+                var data = _helper.Data.ReadJsonFile<object>(relativePath);
                 
-                // Use direct file existence check instead of attempting to read the file
-                return File.Exists(absolutePath);
+                // If data is null, the file doesn't exist or is empty/corrupted
+                return data != null;
             }
-            catch (ArgumentException ex)
+            catch (System.IO.FileNotFoundException ex)
             {
-                _monitor.Log($"Invalid key provided to DataExists: {ex.Message}", LogLevel.Warn);
-                return false; // Return false instead of throwing when key is invalid
+                // Log FileNotFoundException as Trace to reduce log noise
+                _monitor.Log($"File not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
+                return false; // Return false instead of throwing when file doesn't exist
+            }
+            catch (System.IO.DirectoryNotFoundException ex)
+            {
+                // Log DirectoryNotFoundException as Warn to reduce log noise from non-critical issues
+                _monitor.Log($"Directory not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                return false; // Return false instead of throwing when directory doesn't exist
+            }
+            catch (System.UnauthorizedAccessException ex)
+            {
+                // Log UnauthorizedAccessException as Warn to reduce log noise from non-critical issues
+                _monitor.Log($"Access denied while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                return false; // Return false instead of throwing when access is denied
             }
             catch (System.IO.IOException ex)
             {
+                // Log other IOExceptions as Warn to reduce log noise from non-critical issues
                 _monitor.Log($"IOException while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false; // Return false instead of throwing when IO error occurs
+            }
+            catch (Newtonsoft.Json.JsonException ex) // Catch broader JsonException instead of JsonReaderException
+            {
+                // Log JsonException instead of silently swallowing it
+                _monitor.Log($"JSON parsing error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                return false; // Return false instead of throwing when JSON is invalid
             }
             catch (Exception ex)
             {
