@@ -473,11 +473,10 @@ namespace LivingRoots.Tests
             Assert.Equal("CON_", result);
         }
         [Fact]
-        public void Handle_WithFullyInsignificantName_ReplacesWithSafePlaceholder()
+        public void Handle_WithFullyInsignificantName_ReturnsOriginal()
         {
-            // This test addresses the issue: Replace fully-insignificant names with safe placeholder
-            // Filenames that become empty after trimming dots and spaces should be replaced with underscore
-            // instead of returning the original ambiguous filename
+            // This test addresses the expected behavior: Return original filename to prevent malformed outputs
+            // If baseNameForCheck is empty after trimming, return the original filename to preserve user input
             
             // Arrange
             var testCases = new[] { "   ", "...", " . ", " . . ", "   ...   " };
@@ -487,8 +486,8 @@ namespace LivingRoots.Tests
                 // Act
                 string? result = _reservedNameHandler.Handle(input);
                 
-                // Assert - should return underscore instead of original ambiguous filename
-                Assert.Equal("_", result);
+                // Assert - should return original instead of modifying the ambiguous filename
+                Assert.Equal(input, result);
             }
         }
     }
