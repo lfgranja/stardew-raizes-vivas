@@ -412,5 +412,97 @@ namespace LivingRoots.Tests
             Assert.Contains("Attempted to unregister events after disposal", loggedMessage);
             Assert.Equal(LogLevel.Trace, loggedLevel);
         }
+        
+        [Fact]
+        public void Dispose_IsIdempotent_CanBeCalledMultipleTimes()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            // Setup event subscription and unsubscription expectations
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            
+            // Register events first to set up the controller
+            controller.RegisterEvents();
+            
+            // Act - Dispose multiple times
+            controller.Dispose();
+            controller.Dispose(); // Second call should not cause issues
+            controller.Dispose(); // Third call should not cause issues
+            
+            // Assert - No exceptions should be thrown
+            mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+        }
+        
+        [Fact]
+        public async System.Threading.Tasks.Task Dispose_IsThreadSafe_WithConcurrentDisposal()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            // Setup event subscription and unsubscription expectations
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            
+            // Register events first to set up the controller
+            controller.RegisterEvents();
+            
+            // Act - Simulate concurrent disposal from multiple threads
+            var tasks = new System.Threading.Tasks.Task[10];
+            for (int i = 0; i < 10; i++)
+            {
+                tasks[i] = System.Threading.Tasks.Task.Run(() => controller.Dispose());
+            }
+            
+            // Wait for all tasks to complete
+            await System.Threading.Tasks.Task.WhenAll(tasks);
+            
+            // Assert - No exceptions should be thrown due to race conditions
+            // The event should be removed only once despite multiple concurrent disposal attempts
+            mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+        }
+        
+        [Fact]
+        public void Dispose_PreventsEventRegistrationAfterDisposal()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            // Setup event subscription expectations
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            
+            // Register events first to set up the controller
+            controller.RegisterEvents();
+            
+            // Act - Dispose the controller
+            controller.Dispose();
+            
+            // Try to register events after disposal
+            controller.RegisterEvents();
+            
+            // Assert - Event registration should not occur after disposal
+            mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+        }
     }
 }

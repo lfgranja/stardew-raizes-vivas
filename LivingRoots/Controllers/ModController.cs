@@ -222,9 +222,18 @@ namespace LivingRoots.Controllers
 
         public void Dispose()
         {
-            // Always attempt cleanup even if already disposed to prevent memory leaks
-            UnregisterEvents();
-            _disposed = true;
+            // Use a lock to ensure thread-safe disposal.
+            lock (_registrationLock)
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                UnregisterEvents();
+                _disposed = true;
+            }
+
             GC.SuppressFinalize(this);
         }
     }
