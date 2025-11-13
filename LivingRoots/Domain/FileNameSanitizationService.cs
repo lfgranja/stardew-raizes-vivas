@@ -65,8 +65,21 @@ namespace LivingRoots.Domain
             if (processedTrimmed == "." || processedTrimmed == "..")
                 throw new ArgumentException($"Filename sanitizes to invalid path component '{processedTrimmed}'.", nameof(filename));
 
-            // Determine if this should be treated as a hidden file
-            bool shouldBeHiddenFile = ShouldPreserveHiddenFilePrefix(filename, processed);
+            // Determine if this should be treated as a hidden file based on normalized input and actual content
+            bool shouldBeHiddenFile = false;
+            {
+                // Use the normalized filename (without extension) to decide
+                var normalizedNameNoExt = RemoveFileExtension(normalized);
+                // A hidden file should start with a dot AND have some meaningful content after sanitization
+                // Compute using the already sanitized content 'processed'
+                if (normalizedNameNoExt.StartsWith(".", StringComparison.Ordinal))
+                {
+                    var contentAfterDot = processed.Length > 0 && processed[0] == '.'
+                        ? processed.Substring(1)
+                        : processed;
+                    shouldBeHiddenFile = !string.IsNullOrWhiteSpace(contentAfterDot.Trim('_', ' ', '.'));
+                }
+            }
 
             // Trim leading/trailing problematic characters (but preserve leading dots for hidden files)
             string trimmed;
@@ -119,9 +132,9 @@ namespace LivingRoots.Domain
             if (string.IsNullOrWhiteSpace(result))
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
 
-            // Check for path traversal patterns that should result in empty string message
-            // But first check if it's exactly "." or ".." which should give the empty string error
-            if (result == "." || result == "..")
+            // Guard against invalid path components after all processing
+            var baseForCheck = RemoveFileExtension(result).Trim('_', ' ', '.');
+            if (baseForCheck == "." || baseForCheck == ".." || string.IsNullOrWhiteSpace(baseForCheck))
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
 
             // Add extension back if it was present and safe
@@ -347,6 +360,11 @@ namespace LivingRoots.Domain
                 postTruncationTrimmed = "." + postTruncationTrimmed.TrimStart('.');
             }
 
+            // Final validity guard to prevent invalid path components
+            var trimmedCore = postTruncationTrimmed.Trim('_', ' ', '.');
+            if (string.IsNullOrWhiteSpace(trimmedCore) || trimmedCore == "." || trimmedCore == "..")
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+
             // If the final result is still longer than max length, truncate again
             if (postTruncationTrimmed.Length > MaxFileNameLength)
             {
@@ -376,6 +394,12 @@ namespace LivingRoots.Domain
                 {
                     return -1; // Not a valid extension if it contains path separators
                 }
+                
+                // Do not treat dotfiles (e.g., ".profile") as having an extension
+                // If all characters before the last dot are dots (i.e., hidden file prefix only), it's not an extension
+                bool onlyDotsBefore = filename.Substring(0, lastDotIndex).All(ch => ch == '.');
+                if (onlyDotsBefore)
+                    return -1;
                 
                 // Extract the part after the dot (excluding the dot itself)
                 string extensionPart = potentialExtension.Substring(1);
