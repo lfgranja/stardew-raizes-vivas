@@ -503,6 +503,7 @@ namespace LivingRoots.Tests
             var result = _service.Sanitize(longFilename);
             
             // Assert: The result should be truncated to fit within MaxFileNameLength
+            Assert.NotNull(result);
             Assert.True(result.Length <= 240);
             Assert.EndsWith(".txt", result);
         }
@@ -524,6 +525,7 @@ namespace LivingRoots.Tests
             var result = _service.Sanitize(longHiddenFilename);
             
             // Assert: The result should be truncated to fit within MaxFileNameLength
+            Assert.NotNull(result);
             Assert.True(result.Length <= 240);
             Assert.StartsWith(".", result);
             Assert.EndsWith(".txt", result);
@@ -548,6 +550,7 @@ namespace LivingRoots.Tests
             var result = _service.Sanitize(longFilename);
             
             // Assert: The result should be truncated to fit within MaxFileNameLength
+            Assert.NotNull(result);
             Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
             Assert.EndsWith(".blocked", result); // Dangerous extension should be replaced
         }
@@ -570,6 +573,7 @@ namespace LivingRoots.Tests
             var result = _service.Sanitize(longFilename);
             
             // Assert: The result should be truncated to fit within MaxFileNameLength
+            Assert.NotNull(result);
             Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
             Assert.EndsWith(".txt", result); // Extension should be preserved
         }
@@ -592,6 +596,7 @@ namespace LivingRoots.Tests
             var result = _service.Sanitize(longFilename);
             
             // Assert: The result should be truncated to fit within MaxFileNameLength and not have trailing spaces/dots
+            Assert.NotNull(result);
             Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
             Assert.EndsWith(".txt", result); // Extension should be preserved
             // Should not end with spaces, dots or underscores after extension
@@ -619,6 +624,7 @@ namespace LivingRoots.Tests
             var result = _service.Sanitize(longFilename);
             
             // Assert: The result should not end with trailing dots (other than in extension)
+            Assert.NotNull(result);
             Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
             Assert.EndsWith(".txt", result); // Extension should be preserved
             // After truncation and extension addition, there should be no trailing dots except in extension

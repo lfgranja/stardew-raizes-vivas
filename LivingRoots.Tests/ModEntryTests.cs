@@ -173,7 +173,7 @@ namespace LivingRoots.Tests
         }
         
         [Fact]
-        public void Dispose_WhenCalledFromMultipleThreads_IsThreadSafe()
+        public async Task Dispose_WhenCalledFromMultipleThreads_IsThreadSafe()
         {
             // Arrange
             var modEntry = new ModEntry();
@@ -193,7 +193,7 @@ namespace LivingRoots.Tests
                 });
             }
             
-            System.Threading.Tasks.Task.WaitAll(tasks);
+            await System.Threading.Tasks.Task.WhenAll(tasks);
             
             // Assert - Only one disposal should have happened effectively, but the flag should be true
             var disposedField = typeof(ModEntry).GetField("_disposed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
