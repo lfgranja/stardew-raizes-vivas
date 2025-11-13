@@ -90,9 +90,10 @@ namespace LivingRoots.Domain
             if (normalized.StartsWith("/"))
                 throw new ArgumentException("Path cannot be an absolute path or URI.", nameof(path));
 
-            // Check for URL patterns that might not be caught by Uri.IsWellFormedUriString
-            if (normalized.StartsWith("http://") || normalized.StartsWith("https://") || 
-                normalized.StartsWith("ftp://") || normalized.StartsWith("file://"))
+            // Check for URL patterns (case-insensitive) that might not be caught by Uri.IsWellFormedUriString
+            var normalizedLower = normalized.ToLowerInvariant();
+            if (normalizedLower.StartsWith("http://") || normalizedLower.StartsWith("https://") ||
+                normalizedLower.StartsWith("ftp://")  || normalizedLower.StartsWith("file://"))
                 throw new ArgumentException("Path cannot be an absolute path or URI.", nameof(path));
 
             // Additional check for explicit "." patterns at start of path

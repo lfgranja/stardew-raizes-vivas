@@ -212,5 +212,84 @@ namespace LivingRoots.Tests
             // Act & Assert
             _service.Validate("folder/../subfolder/file.txt"); // Should not throw - ends at root level
         }
+        [Fact]
+        public void Validate_WithMixedCaseHttpUrl_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("hTtP://example.com/file.txt"));
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
+        }
+
+        [Fact]
+        public void Validate_WithMixedCaseHttpsUrl_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("HtTpS://example.com/file.txt"));
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
+        }
+
+        [Fact]
+        public void Validate_WithMixedCaseFtpUrl_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("FtP://example.com/file.txt"));
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
+        }
+
+        [Fact]
+        public void Validate_WithMixedCaseFileUrl_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("FiLe://example.com/file.txt"));
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
+        }
+
+        [Fact]
+        public void Validate_WithUpperCaseHttpUrl_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("HTTP://example.com/file.txt"));
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
+        }
+
+        [Fact]
+        public void Validate_WithUpperCaseHttpsUrl_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("HTTPS://example.com/file.txt"));
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
+        }
+
+        [Fact]
+        public void Validate_WithUpperCaseFtpUrl_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("FTP://example.com/file.txt"));
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
+        }
+
+        [Fact]
+        public void Validate_WithUpperCaseFileUrl_ThrowsArgumentException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("FILE://example.com/file.txt"));
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
+        }
+
+        [Fact]
+        public void Validate_WithLowerCaseHttpUrl_ThrowsArgumentException()
+        {
+            // Act & Assert - This should already work but let's make sure it still works after our changes
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("http://example.com/file.txt"));
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
+        }
+
+        [Fact]
+        public void Validate_WithLowerCaseHttpsUrl_ThrowsArgumentException()
+        {
+            // Act & Assert - This should already work but let's make sure it still works after our changes
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("https://example.com/file.txt"));
+            Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
+        }
     }
 }
