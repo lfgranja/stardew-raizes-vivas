@@ -634,5 +634,202 @@ namespace LivingRoots.Tests
                 Assert.False(withoutExtension.EndsWith("."), "Should not end with dots after truncation");
             }
         }
+        [Fact]
+        public void FindExtensionStartIndex_WithDotfileWithoutExtension_ReturnsNegativeOne()
+        {
+            // Test the specific method directly
+            // Using reflection to access the private method
+            var method = typeof(FileNameSanitizationService).GetMethod("FindExtensionStartIndex", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Test various dotfiles that should not be treated as having extensions
+            // (where all characters before the last dot are dots)
+            var result1 = method?.Invoke(null, new object[] { ".profile" });  // Only dot is at start, no extension
+            Assert.Equal(-1, result1);
+            
+            var result2 = method?.Invoke(null, new object[] { ".bashrc" });  // Only dot is at start, no extension
+            Assert.Equal(-1, result2);
+            
+            var result3 = method?.Invoke(null, new object[] { "...txt" });  // All chars before last dot are dots
+            Assert.Equal(-1, result3);
+            
+            var result4 = method?.Invoke(null, new object[] { "..hidden" });  // All chars before last dot are dots
+            Assert.Equal(-1, result4);
+        }
+        
+        [Fact]
+        public void FindExtensionStartIndex_WithDotfileWithExtension_ReturnsCorrectIndex()
+        {
+            // Test the specific method directly
+            var method = typeof(FileNameSanitizationService).GetMethod("FindExtensionStartIndex", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // These are dotfiles that DO have extensions and should return the extension index
+            var result1 = method?.Invoke(null, new object[] { ".profile.txt" });
+            Assert.Equal(8, result1);  // The .txt extension should be recognized
+            
+            var result2 = method?.Invoke(null, new object[] { ".bashrc.backup" });
+            Assert.Equal(7, result2);  // The .backup extension should be recognized
+        }
+        
+        [Fact]
+        public void FindExtensionStartIndex_WithNormalFileWithExtension_ReturnsCorrectIndex()
+        {
+            // Test the specific method directly
+            var method = typeof(FileNameSanitizationService).GetMethod("FindExtensionStartIndex", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // These are normal files that should be treated as having extensions
+            var result1 = method?.Invoke(null, new object[] { "file.txt" });
+            Assert.Equal(4, result1);
+            
+            var result2 = method?.Invoke(null, new object[] { "document.pdf" });
+            Assert.Equal(8, result2);
+            
+            var result3 = method?.Invoke(null, new object[] { "archive.tar.gz" });
+            Assert.Equal(11, result3); // Should return index of last extension (.gz)
+        }
+        
+        [Fact]
+        public void Sanitize_WithDotfileWithoutExtension_DoesNotTreatAsHavingExtension()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".profile"))
+                .Returns(".profile");
+
+            // Act
+            var result = _service.Sanitize(".profile");
+
+            // Assert
+            Assert.Equal(".profile", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithDotfileWithFakeExtension_DoesNotTreatAsHavingExtension()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".bashrc"))
+                .Returns(".bashrc");
+
+            // Act
+            var result = _service.Sanitize(".bashrc");
+
+            // Assert
+            Assert.Equal(".bashrc", result);
+        }
+
+        [Fact]
+        public void Sanitize_WithHiddenFileStartingWithDotAndValidContent_PreservesHiddenFileStatus()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".hidden_file.txt"))
+                .Returns(".hidden_file.txt");
+
+            // Act
+            var result = _service.Sanitize(".hidden_file.txt");
+
+            // Assert
+            Assert.Equal(".hidden_file.txt", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithHiddenFileStartingWithDotAndInvalidChars_BecomesHiddenFileWithValidContent()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".<hidden_file.txt"))
+                .Returns(".<hidden_file.txt");
+
+            // Act
+            var result = _service.Sanitize(".<hidden_file.txt");
+
+            // Assert
+            Assert.Equal(".hidden_file.txt", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithHiddenFileStartingWithDotFollowedByOnlyInvalidChars_ThrowsArgumentException()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".<>"))
+                .Returns(".<>");
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<>"));
+            Assert.Contains("Filename sanitizes to an empty string", exception.Message);
+        }
+        
+        [Fact]
+        public void Sanitize_WithHiddenFileStartingWithDotFollowedBySpacesAndInvalidChars_ThrowsArgumentException()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".   <>"))
+                .Returns(".   <>");
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".   <>"));
+            Assert.Contains("Filename sanitizes to an empty string", exception.Message);
+        }
+        
+        [Fact]
+        public void Sanitize_WithHiddenFileStartingWithDotFollowedByMeaningfulContentAfterSanitization_PreservesHiddenFile()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".file_name.txt"))
+                .Returns(".file_name.txt");
+
+            // Act
+            var result = _service.Sanitize(".file_name.txt");
+
+            // Assert
+            Assert.Equal(".file_name.txt", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithHiddenFileStartingWithDotAndSanitizesToOnlyDots_ThrowsArgumentException()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".<...>"))
+                .Returns(".<...>");
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<...>"));
+            Assert.Contains("Filename sanitizes to an empty string", exception.Message);
+        }
+        
+        [Fact]
+        public void Sanitize_WithHiddenFileStartingWithDotAndSanitizesToOnlyUnderscores_ThrowsArgumentException()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".<___>"))
+                .Returns(".<___>");
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<___>"));
+            Assert.Contains("Filename sanitizes to an empty string", exception.Message);
+        }
+        
+        [Fact]
+        public void Sanitize_WithHiddenFileStartingWithDotAndSanitizesToMeaningfulContent_PreservesHiddenFile()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".valid_name.txt"))
+                .Returns(".valid_name.txt");
+
+            // Act
+            var result = _service.Sanitize(".valid_name.txt");
+
+            // Assert
+            Assert.Equal(".valid_name.txt", result);
+        }
     }
 }
