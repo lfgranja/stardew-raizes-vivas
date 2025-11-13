@@ -247,16 +247,17 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Handle_WithWhitespaceOnlyString_ReturnsWhitespaceOnlyString()
+        public void Handle_WithWhitespaceOnlyString_ReplacesWithSafePlaceholder()
         {
             // Arrange
             string input = "   ";
+            string expected = "_";
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
 
             // Assert
-            Assert.Equal(input, result);
+            Assert.Equal(expected, result);
         }
 
         [Fact]
@@ -351,51 +352,54 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Handle_WithFilenameThatBecomesEmptyAfterTrimming_ReturnsOriginal()
+        public void Handle_WithFilenameThatBecomesEmptyAfterTrimming_ReplacesWithSafePlaceholder()
         {
             // This test addresses the third issue: Prevent Malformed Names After Trimming
-            // If baseNameForCheck is empty after trimming, return the original filename to prevent malformed outputs
+            // If baseNameForCheck is empty after trimming, replace with safe placeholder to prevent malformed outputs
 
             // Arrange
             string input = "   "; // This becomes empty after trimming leading/trailing spaces
+            string expected = "_"; // Safe placeholder
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
 
-            // Assert - Should return the original input instead of causing malformed output
-            Assert.Equal(input, result);
+            // Assert - Should return safe placeholder instead of causing malformed output
+            Assert.Equal(expected, result);
         }
 
         [Fact]
-        public void Handle_WithFilenameThatBecomesEmptyAfterTrimmingDotsAndSpaces_ReturnsOriginal()
+        public void Handle_WithFilenameThatBecomesEmptyAfterTrimmingDotsAndSpaces_ReplacesWithSafePlaceholder()
         {
             // This test addresses the third issue: Prevent Malformed Names After Trimming
-            // If baseNameForCheck is empty after trimming, return the original filename to prevent malformed outputs
+            // If baseNameForCheck is empty after trimming, replace with safe placeholder to prevent malformed outputs
 
             // Arrange
             string input = "..."; // This becomes empty after trimming dots and spaces
+            string expected = "_"; // Safe placeholder
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
 
-            // Assert - Should return the original input instead of causing malformed output
-            Assert.Equal(input, result);
+            // Assert - Should return safe placeholder instead of causing malformed output
+            Assert.Equal(expected, result);
         }
 
         [Fact]
-        public void Handle_WithFilenameThatBecomesEmptyAfterTrimmingMixedChars_ReturnsOriginal()
+        public void Handle_WithFilenameThatBecomesEmptyAfterTrimmingMixedChars_ReplacesWithSafePlaceholder()
         {
             // This test addresses the third issue: Prevent Malformed Names After Trimming
-            // If baseNameForCheck is empty after trimming, return the original filename to prevent malformed outputs
+            // If baseNameForCheck is empty after trimming, replace with safe placeholder to prevent malformed outputs
 
             // Arrange
             string input = " . . "; // This becomes empty after trimming leading/trailing spaces and dots
+            string expected = "_"; // Safe placeholder
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
 
-            // Assert - Should return the original input instead of causing malformed output
-            Assert.Equal(input, result);
+            // Assert - Should return safe placeholder instead of causing malformed output
+            Assert.Equal(expected, result);
         }
 
         [Fact]
@@ -473,22 +477,185 @@ namespace LivingRoots.Tests
             Assert.Equal("CON_", result);
         }
         [Fact]
-        public void Handle_WithFullyInsignificantName_ReturnsOriginal()
+        public void Handle_WithFullyInsignificantName_ReplacesWithSafePlaceholder()
         {
-            // This test addresses the expected behavior: Return original filename to prevent malformed outputs
-            // If baseNameForCheck is empty after trimming, return the original filename to preserve user input
+            // This test addresses the expected behavior: Replace with safe placeholder to prevent malformed outputs
+            // If baseNameForCheck is empty after trimming, replace with safe placeholder to preserve user input
             
             // Arrange
             var testCases = new[] { "   ", "...", " . ", " . . ", "   ...   " };
+            string expected = "_";
             
             foreach (var input in testCases)
             {
                 // Act
                 string? result = _reservedNameHandler.Handle(input);
                 
-                // Assert - should return original instead of modifying the ambiguous filename
-                Assert.Equal(input, result);
+                // Assert - should return safe placeholder instead of the ambiguous filename
+                Assert.Equal(expected, result);
             }
+        }
+        
+        [Theory]
+        [InlineData("   ", "_")]
+        [InlineData("...", "_")]
+        [InlineData(" . ", "_")]
+        [InlineData(" . . ", "_")]
+        [InlineData("   ...   ", "_")]
+        public void Handle_WithInsignificantName_ReplacesWithSafePlaceholder(string input, string expected)
+        {
+            // This test verifies that filenames consisting only of insignificant characters 
+            // (dots/spaces) are replaced with a safe placeholder instead of returning the original
+            
+            // Arrange & Act
+            string? result = _reservedNameHandler.Handle(input);
+            
+            // Assert - should return safe placeholder instead of the original ambiguous filename
+            Assert.Equal(expected, result);
+        }
+        
+        [Theory]
+        [InlineData("path/to/   ", "path/to/_")]
+        [InlineData("path/to/...", "path/to/_")]
+        [InlineData("path/to/ . ", "path/to/_")]
+        public void Handle_WithPathWithInsignificantFileName_ReplacesWithSafePlaceholder(string input, string expected)
+        {
+            // This test verifies that paths with filenames consisting only of insignificant characters 
+            // are replaced with a safe placeholder while preserving the directory path
+            
+            // Arrange & Act
+            string? result = _reservedNameHandler.Handle(input);
+            
+            // Assert - should return path with safe placeholder instead of the original ambiguous filename
+            Assert.Equal(expected, result);
+        }
+        [Fact]
+        public void Handle_WithRootedPathAndReservedName_ProcessesFileNameComponent()
+        {
+            // This test verifies that rooted paths with reserved names are handled properly
+            // The directory path should be preserved, but the filename component should have reserved name handling applied
+            
+            // Arrange
+            string input = @"C:\CON.txt"; // Rooted path with reserved name
+            string fileNamePart = "CON";
+            
+            // Setup mock to return the same string for normalization
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert
+            Assert.Equal(@"C:\CON_.txt", result);
+        }
+        
+        [Fact]
+        public void Handle_WithRootedPathAndReservedNameWithExtension_ProcessesFileNameComponent()
+        {
+            // This test verifies that rooted paths with reserved names and extensions are handled properly
+            
+            // Arrange
+            string input = @"C:\COM1.xml"; // Rooted path with reserved name and extension
+            string fileNamePart = "COM1";
+            
+            // Setup mock to return the same string for normalization
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert
+            Assert.Equal(@"C:\COM1_.xml", result);
+        }
+        
+        [Fact]
+        public void Handle_WithUNCPathAndReservedName_ProcessesFileNameComponent()
+        {
+            // This test verifies that UNC paths with reserved names are handled properly
+            
+            // Arrange
+            string input = @"\\server\share\PRN.log"; // UNC path with reserved name
+            string fileNamePart = "PRN";
+            
+            // Setup mock to return the same string for normalization
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert
+            Assert.Equal(@"\\server\share\PRN_.log", result);
+        }
+        
+        [Fact]
+        public void Handle_WithRootedPathAndNonReservedName_DoesNotChange()
+        {
+            // This test verifies that rooted paths with non-reserved names are not changed
+            
+            // Arrange
+            string input = @"C:\normal_file.txt"; // Rooted path with non-reserved name
+            
+            // Setup mock to return the same string for normalization
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert
+            Assert.Equal(@"C:\normal_file.txt", result);
+        }
+        
+        [Fact]
+        public void Handle_WithRootedPathAndNonReservedNameSimilarToReserved_DoesNotChange()
+        {
+            // This test verifies that rooted paths with names similar to reserved but not exact matches are not changed
+            
+            // Arrange
+            string input = @"C:\CONSOLE.txt"; // Rooted path with name similar to reserved but not exact
+            
+            // Setup mock to return the same string for normalization
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert
+            Assert.Equal(@"C:\CONSOLE.txt", result);
+        }
+        
+        [Fact]
+        public void Handle_WithRootedPathEndingWithSeparator_ReturnsOriginal()
+        {
+            // This test verifies that rooted paths ending with a separator (directory paths) return unchanged
+            // This is important because Path.GetFileName returns empty for such paths
+            
+            // Arrange
+            string input = @"C:\some\directory\"; // Rooted directory path ending with separator
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert
+            Assert.Equal(@"C:\some\directory\", result);
+        }
+        
+        [Fact]
+        public void Handle_WithRootedPathContainingSubdirectoriesAndReservedName_ProcessesFileName()
+        {
+            // This test verifies that complex rooted paths with reserved names in the final component are handled
+            
+            // Arrange
+            string input = @"C:\path\to\AUX\file\LPT1.dat"; // Rooted path with reserved name in final component
+            string fileNamePart = "LPT1";
+            
+            // Setup mock to return the same string for normalization
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
+
+            // Act
+            string? result = _reservedNameHandler.Handle(input);
+
+            // Assert
+            Assert.Equal(@"C:\path\to\AUX\file\LPT1_.dat", result);
         }
     }
 }

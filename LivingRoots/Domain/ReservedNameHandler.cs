@@ -24,7 +24,7 @@ namespace LivingRoots.Domain
         }
 
         /// <summary>
-        /// Handles reserved Windows filenames by appending an underscore to the base name if necessary.
+        /// Handles reserved Windows filenames by appending an underscore to base name if necessary.
         /// </summary>
         /// <param name="filename">The filename to check for reserved names.</param>
         /// <returns>A filename with reserved names handled appropriately.</returns>
@@ -34,20 +34,50 @@ namespace LivingRoots.Domain
             if (string.IsNullOrEmpty(filename))
                 return filename;
 
-            // Guard against absolute/UNC paths - return unchanged if Path.IsPathRooted
+            // Guard against absolute/UNC paths: preserve directory, still handle reserved leaf names
             if (Path.IsPathRooted(filename))
-                return filename;
+            {
+                string? directoryPath = Path.GetDirectoryName(filename);
+                string fullFileName = Path.GetFileName(filename);
 
-            // Extract the directory path and filename separately
+                // If there's no file name (e.g., path ends with separator), return unchanged
+                if (string.IsNullOrEmpty(fullFileName))
+                    return filename;
+
+                // Reuse existing logic by processing just the leaf name
+                string? processed = ProcessFileName(fullFileName);
+
+                // If no change or processing failed, return original
+                if (processed == null || processed == fullFileName)
+                    return filename;
+
+                // Rebuild rooted path with processed filename
+                return !string.IsNullOrEmpty(directoryPath)
+                    ? Path.Combine(directoryPath, processed)
+                    : processed;
+            }
+
+            // For non-rooted paths, process using the same logic as before
+            return ProcessFileName(filename);
+        }
+        
+        /// <summary>
+        /// Process a filename for reserved name handling (original non-rooted path logic)
+        /// </summary>
+        /// <param name="filename">The filename to process</param>
+        /// <returns>A filename with reserved names handled appropriately</returns>
+        private string? ProcessFileName(string filename)
+        {
+            // Extract directory path and filename separately
             string? directoryPath = Path.GetDirectoryName(filename);
             string fullFileName = Path.GetFileName(filename);
             
-            // If Path.GetFileName returns an empty string, this means the input ends with a directory separator
+            // If Path.GetFileName returns an empty string, this means input ends with a directory separator
             // In this case, we should return the original filename to avoid incorrect mutation of directory paths
             if (string.IsNullOrEmpty(fullFileName))
                 return filename;
             
-            // Separate the base name from extensions, but handle trailing insignificant dots carefully
+            // Separate base name from extensions, but handle trailing insignificant dots carefully
             // Find the first dot that separates the actual name from the extension
             int firstDotIndex = -1;
             for (int i = 0; i < fullFileName.Length; i++)
@@ -92,7 +122,7 @@ namespace LivingRoots.Domain
                 extensionPart = "";
             }
 
-            // Process the name part: trim leading spaces and check for reserved names
+            // Process name part: trim leading spaces and check for reserved names
             string trimmedLeadingSpaces = namePart.TrimStart();
             
             // Get the core name by trimming trailing insignificant characters (dots and spaces)
@@ -101,9 +131,12 @@ namespace LivingRoots.Domain
             // Handle the case where the name becomes empty after trimming
             if (string.IsNullOrEmpty(baseNameForCheck))
             {
-                // For consistency with most tests: return the original filename to prevent malformed outputs
-                // This preserves user input and maintains expected behavior for most scenarios
-                return filename;
+                // Replace fully insignificant names with a safe placeholder, preserving directory and extension
+                string safeName = "_";
+                if (!string.IsNullOrEmpty(directoryPath))
+                    return directoryPath + Path.DirectorySeparatorChar + safeName + extensionPart;
+                else
+                    return safeName + extensionPart;
             }
             
             // Normalize for comparison with reserved names
@@ -115,14 +148,14 @@ namespace LivingRoots.Domain
 
             if (isReserved)
             {
-                // For reserved names, construct the result by using the leading spaces from the original name
-                // and adding the underscore to the baseNameForCheck (not the original namePart which has trailing chars)
+                // For reserved names, construct the result by using leading spaces from the original name
+                // and adding an underscore to the baseNameForCheck (not the original namePart which has trailing chars)
                 string leadingSpaces = namePart.Substring(0, namePart.Length - trimmedLeadingSpaces.Length);
                 
                 // The new name part is: leading spaces + baseNameForCheck (without trailing insignificant chars) + underscore
                 string newNamePart = leadingSpaces + baseNameForCheck + "_";
                 
-                // Build result: directory + new name part + extension (extension was not modified)
+                // Build the result: directory + new name part + extension (extension was not modified)
                 string result;
                 if (!string.IsNullOrEmpty(directoryPath))
                 {
@@ -136,7 +169,7 @@ namespace LivingRoots.Domain
                 return result;
             }
 
-            // If not reserved, return original filename
+            // If not reserved, return the original filename
             return filename;
         }
         
