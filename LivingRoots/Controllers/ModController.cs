@@ -89,6 +89,12 @@ namespace LivingRoots.Controllers
 
         public void UnregisterEvents()
         {
+            if (_disposed)
+            {
+                _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
+                return;
+            }
+            
             lock (_registrationLock)
             {
                 try
