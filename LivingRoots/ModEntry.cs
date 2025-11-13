@@ -52,20 +52,21 @@ namespace LivingRoots
             // Use a lock to ensure thread-safe disposal
             lock (_disposeLock)
             {
-                if (!_disposed)
+                if (_disposed)
                 {
-                    if (disposing)
-                    {
-                        // Dispose managed resources only when disposing is true
-                        _controller?.Dispose();
-                        _controller = null;
-                    }
-
-                    _disposed = true;
+                    base.Dispose(disposing);
+                    return;
                 }
+
+                if (disposing)
+                {
+                    _controller?.Dispose();
+                    _controller = null;
+                }
+
+                _disposed = true;
+                base.Dispose(disposing);
             }
-            
-            base.Dispose(disposing);
         }
     }
 }

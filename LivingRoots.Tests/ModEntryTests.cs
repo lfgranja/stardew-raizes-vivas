@@ -206,5 +206,81 @@ namespace LivingRoots.Tests
                 Assert.Equal(System.Threading.Tasks.TaskStatus.RanToCompletion, task.Status);
             }
         }
+
+        [Fact]
+        public void Dispose_WhenAlreadyDisposed_CallsBaseDisposeAndReturnsEarly()
+        {
+            // Arrange
+            var modEntry = new ModEntry();
+            
+            // Create a real controller and set it directly
+            var mockHelper = new Mock<IModHelper>();
+            var mockMonitor = new Mock<IMonitor>();
+            var mockManifest = new Mock<IManifest>();
+            var mockModDataService = new Mock<IModDataService>();
+            
+            var controller = new ModController(
+                mockHelper.Object, 
+                mockMonitor.Object, 
+                mockManifest.Object, 
+                mockModDataService.Object);
+            
+            // Set the controller field directly using reflection
+            var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
+            controllerField?.SetValue(modEntry, controller);
+            
+            // First disposal to set disposed flag
+            modEntry.Dispose();
+            
+            // Verify controller is null after first disposal
+            var controllerAfterFirstDispose = controllerField?.GetValue(modEntry);
+            Assert.Null(controllerAfterFirstDispose);
+            
+            // Act - Call Dispose again when already disposed
+            modEntry.Dispose();
+            
+            // Assert - Controller should still be null (no double disposal)
+            var controllerAfterSecondDispose = controllerField?.GetValue(modEntry);
+            Assert.Null(controllerAfterSecondDispose);
+        }
+
+        [Fact]
+        public async Task Dispose_WhenCalledConcurrentlyWithBaseDisposeCall_IsThreadSafe()
+        {
+            // Arrange
+            var modEntry = new ModEntry();
+            var tasks = new System.Threading.Tasks.Task[10];
+            var exceptions = new System.Exception[10];
+            
+            // Act
+            for (int i = 0; i < 10; i++)
+            {
+                int index = i; // Capture for closure
+                tasks[index] = System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        modEntry.Dispose();
+                    }
+                    catch (System.Exception ex)
+                    {
+                        exceptions[index] = ex;
+                    }
+                });
+            }
+            
+            await System.Threading.Tasks.Task.WhenAll(tasks);
+            
+            // Assert - No exceptions should have been thrown during concurrent disposal
+            for (int i = 0; i < exceptions.Length; i++)
+            {
+                Assert.Null(exceptions[i]);
+            }
+            
+            // Verify final disposed state
+            var disposedField = typeof(ModEntry).GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance);
+            var finalDisposedState = (bool)(disposedField?.GetValue(modEntry) ?? false);
+            Assert.True(finalDisposedState);
+        }
     }
 }
