@@ -149,11 +149,14 @@ namespace LivingRoots.Domain
             if (isReserved)
             {
                 // For reserved names, construct the result by using leading spaces from the original name
-                // and adding an underscore to the baseNameForCheck (not the original namePart which has trailing chars)
+                // and adding an underscore to the normalized base name (for security)
                 string leadingSpaces = namePart.Substring(0, namePart.Length - trimmedLeadingSpaces.Length);
                 
-                // The new name part is: leading spaces + baseNameForCheck (without trailing insignificant chars) + underscore
-                string newNamePart = leadingSpaces + baseNameForCheck + "_";
+                // Use the normalized form if it exists, otherwise use the original base name
+                string baseNameForResult = !string.IsNullOrEmpty(normalizedForCheck) ? normalizedForCheck : baseNameForCheck;
+                
+                // The new name part is: leading spaces + base name (normalized if changed) + underscore
+                string newNamePart = leadingSpaces + baseNameForResult + "_";
                 
                 // Build the result: directory + new name part + extension (extension was not modified)
                 string result;
