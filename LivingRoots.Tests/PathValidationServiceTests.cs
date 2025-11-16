@@ -291,5 +291,57 @@ namespace LivingRoots.Tests
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate("https://example.com/file.txt"));
             Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
         }
+        [Fact]
+        public void Validate_WithValidPathThatGoesUpAndDown_DoesNotThrow()
+        {
+            // This test verifies that valid paths like "a/b/../../c" are accepted
+            // This path goes down 2 levels (a/b) then up 2 levels (../../) then down 1 level (c)
+            // Final depth should be 1 (same level as root), which is valid
+            
+            // Act & Assert - This should NOT throw after the fix
+            _service.Validate("a/b/../../c"); // Should not throw
+        }
+        
+        [Fact]
+        public void Validate_WithValidPathEndingWithDotDot_DoesNotThrow()
+        {
+            // This test verifies that valid paths like "a/b/.." are accepted
+            // This path goes down 2 levels (a/b) then up 1 level (..)
+            // Final depth should be 1 (at directory "a"), which is valid
+            
+            // Act & Assert - This should NOT throw after the fix
+            _service.Validate("a/b/.."); // Should not throw
+        }
+        
+        [Fact]
+        public void Validate_WithConsecutiveDotDotSegments_DoesNotThrow()
+        {
+            // This test verifies that paths with consecutive ".." segments like "a/b/../../c" are accepted
+            // when they don't go above the root level
+            
+            // Act & Assert - This should NOT throw after the fix
+            _service.Validate("a/b/../../c"); // Should not throw
+        }
+        
+        [Fact]
+        public void Validate_WithValidPathThatGoesUpButNotAboveRoot_DoesNotThrow()
+        {
+            // This test verifies that paths that go up but don't go above root are accepted
+            // e.g., "folder/subfolder/../file.txt" should be valid
+            
+            // Act & Assert
+            _service.Validate("folder/subfolder/../file.txt"); // Should not throw
+        }
+        
+        [Fact]
+        public void Validate_WithPathTraversalAboveRoot_StillThrowsArgumentException()
+        {
+            // This test verifies that paths that actually go above root still throw
+            // e.g., "folder/../../../file.txt" should still throw since it goes above root
+            
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("folder/../../../file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+        }
     }
 }
