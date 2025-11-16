@@ -9,7 +9,7 @@ namespace LivingRoots
     /// <summary>
     /// Main entry point for the Living Roots mod
     /// Following the architecture pattern described in ARCHITECTURE.md
-    /// Now serves as the Composition Root where all dependencies are configured and injected
+    /// Now serves as a Composition Root where all dependencies are configured and injected
     /// </summary>
     public sealed class ModEntry : Mod
     {
@@ -28,7 +28,7 @@ namespace LivingRoots
             var unicodeNormalizationService = new UnicodeNormalizationService();
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
             var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
-            var pathValidationService = new PathValidationService();
+            var pathValidationService = new PathValidationService(unicodeNormalizationService, new PathTraversalValidator());
             var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
             
             // Create application services
@@ -37,7 +37,7 @@ namespace LivingRoots
             // Create controller with dependency injection
             _controller = new ModController(helper, this.Monitor, this.ModManifest, modDataService);
             
-            // Register events through the controller
+            // Register events through the Controller
             _controller.RegisterEvents();
         }
         
@@ -46,7 +46,7 @@ namespace LivingRoots
         *********/
         
         /// <summary>Clean up resources when the mod is unloaded.</summary>
-        /// <param name="disposing">Whether the instance is being disposed.</param>
+        /// <param name="disposing">Whether to instance is being disposed.</param>
         protected override void Dispose(bool disposing)
         {
             // Use a lock to ensure thread-safe disposal
@@ -54,7 +54,6 @@ namespace LivingRoots
             {
                 if (_disposed)
                 {
-                    base.Dispose(disposing);
                     return;
                 }
 
