@@ -8,11 +8,9 @@ namespace LivingRoots.Services
     /// </summary>
     public class PathTraversalValidator : IPathTraversalValidator
     {
-        private readonly IPathValidationService _pathValidationService;
-
-        public PathTraversalValidator(IPathValidationService pathValidationService)
+        public PathTraversalValidator()
         {
-            _pathValidationService = pathValidationService ?? throw new ArgumentNullException(nameof(pathValidationService));
+            // No dependencies needed - this is a simple adapter
         }
 
         /// <summary>
@@ -22,7 +20,16 @@ namespace LivingRoots.Services
         /// <exception cref="ArgumentException">Thrown if path traversal is detected.</exception>
         public void Validate(string path)
         {
-            _pathValidationService.Validate(path);
+            // Basic path traversal validation - delegate to domain service for comprehensive validation
+            if (string.IsNullOrEmpty(path))
+                throw new ArgumentException("Path cannot be null or empty", nameof(path));
+                
+            // Check for obvious path traversal patterns
+            if (path.Contains("..") || path.Contains("../") || path.Contains("..\\") || 
+                path.Contains("../../../") || path.Contains("..\\..\\"))
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
         }
     }
 }
