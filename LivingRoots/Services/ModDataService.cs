@@ -88,13 +88,27 @@ namespace LivingRoots.Services
             try
             {
                 var path = GetFilePath(sanitizedKey);
-                var result = _helper.Data.ReadJsonFile<T>(path);
-                if (result == null)
+                
+                // Check if the file exists first to differentiate between missing and corrupt files
+                string absolutePath = Path.Combine(_helper.DirectoryPath, path);
+                
+                if (!File.Exists(absolutePath))
                 {
-                    // Log when ReadJsonFile returns null (which can happen when file exists but is empty/corrupted)
-                    _monitor.Log($"Data is null while loading for key '{sanitizedKey}'.", LogLevel.Trace);
+                    // File does not exist - log as trace to reduce noise
+                    _monitor.Log($"File not found while loading data for key '{sanitizedKey}': {path}", LogLevel.Trace);
                     return null;
                 }
+                
+                // File exists, try to read it
+                var result = _helper.Data.ReadJsonFile<T>(path);
+                
+                if (result == null)
+                {
+                    // File exists but is empty or contains invalid JSON structure
+                    _monitor.Log($"File exists but contains no valid data while loading for key '{sanitizedKey}': {path}", LogLevel.Warn);
+                    return null;
+                }
+                
                 return result;
             }
             catch (ArgumentException ex)
@@ -128,8 +142,8 @@ namespace LivingRoots.Services
             }
             catch (Newtonsoft.Json.JsonException ex) // Catch broader JsonException instead of JsonReaderException
             {
-                // Log JsonException instead of silently swallowing it
-                _monitor.Log($"JSON parsing error while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
+                // Log JsonException as Warn for consistency with other non-critical errors
+                _monitor.Log($"JSON parsing error while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return null; // Return null instead of throwing when JSON is invalid (consistent with DataExists behavior)
             }
         }
@@ -155,20 +169,8 @@ namespace LivingRoots.Services
             try
             {
                 string relativePath = GetFilePath(sanitizedKey);
-                
-                // Try to read the file first - this will work with mocks and real file system
-                var data = _helper.Data.ReadJsonFile<object>(relativePath);
-                if (data != null)
-                    return true;
-
-                // Fallback: check file system directly for cases where ReadJsonFile might not work as expected
                 string absolutePath = Path.Combine(_helper.DirectoryPath, relativePath);
                 return File.Exists(absolutePath);
-            }
-            catch (System.IO.FileNotFoundException ex)
-            {
-                _monitor.Log($"File not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
-                return false;
             }
             catch (System.IO.DirectoryNotFoundException ex)
             {
@@ -187,9 +189,8 @@ namespace LivingRoots.Services
             }
             catch (Newtonsoft.Json.JsonException ex)
             {
-                // File exists but is not valid JSON; treat as existing and log
                 _monitor.Log($"JSON parsing error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                return true;
+                return false;
             }
             catch (Exception ex)
             {
@@ -280,7 +281,7 @@ namespace LivingRoots.Services
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Key cannot be null or empty", nameof(key));
 
-            // The key should already be sanitized at this point, so we just return the path
+            // The key should already be sanitized at this point, so we just return path
             // The validation already happened when SanitizeFileName was called in public methods
 
             // Sanitized key should not be null by this point due to check in public methods
