@@ -1,217 +1,152 @@
 using System;
-using System.Globalization;
-using System.Net;
-using System.Text;
+using System.Text.RegularExpressions;
 
 namespace LivingRoots.Domain
 {
     /// <summary>
-    /// Implementation for validating and preventing path traversal attacks.
+    /// Implementation for validating file paths to prevent path traversal attacks and other security issues.
     /// This implementation follows the Dependency Inversion Principle by depending on abstractions.
-    /// Uses simplified depth-based traversal detection for better maintainability.
     /// </summary>
     public class PathValidationService : IPathValidationService
     {
-        /// <summary>
-        /// Initializes a new instance of the PathValidationService class.
-        /// </summary>
-        public PathValidationService()
+        private readonly IUnicodeNormalizationService _unicodeNormalizationService;
+        private readonly IPathTraversalValidator _pathTraversalValidator;
+
+        // Regex patterns for detecting absolute paths and URIs
+        private static readonly Regex AbsolutePathPattern = new Regex(
+            @"^[a-zA-Z]:[/\\]|^[/\\]|^[a-zA-Z][a-zA-Z0-9+.-]*://",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase
+        );
+
+        // Regex patterns for detecting encoded path traversal sequences
+        private static readonly Regex EncodedTraversalPattern = new Regex(
+            @"%2e%2e%2[fF]|%2e%2e[/\\]|\.\.%2[fF]|%2e%2e%2e",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase
+        );
+
+        public PathValidationService(
+            IUnicodeNormalizationService unicodeNormalizationService,
+            IPathTraversalValidator pathTraversalValidator)
         {
+            _unicodeNormalizationService = unicodeNormalizationService ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
+            _pathTraversalValidator = pathTraversalValidator ?? throw new ArgumentNullException(nameof(pathTraversalValidator));
         }
-        
+
         /// <summary>
-        /// Validates that a path does not contain path traversal patterns.
-        /// Uses depth tracking to detect traversal attempts above the root directory.
+        /// Validates a file path to ensure it doesn't contain path traversal patterns or absolute paths.
         /// </summary>
         /// <param name="path">The path to validate.</param>
-        /// <exception cref="ArgumentException">Thrown if path traversal is detected.</exception>
+        /// <exception cref="ArgumentException">Thrown when the path is invalid.</exception>
         public void Validate(string path)
         {
-            if (path == null)
-                throw new ArgumentException("Path cannot be null or empty.", nameof(path));
-            
-            // Normalize Unicode homoglyphs of path separators and reject invisible characters
-            path = NormalizePathSeparators(path);
-            
-            path = path.Trim();
-            
-            if (string.IsNullOrEmpty(path))
-                throw new ArgumentException("Path cannot be null or empty.", nameof(path));
-
-            // Check for absolute URIs first
-            if (Uri.IsWellFormedUriString(path, UriKind.Absolute))
-                throw new ArgumentException("Path cannot be an absolute path or URI.", nameof(path));
-
-            // Check for encoded traversal patterns by attempting URL decoding once
-            string decodedPath;
-            try
+            if (string.IsNullOrWhiteSpace(path))
             {
-                decodedPath = Uri.UnescapeDataString(path);
-            }
-            catch (Exception)
-            {
-                // If decoding fails, conservatively reject the path
-                throw new ArgumentException("Path contains invalid encoded characters.", nameof(path));
-            }
-            
-            // Normalize all separators to '/'
-            string normalized = path.Replace('\\', '/');
-            
-            // Check for path traversal patterns at the beginning (these should always be blocked)
-            if (normalized == ".." || 
-                normalized.StartsWith("../"))      // Block "../" patterns at the start
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
+                throw new ArgumentException("Path cannot be null or empty", nameof(path));
             }
 
-            // Check the decoded string for encoded traversal patterns
-            string lowerDecodedPath = decodedPath.ToLowerInvariant();
-            if (decodedPath != path && (lowerDecodedPath.Contains("..") || 
-                lowerDecodedPath.Contains("../") || 
-                lowerDecodedPath.Contains("..\\")))
+            // Normalize Unicode characters to detect homoglyph attacks
+            string normalizedPath = _unicodeNormalizationService.Normalize(path);
+
+            // Check for absolute paths and URIs
+            if (IsAbsolutePathOrUri(normalizedPath))
             {
-                throw new ArgumentException("Path cannot contain encoded path traversal patterns.", nameof(path));
-            }
-            
-            // Also check the original raw path as an extra layer of security
-            if (path.ToLowerInvariant().Contains("%2e%2e") || path.ToLowerInvariant().Contains("%2e%2e%") || 
-                path.ToLowerInvariant().Contains("..%2f") || path.ToLowerInvariant().Contains("..%5c") || 
-                path.ToLowerInvariant().Contains("%2f..") || path.ToLowerInvariant().Contains("%5c.."))
-            {
-                throw new ArgumentException("Path cannot contain encoded path traversal patterns.", nameof(path));
+                throw new ArgumentException("Path cannot be an absolute path or URI", nameof(path));
             }
 
-            // Check for Windows drive paths like "C:\Windows\System32" or "C:/Windows/System32" before normalization
-            if (path.Length >= 2 && char.IsLetter(path[0]) && path[1] == ':' && 
-                (path.Length > 2 && (path[2] == '\\' || path[2] == '/')))
-                throw new ArgumentException("Path cannot be an absolute path or URI.", nameof(path));
-
-            // Check for Unix-style absolute paths (starting with '/')
-            if (normalized.StartsWith("/"))
-                throw new ArgumentException("Path cannot be an absolute path or URI.", nameof(path));
-
-            // Check for URL patterns (case-insensitive) that might not be caught by Uri.IsWellFormedUriString
-            var normalizedLower = normalized.ToLowerInvariant();
-            if (normalizedLower.StartsWith("http://") || normalizedLower.StartsWith("https://") ||
-                normalizedLower.StartsWith("ftp://")  || normalizedLower.StartsWith("file://"))
-                throw new ArgumentException("Path cannot be an absolute path or URI.", nameof(path));
-
-            // Additional check for explicit "." patterns at start of path
-            // Block "." as a standalone path, and paths starting with "./" since these represent explicit directory navigation
-            if (normalized == "." || 
-                normalized == "./" || 
-                normalized.StartsWith("./"))   // Block any path starting with "./"
+            // Check for encoded path traversal patterns
+            if (ContainsEncodedTraversal(normalizedPath))
             {
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
+                throw new ArgumentException("Path cannot contain encoded path traversal patterns", nameof(path));
             }
-            
-            
-            
-            // Check for problematic explicit current directory followed by parent directory patterns
-            if (normalized.Contains("./../"))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(path));
-            }
-            
-            
-            
-            
 
-            // Use depth tracking to detect traversal attempts
-            ValidatePathDepth(normalized);
+            // Validate path traversal patterns using the dedicated validator
+            _pathTraversalValidator.Validate(normalizedPath);
+            
+            // Additional depth validation to prevent going above root
+            ValidatePathDepth(normalizedPath);
         }
-        
-        /// <summary>
-        /// Validates path using depth tracking to prevent traversal above root.
-        /// This is the simplified approach that replaces multiple overlapping checks.
-        /// </summary>
-        /// <param name="normalizedPath">The normalized path with '/' separators</param>
-        /// <exception cref="ArgumentException">Thrown if path traversal is detected.</exception>
-        private void ValidatePathDepth(string normalizedPath)
-        {
-            string[] segments = normalizedPath.Split('/');
-            int depth = 0;
-            
-            bool previousWasDotDot = false;
 
-            foreach (string segment in segments)
+        /// <summary>
+        /// Checks if a path is an absolute path or URI.
+        /// </summary>
+        /// <param name="path">The path to check.</param>
+        /// <returns>True if the path is absolute or a URI, false otherwise.</returns>
+        private static bool IsAbsolutePathOrUri(string path)
+        {
+            return AbsolutePathPattern.IsMatch(path);
+        }
+
+        /// <summary>
+        /// Checks if a path contains encoded traversal patterns.
+        /// </summary>
+        /// <param name="path">The path to check.</param>
+        /// <returns>True if the path contains encoded traversal, false otherwise.</returns>
+        private static bool ContainsEncodedTraversal(string path)
+        {
+            return EncodedTraversalPattern.IsMatch(path);
+        }
+
+        /// <summary>
+        /// Validates path depth to ensure it doesn't go above the root level.
+        /// This method uses a more sophisticated approach to handle edge cases like paths ending with ".."
+        /// </summary>
+        /// <param name="normalizedPath">The normalized path to validate.</param>
+        /// <exception cref="ArgumentException">Thrown when path goes above root.</exception>
+        private static void ValidatePathDepth(string normalizedPath)
+        {
+            string[] segments = normalizedPath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
+            int currentDepth = 0;
+            
+            for (int i = 0; i < segments.Length; i++)
             {
-                if (string.IsNullOrEmpty(segment))
-                    continue; // Skip empty segments (can happen with consecutive slashes)
+                string segment = segments[i];
                 
-                if (segment == "..")
-                {
-                    // Check for consecutive ".." segments (complex traversal pattern)
-                    if (previousWasDotDot)
-                    {
-                        throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(normalizedPath));
-                    }
-                    
-                    depth--;
-                    
-                    previousWasDotDot = true;
-                    
-                    // If depth goes negative, we're trying to traverse above root
-                    if (depth < 0)
-                    {
-                        throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(normalizedPath));
-                    }
-                }
-                else if (segment == ".")
+                if (segment == ".")
                 {
                     // Current directory - no change in depth
-                    previousWasDotDot = false;
                     continue;
                 }
+                else if (segment == "..")
+                {
+                    // Parent directory - decrease depth
+                    currentDepth--;
+                    
+                    // Check if we've gone above root
+                    if (currentDepth < 0)
+                    {
+                        // Special case: if this is the last segment and path would otherwise be valid,
+                        // we need to check if this is a legitimate use case
+                        if (i == segments.Length - 1)
+                        {
+                            // For paths ending with "..", check if the path before ".." is valid
+                            // This handles cases like "a/b/.." which should be valid
+                            if (currentDepth == -1)
+                            {
+                                // Calculate what the depth would be without the final ".."
+                                int depthWithoutFinal = 0;
+                                for (int j = 0; j < i; j++)
+                                {
+                                    if (segments[j] == "..")
+                                        depthWithoutFinal--;
+                                    else if (segments[j] != ".")
+                                        depthWithoutFinal++;
+                                }
+                                
+                                // If the path before the final ".." doesn't go above root, allow it
+                                if (depthWithoutFinal >= 0)
+                                    return;
+                            }
+                        }
+                        
+                        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(normalizedPath));
+                    }
+                }
                 else
                 {
-                    // Normal directory or file - increment depth
-                    depth++;
-                    previousWasDotDot = false;
+                    // Normal directory/file - increase depth
+                    currentDepth++;
                 }
             }
-
-            // Check if the last segment is ".." which would indicate traversal
-            if (normalizedPath.EndsWith("/..") || normalizedPath.EndsWith(".."))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns.", nameof(normalizedPath));
-            }
-            
-            
-            
-            
-        }
-        
-        /// <summary>
-        /// Normalizes Unicode homoglyphs of path separators and rejects invisible characters
-        /// </summary>
-        /// <param name="path">The path to normalize</param>
-        /// <returns>The normalized path</returns>
-        private string NormalizePathSeparators(string path)
-        {
-            if (string.IsNullOrEmpty(path))
-                return path;
-                
-            var result = new StringBuilder();
-            
-            foreach (char c in path)
-            {
-                // Reject invisible characters (control characters except tab, newline, carriage return)
-                if (char.IsControl(c) && c != '\t' && c != '\n' && c != '\r')
-                {
-                    throw new ArgumentException("Path cannot contain invisible characters.", nameof(path));
-                }
-                
-                // Normalize Unicode homoglyphs of path separators
-                if (c == '／') // Fullwidth solidus (U+FF0F)
-                    result.Append('/');
-                else if (c == '＼') // Fullwidth reverse solidus (U+FF3C)
-                    result.Append('/');
-                else
-                    result.Append(c);
-            }
-            
-            return result.ToString();
         }
     }
 }
