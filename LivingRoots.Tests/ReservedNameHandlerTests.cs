@@ -119,10 +119,10 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Handle_WithUnicodeHomoglyphOfReservedName_AddsUnderscore()
+        public void Handle_WithUnicodeHomoglyphOfReservedName_AddsUnderscore_Safely()
         {
             // Arrange
-            string input = "CОN"; // Cyrillic O should normalize to Latin O
+            string input = "CОN"; // Contains Cyrillic 'О'
             string normalized = "CON";
             
             // Setup mock to return the normalized version
@@ -131,8 +131,11 @@ namespace LivingRoots.Tests
             // Act
             string? result = _reservedNameHandler.Handle(input);
 
-            // Assert
-            Assert.Equal("CОN_", result); // The original name with underscore added
+            // Assert: underscore must be appended based on normalized reserved name, and the returned value must not preserve spoofing
+            Assert.NotNull(result);
+            Assert.EndsWith("_", result);
+            // Ensure the base part equals the normalized safe form, not the homoglyph-containing original
+            Assert.Equal("CON_", result);
         }
 
         [Fact]
@@ -204,7 +207,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Handle_WithReservedNameWithDiacritics_AddsUnderscore()
+        public void Handle_WithReservedNameWithDiacritics_AddsUnderscore_Safely()
         {
             // Arrange
             string input = "CÓÑ"; // With diacritics
@@ -216,8 +219,8 @@ namespace LivingRoots.Tests
             // Act
             string? result = _reservedNameHandler.Handle(input);
 
-            // Assert
-            Assert.Equal("CÓÑ_", result); // The original name with underscore added
+            // Assert: For security, return the normalized version with underscore, not the original with diacritics
+            Assert.Equal("CON_", result); // The normalized name with underscore added
         }
 
         [Fact]
@@ -491,7 +494,7 @@ namespace LivingRoots.Tests
                 // Act
                 string? result = _reservedNameHandler.Handle(input);
                 
-                // Assert - should return safe placeholder instead of the ambiguous filename
+                // Assert - should return safe placeholder instead of ambiguous filename
                 Assert.Equal(expected, result);
             }
         }
@@ -510,7 +513,7 @@ namespace LivingRoots.Tests
             // Arrange & Act
             string? result = _reservedNameHandler.Handle(input);
             
-            // Assert - should return safe placeholder instead of the original ambiguous filename
+            // Assert - should return safe placeholder instead of original ambiguous filename
             Assert.Equal(expected, result);
         }
         
@@ -526,7 +529,7 @@ namespace LivingRoots.Tests
             // Arrange & Act
             string? result = _reservedNameHandler.Handle(input);
             
-            // Assert - should return path with safe placeholder instead of the original ambiguous filename
+            // Assert - should return path with safe placeholder instead of original ambiguous filename
             Assert.Equal(expected, result);
         }
         [Fact]
