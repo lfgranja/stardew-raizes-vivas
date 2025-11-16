@@ -119,6 +119,15 @@ namespace LivingRoots.Domain
             // Preserve leading dots for hidden files if not already present and content is not empty
             if (shouldBeHiddenFile && !trimmed.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(trimmed))
             {
+                var candidate = "." + trimmed;
+                var coreAfterDot = candidate.Substring(1).Trim('_', ' ', '.');
+                if (string.IsNullOrWhiteSpace(coreAfterDot) || coreAfterDot == "." || coreAfterDot == "..")
+                    throw new ArgumentException("Filename sanitizes to an empty or invalid hidden name.", nameof(filename));
+                trimmed = candidate;
+            }
+            // Preserve leading dots for hidden files if not already present and content is not empty
+            if (shouldBeHiddenFile && !trimmed.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(trimmed))
+            {
                 trimmed = "." + trimmed;
             }
 
@@ -130,12 +139,12 @@ namespace LivingRoots.Domain
 
             // Check for empty result after all processing is done
             if (string.IsNullOrWhiteSpace(result))
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(result));
 
             // Guard against invalid path components after all processing
             var baseForCheck = RemoveFileExtension(result).Trim('_', ' ', '.');
             if (baseForCheck == "." || baseForCheck == ".." || string.IsNullOrWhiteSpace(baseForCheck))
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(result));
 
             // Add extension back if it was present and safe
             if (!string.IsNullOrEmpty(extension))
@@ -216,13 +225,13 @@ namespace LivingRoots.Domain
 
             // Check if the reserved name handler returned null
             if (reservedResult == null)
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(reservedResult));
 
             result = reservedResult;
 
             return result;
         }
-
+        
         /// <summary>
         /// Sanitizes invalid characters by using an allowlist approach.
         /// Only allows alphanumeric characters, dots, hyphens, underscores, and valid surrogate pairs (emojis).
