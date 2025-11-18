@@ -1,5 +1,7 @@
 using System;
 using LivingRoots.Domain;
+using LivingRoots.Services;
+using Moq;
 using Xunit;
 
 namespace LivingRoots.Tests
@@ -10,13 +12,16 @@ namespace LivingRoots.Tests
 
         public DotSegmentSpecificTests()
         {
-            _service = new PathValidationService();
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            mockUnicodeService.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
+            
+            _service = new PathValidationService(mockUnicodeService.Object, new PathTraversalValidator());
         }
 
         [Fact]
         public void Validate_DotSegmentsInMiddle_ShouldBeAllowed()
         {
-            // These should be allowed - "." in the middle of paths is safe
+            // These should be allowed - "." in middle of paths is safe
             _service.Validate("folder/./file.txt");
             _service.Validate("path/to/./file.txt");
             _service.Validate("folder/.config/file.txt"); // Hidden directory with dot
@@ -26,7 +31,7 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_MultipleDotSegmentsInMiddle_ShouldBeAllowed()
         {
-            // These should be allowed - multiple "." segments in the middle of paths
+            // These should be allowed - multiple "." segments in middle of paths
             _service.Validate("folder/./subfolder/./file.txt");
             _service.Validate("a/./b/./c.txt");
             _service.Validate("path/to/././deep/./file.txt");
@@ -69,7 +74,7 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_ExplicitCurrentDirectoryAtEnd_ShouldBeAllowed()
         {
-            // These should be allowed - "file/." is a valid path referring to the file directory
+            // These should be allowed - "file/." is a valid path referring to file directory
             var ex1 = Record.Exception(() => _service.Validate("file/."));
             Assert.Null(ex1);
             
@@ -98,7 +103,7 @@ namespace LivingRoots.Tests
             var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("../../file.txt"));
             Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
             
-            // This path should be allowed as it doesn't go above the root level
+            // This path should be allowed as it doesn't go above root level
             var ex3 = Record.Exception(() => _service.Validate("folder/../file.txt"));
             Assert.Null(ex3);
         }
@@ -117,7 +122,7 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_PathWithDotAtVariousPositions_ShouldBeTreatedCorrectly()
         {
-            // Valid cases - "." in the middle and at end
+            // Valid cases - "." in middle and at end
             _service.Validate("folder/./file");
             _service.Validate("a/./b/./c.txt");
             _service.Validate("file/."); // This should be allowed as it refers to directory

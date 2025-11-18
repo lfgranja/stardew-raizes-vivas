@@ -11,7 +11,7 @@ namespace LivingRoots.Tests
 
         public SpecificDotSegmentTest()
         {
-            _validator = new PathTraversalValidator(new PathValidationService());
+            _validator = new PathTraversalValidator();
         }
 
         [Fact]
@@ -35,7 +35,7 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_SingleDotSegmentInPath_ShouldBeAllowed()
         {
-            // This should be allowed because "folder/." is a valid path referring to the folder directory
+            // This should be allowed because "folder/." is a valid path referring to folder directory
             // "." segments in paths are generally safe and needed for legitimate use cases
             var ex = Record.Exception(() => _validator.Validate("folder/."));
             Assert.Null(ex);

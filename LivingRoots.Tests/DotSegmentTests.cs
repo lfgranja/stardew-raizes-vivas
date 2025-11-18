@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Xunit;
 using LivingRoots.Services;
 using LivingRoots.Domain;
@@ -11,7 +12,7 @@ namespace LivingRoots.Tests
 
         public DotSegmentTests()
         {
-            _validator = new PathTraversalValidator(new PathValidationService());
+            _validator = new PathTraversalValidator();
         }
 
         [Fact]
@@ -24,8 +25,8 @@ namespace LivingRoots.Tests
             _validator.Validate(".gitignore");
             _validator.Validate(".hidden_file.txt");
             _validator.Validate(".config.json");
-            _validator.Validate("folder/.hidden");
-            _validator.Validate("folder/.config");
+            _validator.Validate(Path.Combine("folder", ".hidden"));
+            _validator.Validate(Path.Combine("folder", ".config"));
         }
 
         [Fact]
@@ -46,14 +47,26 @@ namespace LivingRoots.Tests
             var exception1 = Assert.Throws<ArgumentException>(() => _validator.Validate("./file"));
             Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
+            // Also test with backslash separator
+            var exception2 = Assert.Throws<ArgumentException>(() => _validator.Validate(".\\file"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+            
             // But "file/." should be allowed (as it refers to a directory)
             var ex1 = Record.Exception(() => _validator.Validate("file/."));
             Assert.Null(ex1);
+            
+            // Also test with backslash separator
+            var ex2 = Record.Exception(() => _validator.Validate("file\\."));
+            Assert.Null(ex2);
             
             // And "folder/./file" should be allowed (middle "." segments are safe)
             _validator.Validate("folder/./file"); // This should not throw
             _validator.Validate("path/to/./file.txt");  // This should not throw
             _validator.Validate("normal/.hidden");  // This should not throw
+            
+            // Test with backslash separators too
+            _validator.Validate("folder\\.\\file"); // This should not throw
+            _validator.Validate("path\\to\\.\\file.txt");  // This should not throw
         }
 
         [Fact]
@@ -71,9 +84,29 @@ namespace LivingRoots.Tests
             var exception1 = Assert.Throws<ArgumentException>(() => _validator.Validate("./path"));
             Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
+            // Also test with backslash separator
+            var exception2 = Assert.Throws<ArgumentException>(() => _validator.Validate(".\\path"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+            
             // But paths that end with "." should be allowed as they refer to directories
             var ex1 = Record.Exception(() => _validator.Validate("path/."));
             Assert.Null(ex1);
+            
+            // Also test with backslash separator
+            var ex2 = Record.Exception(() => _validator.Validate("path\\."));
+            Assert.Null(ex2);
+        }
+        
+        [Fact]
+        public void Validate_PathWithPlatformSpecificSeparators_ShouldWorkCorrectly()
+        {
+            // Test that paths with platform-specific separators are handled correctly
+            var ex1 = Record.Exception(() => _validator.Validate(Path.Combine("path", "to", "file.txt")));
+            Assert.Null(ex1);
+            
+            // Test that paths with platform-specific separators for dot segments work correctly
+            var ex2 = Record.Exception(() => _validator.Validate(Path.Combine("path", ".", "file.txt")));
+            Assert.Null(ex2);
         }
     }
 }
