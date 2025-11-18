@@ -99,7 +99,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".<>"))
                 .Returns(".<>");
- 
+  
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<>"));
             Assert.Contains("Filename sanitizes to an empty string.", exception.Message);
@@ -413,7 +413,7 @@ namespace LivingRoots.Tests
         public void Sanitize_WithHiddenLongFilename_TruncatesToMaxLength()
         {
             // Arrange
-            var longHiddenFilename = "." + new string('a', 300) + ".txt";
+            var longHiddenFilename = "." + new string('a', 300) + ".txt";  // .aaaaa... (300 a's) .txt
             // After truncation of the name part to 239 chars (leaving 1 char for the dot), adding ".txt" would exceed max length
             // So it should be further truncated to ensure total length <= 240
             var expected = "." + new string('a', 235) + ".txt"; // 1 + 235 + 4 = 240 chars total
@@ -666,7 +666,7 @@ namespace LivingRoots.Tests
             
             // These are dotfiles that DO have extensions and should return the extension index
             var result1 = method?.Invoke(null, new object[] { ".profile.txt" });
-            Assert.Equal(8, result1);  // The .txt extension should be recognized
+            Assert.Equal(8, result1); // The .txt extension should be recognized
             
             var result2 = method?.Invoke(null, new object[] { ".bashrc.backup" });
             Assert.Equal(7, result2);  // The .backup extension should be recognized
@@ -757,7 +757,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".<>"))
                 .Returns(".<>");
-
+  
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<>"));
             Assert.Contains("Filename sanitizes to an empty string", exception.Message);
@@ -824,13 +824,42 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".valid_name.txt"))
                 .Returns(".valid_name.txt");
-
+            
             // Act
             var result = _service.Sanitize(".valid_name.txt");
-
+        
             // Assert
             Assert.Equal(".valid_name.txt", result);
         }
+        
+        [Fact]
+        public void Sanitize_WithBlockedExtensionThatResultsInInvalidBase_ReturnsSafeFilename()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".exe"))
+                .Returns(".exe");
+        
+            // Act
+            var result = _service.Sanitize(".exe");
+        
+            // Assert - With the fix, ".exe" should be handled safely and return a safe filename
+            Assert.Equal(".file.blocked", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithBlockedExtensionThatResultsInEmptyBase_ThrowsArgumentException()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize("..exe"))
+                .Returns("..exe");
+        
+            // Act & Assert
+            // For "..exe", the name part ".." gets sanitized to "." and then to empty,
+            // so the exception occurs at the name processing level, not after extension blocking
+            var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("..exe"));
+            Assert.Contains("Filename sanitizes to an empty string", exception.Message);
+        }
+    }
 }
-}
-
