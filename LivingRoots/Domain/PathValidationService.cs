@@ -14,7 +14,7 @@ namespace LivingRoots.Domain
 
         // Regex patterns for detecting absolute paths and URIs
         private static readonly Regex AbsolutePathPattern = new Regex(
-            @"^[a-zA-Z]:[/\\]|^[/\\]|^[a-zA-Z][a-zA-Z0-9+.-]*://",
+            @"^[a-zA-Z]:[/\\]|^[/\\]|[a-zA-Z][a-zA-Z0-9+.-]*://",
             RegexOptions.Compiled | RegexOptions.IgnoreCase
         );
 
@@ -44,6 +44,18 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot be null or empty", nameof(path));
             }
 
+            // Check for standalone "." (current directory)
+            if (path == ".")
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
+            
+            // Check for paths starting with "./" (explicit current directory navigation)
+            if (path.StartsWith("./") || path.StartsWith(".\\"))
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
+
             // Normalize Unicode characters to detect homoglyph attacks
             string normalizedPath = _unicodeNormalizationService.Normalize(path);
 
@@ -59,11 +71,65 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot contain encoded path traversal patterns", nameof(path));
             }
 
-            // Validate path traversal patterns using the dedicated validator
-            _pathTraversalValidator.Validate(normalizedPath);
+            // Validate path traversal patterns using depth-based analysis to distinguish between
+            // legitimate uses of ".." and malicious path traversal attempts.
+            ValidatePathTraversalDepth(normalizedPath);
             
-            // Additional depth validation to prevent going above root
-            ValidatePathDepth(normalizedPath);
+            // Validate path traversal patterns using the dedicated validator (for any remaining checks)
+            _pathTraversalValidator.Validate(normalizedPath);
+        }
+
+        /// <summary>
+        /// Validates path traversal using depth-based analysis to distinguish between
+        /// legitimate uses of ".." and malicious path traversal attempts.
+        /// </summary>
+        /// <param name="path">The normalized path to validate.</param>
+        /// <exception cref="ArgumentException">Thrown when path traversal is detected.</exception>
+        private void ValidatePathTraversalDepth(string path)
+        {
+            // Split the path into segments
+            string[] segments = path.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            int depth = 0;
+            int minDepth = 0; // Track the minimum depth reached during traversal, starting from 0
+            
+            foreach (string segment in segments)
+            {
+                if (segment == "..")
+                {
+                    depth--;
+                    // Track the minimum depth reached - if it goes below 0, we're going above the starting point
+                    if (depth < minDepth)
+                    {
+                        minDepth = depth;
+                    }
+                    // If depth goes negative, it means we're trying to go above the intended root
+                    if (depth < 0)
+                    {
+                        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+                    }
+                }
+                else if (segment != ".")
+                {
+                    // Regular directory/file names increase the depth
+                    depth++;
+                }
+                // If segment is ".", we don't change the depth
+            }
+            
+            // Additional security check: If the minimum depth reached during traversal is negative,
+            // it means the path attempted to go above the starting point at some point.
+            // This indicates a path traversal attempt even if the final depth is non-negative.
+            if (minDepth < 0)
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
+            
+            // Additional security check: if the path ends with "..", it may indicate an attempt to access parent directory
+            if (segments.Length > 0 && segments[segments.Length - 1] == "..")
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
         }
 
         /// <summary>
@@ -80,73 +146,10 @@ namespace LivingRoots.Domain
         /// Checks if a path contains encoded traversal patterns.
         /// </summary>
         /// <param name="path">The path to check.</param>
-        /// <returns>True if the path contains encoded traversal, false otherwise.</returns>
+        /// <returns>True if path contains encoded traversal, false otherwise.</returns>
         private static bool ContainsEncodedTraversal(string path)
         {
             return EncodedTraversalPattern.IsMatch(path);
-        }
-
-        /// <summary>
-        /// Validates path depth to ensure it doesn't go above the root level.
-        /// This method uses a more sophisticated approach to handle edge cases like paths ending with ".."
-        /// </summary>
-        /// <param name="normalizedPath">The normalized path to validate.</param>
-        /// <exception cref="ArgumentException">Thrown when path goes above root.</exception>
-        private static void ValidatePathDepth(string normalizedPath)
-        {
-            string[] segments = normalizedPath.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
-            int currentDepth = 0;
-            
-            for (int i = 0; i < segments.Length; i++)
-            {
-                string segment = segments[i];
-                
-                if (segment == ".")
-                {
-                    // Current directory - no change in depth
-                    continue;
-                }
-                else if (segment == "..")
-                {
-                    // Parent directory - decrease depth
-                    currentDepth--;
-                    
-                    // Check if we've gone above root
-                    if (currentDepth < 0)
-                    {
-                        // Special case: if this is the last segment and path would otherwise be valid,
-                        // we need to check if this is a legitimate use case
-                        if (i == segments.Length - 1)
-                        {
-                            // For paths ending with "..", check if the path before ".." is valid
-                            // This handles cases like "a/b/.." which should be valid
-                            if (currentDepth == -1)
-                            {
-                                // Calculate what the depth would be without the final ".."
-                                int depthWithoutFinal = 0;
-                                for (int j = 0; j < i; j++)
-                                {
-                                    if (segments[j] == "..")
-                                        depthWithoutFinal--;
-                                    else if (segments[j] != ".")
-                                        depthWithoutFinal++;
-                                }
-                                
-                                // If the path before the final ".." doesn't go above root, allow it
-                                if (depthWithoutFinal >= 0)
-                                    return;
-                            }
-                        }
-                        
-                        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(normalizedPath));
-                    }
-                }
-                else
-                {
-                    // Normal directory/file - increase depth
-                    currentDepth++;
-                }
-            }
         }
     }
 }

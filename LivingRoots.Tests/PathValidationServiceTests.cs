@@ -1,5 +1,8 @@
 using System;
+using System.IO;
 using LivingRoots.Domain;
+using LivingRoots.Services;
+using Moq;
 using Xunit;
 
 namespace LivingRoots.Tests
@@ -10,7 +13,11 @@ namespace LivingRoots.Tests
 
         public PathValidationServiceTests()
         {
-            _service = new PathValidationService();
+            // Create mock dependencies
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            mockUnicodeService.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
+            
+            _service = new PathValidationService(mockUnicodeService.Object, new PathTraversalValidator());
         }
 
         [Fact]
@@ -53,11 +60,14 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_WithPathTraversal_DotDotBackslash_ThrowsArgumentException()
+        public void Validate_WithPathTraversal_DotDotPlatformSpecific_ThrowsArgumentException()
         {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("..\\file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            // Act & Assert - Test both forward slash and backslash path separators
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("../file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("..\\file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
 
         [Fact]
@@ -95,33 +105,43 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_WithDotSlashAtStart_ThrowsArgumentException()
         {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("./file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            // Act & Assert - Test both forward slash and backslash separators
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("./file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate(".\\file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
 
         [Fact]
         public void Validate_WithDotDotAtEnd_ThrowsArgumentException()
         {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("folder/.."));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            // Act & Assert - Test both forward slash and backslash separators
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("folder/.."));
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("folder\\.."));
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
 
         [Fact]
         public void Validate_WithMultipleDotDot_ThrowsArgumentException()
         {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("../../file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            // Act & Assert - Test both forward slash and backslash separators
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("../../file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("..\\..\\file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
 
         [Fact]
         public void Validate_WithDotSegmentsInMiddle_DoesNotThrow()
         {
-            // Act & Assert
+            // Act & Assert - Test both forward slash and backslash separators
             _service.Validate("folder/.config/file.txt"); // Should not throw
             _service.Validate("path/to/./file.txt"); // Should not throw - "." in middle is safe
+            _service.Validate("path\\to\\.file.txt"); // Should not throw - test backslash version too
         }
 
         [Fact]
@@ -142,25 +162,33 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_WithDotSlash_ThrowsArgumentException()
         {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("./"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            // Act & Assert - Test both forward slash and backslash separators
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("./"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate(".\\"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
 
         [Fact]
         public void Validate_WithDotDotSlashAtStart_ThrowsArgumentException()
         {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("./../file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            // Act & Assert - Test both forward slash and backslash separators
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("./../file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate(".\\..\\file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
 
         [Fact]
-        public void Validate_WithComplexPathTraversal_ThrowsArgumentException()
+        public void Validate_WithComplexValidPath_DoesNotThrow()
         {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("folder/subfolder/../../file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            // Act & Assert - This path is actually valid: "folder/subfolder/../../file.txt" resolves to "file.txt"
+            // It goes down 2 levels (folder/subfolder) then up 2 levels (../../) then down 1 level (file.txt)
+            // Final depth is 1 (at file.txt level), which is safe and should not throw
+            _service.Validate("folder/subfolder/../../file.txt"); // Should not throw
+            _service.Validate("folder\\subfolder\\..\\..\\file.txt"); // Should not throw - backslash version
         }
 
         [Fact]
@@ -168,6 +196,7 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             _service.Validate("folder/subfolder/file.txt"); // Should not throw
+            _service.Validate("folder\\subfolder\\file.txt"); // Should not throw - backslash version
         }
 
         [Fact]
@@ -182,14 +211,18 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             _service.Validate("folder1/folder2/folder3/file.txt"); // Should not throw
+            _service.Validate("folder1\\folder2\\folder3\\file.txt"); // Should not throw - backslash version
         }
 
         [Fact]
         public void Validate_WithDepthTraversal_GoesNegative_ThrowsArgumentException()
         {
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("folder/../../file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            // Act & Assert - Test both forward slash and backslash separators
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("folder/../../file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("folder\\..\\file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
 
         [Fact]
@@ -197,13 +230,15 @@ namespace LivingRoots.Tests
         {
             // Act & Assert - This should be valid as it doesn't go above root
             _service.Validate("folder/subfolder/../file.txt"); // Should not throw
+            _service.Validate("folder\\subfolder\\..\\file.txt"); // Should not throw - backslash version
         }
 
         [Fact]
         public void Validate_WithMultipleDotSegmentsInMiddle_DoesNotThrow()
         {
-            // Act & Assert
+            // Act & Assert - Test both forward slash and backslash separators
             _service.Validate("folder/././file.txt"); // Should not throw
+            _service.Validate("folder\\.\\.\\file.txt"); // Should not throw - backslash version
         }
 
         [Fact]
@@ -211,7 +246,9 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             _service.Validate("folder/../subfolder/file.txt"); // Should not throw - ends at root level
+            _service.Validate("folder\\..\\subfolder\\file.txt"); // Should not throw - backslash version
         }
+        
         [Fact]
         public void Validate_WithMixedCaseHttpUrl_ThrowsArgumentException()
         {
@@ -291,46 +328,57 @@ namespace LivingRoots.Tests
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate("https://example.com/file.txt"));
             Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
         }
+        
         [Fact]
         public void Validate_WithValidPathThatGoesUpAndDown_DoesNotThrow()
         {
-            // This test verifies that valid paths like "a/b/../../c" are accepted
+            // This test verifies that paths like "a/b/../../c" are valid after security fix
             // This path goes down 2 levels (a/b) then up 2 levels (../../) then down 1 level (c)
-            // Final depth should be 1 (same level as root), which is valid
+            // Final depth would be 1 (same level as root), and it doesn't go above root, so it should be allowed
             
-            // Act & Assert - This should NOT throw after the fix
-            _service.Validate("a/b/../../c"); // Should not throw
+            // Act & Assert - This should NOT throw since it doesn't go above root
+            _service.Validate("a/b/../../c");
+            _service.Validate("a\\b\\..\\..\\c"); // Backslash version
         }
         
         [Fact]
-        public void Validate_WithValidPathEndingWithDotDot_DoesNotThrow()
+        public void Validate_WithValidPathEndingWithDotDot_ThrowsArgumentException()
         {
-            // This test verifies that valid paths like "a/b/.." are accepted
+            // This test verifies that paths like "a/b/.." now throw after security fix
             // This path goes down 2 levels (a/b) then up 1 level (..)
-            // Final depth should be 1 (at directory "a"), which is valid
+            // Even though final depth would be 1 (at directory "a"), the ".." segment makes it vulnerable
+            // Test both forward slash and backslash separators
             
-            // Act & Assert - This should NOT throw after the fix
-            _service.Validate("a/b/.."); // Should not throw
+            // Act & Assert - This should NOW throw after the security fix
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("a/b/.."));
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("a\\b\\.."));
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
         
         [Fact]
-        public void Validate_WithConsecutiveDotDotSegments_DoesNotThrow()
+        public void Validate_WithConsecutiveDotSegments_DoesNotThrow()
         {
-            // This test verifies that paths with consecutive ".." segments like "a/b/../../c" are accepted
-            // when they don't go above the root level
+            // This test verifies that paths with consecutive ".." segments like "a/b/../../c" 
+            // are allowed if they don't go above root level
+            // Test both forward slash and backslash separators
             
-            // Act & Assert - This should NOT throw after the fix
-            _service.Validate("a/b/../../c"); // Should not throw
+            // Act & Assert - This should NOT throw since it doesn't go above root
+            _service.Validate("a/b/../../c");
+            _service.Validate("a\\b\\..\\..\\c"); // Backslash version
         }
         
         [Fact]
         public void Validate_WithValidPathThatGoesUpButNotAboveRoot_DoesNotThrow()
         {
-            // This test verifies that paths that go up but don't go above root are accepted
-            // e.g., "folder/subfolder/../file.txt" should be valid
+            // This test verifies that paths that go up but don't go above root are allowed
+            // e.g., "folder/subfolder/../file.txt" should be allowed since it doesn't go above root
+            // Test both forward slash and backslash separators
             
-            // Act & Assert
-            _service.Validate("folder/subfolder/../file.txt"); // Should not throw
+            // Act & Assert - This should NOT throw since it doesn't go above root
+            _service.Validate("folder/subfolder/../file.txt");
+            _service.Validate("folder\\subfolder\\..\\file.txt"); // Backslash version
         }
         
         [Fact]
@@ -338,9 +386,36 @@ namespace LivingRoots.Tests
         {
             // This test verifies that paths that actually go above root still throw
             // e.g., "folder/../../../file.txt" should still throw since it goes above root
+            // Test both forward slash and backslash separators
             
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("folder/../../../file.txt"));
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("folder/../../../file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("folder\\..\\..\\..\\file.txt"));
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+        }
+        
+        [Fact]
+        public void Validate_WithPlatformSpecificPathSeparators_DoesNotThrow()
+        {
+            // This test ensures that valid paths with platform-specific separators work correctly
+            // Uses Path.Combine for cross-platform compatibility
+            
+            // Act & Assert - Valid paths using platform-specific separators
+            _service.Validate(Path.Combine("folder", "file.txt"));
+            _service.Validate(Path.Combine("folder", "subfolder", "file.txt"));
+        }
+        
+        [Fact]
+        public void Validate_WithPlatformSpecificPathTraversal_ThrowsArgumentException()
+        {
+            // This test ensures that path traversal attempts are caught regardless of platform-specific separators
+            // Uses Path.Combine for cross-platform compatibility
+            
+            // Act & Assert - Path traversal attempts with platform-specific separators
+            var exception = Assert.Throws<ArgumentException>(() => 
+                _service.Validate(Path.Combine("..", "file.txt")));
             Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
     }
