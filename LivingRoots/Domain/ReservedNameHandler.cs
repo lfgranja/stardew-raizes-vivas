@@ -71,18 +71,7 @@ namespace LivingRoots.Domain
 
             // Rebuild path with processed filename
             if (!string.IsNullOrEmpty(directoryPath))
-            {
-                // Handle UNC paths specially to avoid adding extra slashes
-                if (directoryPath.StartsWith(@"\\"))
-                {
-                    return directoryPath + processedFileName;
-                }
-                else
-                {
-                    // Use Path.Combine to ensure proper path separators are used
-                    return Path.Combine(directoryPath, processedFileName);
-                }
-            }
+                return directoryPath + processedFileName;
             else
                 return processedFileName;
         }
@@ -93,6 +82,32 @@ namespace LivingRoots.Domain
         /// <param name="filename">The filename to process</param>
         /// <returns>A filename with reserved names handled appropriately</returns>
         private string ProcessFileName(string filename)
+        {
+            // Check if the entire filename consists entirely of insignificant characters (dots, spaces, tabs)
+            // This handles cases like " . " where the entire name is insignificant
+            string trimmedAll = filename.Trim('.', ' ', '\t');
+            if (string.IsNullOrEmpty(trimmedAll))
+            {
+                // Replace fully insignificant names with a safe placeholder
+                return "_";
+            }
+            
+            // Separate name from extension properly
+            string namePart, extensionPart = "";
+            
+            int lastDotIndex = filename.LastIndexOf('.');
+            // Only consider it an extension if the dot is not at the beginning or end and there's content after it
+            if (lastDotIndex > 0 && lastDotIndex < filename.Length - 1)
+            {
+                namePart = filename.Substring(0, lastDotIndex);
+                extensionPart = filename.Substring(lastDotIndex);
+            }
+            else
+            {
+                namePart = filename;
+            }
+
+
         {
             // Check if the entire filename consists entirely of insignificant characters (dots, spaces, tabs)
             // This handles cases like " . " where the entire name is insignificant
@@ -166,17 +181,6 @@ namespace LivingRoots.Domain
 
             // If not reserved, return the original filename
             return filename;
-        }
-        
-        /// <summary>
-        /// Find the index of a substring within a string, ignoring case
-        /// </summary>
-        /// <param name="source">The source string</param>
-        /// <param name="value">The value to search for</param>
-        /// <returns>The index of the value in the source string, or -1 if not found</returns>
-        private static int FindCaseInsensitiveIndex(string source, string value)
-        {
-            return source.IndexOf(value, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
