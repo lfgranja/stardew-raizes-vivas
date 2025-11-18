@@ -34,92 +34,71 @@ namespace LivingRoots.Domain
             if (string.IsNullOrEmpty(filename))
                 return filename;
 
-            // Guard against absolute/UNC paths: preserve directory, still handle reserved leaf names
-            if (Path.IsPathRooted(filename))
+            // For UNC paths (starting with \\) and rooted paths, extract the actual filename
+            string? directoryPath = null;
+            string fullFileName = filename;
+
+            // Check if this is a UNC path (starts with \\) or if Path.GetFileName can extract the filename
+            if (filename.StartsWith(@"\\"))
             {
-                string? directoryPath = Path.GetDirectoryName(filename);
-                string fullFileName = Path.GetFileName(filename);
-
-                // If there's no file name (e.g., path ends with separator), return unchanged
-                if (string.IsNullOrEmpty(fullFileName))
-                    return filename;
-
-                // Reuse existing logic by processing just the leaf name
-                string? processed = ProcessFileName(fullFileName);
-
-                // If no change or processing failed, return original
-                if (processed == null || processed == fullFileName)
-                    return filename;
-
-                // Rebuild rooted path with processed filename
-                return !string.IsNullOrEmpty(directoryPath)
-                    ? Path.Combine(directoryPath, processed)
-                    : processed;
+                // For UNC paths, manually extract the filename by finding the last backslash
+                int lastBackslashIndex = filename.LastIndexOf('\\');
+                if (lastBackslashIndex >= 0 && lastBackslashIndex < filename.Length - 1)
+                {
+                    directoryPath = filename.Substring(0, lastBackslashIndex + 1);
+                    fullFileName = filename.Substring(lastBackslashIndex + 1);
+                }
+            }
+            else
+            {
+                // For regular paths, use Path.GetFileName and Path.GetDirectoryName
+                directoryPath = Path.GetDirectoryName(filename);
+                fullFileName = Path.GetFileName(filename);
             }
 
-            // For non-rooted paths, process using the same logic as before
-            return ProcessFileName(filename);
+            // If Path.GetFileName or our manual extraction returns an empty string, 
+            // this means input ends with a directory separator
+            // In this case, we should return the original filename to avoid incorrect mutation of directory paths
+            if (string.IsNullOrEmpty(fullFileName))
+                return filename;
+
+            // Process the filename component separately
+            string? processedFileName = ProcessFileName(fullFileName);
+
+            // If no change or processing failed, return original
+            if (processedFileName == null || processedFileName == fullFileName)
+                return filename;
+
+            // Rebuild path with processed filename
+            if (!string.IsNullOrEmpty(directoryPath))
+                return directoryPath + processedFileName;
+            else
+                return processedFileName;
         }
         
         /// <summary>
-        /// Process a filename for reserved name handling (original non-rooted path logic)
+        /// Process a filename for reserved name handling
         /// </summary>
         /// <param name="filename">The filename to process</param>
         /// <returns>A filename with reserved names handled appropriately</returns>
         private string? ProcessFileName(string filename)
         {
-            // Extract directory path and filename separately
-            string? directoryPath = Path.GetDirectoryName(filename);
-            string fullFileName = Path.GetFileName(filename);
-            
-            // If Path.GetFileName returns an empty string, this means input ends with a directory separator
-            // In this case, we should return the original filename to avoid incorrect mutation of directory paths
-            if (string.IsNullOrEmpty(fullFileName))
+            if (string.IsNullOrEmpty(filename))
                 return filename;
+
+            // Separate name from extension properly
+            string namePart, extensionPart = "";
             
-            // Separate base name from extensions, but handle trailing insignificant dots carefully
-            // Find the first dot that separates the actual name from the extension
-            int firstDotIndex = -1;
-            for (int i = 0; i < fullFileName.Length; i++)
+            int lastDotIndex = filename.LastIndexOf('.');
+            // Only consider it an extension if the dot is not at the beginning or end and there's content after it
+            if (lastDotIndex > 0 && lastDotIndex < filename.Length - 1)
             {
-                if (fullFileName[i] == '.')
-                {
-                    // If this is the first character or follows another dot at the beginning, 
-                    // continue looking for the first meaningful dot
-                    if (i > 0)
-                    {
-                        firstDotIndex = i;
-                        break;
-                    }
-                }
-            }
-            
-            string namePart, extensionPart;
-            
-            if (firstDotIndex >= 0)
-            {
-                string potentialName = fullFileName.Substring(0, firstDotIndex);
-                string potentialExtension = fullFileName.Substring(firstDotIndex);
-                
-                // Check if the potential extension is made up entirely of insignificant characters
-                // If so, it's not a real extension but trailing insignificant characters
-                if (IsFullyInsignificant(potentialExtension))
-                {
-                    // Treat it as part of the name with trailing insignificant chars
-                    namePart = fullFileName;
-                    extensionPart = "";
-                }
-                else
-                {
-                    // This is a real extension
-                    namePart = potentialName;
-                    extensionPart = potentialExtension;
-                }
+                namePart = filename.Substring(0, lastDotIndex);
+                extensionPart = filename.Substring(lastDotIndex);
             }
             else
             {
-                namePart = fullFileName;
-                extensionPart = "";
+                namePart = filename;
             }
 
             // Process name part: trim leading spaces and check for reserved names
@@ -131,12 +110,8 @@ namespace LivingRoots.Domain
             // Handle the case where the name becomes empty after trimming
             if (string.IsNullOrEmpty(baseNameForCheck))
             {
-                // Replace fully insignificant names with a safe placeholder, preserving directory and extension
-                string safeName = "_";
-                if (!string.IsNullOrEmpty(directoryPath))
-                    return directoryPath + Path.DirectorySeparatorChar + safeName + extensionPart;
-                else
-                    return safeName + extensionPart;
+                // Replace fully insignificant names with a safe placeholder
+                return "_" + extensionPart;
             }
             
             // Normalize for comparison with reserved names
@@ -152,48 +127,17 @@ namespace LivingRoots.Domain
                 // and adding an underscore to the normalized base name (for security)
                 string leadingSpaces = namePart.Substring(0, namePart.Length - trimmedLeadingSpaces.Length);
                 
-                // Use the normalized form if it exists, otherwise use the original base name
+                // Use the normalized form of the base name to prevent homoglyph spoofing
                 string baseNameForResult = !string.IsNullOrEmpty(normalizedForCheck) ? normalizedForCheck : baseNameForCheck;
                 
                 // The new name part is: leading spaces + base name (normalized if changed) + underscore
                 string newNamePart = leadingSpaces + baseNameForResult + "_";
                 
-                // Build the result: directory + new name part + extension (extension was not modified)
-                string result;
-                if (!string.IsNullOrEmpty(directoryPath))
-                {
-                    result = directoryPath + Path.DirectorySeparatorChar + newNamePart + extensionPart;
-                }
-                else
-                {
-                    result = newNamePart + extensionPart;
-                }
-                
-                return result;
+                return newNamePart + extensionPart;
             }
 
             // If not reserved, return the original filename
             return filename;
-        }
-        
-        /// <summary>
-        /// Determines if a string is fully insignificant (contains only dots, spaces, and tabs).
-        /// </summary>
-        /// <param name="input">The string to check</param>
-        /// <returns>True if the string is fully insignificant, false otherwise</returns>
-        private static bool IsFullyInsignificant(string input)
-        {
-            if (string.IsNullOrEmpty(input))
-                return true;
-                
-            foreach (char c in input)
-            {
-                if (c != '.' && c != ' ' && c != '\t')
-                {
-                    return false;
-                }
-            }
-            return true;
         }
     }
 }

@@ -79,6 +79,56 @@ namespace LivingRoots.Domain
                         : processed;
                     shouldBeHiddenFile = !string.IsNullOrWhiteSpace(contentAfterDot.Trim('_', ' ', '.'));
                 }
+                // Special case: if the entire filename is just a dot followed by an extension (like .exe),
+                // it should be treated as a hidden file
+                else if (normalized.StartsWith(".", StringComparison.Ordinal) && string.IsNullOrEmpty(nameWithoutExtension))
+                {
+                    shouldBeHiddenFile = true;
+                }
+            }
+
+            // Special handling for cases where the name part sanitizes to empty but there's a blocked extension
+            // For example ".exe" -> name part is empty, but we still need to handle the dangerous extension
+            if (string.IsNullOrEmpty(processed) && !string.IsNullOrEmpty(extension) && IsBlockedExtension(extension))
+            {
+                // If the name part is empty but there's a blocked extension, create a safe filename
+                // For hidden files (starting with dot), we preserve the dot
+                if (normalized.StartsWith(".", StringComparison.Ordinal))
+                {
+                    // Create a minimal safe hidden filename with blocked extension
+                    string safeResult = ".file.blocked";
+                    // Validate the result after extension blocking
+                    string baseAfterBlock = RemoveFileExtension(safeResult).Trim('_', ' ', '.');
+                    if (string.IsNullOrWhiteSpace(baseAfterBlock) || baseAfterBlock == "." || baseAfterBlock == "..")
+                    {
+                        throw new ArgumentException($"Filename sanitizes to an invalid state after extension blocking: '{safeResult}'.", nameof(safeResult));
+                    }
+                    // Perform final cleanup after all processing
+                    safeResult = PerformFinalCleanup(safeResult, true);
+                    // Handle reserved Windows filenames
+                    string? hiddenReservedResult = _reservedNameHandler.Handle(safeResult);
+                    if (hiddenReservedResult == null)
+                        throw new ArgumentException("Filename sanitizes to an empty string.", nameof(hiddenReservedResult));
+                    return hiddenReservedResult;
+                }
+                else
+                {
+                    // For non-hidden files, create a minimal safe filename
+                    string safeResult = "file.blocked";
+                    // Validate the result after extension blocking
+                    string baseAfterBlock = RemoveFileExtension(safeResult).Trim('_', ' ', '.');
+                    if (string.IsNullOrWhiteSpace(baseAfterBlock) || baseAfterBlock == "." || baseAfterBlock == "..")
+                    {
+                        throw new ArgumentException($"Filename sanitizes to an invalid state after extension blocking: '{safeResult}'.", nameof(safeResult));
+                    }
+                    // Perform final cleanup after all processing
+                    safeResult = PerformFinalCleanup(safeResult, false);
+                    // Handle reserved Windows filenames
+                    string? nonHiddenReservedResult = _reservedNameHandler.Handle(safeResult);
+                    if (nonHiddenReservedResult == null)
+                        throw new ArgumentException("Filename sanitizes to an empty string.", nameof(nonHiddenReservedResult));
+                    return nonHiddenReservedResult;
+                }
             }
 
             // Trim leading/trailing problematic characters (but preserve leading dots for hidden files)
@@ -137,15 +187,7 @@ namespace LivingRoots.Domain
             // Final cleanup after truncation
             string result = PerformFinalCleanup(truncated, shouldBeHiddenFile);
 
-            // Check for empty result after all processing is done
-            if (string.IsNullOrWhiteSpace(result))
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(result));
-
-            // Guard against invalid path components after all processing
-            var baseForCheck = RemoveFileExtension(result).Trim('_', ' ', '.');
-            if (baseForCheck == "." || baseForCheck == ".." || string.IsNullOrWhiteSpace(baseForCheck))
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(result));
-
+            
             // Add extension back if it was present and safe
             if (!string.IsNullOrEmpty(extension))
             {
@@ -157,6 +199,14 @@ namespace LivingRoots.Domain
                     result = result.TrimEnd('.');
                     // Replace dangerous extension entirely with a safe extension to prevent security issues
                     result = $"{result}.blocked";
+                     
+                     // After replacing the extension, ensure the resulting filename base is not empty or invalid
+                     // This prevents security vulnerabilities where a filename could be sanitized to an invalid state
+                     string baseAfterBlock = RemoveFileExtension(result).Trim('_', ' ', '.');
+                     if (string.IsNullOrWhiteSpace(baseAfterBlock) || baseAfterBlock == "." || baseAfterBlock == "..")
+                     {
+                         throw new ArgumentException($"Filename sanitizes to an invalid state after extension blocking: '{result}'.", nameof(result));
+                     }
                 }
                 else
                 {
@@ -391,7 +441,7 @@ namespace LivingRoots.Domain
         private static int FindExtensionStartIndex(string filename)
         {
             int lastDotIndex = filename.LastIndexOf('.');
-            if (lastDotIndex > 0 && lastDotIndex < filename.Length - 1) // Ensure dot is not at the beginning or end
+            if (lastDotIndex >= 0 && lastDotIndex < filename.Length - 1) // Allow dot at beginning, ensure dot is not at the end
             {
                 // Check that the last dot is not part of a directory path segment
                 // Look for directory separators after the last dot to ensure it's really an extension
@@ -404,11 +454,26 @@ namespace LivingRoots.Domain
                     return -1; // Not a valid extension if it contains path separators
                 }
                 
-                // Do not treat dotfiles (e.g., ".profile") as having an extension
+                // Do not treat simple dotfiles (e.g., ".profile") as having an extension
                 // If all characters before the last dot are dots (i.e., hidden file prefix only), it's not an extension
-                bool onlyDotsBefore = filename.Substring(0, lastDotIndex).All(ch => ch == '.');
-                if (onlyDotsBefore)
-                    return -1;
+                // However, if this is a dangerous extension following a dot at the beginning (like .exe, .dll), we should still detect it for security
+                string namePartBeforeExtension = filename.Substring(0, lastDotIndex);
+                bool onlyDotsBefore = namePartBeforeExtension.All(ch => ch == '.');
+                 bool isDotAtBeginning = lastDotIndex == 0 && namePartBeforeExtension.Length == 0; // For cases like ".exe"
+                 bool isDangerousExtension = IsBlockedExtension(potentialExtension);
+                 
+                 if (onlyDotsBefore && isDotAtBeginning && isDangerousExtension)
+                 {
+                     // For security purposes, treat dangerous extensions at the beginning as having an extension
+                     return lastDotIndex;
+                 }
+                 else if (onlyDotsBefore && isDotAtBeginning && !isDangerousExtension)
+                 {
+                     // For non-dangerous extensions at the beginning (like .profile), don't treat as extension
+                     return -1;
+                 }
+                 else if (onlyDotsBefore && !isDotAtBeginning && !isDangerousExtension)
+                     return -1;
                 
                 // Extract the part after the dot (excluding the dot itself)
                 string extensionPart = potentialExtension.Substring(1);
@@ -516,7 +581,7 @@ namespace LivingRoots.Domain
         /// </summary>
         /// <param name="str">The input string</param>
         /// <param name="startIndex">Start index</param>
-        /// <param name="length">Length to extract</param>
+        /// <param="length">Length to extract</param>
         /// <returns>The substring</returns>
         private static string SafeSubstring(string str, int startIndex, int length)
         {
