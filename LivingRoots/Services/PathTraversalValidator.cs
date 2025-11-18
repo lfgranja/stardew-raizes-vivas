@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using LivingRoots.Domain;
 
 namespace LivingRoots.Services
@@ -21,15 +22,12 @@ namespace LivingRoots.Services
         public void Validate(string path)
         {
             // Basic path traversal validation - delegate to domain service for comprehensive validation
-            if (string.IsNullOrEmpty(path))
+            if (string.IsNullOrEmpty(path) || string.IsNullOrWhiteSpace(path))
                 throw new ArgumentException("Path cannot be null or empty", nameof(path));
                 
-            // Check for obvious path traversal patterns
-            if (path.Contains("..") || path.Contains("../") || path.Contains("..\\") || 
-                path.Contains("../../../") || path.Contains("..\\..\\"))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
+            // This validator now acts as a pass-through since all validation
+            // is handled in the PathValidationService with proper depth-based logic
+            // The previous check for ".." was overly restrictive for valid paths
         }
     }
 }

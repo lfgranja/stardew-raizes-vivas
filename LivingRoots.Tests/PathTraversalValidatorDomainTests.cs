@@ -1,5 +1,7 @@
 using System;
 using LivingRoots.Domain;
+using LivingRoots.Services;
+using Moq;
 using Xunit;
 
 namespace LivingRoots.Tests
@@ -10,7 +12,10 @@ namespace LivingRoots.Tests
 
         public PathTraversalValidatorDomainTests()
         {
-            _service = new PathValidationService();
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            mockUnicodeService.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
+            
+            _service = new PathValidationService(mockUnicodeService.Object, new PathTraversalValidator());
         }
 
         [Fact]
