@@ -1,6 +1,7 @@
 using System;
 using Moq;
 using LivingRoots.Domain;
+using LivingRoots.Services;
 using Xunit;
 
 namespace LivingRoots.Tests
@@ -23,7 +24,12 @@ namespace LivingRoots.Tests
                 .Returns<string>(s => s);
                 
             _fileNameSanitizationService = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object, _mockReservedNameHandler.Object);
-            _pathValidationService = new PathValidationService();
+            
+            // Create mock Unicode service for PathValidationService
+            var mockUnicodeForPathValidation = new Mock<IUnicodeNormalizationService>();
+            mockUnicodeForPathValidation.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
+            
+            _pathValidationService = new PathValidationService(mockUnicodeForPathValidation.Object, new PathTraversalValidator());
         }
 
         [Fact]
@@ -51,7 +57,7 @@ namespace LivingRoots.Tests
             // This test verifies that sanitized filenames can be used in path validation
             var fileName = "valid_filename.txt";
             
-            // First, sanitize the filename
+            // First, sanitize filename
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(fileName))
                 .Returns(fileName);
@@ -88,7 +94,7 @@ namespace LivingRoots.Tests
             // Arrange
             var input = "../malicious_file.txt";
             
-            // Setup the mock to return a non-null value for path traversal input
+            // Setup mock to return a non-null value for path traversal input
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(input))
                 .Returns(input);

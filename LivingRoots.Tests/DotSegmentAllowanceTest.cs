@@ -26,7 +26,10 @@ namespace LivingRoots.Tests
         public void PathValidation_AllowsValidDotSegments()
         {
             // Arrange
-            var realValidator = new PathValidationService();
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            mockUnicodeService.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
+            
+            var realValidator = new PathValidationService(mockUnicodeService.Object, new PathTraversalValidator());
             var unicodeNormalizationService = new UnicodeNormalizationService();
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
             var modLogic = new ModLogic(new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler), realValidator);
@@ -54,7 +57,10 @@ namespace LivingRoots.Tests
         public void PathValidation_BlocksInvalidDotPaths()
         {
             // Arrange
-            var realValidator = new PathValidationService();
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            mockUnicodeService.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
+            
+            var realValidator = new PathValidationService(mockUnicodeService.Object, new PathTraversalValidator());
             var unicodeNormalizationService = new UnicodeNormalizationService();
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
             var modLogic = new ModLogic(new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler), realValidator);

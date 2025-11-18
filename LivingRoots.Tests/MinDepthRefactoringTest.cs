@@ -1,5 +1,7 @@
 using System;
 using LivingRoots.Domain;
+using LivingRoots.Services;
+using Moq;
 using Xunit;
 
 namespace LivingRoots.Tests
@@ -10,15 +12,18 @@ namespace LivingRoots.Tests
 
         public MinDepthRefactoringTest()
         {
-            _service = new PathValidationService();
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            mockUnicodeService.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
+            
+            _service = new PathValidationService(mockUnicodeService.Object, new PathTraversalValidator());
         }
 
         [Fact]
         public void Validate_PathWithMultipleDotDotSegments_ThrowsImmediatelyWhenDepthGoesNegative()
         {
             // This test verifies that paths that go negative in depth immediately throw an exception
-            // This confirms that the minDepth check at the end is redundant since the depth < 0 check
-            // in the loop already catches traversal attempts
+            // This confirms that minDepth check at the end is redundant since depth < 0 check
+            // in loop already catches traversal attempts
             
             // Test case where depth goes negative: "folder/../../file.txt"
             // folder = depth 1
@@ -61,7 +66,7 @@ namespace LivingRoots.Tests
             // This path should throw: "folder/.." 
             // folder = depth 1
             // .. = depth 0 (back to root level, not negative)
-            // But the algorithm throws because it ends with ".." which is considered a traversal attempt
+            // But algorithm throws because it ends with ".." which is considered a traversal attempt
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate("folder/.."));
             Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }

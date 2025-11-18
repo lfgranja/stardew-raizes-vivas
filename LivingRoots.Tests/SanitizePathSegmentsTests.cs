@@ -4,6 +4,7 @@ using LivingRoots.Services;
 using LivingRoots.Domain;
 using Xunit;
 using System;
+using System.IO;
 using System.Reflection;
 
 namespace LivingRoots.Tests
@@ -127,6 +128,51 @@ namespace LivingRoots.Tests
             // Assert
             Assert.NotNull(result);
             Assert.Equal("segment1/segment2", result.ToString().Replace('\\', '/'));
+        }
+        
+        [Fact]
+        public void SanitizePathSegments_WithPlatformSpecificSeparators_ReturnsSanitizedPath()
+        {
+            // Arrange
+            var method = _service.GetType()
+                .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
+            
+            // Configure mock to return valid sanitized segments
+            _mockModLogic.Setup(x => x.SanitizeFileName("segment1")).Returns("segment1");
+            _mockModLogic.Setup(x => x.SanitizeFileName("segment2")).Returns("segment2");
+            
+            // Act - Test with backslash separators (Windows-style)
+            var result = method?.Invoke(_service, new object[] { @"segment1\segment2" });
+            
+            // Assert
+            Assert.NotNull(result);
+            // Convert result to forward slashes for comparison to ensure consistency
+            Assert.Equal("segment1/segment2", result.ToString().Replace('\\', '/'));
+        }
+        
+        [Fact]
+        public void SanitizePathSegments_WithMixedPathSeparators_ReturnsSanitizedPath()
+        {
+            // Arrange
+            var method = _service.GetType()
+                .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
+            
+            // Configure mock to return valid sanitized segments
+            _mockModLogic.Setup(x => x.SanitizeFileName("segment1")).Returns("segment1");
+            _mockModLogic.Setup(x => x.SanitizeFileName("segment2")).Returns("segment2");
+            _mockModLogic.Setup(x => x.SanitizeFileName("segment3")).Returns("segment3");
+            
+            // Act - Test with mixed separators
+            var result = method?.Invoke(_service, new object[] { @"segment1/segment2\segment3" });
+            
+            // Assert
+            Assert.NotNull(result);
+            // The result should handle mixed separators properly
+            var normalizedResult = result.ToString()
+                .Replace(Path.DirectorySeparatorChar, '/')
+                .Replace(Path.AltDirectorySeparatorChar, '/');
+            // The actual result should be "segment1/segment2/segment3" after processing
+            Assert.Equal("segment1/segment2/segment3", normalizedResult);
         }
     }
 }
