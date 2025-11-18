@@ -56,7 +56,7 @@ namespace LivingRoots.Services
             }
             catch (Newtonsoft.Json.JsonException ex)
             {
-                _monitor.Log($"JSON error while saving data for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
+                _monitor.Log($"JSON error while saving data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 throw; // Keep rethrowing for save operations as these are critical
             }
             catch (Exception ex)
@@ -87,29 +87,19 @@ namespace LivingRoots.Services
             
             try
             {
-                var path = GetFilePath(sanitizedKey);
-                
-                // Check if the file exists first to differentiate between missing and corrupt files
-                string absolutePath = Path.Combine(_helper.DirectoryPath, path);
-                
-                if (!File.Exists(absolutePath))
-                {
-                    // File does not exist - log as trace to reduce noise
-                    _monitor.Log($"File not found while loading data for key '{sanitizedKey}': {path}", LogLevel.Trace);
-                    return null;
-                }
-                
-                // File exists, try to read it
-                var result = _helper.Data.ReadJsonFile<T>(path);
-                
-                if (result == null)
-                {
-                    // File exists but is empty or contains invalid JSON structure
-                    _monitor.Log($"File exists but contains no valid data while loading for key '{sanitizedKey}': {path}", LogLevel.Warn);
-                    return null;
-                }
-                
-                return result;
+            var path = GetFilePath(sanitizedKey);
+            
+            // Directly attempt to read the file without checking existence first to avoid TOCTOU race condition
+            var result = _helper.Data.ReadJsonFile<T>(path);
+            
+            if (result == null)
+            {
+                // File does not exist or contains no valid data
+                _monitor.Log($"File not found or contains no valid data while loading for key '{sanitizedKey}': {path}", LogLevel.Trace);
+                return null;
+            }
+            
+            return result;
             }
             catch (ArgumentException ex)
             {
