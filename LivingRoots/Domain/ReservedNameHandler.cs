@@ -71,7 +71,18 @@ namespace LivingRoots.Domain
 
             // Rebuild path with processed filename
             if (!string.IsNullOrEmpty(directoryPath))
-                return directoryPath + processedFileName;
+            {
+                // Handle UNC paths specially to avoid adding extra slashes
+                if (directoryPath.StartsWith(@"\\"))
+                {
+                    return directoryPath + processedFileName;
+                }
+                else
+                {
+                    // Use Path.Combine to ensure proper path separators are used
+                    return Path.Combine(directoryPath, processedFileName);
+                }
+            }
             else
                 return processedFileName;
         }
@@ -101,18 +112,22 @@ namespace LivingRoots.Domain
                 namePart = filename;
             }
 
-            // Process name part: trim leading spaces and check for reserved names
-            string trimmedLeadingSpaces = namePart.TrimStart();
-            
-            // Get the core name by trimming trailing insignificant characters (dots and spaces)
-            string baseNameForCheck = trimmedLeadingSpaces.TrimEnd('.', ' ', '\t');
-            
-            // Handle the case where the name becomes empty after trimming
-            if (string.IsNullOrEmpty(baseNameForCheck))
+            // Check if the name part consists entirely of insignificant characters (dots, spaces, tabs)
+            string trimmedAll = namePart.Trim('.', ' ', '\t');
+            if (string.IsNullOrEmpty(trimmedAll))
             {
                 // Replace fully insignificant names with a safe placeholder
                 return "_" + extensionPart;
             }
+            
+            // Get the core name by trimming trailing insignificant characters (dots and spaces)
+            string baseNameForCheck = namePart.TrimEnd('.', ' ', '\t');
+            
+            // Get the portion before trimming to preserve leading spaces
+            string leadingChars = namePart.Substring(0, namePart.Length - baseNameForCheck.Length);
+            
+            // Further trim leading spaces and dots to get the core name for checking
+            baseNameForCheck = baseNameForCheck.TrimStart(' ', '\t', '.');
             
             // Normalize for comparison with reserved names
             string? normalizedForCheck = _unicodeNormalizationService.Normalize(baseNameForCheck);
@@ -123,17 +138,24 @@ namespace LivingRoots.Domain
 
             if (isReserved)
             {
-                // For reserved names, construct the result by using leading spaces from the original name
+                // For reserved names, construct the result by using leading characters from the original name
                 // and adding an underscore to the normalized base name (for security)
-                string leadingSpaces = namePart.Substring(0, namePart.Length - trimmedLeadingSpaces.Length);
                 
                 // Use the normalized form of the base name to prevent homoglyph spoofing
                 string baseNameForResult = !string.IsNullOrEmpty(normalizedForCheck) ? normalizedForCheck : baseNameForCheck;
                 
-                // The new name part is: leading spaces + base name (normalized if changed) + underscore
-                string newNamePart = leadingSpaces + baseNameForResult + "_";
+                // The new name part is: leading characters + base name (normalized if changed) + underscore
+                string newNamePart = leadingChars + baseNameForResult + "_";
                 
                 return newNamePart + extensionPart;
+            }
+            
+            // If not reserved, check if the name part is fully insignificant (consists only of dots, spaces, tabs)
+            string trimmedForInsignificantCheck = namePart.Trim('.', ' ', '\t');
+            if (string.IsNullOrEmpty(trimmedForInsignificantCheck))
+            {
+                // Replace fully insignificant names with a safe placeholder
+                return "_" + extensionPart;
             }
 
             // If not reserved, return the original filename
