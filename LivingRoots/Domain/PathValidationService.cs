@@ -50,8 +50,14 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
-            // Check for paths starting with "./" (explicit current directory navigation)
+            // Check for paths starting with "./" or ".\" (explicit current directory navigation)
             if (path.StartsWith("./") || path.StartsWith(".\\"))
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
+
+            // Check for paths ending with "/." or "\." (directory navigation)
+            if (path.EndsWith("/.") || path.EndsWith("\\."))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
@@ -91,18 +97,12 @@ namespace LivingRoots.Domain
             string[] segments = path.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
             
             int depth = 0;
-            int minDepth = 0; // Track the minimum depth reached during traversal, starting from 0
             
             foreach (string segment in segments)
             {
                 if (segment == "..")
                 {
                     depth--;
-                    // Track the minimum depth reached - if it goes below 0, we're going above the starting point
-                    if (depth < minDepth)
-                    {
-                        minDepth = depth;
-                    }
                     // If depth goes negative, it means we're trying to go above the intended root
                     if (depth < 0)
                     {
@@ -117,16 +117,10 @@ namespace LivingRoots.Domain
                 // If segment is ".", we don't change the depth
             }
             
-            // Additional security check: If the minimum depth reached during traversal is negative,
-            // it means the path attempted to go above the starting point at some point.
-            // This indicates a path traversal attempt even if the final depth is non-negative.
-            if (minDepth < 0)
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
-            
-            // Additional security check: if the path ends with "..", it may indicate an attempt to access parent directory
-            if (segments.Length > 0 && segments[segments.Length - 1] == "..")
+            // Special case: paths ending with ".." that would go above the intended root
+            // This is handled by the depth check above, but we also need to consider the case where
+            // the path is just ".." which should be blocked
+            if (path == ".." || path == "../" || path == "..\\")
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
