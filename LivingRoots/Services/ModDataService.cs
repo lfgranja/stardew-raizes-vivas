@@ -74,6 +74,19 @@ namespace LivingRoots.Services
         /// <returns>Loaded data or default value if not found</returns>
         public T? LoadData<T>(string key) where T : class
         {
+            // Defensive null checks for helper and its Data property
+            if (_helper == null)
+            {
+                _monitor.Log("ModHelper is null in LoadData method. This should not happen under normal circumstances.", LogLevel.Error);
+                return null;
+            }
+            
+            if (_helper.Data == null)
+            {
+                _monitor.Log("Helper.Data is null in LoadData method. This should not happen under normal circumstances.", LogLevel.Error);
+                return null;
+            }
+            
             string sanitizedKey;
             try
             {
@@ -95,7 +108,7 @@ namespace LivingRoots.Services
             if (result == null)
             {
                 // File does not exist or contains no valid data
-                _monitor.Log($"File not found or contains no valid data while loading for key '{sanitizedKey}': {path}", LogLevel.Trace);
+                _monitor.Log($"File not found or contains no valid data while loading for key '{sanitizedKey}': {path}", LogLevel.Warn);
                 return null;
             }
             
@@ -158,33 +171,51 @@ namespace LivingRoots.Services
 
             try
             {
-                string relativePath = GetFilePath(sanitizedKey);
-                string absolutePath = Path.Combine(_helper.DirectoryPath, relativePath);
-                return File.Exists(absolutePath);
+                string path = GetFilePath(sanitizedKey);
+                
+                // Use SMAPI's ReadJsonFile API to check for data existence to maintain consistency
+                // with LoadData and avoid TOCTOU race conditions
+                var result = _helper.Data.ReadJsonFile<object>(path);
+                
+                // If result is not null, the file exists and contains valid data
+                // If result is null, the file doesn't exist or contains no valid data
+                return result != null;
+            }
+            catch (System.IO.FileNotFoundException ex)
+            {
+                // File does not exist - log as trace to reduce noise
+                _monitor.Log($"File not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
+                return false;
             }
             catch (System.IO.DirectoryNotFoundException ex)
             {
+                // Directory does not exist - log as warn
                 _monitor.Log($"Directory not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false;
             }
             catch (System.UnauthorizedAccessException ex)
             {
+                // Access denied to file or directory - treat as non-existent and log as warn
                 _monitor.Log($"Access denied while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false;
             }
             catch (System.IO.IOException ex)
             {
+                // Other IO exceptions - treat as non-existent and log as warn
                 _monitor.Log($"IOException while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
                 return false;
             }
             catch (Newtonsoft.Json.JsonException ex)
             {
+                // JSON parsing error - file exists but contains invalid JSON
+                // For DataExists purpose, we consider this as "data exists" since the file is there
                 _monitor.Log($"JSON parsing error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                return false;
+                return true;
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Unexpected error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                // Any other unexpected exception - treat as non-existent and log as error
+                _monitor.Log($"Unexpected error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
                 return false;
             }
         }
@@ -195,11 +226,7 @@ namespace LivingRoots.Services
         /// <param name="key">Key to remove</param>
         public void RemoveData(string key)
         {
-            string? sanitizedKey = GetValidatedAndSanitizedKeyForRemove(key);
-            
-            // If sanitized key is null, it means validation failed and we should return early
-            if (sanitizedKey == null)
-                return;
+            string sanitizedKey = GetValidatedAndSanitizedKey(key);
             
             // Delete data file to properly remove stored data
             var filePath = GetFilePath(sanitizedKey);
