@@ -50,20 +50,14 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
-            // Check for standalone ".." (parent directory) - this should be blocked
-            if (path == "..")
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
-
-            // Check for paths starting with "./" or ".\" (explicit current directory navigation at the beginning) - these should be blocked
+            // Check for paths starting with "./" or ".\" (explicit current directory navigation)
             if (path.StartsWith("./") || path.StartsWith(".\\"))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
 
-            // Check for paths starting with "../" or "..\" (explicit parent directory navigation at the beginning) - these should be blocked
-            if (path.StartsWith("../") || path.StartsWith("..\\"))
+            // Check for paths ending with "/." or "\." (directory navigation)
+            if (path.EndsWith("/.") || path.EndsWith("\\."))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
@@ -130,8 +124,13 @@ namespace LivingRoots.Domain
                 // If segment is ".", we don't change the depth since it refers to current directory
             }
             
-            // Special case: paths that are just ".." should be blocked (handled earlier in Validate method)
-            // The depth analysis is mainly to catch cases where the path goes above root during traversal
+            // Special case: paths ending with ".." that would go above the intended root
+            // This is handled by the depth check above, but we also need to consider the case where
+            // the path is just ".." which should be blocked
+            if (path == ".." || path == "../" || path == "..\\")
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
         }
 
         /// <summary>
