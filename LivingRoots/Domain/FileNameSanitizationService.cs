@@ -63,7 +63,7 @@ namespace LivingRoots.Domain
             // This validation must happen before any trimming to prevent bypassing safeguards
             string processedTrimmed = processed.Trim('_', ' ', '.');
             if (processedTrimmed == "." || processedTrimmed == "..")
-                throw new ArgumentException($"Filename sanitizes to invalid path component '{processedTrimmed}'.", nameof(filename));
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
 
             // Determine if this should be treated as a hidden file based on normalized input and actual content
             bool shouldBeHiddenFile = false;
@@ -131,6 +131,12 @@ namespace LivingRoots.Domain
                 }
             }
 
+            // Check if the processed name is "." or ".." before trimming - these are invalid path components
+            if (processed == "." || processed == "..")
+            {
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+            }
+
             // Trim leading/trailing problematic characters (but preserve leading dots for hidden files)
             string trimmed;
             if (shouldBeHiddenFile && processed.StartsWith(".", StringComparison.Ordinal))
@@ -166,6 +172,13 @@ namespace LivingRoots.Domain
                 trimmed = processed.Trim('_', ' ', '.');
             }
 
+            // Check if the trimmed name part is empty or becomes "." or ".." after trimming
+            // This handles cases like ".." which becomes empty after processing
+            if (string.IsNullOrEmpty(trimmed) || trimmed == "." || trimmed == "..")
+            {
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+            }
+
             // Preserve leading dots for hidden files if not already present and content is not empty
             if (shouldBeHiddenFile && !trimmed.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(trimmed))
             {
@@ -194,7 +207,7 @@ namespace LivingRoots.Domain
                 // Check if the extension is in the blocked list
                 if (IsBlockedExtension(extension))
                 {
-                    // Replace dangerous extension with a safe indicator
+                    // Replace dangerous extension entirely with a safe indicator
                     // Ensure base has no trailing dots before appending any suffix/extension
                     result = result.TrimEnd('.');
                     // Replace dangerous extension entirely with a safe extension to prevent security issues
@@ -440,60 +453,75 @@ namespace LivingRoots.Domain
         /// <returns>The start index of the extension (including the dot) if valid, or -1 if no valid extension found.</returns>
         private static int FindExtensionStartIndex(string filename)
         {
-            int lastDotIndex = filename.LastIndexOf('.');
-            if (lastDotIndex >= 0 && lastDotIndex < filename.Length - 1) // Allow dot at beginning, ensure dot is not at the end
+            if (string.IsNullOrEmpty(filename))
+                return -1;
+            
+            // Look for the last dot that represents a valid extension
+            // We need to be careful not to treat directory separators as extension indicators
+            int lastDotIndex = -1;
+            
+            // Find the rightmost dot that is not part of a directory path
+            for (int i = filename.Length - 1; i >= 0; i--)
             {
-                // Check that the last dot is not part of a directory path segment
-                // Look for directory separators after the last dot to ensure it's really an extension
-                string potentialExtension = filename.Substring(lastDotIndex);
-                
-                // Check if the extension portion contains directory separators
-                // This prevents cases like "file/path.ext" where the extension detection would be wrong
-                if (potentialExtension.Contains('/', StringComparison.Ordinal) || potentialExtension.Contains('\\', StringComparison.Ordinal))
+                if (filename[i] == '.')
                 {
-                    return -1; // Not a valid extension if it contains path separators
-                }
-                
-                // Do not treat simple dotfiles (e.g., ".profile") as having an extension
-                // If all characters before the last dot are dots (i.e., hidden file prefix only), it's not an extension
-                // However, if this is a dangerous extension following a dot at the beginning (like .exe, .dll), we should still detect it for security
-                string namePartBeforeExtension = filename.Substring(0, lastDotIndex);
-                bool onlyDotsBefore = namePartBeforeExtension.All(ch => ch == '.');
-                 bool isDotAtBeginning = lastDotIndex == 0 && namePartBeforeExtension.Length == 0; // For cases like ".exe"
-                 bool isDangerousExtension = IsBlockedExtension(potentialExtension);
-                 
-                 if (onlyDotsBefore && isDotAtBeginning && isDangerousExtension)
-                 {
-                     // For security purposes, treat dangerous extensions at the beginning as having an extension
-                     return lastDotIndex;
-                 }
-                 else if (onlyDotsBefore && isDotAtBeginning && !isDangerousExtension)
-                 {
-                     // For non-dangerous extensions at the beginning (like .profile), don't treat as extension
-                     return -1;
-                 }
-                 else if (onlyDotsBefore && !isDotAtBeginning && !isDangerousExtension)
-                     return -1;
-                
-                // Extract the part after the dot (excluding the dot itself)
-                string extensionPart = potentialExtension.Substring(1);
-                
-                // Stricter extension qualification: require at least one alphanumeric character in the extension
-                // This prevents incorrect classifications for names with trailing dots like "file..."
-                bool hasAlphanumeric = extensionPart.Any(c => char.IsLetterOrDigit(c));
-                
-                if (!hasAlphanumeric)
-                {
-                    return -1; // Not a valid extension if it doesn't contain at least one alphanumeric character
-                }
-                
-                // Make sure the part after the last dot looks like an extension (not part of a directory path)
-                if (potentialExtension.IndexOfAny(Path.GetInvalidFileNameChars()) == -1)
-                {
-                    return lastDotIndex;
+                    // Check if this dot is followed by at least one alphanumeric character
+                    // and is not immediately followed by a path separator
+                    if (i < filename.Length - 1 && 
+                        !filename[i + 1].Equals('/') && 
+                        !filename[i + 1].Equals('\\'))
+                    {
+                        // Check if there are valid extension characters after this dot
+                        string potentialExtension = filename.Substring(i);
+                        if (potentialExtension.Length > 1) // Ensure the dot is not at the end
+                        {
+                            // Check if the part after the dot contains at least one alphanumeric character
+                            string extensionPart = potentialExtension.Substring(1);
+                            if (extensionPart.Any(c => char.IsLetterOrDigit(c)))
+                            {
+                                // Check if this extension portion contains directory separators
+                                // This prevents cases like "file/path.ext" where the extension detection would be wrong
+                                if (!potentialExtension.Contains('/', StringComparison.Ordinal) && 
+                                    !potentialExtension.Contains('\\', StringComparison.Ordinal))
+                                {
+                                    // Additional check: if all characters before this dot are dots, 
+                                    // it's not a valid extension unless it's a dangerous one at the beginning
+                                    string beforeThisDot = filename.Substring(0, i);
+                                    bool onlyDotsBefore = beforeThisDot.All(ch => ch == '.');
+                                    
+                                    if (onlyDotsBefore)
+                                    {
+                                        // If all characters before the dot are dots, this is not a valid extension
+                                        // unless it's the very beginning of the filename and the extension is dangerous
+                                        bool isAtBeginning = i == 0;
+                                        bool isDangerousExtension = IsBlockedExtension(potentialExtension);
+                                        
+                                        if (isAtBeginning && isDangerousExtension)
+                                        {
+                                            // For security purposes, treat dangerous extensions at the beginning as having an extension
+                                            return i;
+                                        }
+                                        else
+                                        {
+                                            // Not a valid extension if only dots precede it
+                                            continue;
+                                        }
+                                    }
+                                    
+                                    // Additional validation: ensure the extension doesn't contain invalid filename characters
+                                    if (potentialExtension.IndexOfAny(Path.GetInvalidFileNameChars()) == -1)
+                                    {
+                                        lastDotIndex = i;
+                                        break; // Found the last valid extension
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            return -1;
+            
+            return lastDotIndex;
         }
 
         /// <summary>
@@ -581,7 +609,7 @@ namespace LivingRoots.Domain
         /// </summary>
         /// <param name="str">The input string</param>
         /// <param name="startIndex">Start index</param>
-        /// <param="length">Length to extract</param>
+        /// <param name="length">Length to extract</param>
         /// <returns>The substring</returns>
         private static string SafeSubstring(string str, int startIndex, int length)
         {
