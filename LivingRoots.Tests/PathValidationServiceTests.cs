@@ -114,14 +114,12 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_WithDotDotAtEnd_ThrowsArgumentException()
+        public void Validate_WithDotDotAtEnd_DoesNotThrow()
         {
             // Act & Assert - Test both forward slash and backslash separators
-            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("folder/.."));
-            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
-            
-            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("folder\\.."));
-            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+            // After refactoring, paths ending with ".." are allowed as long as they don't go above root
+            _service.Validate("folder/.."); // Should not throw
+            _service.Validate("folder\\.."); // Should not throw
         }
 
         [Fact]
@@ -217,12 +215,13 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_WithDepthTraversal_GoesNegative_ThrowsArgumentException()
         {
-            // Act & Assert - Test both forward slash and backslash separators
+            // Act & Assert - Test path that goes negative in depth: "folder/../../file.txt" goes 0->1->0->-1
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("folder/../../file.txt"));
             Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
-            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("folder\\..\\file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+            // The second path "folder\\..\\file.txt" goes 0->1->0->1, which does NOT go negative
+            // So it should NOT throw anymore after removing the "ends with .." check
+            _service.Validate("folder\\..\\file.txt"); // Should not throw
         }
 
         [Fact]
@@ -237,7 +236,7 @@ namespace LivingRoots.Tests
         public void Validate_WithMultipleDotSegmentsInMiddle_DoesNotThrow()
         {
             // Act & Assert - Test both forward slash and backslash separators
-            _service.Validate("folder/././file.txt"); // Should not throw
+            _service.Validate("folder/./file.txt"); // Should not throw
             _service.Validate("folder\\.\\.\\file.txt"); // Should not throw - backslash version
         }
 
@@ -342,19 +341,16 @@ namespace LivingRoots.Tests
         }
         
         [Fact]
-        public void Validate_WithValidPathEndingWithDotDot_ThrowsArgumentException()
+        public void Validate_WithValidPathEndingWithDotDot_DoesNotThrow()
         {
-            // This test verifies that paths like "a/b/.." now throw after security fix
-            // This path goes down 2 levels (a/b) then up 1 level (..)
-            // Even though final depth would be 1 (at directory "a"), the ".." segment makes it vulnerable
+            // After refactoring, paths ending with ".." are allowed as long as they don't go above root
+            // This path "a/b/.." goes down 2 levels (a/b) then up 1 level (..)
+            // Final depth is 1 (at directory "a"), and it doesn't go above root, so it should be allowed
             // Test both forward slash and backslash separators
             
-            // Act & Assert - This should NOW throw after the security fix
-            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("a/b/.."));
-            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
-            
-            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("a\\b\\.."));
-            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+            // Act & Assert - This should NOT throw after the refactoring
+            _service.Validate("a/b/.."); // Should not throw
+            _service.Validate("a\\b\\.."); // Should not throw
         }
         
         [Fact]

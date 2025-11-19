@@ -34,7 +34,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_PathWithMultipleConsecutiveDotDotSegments_ThrowsImmediatelyWhenDepthGoesNegative()
+        public void Validate_PathWithMultipleConsecutiveDotSegments_ThrowsImmediatelyWhenDepthGoesNegative()
         {
             // Test case: "../../../file.txt"
             // .. = depth -1 -> throws immediately
@@ -61,14 +61,14 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_PathThatEndsInDotDotButNeverGoesNegative_ThrowsArgumentException()
+        public void Validate_PathThatEndsInDotDotButNeverGoesNegative_DoesNotThrow()
         {
-            // This path should throw: "folder/.." 
+            // After refactoring, this path should NOT throw: "folder/.." 
             // folder = depth 1
             // .. = depth 0 (back to root level, not negative)
-            // But algorithm throws because it ends with ".." which is considered a traversal attempt
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("folder/.."));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            // The redundant "ends with .." check has been removed
+            // So this should be allowed as long as it doesn't go above root
+            _service.Validate("folder/.."); // Should not throw
         }
     }
 }
