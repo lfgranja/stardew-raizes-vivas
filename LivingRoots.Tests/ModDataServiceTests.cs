@@ -607,7 +607,7 @@ namespace LivingRoots.Tests
             // The actual exception should be an ArgumentException from PathValidationService
             Assert.IsType<ArgumentException>(exception.InnerException);
         }
-
+        
         [Fact]
         public void LoadData_WithValidationExceptionInGetValidatedAndSanitizedKey_ReturnsNull()
         {
@@ -773,6 +773,94 @@ namespace LivingRoots.Tests
             _mockMonitor.Verify(x => x.Log(
                 It.Is<string>(msg => msg.Contains("File not found while checking data existence for key 'nonexistent_key'")),
                 LogLevel.Trace), Times.Once);
+        }
+        
+        [Fact]
+        public void RemoveData_WithNullKey_ThrowsArgumentException()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => service.RemoveData(null!));
+            Assert.Throws<ArgumentException>(() => service.RemoveData(""));
+            Assert.Throws<ArgumentException>(() => service.RemoveData("   "));
+        }
+        
+        [Fact]
+        public void RemoveData_WithPathTraversal_ThrowsArgumentException()
+        {
+            // Arrange - Configure validator to throw for path traversal
+            _mockModLogic.Setup(x => x.ValidatePath(It.Is<string>(s => s.Contains("../../../")))).Throws<ArgumentException>();
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => service.RemoveData("../../../etc/passwd"));
+        }
+        
+        [Fact]
+        public void RemoveData_WithInvalidCharsThatSanitizeToEmpty_ThrowsArgumentException()
+        {
+            // Arrange - The mock is already configured to throw for these cases
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => service.RemoveData("<>:\"|?*"));
+            Assert.Throws<ArgumentException>(() => service.RemoveData("........."));
+            Assert.Throws<ArgumentException>(() => service.RemoveData("___"));
+        }
+        
+        [Fact]
+        public void LoadData_WithNullHelper_ReturnsNull()
+        {
+            // Arrange - Use reflection to set _helper to null after construction
+            var mockHelper = new Mock<IModHelper>();
+            var mockMonitor = new Mock<IMonitor>();
+            var mockModLogic = new Mock<IModLogic>();
+            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            
+            // Use reflection to set _helper field to null
+            var helperField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
+            helperField?.SetValue(service, null);
+            
+            // Act
+            var result = service.LoadData<object>("test_key");
+            
+            // Assert
+            Assert.Null(result);
+            mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("ModHelper is null in LoadData method")),
+                LogLevel.Error), Times.Once);
+        }
+        
+        [Fact]
+        public void LoadData_WithNullDataHelper_ReturnsNull()
+        {
+            // Arrange - Use reflection to set _helper.Data to null
+            var mockHelper = new Mock<IModHelper>();
+            var mockDataHelper = new Mock<IDataHelper>();
+            var mockMonitor = new Mock<IMonitor>();
+            var mockModLogic = new Mock<IModLogic>();
+            
+            mockHelper.Setup(x => x.Data).Returns(mockDataHelper.Object);
+            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            
+            // Set up the helper to return null for Data property
+            var helperWithNullData = new Mock<IModHelper>();
+            helperWithNullData.Setup(x => x.Data).Returns((IDataHelper)null);
+            
+            // Replace the helper in the service using reflection
+            var helperField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
+            helperField?.SetValue(service, helperWithNullData.Object);
+            
+            // Act
+            var result = service.LoadData<object>("test_key");
+            
+            // Assert
+            Assert.Null(result);
+            mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("Helper.Data is null in LoadData method")),
+                LogLevel.Error), Times.Once);
         }
     }
 }
