@@ -119,71 +119,52 @@ namespace LivingRoots.Domain
             }
 
             // Check if the name part consists entirely of insignificant characters (dots, spaces, tabs)
-            // This means after trimming all dots, spaces, and tabs, there's nothing left
-            trimmedAll = namePart.Trim('.', ' ', '\t');
+            string trimmedAll = namePart.Trim('.', ' ', '\t');
             if (string.IsNullOrEmpty(trimmedAll))
             {
                 // Replace fully insignificant names with a safe placeholder
                 return "_" + extensionPart;
             }
             
-            // Check for reserved names by looking for them in the name part
-            // We need to handle several cases:
-            // 1. Exact reserved name: "CON" -> "CON_"
-            // 2. Reserved name with extension: "CON.txt" -> "CON_.txt"
-            // 3. Reserved name with leading/trailing chars: " CON " -> " CON_"
-            // 4. Reserved name with trailing insignificant chars: "CON..." -> "CON_"
-            // 5. Unicode homoglyphs: "CОN" (with Cyrillic O) -> "CON_"
+            // Get the core name by trimming trailing insignificant characters (dots and spaces)
+            string baseNameForCheck = namePart.TrimEnd('.', ' ', '\t');
             
-            foreach (string reservedName in ReservedWindowsFileNames)
+            // Get the portion before trimming to preserve leading spaces
+            string leadingChars = namePart.Substring(0, namePart.Length - baseNameForCheck.Length);
+            
+            // Further trim leading spaces and dots to get the core name for checking
+            baseNameForCheck = baseNameForCheck.TrimStart(' ', '\t', '.');
+            
+            // Normalize for comparison with reserved names
+            string? normalizedForCheck = _unicodeNormalizationService.Normalize(baseNameForCheck);
+
+            // Check if the core name is reserved
+            bool isReserved = ReservedWindowsFileNames.Contains(baseNameForCheck) ||
+                              (!string.IsNullOrEmpty(normalizedForCheck) && ReservedWindowsFileNames.Contains(normalizedForCheck));
+
+            if (isReserved)
             {
-                // Check if the name part contains the reserved name
-                int startIndex = FindCaseInsensitiveIndex(namePart, reservedName);
-                if (startIndex >= 0)
-                {
-                    // Check if the reserved name is the entire name part or if it's followed by insignificant characters only
-                    string afterReserved = namePart.Substring(startIndex + reservedName.Length);
-                    string beforeReserved = namePart.Substring(0, startIndex);
-                    
-                    // If the part after the reserved name is only insignificant characters (dots, spaces, tabs), 
-                    // we should treat this as a reserved name with trailing insignificant characters
-                    string trimmedAfter = afterReserved.Trim('.', ' ', '\t');
-                    if (string.IsNullOrEmpty(trimmedAfter))
-                    {
-                        // The reserved name is followed only by insignificant characters
-                        // Return the original string but with an underscore added right after the reserved name
-                        string originalCasedReserved = namePart.Substring(startIndex, reservedName.Length);
-                        return beforeReserved + originalCasedReserved + "_" + extensionPart;
-                    }
-                    
-                    // If the part after the reserved name is a dot (extension), handle it specially
-                    if (afterReserved.StartsWith("."))
-                    {
-                        // This is a reserved name followed by an extension
-                        string originalCasedReserved = namePart.Substring(startIndex, reservedName.Length);
-                        string extensionAfterReserved = afterReserved; // includes the dot and anything after it
-                        return beforeReserved + originalCasedReserved + "_" + extensionAfterReserved + extensionPart;
-                    }
-                    
-                    // If the reserved name is part of a larger name that is not just followed by insignificant chars,
-                    // then it's not a pure reserved name and should not be treated as such
-                    // e.g., "CONSOLE" contains "CON" but should not be treated as reserved
-                }
+                // For reserved names, construct the result by using leading characters from the original name
+                // and adding an underscore to the normalized base name (for security)
+                
+                // Use the normalized form of the base name to prevent homoglyph spoofing
+                string baseNameForResult = !string.IsNullOrEmpty(normalizedForCheck) ? normalizedForCheck : baseNameForCheck;
+                
+                // The new name part is: leading characters + base name (normalized if changed) + underscore
+                string newNamePart = leadingChars + baseNameForResult + "_";
+                
+                return newNamePart + extensionPart;
             }
             
-            // Check for reserved names after Unicode normalization (for homoglyphs and diacritics)
-            // This handles cases where the name normalizes to a reserved name
-            string baseNameForCheck = namePart.Trim('.', ' ', '\t');
-            string? normalizedBaseName = _unicodeNormalizationService.Normalize(baseNameForCheck);
-            
-            if (!string.IsNullOrEmpty(normalizedBaseName) && ReservedWindowsFileNames.Contains(normalizedBaseName))
+            // If not reserved, check if the name part is fully insignificant (consists only of dots, spaces, tabs)
+            string trimmedForInsignificantCheck = namePart.Trim('.', ' ', '\t');
+            if (string.IsNullOrEmpty(trimmedForInsignificantCheck))
             {
-                // The normalized name is a reserved name, so we need to handle it
-                // For homoglyphs and diacritics, return the normalized reserved name with underscore
-                return normalizedBaseName + "_" + extensionPart;
+                // Replace fully insignificant names with a safe placeholder
+                return "_" + extensionPart;
             }
-            
-            // If not reserved and not fully insignificant, return the original filename
+
+            // If not reserved, return the original filename
             return filename;
         }
         
