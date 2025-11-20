@@ -44,20 +44,26 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot be null or empty", nameof(path));
             }
 
-            // Check for standalone "." (current directory)
+            // Check for standalone "." (current directory) - this should be blocked
             if (path == ".")
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
-            // Check for paths starting with "./" or ".\" (explicit current directory navigation)
+            // Check for standalone ".." (parent directory) - this should be blocked
+            if (path == "..")
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
+
+            // Check for paths starting with "./" or ".\" (explicit current directory navigation at the beginning) - these should be blocked
             if (path.StartsWith("./") || path.StartsWith(".\\"))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
 
-            // Check for paths ending with "/." or "\." (directory navigation)
-            if (path.EndsWith("/.") || path.EndsWith("\\."))
+            // Check for paths starting with "../" or "..\" (explicit parent directory navigation at the beginning) - these should be blocked
+            if (path.StartsWith("../") || path.StartsWith("..\\"))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
@@ -79,10 +85,17 @@ namespace LivingRoots.Domain
 
             // Validate path traversal patterns using depth-based analysis to distinguish between
             // legitimate uses of ".." and malicious path traversal attempts.
+            // This is the primary validation for ".." patterns.
             ValidatePathTraversalDepth(normalizedPath);
             
-            // Validate path traversal patterns using the dedicated validator (for any remaining checks)
-            _pathTraversalValidator.Validate(normalizedPath);
+            // For paths ending with "..", our depth analysis has already validated they don't go above root,
+            // so we should not call the PathTraversalValidator which blocks all such paths.
+            // For other paths, we can use the PathTraversalValidator for additional validation.
+            if (!(normalizedPath.EndsWith("/..") || normalizedPath.EndsWith("\\..")))
+            {
+                _pathTraversalValidator.Validate(normalizedPath);
+            }
+            // For paths ending with "..", skip PathTraversalValidator since our depth analysis already validated they're safe
         }
 
         /// <summary>
@@ -114,16 +127,11 @@ namespace LivingRoots.Domain
                     // Regular directory/file names increase the depth
                     depth++;
                 }
-                // If segment is ".", we don't change the depth
+                // If segment is ".", we don't change the depth since it refers to current directory
             }
             
-            // Special case: paths ending with ".." that would go above the intended root
-            // This is handled by the depth check above, but we also need to consider the case where
-            // the path is just ".." which should be blocked
-            if (path == ".." || path == "../" || path == "..\\")
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
+            // Special case: paths that are just ".." should be blocked (handled earlier in Validate method)
+            // The depth analysis is mainly to catch cases where the path goes above root during traversal
         }
 
         /// <summary>

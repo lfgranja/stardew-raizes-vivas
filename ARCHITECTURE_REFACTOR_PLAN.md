@@ -1,115 +1,337 @@
-# Architecture Refactor Plan for Living Roots Mod
+# Architecture Refactor Plan for Security Fixes
 
 ## Overview
-This document outlines the planned architecture changes based on the PR 67 review comments. The changes aim to improve security, maintainability, and follow SOLID principles with Test Driven Development (TDD).
+This document outlines the architectural approach for implementing security fixes identified in the code review for PR 67 - Rodada 19+. The changes follow SOLID principles and TDD methodology.
 
-## Changes Required
+## Current Architecture Analysis
 
-### 1. Fix base.Dispose(disposing) redundancy in ModEntry.cs
-- **Issue**: Redundant call to `base.Dispose(disposing)` when object is already disposed
-- **Solution**: Remove the redundant call to `base.Dispose(disposing)` in the if statement
-- **Location**: `LivingRoots/ModEntry.cs` line 57
+### Domain Layer
+- `FileNameSanitizationService`: Handles filename sanitization with security considerations
+- `PathValidationService`: Validates paths to prevent traversal attacks
+- `ModLogic`: Orchestrates domain operations
 
-### 2. Refactor path validation logic in PathValidationService.cs
-- **Issue**: Path validation logic is too restrictive and can be simplified
-- **Current problems**:
-  - Blocks valid paths like `a/b/../../c` which should resolve to `c`
-  - Blocks valid directory paths like `a/b/..` which should resolve to directory `a`
-  - The depth < 0 check is sufficient to prevent traversal attacks
-- **Solution**: Simplify the validation to rely solely on the depth check for `..` segments
-- **Location**: `LivingRoots/Domain/PathValidationService.cs` method `ValidatePathDepth`
+### Services Layer
+- `ModDataService`: Handles data persistence using SMAPI APIs
+- `FileNameSanitizer`: Implements filename sanitization logic
+- `PathTraversalValidator`: Validates path traversal patterns
 
-### 3. Address homoglyph spoofing vulnerability in ReservedNameHandlerTests.cs
-- **Issue**: Test asserts the unsafe original string is returned instead of the normalized, safe version
-- **Solution**: Update the test to assert that the returned filename is the normalized, safe version (CON_) rather than the original unsafe input (CОN_)
-- **Location**: `LivingRoots.Tests/ReservedNameHandlerTests.cs` method `Handle_WithUnicodeHomoglyphOfReservedName_AddsUnderscore`
+### Security Issues Identified
 
-### 4. Add security check for hidden-name dot prefixing in FileNameSanitizationService.cs
-- **Issue**: Adding a leading dot could create an invalid path component like `.` or `..`
-- **Solution**: Add a security check when prefixing a filename with a dot for hidden files to ensure the resulting filename does not become an invalid path component
-- **Location**: `LivingRoots/Domain/FileNameSanitizationService.cs` around line 120
+#### 1. Extension Handling Vulnerability
+**Location**: `FileNameSanitizationService.FindExtensionStartIndex`
 
-### 5. Make URL detection case-insensitive in tests
-- **Issue**: URL detection in tests is case-sensitive
-- **Solution**: Update the test's mock setup for ValidatePath by using a case-insensitive check for URL schemes like "http://" and "https://"
-- **Location**: `LivingRoots.Tests/ModDataServiceTests.cs` line 63
+**Current Implementation Issues**:
+- Complex logic that may not correctly identify valid extensions
+- Doesn't properly handle multiple consecutive dots
+- May not consistently apply ".blocked" extension for dangerous files
 
-### 6. Improve logging privacy test robustness in ModDataServiceTests.cs
-- **Issue**: Coupling exception-throwing with logging verification makes the test brittle
-- **Solution**: Decouple the logging verification from exception propagation by using a try-catch block
-- **Location**: `LivingRoots.Tests/ModDataServiceTests.cs` method `SaveData_WithDangerousPathKey_DoesNotLogFullFilePath`
+**Security Impact**: Could allow dangerous file extensions to bypass sanitization
 
-### 7. Refactor DataExists method to use File.Exists instead of reading JSON
-- **Issue**: Using ReadJsonFile to check for file existence is inefficient and leads to inconsistent behavior with invalid JSON
-- **Solution**: Use File.Exists to check for file existence without forcing JSON parsing
-- **Location**: `LivingRoots/Services/ModDataService.cs` method `DataExists`
+**Refactor Strategy**:
+```csharp
+// Current problematic logic
+private static int FindExtensionStartIndex(string filename)
+{
+    // Complex logic with multiple edge cases
+    int lastDotIndex = filename.LastIndexOf('.');
+    if (lastDotIndex >= 0 && lastDotIndex < filename.Length - 1)
+    {
+        // Multiple checks that may not be comprehensive
+        string potentialExtension = filename.Substring(lastDotIndex);
+        // ...
+    }
+    return -1;
+}
 
-### 8. Make command registration atomic in ModController.cs
-- **Issue**: Potential race condition in the OnGameLaunched method
-- **Solution**: Use the existing `_registrationLock` to ensure the console command registration and event unsubscription are atomic and thread-safe
-- **Location**: `LivingRoots/Controllers/ModController.cs` method `OnGameLaunched`
+// Improved logic
+private static int FindExtensionStartIndex(string filename)
+{
+    // Simplified, more robust approach
+    int lastDotIndex = filename.LastIndexOf('.');
+    
+    if (lastDotIndex < 0 || lastDotIndex >= filename.Length - 1)
+        return -1; // No valid extension if no dot or dot at end
 
-### 9. Differentiate missing vs corrupt files on load in LoadData method
-- **Issue**: The LoadData method doesn't differentiate between missing and corrupt files
-- **Solution**: Check for file existence before reading to provide more accurate log messages, and adjust the JsonException log level to Warn for consistency
-- **Location**: `LivingRoots/Services/ModDataService.cs` method `LoadData`
+    string potentialExtension = filename.Substring(lastDotIndex);
+    
+    // Check for path separators in extension (security check)
+    if (potentialExtension.Contains('/', StringComparison.Ordinal) || 
+        potentialExtension.Contains('\\', StringComparison.Ordinal))
+        return -1;
 
-## Implementation Strategy (TDD Approach)
+    // Security: Handle dangerous extensions at beginning (e.g., ".exe")
+    if (lastDotIndex == 0)
+    {
+        if (IsBlockedExtension(potentialExtension))
+            return 0; // Treat as extension for security
+        else
+            return -1; // Not a real extension for non-dangerous cases
+    }
 
-### Phase 1: Write failing tests
-- For each change, write a test that verifies the current behavior and fails with the desired behavior
-- This will ensure we understand the issue and have a target to reach
+    // Extract extension part (without the dot)
+    string extensionPart = potentialExtension.Substring(1);
+    
+    // Must contain at least one alphanumeric character
+    if (!extensionPart.Any(c => char.IsLetterOrDigit(c)))
+        return -1;
 
-### Phase 2: Implement fixes
-- Make the minimal changes required to make each test pass
-- Follow SOLID principles and ensure code remains maintainable
+    // Validate against invalid filename characters
+    if (potentialExtension.IndexOfAny(Path.GetInvalidFileNameChars()) != -1)
+        return -1;
 
-### Phase 3: Refactor and optimize
-- Clean up any duplicated code
-- Ensure consistent error handling and logging
-- Verify that all existing tests still pass
+    return lastDotIndex;
+}
+```
 
-### Phase 4: Verify security improvements
-- Ensure all security vulnerabilities are properly addressed
-- Run security-focused tests to verify improvements
+#### 2. Path Validation Redundancy
+**Location**: `PathValidationService.ValidatePathTraversalDepth`
+
+**Current Implementation Issues**:
+- Redundant `minDepth` tracking alongside `depth < 0` check
+- Overly restrictive "ends with .." check that blocks valid paths
+
+**Security Impact**: May block legitimate paths while not improving security
+
+**Refactor Strategy**:
+```csharp
+// Current redundant logic
+private void ValidatePathTraversalDepth(string path)
+{
+    string[] segments = path.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+    
+    int depth = 0;
+    int minDepth = 0; // Redundant tracking
+    
+    foreach (string segment in segments)
+    {
+        if (segment == "..")
+        {
+            depth--;
+            if (depth < minDepth) // This check is redundant with depth < 0
+            {
+                minDepth = depth;
+            }
+            if (depth < 0) // Primary check
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
+        }
+        // ...
+    }
+    
+    // Redundant final check
+    if (minDepth < 0)
+    {
+        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+    }
+    
+    // Overly restrictive check
+    if (segments.Length > 0 && segments[segments.Length - 1] == "..")
+    {
+        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+    }
+}
+
+// Improved logic
+private void ValidatePathTraversalDepth(string path)
+{
+    string[] segments = path.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+    
+    int depth = 0;
+    
+    foreach (string segment in segments)
+    {
+        if (segment == "..")
+        {
+            depth--;
+            // Primary security check: prevent going above root
+            if (depth < 0)
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
+        }
+        else if (segment != ".")
+        {
+            depth++; // Regular segments increase depth
+        }
+        // "." segments don't change depth
+    }
+    // No redundant checks needed
+}
+```
+
+#### 3. Inconsistent Data Access
+**Location**: `ModDataService.DataExists`
+
+**Current Implementation Issues**:
+- Uses `File.Exists` instead of SMAPI's `ReadJsonFile` API
+- Inconsistent with `LoadData` implementation
+- Contains misleading exception handlers
+
+**Security Impact**: Potential TOCTOU (Time-of-Check-Time-of-Use) race conditions
+
+**Refactor Strategy**:
+```csharp
+// Current problematic implementation
+public bool DataExists(string key)
+{
+    string sanitizedKey;
+    try
+    {
+        sanitizedKey = GetValidatedAndSanitizedKey(key);
+    }
+    catch (ArgumentException ex)
+    {
+        _monitor.Log($"Invalid key provided to DataExists: {ex.Message}", LogLevel.Warn);
+        return false;
+    }
+
+    try
+    {
+        string relativePath = GetFilePath(sanitizedKey);
+        string absolutePath = Path.Combine(_helper.DirectoryPath, relativePath);
+        return File.Exists(absolutePath); // Inconsistent with LoadData
+    }
+    // Multiple exception handlers that may not be triggered
+    catch (System.IO.DirectoryNotFoundException ex)
+    {
+        _monitor.Log($"Directory not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+        return false;
+    }
+    // ... more exception handlers
+}
+
+// Improved consistent implementation
+public bool DataExists(string key)
+{
+    string sanitizedKey;
+    try
+    {
+        sanitizedKey = GetValidatedAndSanitizedKey(key);
+    }
+    catch (ArgumentException ex)
+    {
+        _monitor.Log($"Invalid key provided to DataExists: {ex.Message}", LogLevel.Warn);
+        return false;
+    }
+
+    try
+    {
+        string relativePath = GetFilePath(sanitizedKey);
+        
+        // Consistent with LoadData - use SMAPI's API directly
+        var result = _helper.Data.ReadJsonFile<object>(relativePath);
+        
+        // If result is not null, data exists
+        return result != null;
+    }
+    // Minimal, necessary exception handling only
+    catch (System.IO.FileNotFoundException)
+    {
+        return false; // File not found, so data doesn't exist
+    }
+    catch (System.UnauthorizedAccessException)
+    {
+        return false; // Access denied, assume data doesn't exist
+    }
+}
+```
+
+## SOLID Principles Application
+
+### Single Responsibility Principle
+- Each method should have one clear purpose
+- Separate concerns: validation, sanitization, and data access
+
+### Open/Closed Principle
+- Design for extension without modification
+- Use dependency injection for testability
+
+### Liskov Substitution Principle
+- Derived classes should be substitutable for base classes
+- Maintain consistent behavior across implementations
+
+### Interface Segregation Principle
+- Create focused interfaces
+- Avoid "fat" interfaces that clients don't need
+
+### Dependency Inversion Principle
+- Depend on abstractions, not concretions
+- Already implemented in current architecture
+
+## TDD Implementation Strategy
+
+### Phase 1: Extension Handling Security
+1. Write failing tests for extension handling edge cases
+2. Implement improved `FindExtensionStartIndex` method
+3. Refactor `Sanitize` method to use improved extension logic
+4. Verify all tests pass
+
+### Phase 2: Path Validation Simplification
+1. Write tests for valid paths that should not be blocked
+2. Simplify `ValidatePathTraversalDepth` method
+3. Remove redundant logic
+4. Verify security is maintained while reducing false positives
+
+### Phase 3: Data Access Consistency
+1. Write tests for `DataExists` behavior consistency
+2. Refactor to use SMAPI's API consistently
+3. Remove misleading exception handlers
+4. Ensure all data access methods follow the same pattern
+
+### Phase 4: Error Handling Consistency
+1. Write tests for consistent error handling
+2. Standardize error handling patterns across methods
+3. Add defensive null checks
+4. Verify all edge cases are handled properly
+
+## Security Considerations
+
+### Defense in Depth
+- Multiple layers of validation
+- Input sanitization at boundaries
+- Output encoding where appropriate
+
+### Principle of Least Privilege
+- Use SMAPI's secure file access methods
+- Validate inputs before processing
+- Sanitize outputs before logging
+
+### Fail-Safe Defaults
+- Return false for uncertain cases in `DataExists`
+- Throw exceptions for invalid inputs
+- Log security-relevant events
 
 ## Testing Strategy
 
 ### Unit Tests
-- Each change should have corresponding unit tests that verify the fix
-- Tests should cover both positive and negative cases
-- Ensure edge cases are properly handled
+- Test each method in isolation
+- Verify security edge cases
+- Test error handling paths
 
 ### Integration Tests
-- Verify that the changes work properly in the context of the full system
-- Ensure that error handling works as expected across service boundaries
+- Test interactions between components
+- Verify end-to-end functionality
+- Test security scenarios
 
 ### Security Tests
-- Verify that all path traversal protections remain effective
-- Ensure that no new security vulnerabilities are introduced
-- Test with various malicious inputs to ensure robustness
+- Test for path traversal vulnerabilities
+- Test extension bypass attempts
+- Test TOCTOU race conditions
 
-## Quality Assurance
+## Implementation Order
 
-### Code Review Checklist
-- [ ] All changes follow SOLID principles
-- [ ] Security vulnerabilities are properly addressed
-- [ ] Error handling is consistent and appropriate
-- [ ] Logging is privacy-preserving and informative
-- [ ] Performance is not negatively impacted
-- [ ] All tests pass (existing and new)
+1. **Security Critical**: Extension handling fixes
+2. **Simplification**: Path validation logic
+3. **Consistency**: Data access methods
+4. **Robustness**: Error handling
+5. **Test Improvements**: Reduce reflection usage
 
-### Deployment Considerations
-- [ ] Changes are backward compatible
-- [ ] No breaking changes to public APIs
-- [ ] Migration path for existing data is provided if needed
-- [ ] Documentation is updated if necessary
+## Success Metrics
 
-## Timeline
-1. Write failing tests: 1 day
-2. Implement fixes: 2-3 days
-3. Refactor and optimize: 1 day
-4. Security verification: 1 day
-5. Final testing and validation: 1 day
-
-Total estimated time: 5-7 days
+- All existing functionality preserved
+- Security vulnerabilities addressed
+- Performance maintained or improved
+- Test coverage maintained or increased
+- Code complexity reduced where possible
+- Consistent behavior across methods
