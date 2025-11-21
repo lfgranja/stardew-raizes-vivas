@@ -266,8 +266,7 @@ namespace LivingRoots.Domain
                         }
                         else
                         {
-                            // If there's no space for the name part, just use the extension
-                            // But since we need a name, use a minimal safe name instead
+                            // If there's no space for the name part, just use a minimal safe name instead
                             result = SafeSubstring("file", 0, Math.Max(1, MaxFileNameLength - finalExtension.Length)) + finalExtension;
                         }
                     }
@@ -291,6 +290,15 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(reservedResult));
 
             result = reservedResult;
+
+            // Final check: After all processing, check if the result is empty or invalid
+            // This is important for cases like "..exe" where the name part ".." becomes empty after processing
+            string baseResult = RemoveFileExtension(result);
+            string finalBaseTrimmed = baseResult.Trim('_', ' ', '.');
+            if (string.IsNullOrWhiteSpace(finalBaseTrimmed) || finalBaseTrimmed == "." || finalBaseTrimmed == "..")
+            {
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+            }
 
             return result;
         }
