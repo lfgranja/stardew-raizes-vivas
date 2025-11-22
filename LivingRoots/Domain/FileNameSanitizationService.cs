@@ -473,19 +473,19 @@ namespace LivingRoots.Domain
                 bool onlyDotsBefore = namePartBeforeExtension.All(ch => ch == '.');
                  bool isDotAtBeginning = lastDotIndex == 0 && namePartBeforeExtension.Length == 0; // For cases like ".exe"
                  bool isDangerousExtension = IsBlockedExtension(potentialExtension);
-                 
-                 if (onlyDotsBefore && isDotAtBeginning && isDangerousExtension)
-                 {
-                     // For security purposes, treat dangerous extensions at the beginning as having an extension
-                     return lastDotIndex;
-                 }
-                 else if (onlyDotsBefore && isDotAtBeginning && !isDangerousExtension)
-                 {
-                     // For non-dangerous extensions at the beginning (like .profile), don't treat as extension
-                     return -1;
-                 }
-                 else if (onlyDotsBefore && !isDotAtBeginning && !isDangerousExtension)
-                     return -1;
+                
+                if (onlyDotsBefore && isDotAtBeginning && isDangerousExtension)
+                {
+                    // For security purposes, treat dangerous extensions at the beginning as having an extension
+                    return lastDotIndex;
+                }
+                else if (onlyDotsBefore && isDotAtBeginning && !isDangerousExtension)
+                {
+                    // For non-dangerous extensions at the beginning (like .profile), don't treat as extension
+                    return -1;
+                }
+                else if (onlyDotsBefore && !isDotAtBeginning && !isDangerousExtension)
+                    return -1;
                 
                 // Extract the part after the dot (excluding the dot itself)
                 string extensionPart = potentialExtension.Substring(1);
@@ -504,9 +504,13 @@ namespace LivingRoots.Domain
                 {
                     return lastDotIndex;
                 }
+                
+                // If the extension contains invalid filename characters, it's not a valid extension
+                return -1;
             }
             
-            return lastDotIndex;
+            // If there's no dot or the dot is at the end, there's no valid extension
+            return -1;
         }
 
         /// <summary>
