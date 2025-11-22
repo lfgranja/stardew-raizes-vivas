@@ -26,25 +26,25 @@ namespace LivingRoots.Services
                 throw new ArgumentException("Path cannot be null or empty", nameof(path));
             
             // Check for standalone "." (current directory) - this should be blocked
-            if (path == ".")
+            if (path.Equals(".", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
             // Check for standalone ".." (parent directory) - this should be blocked
-            if (path == ".." || path == "../" || path == "..\\")
+            if (path.Equals("..", StringComparison.Ordinal) || path.Equals("../", StringComparison.Ordinal) || path.Equals("..\\", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
 
             // Check for paths starting with "./" or ".\" (explicit current directory navigation at the beginning)
-            if (path.StartsWith("./") || path.StartsWith(".\\"))
+            if (path.StartsWith("./", StringComparison.Ordinal) || path.StartsWith(".\\", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
             // Check for paths starting with "../" or "..\" (explicit parent directory navigation at the beginning)
-            if (path.StartsWith("../") || path.StartsWith("..\\"))
+            if (path.StartsWith("../", StringComparison.Ordinal) || path.StartsWith("..\\", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
@@ -57,7 +57,7 @@ namespace LivingRoots.Services
             }
             
             // Check for paths ending with "/.." or "\.." (trailing parent directory navigation) - these should be blocked when PathTraversalValidator is used in isolation
-            if (path.EndsWith("/..") || path.EndsWith("\\.."))
+            if (path.EndsWith("/..", StringComparison.Ordinal) || path.EndsWith("\\..", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }

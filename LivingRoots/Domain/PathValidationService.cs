@@ -44,26 +44,26 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot be null or empty", nameof(path));
             }
 
+            // Normalize Unicode characters to detect homoglyph attacks - this must be done first
+            string normalizedPath = _unicodeNormalizationService.Normalize(path);
+
             // Check for standalone "." (current directory) - this should be blocked
-            if (path == ".")
+            if (normalizedPath.Equals(".", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
             // Check for paths starting with "./" or ".\" (explicit current directory navigation)
-            if (path.StartsWith("./") || path.StartsWith(".\\"))
+            if (normalizedPath.StartsWith("./", StringComparison.Ordinal) || normalizedPath.StartsWith(".\\", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
 
             // Check for paths ending with "/." or "\." (directory navigation)
-            if (path.EndsWith("/.") || path.EndsWith("\\."))
+            if (normalizedPath.EndsWith("/.", StringComparison.Ordinal) || normalizedPath.EndsWith("\\.", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
-
-            // Normalize Unicode characters to detect homoglyph attacks
-            string normalizedPath = _unicodeNormalizationService.Normalize(path);
 
             // Check for absolute paths and URIs
             if (IsAbsolutePathOrUri(normalizedPath))
@@ -82,14 +82,13 @@ namespace LivingRoots.Domain
             // This is the primary validation for ".." patterns.
             ValidatePathTraversalDepth(normalizedPath);
             
-            // For paths ending with "..", our depth analysis has already validated they don't go above root,
-            // so we should not call the PathTraversalValidator which blocks all such paths.
-            // For other paths, we can use the PathTraversalValidator for additional validation.
-            if (!(normalizedPath.EndsWith("/..") || normalizedPath.EndsWith("\\..")))
+            // Only call PathTraversalValidator for paths that don't contain ".." patterns,
+            // since our depth analysis handles ".." patterns more comprehensively.
+            // PathTraversalValidator handles other basic path traversal checks for paths without "..".
+            if (!normalizedPath.Contains("..", StringComparison.Ordinal))
             {
                 _pathTraversalValidator.Validate(normalizedPath);
             }
-            // For paths ending with "..", skip PathTraversalValidator since our depth analysis already validated they're safe
         }
 
         /// <summary>
@@ -107,7 +106,7 @@ namespace LivingRoots.Domain
             
             foreach (string segment in segments)
             {
-                if (segment == "..")
+                if (segment.Equals("..", StringComparison.Ordinal))
                 {
                     depth--;
                     // If depth goes negative, it means we're trying to go above the intended root
@@ -116,7 +115,7 @@ namespace LivingRoots.Domain
                         throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
                     }
                 }
-                else if (segment != ".")
+                else if (!segment.Equals(".", StringComparison.Ordinal))
                 {
                     // Regular directory/file names increase the depth
                     depth++;
@@ -127,7 +126,7 @@ namespace LivingRoots.Domain
             // Special case: paths ending with ".." that would go above the intended root
             // This is handled by the depth check above, but we also need to consider the case where
             // the path is just ".." which should be blocked
-            if (path == ".." || path == "../" || path == "..\\")
+            if (path.Equals("..", StringComparison.Ordinal) || path.Equals("../", StringComparison.Ordinal) || path.Equals("..\\", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
