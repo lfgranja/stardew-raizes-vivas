@@ -59,12 +59,6 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
 
-            // Check for paths ending with "/." or "\." (directory navigation)
-            if (normalizedPath.EndsWith("/.", StringComparison.Ordinal) || normalizedPath.EndsWith("\\.", StringComparison.Ordinal))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
-
             // Check for absolute paths and URIs
             if (IsAbsolutePathOrUri(normalizedPath))
             {

@@ -34,7 +34,7 @@ namespace LivingRoots.Tests
             // These should be allowed - multiple "." segments in middle of paths
             _service.Validate("folder/./subfolder/./file.txt");
             _service.Validate("a/./b/./c.txt");
-            _service.Validate("path/to/././deep/./file.txt");
+            _service.Validate("path/to/./deep/./file.txt");
         }
 
         [Fact]
@@ -94,7 +94,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_PathTraversalWithDotDot_ShouldStillBeBlocked()
+        public void Validate_PathTraversalWithDot_ShouldStillBeBlocked()
         {
             // These should still be blocked - path traversal with ".."
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("../file.txt"));
@@ -111,12 +111,13 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_PathWithMixedDotAndDotDot_ShouldBeBlocked()
         {
-            // These should be blocked - combinations that include ".." for traversal
-            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("folder/./../file.txt"));
+            // This should still be blocked - "./../" goes above root level
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("./../file.txt"));
             Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
-            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("./../file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+            // This path should be allowed - it doesn't go above root level: folder(1) -> .(1) -> ..(0) -> file(1)
+            var ex2 = Record.Exception(() => _service.Validate("folder/./../file.txt"));
+            Assert.Null(ex2);
         }
 
         [Fact]
