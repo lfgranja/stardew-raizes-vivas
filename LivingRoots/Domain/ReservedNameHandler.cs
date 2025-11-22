@@ -107,35 +107,9 @@ namespace LivingRoots.Domain
                 namePart = filename;
             }
 
-
-        {
-            // Check if the entire filename consists entirely of insignificant characters (dots, spaces, tabs)
-            // This handles cases like " . " where the entire name is insignificant
-            string trimmedAll = filename.Trim('.', ' ', '\t');
-            if (string.IsNullOrEmpty(trimmedAll))
-            {
-                // Replace fully insignificant names with a safe placeholder
-                return "_";
-            }
-            
-            // Separate name from extension properly
-            string namePart, extensionPart = "";
-            
-            int lastDotIndex = filename.LastIndexOf('.');
-            // Only consider it an extension if the dot is not at the beginning or end and there's content after it
-            if (lastDotIndex > 0 && lastDotIndex < filename.Length - 1)
-            {
-                namePart = filename.Substring(0, lastDotIndex);
-                extensionPart = filename.Substring(lastDotIndex);
-            }
-            else
-            {
-                namePart = filename;
-            }
-
             // Check if the name part consists entirely of insignificant characters (dots, spaces, tabs)
-            string trimmedAll = namePart.Trim('.', ' ', '\t');
-            if (string.IsNullOrEmpty(trimmedAll))
+            string trimmedNamePartAll = namePart.Trim('.', ' ', '\t');
+            if (string.IsNullOrEmpty(trimmedNamePartAll))
             {
                 // Replace fully insignificant names with a safe placeholder
                 return "_" + extensionPart;
