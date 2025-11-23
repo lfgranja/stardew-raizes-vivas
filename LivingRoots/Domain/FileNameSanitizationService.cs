@@ -499,6 +499,12 @@ namespace LivingRoots.Domain
                     return -1; // Not a valid extension if it doesn't contain at least one alphanumeric character
                 }
                 
+                // Extensions should not contain path separators (/, \) as these indicate directory paths, not extensions
+                if (potentialExtension.Contains('/') || potentialExtension.Contains('\\'))
+                {
+                    return -1; // Not a valid extension if it contains path separators
+                }
+                
                 // Make sure the part after the last dot looks like an extension (not part of a directory path)
                 if (potentialExtension.IndexOfAny(Path.GetInvalidFileNameChars()) == -1)
                 {
