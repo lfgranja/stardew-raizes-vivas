@@ -188,11 +188,6 @@ namespace LivingRoots.Domain
                     throw new ArgumentException("Filename sanitizes to an empty or invalid hidden name.", nameof(filename));
                 trimmed = candidate;
             }
-            // Preserve leading dots for hidden files if not already present and content is not empty
-            if (shouldBeHiddenFile && !trimmed.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(trimmed))
-            {
-                trimmed = "." + trimmed;
-            }
 
             // Apply truncation
             string truncated = TruncateToMaxLength(trimmed);
@@ -246,15 +241,25 @@ namespace LivingRoots.Domain
                             {
                                 // For hidden files, keep the dot and truncate the content part
                                 string contentPart = namePart.Substring(1);
-                                string truncatedContent = SafeSubstring(contentPart, 0, availableLength - 1);
-                                if (truncatedContent.Length > 0)
+                                int contentBudget = Math.Max(0, availableLength - 1); // Reserve 1 char for the dot if possible
+                                if (contentBudget > 0)
                                 {
-                                    namePart = "." + truncatedContent;
+                                    string truncatedContent = SafeSubstring(contentPart, 0, contentBudget);
+                                    if (truncatedContent.Length > 0)
+                                    {
+                                        namePart = "." + truncatedContent;
+                                    }
+                                    else
+                                    {
+                                        // If truncation results in empty content, ensure we have at least a minimal name
+                                        int minimalBudget = Math.Max(1, contentBudget);
+                                        namePart = "." + SafeSubstring(contentPart, 0, minimalBudget);
+                                    }
                                 }
                                 else
                                 {
-                                    // If truncation results in empty content, ensure we have at least a minimal name
-                                    namePart = "." + SafeSubstring(contentPart, 0, Math.Max(1, availableLength - 1));
+                                    // If there's no room for content, create a minimal safe hidden name
+                                    namePart = ".f"; // Minimal safe hidden name
                                 }
                             }
                             else
@@ -267,7 +272,17 @@ namespace LivingRoots.Domain
                         else
                         {
                             // If there's no space for the name part, just use a minimal safe name instead
-                            result = SafeSubstring("file", 0, Math.Max(1, MaxFileNameLength - finalExtension.Length)) + finalExtension;
+                            int extensionLength = Math.Max(0, MaxFileNameLength - finalExtension.Length);
+                            if (extensionLength > 0)
+                            {
+                                // If there's some space for a name part, use a minimal safe name
+                                result = SafeSubstring("file", 0, Math.Max(1, extensionLength)) + finalExtension;
+                            }
+                            else
+                            {
+                                // If there's no space at all, just return the extension with minimal name
+                                result = ".f" + finalExtension;
+                            }
                         }
                     }
                     else
@@ -610,6 +625,10 @@ namespace LivingRoots.Domain
         {
             // Make sure we don't exceed the string length
             if (startIndex >= str.Length)
+                return string.Empty;
+
+            // Ensure length is not negative to prevent ArgumentOutOfRangeException
+            if (length < 0)
                 return string.Empty;
 
             int endIndex = Math.Min(startIndex + length, str.Length);
