@@ -96,7 +96,7 @@ namespace LivingRoots.Tests
             // Assert
             _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_key.json", testData), Times.Once);
         }
-
+        
         [Fact]
         public void SaveData_WithNullKey_ThrowsArgumentException()
         {
@@ -109,7 +109,7 @@ namespace LivingRoots.Tests
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, ""));
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, "   "));
         }
-
+        
         [Fact]
         public void SaveData_WithNullData_ThrowsArgumentNullException()
         {
@@ -120,7 +120,7 @@ namespace LivingRoots.Tests
             var exception = Assert.Throws<ArgumentNullException>(() => service.SaveData<object>(null!, "test_key"));
             Assert.Equal("data", exception.ParamName);
         }
-
+        
         [Fact]
         public void LoadData_WithValidKey_CallsReadJsonFile()
         {
@@ -135,7 +135,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal(expectedData, result);
         }
-
+        
         [Fact]
         public void LoadData_WithFileNotFound_ReturnsNull()
         {
@@ -149,7 +149,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Null(result);
         }
-
+        
         [Fact]
         public void DataExists_WithExistingData_ReturnsTrue()
         {
@@ -163,7 +163,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.True(result);
         }
-
+        
         [Fact]
         public void DataExists_WithNonExistingData_ReturnsFalse()
         {
@@ -177,7 +177,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.False(result);
         }
-
+        
         [Fact]
         public void RemoveData_WithExistingData_RemovesData()
         {
@@ -190,7 +190,7 @@ namespace LivingRoots.Tests
             // Assert
             _mockDataHelper.Verify(x => x.WriteJsonFile<object>("data/test_key.json", null), Times.Once);
         }
-
+        
         [Fact]
         public void GetFilePath_WithInvalidChars_Sanitizes()
         {
@@ -204,7 +204,7 @@ namespace LivingRoots.Tests
             // Assert - With segment-based sanitization, this should be "data/test/key/with_invalid_chars.json"
             _mockDataHelper.Verify(x => x.WriteJsonFile("data/test/key/with_invalid_chars.json", testData), Times.Once);
         }
-
+        
         [Fact]
         public void GetFilePath_WithPathTraversal_ThrowsArgumentException()
         {
@@ -566,7 +566,7 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("dangerous/path") && msg.Contains("IOException while saving data for key")), 
                 LogLevel.Warn), Times.Once);
         }
-
+        
         [Fact]
         public void SanitizePathSegments_WithDotSegment_SkipsSegment()
         {
@@ -588,7 +588,7 @@ namespace LivingRoots.Tests
             // Should complete without throwing an exception
             Assert.NotNull(result);
         }
-
+        
         [Fact]
         public void SanitizePathSegments_WithDotDotSegment_ThrowsArgumentException()
         {
@@ -706,7 +706,7 @@ namespace LivingRoots.Tests
         }
         
         [Fact]
-        public void DataExists_WithCorruptJsonFile_ReturnsTrue()
+        public void DataExists_WithCorruptJsonFile_ReturnsFalse()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
@@ -721,8 +721,8 @@ namespace LivingRoots.Tests
             // Act
             var result = service.DataExists("corrupt_key");
 
-            // Assert - Should return true because file exists but has corrupt JSON
-            Assert.True(result);
+            // Assert - Should return false because file contains invalid JSON (treated as non-existent data)
+            Assert.False(result);
             
             // Verify that JsonException was logged as a warning
             _mockMonitor.Verify(x => x.Log(
@@ -870,7 +870,7 @@ namespace LivingRoots.Tests
             var mockHelper = new Mock<IModHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockModLogic = new Mock<IModLogic>();
-            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, _mockModLogic.Object);
             
             // Use reflection to set _helper field to null
             var helperField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -896,7 +896,7 @@ namespace LivingRoots.Tests
             var mockModLogic = new Mock<IModLogic>();
             
             mockHelper.Setup(x => x.Data).Returns(mockDataHelper.Object);
-            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            var service = new ModDataService(mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             
             // Set up the helper to return null for Data property
             var helperWithNullData = new Mock<IModHelper>();
