@@ -158,6 +158,19 @@ namespace LivingRoots.Services
         /// <returns>True if data exists, false otherwise</returns>
         public bool DataExists(string key)
         {
+            // Defensive null checks for helper and its Data property
+            if (_helper == null)
+            {
+                _monitor.Log("ModHelper is null in DataExists method. This should not happen under normal circumstances.", LogLevel.Error);
+                return false;
+            }
+            
+            if (_helper.Data == null)
+            {
+                _monitor.Log("Helper.Data is null in DataExists method. This should not happen under normal circumstances.", LogLevel.Error);
+                return false;
+            }
+
             string sanitizedKey;
             try
             {

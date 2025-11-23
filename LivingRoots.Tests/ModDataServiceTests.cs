@@ -862,5 +862,58 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("Helper.Data is null in LoadData method")),
                 LogLevel.Error), Times.Once);
         }
+        
+        [Fact]
+        public void DataExists_WithNullHelper_ReturnsFalse()
+        {
+            // Arrange - Use reflection to set _helper to null after construction
+            var mockHelper = new Mock<IModHelper>();
+            var mockMonitor = new Mock<IMonitor>();
+            var mockModLogic = new Mock<IModLogic>();
+            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            
+            // Use reflection to set _helper field to null
+            var helperField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
+            helperField?.SetValue(service, null);
+            
+            // Act
+            var result = service.DataExists("test_key");
+            
+            // Assert
+            Assert.False(result);
+            mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("ModHelper is null in DataExists method")),
+                LogLevel.Error), Times.Once);
+        }
+        
+        [Fact]
+        public void DataExists_WithNullDataHelper_ReturnsFalse()
+        {
+            // Arrange - Use reflection to set _helper.Data to null
+            var mockHelper = new Mock<IModHelper>();
+            var mockDataHelper = new Mock<IDataHelper>();
+            var mockMonitor = new Mock<IMonitor>();
+            var mockModLogic = new Mock<IModLogic>();
+            
+            mockHelper.Setup(x => x.Data).Returns(mockDataHelper.Object);
+            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            
+            // Set up the helper to return null for Data property
+            var helperWithNullData = new Mock<IModHelper>();
+            helperWithNullData.Setup(x => x.Data).Returns((IDataHelper)null);
+            
+            // Replace the helper in the service using reflection
+            var helperField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
+            helperField?.SetValue(service, helperWithNullData.Object);
+            
+            // Act
+            var result = service.DataExists("test_key");
+            
+            // Assert
+            Assert.False(result);
+            mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("Helper.Data is null in DataExists method")),
+                LogLevel.Error), Times.Once);
+        }
     }
 }
