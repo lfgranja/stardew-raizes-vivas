@@ -117,9 +117,7 @@ namespace LivingRoots.Domain
                 // If segment is ".", we don't change the depth since it refers to current directory
             }
             
-            // Special case: paths ending with ".." that would go above the intended root
-            // This is handled by the depth check above, but we also need to consider the case where
-            // the path is just ".." which should be blocked
+            // Special case: paths that are just ".." which should be blocked
             if (path.Equals("..", StringComparison.Ordinal) || path.Equals("../", StringComparison.Ordinal) || path.Equals("..\\", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
