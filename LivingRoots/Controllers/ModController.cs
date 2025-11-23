@@ -40,14 +40,14 @@ namespace LivingRoots.Controllers
 
         public void RegisterEvents()
         {
-            if (_disposed)
-            {
-                _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
-                return;
-            }
-            
             lock (_registrationLock)
             {
+                if (_disposed)
+                {
+                    _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
+                    return;
+                }
+                
                 try
                 {
                     // Move null check inside the lock to prevent race condition
@@ -89,47 +89,56 @@ namespace LivingRoots.Controllers
 
         public void UnregisterEvents()
         {
-            if (_disposed)
-            {
-                _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
-                return;
-            }
-            
             lock (_registrationLock)
             {
-                try
+                if (_disposed)
                 {
-                    var gameLoop = _helper?.Events?.GameLoop;
-                    if (gameLoop == null)
-                    {
-                        _monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Trace);
-                        return;
-                    }
-
-                    // Always attempt to detach to avoid leaked handlers even if the flag is out of sync
-                    if (_onGameLaunchedHandler != null)
-                    {
-                        gameLoop.GameLaunched -= _onGameLaunchedHandler;
-                        _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
-                    }
-
-                    // Unregister console command if it was registered
-                    if (_commandRegistered && _helper?.ConsoleCommands != null)
-                    {
-                        // In SMAPI, there's no direct method to remove a console command
-                        // The command will be automatically removed when the mod is disposed
-                        // We just reset the flag to indicate it's unregistered
-                        _monitor.Log("Controller state for command 'lr_version' has been reset. The command will be removed on mod disposal.", LogLevel.Trace);
-                    }
-                    
-                    _eventsRegistered = false;
-                    _commandRegistered = false;
-                    _monitor.Log("Events unregistered successfully.", LogLevel.Trace);
+                    _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
+                    return;
                 }
-                catch (Exception ex)
+                
+                UnregisterEventsInternal();
+            }
+        }
+
+        /// <summary>
+        /// Internal method to unregister events without checking the disposed flag.
+        /// This is used by the Dispose method to ensure cleanup happens during disposal.
+        /// </summary>
+        private void UnregisterEventsInternal()
+        {
+            try
+            {
+                var gameLoop = _helper?.Events?.GameLoop;
+                if (gameLoop == null)
                 {
-                    _monitor.Log($"Error while unregistering events: {ex.Message}", LogLevel.Error);
+                    _monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Trace);
+                    return;
                 }
+
+                // Always attempt to detach to avoid leaked handlers even if the flag is out of sync
+                if (_onGameLaunchedHandler != null)
+                {
+                    gameLoop.GameLaunched -= _onGameLaunchedHandler;
+                    _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
+                }
+
+                // Unregister console command if it was registered
+                if (_commandRegistered && _helper?.ConsoleCommands != null)
+                {
+                    // In SMAPI, there's no direct method to remove a console command
+                    // The command will be automatically removed when the mod is disposed
+                    // We just reset the flag to indicate it's unregistered
+                    _monitor.Log("Controller state for command 'lr_version' has been reset. The command will be removed on mod disposal.", LogLevel.Trace);
+                }
+                
+                _eventsRegistered = false;
+                _commandRegistered = false;
+                _monitor.Log("Events unregistered successfully.", LogLevel.Trace);
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Error while unregistering events: {ex.Message}", LogLevel.Error);
             }
         }
 
@@ -225,6 +234,8 @@ namespace LivingRoots.Controllers
 
         public void Dispose()
         {
+            bool needsUnregistration = false;
+            
             // Use a lock to ensure thread-safe disposal.
             lock (_registrationLock)
             {
@@ -232,9 +243,16 @@ namespace LivingRoots.Controllers
                 {
                     return;
                 }
-
-                UnregisterEvents();
+                
+                // Check if unregistration is needed before releasing the lock
+                needsUnregistration = _eventsRegistered || _commandRegistered;
                 _disposed = true;
+            }
+
+            // Unregister events outside the lock to prevent potential deadlock
+            if (needsUnregistration)
+            {
+                UnregisterEventsInternal();
             }
 
             GC.SuppressFinalize(this);
