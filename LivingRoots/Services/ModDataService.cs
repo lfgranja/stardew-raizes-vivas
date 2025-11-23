@@ -221,9 +221,9 @@ namespace LivingRoots.Services
             catch (Newtonsoft.Json.JsonException ex)
             {
                 // JSON parsing error - file exists but contains invalid JSON
-                // For DataExists purpose, we consider this as "data exists" since the file is there
+                // For consistency with LoadData, we consider this as "data does not exist"
                 _monitor.Log($"JSON parsing error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                return true;
+                return false;
             }
             catch (Exception ex)
             {
@@ -239,6 +239,21 @@ namespace LivingRoots.Services
         /// <param name="key">Key to remove</param>
         public void RemoveData(string key)
         {
+            // Defensive null checks for helper and its Data property
+            if (_helper == null)
+            {
+                _monitor.Log("ModHelper is null in RemoveData method. This should not happen under normal circumstances.", LogLevel.Error);
+                return;
+            }
+            
+            if (_helper.Data == null)
+            {
+                _monitor.Log("Helper.Data is null in RemoveData method. This should not happen under normal circumstances.", LogLevel.Error);
+                return;
+            }
+            
+            // Perform argument validation before attempting to remove data
+            // This maintains consistency with other methods and existing tests
             string sanitizedKey = GetValidatedAndSanitizedKey(key);
             
             // Delete data file to properly remove stored data
@@ -308,9 +323,6 @@ namespace LivingRoots.Services
         
         private string GetFilePath(string key)
         {
-            if (string.IsNullOrWhiteSpace(key))
-                throw new ArgumentException("Key cannot be null or empty", nameof(key));
-
             // The key should already be sanitized at this point, so we just return path
             // The validation already happened when SanitizeFileName was called in public methods
 
