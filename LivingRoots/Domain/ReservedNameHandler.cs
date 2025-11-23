@@ -71,7 +71,17 @@ namespace LivingRoots.Domain
 
             // Rebuild path with processed filename
             if (!string.IsNullOrEmpty(directoryPath))
-                return directoryPath + processedFileName;
+            {
+                // For UNC paths, we need to handle the path joining manually to avoid extra separators
+                if (directoryPath.StartsWith(@"\\"))
+                {
+                    return directoryPath + processedFileName;
+                }
+                else
+                {
+                    return Path.Combine(directoryPath, processedFileName);
+                }
+            }
             else
                 return processedFileName;
         }
@@ -115,32 +125,160 @@ namespace LivingRoots.Domain
                 return "_" + extensionPart;
             }
             
-            // Get the core name by trimming trailing insignificant characters (dots and spaces)
-            string baseNameForCheck = namePart.TrimEnd('.', ' ', '\t');
+            // Extract the core name (without leading/trailing insignificant chars) and preserve context
+            // First, get the core name by trimming both leading and trailing insignificant characters
+            string coreName = namePart.Trim('.', ' ', '\t');
             
-            // Get the portion before trimming to preserve leading spaces
-            string leadingChars = namePart.Substring(0, namePart.Length - baseNameForCheck.Length);
+            // Get the leading chars that were trimmed
+            int leadingCharsLength = 0;
+            for (int i = 0; i < namePart.Length; i++)
+            {
+                char c = namePart[i];
+                if (c == '.' || c == ' ' || c == '\t')
+                    leadingCharsLength++;
+                else
+                    break;
+            }
+            string leadingChars = namePart.Substring(0, leadingCharsLength);
             
-            // Further trim leading spaces and dots to get the core name for checking
-            baseNameForCheck = baseNameForCheck.TrimStart(' ', '\t', '.');
+            // Get the trailing chars that were trimmed (from the end of the name after removing leading chars)
+            string remainingAfterLeadingTrim = namePart.Substring(leadingCharsLength);
+            int trailingCharsLength = 0;
+            for (int i = remainingAfterLeadingTrim.Length - 1; i >= 0; i--)
+            {
+                char c = remainingAfterLeadingTrim[i];
+                if (c == '.' || c == ' ' || c == '\t')
+                    trailingCharsLength++;
+                else
+                    break;
+            }
             
-            // Normalize for comparison with reserved names
-            string? normalizedForCheck = _unicodeNormalizationService.Normalize(baseNameForCheck);
+            // Check if the core name (before trimming) starts with a reserved name
+            // This handles cases like "COM1.tar" where "COM1" is reserved but embedded in a longer name
+            string actualCoreName = coreName;
+            bool isReserved = false;
+            string matchedReservedName = null;
+            
+            // First, check if the original core name starts with a reserved name (for embedded cases)
+            foreach (string reservedName in ReservedWindowsFileNames)
+            {
+                if (coreName.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Verify that what follows is not alphanumeric (to avoid false positives)
+                    int reservedNameLength = reservedName.Length;
+                    if (reservedNameLength <= coreName.Length)
+                    {
+                        if (reservedNameLength == coreName.Length)
+                        {
+                            // Exact match
+                            isReserved = true;
+                            matchedReservedName = reservedName;
+                            actualCoreName = coreName.Substring(0, reservedNameLength); // Use original case
+                            break;
+                        }
+                        else
+                        {
+                            // Check the character after the reserved name
+                            char nextChar = coreName[reservedNameLength];
+                            if (!char.IsLetterOrDigit(nextChar))
+                            {
+                                // The reserved name is followed by a non-alphanumeric character, so it's a match
+                                isReserved = true;
+                                matchedReservedName = reservedName;
+                                actualCoreName = coreName.Substring(0, reservedNameLength); // Use original case
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (!isReserved)
+            {
+                // Check if the core name is reserved (full match)
+                foreach (string reservedName in ReservedWindowsFileNames)
+                {
+                    if (string.Equals(coreName, reservedName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isReserved = true;
+                        actualCoreName = coreName; // Use the original case
+                        break;
+                    }
+                }
+            }
 
-            // Check if the core name is reserved
-            bool isReserved = ReservedWindowsFileNames.Contains(baseNameForCheck) ||
-                              (!string.IsNullOrEmpty(normalizedForCheck) && ReservedWindowsFileNames.Contains(normalizedForCheck));
+            // If not found as original, try normalization to detect homoglyphs
+            if (!isReserved)
+            {
+                // Normalize the core name to detect homoglyphs
+                string? normalizedCore = _unicodeNormalizationService.Normalize(coreName);
+                
+                if (normalizedCore != null && !string.Equals(coreName, normalizedCore, StringComparison.Ordinal))
+                {
+                    // It's a homoglyph - check if the normalized form is a reserved name
+                    foreach (string reservedName in ReservedWindowsFileNames)
+                    {
+                        if (string.Equals(normalizedCore, reservedName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // This is a homoglyph of a reserved name
+                            isReserved = true;
+                            actualCoreName = normalizedCore; // Use the normalized form
+                            break;
+                        }
+                    }
+                    
+                    // Also check for embedded reserved names in the normalized form
+                    if (!isReserved)
+                    {
+                        foreach (string reservedName in ReservedWindowsFileNames)
+                        {
+                            if (normalizedCore.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                int reservedNameLength = reservedName.Length;
+                                if (reservedNameLength <= normalizedCore.Length)
+                                {
+                                    if (reservedNameLength == normalizedCore.Length)
+                                    {
+                                        // Exact match with normalized form
+                                        isReserved = true;
+                                        actualCoreName = normalizedCore; // Use the normalized form
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        // Check the character after the reserved name in normalized form
+                                        char nextChar = normalizedCore[reservedNameLength];
+                                        if (!char.IsLetterOrDigit(nextChar))
+                                        {
+                                            // The reserved name is followed by a non-alphanumeric character in normalized form
+                                            isReserved = true;
+                                            actualCoreName = normalizedCore.Substring(0, reservedNameLength); // Use the matching part
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             if (isReserved)
             {
                 // For reserved names, construct the result by using leading characters from the original name
-                // and adding an underscore to the normalized base name (for security)
+                // and adding an underscore to the base name
                 
-                // Use the normalized form of the base name to prevent homoglyph spoofing
-                string baseNameForResult = !string.IsNullOrEmpty(normalizedForCheck) ? normalizedForCheck : baseNameForCheck;
+                // Determine the base name to use in the result
+                // If we detected it as a homoglyph, actualCoreName is already the normalized form
+                // Otherwise, it's the original form
+                string coreNameForResult = actualCoreName;
                 
-                // The new name part is: leading characters + base name (normalized if changed) + underscore
-                string newNamePart = leadingChars + baseNameForResult + "_";
+                // The new name part is: leading characters + core name (normalized if it was a homoglyph) + underscore + rest of name after reserved part
+                // For homoglyphs that matched exactly, there's no "rest" - for embedded matches, there might be
+                string restOfName = coreName.Length > actualCoreName.Length ? coreName.Substring(actualCoreName.Length) : "";
+                
+                // For homoglyphs, we use the normalized form, so no need to normalize again
+                string newNamePart = leadingChars + coreNameForResult + "_" + restOfName;
                 
                 return newNamePart + extensionPart;
             }
