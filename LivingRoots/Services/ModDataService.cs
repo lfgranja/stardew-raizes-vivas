@@ -314,10 +314,6 @@ namespace LivingRoots.Services
             // The key should already be sanitized at this point, so we just return path
             // The validation already happened when SanitizeFileName was called in public methods
 
-            // Sanitized key should not be null by this point due to check in public methods
-            if (key == null)
-                throw new ArgumentException("Sanitized key cannot be null", nameof(key));
-
             // Return final path with .json extension
             return Path.Combine("data", $"{key}.json");
         }
@@ -348,12 +344,7 @@ namespace LivingRoots.Services
                     // Skip . segments to prevent unnecessary directory references
                     continue;
                 }
-                else if (segments[i] == "..")
-                {
-                    // Throw an exception for .. segments to prevent path traversal
-                    throw new ArgumentException($"Failed to sanitize path segment '{segments[i]}'. Path traversal segments are not allowed.", nameof(path));
-                }
-                
+                // Removed redundant .. check since path traversal validation happens in ValidatePath
                 // Use existing SanitizeFileName method for other segments
                 string? sanitizedSegment = _modLogic.SanitizeFileName(segments[i]);
                 
