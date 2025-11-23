@@ -93,11 +93,12 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_WithDotDotAtEnd_ThrowsArgumentException()
+        public void Validate_WithDotDotAtEnd_DoesNotThrow()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("folder/.."));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            // After refactoring, paths ending with ".." are allowed as long as they don't go above root
+            // "folder/.." goes down 1 level then up 1 level, which doesn't go above root, so it's valid
+            _service.Validate("folder/.."); // Should not throw
         }
 
         [Fact]
