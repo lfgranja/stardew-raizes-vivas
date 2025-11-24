@@ -11,14 +11,14 @@ namespace LivingRoots.Controllers
     /// </summary>
     public class ModController : IDisposable
     {
-        private bool _disposed = false;
+        private volatile bool _disposed = false;
         private readonly IModHelper _helper;
         private readonly IMonitor _monitor;
         private readonly IManifest _manifest;
         private readonly IModDataService _modDataService;
         private readonly object _registrationLock = new object();
         
-        private bool _eventsRegistered = false;
+        private volatile bool _eventsRegistered = false;
         
         /// <summary>
         /// Tracks whether the 'lr_version' console command has been registered to prevent duplicate registrations.
@@ -26,7 +26,7 @@ namespace LivingRoots.Controllers
         /// the command remains active until the mod is disposed. This flag ensures the command is only
         /// registered once even if the GameLaunched event fires multiple times or during mod reloads.
         /// </summary>
-        private bool _commandRegistered = false;
+        private volatile bool _commandRegistered = false;
         
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
 
@@ -157,49 +157,30 @@ namespace LivingRoots.Controllers
             {
                 _monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
                 
-                // Use non-blocking lock with timeout to prevent potential deadlocks
-                // This replaces the previous blocking lock that could cause deadlocks
-                if (Monitor.TryEnter(_registrationLock, 50)) // 50ms timeout
+                // Remove lock usage and use volatile boolean check instead
+                // Since we're not using Interlocked.CompareExchange with bool, we'll use a simple volatile check
+                if (!_commandRegistered)
                 {
-                    try
+                    // Register console command only if not already registered
+                    if (_helper?.ConsoleCommands != null)
                     {
-                        // Register console command only if not already registered
-                        if (_helper?.ConsoleCommands != null)
-                        {
-                            // Check if command is already registered to prevent duplicate registration
-                            // This is important because SMAPI doesn't provide a way to remove console commands directly
-                            // The _commandRegistered flag ensures idempotent behavior across reloads or multiple Entry calls
-                            if (!_commandRegistered)
-                            {
-                                _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
-                                _commandRegistered = true;
-                                _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
-                            }
-                            else
-                            {
-                                _monitor.Log("Console command 'lr_version' is already registered, skipping registration.", LogLevel.Trace);
-                            }
-                        }
-                        
-                        // Unsubscribe from the GameLaunched event to ensure this handler runs only once
-                        // This prevents multiple invocations during mod reloads, making the "run-once" behavior more robust
-                        if (_helper?.Events?.GameLoop != null && _onGameLaunchedHandler != null)
-                        {
-                            _helper.Events.GameLoop.GameLaunched -= _onGameLaunchedHandler;
-                            _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
-                            _monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
-                        }
-                    }
-                    finally
-                    {
-                        // Always release the lock in the finally block
-                        Monitor.Exit(_registrationLock);
+                        _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
+                        _commandRegistered = true;
+                        _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
                     }
                 }
                 else
                 {
-                    // Log a message if lock contention occurs and skip registration
-                    _monitor.Log("Timeout while attempting to acquire registration lock in OnGameLaunched. Skipping registration to prevent deadlock.", LogLevel.Warn);
+                    _monitor.Log("Console command 'lr_version' is already registered, skipping registration.", LogLevel.Trace);
+                }
+                
+                // Unsubscribe from the GameLaunched event to ensure this handler runs only once
+                // This prevents multiple invocations during mod reloads, making the "run-once" behavior more robust
+                if (_helper?.Events?.GameLoop != null && _onGameLaunchedHandler != null)
+                {
+                    _helper.Events.GameLoop.GameLaunched -= _onGameLaunchedHandler;
+                    _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
+                    _monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
                 }
             }
             catch (Exception ex)
