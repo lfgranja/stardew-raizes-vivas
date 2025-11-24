@@ -105,10 +105,26 @@ namespace LivingRoots.Domain
                     }
                     // Perform final cleanup after all processing
                     safeResult = PerformFinalCleanup(safeResult, true);
+                    
+                    // Check length after creating the blocked extension result
+                    if (safeResult.Length > MaxFileNameLength)
+                    {
+                        safeResult = TruncateToMaxLength(safeResult);
+                    }
+                    
                     // Handle reserved Windows filenames
                     string? hiddenReservedResult = _reservedNameHandler.Handle(safeResult);
                     if (hiddenReservedResult == null)
                         throw new ArgumentException("Filename sanitizes to an empty string.", nameof(hiddenReservedResult));
+                    
+                    // Recheck length after reserved-name handling to ensure filename doesn't exceed MaxFileNameLength
+                    // This is necessary because the reserved name handler might add characters (e.g., underscores) to the name
+                    if (hiddenReservedResult.Length > MaxFileNameLength)
+                    {
+                        hiddenReservedResult = TruncateToMaxLength(hiddenReservedResult);
+                        // Apply final cleanup after truncation to ensure proper formatting
+                        hiddenReservedResult = PerformFinalCleanup(hiddenReservedResult, true);
+                    }
                     return hiddenReservedResult;
                 }
                 else
@@ -123,10 +139,26 @@ namespace LivingRoots.Domain
                     }
                     // Perform final cleanup after all processing
                     safeResult = PerformFinalCleanup(safeResult, false);
+                    
+                    // Check length after creating the blocked extension result
+                    if (safeResult.Length > MaxFileNameLength)
+                    {
+                        safeResult = TruncateToMaxLength(safeResult);
+                    }
+                    
                     // Handle reserved Windows filenames
                     string? nonHiddenReservedResult = _reservedNameHandler.Handle(safeResult);
                     if (nonHiddenReservedResult == null)
                         throw new ArgumentException("Filename sanitizes to an empty string.", nameof(nonHiddenReservedResult));
+                    
+                    // Recheck length after reserved-name handling to ensure filename doesn't exceed MaxFileNameLength
+                    // This is necessary because the reserved name handler might add characters (e.g., underscores) to the name
+                    if (nonHiddenReservedResult.Length > MaxFileNameLength)
+                    {
+                        nonHiddenReservedResult = TruncateToMaxLength(nonHiddenReservedResult);
+                        // Apply final cleanup after truncation to ensure proper formatting
+                        nonHiddenReservedResult = PerformFinalCleanup(nonHiddenReservedResult, false);
+                    }
                     return nonHiddenReservedResult;
                 }
             }
@@ -305,6 +337,15 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Filename sanitizes to an empty string.", nameof(reservedResult));
 
             result = reservedResult;
+
+            // Recheck length after reserved-name handling to ensure filename doesn't exceed MaxFileNameLength
+            // This is necessary because the reserved name handler might add characters (e.g., underscores) to the name
+            if (result.Length > MaxFileNameLength)
+            {
+                result = TruncateToMaxLength(result);
+                // Apply final cleanup after truncation to ensure proper formatting
+                result = PerformFinalCleanup(result, shouldBeHiddenFile);
+            }
 
             // Final check: After all processing, check if the result is empty or invalid
             // This is important for cases like "..exe" where the name part ".." becomes empty after processing
@@ -608,7 +649,8 @@ namespace LivingRoots.Domain
             var blockedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 ".exe", ".dll", ".bat", ".sh", ".ps1", ".cmd", ".com", ".scr", ".pif", ".lnk", 
-                ".msi", ".msp", ".vbs", ".js", ".jse", ".wsf", ".wsh", ".hta", ".cpl", ".msc", ".inf"
+                ".msi", ".msp", ".vbs", ".js", ".jse", ".wsf", ".wsh", ".hta", ".cpl", ".msc", ".inf",
+                ".py", ".rb", ".apk", ".ipa", ".jar", ".msix", ".appx", ".reg", ".iso", ".img", ".pkg", ".dmg"
             };
 
             return blockedExtensions.Contains(extension);
