@@ -100,19 +100,19 @@ namespace LivingRoots.Services
             
             try
             {
-            var path = GetFilePath(sanitizedKey);
-            
-            // Directly attempt to read the file without checking existence first to avoid TOCTOU race condition
-            var result = _helper.Data.ReadJsonFile<T>(path);
-            
-            if (result == null)
-            {
-                // File does not exist or contains no valid data
-                _monitor.Log($"File not found or contains no valid data while loading for key '{sanitizedKey}': {path}", LogLevel.Warn);
-                return null;
-            }
-            
-            return result;
+                var path = GetFilePath(sanitizedKey);
+                
+                // Directly attempt to read the file without checking existence first to avoid TOCTOU race condition
+                var result = _helper.Data.ReadJsonFile<T>(path);
+                
+                if (result == null)
+                {
+                    // File does not exist or contains no valid data
+                    _monitor.Log($"File not found or contains no valid data while loading for key '{sanitizedKey}': {path}", LogLevel.Warn);
+                    return null;
+                }
+                
+                return result;
             }
             catch (ArgumentException ex)
             {
@@ -313,30 +313,6 @@ namespace LivingRoots.Services
             string sanitizedKey = SanitizePathSegments(key);
             if (string.IsNullOrWhiteSpace(sanitizedKey))
                 throw new ArgumentException($"Failed to sanitize key '{key}'. Sanitized key cannot be null or whitespace.", nameof(key));
-            
-            return sanitizedKey;
-        }
-        
-        /// <summary>
-        /// Validates and sanitizes key for RemoveData method, which has different error handling
-        /// </summary>
-        /// <param name="key">The key to validate and sanitize</param>
-        /// <returns>The sanitized key, or null if validation fails and method should return early</returns>
-        private string? GetValidatedAndSanitizedKeyForRemove(string key)
-        {
-            if (string.IsNullOrWhiteSpace(key))
-                throw new ArgumentException("Key cannot be null or empty", nameof(key));
-            
-            // Validate raw key first to catch path traversal attempts
-            _modLogic.ValidatePath(key);
-            
-            // Sanitize key once before try-catch block to prevent exceptions during error handling
-            string sanitizedKey = SanitizePathSegments(key);
-            if (string.IsNullOrWhiteSpace(sanitizedKey))
-            {
-                _monitor.Log($"Failed to sanitize key '{key}'. Cannot remove data with null or whitespace sanitized key.", LogLevel.Warn);
-                return null; // Return null to signal early return instead of exception
-            }
             
             return sanitizedKey;
         }
