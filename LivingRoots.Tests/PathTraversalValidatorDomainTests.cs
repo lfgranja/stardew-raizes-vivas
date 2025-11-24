@@ -15,7 +15,7 @@ namespace LivingRoots.Tests
             var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
             mockUnicodeService.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
             
-            _service = new PathValidationService(mockUnicodeService.Object, new PathTraversalValidator());
+            _service = new PathValidationService(mockUnicodeService.Object);
         }
 
         [Fact]
