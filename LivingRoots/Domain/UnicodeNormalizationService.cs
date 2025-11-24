@@ -89,7 +89,7 @@ namespace LivingRoots.Domain
                         resultBuilder.Append(c);
                     }
                 }
-                else if (category == UnicodeCategory.Control || category == UnicodeCategory.Format)
+                else if (category == UnicodeCategory.Control || IsZeroWidthOrBidirectional(c))
                 {
                     // Remove control and format characters completely to avoid creating false word boundaries
                     // This prevents format characters from being replaced with underscores which could alter string semantics
