@@ -402,7 +402,7 @@ namespace LivingRoots.Tests
             
             // Mock ReadJsonFile to throw FileNotFoundException which is what happens when file doesn't exist
             testDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(new FileNotFoundException());
-            
+
             // Act
             var result = serviceWithDir.LoadData<object>("test_key");
 
@@ -911,7 +911,7 @@ namespace LivingRoots.Tests
             
             // Assert
             Assert.False(result);
-            mockMonitor.Verify(x => x.Log(
+            _mockMonitor.Verify(x => x.Log(
                 It.Is<string>(msg => msg.Contains("Helper.Data is null in DataExists method")),
                 LogLevel.Error), Times.Once);
         }
