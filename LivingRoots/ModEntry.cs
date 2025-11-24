@@ -28,7 +28,7 @@ namespace LivingRoots
             var unicodeNormalizationService = new UnicodeNormalizationService();
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
             var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
-            var pathValidationService = new PathValidationService(unicodeNormalizationService, new PathTraversalValidator());
+            var pathValidationService = new PathValidationService(unicodeNormalizationService);
             var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
             
             // Create application services
