@@ -53,6 +53,26 @@ namespace LivingRoots.Domain
             string extension = GetFileExtension(normalized);
             string nameWithoutExtension = RemoveFileExtension(normalized);
 
+            // Reject empty base names early in the filename sanitization process
+            if (string.IsNullOrEmpty(nameWithoutExtension) && !string.IsNullOrEmpty(extension))
+            {
+                // If the name part is empty but there's an extension, this could be a security risk
+                // For example ".exe" -> name part is empty, but there's a dangerous extension
+                if (IsBlockedExtension(extension))
+                {
+                    // If the name part is empty but there's a blocked extension, create a safe filename
+                    // For hidden files (starting with dot), we preserve the dot
+                    if (normalized.StartsWith(".", StringComparison.Ordinal))
+                    {
+                        return ".file.blocked";
+                    }
+                    else
+                    {
+                        return "file.blocked";
+                    }
+                }
+            }
+
             // Sanitize characters by replacing invalid ones (this follows the original approach but with security enhancements)
             string sanitized = SanitizeInvalidCharacters(nameWithoutExtension);
 
@@ -649,6 +669,13 @@ namespace LivingRoots.Domain
         /// <returns>True if the extension should be blocked, false otherwise.</returns>
         private static bool IsBlockedExtension(string extension)
         {
+            if (string.IsNullOrEmpty(extension))
+                return false;
+            
+            // Normalize the extension to prevent Unicode homoglyph bypasses
+            var normalizedExtension = extension.Normalize(NormalizationForm.FormC);
+            
+            // Using HashSet for automatic duplicate removal and fast lookup
             var blockedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 ".exe", ".dll", ".bat", ".sh", ".ps1", ".cmd", ".com", ".scr", ".pif", ".lnk", 
@@ -661,7 +688,7 @@ namespace LivingRoots.Domain
                 ".msp", ".mst", ".vxd", ".acm", ".ax", ".efi", ".fon", ".ime", ".kbd", ".scr", ".vbx", ".xll"
             };
 
-            return blockedExtensions.Contains(extension);
+            return blockedExtensions.Contains(normalizedExtension);
         }
 
         /// <summary>
