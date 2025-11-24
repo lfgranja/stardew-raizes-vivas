@@ -58,9 +58,9 @@ namespace LivingRoots.Domain
                     // For surrogate pairs (like emojis), preserve them as-is
                     resultBuilder.Append(c);
                     resultBuilder.Append(decomposed[i + 1]);
-                    // For surrogate pairs, use the high surrogate as the base character (imperfect but functional)
-                    lastBaseChar = c;
-                    i++; // Skip low surrogate since we've processed it
+                    // For surrogate pairs, use the high surrogate as the base character for diacritic processing
+                    // However, since surrogate pairs represent a single character, we should not treat them as base characters for diacritic removal
+                    i++; // Skip the low surrogate since we've processed it
                     continue;
                 }
 
@@ -98,7 +98,11 @@ namespace LivingRoots.Domain
                 else
                 {
                     // Update the last base character for any non-combining, non-control/format character
-                    lastBaseChar = c;
+                    // Only update lastBaseChar for actual base characters, not surrogate pairs or combining marks
+                    if (!char.IsSurrogate(c))
+                    {
+                        lastBaseChar = c;
+                    }
                     
                     // Check for security confusables (homoglyphs that should be converted)
                     // Apply context-aware conversion for security homoglyphs
