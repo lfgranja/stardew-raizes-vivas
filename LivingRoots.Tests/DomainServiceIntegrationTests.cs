@@ -29,7 +29,7 @@ namespace LivingRoots.Tests
             var mockUnicodeForPathValidation = new Mock<IUnicodeNormalizationService>();
             mockUnicodeForPathValidation.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
             
-            _pathValidationService = new PathValidationService(mockUnicodeForPathValidation.Object, new PathTraversalValidator());
+            _pathValidationService = new PathValidationService(mockUnicodeForPathValidation.Object);
         }
 
         [Fact]
