@@ -34,26 +34,21 @@ namespace LivingRoots.Domain
             if (string.IsNullOrEmpty(filename))
                 return filename;
 
-            // For UNC paths (starting with \\) and rooted paths, extract the actual filename
-            string? directoryPath = null;
-            string fullFileName = filename;
+            // Use Path.GetFileName and Path.GetDirectoryName for all paths (both UNC and regular)
+            string? directoryPath = Path.GetDirectoryName(filename);
+            string fullFileName = Path.GetFileName(filename);
 
-            // Check if this is a UNC path (starts with \\) or if Path.GetFileName can extract the filename
-            if (filename.StartsWith(@"\\"))
+            // On Unix-like systems, UNC paths starting with \\ may not be handled properly by Path.GetDirectoryName
+            // So we need to handle them manually if Path.GetDirectoryName returns null/empty for UNC paths
+            if (string.IsNullOrEmpty(directoryPath) && !string.IsNullOrEmpty(filename) && filename.StartsWith(@"\\"))
             {
-                // For UNC paths, manually extract the filename by finding the last backslash
+                // For UNC paths, manually extract the filename to ensure correct behavior across platforms
                 int lastBackslashIndex = filename.LastIndexOf('\\');
                 if (lastBackslashIndex >= 0 && lastBackslashIndex < filename.Length - 1)
                 {
-                    directoryPath = filename.Substring(0, lastBackslashIndex + 1);
+                    directoryPath = filename.Substring(0, lastBackslashIndex);
                     fullFileName = filename.Substring(lastBackslashIndex + 1);
                 }
-            }
-            else
-            {
-                // For regular paths, use Path.GetFileName and Path.GetDirectoryName
-                directoryPath = Path.GetDirectoryName(filename);
-                fullFileName = Path.GetFileName(filename);
             }
 
             // If Path.GetFileName or our manual extraction returns an empty string, 
@@ -72,10 +67,12 @@ namespace LivingRoots.Domain
             // Rebuild path with processed filename
             if (!string.IsNullOrEmpty(directoryPath))
             {
-                // For UNC paths, we need to handle the path joining manually to avoid extra separators
-                if (directoryPath.StartsWith(@"\\"))
+                // For UNC paths, we need to ensure proper path reconstruction
+                if (filename.StartsWith(@"\\"))
                 {
-                    return directoryPath + processedFileName;
+                    // If the original was a UNC path, ensure we reconstruct it properly
+                    // Use backslashes consistently for UNC paths
+                    return directoryPath + "\\" + processedFileName;
                 }
                 else
                 {
@@ -106,7 +103,7 @@ namespace LivingRoots.Domain
             string namePart, extensionPart = "";
             
             int lastDotIndex = filename.LastIndexOf('.');
-            // Only consider it an extension if the dot is not at the beginning or end and there's content after it
+            // Only consider it an extension if the dot is not at beginning or end and there's content after it
             if (lastDotIndex > 0 && lastDotIndex < filename.Length - 1)
             {
                 namePart = filename.Substring(0, lastDotIndex);
