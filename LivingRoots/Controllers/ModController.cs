@@ -157,34 +157,49 @@ namespace LivingRoots.Controllers
             {
                 _monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
                 
-                lock (_registrationLock)
+                // Use non-blocking lock with timeout to prevent potential deadlocks
+                // This replaces the previous blocking lock that could cause deadlocks
+                if (Monitor.TryEnter(_registrationLock, 50)) // 50ms timeout
                 {
-                    // Register console command only if not already registered
-                    if (_helper?.ConsoleCommands != null)
+                    try
                     {
-                        // Check if command is already registered to prevent duplicate registration
-                        // This is important because SMAPI doesn't provide a way to remove console commands directly
-                        // The _commandRegistered flag ensures idempotent behavior across reloads or multiple Entry calls
-                        if (!_commandRegistered)
+                        // Register console command only if not already registered
+                        if (_helper?.ConsoleCommands != null)
                         {
-                            _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
-                            _commandRegistered = true;
-                            _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+                            // Check if command is already registered to prevent duplicate registration
+                            // This is important because SMAPI doesn't provide a way to remove console commands directly
+                            // The _commandRegistered flag ensures idempotent behavior across reloads or multiple Entry calls
+                            if (!_commandRegistered)
+                            {
+                                _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
+                                _commandRegistered = true;
+                                _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+                            }
+                            else
+                            {
+                                _monitor.Log("Console command 'lr_version' is already registered, skipping registration.", LogLevel.Trace);
+                            }
                         }
-                        else
+                        
+                        // Unsubscribe from the GameLaunched event to ensure this handler runs only once
+                        // This prevents multiple invocations during mod reloads, making the "run-once" behavior more robust
+                        if (_helper?.Events?.GameLoop != null && _onGameLaunchedHandler != null)
                         {
-                            _monitor.Log("Console command 'lr_version' is already registered, skipping registration.", LogLevel.Trace);
+                            _helper.Events.GameLoop.GameLaunched -= _onGameLaunchedHandler;
+                            _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
+                            _monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
                         }
                     }
-                    
-                    // Unsubscribe from the GameLaunched event to ensure this handler runs only once
-                    // This prevents multiple invocations during mod reloads, making the "run-once" behavior more robust
-                    if (_helper?.Events?.GameLoop != null && _onGameLaunchedHandler != null)
+                    finally
                     {
-                        _helper.Events.GameLoop.GameLaunched -= _onGameLaunchedHandler;
-                        _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
-                        _monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
+                        // Always release the lock in the finally block
+                        Monitor.Exit(_registrationLock);
                     }
+                }
+                else
+                {
+                    // Log a message if lock contention occurs and skip registration
+                    _monitor.Log("Timeout while attempting to acquire registration lock in OnGameLaunched. Skipping registration to prevent deadlock.", LogLevel.Warn);
                 }
             }
             catch (Exception ex)
