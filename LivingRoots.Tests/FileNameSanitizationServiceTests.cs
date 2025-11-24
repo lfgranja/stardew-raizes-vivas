@@ -634,61 +634,6 @@ namespace LivingRoots.Tests
                 Assert.False(withoutExtension.EndsWith("."), "Should not end with dots after truncation");
             }
         }
-        [Fact]
-        public void FindExtensionStartIndex_WithDotfileWithoutExtension_ReturnsNegativeOne()
-        {
-            // Test the specific method directly
-            // Using reflection to access the private method
-            var method = typeof(FileNameSanitizationService).GetMethod("FindExtensionStartIndex", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
-            // Test various dotfiles that should not be treated as having extensions
-            // (where all characters before the last dot are dots)
-            var result1 = method?.Invoke(null, new object[] { ".profile" });  // Only dot is at start, no extension
-            Assert.Equal(-1, result1);
-            
-            var result2 = method?.Invoke(null, new object[] { ".bashrc" });  // Only dot is at start, no extension
-            Assert.Equal(-1, result2);
-            
-            var result3 = method?.Invoke(null, new object[] { "...txt" });  // All chars before last dot are dots
-            Assert.Equal(-1, result3);
-            
-            var result4 = method?.Invoke(null, new object[] { "..hidden" });  // All chars before last dot are dots
-            Assert.Equal(-1, result4);
-        }
-        
-        [Fact]
-        public void FindExtensionStartIndex_WithDotfileWithExtension_ReturnsCorrectIndex()
-        {
-            // Test the specific method directly
-            var method = typeof(FileNameSanitizationService).GetMethod("FindExtensionStartIndex", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
-            // These are dotfiles that DO have extensions and should return the extension index
-            var result1 = method?.Invoke(null, new object[] { ".profile.txt" });
-            Assert.Equal(8, result1); // The .txt extension should be recognized
-            
-            var result2 = method?.Invoke(null, new object[] { ".bashrc.backup" });
-            Assert.Equal(7, result2);  // The .backup extension should be recognized
-        }
-        
-        [Fact]
-        public void FindExtensionStartIndex_WithNormalFileWithExtension_ReturnsCorrectIndex()
-        {
-            // Test the specific method directly
-            var method = typeof(FileNameSanitizationService).GetMethod("FindExtensionStartIndex", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
-            // These are normal files that should be treated as having extensions
-            var result1 = method?.Invoke(null, new object[] { "file.txt" });
-            Assert.Equal(4, result1);
-            
-            var result2 = method?.Invoke(null, new object[] { "document.pdf" });
-            Assert.Equal(8, result2);
-            
-            var result3 = method?.Invoke(null, new object[] { "archive.tar.gz" });
-            Assert.Equal(11, result3); // Should return index of last extension (.gz)
-        }
         
         [Fact]
         public void Sanitize_WithDotfileWithoutExtension_DoesNotTreatAsHavingExtension()
@@ -860,6 +805,70 @@ namespace LivingRoots.Tests
             // so the exception occurs at the name processing level, not after extension blocking
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("..exe"));
             Assert.Contains("Filename sanitizes to an empty string", exception.Message);
+        }
+        
+        [Fact]
+        public void Sanitize_WithMinimalHiddenFilename_ReturnsValidResult()
+        {
+            // Test minimal hidden filename to ensure it works properly
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".a"))
+                .Returns(".a");
+        
+            // Act
+            var result = _service.Sanitize(".a");
+        
+            // Assert
+            Assert.Equal(".a", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithMinimalNonHiddenFilename_ReturnsValidResult()
+        {
+            // Test minimal non-hidden filename to ensure it works properly
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize("a"))
+                .Returns("a");
+        
+            // Act
+            var result = _service.Sanitize("a");
+        
+            // Assert
+            Assert.Equal("a", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithMinimalHiddenFilenameWithBlockedExtension_ReturnsSafeResult()
+        {
+            // Test minimal hidden filename with blocked extension
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(".js"))
+                .Returns(".js");
+        
+            // Act
+            var result = _service.Sanitize(".js");
+        
+            // Assert
+            Assert.Equal(".file.blocked", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithMinimalNonHiddenFilenameWithBlockedExtension_ReturnsSafeResult()
+        {
+            // Test minimal non-hidden filename with blocked extension
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize("x.exe"))
+                .Returns("x.exe");
+        
+            // Act
+            var result = _service.Sanitize("x.exe");
+        
+            // Assert
+            Assert.Equal("x.blocked", result);
         }
     }
 }

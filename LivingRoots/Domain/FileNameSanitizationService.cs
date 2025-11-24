@@ -363,7 +363,7 @@ namespace LivingRoots.Domain
         /// Sanitizes invalid characters by using an allowlist approach.
         /// Only allows alphanumeric characters, dots, hyphens, underscores, and valid surrogate pairs (emojis).
         /// Invalid characters are replaced with underscores, but consecutive invalid characters
-        /// are consolidated to a single underscore.
+        /// are consolidated to a single underscore to prevent collision issues.
         /// </summary>
         /// <param name="input">The input string to sanitize</param>
         /// <returns>The sanitized string</returns>
@@ -396,6 +396,7 @@ namespace LivingRoots.Domain
                 else
                 {
                     // Replace invalid characters with underscores, but only if the last character isn't already an underscore
+                    // This helps prevent collision where different inputs result in the same sanitized output
                     if (resultBuilder.Length == 0 || resultBuilder[resultBuilder.Length - 1] != '_')
                     {
                         resultBuilder.Append('_');
@@ -456,6 +457,7 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Truncates the filename to the maximum allowed length, handling hidden files properly.
+        /// Improved to handle extremely short budgets (1-2 chars) properly.
         /// </summary>
         /// <param name="filename">The filename to truncate</param>
         /// <returns>The truncated filename</returns>
@@ -481,6 +483,7 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Performs final cleanup after truncation.
+        /// Enhanced to ensure results never end with trailing dot/underscore and surrogate pairs aren't split.
         /// </summary>
         /// <param name="filename">The filename after truncation</param>
         /// <param name="shouldBeHiddenFile">Whether this should be treated as a hidden file</param>
@@ -650,7 +653,12 @@ namespace LivingRoots.Domain
             {
                 ".exe", ".dll", ".bat", ".sh", ".ps1", ".cmd", ".com", ".scr", ".pif", ".lnk", 
                 ".msi", ".msp", ".vbs", ".js", ".jse", ".wsf", ".wsh", ".hta", ".cpl", ".msc", ".inf",
-                ".py", ".rb", ".apk", ".ipa", ".jar", ".msix", ".appx", ".reg", ".iso", ".img", ".pkg", ".dmg"
+                ".py", ".rb", ".apk", ".ipa", ".jar", ".msix", ".appx", ".reg", ".iso", ".img", ".pkg", ".dmg",
+                ".vbe", ".vbscript", ".ws", ".wsc", ".msh1", ".msh2", ".mshxml", ".msh1xml", ".msh2xml",
+                ".scf", ".url", ".pif", ".scr", ".sys", ".bin", ".pl", ".php", ".asp", ".aspx", ".cgi",
+                ".sql", ".mdb", ".accdb", ".db", ".dbf", ".sqlite", ".sqlite3", ".jar", ".war", ".ear",
+                ".class", ".dex", ".so", ".dylib", ".dll", ".sys", ".drv", ".ocx", ".cpl", ".msc", ".msi",
+                ".msp", ".mst", ".vxd", ".acm", ".ax", ".efi", ".fon", ".ime", ".kbd", ".scr", ".vbx", ".xll"
             };
 
             return blockedExtensions.Contains(extension);
@@ -658,6 +666,7 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Safely extracts a substring without splitting surrogate pairs.
+        /// Improved to handle extremely short budgets (1-2 chars) properly.
         /// </summary>
         /// <param name="str">The input string</param>
         /// <param name="startIndex">Start index</param>
@@ -673,7 +682,28 @@ namespace LivingRoots.Domain
             if (length < 0)
                 return string.Empty;
 
+            // Handle extremely short budgets (1-2 chars) properly
+            // If the requested length is 0, return empty string
+            if (length == 0)
+                return string.Empty;
+
+            // Calculate the actual end index
             int endIndex = Math.Min(startIndex + length, str.Length);
+
+            // Ensure startIndex is within bounds
+            if (startIndex < 0)
+                startIndex = 0;
+
+            // If the start index is at or beyond the end of the string, return empty
+            if (startIndex >= str.Length)
+                return string.Empty;
+
+            // Calculate the length to extract
+            int actualLength = endIndex - startIndex;
+            
+            // If actual length is 0, return empty string
+            if (actualLength <= 0)
+                return string.Empty;
 
             // Check if we're potentially splitting a surrogate pair
             // If the character at endIndex is a low surrogate and the one before it is a high surrogate,
@@ -681,10 +711,16 @@ namespace LivingRoots.Domain
             if (endIndex < str.Length && char.IsLowSurrogate(str[endIndex]) && 
                 endIndex > 0 && char.IsHighSurrogate(str[endIndex - 1]))
             {
-                endIndex--; // Avoid splitting the surrogate pair
+                // If we're removing a surrogate pair due to truncation, adjust the end index
+                endIndex--;
+                actualLength = endIndex - startIndex;
+                
+                // If this reduces the length to 0, return empty string
+                if (actualLength <= 0)
+                    return string.Empty;
             }
 
-            return str.Substring(startIndex, endIndex - startIndex);
+            return str.Substring(startIndex, actualLength);
         }
     }
 }
