@@ -264,15 +264,35 @@ namespace LivingRoots.Services
                 _helper.Data.WriteJsonFile<object>(filePath, null);
                 _monitor.Log($"Removed data for key '{sanitizedKey}' by writing null.", LogLevel.Trace);
             }
+            catch (System.IO.FileNotFoundException ex)
+            {
+                // Log FileNotFoundException as Trace to reduce log noise
+                _monitor.Log($"File not found while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
+                // Continue execution instead of throwing - file already doesn't exist
+            }
+            catch (System.IO.DirectoryNotFoundException ex)
+            {
+                // Log DirectoryNotFoundException as Warn to reduce log noise from non-critical issues
+                _monitor.Log($"Directory not found while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                // Continue execution instead of throwing - directory already doesn't exist
+            }
+            catch (System.UnauthorizedAccessException ex)
+            {
+                // Log UnauthorizedAccessException as Warn to reduce log noise from non-critical issues
+                _monitor.Log($"Access denied while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                // Continue execution instead of throwing - access denied, nothing to remove
+            }
             catch (System.IO.IOException ex)
             {
+                // Log other IOExceptions as Warn to reduce log noise from non-critical issues
                 _monitor.Log($"IOException while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                throw;
+                // Continue execution instead of throwing - IO error, nothing to remove
             }
             catch (Exception ex)
             {
+                // Log unexpected errors as Error and continue execution
                 _monitor.Log($"Unexpected error while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
-                throw;
+                // Continue execution instead of throwing - unexpected error, but don't break the flow
             }
         }
         
