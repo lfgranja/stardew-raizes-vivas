@@ -19,8 +19,9 @@ namespace LivingRoots.Domain
 
         // Regex patterns for detecting encoded path traversal sequences
         // Enhanced to detect more path traversal attack variations including Unicode escapes, URL encoding variations, and hex encodings
+        // Improved to reduce false positives by being more specific about dangerous patterns
         private static readonly Regex EncodedTraversalPattern = new Regex(
-            @"%2e%2e%2[fF]|%2e%2e[/\\]|\.\.%2[fF]|%2e%2e%2e|%5c%2e%2e%5c|%2f%2e%2e%2f|%5c%2e%2e%2f|%2f%2e%2e%5c|%c0%ae%c0%ae|%\u0032e%\u0032e%\u0032f|%u002e%u002e%u002f|%u002e%u002e%u005c|%u2025%u2025%u2025|%e2%80%a5%e2%80%a5%e2%80%a5|%ef%bc%8f%ef%bc%8e%ef%bc%8e%ef%bc%8f|%ef%bc%9c%ef%bc%9e%ef%bc%9c%ef%bc%9e|\.%252e|%252e\.|%252e%252e|%c0%ae%c0%ae|%%32e%%32e%%32f|%%32E%%32F|%25%32%65%25%32%65%25%32%66|%25%32%45%25%32%45%25%32%46|\.%00\.|%00\.\.|%u002e%u002e|%u002f|%u005c|%u2215|%u2216|%uff0f|%uff3c",
+            @"(?:%2e%2e%2[fF]|%2e%2e[/\\]|%2e%2e%00|%%32[eE]%%32[fF]|%25%32%65%25%32%65%25%32%66|%252[eE]%252[eE][/\\%3F%5C%2F]|%c0%ae%c0%ae|%e0%80%ae%e0%80%ae|%f0%80%80%ae%f0%80%80%ae|%c0%2e%c0%2e|%c0%2[fF]|%c0%5[cC]|%c0%af|%e2%80%a5%e2%80%a5%e2%80%a5|%ef%bc%8[fF]%ef%bc%8[eE]%ef%bc%8[eE]%ef%bc%8[fF]|%ef%bc%9[cC]%ef%bc%9[eE]%ef%bc%9[cC]%ef%bc%9[eE]|\.%252[eE]|%252[eE]\.|%252[eE]%252[eE]|\.%00\.|%00\.\.|%u002e%u002e%u002[fF]|%u002e%u002e%u005[cC]|%uff0[eE]%uff0[eE]|%u2024%u2024|%u2025%u2025|%u2026%u2026|%u302e%u3002|%uff0[fF]|%uff3[cC]|%u221[56])",
             RegexOptions.Compiled | RegexOptions.IgnoreCase
         );
 
@@ -45,7 +46,7 @@ namespace LivingRoots.Domain
 
             // Run all validation checks
             ValidateStandaloneDot(normalizedPath);
-            ValidateStandaloneDot(normalizedPath);
+            ValidateStandaloneDotDot(normalizedPath);  // Added this call to remove the duplicate method
             ValidateDotSlashAtStart(normalizedPath);
             ValidateDotDotSlashAtStart(normalizedPath);
             ValidateMixedDotTraversal(normalizedPath);
@@ -147,147 +148,15 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Validates that a path does not contain mixed patterns that combine current directory with traversal like "./../file.txt" or ".\\..\\file.txt"
-        /// These patterns indicate attempts to navigate using current directory markers mixed with traversal
         /// </summary>
         /// <param name="path">The path to validate.</param>
         /// <exception cref="ArgumentException">Thrown when path contains mixed dot traversal patterns</exception>
         private void ValidateMixedDotTraversal(string path)
         {
-            // The original PathTraversalValidator was looking for patterns where current directory markers (.) 
-            // are combined with upward traversal (..) in potentially dangerous ways
-            // Specifically, it was checking for "./../" and ".\\..\\"
-            
-            // The key difference is:
-            // - Dangerous: "./../file.txt" - starts with current directory marker, then goes up, then to another file
-            // - Safe: "folder/./../file.txt" - part of legitimate path resolution
-            
-            // However, looking at the test expectations:
-            // - "./../file.txt" should be blocked (starts with current dir, then traversal)
-            // - "folder/./../file.txt" should be allowed (part of legitimate path resolution)
-            
-            // The issue is that my current Contains check is too broad.
-            // Let me be more specific about the dangerous patterns:
-            
-            // Check for the exact dangerous patterns that start with current directory marker followed by traversal
             if (path.StartsWith("./../") || path.StartsWith(".\\..\\"))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
-            
-            // Also check for these patterns when they appear after a path separator in a dangerous context
-            // But be careful not to catch legitimate patterns like in "folder/./../file.txt"
-            // The key is that the dangerous pattern involves traversal that goes up from a current directory marker
-            
-            // Actually, looking at the test again, "folder/./../file.txt" should be allowed
-            // This means that "/./../" in "folder/./../file.txt" is part of legitimate resolution
-            // whereas "/./../" in "folder/./../../etc/passwd" might be more dangerous
-            
-            // The original PathTraversalValidator logic was probably just checking for the presence of these patterns
-            // regardless of context, but the depth-based validation already handles the actual traversal security.
-            
-            // Looking at the failing test again:
-            // "folder/./../file.txt" should be allowed
-            // This path contains "/./../" but should be allowed because it doesn't go above root level
-            
-            // So maybe I shouldn't block these patterns at all if the depth validation handles the real security concern?
-            // But the test expects "./../file.txt" to be blocked, which suggests I still need this validation.
-            
-            // Let me reconsider the original logic. The PathTraversalValidator was designed to catch
-            // specific patterns that are commonly used in path traversal attacks.
-            // The patterns "./../" and ".\\..\\", when found at the beginning or in certain contexts,
-            // indicate attempts to use current directory markers to manipulate path resolution.
-            
-            // For the test cases:
-            // - "./../file.txt" should be blocked - starts with current directory then goes up then to file
-            // - "folder/./../file.txt" should be allowed - part of normal path resolution
-            
-            // So I should only block the patterns when they're part of a traversal attempt that could be dangerous,
-            // not when they're part of legitimate path resolution.
-            
-            // Actually, let me look at this differently. Maybe the original implementation was right
-            // but I should check if my implementation is catching legitimate paths. 
-            
-            // Wait, I think I misunderstood the test. Let me reread:
-            // The test expects "./../file.txt" to throw an exception (be blocked)
-            // The test expects "folder/./../file.txt" to NOT throw an exception (be allowed)
-            
-            // In my current logic, I'm checking for Contains("/./../") or Contains("\\.\\..\\")
-            // The path "folder/./../file.txt" contains "/./../" so it would be blocked by my current logic
-            // But the test expects it to be allowed.
-            
-            // So I need to NOT block the pattern "/./../" when it's part of legitimate path resolution like "folder/./../file.txt"
-            // But I DO need to block patterns like "./../file.txt" which start with the dangerous pattern.
-            
-            // The original PathTraversalValidator was probably designed to catch the specific patterns
-            // at the beginning or in contexts that are clearly malicious, not all occurrences.
-            
-            // Let me just implement the original logic correctly - only check for the beginning patterns:
-            // Paths that start with "./../" or ".\\..\\"
-            
-            // Actually, that's already covered by ValidateDotSlashAtStart for the beginning part.
-            // The issue might be that I need to think about this differently.
-            
-            // Let me just look at this differently. Maybe the original implementation was catching all such patterns, and the tests were written
-            // with the assumption that certain paths would be blocked by that check.
-            
-            // Looking back at the test failure, it's the second assertion that's failing:
-            // var ex2 = Record.Exception(() => _service.Validate("folder/./../file.txt"));
-            // Assert.Null(ex2);  // This is failing because ex2 is not null (an exception was thrown)
-            
-            // So the issue is that my Contains check is too broad. Let me revert to only checking for
-            // the specific patterns at the beginning of the path or after separators in a dangerous context.
-            
-            // Actually, let me just implement the original logic from PathTraversalValidator:
-            // if (path.Contains("./../") || path.Contains(".\\..\\"))
-            // But this would catch "folder/./../file.txt" which should be allowed.
-            
-            // I think the original implementation was catching all such patterns, and the tests were written
-            // with the assumption that certain paths would be blocked by that check.
-            
-            // Looking back at the test failure, it's the second assertion that's failing:
-            // var ex2 = Record.Exception(() => _service.Validate("folder/./../file.txt"));
-            // Assert.Null(ex2);  // This is failing because ex2 is not null (an exception was thrown)
-            
-            // So the issue is that my Contains check is too broad. Let me just implement
-            // the specific patterns that are clearly dangerous:
-            
-            // Actually, let me just implement the original logic but think about it differently:
-            // The PathTraversalValidator was designed to catch specific attack patterns
-            // that bypass other validations. Since the depth analysis already handles traversal detection,
-            // maybe the ValidateMixedDotTraversal should only catch the most obvious dangerous patterns.
-            
-            // Let me implement a more targeted approach:
-            // Check if the pattern appears at the beginning of the path
-            if (path.StartsWith("./../") || path.StartsWith(".\\..\\"))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
-            
-            // The original logic was likely intended to catch the pattern when it appears in dangerous contexts
-            // For now, let me just implement the original logic but be more nuanced:
-            // Only block if the pattern appears in a context that's clearly dangerous
-            // For example, if it's at the start of the path or followed by separators indicating traversal
-            
-            // Actually, let me just focus on the specific test case. The test expects "folder/./../file.txt" to be allowed.
-            // This path contains the pattern "/./../" but should be allowed because it's part of legitimate path resolution.
-            
-            // The depth analysis in ValidatePathTraversalDepth already handles the actual traversal security,
-            // so maybe the ValidateMixedDotTraversal should only catch patterns in dangerous contexts.
-            
-            // Let me implement a more nuanced approach that only blocks patterns in dangerous contexts:
-            // Check if the pattern appears at the beginning of the path
-            if (path.StartsWith("./../") || path.StartsWith(".\\..\\"))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
-            
-            // The original logic was likely intended to catch specific attack patterns
-            // that bypass other validations. Since the depth analysis already handles traversal detection,
-            // maybe this validation should be more specific.
-            
-            // Let me implement a more nuanced approach that only blocks patterns in dangerous contexts:
-            // By only checking for StartsWith, I allow patterns that appear in the middle of legitimate paths
-            // This means "folder/./../file.txt" will be allowed while "./../file.txt" will be blocked
         }
 
         /// <summary>
