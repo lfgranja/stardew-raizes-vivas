@@ -1,7 +1,6 @@
 using StardewModdingAPI;
 using Newtonsoft.Json;
 using System.IO;
-using System.Text.RegularExpressions;
 using System.Text;
 using System.Globalization;
 using System.Collections.Generic;
@@ -243,13 +242,13 @@ namespace LivingRoots.Services
             if (_helper == null)
             {
                 _monitor.Log("ModHelper is null in RemoveData method. This should not happen under normal circumstances.", LogLevel.Error);
-                return;
+                throw new InvalidOperationException("ModHelper is null in RemoveData method.");
             }
             
             if (_helper.Data == null)
             {
                 _monitor.Log("Helper.Data is null in RemoveData method. This should not happen under normal circumstances.", LogLevel.Error);
-                return;
+                throw new InvalidOperationException("Helper.Data is null in RemoveData method.");
             }
             
             // Perform argument validation before attempting to remove data
@@ -268,31 +267,36 @@ namespace LivingRoots.Services
             {
                 // Log FileNotFoundException as Trace to reduce log noise
                 _monitor.Log($"File not found while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
-                // Continue execution instead of throwing - file already doesn't exist
+                // For critical removal operations, rethrow the exception to signal failure
+                throw;
             }
             catch (System.IO.DirectoryNotFoundException ex)
             {
                 // Log DirectoryNotFoundException as Warn to reduce log noise from non-critical issues
                 _monitor.Log($"Directory not found while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                // Continue execution instead of throwing - directory already doesn't exist
+                // For critical removal operations, rethrow the exception to signal failure
+                throw;
             }
             catch (System.UnauthorizedAccessException ex)
             {
                 // Log UnauthorizedAccessException as Warn to reduce log noise from non-critical issues
                 _monitor.Log($"Access denied while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                // Continue execution instead of throwing - access denied, nothing to remove
+                // For critical removal operations, rethrow the exception to signal failure
+                throw;
             }
             catch (System.IO.IOException ex)
             {
                 // Log other IOExceptions as Warn to reduce log noise from non-critical issues
                 _monitor.Log($"IOException while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
-                // Continue execution instead of throwing - IO error, nothing to remove
+                // For critical removal operations, rethrow the exception to signal failure
+                throw;
             }
             catch (Exception ex)
             {
-                // Log unexpected errors as Error and continue execution
+                // Log unexpected errors as Error and rethrow for critical operations
                 _monitor.Log($"Unexpected error while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
-                // Continue execution instead of throwing - unexpected error, but don't break the flow
+                // Rethrow critical removal failures to ensure proper error handling by callers
+                throw;
             }
         }
         
