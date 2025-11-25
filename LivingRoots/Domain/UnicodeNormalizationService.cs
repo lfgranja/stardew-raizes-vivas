@@ -53,15 +53,27 @@ namespace LivingRoots.Domain
                 char c = decomposed[i];
 
                 // Handle surrogate pairs (needed for emojis and other characters outside BMP)
-                if (char.IsHighSurrogate(c) && i + 1 < decomposed.Length && char.IsLowSurrogate(decomposed[i + 1]))
+                // Enhanced handling to properly process dangling surrogates
+                if (char.IsHighSurrogate(c))
                 {
-                    // For surrogate pairs (like emojis), preserve them as-is
-                    resultBuilder.Append(c);
-                    resultBuilder.Append(decomposed[i + 1]);
-                    // For surrogate pairs, use the high surrogate as the base character for diacritic processing
-                    // However, since surrogate pairs represent a single character, we should not treat them as base characters for diacritic removal
-                    i++; // Skip the low surrogate since we've processed it
-                    continue;
+                    if (i + 1 < decomposed.Length && char.IsLowSurrogate(decomposed[i + 1]))
+                    {
+                        // Valid surrogate pair: preserve as-is
+                        resultBuilder.Append(c);
+                        resultBuilder.Append(decomposed[i + 1]);
+                        i++; // consume low surrogate
+                        continue;
+                    }
+                    else
+                    {
+                        // Dangling high surrogate: skip to avoid ill-formed UTF-16
+                        continue; // or: resultBuilder.Append('_');
+                    }
+                }
+                if (char.IsLowSurrogate(c))
+                {
+                    // Dangling low surrogate: skip to avoid ill-formed UTF-16
+                    continue; // or: resultBuilder.Append('_');
                 }
 
                 var category = CharUnicodeInfo.GetUnicodeCategory(c);
