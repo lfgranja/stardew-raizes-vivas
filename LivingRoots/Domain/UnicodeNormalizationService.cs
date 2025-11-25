@@ -247,29 +247,30 @@ namespace LivingRoots.Domain
             // For example, if a Cyrillic 'е' is surrounded by other Cyrillic characters, preserve it
             // But if it's surrounded by Latin characters, convert it (as it's likely a homoglyph attack)
             
-            // Handle boundary cases: when at the beginning or end of the string
-            bool prevIsCyrillic = index > 0 && IsCyrillicLetter(text[index - 1]);
-            bool nextIsCyrillic = index < text.Length - 1 && IsCyrillicLetter(text[index + 1]);
+            // Look for the previous and next non-combining mark characters to determine context
+            // This ensures we skip combining marks when checking script context
+            int prevIndex = FindPreviousNonMark(text, index);
+            int nextIndex = FindNextNonMark(text, index);
             
             // If at the beginning of the string (no previous character), consider only the next neighbor
-            if (index == 0)
+            if (prevIndex == -1)
             {
                 // If the next character is Cyrillic, preserve this character (return false)
-                if (nextIsCyrillic)
+                if (nextIndex != -1 && IsCyrillicLetter(text[nextIndex]))
                     return false;
             }
             // If at the end of the string (no next character), consider only the previous neighbor
-            else if (index == text.Length - 1)
+            else if (nextIndex == -1)
             {
                 // If the previous character is Cyrillic, preserve this character (return false)
-                if (prevIsCyrillic)
+                if (IsCyrillicLetter(text[prevIndex]))
                     return false;
             }
             // If not at boundaries, check both neighbors as before
             else
             {
                 // If the character is surrounded by Cyrillic letters on BOTH sides, preserve it as part of legitimate Cyrillic text
-                if (prevIsCyrillic && nextIsCyrillic)
+                if (IsCyrillicLetter(text[prevIndex]) && IsCyrillicLetter(text[nextIndex]))
                 {
                     return false; // Don't convert - it's part of legitimate Cyrillic text
                 }
@@ -280,6 +281,48 @@ namespace LivingRoots.Domain
             // - Character is at beginning/end and neighbor is not Cyrillic
             // - Character is in middle and not surrounded by Cyrillic on both sides
             return true;
+        }
+        
+        /// <summary>
+        /// Finds the previous non-combining mark character in the text.
+        /// </summary>
+        /// <param name="text">The text to search</param>
+        /// <param name="startIndex">The starting index to search backwards from</param>
+        /// <returns>The index of the previous non-combining mark character, or -1 if not found</returns>
+        private static int FindPreviousNonMark(string text, int startIndex)
+        {
+            for (int i = startIndex - 1; i >= 0; i--)
+            {
+                var category = CharUnicodeInfo.GetUnicodeCategory(text[i]);
+                if (category != UnicodeCategory.NonSpacingMark && 
+                    category != UnicodeCategory.SpacingCombiningMark && 
+                    category != UnicodeCategory.EnclosingMark)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        
+        /// <summary>
+        /// Finds the next non-combining mark character in the text.
+        /// </summary>
+        /// <param name="text">The text to search</param>
+        /// <param name="startIndex">The starting index to search forwards from</param>
+        /// <returns>The index of the next non-combining mark character, or -1 if not found</returns>
+        private static int FindNextNonMark(string text, int startIndex)
+        {
+            for (int i = startIndex + 1; i < text.Length; i++)
+            {
+                var category = CharUnicodeInfo.GetUnicodeCategory(text[i]);
+                if (category != UnicodeCategory.NonSpacingMark && 
+                    category != UnicodeCategory.SpacingCombiningMark && 
+                    category != UnicodeCategory.EnclosingMark)
+                {
+                    return i;
+                }
+            }
+            return -1;
         }
     }
 }
