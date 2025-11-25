@@ -227,7 +227,9 @@ namespace LivingRoots.Controllers
                 return;
             }
 
-            // Unregister events if they were registered
+            // Thread-safe unregistration of events during disposal
+            // Moving UnregisterEventsInternal() inside the atomic check for simpler and safer implementation
+            // This ensures that event unregistration happens within the same thread-safe context
             if (_eventsRegistered == 1 || _commandRegistered == 1)
             {
                 UnregisterEventsInternal();

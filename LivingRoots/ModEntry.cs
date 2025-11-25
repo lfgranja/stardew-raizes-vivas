@@ -14,7 +14,7 @@ namespace LivingRoots
     public sealed class ModEntry : Mod
     {
         private ModController? _controller;
-        private bool _disposed = false;
+        private volatile bool _disposed = false;  // Thread-safe visibility of disposed state - ensures that different threads immediately see the most up-to-date value of the _disposed flag
         private readonly object _disposeLock = new object();
 
         /*********
@@ -43,7 +43,7 @@ namespace LivingRoots
         
         /*********
         ** Protected methods
-        *********/
+        ********/
         
         /// <summary>Clean up resources when the mod is unloaded.</summary>
         /// <param name="disposing">Whether to instance is being disposed.</param>
