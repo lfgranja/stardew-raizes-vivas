@@ -265,10 +265,11 @@ namespace LivingRoots.Services
             }
             catch (System.IO.FileNotFoundException ex)
             {
-                // Log FileNotFoundException as Trace to reduce log noise
+                // If the file doesn't exist, the objective ("remove the file") is already achieved successfully
+                // Log as Trace instead of throwing an exception to follow the "fail successfully" principle
+                // This is a thread safety improvement: if multiple threads attempt to remove the same file,
+                // subsequent attempts will find the file already gone and should succeed silently
                 _monitor.Log($"File not found while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
-                // For critical removal operations, rethrow the exception to signal failure
-                throw;
             }
             catch (System.IO.DirectoryNotFoundException ex)
             {

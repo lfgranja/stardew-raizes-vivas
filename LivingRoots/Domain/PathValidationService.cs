@@ -17,6 +17,7 @@ namespace LivingRoots.Domain
             RegexOptions.Compiled | RegexOptions.IgnoreCase
         );
 
+
         // Regex patterns for detecting encoded path traversal sequences
         // Enhanced to detect more path traversal attack variations including Unicode escapes, URL encoding variations, and hex encodings
         // Improved to reduce false positives by being more specific about dangerous patterns
@@ -46,6 +47,7 @@ namespace LivingRoots.Domain
 
             // Run all validation checks
             ValidateStandaloneDot(normalizedPath);
+
             ValidateStandaloneDotDot(normalizedPath);  // Added this call to remove the duplicate method
             ValidateDotSlashAtStart(normalizedPath);
             ValidateDotDotSlashAtStart(normalizedPath);
@@ -112,6 +114,7 @@ namespace LivingRoots.Domain
         /// </summary>
         /// <param name="path">The path to validate.</param>
         /// <exception cref="ArgumentException">Thrown when path is a standalone ".."</exception>
+
         private void ValidateStandaloneDotDot(string path)
         {
             if (path.Equals("..", StringComparison.Ordinal) || path.Equals("../", StringComparison.Ordinal) || path.Equals("..\\", StringComparison.Ordinal))
