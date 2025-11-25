@@ -45,84 +45,38 @@ namespace LivingRoots.Domain
         /// <exception cref="ArgumentException">Thrown when filename sanitizes to an empty string or is too long.</exception>
         public string? Sanitize(string? filename)
         {
-            if (filename == null)
-                return null;
-                
+            if (filename == null) return null;
             ValidateInput(filename);
 
-            // Normalize Unicode characters first using the domain service
-            string? normalized = _unicodeNormalizationService.Normalize(filename);
-            
-            if (normalized == null)
-                throw new ArgumentException("Normalized filename is null.", nameof(filename));
+            var normalized = _unicodeNormalizationService.Normalize(filename) 
+                             ?? throw new ArgumentException("Normalized filename is null.", nameof(filename));
 
-            // Extract extension before sanitizing the name
+            // Extrair partes
             string extension = GetFileExtension(normalized);
             string nameWithoutExtension = RemoveFileExtension(normalized);
 
-            // Handle special case: empty name with blocked extension
-            if (string.IsNullOrEmpty(nameWithoutExtension) && !string.IsNullOrEmpty(extension) && IsBlockedExtension(extension))
-            {
-                return CreateSafeNameForBlockedExtension(normalized, extension);
-            }
+            // Passo 1: Verificar extensões bloqueadas em nomes vazios
+            if (ShouldBlockEmptyName(nameWithoutExtension, extension))
+                 return CreateSafeNameForBlockedExtension(normalized, extension);
 
-            // Sanitize the name part
-            string sanitized = SanitizeNamePart(nameWithoutExtension);
+            // Passo 2: Sanitizar caracteres e pontos
+            string processed = SanitizeBaseName(nameWithoutExtension);
 
-            // Determine if this should be treated as a hidden file based on sanitized name
-            bool shouldBeHiddenFile = DetermineHiddenFileStatus(sanitized);
+            // Passo 3: Lógica de arquivo oculto
+            bool isHidden = DetermineHiddenFileStatus(processed);
+            processed = ProcessHiddenFileLogic(processed, filename, isHidden);
 
-            // Process the sanitized name with hidden file logic
-            string processed = ProcessSanitizedName(sanitized, filename, shouldBeHiddenFile);
+            // Passo 4: Truncar e limpar
+            string result = PerformFinalCleanup(TruncateToMaxLength(processed), isHidden);
 
-            // Apply truncation
-            string truncated = TruncateToMaxLength(processed);
+            // Passo 5: Reintegrar extensão (com verificação de bloqueio)
+            result = AppendExtensionSafely(result, extension);
 
-            // Final cleanup after truncation
-            string result = PerformFinalCleanup(truncated, shouldBeHiddenFile);
-
-            // Add extension back if it was present and safe
-            result = ProcessExtension(result, extension);
-
-            // Perform final cleanup after all processing including post-extension truncation
-            result = PerformFinalCleanup(result, shouldBeHiddenFile);
-
-            // Handle reserved Windows filenames
-            string? reservedResult = _reservedNameHandler.Handle(result);
-
-            // Check if the reserved name handler returned null
-            if (reservedResult == null)
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(reservedResult));
-
-            result = reservedResult;
-
-            // Recheck length after reserved-name handling to ensure filename doesn't exceed MaxFileNameLength
-            // This is necessary because the reserved name handler might add characters (e.g., underscores) to the name
-            if (result.Length > MaxFileNameLength)
-            {
-                result = TruncateToMaxLength(result);
-                // Apply final cleanup after truncation to ensure proper formatting
-                result = PerformFinalCleanup(result, shouldBeHiddenFile);
-            }
-
-            // Final validation check
+            // Passo 6: Nomes reservados e validação final
+            result = HandleReservedNames(result);
             ValidateFinalResult(result);
 
             return result;
-        }
-
-        /// <summary>
-        /// Validates the final result after all processing
-        /// </summary>
-        /// <param name="result">The final sanitized filename</param>
-        private static void ValidateFinalResult(string result)
-        {
-            string baseResult = RemoveFileExtension(result);
-            string finalBaseTrimmed = baseResult.Trim('_', ' ', '.');
-            if (string.IsNullOrWhiteSpace(finalBaseTrimmed) || finalBaseTrimmed == "." || finalBaseTrimmed == "..")
-            {
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(result));
-            }
         }
 
         /// <summary>
@@ -136,53 +90,6 @@ namespace LivingRoots.Domain
 
             if (filename.Contains('\0'))
                 throw new ArgumentException("Filename cannot contain null characters.", nameof(filename));
-        }
-
-        /// <summary>
-        /// Creates a safe filename for cases where the name part is empty but extension is blocked
-        /// </summary>
-        /// <param name="normalized">The normalized filename</param>
-        /// <param name="extension">The extension to process</param>
-        /// <returns>A safe filename with blocked extension</returns>
-        private string CreateSafeNameForBlockedExtension(string normalized, string extension)
-        {
-            // For hidden files (starting with dot), we preserve the dot
-            if (normalized.StartsWith(".", StringComparison.Ordinal))
-            {
-                return ".file.blocked";
-            }
-            else
-            {
-                return "file.blocked";
-            }
-        }
-
-        /// <summary>
-        /// Sanitizes the name part of the filename
-        /// </summary>
-        /// <param name="nameWithoutExtension">The name part to sanitize</param>
-        /// <returns>The sanitized name part</returns>
-        private static string SanitizeNamePart(string nameWithoutExtension)
-        {
-            // Sanitize characters by replacing invalid ones (this follows the original approach but with security enhancements)
-            string sanitized = SanitizeInvalidCharacters(nameWithoutExtension);
-
-            // Process consecutive dots (this should be done after character sanitization)
-            string processed = ProcessConsecutiveDots(sanitized);
-
-            // Check if the processed filename would become "." or ".." after trimming problematic characters
-            // This validation must happen before any trimming to prevent bypassing safeguards
-            string processedTrimmed = processed.Trim('_', ' ', '.');
-            if (processedTrimmed == "." || processedTrimmed == "..")
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(nameWithoutExtension));
-
-            // Check if the processed name is "." or ".." before trimming - these are invalid path components
-            if (processed == "." || processed == "..")
-            {
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(nameWithoutExtension));
-            }
-
-            return processed;
         }
 
         /// <summary>
@@ -212,15 +119,15 @@ namespace LivingRoots.Domain
         /// <param name="originalFilename">The original filename</param>
         /// <param name="shouldBeHiddenFile">Whether this should be treated as a hidden file</param>
         /// <returns>The processed name</returns>
-        private static string ProcessSanitizedName(string sanitized, string originalFilename, bool shouldBeHiddenFile)
+        private static string ProcessHiddenFileLogic(string sanitized, string? originalFilename, bool shouldBeHiddenFile)
         {
             // Special handling for cases where the name part sanitizes to empty but there's a blocked extension
             // For example ".exe" -> name part is empty, but we still need to handle the dangerous extension
-            if (string.IsNullOrEmpty(sanitized) && IsBlockedExtension(GetFileExtension(originalFilename)))
+            if (string.IsNullOrEmpty(sanitized) && IsBlockedExtension(GetFileExtension(originalFilename ?? string.Empty)))
             {
                 // If the name part is empty but there's a blocked extension, create a safe filename
                 // For hidden files (starting with dot), we preserve the dot
-                if (originalFilename.StartsWith(".", StringComparison.Ordinal))
+                if (originalFilename?.StartsWith(".", StringComparison.Ordinal) == true)
                 {
                     // Create a minimal safe hidden filename with blocked extension
                     string safeResult = ".file.blocked";
@@ -273,7 +180,7 @@ namespace LivingRoots.Domain
                 // Special handling for the case where the original filename started with a dot followed by 
                 // invalid characters that were converted to underscores during sanitization.
                 // For example: ".<hidden_file.txt" -> "._hidden_file.txt" -> ".hidden_file.txt"
-                if (contentAfterDot.Length > 0 && contentAfterDot[0] == '_' && originalFilename.Length > 1)
+                if (contentAfterDot.Length > 0 && contentAfterDot[0] == '_' && originalFilename?.Length > 1)
                 {
                     // Check if the original character after the dot was an invalid character
                     char originalCharAfterDot = originalFilename[1];
@@ -318,12 +225,70 @@ namespace LivingRoots.Domain
         }
 
         /// <summary>
+        /// Truncates the filename to the maximum allowed length, handling hidden files properly.
+        /// Improved to handle extremely short budgets (1-2 chars) properly.
+        /// </summary>
+        /// <param name="filename">The filename to truncate</param>
+        /// <returns>The truncated filename</returns>
+        private static string TruncateToMaxLength(string filename)
+        {
+            if (filename.Length <= MaxFileNameLength)
+                return filename;
+
+            // If the filename is too long, truncate it
+            if (filename.StartsWith(".", StringComparison.Ordinal))
+            {
+                // For hidden files, keep the dot and truncate the content part
+                string contentPart = filename.Substring(1);
+                string truncatedContent = SafeSubstring(contentPart, 0, MaxFileNameLength - 1);
+                return "." + truncatedContent;
+            }
+            else
+            {
+                // Truncate to max length
+                return SafeSubstring(filename, 0, MaxFileNameLength);
+            }
+        }
+
+        /// <summary>
+        /// Performs final cleanup after truncation.
+        /// Enhanced to ensure results never end with trailing dot/underscore and surrogate pairs aren't split.
+        /// </summary>
+        /// <param name="filename">The filename after truncation</param>
+        /// <param name="shouldBeHiddenFile">Whether this should be treated as a hidden file</param>
+        /// <returns>The cleaned up filename</returns>
+        private static string PerformFinalCleanup(string filename, bool shouldBeHiddenFile)
+        {
+            // After truncation, ensure we don't have trailing problematic characters
+            string postTruncationTrimmed = filename.TrimEnd('_', ' ', '.');
+
+            // If it was a hidden file and we lost the dot, add it back
+            if (shouldBeHiddenFile && !postTruncationTrimmed.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(postTruncationTrimmed))
+            {
+                postTruncationTrimmed = "." + postTruncationTrimmed.TrimStart('.');
+            }
+
+            // Final validity guard to prevent invalid path components
+            var trimmedCore = postTruncationTrimmed.Trim('_', ' ', '.');
+            if (string.IsNullOrWhiteSpace(trimmedCore) || trimmedCore == "." || trimmedCore == "..")
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+
+            // If the final result is still longer than max length, truncate again
+            if (postTruncationTrimmed.Length > MaxFileNameLength)
+            {
+                return TruncateToMaxLength(postTruncationTrimmed);
+            }
+
+            return postTruncationTrimmed;
+        }
+
+        /// <summary>
         /// Processes the extension part of the filename
         /// </summary>
         /// <param name="result">The current result</param>
         /// <param name="extension">The extension to process</param>
         /// <returns>The result with processed extension</returns>
-        private static string ProcessExtension(string result, string extension)
+        private static string AppendExtensionSafely(string result, string extension)
         {
             if (!string.IsNullOrEmpty(extension))
             {
@@ -423,7 +388,107 @@ namespace LivingRoots.Domain
 
             return result;
         }
-        
+
+        /// <summary>
+        /// Validates the final result after all processing
+        /// </summary>
+        /// <param name="result">The final sanitized filename</param>
+        private static void ValidateFinalResult(string result)
+        {
+            string baseResult = RemoveFileExtension(result);
+            string finalBaseTrimmed = baseResult.Trim('_', ' ', '.');
+            if (string.IsNullOrWhiteSpace(finalBaseTrimmed) || finalBaseTrimmed == "." || finalBaseTrimmed == "..")
+            {
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(result));
+            }
+        }
+
+        /// <summary>
+        /// Creates a safe filename for cases where the name part is empty but extension is blocked
+        /// </summary>
+        /// <param name="normalized">The normalized filename</param>
+        /// <param name="extension">The extension to process</param>
+        /// <returns>A safe filename with blocked extension</returns>
+        private string CreateSafeNameForBlockedExtension(string normalized, string extension)
+        {
+            // For hidden files (starting with dot), we preserve the dot
+            if (normalized.StartsWith(".", StringComparison.Ordinal))
+            {
+                return ".file.blocked";
+            }
+            else
+            {
+                return "file.blocked";
+            }
+        }
+
+        /// <summary>
+        /// Sanitizes the base name of the filename (without extension)
+        /// </summary>
+        /// <param name="nameWithoutExtension">The name part to sanitize</param>
+        /// <returns>The sanitized name part</returns>
+        private static string SanitizeBaseName(string nameWithoutExtension)
+        {
+            // Sanitize characters by replacing invalid ones (this follows the original approach but with security enhancements)
+            string sanitized = SanitizeInvalidCharacters(nameWithoutExtension);
+
+            // Process consecutive dots (this should be done after character sanitization)
+            string processed = ProcessConsecutiveDots(sanitized);
+
+            // Check if the processed filename would become "." or ".." after trimming problematic characters
+            // This validation must happen before any trimming to prevent bypassing safeguards
+            string processedTrimmed = processed.Trim('_', ' ', '.');
+            if (processedTrimmed == "." || processedTrimmed == "..")
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(nameWithoutExtension));
+
+            // Check if the processed name is "." or ".." before trimming - these are invalid path components
+            if (processed == "." || processed == "..")
+            {
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(nameWithoutExtension));
+            }
+
+            return processed;
+        }
+
+        /// <summary>
+        /// Checks if we should block an empty name with a blocked extension
+        /// </summary>
+        /// <param name="nameWithoutExtension">The name part without extension</param>
+        /// <param name="extension">The extension part</param>
+        /// <returns>True if we should block empty name with blocked extension</returns>
+        private static bool ShouldBlockEmptyName(string nameWithoutExtension, string extension)
+        {
+            return string.IsNullOrEmpty(nameWithoutExtension) && !string.IsNullOrEmpty(extension) && IsBlockedExtension(extension);
+        }
+
+        /// <summary>
+        /// Handles reserved names in the filename
+        /// </summary>
+        /// <param name="result">The current sanitized result</param>
+        /// <returns>The result after handling reserved names</returns>
+        private string HandleReservedNames(string result)
+        {
+            // Handle reserved Windows filenames
+            string? reservedResult = _reservedNameHandler.Handle(result);
+
+            // Check if the reserved name handler returned null
+            if (reservedResult == null)
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(reservedResult));
+
+            result = reservedResult;
+
+            // Recheck length after reserved-name handling to ensure filename doesn't exceed MaxFileNameLength
+            // This is necessary because the reserved name handler might add characters (e.g., underscores) to the name
+            if (result.Length > MaxFileNameLength)
+            {
+                result = TruncateToMaxLength(result);
+                // Apply final cleanup after truncation to ensure proper formatting
+                result = PerformFinalCleanup(result, DetermineHiddenFileStatus(result));
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// Sanitizes invalid characters by using an allowlist approach.
         /// Only allows alphanumeric characters, dots, hyphens, underscores, and valid surrogate pairs (emojis).
@@ -505,64 +570,6 @@ namespace LivingRoots.Domain
             }
 
             return result.ToString();
-        }
-
-        /// <summary>
-        /// Truncates the filename to the maximum allowed length, handling hidden files properly.
-        /// Improved to handle extremely short budgets (1-2 chars) properly.
-        /// </summary>
-        /// <param name="filename">The filename to truncate</param>
-        /// <returns>The truncated filename</returns>
-        private static string TruncateToMaxLength(string filename)
-        {
-            if (filename.Length <= MaxFileNameLength)
-                return filename;
-
-            // If the filename is too long, truncate it
-            if (filename.StartsWith(".", StringComparison.Ordinal))
-            {
-                // For hidden files, keep the dot and truncate the content part
-                string contentPart = filename.Substring(1);
-                string truncatedContent = SafeSubstring(contentPart, 0, MaxFileNameLength - 1);
-                return "." + truncatedContent;
-            }
-            else
-            {
-                // Truncate to max length
-                return SafeSubstring(filename, 0, MaxFileNameLength);
-            }
-        }
-
-        /// <summary>
-        /// Performs final cleanup after truncation.
-        /// Enhanced to ensure results never end with trailing dot/underscore and surrogate pairs aren't split.
-        /// </summary>
-        /// <param name="filename">The filename after truncation</param>
-        /// <param name="shouldBeHiddenFile">Whether this should be treated as a hidden file</param>
-        /// <returns>The cleaned up filename</returns>
-        private static string PerformFinalCleanup(string filename, bool shouldBeHiddenFile)
-        {
-            // After truncation, ensure we don't have trailing problematic characters
-            string postTruncationTrimmed = filename.TrimEnd('_', ' ', '.');
-
-            // If it was a hidden file and we lost the dot, add it back
-            if (shouldBeHiddenFile && !postTruncationTrimmed.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(postTruncationTrimmed))
-            {
-                postTruncationTrimmed = "." + postTruncationTrimmed.TrimStart('.');
-            }
-
-            // Final validity guard to prevent invalid path components
-            var trimmedCore = postTruncationTrimmed.Trim('_', ' ', '.');
-            if (string.IsNullOrWhiteSpace(trimmedCore) || trimmedCore == "." || trimmedCore == "..")
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
-
-            // If the final result is still longer than max length, truncate again
-            if (postTruncationTrimmed.Length > MaxFileNameLength)
-            {
-                return TruncateToMaxLength(postTruncationTrimmed);
-            }
-
-            return postTruncationTrimmed;
         }
 
         /// <summary>
@@ -709,7 +716,7 @@ namespace LivingRoots.Domain
             if (length == 0)
                 return string.Empty;
 
-            // Calculate the actual end index
+            // Calculate the actual end index - using Math.Min to ensure we don't exceed string length
             int endIndex = Math.Min(startIndex + length, str.Length);
 
             // Ensure startIndex is within bounds
