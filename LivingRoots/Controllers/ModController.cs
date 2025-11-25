@@ -147,6 +147,13 @@ namespace LivingRoots.Controllers
         {
             try
             {
+                // Check if disposed at the beginning of the method to prevent execution after disposal
+                if (Volatile.Read(ref _disposed) == 1)
+                {
+                    _monitor.Log("OnGameLaunched called after disposal. Operation skipped.", LogLevel.Trace);
+                    return;
+                }
+                
                 _monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
                 
                 // Use CompareExchange to make command registration atomic
@@ -156,12 +163,26 @@ namespace LivingRoots.Controllers
                 }
                 else
                 {
+                    // Check again after disposal check to ensure we're not disposed during execution
+                    if (Volatile.Read(ref _disposed) == 1)
+                    {
+                        _monitor.Log("OnGameLaunched disposed during execution. Command registration skipped.", LogLevel.Trace);
+                        return;
+                    }
+                    
                     // Register console command only if not already registered
                     if (_helper?.ConsoleCommands != null)
                     {
                         _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
                         _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
                     }
+                }
+                
+                // Check again before unsubscribing to ensure we're still not disposed
+                if (Volatile.Read(ref _disposed) == 1)
+                {
+                    _monitor.Log("OnGameLaunched disposed before unsubscribing. Handler may not be unsubscribed.", LogLevel.Trace);
+                    return;
                 }
                 
                 // Unsubscribe from the GameLaunched event to ensure this handler runs only once
@@ -183,6 +204,16 @@ namespace LivingRoots.Controllers
         {
             try
             {
+                // Check disposal flag at start of method to prevent execution after disposal
+                if (Volatile.Read(ref _disposed) == 1)
+                {
+                    return; // Skip execution if disposed
+                }
+                
+                // Snapshot dependencies to local variables to avoid NullReferenceExceptions
+                var monitor = _monitor;
+                var manifest = _manifest;
+                
                 // Add null check for args parameter and use case-insensitive comparison
                 args = args ?? Array.Empty<string>();
                 
@@ -200,21 +231,21 @@ namespace LivingRoots.Controllers
                 // Check if any argument matches a help flag
                 if (normalizedArgs.Any(arg => helpFlags.Contains(arg)))
                 {
-                    _monitor.Log("Usage: lr_version", LogLevel.Info);
-                    _monitor.Log("Shows the Living Roots mod version and UniqueID.", LogLevel.Info);
+                    monitor?.Log("Usage: lr_version", LogLevel.Info);
+                    monitor?.Log("Shows the Living Roots mod version and UniqueID.", LogLevel.Info);
                     return;
                 }
                 
                 // Include the mod's UniqueID in the output for better usability and clarity
                 // Explicitly format the version string using MajorVersion, MinorVersion, and PatchVersion properties for consistent output
-                var version = _manifest?.Version;
+                var version = manifest?.Version;
                 string versionString = version?.ToString() ?? "unknown";
                     
-                _monitor.Log($"Living Roots Mod Version: {versionString} (UniqueID: {_manifest?.UniqueID ?? "unknown"})", LogLevel.Info);
+                monitor?.Log($"Living Roots Mod Version: {versionString} (UniqueID: {manifest?.UniqueID ?? "unknown"})", LogLevel.Info);
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error in PrintVersion: {ex.Message}", LogLevel.Error);
+                _monitor?.Log($"Error in PrintVersion: {ex.Message}", LogLevel.Error);
             }
         }
 
@@ -228,12 +259,9 @@ namespace LivingRoots.Controllers
             }
 
             // Thread-safe unregistration of events during disposal
-            // Moving UnregisterEventsInternal() inside the atomic check for simpler and safer implementation
-            // This ensures that event unregistration happens within the same thread-safe context
-            if (_eventsRegistered == 1 || _commandRegistered == 1)
-            {
-                UnregisterEventsInternal();
-            }
+            // Always call UnregisterEventsInternal() regardless of _eventsRegistered or _commandRegistered flags
+            // This ensures deterministic cleanup even if registration state is inconsistent
+            UnregisterEventsInternal();
 
             GC.SuppressFinalize(this);
         }
