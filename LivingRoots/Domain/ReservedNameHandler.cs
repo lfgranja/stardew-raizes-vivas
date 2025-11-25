@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
+using System.Text;
 
 namespace LivingRoots.Domain
 {
@@ -154,7 +156,6 @@ namespace LivingRoots.Domain
             // This handles cases like "COM1.tar" where "COM1" is reserved but embedded in a longer name
             string actualCoreName = coreName;
             bool isReserved = false;
-            string matchedReservedName = null;
             
             // First, check if the original core name starts with a reserved name (for embedded cases)
             foreach (string reservedName in ReservedWindowsFileNames)
@@ -169,7 +170,6 @@ namespace LivingRoots.Domain
                         {
                             // Exact match
                             isReserved = true;
-                            matchedReservedName = reservedName;
                             actualCoreName = coreName.Substring(0, reservedNameLength); // Use original case
                             break;
                         }
@@ -181,7 +181,6 @@ namespace LivingRoots.Domain
                             {
                                 // The reserved name is followed by a non-alphanumeric character, so it's a match
                                 isReserved = true;
-                                matchedReservedName = reservedName;
                                 actualCoreName = coreName.Substring(0, reservedNameLength); // Use original case
                                 break;
                             }
@@ -204,10 +203,10 @@ namespace LivingRoots.Domain
                 }
             }
 
-            // If not found as original, try normalization to detect homoglyphs
+            // If not found as original, try normalization to detect homoglyphs and combining marks
             if (!isReserved)
             {
-                // Normalize the core name to detect homoglyphs
+                // Normalize the core name to detect homoglyphs and combining marks that might be used to bypass detection
                 string? normalizedCore = _unicodeNormalizationService.Normalize(coreName);
                 
                 if (normalizedCore != null && !string.Equals(coreName, normalizedCore, StringComparison.Ordinal))
@@ -260,6 +259,61 @@ namespace LivingRoots.Domain
                 }
             }
 
+            // Additional check: normalize the core name with combining marks removed for more thorough detection
+            if (!isReserved)
+            {
+                // Remove combining marks to detect attempts to bypass using diacritics
+                string nameWithoutCombiningMarks = RemoveCombiningMarks(coreName);
+                
+                if (!string.Equals(nameWithoutCombiningMarks, coreName, StringComparison.Ordinal))
+                {
+                    // The name had combining marks, so check if the stripped version matches a reserved name
+                    foreach (string reservedName in ReservedWindowsFileNames)
+                    {
+                        if (string.Equals(nameWithoutCombiningMarks, reservedName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isReserved = true;
+                            actualCoreName = coreName; // Keep the original with combining marks for processing
+                            break;
+                        }
+                    }
+                    
+                    // Also check for embedded names without combining marks
+                    if (!isReserved)
+                    {
+                        foreach (string reservedName in ReservedWindowsFileNames)
+                        {
+                            if (nameWithoutCombiningMarks.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                int reservedNameLength = reservedName.Length;
+                                if (reservedNameLength <= nameWithoutCombiningMarks.Length)
+                                {
+                                    if (reservedNameLength == nameWithoutCombiningMarks.Length)
+                                    {
+                                        // Exact match without combining marks
+                                        isReserved = true;
+                                        actualCoreName = coreName; // Keep the original with combining marks
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        // Check the character after the reserved name in the combining-mark-stripped form
+                                        char nextChar = nameWithoutCombiningMarks[reservedNameLength];
+                                        if (!char.IsLetterOrDigit(nextChar))
+                                        {
+                                            // The reserved name is followed by a non-alphanumeric character in the stripped form
+                                            isReserved = true;
+                                            actualCoreName = coreName; // Keep the original with combining marks
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             if (isReserved)
             {
                 // For reserved names, construct the result by using leading characters from the original name
@@ -290,6 +344,30 @@ namespace LivingRoots.Domain
 
             // If not reserved, return the original filename
             return filename;
+        }
+        
+        /// <summary>
+        /// Removes combining marks from a string to detect attempts to bypass reserved name checks using diacritics.
+        /// </summary>
+        /// <param name="input">The input string to process</param>
+        /// <returns>The string with combining marks removed</returns>
+        private static string RemoveCombiningMarks(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            var result = new StringBuilder();
+            foreach (char c in input)
+            {
+                var category = CharUnicodeInfo.GetUnicodeCategory(c);
+                if (category != UnicodeCategory.NonSpacingMark && 
+                    category != UnicodeCategory.SpacingCombiningMark && 
+                    category != UnicodeCategory.EnclosingMark)
+                {
+                    result.Append(c);
+                }
+            }
+            return result.ToString();
         }
     }
 }
