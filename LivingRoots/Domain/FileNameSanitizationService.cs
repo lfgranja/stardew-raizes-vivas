@@ -28,7 +28,29 @@ namespace LivingRoots.Domain
             ".scf", ".url", ".pif", ".scr", ".sys", ".bin", ".pl", ".php", ".asp", ".aspx", ".cgi",
             ".sql", ".mdb", ".accdb", ".db", ".dbf", ".sqlite", ".sqlite3", ".jar", ".war", ".ear",
             ".class", ".dex", ".so", ".dylib", ".dll", ".sys", ".drv", ".ocx", ".cpl", ".msc", ".msi",
-            ".msp", ".mst", ".vxd", ".acm", ".ax", ".efi", ".fon", ".ime", ".kbd", ".scr", ".vbx", ".xll"
+            ".msp", ".mst", ".vxd", ".acm", ".ax", ".efi", ".fon", ".ime", ".kbd", ".scr", ".vbx", ".xll",
+            // Additional extensions to address security concerns and be more comprehensive
+            ".app", ".deb", ".rpm", ".msm", ".msp", ".msp", ".mst", ".sct", ".wsf", ".wsh", ".ps1xml",
+            ".psc1", ".psd1", ".psm1", ".mof", ".inf", ".sys", ".drv", ".vxd", ".acm", ".ax", ".efi",
+            ".fon", ".ime", ".kbd", ".scr", ".vbx", ".xll", ".paf", ".pif", ".prg", ".scr", ".shb",
+            ".shs", ".u3p", ".vbs", ".vbe", ".vbs", ".ws", ".wse", ".wsh", ".mcr", ".mce", ".mcf",
+            ".jar", ".jnlp", ".war", ".ear", ".apk", ".xap", ".swf", ".flash", ".action", ".workflow",
+            ".command", ".csh", ".tcsh", ".zsh", ".fish", ".ksh", ".bash", ".rbw", ".rbx", ".gem",
+            ".pl", ".pm", ".plx", ".perl", ".php", ".php3", ".php4", ".php5", ".phtml", ".pyc", ".pyo",
+            ".pyd", ".asm", ".asmx", ".ps1", ".psc1", ".psd1", ".psm1", ".msh1", ".msh2",
+            ".mshxml", ".msh1xml", ".msh2xml", ".scf", ".paf", ".gadget", ".msc", ".msi", ".msp",
+            ".mst", ".sct", ".shb", ".shs", ".u3p", ".vbe", ".vbs", ".vbscript", ".ws", ".wsc",
+            ".wsf", ".wsh", ".hta", ".htr", ".cer", ".crt", ".crl", ".crt", ".der", ".p12", ".p7b",
+            ".p7c", ".p7m", ".p7r", ".p7s", ".pem", ".pfx", ".pgm", ".pgp", ".pki", ".pko", ".pl",
+            ".plc", ".plg", ".plp", ".plx", ".pm", ".pmc", ".pmw", ".po", ".pot", ".potm", ".potx",
+            ".ppa", ".ppam", ".pps", ".ppsm", ".ppsx", ".ppt", ".pptm", ".pptx", ".prf", ".prg",
+            ".printerexport", ".prl", ".prm", ".prx", ".ps1", ".psc1", ".psd1", ".psm1", ".pst", ".py",
+            ".pyc", ".pyd", ".pyo", ".pyw", ".pyz", ".pyzw", ".rb", ".rbw", ".rbx", ".gem", ".gemspec",
+            ".ru", ".rbi", ".rake", ".cap", ".thor", ".watchr", ".ahkl", ".pl", ".plx", ".cgi",
+            ".fcgi", ".pl", ".pm", ".pod", ".t", ".cgi", ".fcgi", ".pl", ".pm", ".pod", ".t", ".aws",
+            ".efi", ".exe", ".msc", ".msp", ".mst", ".vbe", ".vbs", ".wsf", ".wsh", ".hta", ".htr",
+            ".inf", ".ins", ".isp", ".jar", ".jnlp", ".jse", ".scr", ".sct", ".sh", ".shb", ".shs",
+            ".url", ".vb", ".vbe", ".vbs", ".vbscript", ".ws", ".wsc", ".wsf", ".wsh", ".xsl", ".xslt"
         };
 
         public FileNameSanitizationService(IUnicodeNormalizationService unicodeNormalizationService, IReservedNameHandler reservedNameHandler)
@@ -99,13 +121,15 @@ namespace LivingRoots.Domain
         /// <returns>True if the filename should be treated as a hidden file</returns>
         private static bool DetermineHiddenFileStatus(string sanitized)
         {
+            // Security fix: Add guard clause for null or empty strings to prevent access issues
+            if (string.IsNullOrEmpty(sanitized))
+                return false;
+
             // A hidden file should start with a dot AND have some meaningful content after sanitization
-            // Check if the sanitized name starts with a dot
-            if (sanitized.StartsWith(".", StringComparison.Ordinal))
+            // Simplified logic by directly checking first character instead of StartsWith
+            if (sanitized[0] == '.')
             {
-                var contentAfterDot = sanitized.Length > 0 && sanitized[0] == '.'
-                    ? sanitized.Substring(1)
-                    : sanitized;
+                var contentAfterDot = sanitized.Length > 1 ? sanitized.Substring(1) : string.Empty;
                 return !string.IsNullOrWhiteSpace(contentAfterDot.Trim('_', ' ', '.'));
             }
 
@@ -703,7 +727,16 @@ namespace LivingRoots.Domain
         /// <returns>The substring</returns>
         private static string SafeSubstring(string str, int startIndex, int length)
         {
-            // Make sure we don't exceed the string length
+            // Security fix: Add null check for str parameter to prevent NullReferenceException
+            if (str == null)
+                return string.Empty;
+
+            // Normalize startIndex before calculating endIndex to prevent potential issues
+            if (startIndex < 0)
+                startIndex = 0;
+
+            // Reorder boundary checks to prevent ArgumentOutOfRangeException
+            // First check if startIndex is beyond the string length
             if (startIndex >= str.Length)
                 return string.Empty;
 
@@ -718,14 +751,6 @@ namespace LivingRoots.Domain
 
             // Calculate the actual end index - using Math.Min to ensure we don't exceed string length
             int endIndex = Math.Min(startIndex + length, str.Length);
-
-            // Ensure startIndex is within bounds
-            if (startIndex < 0)
-                startIndex = 0;
-
-            // If the start index is at or beyond the end of the string, return empty
-            if (startIndex >= str.Length)
-                return string.Empty;
 
             // Calculate the length to extract
             int actualLength = endIndex - startIndex;
