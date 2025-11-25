@@ -1,6 +1,7 @@
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using System;
+using System.Threading;
 using System.Linq;
 using LivingRoots.Services;
 
@@ -11,14 +12,13 @@ namespace LivingRoots.Controllers
     /// </summary>
     public class ModController : IDisposable
     {
-        private volatile bool _disposed = false;
+        private volatile int _disposed = 0; // Use int (0 = false, 1 = true) for atomic operations
         private readonly IModHelper _helper;
         private readonly IMonitor _monitor;
         private readonly IManifest _manifest;
         private readonly IModDataService _modDataService;
-        private readonly object _registrationLock = new object();
         
-        private volatile bool _eventsRegistered = false;
+        private volatile int _eventsRegistered = 0; // Use int (0 = false, 1 = true) for atomic operations
         
         /// <summary>
         /// Tracks whether the 'lr_version' console command has been registered to prevent duplicate registrations.
@@ -26,7 +26,7 @@ namespace LivingRoots.Controllers
         /// the command remains active until the mod is disposed. This flag ensures the command is only
         /// registered once even if the GameLaunched event fires multiple times or during mod reloads.
         /// </summary>
-        private volatile bool _commandRegistered = false;
+        private volatile int _commandRegistered = 0; // Use int (0 = false, 1 = true) for atomic operations
         
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
 
@@ -40,65 +40,57 @@ namespace LivingRoots.Controllers
 
         public void RegisterEvents()
         {
-            lock (_registrationLock)
+            // Check if disposed
+            if (Volatile.Read(ref _disposed) == 1)
             {
-                if (_disposed)
+                _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
+                return;
+            }
+            
+            // Try to set the event registration flag atomically
+            if (Interlocked.CompareExchange(ref _eventsRegistered, 1, 0) == 1)
+            {
+                _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
+                return;
+            }
+            
+            try
+            {
+                var gameLoop = _helper?.Events?.GameLoop;
+                if (gameLoop == null)
                 {
-                    _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
+                    _monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
+                    // Reset flag since registration failed
+                    _eventsRegistered = 0;
                     return;
                 }
+
+                // Initialize the handler once
+                _onGameLaunchedHandler ??= OnGameLaunched;
                 
-                try
-                {
-                    // Move null check inside the lock to prevent race condition
-                    var gameLoop = _helper?.Events?.GameLoop;
-                    if (gameLoop == null)
-                    {
-                        _monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
-                        // Reset flags to prevent inconsistent state even when gameLoop is null
-                        _eventsRegistered = false;
-                        _commandRegistered = false;
-                        return;
-                    }
-
-                    // Check if events are already registered to avoid duplicate registrations
-                    if (_eventsRegistered)
-                    {
-                        _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
-                        return;
-                    }
-
-                    // Initialize the handler once using null-coalescing assignment
-                    _onGameLaunchedHandler ??= OnGameLaunched;
-                    
-                    // Subscribe to events using the local variable to avoid potential race condition
-                    gameLoop.GameLaunched += _onGameLaunchedHandler;
-                    
-                    _eventsRegistered = true;
-                    _monitor.Log("Events registered successfully.", LogLevel.Trace);
-                }
-                catch (Exception ex)
-                {
-                    // Log concise error without stack trace/type name; clear handler to avoid stale reference
-                    _monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
-                    _onGameLaunchedHandler = null;
-                    _eventsRegistered = false;
-                }
+                // Subscribe to events
+                gameLoop.GameLaunched += _onGameLaunchedHandler;
+                
+                _monitor.Log("Events registered successfully.", LogLevel.Trace);
+            }
+            catch (Exception ex)
+            {
+                // Log error and reset the flag if registration failed
+                _monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
+                _onGameLaunchedHandler = null;
+                _eventsRegistered = 0;
             }
         }
 
         public void UnregisterEvents()
         {
-            lock (_registrationLock)
+            if (Volatile.Read(ref _disposed) == 1)
             {
-                if (_disposed)
-                {
-                    _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
-                    return;
-                }
-                
-                UnregisterEventsInternal();
+                _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
+                return;
             }
+            
+            UnregisterEventsInternal();
         }
 
         /// <summary>
@@ -116,7 +108,7 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                // Always attempt to detach to avoid leaked handlers even if the flag is out of sync
+                // Always attempt to detach to avoid leaked handlers
                 if (_onGameLaunchedHandler != null)
                 {
                     gameLoop.GameLaunched -= _onGameLaunchedHandler;
@@ -124,7 +116,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Unregister console command if it was registered
-                if (_commandRegistered && _helper?.ConsoleCommands != null)
+                if (_commandRegistered == 1 && _helper?.ConsoleCommands != null)
                 {
                     // In SMAPI, there's no direct method to remove a console command
                     // The command will be automatically removed when the mod is disposed
@@ -132,8 +124,8 @@ namespace LivingRoots.Controllers
                     _monitor.Log("Controller state for command 'lr_version' has been reset. The command will be removed on mod disposal.", LogLevel.Trace);
                 }
                 
-                _eventsRegistered = false;
-                _commandRegistered = false;
+                _eventsRegistered = 0;
+                _commandRegistered = 0;
                 _monitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
             catch (Exception ex)
@@ -157,21 +149,19 @@ namespace LivingRoots.Controllers
             {
                 _monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
                 
-                // Remove lock usage and use volatile boolean check instead
-                // Since we're not using Interlocked.CompareExchange with bool, we'll use a simple volatile check
-                if (!_commandRegistered)
+                // Use CompareExchange to make command registration atomic
+                if (Interlocked.CompareExchange(ref _commandRegistered, 1, 0) == 1)
+                {
+                    _monitor.Log("Console command 'lr_version' is already registered, skipping registration.", LogLevel.Trace);
+                }
+                else
                 {
                     // Register console command only if not already registered
                     if (_helper?.ConsoleCommands != null)
                     {
                         _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
-                        _commandRegistered = true;
                         _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
                     }
-                }
-                else
-                {
-                    _monitor.Log("Console command 'lr_version' is already registered, skipping registration.", LogLevel.Trace);
                 }
                 
                 // Unsubscribe from the GameLaunched event to ensure this handler runs only once
@@ -230,23 +220,15 @@ namespace LivingRoots.Controllers
 
         public void Dispose()
         {
-            bool needsUnregistration = false;
-            
-            // Use a lock to ensure thread-safe disposal.
-            lock (_registrationLock)
+            // Check if already disposed using atomic operation
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
             {
-                if (_disposed)
-                {
-                    return;
-                }
-                
-                // Check if unregistration is needed before releasing the lock
-                needsUnregistration = _eventsRegistered || _commandRegistered;
-                _disposed = true;
+                // Already disposed by another thread
+                return;
             }
 
-            // Unregister events outside the lock to prevent potential deadlock
-            if (needsUnregistration)
+            // Unregister events if they were registered
+            if (_eventsRegistered == 1 || _commandRegistered == 1)
             {
                 UnregisterEventsInternal();
             }
