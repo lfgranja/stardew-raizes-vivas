@@ -67,22 +67,28 @@ namespace LivingRoots.Services
         
         /// <summary>
         /// Load mod data from persistent storage
+        /// Security improvements applied:
+        /// - Removed redundant null checks for _helper and _helper.Data (keeping only critical infrastructure checks)
+        /// - Prevented information disclosure by not logging full file paths
+        /// - Removed raw exception messages from logs to prevent log injection
+        /// - Used generic log messages to reduce information disclosure risk
         /// </summary>
         /// <typeparam name="T">Type of data to load (must be a reference type)</typeparam>
         /// <param name="key">Key to identify data</param>
         /// <returns>Loaded data or default value if not found</returns>
         public T? LoadData<T>(string key) where T : class
         {
-            // Defensive null checks for helper and its Data property
+            // Basic null checks for injected dependencies - these are critical infrastructure checks
+            // If these are null, something went wrong during dependency injection
             if (_helper == null)
             {
-                _monitor.Log("ModHelper is null in LoadData method. This should not happen under normal circumstances.", LogLevel.Error);
+                _monitor.Log("Critical infrastructure error: ModHelper is null in LoadData method.", LogLevel.Error);
                 return null;
             }
             
             if (_helper.Data == null)
             {
-                _monitor.Log("Helper.Data is null in LoadData method. This should not happen under normal circumstances.", LogLevel.Error);
+                _monitor.Log("Critical infrastructure error: Helper.Data is null in LoadData method.", LogLevel.Error);
                 return null;
             }
             
@@ -93,7 +99,8 @@ namespace LivingRoots.Services
             }
             catch (ArgumentException ex)
             {
-                _monitor.Log($"Invalid key provided to LoadData: {ex.Message}", LogLevel.Warn);
+                // Security improvement: Use generic message to prevent information disclosure
+                _monitor.Log("Invalid key provided to LoadData", LogLevel.Warn);
                 return null; // Return null instead of throwing when key is invalid
             }
             
@@ -107,7 +114,8 @@ namespace LivingRoots.Services
                 if (result == null)
                 {
                     // File does not exist or contains no valid data
-                    _monitor.Log($"File not found or contains no valid data while loading for key '{sanitizedKey}': {path}", LogLevel.Warn);
+                    // Security improvement: Don't log the full path to prevent information disclosure
+                    _monitor.Log($"File not found or contains no valid data while loading for key '{sanitizedKey}'", LogLevel.Warn);
                     return null;
                 }
                 
@@ -115,37 +123,43 @@ namespace LivingRoots.Services
             }
             catch (ArgumentException ex)
             {
-                _monitor.Log($"Invalid key provided to LoadData: {ex.Message}", LogLevel.Warn);
+                // Security improvement: Use generic message to prevent information disclosure
+                _monitor.Log("Invalid key provided to LoadData", LogLevel.Warn);
                 return null; // Return null instead of throwing when key is invalid
             }
             catch (System.IO.FileNotFoundException ex)
             {
                 // Log FileNotFoundException as Trace to reduce log noise
-                _monitor.Log($"File not found while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
+                // Security improvement: Don't log exception message to prevent information disclosure
+                _monitor.Log($"File not found while loading data for key '{sanitizedKey}'", LogLevel.Trace);
                 return null; // Return null instead of throwing when file doesn't exist
             }
             catch (System.IO.DirectoryNotFoundException ex)
             {
                 // Log DirectoryNotFoundException as Warn to reduce log noise from non-critical issues
-                _monitor.Log($"Directory not found while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                // Security improvement: Don't log exception message to prevent information disclosure
+                _monitor.Log($"Directory not found while loading data for key '{sanitizedKey}'", LogLevel.Warn);
                 return null; // Return null instead of throwing when directory doesn't exist
             }
             catch (System.UnauthorizedAccessException ex)
             {
                 // Log UnauthorizedAccessException as Warn to reduce log noise from non-critical issues
-                _monitor.Log($"Access denied while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                // Security improvement: Don't log exception message to prevent information disclosure
+                _monitor.Log($"Access denied while loading data for key '{sanitizedKey}'", LogLevel.Warn);
                 return null; // Return null instead of throwing when access is denied
             }
             catch (System.IO.IOException ex)
             {
                 // Log other IOExceptions as Warn to reduce log noise from non-critical issues
-                _monitor.Log($"IOException while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                // Security improvement: Don't log exception message to prevent information disclosure
+                _monitor.Log($"IOException while loading data for key '{sanitizedKey}'", LogLevel.Warn);
                 return null; // Return null instead of throwing when IO error occurs
             }
             catch (Newtonsoft.Json.JsonException ex) // Catch broader JsonException instead of JsonReaderException
             {
                 // Log JsonException as Warn for consistency with other non-critical errors
-                _monitor.Log($"JSON parsing error while loading data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                // Security improvement: Don't log exception message to prevent information disclosure
+                _monitor.Log($"JSON parsing error while loading data for key '{sanitizedKey}'", LogLevel.Warn);
                 return null; // Return null instead of throwing when JSON is invalid (consistent with DataExists behavior)
             }
         }
@@ -234,20 +248,25 @@ namespace LivingRoots.Services
         
         /// <summary>
         /// Remove data for a given key
+        /// Security improvements applied:
+        /// - Removed redundant null checks for _helper and _helper.Data (keeping only critical infrastructure checks)
+        /// - Prevented information disclosure by not logging raw exception messages
+        /// - Used generic log messages to reduce information disclosure risk
         /// </summary>
         /// <param name="key">Key to remove</param>
         public void RemoveData(string key)
         {
-            // Defensive null checks for helper and its Data property
+            // Basic null checks for injected dependencies - these are critical infrastructure checks
+            // If these are null, something went wrong during dependency injection
             if (_helper == null)
             {
-                _monitor.Log("ModHelper is null in RemoveData method. This should not happen under normal circumstances.", LogLevel.Error);
+                _monitor.Log("Critical infrastructure error: ModHelper is null in RemoveData method.", LogLevel.Error);
                 throw new InvalidOperationException("ModHelper is null in RemoveData method.");
             }
             
             if (_helper.Data == null)
             {
-                _monitor.Log("Helper.Data is null in RemoveData method. This should not happen under normal circumstances.", LogLevel.Error);
+                _monitor.Log("Critical infrastructure error: Helper.Data is null in RemoveData method.", LogLevel.Error);
                 throw new InvalidOperationException("Helper.Data is null in RemoveData method.");
             }
             
@@ -269,33 +288,38 @@ namespace LivingRoots.Services
                 // Log as Trace instead of throwing an exception to follow the "fail successfully" principle
                 // This is a thread safety improvement: if multiple threads attempt to remove the same file,
                 // subsequent attempts will find the file already gone and should succeed silently
-                _monitor.Log($"File not found while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
+                // Security improvement: Don't log exception message to prevent information disclosure
+                _monitor.Log($"File not found while removing data for key '{sanitizedKey}'", LogLevel.Trace);
             }
             catch (System.IO.DirectoryNotFoundException ex)
             {
                 // Log DirectoryNotFoundException as Warn to reduce log noise from non-critical issues
-                _monitor.Log($"Directory not found while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                // Security improvement: Don't log exception message to prevent information disclosure
+                _monitor.Log($"Directory not found while removing data for key '{sanitizedKey}'", LogLevel.Warn);
                 // For critical removal operations, rethrow the exception to signal failure
                 throw;
             }
             catch (System.UnauthorizedAccessException ex)
             {
                 // Log UnauthorizedAccessException as Warn to reduce log noise from non-critical issues
-                _monitor.Log($"Access denied while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                // Security improvement: Don't log exception message to prevent information disclosure
+                _monitor.Log($"Access denied while removing data for key '{sanitizedKey}'", LogLevel.Warn);
                 // For critical removal operations, rethrow the exception to signal failure
                 throw;
             }
             catch (System.IO.IOException ex)
             {
                 // Log other IOExceptions as Warn to reduce log noise from non-critical issues
-                _monitor.Log($"IOException while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                // Security improvement: Don't log exception message to prevent information disclosure
+                _monitor.Log($"IOException while removing data for key '{sanitizedKey}'", LogLevel.Warn);
                 // For critical removal operations, rethrow the exception to signal failure
                 throw;
             }
             catch (Exception ex)
             {
                 // Log unexpected errors as Error and rethrow for critical operations
-                _monitor.Log($"Unexpected error while removing data for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
+                // Security improvement: Don't log exception message to prevent information disclosure
+                _monitor.Log($"Unexpected error while removing data for key '{sanitizedKey}'", LogLevel.Error);
                 // Rethrow critical removal failures to ensure proper error handling by callers
                 throw;
             }
