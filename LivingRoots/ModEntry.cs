@@ -14,7 +14,7 @@ namespace LivingRoots
     public sealed class ModEntry : Mod
     {
         private ModController? _controller;
-        private volatile bool _disposed = false;  // Thread-safe visibility of disposed state - ensures that different threads immediately see the most up-to-date value of the _disposed flag
+        private bool _disposed = false;  // Thread-safe visibility of disposed state - all access is protected by _disposeLock
         private readonly object _disposeLock = new object();
 
         /*********
@@ -49,6 +49,8 @@ namespace LivingRoots
         /// <param name="disposing">Whether to instance is being disposed.</param>
         protected override void Dispose(bool disposing)
         {
+            bool callBaseDispose = false;
+            
             // Use a lock to ensure thread-safe disposal
             lock (_disposeLock)
             {
@@ -64,6 +66,12 @@ namespace LivingRoots
                 }
 
                 _disposed = true;
+                callBaseDispose = true;
+            }
+            
+            // Only call base.Dispose after releasing the lock to prevent potential deadlocks
+            if (callBaseDispose)
+            {
                 base.Dispose(disposing);
             }
         }

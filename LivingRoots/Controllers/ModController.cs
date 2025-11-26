@@ -10,9 +10,9 @@ namespace LivingRoots.Controllers
     /// <summary>
     /// Controller for handling mod-related game events
     /// </summary>
-    public class ModController : IDisposable
+    public sealed class ModController : IDisposable
     {
-        private int _disposed = 0; // Use int (0 = false, 1 = true) for atomic operations
+        private volatile bool _disposed = false;
         private readonly IModHelper _helper;
         private readonly IMonitor _monitor;
         private readonly IManifest _manifest;
@@ -41,25 +41,29 @@ namespace LivingRoots.Controllers
         public void RegisterEvents()
         {
             // Check if disposed
-            if (Volatile.Read(ref _disposed) == 1)
+            if (Volatile.Read(ref _disposed))
             {
                 _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
                 return;
             }
             
+            // Create snapshots of dependencies to avoid errors if disposed mid-execution
+            var monitor = _monitor;
+            var helper = _helper;
+            
             // Try to set the event registration flag atomically
             if (Interlocked.CompareExchange(ref _eventsRegistered, 1, 0) == 1)
             {
-                _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
+                monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
                 return;
             }
             
             try
             {
-                var gameLoop = _helper?.Events?.GameLoop;
+                var gameLoop = helper?.Events?.GameLoop;
                 if (gameLoop == null)
                 {
-                    _monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
+                    monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                     // Reset flag since registration failed
                     Interlocked.Exchange(ref _eventsRegistered, 0);
                     return;
@@ -71,12 +75,12 @@ namespace LivingRoots.Controllers
                 // Subscribe to events
                 gameLoop.GameLaunched += _onGameLaunchedHandler;
                 
-                _monitor.Log("Events registered successfully.", LogLevel.Trace);
+                monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
             catch (Exception ex)
             {
                 // Log error and reset the flag if registration failed
-                _monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
+                monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
                 _onGameLaunchedHandler = null;
                 Interlocked.Exchange(ref _eventsRegistered, 0);
             }
@@ -84,27 +88,35 @@ namespace LivingRoots.Controllers
 
         public void UnregisterEvents()
         {
-            if (Volatile.Read(ref _disposed) == 1)
+            if (Volatile.Read(ref _disposed))
             {
                 _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
                 return;
             }
             
-            UnregisterEventsInternal();
+            // Create snapshots of dependencies to avoid errors if disposed mid-execution
+            var monitor = _monitor;
+            var helper = _helper;
+            
+            UnregisterEventsInternal(monitor, helper);
         }
 
         /// <summary>
         /// Internal method to unregister events without checking the disposed flag.
         /// This is used by the Dispose method to ensure cleanup happens during disposal.
         /// </summary>
-        private void UnregisterEventsInternal()
+        private void UnregisterEventsInternal(IMonitor? monitor = null, IModHelper? helper = null)
         {
+            // Create snapshots of dependencies if not provided
+            var localMonitor = monitor ?? _monitor;
+            var localHelper = helper ?? _helper;
+            
             try
             {
-                var gameLoop = _helper?.Events?.GameLoop;
+                var gameLoop = localHelper?.Events?.GameLoop;
                 if (gameLoop == null)
                 {
-                    _monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Trace);
+                    localMonitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Trace);
                     return;
                 }
 
@@ -116,21 +128,21 @@ namespace LivingRoots.Controllers
                 }
 
                 // Unregister console command if it was registered
-                if (Volatile.Read(ref _commandRegistered) == 1 && _helper?.ConsoleCommands != null)
+                if (Volatile.Read(ref _commandRegistered) == 1 && localHelper?.ConsoleCommands != null)
                 {
                     // In SMAPI, there's no direct method to remove a console command
                     // The command will be automatically removed when the mod is disposed
                     // We just reset the flag to indicate it's unregistered
-                    _monitor.Log("Controller state for command 'lr_version' has been reset. The command will be removed on mod disposal.", LogLevel.Trace);
+                    localMonitor.Log("Controller state for command 'lr_version' has been reset. The command will be removed on mod disposal.", LogLevel.Trace);
                 }
                 
                 Interlocked.Exchange(ref _eventsRegistered, 0);
                 Interlocked.Exchange(ref _commandRegistered, 0);
-                _monitor.Log("Events unregistered successfully.", LogLevel.Trace);
+                localMonitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error while unregistering events: {ex.Message}", LogLevel.Error);
+                localMonitor.Log($"Error while unregistering events: {ex.Message}", LogLevel.Error);
             }
         }
 
@@ -148,50 +160,54 @@ namespace LivingRoots.Controllers
             try
             {
                 // Check if disposed at the beginning of the method to prevent execution after disposal
-                if (Volatile.Read(ref _disposed) == 1)
+                if (Volatile.Read(ref _disposed))
                 {
                     _monitor.Log("OnGameLaunched called after disposal. Operation skipped.", LogLevel.Trace);
                     return;
                 }
                 
-                _monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
+                // Create snapshots of dependencies to avoid errors if disposed mid-execution
+                var monitor = _monitor;
+                var helper = _helper;
+                
+                monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
                 
                 // Use CompareExchange to make command registration atomic
                 if (Interlocked.CompareExchange(ref _commandRegistered, 1, 0) == 1)
                 {
-                    _monitor.Log("Console command 'lr_version' is already registered, skipping registration.", LogLevel.Trace);
+                    monitor.Log("Console command 'lr_version' is already registered, skipping registration.", LogLevel.Trace);
                 }
                 else
                 {
                     // Check again after disposal check to ensure we're not disposed during execution
-                    if (Volatile.Read(ref _disposed) == 1)
+                    if (Volatile.Read(ref _disposed))
                     {
-                        _monitor.Log("OnGameLaunched disposed during execution. Command registration skipped.", LogLevel.Trace);
+                        monitor.Log("OnGameLaunched disposed during execution. Command registration skipped.", LogLevel.Trace);
                         return;
                     }
                     
                     // Register console command only if not already registered
-                    if (_helper?.ConsoleCommands != null)
+                    if (helper?.ConsoleCommands != null)
                     {
-                        _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
-                        _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+                        helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
+                        monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
                     }
                 }
                 
                 // Check again before unsubscribing to ensure we're still not disposed
-                if (Volatile.Read(ref _disposed) == 1)
+                if (Volatile.Read(ref _disposed))
                 {
-                    _monitor.Log("OnGameLaunched disposed before unsubscribing. Handler may not be unsubscribed.", LogLevel.Trace);
+                    monitor.Log("OnGameLaunched disposed before unsubscribing. Handler may not be unsubscribed.", LogLevel.Trace);
                     return;
                 }
                 
                 // Unsubscribe from the GameLaunched event to ensure this handler runs only once
                 // This prevents multiple invocations during mod reloads, making the "run-once" behavior more robust
-                if (_helper?.Events?.GameLoop != null && _onGameLaunchedHandler != null)
+                if (helper?.Events?.GameLoop != null && _onGameLaunchedHandler != null)
                 {
-                    _helper.Events.GameLoop.GameLaunched -= _onGameLaunchedHandler;
+                    helper.Events.GameLoop.GameLaunched -= _onGameLaunchedHandler;
                     _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
-                    _monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
+                    monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
                 }
             }
             catch (Exception ex)
@@ -205,7 +221,7 @@ namespace LivingRoots.Controllers
             try
             {
                 // Check disposal flag at start of method to prevent execution after disposal
-                if (Volatile.Read(ref _disposed) == 1)
+                if (Volatile.Read(ref _disposed))
                 {
                     return; // Skip execution if disposed
                 }
@@ -251,19 +267,23 @@ namespace LivingRoots.Controllers
 
         public void Dispose()
         {
-            // Check if already disposed using atomic operation
-            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
+            // Use a separate integer field for atomic disposal check since Interlocked operations don't work with bool
+            if (Interlocked.CompareExchange(ref _disposedInt, 1, 0) == 1)
             {
                 // Already disposed by another thread
                 return;
             }
+            
+            // Set the volatile bool flag to indicate disposal
+            _disposed = true;
 
             // Thread-safe unregistration of events during disposal
             // Always call UnregisterEventsInternal() regardless of _eventsRegistered or _commandRegistered flags
             // This ensures deterministic cleanup even if registration state is inconsistent
             UnregisterEventsInternal();
-
-            GC.SuppressFinalize(this);
         }
+        
+        // Separate integer field for atomic disposal check in Dispose method
+        private int _disposedInt = 0;
     }
 }
