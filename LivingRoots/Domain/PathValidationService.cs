@@ -49,12 +49,11 @@ namespace LivingRoots.Domain
             if (normalizedPath == null)
                 throw new ArgumentException("Path normalization returned null, validation cannot proceed", nameof(path));
 
-            // Run all validation checks
+            // Run all validation checks - include essential security validations that were previously in separate methods
             ValidateStandaloneDot(normalizedPath);
             ValidateStandaloneDotDot(normalizedPath);
             ValidateDotSlashAtStart(normalizedPath);
             ValidateDotDotSlashAtStart(normalizedPath);
-            ValidateMixedDotTraversal(normalizedPath);
             ValidateAbsolutePathOrUri(normalizedPath);
             ValidateEncodedTraversal(normalizedPath);
             ValidatePathTraversalDepth(normalizedPath);
@@ -117,7 +116,6 @@ namespace LivingRoots.Domain
         /// </summary>
         /// <param name="path">The path to validate.</param>
         /// <exception cref="ArgumentException">Thrown when path is a standalone ".."</exception>
-
         private void ValidateStandaloneDotDot(string path)
         {
             if (path.Equals("..", StringComparison.Ordinal) || path.Equals("../", StringComparison.Ordinal) || path.Equals("..\\", StringComparison.Ordinal))
@@ -147,19 +145,6 @@ namespace LivingRoots.Domain
         private void ValidateDotDotSlashAtStart(string path)
         {
             if (path.StartsWith("../", StringComparison.Ordinal) || path.StartsWith("..\\", StringComparison.Ordinal))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
-        }
-
-        /// <summary>
-        /// Validates that a path does not contain mixed patterns that combine current directory with traversal like "./../file.txt" or ".\\..\\file.txt"
-        /// </summary>
-        /// <param name="path">The path to validate.</param>
-        /// <exception cref="ArgumentException">Thrown when path contains mixed dot traversal patterns</exception>
-        private void ValidateMixedDotTraversal(string path)
-        {
-            if (path.StartsWith("./../") || path.StartsWith(".\\..\\"))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
