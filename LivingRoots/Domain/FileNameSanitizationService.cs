@@ -532,6 +532,10 @@ namespace LivingRoots.Domain
             {
                 char c = input[i];
 
+                // Actively reject control chars (including null) to avoid smuggling/collisions
+                if (char.IsControl(c))
+                    throw new ArgumentException("Filename contains control characters.", nameof(input));
+
                 // Handle surrogate pairs (needed for emojis and other characters outside BMP)
                 if (char.IsHighSurrogate(c) && i + 1 < input.Length && char.IsLowSurrogate(input[i + 1]))
                 {
@@ -604,35 +608,35 @@ namespace LivingRoots.Domain
         private static int FindExtensionStartIndex(string filename)
         {
             int lastDotIndex = filename.LastIndexOf('.');
-            
+
             // No dot found or dot is at the end
             if (lastDotIndex < 0 || lastDotIndex >= filename.Length - 1)
                 return -1;
-            
+
             // Extract potential extension (including the dot)
             string potentialExtension = filename.Substring(lastDotIndex);
-            
+
             // Check if the part after the dot contains at least one alphanumeric character
             string extensionPart = potentialExtension.Substring(1);
             if (!extensionPart.Any(c => char.IsLetterOrDigit(c)))
                 return -1;
-            
+
             // Check if extension contains path separators
             if (potentialExtension.Contains('/') || potentialExtension.Contains('\\'))
                 return -1;
-            
+
             // For security: if the filename starts with a dot followed by a dangerous extension, still detect it
             if (lastDotIndex == 0 && IsBlockedExtension(potentialExtension))
                 return 0; // Return 0 for simple dotfiles with dangerous extensions like ".exe"
-            
+
             // For simple dotfiles (e.g., ".profile"), check if it's not a dangerous extension
             if (lastDotIndex == 0 && !IsBlockedExtension(potentialExtension))
                 return -1; // Don't treat simple dotfiles as having extensions unless they're dangerous
-            
+
             // Check if the extension contains invalid filename characters
             if (potentialExtension.IndexOfAny(Path.GetInvalidFileNameChars()) != -1)
                 return -1;
-            
+
             // If all checks pass, return the index of the dot
             return lastDotIndex;
         }
@@ -710,10 +714,10 @@ namespace LivingRoots.Domain
         {
             if (string.IsNullOrEmpty(extension))
                 return false;
-            
+
             // Normalize the extension to prevent Unicode homoglyph bypasses
             var normalizedExtension = extension.Normalize(NormalizationForm.FormC);
-            
+
             return BlockedExtensions.Contains(normalizedExtension);
         }
 
@@ -721,62 +725,59 @@ namespace LivingRoots.Domain
         /// Safely extracts a substring without splitting surrogate pairs.
         /// IMPROVEMENTS:
         /// - Added null check for str parameter to prevent NullReferenceException
-        /// - Normalize startIndex before calculating endIndex to prevent potential issues
-        /// - Reorder boundary checks to prevent ArgumentOutOfRangeException
-        /// - Handle extremely short budgets (1-2 chars) properly
-        /// - Properly handle surrogate pair boundaries to prevent splitting Unicode characters
+        /// - Normalize startIndex to prevent negative values
+        /// - Improve length validation (change `length < 0` to `length <= 0`)
+        /// - Fix the surrogate pair boundary check to prevent IndexOutOfRangeException
+        /// - Ensure all boundary conditions are properly handled
         /// </summary>
         /// <param name="str">The input string</param>
         /// <param name="startIndex">Start index</param>
-        /// <param="length">Length to extract</param>
+        /// <param name="length">Length to extract</param>
         /// <returns>The substring</returns>
         private static string SafeSubstring(string str, int startIndex, int length)
         {
-            // Security fix: Add null check for str parameter to prevent NullReferenceException
+            // Add null check for str parameter
             if (str == null)
                 return string.Empty;
 
-            // Normalize startIndex before calculating endIndex to prevent potential issues
+            // Normalize startIndex to prevent negative values
             if (startIndex < 0)
                 startIndex = 0;
 
-            // Reorder boundary checks to prevent ArgumentOutOfRangeException
-            // First check if startIndex is beyond the string length
+            // Improve length validation (change `length < 0` to `length <= 0`)
+            if (length <= 0)
+                return string.Empty;
+
+            // Check if startIndex is beyond the string length
             if (startIndex >= str.Length)
                 return string.Empty;
 
-            // Ensure length is not negative to prevent ArgumentOutOfRangeException
-            if (length < 0)
-                return string.Empty;
+            // Calculate the theoretical end index
+            int endIndex = startIndex + length;
 
-            // Handle extremely short budgets (1-2 chars) properly
-            // If the requested length is 0, return empty string
-            if (length == 0)
-                return string.Empty;
+            // Ensure endIndex doesn't exceed string length
+            if (endIndex > str.Length)
+                endIndex = str.Length;
 
-            // Calculate the actual end index - using Math.Min to ensure we don't exceed string length
-            int endIndex = Math.Min(startIndex + length, str.Length);
-
-            // Calculate the length to extract
+            // Calculate the actual length to extract
             int actualLength = endIndex - startIndex;
-            
-            // If actual length is 0, return empty string
+
+            // If actual length is 0 or negative, return empty string
             if (actualLength <= 0)
                 return string.Empty;
 
-            // Check if we're potentially splitting a surrogate pair
-            // If the character at endIndex is a low surrogate and the one before it is a high surrogate,
-            // we should exclude the high surrogate to avoid splitting the pair
-            if (endIndex < str.Length && char.IsLowSurrogate(str[endIndex]) && 
-                endIndex > 0 && char.IsHighSurrogate(str[endIndex - 1]))
+            // Fix the surrogate pair boundary check to prevent IndexOutOfRangeException
+            // Only check surrogate boundary if endIndex is strictly within bounds
+            // and there's at least one character before it to check for a high surrogate
+            if (endIndex < str.Length && endIndex > 0)
             {
-                // If we're removing a surrogate pair due to truncation, adjust the end index
-                endIndex--;
-                actualLength = endIndex - startIndex;
-                
-                // If this reduces the length to 0, return empty string
-                if (actualLength <= 0)
-                    return string.Empty;
+                if (char.IsLowSurrogate(str[endIndex]) && char.IsHighSurrogate(str[endIndex - 1]))
+                {
+                    endIndex--;
+                    actualLength = endIndex - startIndex;
+                    if (actualLength <= 0)
+                        return string.Empty;
+                }
             }
 
             return str.Substring(startIndex, actualLength);

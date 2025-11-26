@@ -99,7 +99,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".<>"))
                 .Returns(".<>");
-  
+    
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<>"));
             Assert.Contains("Filename sanitizes to an empty string.", exception.Message);
@@ -535,7 +535,7 @@ namespace LivingRoots.Tests
         public void Sanitize_WithLongFilenameThatExceedsMaxLengthAfterAddingExtension_EnforcesMaxLength()
         {
             // Arrange: Create a filename that is just under the limit without extension
-            // Max length is 240, so create a base name of 236 chars + ".txt" (4 chars) = 240 chars
+            // Max length is 240, so create a base name of 236 chars + ".exe" (4 chars) = 240 chars
             // But what if we have a name that when truncated to 236 chars still results in exceeding the limit when extension is added?
             var baseName = new string('a', 238); // 238 chars
             var extension = ".exe"; // 4 chars, will be replaced with ".blocked"
@@ -702,7 +702,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".<>"))
                 .Returns(".<>");
-  
+    
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<>"));
             Assert.Contains("Filename sanitizes to an empty string", exception.Message);
@@ -870,5 +870,205 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal("x.blocked", result);
         }
+        
+        #region SafeSubstring Tests
+        [Fact]
+        public void SafeSubstring_WithNullString_ReturnsEmptyString()
+        {
+            // Arrange
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Assert that the method was found
+            Assert.NotNull(method);
+            
+            // Act
+            var result = method.Invoke(null, new object[] { null, 0, 5 }) as string;
+
+            // Assert
+            Assert.Equal(string.Empty, result);
+        }
+        
+        [Fact]
+        public void SafeSubstring_WithNegativeStartIndex_NormalizesToZero()
+        {
+            // Arrange
+            var testString = "Hello World";
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Assert that the method was found
+            Assert.NotNull(method);
+            
+            // Act
+            var result = method.Invoke(null, new object[] { testString, -1, 5 }) as string;
+
+            // Assert
+            Assert.Equal("Hello", result);
+        }
+        
+        [Fact]
+        public void SafeSubstring_WithZeroLength_ReturnsEmptyString()
+        {
+            // Arrange
+            var testString = "Hello World";
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Assert that the method was found
+            Assert.NotNull(method);
+            
+            // Act
+            var result = method.Invoke(null, new object[] { testString, 0, 0 }) as string;
+
+            // Assert
+            Assert.Equal(string.Empty, result);
+        }
+        
+        [Fact]
+        public void SafeSubstring_WithNegativeLength_ReturnsEmptyString()
+        {
+            // Arrange
+            var testString = "Hello World";
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Assert that the method was found
+            Assert.NotNull(method);
+            
+            // Act
+            var result = method.Invoke(null, new object[] { testString, 0, -5 }) as string;
+
+            // Assert
+            Assert.Equal(string.Empty, result);
+        }
+        
+        [Fact]
+        public void SafeSubstring_WithStartIndexBeyondStringLength_ReturnsEmptyString()
+        {
+            // Arrange
+            var testString = "Hello";
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Assert that the method was found
+            Assert.NotNull(method);
+            
+            // Act
+            var result = method.Invoke(null, new object[] { testString, 10, 5 }) as string;
+
+            // Assert
+            Assert.Equal(string.Empty, result);
+        }
+        
+        [Fact]
+        public void SafeSubstring_WithStartIndexAtStringLength_ReturnsEmptyString()
+        {
+            // Arrange
+            var testString = "Hello";
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Assert that the method was found
+            Assert.NotNull(method);
+            
+            // Act
+            var result = method.Invoke(null, new object[] { testString, 5, 5 }) as string;
+
+            // Assert
+            Assert.Equal(string.Empty, result);
+        }
+        
+        [Fact]
+        public void SafeSubstring_WithSurrogatePairAtBoundary_DoesNotSplitPair()
+        {
+            // Arrange: Create a string with a surrogate pair at a potential truncation boundary
+            // The emoji "😀" is a surrogate pair (U+1F600)
+            var testString = "Hello" + "\uD83D\uDE00" + "World"; // "Hello😀World"
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Assert that the method was found
+            Assert.NotNull(method);
+            
+            // Act: Try to truncate at the position where it would split the surrogate pair
+            var result = method.Invoke(null, new object[] { testString, 0, 6 }) as string; // Should avoid splitting the emoji
+
+            // Assert: The result should not split the surrogate pair
+            Assert.Equal("Hello", result); // Should return only up to the boundary without splitting
+        }
+        
+        [Fact]
+        public void SafeSubstring_WithSurrogatePair_DoesNotSplitWhenPossible()
+        {
+            // Arrange: Create a string with a surrogate pair
+            var testString = "Test" + "\uD83D\uDE00" + "End"; // "Test😀End"
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Assert that the method was found
+            Assert.NotNull(method);
+            
+            // Act: Extract a substring that would include the surrogate pair
+            var result = method.Invoke(null, new object[] { testString, 0, 10 }) as string;
+
+            // Assert: Should include the full surrogate pair if possible
+            Assert.Equal("Test😀End", result);
+        }
+        
+        [Fact]
+        public void SafeSubstring_WithValidParameters_WorksCorrectly()
+        {
+            // Arrange
+            var testString = "Hello World";
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Assert that the method was found
+            Assert.NotNull(method);
+            
+            // Act
+            var result = method.Invoke(null, new object[] { testString, 0, 5 }) as string;
+
+            // Assert
+            Assert.Equal("Hello", result);
+        }
+        
+        [Fact]
+        public void SafeSubstring_WithStartIndexAndLength_WorksCorrectly()
+        {
+            // Arrange
+            var testString = "Hello World";
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Assert that the method was found
+            Assert.NotNull(method);
+            
+            // Act
+            var result = method.Invoke(null, new object[] { testString, 6, 5 }) as string;
+
+            // Assert
+            Assert.Equal("World", result);
+        }
+        
+        [Fact]
+        public void SafeSubstring_WithLengthExceedingStringBounds_DoesNotThrow()
+        {
+            // Arrange
+            var testString = "Hi";
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            
+            // Assert that the method was found
+            Assert.NotNull(method);
+            
+            // Act
+            var result = method.Invoke(null, new object[] { testString, 0, 10 }) as string;
+
+            // Assert
+            Assert.Equal("Hi", result);
+        }
+        #endregion
     }
 }
