@@ -14,7 +14,7 @@ namespace LivingRoots.Domain
     /// 1. Diacritics: Removed from Latin and Greek letters, preserved for other scripts
     /// 2. Security Confusables: Cyrillic lookalikes are converted to Latin equivalents unless they appear in legitimate non-Latin script contexts
     /// 3. Zero-width and bidirectional characters: Removed completely for security
-    /// 4. Control characters: Removed completely to avoid creating false word boundaries
+    /// 4. Control characters: Removed completely
     /// 5. Precomposed characters: Simplified to base forms (e.g., 'ø' → 'o')
     /// </remarks>
     public class UnicodeNormalizationService : IUnicodeNormalizationService
@@ -109,6 +109,7 @@ namespace LivingRoots.Domain
                 {
                     // Remove control and format characters completely to avoid creating false word boundaries
                     // This prevents format characters from being replaced with underscores which could alter string semantics
+                    // Do not insert spaces - these characters should be completely removed
                     continue;
                 }
                 else
