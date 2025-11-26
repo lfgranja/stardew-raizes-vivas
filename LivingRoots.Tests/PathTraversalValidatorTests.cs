@@ -13,7 +13,8 @@ namespace LivingRoots.Tests
         public void Validate_WithValidPath_DoesNotThrow()
         {
             // Arrange
-            var validator = new PathTraversalValidator();
+            var mockPathValidationService = new Mock<IPathValidationService>();
+            var validator = new PathTraversalValidator(mockPathValidationService.Object);
 
             // Act & Assert - should not throw
             validator.Validate("valid/path");
@@ -25,7 +26,8 @@ namespace LivingRoots.Tests
         public void Validate_WithNullPath_ThrowsArgumentException()
         {
             // Arrange
-            var validator = new PathTraversalValidator();
+            var mockPathValidationService = new Mock<IPathValidationService>();
+            var validator = new PathTraversalValidator(mockPathValidationService.Object);
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => validator.Validate(null));
@@ -35,7 +37,8 @@ namespace LivingRoots.Tests
         public void Validate_WithEmptyPath_ThrowsArgumentException()
         {
             // Arrange
-            var validator = new PathTraversalValidator();
+            var mockPathValidationService = new Mock<IPathValidationService>();
+            var validator = new PathTraversalValidator(mockPathValidationService.Object);
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => validator.Validate(""));
@@ -45,7 +48,8 @@ namespace LivingRoots.Tests
         public void Validate_WithWhitespacePath_ThrowsArgumentException()
         {
             // Arrange
-            var validator = new PathTraversalValidator();
+            var mockPathValidationService = new Mock<IPathValidationService>();
+            var validator = new PathTraversalValidator(mockPathValidationService.Object);
 
             // Act & Assert
             Assert.Throws<ArgumentException>(() => validator.Validate("   "));

@@ -12,7 +12,8 @@ namespace LivingRoots.Tests
 
         public CurrentDotIssueTest()
         {
-            _validator = new PathTraversalValidator();
+            var mockPathValidationService = new Mock<IPathValidationService>();
+            _validator = new PathTraversalValidator(mockPathValidationService.Object);
         }
 
         [Fact]

@@ -3,6 +3,7 @@ using System.IO;
 using Xunit;
 using LivingRoots.Services;
 using LivingRoots.Domain;
+using Moq;
 
 namespace LivingRoots.Tests
 {
@@ -12,7 +13,11 @@ namespace LivingRoots.Tests
 
         public DotSegmentTests()
         {
-            _validator = new PathTraversalValidator();
+            // Create a real PathValidationService with a mock UnicodeNormalizationService
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            mockUnicodeService.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
+            var pathValidationService = new PathValidationService(mockUnicodeService.Object);
+            _validator = new PathTraversalValidator(pathValidationService);
         }
 
         [Fact]

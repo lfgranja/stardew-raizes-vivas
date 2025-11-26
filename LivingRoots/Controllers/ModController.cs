@@ -12,13 +12,13 @@ namespace LivingRoots.Controllers
     /// </summary>
     public class ModController : IDisposable
     {
-        private volatile int _disposed = 0; // Use int (0 = false, 1 = true) for atomic operations
+        private int _disposed = 0; // Use int (0 = false, 1 = true) for atomic operations
         private readonly IModHelper _helper;
         private readonly IMonitor _monitor;
         private readonly IManifest _manifest;
         private readonly IModDataService _modDataService;
         
-        private volatile int _eventsRegistered = 0; // Use int (0 = false, 1 = true) for atomic operations
+        private int _eventsRegistered = 0; // Use int (0 = false, 1 = true) for atomic operations
         
         /// <summary>
         /// Tracks whether the 'lr_version' console command has been registered to prevent duplicate registrations.
@@ -26,7 +26,7 @@ namespace LivingRoots.Controllers
         /// the command remains active until the mod is disposed. This flag ensures the command is only
         /// registered once even if the GameLaunched event fires multiple times or during mod reloads.
         /// </summary>
-        private volatile int _commandRegistered = 0; // Use int (0 = false, 1 = true) for atomic operations
+        private int _commandRegistered = 0; // Use int (0 = false, 1 = true) for atomic operations
         
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
 
@@ -61,7 +61,7 @@ namespace LivingRoots.Controllers
                 {
                     _monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                     // Reset flag since registration failed
-                    _eventsRegistered = 0;
+                    Interlocked.Exchange(ref _eventsRegistered, 0);
                     return;
                 }
 
@@ -78,7 +78,7 @@ namespace LivingRoots.Controllers
                 // Log error and reset the flag if registration failed
                 _monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
                 _onGameLaunchedHandler = null;
-                _eventsRegistered = 0;
+                Interlocked.Exchange(ref _eventsRegistered, 0);
             }
         }
 
@@ -116,7 +116,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Unregister console command if it was registered
-                if (_commandRegistered == 1 && _helper?.ConsoleCommands != null)
+                if (Volatile.Read(ref _commandRegistered) == 1 && _helper?.ConsoleCommands != null)
                 {
                     // In SMAPI, there's no direct method to remove a console command
                     // The command will be automatically removed when the mod is disposed
@@ -124,8 +124,8 @@ namespace LivingRoots.Controllers
                     _monitor.Log("Controller state for command 'lr_version' has been reset. The command will be removed on mod disposal.", LogLevel.Trace);
                 }
                 
-                _eventsRegistered = 0;
-                _commandRegistered = 0;
+                Interlocked.Exchange(ref _eventsRegistered, 0);
+                Interlocked.Exchange(ref _commandRegistered, 0);
                 _monitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
             catch (Exception ex)
