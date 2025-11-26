@@ -144,28 +144,14 @@ namespace LivingRoots.Domain
         /// <returns>The path with original separator format</returns>
         private static string RestoreOriginalPathSeparators(string normalizedPath, string originalPath)
         {
-            // IMPROVEMENT: Preserve original directory paths by using the original path separators
-            // Determine which separator was used in the original path
-            bool usesBackslash = originalPath.Contains('\\');
-            bool usesForwardSlash = originalPath.Contains('/');
-            
-            if (usesBackslash && !usesForwardSlash)
+            // IMPROVEMENT: Preserve original directory paths by using original path separators
+            // Determine which separator was used in the original path. Prioritize backslash for Windows compatibility.
+            if (originalPath.Contains('\\'))
             {
-                // Original used only backslashes
-                return normalizedPath.Replace(Path.DirectorySeparatorChar, '\\');
-            }
-            else if (usesForwardSlash && !usesBackslash)
-            {
-                // Original used only forward slashes
-                return normalizedPath.Replace(Path.DirectorySeparatorChar, '/');
-            }
-            else if (usesBackslash)
-            {
-                // Original used backslashes (might also have forward slashes, but backslashes take precedence in Windows-style paths)
                 return normalizedPath.Replace(Path.DirectorySeparatorChar, '\\');
             }
             
-            // Default to forward slash if no clear preference
+            // Default to forward slash if no backslash is present.
             return normalizedPath.Replace(Path.DirectorySeparatorChar, '/');
         }
         
