@@ -77,7 +77,7 @@ namespace LivingRoots.Domain
                 .Replace('\u2025', '.')
                 .Replace('\u2026', '.')
                 .Replace('\uFF0E', '.');
-
+            
             // Split into segments ignoring empty parts from repeated separators
             string[] segments = normalized.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
             
@@ -100,14 +100,6 @@ namespace LivingRoots.Domain
                     depth++;
                 }
                 // If segment is ".", we don't change the depth since it refers to current directory
-            }
-            
-            // Special case: paths that are just ".." which should be blocked
-            // Need to apply the same normalization to the special case checks
-            string specialCaseNormalized = path.Replace('\\', '/').Replace('\u2024', '.').Replace('\u2025', '.').Replace('\u2026', '.').Replace('\uFF0E', '.');
-            if (specialCaseNormalized.Equals("..", StringComparison.Ordinal) || specialCaseNormalized.Equals("../", StringComparison.Ordinal))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
         }
 
