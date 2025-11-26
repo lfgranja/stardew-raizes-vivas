@@ -12,7 +12,6 @@ namespace LivingRoots.Controllers
     /// </summary>
     public sealed class ModController : IDisposable
     {
-        private volatile bool _disposed = false;
         private readonly IModHelper _helper;
         private readonly IMonitor _monitor;
         private readonly IManifest _manifest;
@@ -30,6 +29,9 @@ namespace LivingRoots.Controllers
         
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
 
+        // Single integer field for atomic disposal check to prevent race conditions
+        private int _disposedInt = 0;
+
         public ModController(IModHelper helper, IMonitor monitor, IManifest manifest, IModDataService modDataService)
         {
             _helper = helper ?? throw new ArgumentNullException(nameof(helper));
@@ -40,8 +42,8 @@ namespace LivingRoots.Controllers
 
         public void RegisterEvents()
         {
-            // Check if disposed
-            if (Volatile.Read(ref _disposed))
+            // Check if disposed using single integer flag
+            if (Volatile.Read(ref _disposedInt) == 1)
             {
                 _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
                 return;
@@ -88,7 +90,7 @@ namespace LivingRoots.Controllers
 
         public void UnregisterEvents()
         {
-            if (Volatile.Read(ref _disposed))
+            if (Volatile.Read(ref _disposedInt) == 1)
             {
                 _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
                 return;
@@ -159,13 +161,13 @@ namespace LivingRoots.Controllers
         {
             try
             {
-                // Check if disposed at the beginning of the method to prevent execution after disposal
-                if (Volatile.Read(ref _disposed))
+                // Check if disposed at the beginning
+                if (Volatile.Read(ref _disposedInt) == 1)
                 {
                     _monitor.Log("OnGameLaunched called after disposal. Operation skipped.", LogLevel.Trace);
                     return;
                 }
-                
+
                 // Create snapshots of dependencies to avoid errors if disposed mid-execution
                 var monitor = _monitor;
                 var helper = _helper;
@@ -173,40 +175,31 @@ namespace LivingRoots.Controllers
                 monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
                 
                 // Use CompareExchange to make command registration atomic
-                if (Interlocked.CompareExchange(ref _commandRegistered, 1, 0) == 1)
-                {
-                    monitor.Log("Console command 'lr_version' is already registered, skipping registration.", LogLevel.Trace);
-                }
-                else
+                if (Interlocked.CompareExchange(ref _commandRegistered, 1, 0) == 0)
                 {
                     // Check again after disposal check to ensure we're not disposed during execution
-                    if (Volatile.Read(ref _disposed))
-                    {
-                        monitor.Log("OnGameLaunched disposed during execution. Command registration skipped.", LogLevel.Trace);
+                    if (Volatile.Read(ref _disposedInt) == 1)
                         return;
-                    }
-                    
-                    // Register console command only if not already registered
-                    if (helper?.ConsoleCommands != null)
+
+                    var commands = helper?.ConsoleCommands;
+                    if (commands != null)
                     {
-                        helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
+                        commands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
                         monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
                     }
                 }
                 
                 // Check again before unsubscribing to ensure we're still not disposed
-                if (Volatile.Read(ref _disposed))
-                {
-                    monitor.Log("OnGameLaunched disposed before unsubscribing. Handler may not be unsubscribed.", LogLevel.Trace);
+                if (Volatile.Read(ref _disposedInt) == 1)
                     return;
-                }
-                
-                // Unsubscribe from the GameLaunched event to ensure this handler runs only once
-                // This prevents multiple invocations during mod reloads, making the "run-once" behavior more robust
-                if (helper?.Events?.GameLoop != null && _onGameLaunchedHandler != null)
+
+                // Snapshot handler to avoid race condition
+                var handler = _onGameLaunchedHandler;
+                if (handler != null && helper?.Events?.GameLoop != null)
                 {
-                    helper.Events.GameLoop.GameLaunched -= _onGameLaunchedHandler;
-                    _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
+                    helper.Events.GameLoop.GameLaunched -= handler;
+                    // Only null out after successful unsubscribe
+                    _onGameLaunchedHandler = null;
                     monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
                 }
             }
@@ -221,7 +214,7 @@ namespace LivingRoots.Controllers
             try
             {
                 // Check disposal flag at start of method to prevent execution after disposal
-                if (Volatile.Read(ref _disposed))
+                if (Volatile.Read(ref _disposedInt) == 1)
                 {
                     return; // Skip execution if disposed
                 }
@@ -267,23 +260,41 @@ namespace LivingRoots.Controllers
 
         public void Dispose()
         {
-            // Use a separate integer field for atomic disposal check since Interlocked operations don't work with bool
+            // Ensure only one thread executes disposal logic
             if (Interlocked.CompareExchange(ref _disposedInt, 1, 0) == 1)
-            {
-                // Already disposed by another thread
                 return;
-            }
-            
-            // Set the volatile bool flag to indicate disposal
-            _disposed = true;
 
-            // Thread-safe unregistration of events during disposal
-            // Always call UnregisterEventsInternal() regardless of _eventsRegistered or _commandRegistered flags
-            // This ensures deterministic cleanup even if registration state is inconsistent
-            UnregisterEventsInternal();
+            // Snapshot handler to avoid TOCTOU between null check and unsubscribe
+            var handler = _onGameLaunchedHandler;
+            _onGameLaunchedHandler = null;
+
+            try
+            {
+                // Unregister events deterministically and idempotently
+                var helper = _helper;
+                var monitor = _monitor;
+
+                var gameLoop = helper?.Events?.GameLoop;
+                if (gameLoop != null && handler != null)
+                {
+                    try
+                    {
+                        gameLoop.GameLaunched -= handler;
+                    }
+                    catch (Exception ex)
+                    {
+                        monitor?.Log($"Error while unregistering GameLaunched: {ex.Message}", LogLevel.Error);
+                    }
+                }
+
+                // Reset flags before returning so other threads won't attempt registration
+                Interlocked.Exchange(ref _eventsRegistered, 0);
+                Interlocked.Exchange(ref _commandRegistered, 0);
+            }
+            finally
+            {
+                // No re-registration after this point; avoid further cleanup that touches SMAPI
+            }
         }
-        
-        // Separate integer field for atomic disposal check in Dispose method
-        private int _disposedInt = 0;
     }
 }
