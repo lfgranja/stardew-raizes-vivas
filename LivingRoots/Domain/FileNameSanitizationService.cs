@@ -10,6 +10,12 @@ namespace LivingRoots.Domain
     /// <summary>
     /// Implementation for sanitizing filenames to make them safe for file system operations.
     /// This implementation follows the Dependency Inversion Principle by depending on abstractions.
+    /// 
+    /// IMPROVEMENTS SUMMARY:
+    /// - Enhanced SafeSubstring robustness with additional null checks and boundary condition handling
+    /// - Improved handling of surrogate pairs to prevent splitting Unicode characters
+    /// - Added proper normalization of startIndex to prevent mathematical errors
+    /// - Reordered boundary checks to prevent ArgumentOutOfRangeException
     /// </summary>
     public class FileNameSanitizationService : IFileNameSanitizationService
     {
@@ -73,28 +79,28 @@ namespace LivingRoots.Domain
             var normalized = _unicodeNormalizationService.Normalize(filename) 
                              ?? throw new ArgumentException("Normalized filename is null.", nameof(filename));
 
-            // Extrair partes
+            // Extract parts
             string extension = GetFileExtension(normalized);
             string nameWithoutExtension = RemoveFileExtension(normalized);
 
-            // Passo 1: Verificar extensões bloqueadas em nomes vazios
+            // Step 1: Check for blocked extensions in empty names
             if (ShouldBlockEmptyName(nameWithoutExtension, extension))
                  return CreateSafeNameForBlockedExtension(normalized, extension);
 
-            // Passo 2: Sanitizar caracteres e pontos
+            // Step 2: Sanitize characters and dots
             string processed = SanitizeBaseName(nameWithoutExtension);
 
-            // Passo 3: Lógica de arquivo oculto
+            // Step 3: Hidden file logic
             bool isHidden = DetermineHiddenFileStatus(processed);
             processed = ProcessHiddenFileLogic(processed, filename, isHidden);
 
-            // Passo 4: Truncar e limpar
+            // Step 4: Truncate and clean
             string result = PerformFinalCleanup(TruncateToMaxLength(processed), isHidden);
 
-            // Passo 5: Reintegrar extensão (com verificação de bloqueio)
+            // Step 5: Reintegrate extension (with blocking check)
             result = AppendExtensionSafely(result, extension);
 
-            // Passo 6: Nomes reservados e validação final
+            // Step 6: Reserved names and final validation
             result = HandleReservedNames(result);
             ValidateFinalResult(result);
 
@@ -719,7 +725,12 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Safely extracts a substring without splitting surrogate pairs.
-        /// Improved to handle extremely short budgets (1-2 chars) properly.
+        /// IMPROVEMENTS:
+        /// - Added null check for str parameter to prevent NullReferenceException
+        /// - Normalize startIndex before calculating endIndex to prevent potential issues
+        /// - Reorder boundary checks to prevent ArgumentOutOfRangeException
+        /// - Handle extremely short budgets (1-2 chars) properly
+        /// - Properly handle surrogate pair boundaries to prevent splitting Unicode characters
         /// </summary>
         /// <param name="str">The input string</param>
         /// <param name="startIndex">Start index</param>
