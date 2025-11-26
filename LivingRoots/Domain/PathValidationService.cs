@@ -22,7 +22,7 @@ namespace LivingRoots.Domain
         // Enhanced to detect more path traversal attack variations including Unicode escapes, URL encoding variations, and hex encodings
         // Improved to reduce false positives by being more specific about dangerous patterns
         private static readonly Regex EncodedTraversalPattern = new Regex(
-            @"(?:%2e%2e%2[fF]|%2e%2e[/\\]|%2e%2e%00|%%32[eE]%%32[fF]|%25%32%65%25%32%65%25%32%66|%252[eE]%252[eE][/\\%3F%5C%2F]|%c0%ae%c0%ae|%e0%80%ae%e0%80%ae|%f0%80%80%ae%f0%80%80%ae|%c0%2e%c0%2e|%c0%2[fF]|%c0%5[cC]|%c0%af|%e2%80%a5%e2%80%a5%e2%80%a5|%ef%bc%8[fF]%ef%bc%8[eE]%ef%bc%8[eE]%ef%bc%8[fF]|%ef%bc%9[cC]%ef%bc%9[eE]%ef%bc%9[cC]%ef%bc%9[eE]|\.%252[eE]|%252[eE]\.|%252[eE]%252[eE]|\.%00\.|%00\.\.|%u02e%u002e%u002[fF]|%u002e%u002e%u005[cC]|%uff0[eE]%uff0[eE]|%u2024%u2024|%u2025%u2025|%u2026%u2026|%u302e%u3002|%uff0[fF]|%uff3[cC]|%u221[56])",
+            @"(?:%2e%2e%2[fF]|%2e%2e[/\\]|%2e%2e%00|%%32[eE]%%32[fF]|%25%32%65%25%32%65%25%32%66|%252[eE]%252[eE][/\\%3F%5C%2F]|%c0%ae%c0%ae|%e0%80%ae%e0%80%ae|%f0%80%80%ae%f0%80%80%ae|%c0%2e%c0%2e|%c0%2[fF]|%c0%5[cC]|%c0%af|%e2%80%a5%e2%80%a5%e2%80%a5|%ef%bc%8[fF]%ef%bc%8[eE]%ef%bc%8[eE]%ef%bc%8[fF]|%ef%bc%9[cC]%ef%bc%9[eE]%ef%bc%9[cC]%ef%bc%9[eE]|\.%252[eE]|%252[eE]\.|%252[eE]%252[eE]|\.%00\.|%00\.\.|%u02e%u02e%u002[fF]|%u002e%u002e%u005[cC]|%uff0[eE]%uff0[eE]|%u2024%u2024|%u2025%u2025|%u2026%u2026|%u302e%u3002|%uff0[fF]|%uff3[cC]|%u221[56])",
             RegexOptions.Compiled | RegexOptions.IgnoreCase
         );
 
@@ -67,8 +67,19 @@ namespace LivingRoots.Domain
         /// <exception cref="ArgumentException">Thrown when path traversal is detected.</exception>
         private void ValidatePathTraversalDepth(string path)
         {
-            // Split the path into segments
-            string[] segments = path.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            // Canonicalize separators
+            string normalized = path.Replace('\\', '/');
+
+            // Map dot-homoglyphs used in traversal tricks to ASCII '.'
+            // U+2024 (ONE DOT LEADER), U+2025 (TWO DOT LEADER), U+2026 (HORIZONTAL ELLIPSIS), U+FF0E (FULLWIDTH FULL STOP)
+            normalized = normalized
+                .Replace('\u2024', '.')
+                .Replace('\u2025', '.')
+                .Replace('\u2026', '.')
+                .Replace('\uFF0E', '.');
+
+            // Split into segments ignoring empty parts from repeated separators
+            string[] segments = normalized.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
             
             int depth = 0;
             
@@ -92,7 +103,9 @@ namespace LivingRoots.Domain
             }
             
             // Special case: paths that are just ".." which should be blocked
-            if (path.Equals("..", StringComparison.Ordinal) || path.Equals("../", StringComparison.Ordinal) || path.Equals("..\\", StringComparison.Ordinal))
+            // Need to apply the same normalization to the special case checks
+            string specialCaseNormalized = path.Replace('\\', '/').Replace('\u2024', '.').Replace('\u2025', '.').Replace('\u2026', '.').Replace('\uFF0E', '.');
+            if (specialCaseNormalized.Equals("..", StringComparison.Ordinal) || specialCaseNormalized.Equals("../", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
@@ -105,7 +118,9 @@ namespace LivingRoots.Domain
         /// <exception cref="ArgumentException">Thrown when path is a standalone "."</exception>
         private void ValidateStandaloneDot(string path)
         {
-            if (path.Equals(".", StringComparison.Ordinal))
+            // Apply the same normalization for consistency
+            string normalized = path.Replace('\\', '/').Replace('\u2024', '.').Replace('\u2025', '.').Replace('\u2026', '.').Replace('\uFF0E', '.');
+            if (normalized.Equals(".", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
@@ -118,7 +133,9 @@ namespace LivingRoots.Domain
         /// <exception cref="ArgumentException">Thrown when path is a standalone ".."</exception>
         private void ValidateStandaloneDotDot(string path)
         {
-            if (path.Equals("..", StringComparison.Ordinal) || path.Equals("../", StringComparison.Ordinal) || path.Equals("..\\", StringComparison.Ordinal))
+            // Apply the same normalization for consistency
+            string normalized = path.Replace('\\', '/').Replace('\u2024', '.').Replace('\u2025', '.').Replace('\u2026', '.').Replace('\uFF0E', '.');
+            if (normalized.Equals("..", StringComparison.Ordinal) || normalized.Equals("../", StringComparison.Ordinal) || normalized.Equals("..\\", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
@@ -131,7 +148,9 @@ namespace LivingRoots.Domain
         /// <exception cref="ArgumentException">Thrown when path starts with "./" or ".\"</exception>
         private void ValidateDotSlashAtStart(string path)
         {
-            if (path.StartsWith("./", StringComparison.Ordinal) || path.StartsWith(".\\", StringComparison.Ordinal))
+            // Apply the same normalization for consistency
+            string normalized = path.Replace('\\', '/');
+            if (normalized.StartsWith("./", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
@@ -144,7 +163,9 @@ namespace LivingRoots.Domain
         /// <exception cref="ArgumentException">Thrown when path starts with "../" or "..\"</exception>
         private void ValidateDotDotSlashAtStart(string path)
         {
-            if (path.StartsWith("../", StringComparison.Ordinal) || path.StartsWith("..\\", StringComparison.Ordinal))
+            // Apply the same normalization for consistency
+            string normalized = path.Replace('\\', '/');
+            if (normalized.StartsWith("../", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }

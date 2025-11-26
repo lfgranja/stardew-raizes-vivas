@@ -414,5 +414,44 @@ namespace LivingRoots.Tests
                 _service.Validate(Path.Combine("..", "file.txt")));
             Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
+        
+        [Fact]
+        public void Validate_WithUnicodeDotHomoglyphs_PathTraversal_ThrowsArgumentException()
+        {
+            // Test path traversal using Unicode homoglyphs that should be normalized to ".."
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("\u2024\u2024/file.txt")); // ".." with U+2024
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("\u2025\u2025/file.txt")); // ".." with U+2025
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+            
+            var exception3 = Assert.Throws<ArgumentException>(() => _service.Validate("\u2026\u2026/file.txt")); // ".." with U+2026
+            Assert.Contains("Path cannot contain path traversal patterns", exception3.Message);
+            
+            var exception4 = Assert.Throws<ArgumentException>(() => _service.Validate("\uFF0E\uFF0E/file.txt")); // ".." with U+FF0E
+            Assert.Contains("Path cannot contain path traversal patterns", exception4.Message);
+        }
+        
+        [Fact]
+        public void Validate_WithMultipleUnicodeDotHomoglyphs_PathTraversal_ThrowsArgumentException()
+        {
+            // Test more complex path traversal using Unicode homoglyphs
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("../../\u2024\u2024/file.txt")); // "../../../" with homoglyph
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("\u2025\u2025/\u2026\u2026/file.txt")); // ".." with different homoglyphs
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+        }
+        
+        [Fact]
+        public void Validate_WithMixedPathSeparatorsAndUnicodeDots_PathTraversal_ThrowsArgumentException()
+        {
+            // Test that both path separator canonicalization and dot homoglyph normalization work together
+            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("../\u2024\u2024/file.txt")); // "../.."
+            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            
+            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("\u2025\u2025\\file.txt")); // ".." with backslash
+            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+        }
     }
 }
