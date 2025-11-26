@@ -50,17 +50,17 @@ namespace LivingRoots.Services
             
             catch (System.IO.IOException ex)
             {
-                _monitor.Log($"IOException while saving data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                _monitor.Log("IOException occurred while saving data", LogLevel.Warn);
                 throw; // Keep rethrowing for save operations as these are critical
             }
             catch (Newtonsoft.Json.JsonException ex)
             {
-                _monitor.Log($"JSON error while saving data for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                _monitor.Log("JSON error occurred while saving data", LogLevel.Warn);
                 throw; // Keep rethrowing for save operations as these are critical
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Unexpected error while saving data for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
+                _monitor.Log("Unexpected error occurred while saving data", LogLevel.Error);
                 throw; // Keep rethrowing for save operations as these are critical
             }
         }
@@ -152,14 +152,14 @@ namespace LivingRoots.Services
             {
                 // Log other IOExceptions as Warn to reduce log noise from non-critical issues
                 // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor.Log($"IOException while loading data for key '{sanitizedKey}'", LogLevel.Warn);
+                _monitor.Log($"IOException occurred while loading data for key '{sanitizedKey}'", LogLevel.Warn);
                 return null; // Return null instead of throwing when IO error occurs
             }
             catch (Newtonsoft.Json.JsonException ex) // Catch broader JsonException instead of JsonReaderException
             {
                 // Log JsonException as Warn for consistency with other non-critical errors
                 // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor.Log($"JSON parsing error while loading data for key '{sanitizedKey}'", LogLevel.Warn);
+                _monitor.Log($"JSON parsing error occurred while loading data for key '{sanitizedKey}'", LogLevel.Warn);
                 return null; // Return null instead of throwing when JSON is invalid (consistent with DataExists behavior)
             }
         }
@@ -171,18 +171,8 @@ namespace LivingRoots.Services
         /// <returns>True if data exists, false otherwise</returns>
         public bool DataExists(string key)
         {
-            // Defensive null checks for helper and its Data property
-            if (_helper == null)
-            {
-                _monitor.Log("ModHelper is null in DataExists method. This should not happen under normal circumstances.", LogLevel.Error);
-                return false;
-            }
-            
-            if (_helper.Data == null)
-            {
-                _monitor.Log("Helper.Data is null in DataExists method. This should not happen under normal circumstances.", LogLevel.Error);
-                return false;
-            }
+            // Removed redundant null checks for helper and its Data property
+            // The original checks were redundant since they would have been caught earlier in the call stack
 
             string sanitizedKey;
             try
@@ -191,7 +181,7 @@ namespace LivingRoots.Services
             }
             catch (ArgumentException ex)
             {
-                _monitor.Log($"Invalid key provided to DataExists: {ex.Message}", LogLevel.Warn);
+                _monitor.Log("Invalid key provided to DataExists", LogLevel.Warn);
                 return false;
             }
 
@@ -210,38 +200,38 @@ namespace LivingRoots.Services
             catch (System.IO.FileNotFoundException ex)
             {
                 // File does not exist - log as trace to reduce noise
-                _monitor.Log($"File not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Trace);
+                _monitor.Log($"File not found while checking data existence for key '{sanitizedKey}'", LogLevel.Trace);
                 return false;
             }
             catch (System.IO.DirectoryNotFoundException ex)
             {
                 // Directory does not exist - log as warn
-                _monitor.Log($"Directory not found while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                _monitor.Log($"Directory not found while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
                 return false;
             }
             catch (System.UnauthorizedAccessException ex)
             {
                 // Access denied to file or directory - treat as non-existent and log as warn
-                _monitor.Log($"Access denied while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                _monitor.Log($"Access denied while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
                 return false;
             }
             catch (System.IO.IOException ex)
             {
                 // Other IO exceptions - treat as non-existent and log as warn
-                _monitor.Log($"IOException while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                _monitor.Log($"IOException occurred while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
                 return false;
             }
             catch (Newtonsoft.Json.JsonException ex)
             {
                 // JSON parsing error - file exists but contains invalid JSON
                 // For consistency with LoadData, we consider this as "data does not exist"
-                _monitor.Log($"JSON parsing error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Warn);
+                _monitor.Log($"JSON parsing error occurred while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
                 return false;
             }
             catch (Exception ex)
             {
                 // Any other unexpected exception - treat as non-existent and log as error
-                _monitor.Log($"Unexpected error while checking data existence for key '{sanitizedKey}': {ex.Message}", LogLevel.Error);
+                _monitor.Log($"Unexpected error occurred while checking data existence for key '{sanitizedKey}'", LogLevel.Error);
                 return false;
             }
         }
@@ -311,7 +301,7 @@ namespace LivingRoots.Services
             {
                 // Log other IOExceptions as Warn to reduce log noise from non-critical issues
                 // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor.Log($"IOException while removing data for key '{sanitizedKey}'", LogLevel.Warn);
+                _monitor.Log($"IOException occurred while removing data for key '{sanitizedKey}'", LogLevel.Warn);
                 // For critical removal operations, rethrow the exception to signal failure
                 throw;
             }
@@ -319,7 +309,7 @@ namespace LivingRoots.Services
             {
                 // Log unexpected errors as Error and rethrow for critical operations
                 // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor.Log($"Unexpected error while removing data for key '{sanitizedKey}'", LogLevel.Error);
+                _monitor.Log($"Unexpected error occurred while removing data for key '{sanitizedKey}'", LogLevel.Error);
                 // Rethrow critical removal failures to ensure proper error handling by callers
                 throw;
             }

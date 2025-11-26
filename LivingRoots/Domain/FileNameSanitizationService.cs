@@ -25,38 +25,28 @@ namespace LivingRoots.Domain
         private readonly IReservedNameHandler _reservedNameHandler;
 
         // Static readonly field to avoid rebuilding the blocked extensions set on every call
+        // IMPROVEMENT: Removed duplicate blocked extensions to eliminate redundancy
         private static readonly HashSet<string> BlockedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             ".exe", ".dll", ".bat", ".sh", ".ps1", ".cmd", ".com", ".scr", ".pif", ".lnk", 
             ".msi", ".msp", ".vbs", ".js", ".jse", ".wsf", ".wsh", ".hta", ".cpl", ".msc", ".inf",
             ".py", ".rb", ".apk", ".ipa", ".jar", ".msix", ".appx", ".reg", ".iso", ".img", ".pkg", ".dmg",
             ".vbe", ".vbscript", ".ws", ".wsc", ".msh1", ".msh2", ".mshxml", ".msh1xml", ".msh2xml",
-            ".scf", ".url", ".pif", ".scr", ".sys", ".bin", ".pl", ".php", ".asp", ".aspx", ".cgi",
-            ".sql", ".mdb", ".accdb", ".db", ".dbf", ".sqlite", ".sqlite3", ".jar", ".war", ".ear",
-            ".class", ".dex", ".so", ".dylib", ".dll", ".sys", ".drv", ".ocx", ".cpl", ".msc", ".msi",
-            ".msp", ".mst", ".vxd", ".acm", ".ax", ".efi", ".fon", ".ime", ".kbd", ".scr", ".vbx", ".xll",
-            // Additional extensions to address security concerns and be more comprehensive
-            ".app", ".deb", ".rpm", ".msm", ".msp", ".msp", ".mst", ".sct", ".wsf", ".wsh", ".ps1xml",
-            ".psc1", ".psd1", ".psm1", ".mof", ".inf", ".sys", ".drv", ".vxd", ".acm", ".ax", ".efi",
-            ".fon", ".ime", ".kbd", ".scr", ".vbx", ".xll", ".paf", ".pif", ".prg", ".scr", ".shb",
-            ".shs", ".u3p", ".vbs", ".vbe", ".vbs", ".ws", ".wse", ".wsh", ".mcr", ".mce", ".mcf",
-            ".jar", ".jnlp", ".war", ".ear", ".apk", ".xap", ".swf", ".flash", ".action", ".workflow",
+            ".scf", ".url", ".sys", ".bin", ".pl", ".php", ".asp", ".aspx", ".cgi",
+            ".sql", ".mdb", ".accdb", ".db", ".dbf", ".sqlite", ".sqlite3", ".war", ".ear",
+            ".class", ".dex", ".so", ".dylib", ".drv", ".ocx", ".mst", ".vxd", ".acm", ".ax", ".efi", 
+            ".fon", ".ime", ".kbd", ".vbx", ".xll", ".app", ".deb", ".rpm", ".sct", ".mof", ".shb",
+            ".shs", ".u3p", ".wse", ".mcr", ".mce", ".mcf", ".jnlp", ".xap", ".swf", ".flash", ".action", ".workflow",
             ".command", ".csh", ".tcsh", ".zsh", ".fish", ".ksh", ".bash", ".rbw", ".rbx", ".gem",
-            ".pl", ".pm", ".plx", ".perl", ".php", ".php3", ".php4", ".php5", ".phtml", ".pyc", ".pyo",
-            ".pyd", ".asm", ".asmx", ".ps1", ".psc1", ".psd1", ".psm1", ".msh1", ".msh2",
-            ".mshxml", ".msh1xml", ".msh2xml", ".scf", ".paf", ".gadget", ".msc", ".msi", ".msp",
-            ".mst", ".sct", ".shb", ".shs", ".u3p", ".vbe", ".vbs", ".vbscript", ".ws", ".wsc",
-            ".wsf", ".wsh", ".hta", ".htr", ".cer", ".crt", ".crl", ".crt", ".der", ".p12", ".p7b",
-            ".p7c", ".p7m", ".p7r", ".p7s", ".pem", ".pfx", ".pgm", ".pgp", ".pki", ".pko", ".pl",
-            ".plc", ".plg", ".plp", ".plx", ".pm", ".pmc", ".pmw", ".po", ".pot", ".potm", ".potx",
-            ".ppa", ".ppam", ".pps", ".ppsm", ".ppsx", ".ppt", ".pptm", ".pptx", ".prf", ".prg",
-            ".printerexport", ".prl", ".prm", ".prx", ".ps1", ".psc1", ".psd1", ".psm1", ".pst", ".py",
-            ".pyc", ".pyd", ".pyo", ".pyw", ".pyz", ".pyzw", ".rb", ".rbw", ".rbx", ".gem", ".gemspec",
-            ".ru", ".rbi", ".rake", ".cap", ".thor", ".watchr", ".ahkl", ".pl", ".plx", ".cgi",
-            ".fcgi", ".pl", ".pm", ".pod", ".t", ".cgi", ".fcgi", ".pl", ".pm", ".pod", ".t", ".aws",
-            ".efi", ".exe", ".msc", ".msp", ".mst", ".vbe", ".vbs", ".wsf", ".wsh", ".hta", ".htr",
-            ".inf", ".ins", ".isp", ".jar", ".jnlp", ".jse", ".scr", ".sct", ".sh", ".shb", ".shs",
-            ".url", ".vb", ".vbe", ".vbs", ".vbscript", ".ws", ".wsc", ".wsf", ".wsh", ".xsl", ".xslt"
+            ".pm", ".plx", ".perl", ".php3", ".php4", ".php5", ".phtml", ".pyc", ".pyo",
+            ".pyd", ".asm", ".asmx", ".psc1", ".psd1", ".psm1", ".gadget", ".cer", ".crt", ".crl", ".der", ".p12", ".p7b",
+            ".p7c", ".p7m", ".p7r", ".p7s", ".pem", ".pfx", ".pgm", ".pgp", ".pki", ".pko", ".plc", ".plg", ".plp", 
+            ".plx", ".pm", ".pmc", ".pmw", ".po", ".pot", ".potm", ".potx", ".ppa", ".ppam", ".pps", ".ppsm", ".ppsx", 
+            ".ppt", ".pptm", ".pptx", ".prf", ".prg", ".printerexport", ".prl", ".prm", ".prx", ".pst", ".pyw", 
+            ".pyz", ".pyzw", ".rb", ".rbw", ".rbx", ".gem", ".gemspec", ".ru", ".rbi", ".rake", ".cap", ".thor", 
+            ".watchr", ".ahkl", ".cgi", ".fcgi", ".pod", ".t", ".aws", ".msc", ".mst", 
+            ".vbe", ".vbs", ".wsf", ".wsh", ".hta", ".htr", ".ins", ".isp", ".sct", ".sh", ".shb", ".shs",
+            ".vb", ".xsl", ".xslt"
         };
 
         public FileNameSanitizationService(IUnicodeNormalizationService unicodeNormalizationService, IReservedNameHandler reservedNameHandler)
@@ -96,6 +86,10 @@ namespace LivingRoots.Domain
 
             // Step 4: Truncate and clean
             string result = PerformFinalCleanup(TruncateToMaxLength(processed), isHidden);
+
+            // IMPROVEMENT: Trim trailing fillers before extension appending
+            // Apply result.TrimEnd('_', ' ', '.') before extension handling to handle multiple trailing characters correctly
+            result = result.TrimEnd('_', ' ', '.');
 
             // Step 5: Reintegrate extension (with blocking check)
             result = AppendExtensionSafely(result, extension);

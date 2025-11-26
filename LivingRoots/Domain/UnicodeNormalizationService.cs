@@ -23,7 +23,7 @@ namespace LivingRoots.Domain
         {
             // Characters that are commonly used in homoglyph attacks (always converted for security)
             // Cyrillic lookalikes that can be used to disguise Latin text
-            { 'а', "a" }, { 'е', "e" }, { 'о', "o" }, { 'р', "p" }, { 'с', "c" }, { 'х', "h" }, { 'у', "y" },  // Cyrillic lowercase lookalikes
+            { 'а', "a" }, { 'е', "e" }, { 'о', "o" }, { 'р', "p" }, { 'с', "c" }, { 'х', "h" }, { 'у', "y" }, // Cyrillic lowercase lookalikes
             { 'А', "A" }, { 'Е', "E" }, { 'О', "O" }, { 'Р', "P" }, { 'С', "C" }, { 'Х', "H" }, { 'У', "Y" }, // Cyrillic uppercase lookalikes
             { 'і', "i" }, { 'І', "I" }, // Additional Cyrillic lookalikes
             // Other confusable characters
@@ -66,15 +66,19 @@ namespace LivingRoots.Domain
                     }
                     else
                     {
-                        // Dangling high surrogate: skip to avoid ill-formed UTF-16
-                        continue; // or: resultBuilder.Append('_');
+                        // Dangling high surrogate: replace with U+FFFD (replacement character) to avoid data loss
+                        resultBuilder.Append('\uFFFD');
                     }
                 }
                 if (char.IsLowSurrogate(c))
                 {
-                    // Dangling low surrogate: skip to avoid ill-formed UTF-16
-                    continue; // or: resultBuilder.Append('_');
+                    // Dangling low surrogate: replace with U+FFFD (replacement character) to avoid data loss
+                    resultBuilder.Append('\uFFFD');
                 }
+
+                // Skip processing if this is a surrogate that was already handled
+                if (char.IsSurrogate(c))
+                    continue;
 
                 var category = CharUnicodeInfo.GetUnicodeCategory(c);
 
@@ -278,7 +282,7 @@ namespace LivingRoots.Domain
                 if (IsCyrillicLetter(text[prevIndex]))
                     return false;
             }
-            // If not at boundaries, check both neighbors as before
+            // If not at boundaries, check both neighbors - BOTH must be Cyrillic to preserve
             else
             {
                 // If the character is surrounded by Cyrillic letters on BOTH sides, preserve it as part of legitimate Cyrillic text

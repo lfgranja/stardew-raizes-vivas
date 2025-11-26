@@ -144,6 +144,7 @@ namespace LivingRoots.Domain
         /// <returns>The path with original separator format</returns>
         private static string RestoreOriginalPathSeparators(string normalizedPath, string originalPath)
         {
+            // IMPROVEMENT: Preserve original directory paths by using the original path separators
             // Determine which separator was used in the original path
             bool usesBackslash = originalPath.Contains('\\');
             bool usesForwardSlash = originalPath.Contains('/');

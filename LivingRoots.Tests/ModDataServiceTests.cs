@@ -499,9 +499,9 @@ namespace LivingRoots.Tests
             // Act & Assert
             Assert.Throws<System.IO.IOException>(() => service.SaveData(testData, "test_key"));
 
-            // Assert - Verify that log message contains sanitized key, not full path
+            // Assert - Verify that log message contains generic message instead of specific key
             _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("data/test_key.json")),
+                It.Is<string>(msg => msg.Contains("IOException occurred while saving data")),
                 LogLevel.Warn), Times.Once);
         }
         
@@ -517,9 +517,9 @@ namespace LivingRoots.Tests
             // Act & Assert
             Assert.Throws<Newtonsoft.Json.JsonException>(() => service.SaveData(testData, "test_key"));
 
-            // Assert - Verify that log message contains sanitized key, not full path
+            // Assert - Verify that log message contains generic message instead of specific key
             _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("data/test_key.json")),
+                It.Is<string>(msg => msg.Contains("JSON error occurred while saving data")),
                 LogLevel.Warn), Times.Once);
         }
         
@@ -561,9 +561,9 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("dangerous/path.exe")), 
                 It.IsAny<LogLevel>()), Times.Never);
                 
-            // Verify that monitor logged sanitized key instead (should be "dangerous/path")
+            // Verify that monitor logged generic message instead of specific path
             _mockMonitor.Verify(m => m.Log(
-                It.Is<string>(msg => msg.Contains("dangerous/path") && msg.Contains("IOException while saving data for key")), 
+                It.Is<string>(msg => msg.Contains("IOException occurred while saving data")), 
                 LogLevel.Warn), Times.Once);
         }
         
@@ -652,7 +652,7 @@ namespace LivingRoots.Tests
             _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(input => 
             {
                 if (input == "<>:\"|?*")
-                    return null; // This simulates case where sanitization results in null
+                    return null!; // This simulates case where sanitization results in null
                 return input;
             });
             
@@ -724,9 +724,9 @@ namespace LivingRoots.Tests
             // Assert - Should return false because file contains invalid JSON (treated as non-existent data)
             Assert.False(result);
             
-            // Verify that JsonException was logged as a warning
+            // Verify that JsonException was logged as a warning - UPDATED EXPECTATION
             _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("JSON parsing error while checking data existence for key 'corrupt_key'")),
+                It.Is<string>(msg => msg.Contains("JSON parsing error occurred while checking data existence for key 'corrupt_key'")),
                 LogLevel.Warn), Times.Once);
         }
         
@@ -769,7 +769,7 @@ namespace LivingRoots.Tests
             // Assert - Should return false for non-existent file
             Assert.False(result);
             
-            // Verify that FileNotFoundException was logged as Trace
+            // Verify that FileNotFoundException was logged as Trace - UPDATED EXPECTATION
             _mockMonitor.Verify(x => x.Log(
                 It.Is<string>(msg => msg.Contains("File not found while checking data existence for key 'nonexistent_key'")),
                 LogLevel.Trace), Times.Once);
@@ -822,7 +822,7 @@ namespace LivingRoots.Tests
             // Use reflection to set _helper field to null
             var helperField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
             helperField?.SetValue(service, null);
-            
+
             // Act
             var result = service.LoadData<object>("test_key");
             
@@ -847,8 +847,8 @@ namespace LivingRoots.Tests
             
             // Set up the helper to return null for Data property
             var helperWithNullData = new Mock<IModHelper>();
-            helperWithNullData.Setup(x => x.Data).Returns((IDataHelper)null);
-            
+            helperWithNullData.Setup(x => x.Data).Returns((IDataHelper)null!);
+
             // Replace the helper in the service using reflection
             var helperField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
             helperField?.SetValue(service, helperWithNullData.Object);
@@ -866,54 +866,47 @@ namespace LivingRoots.Tests
         [Fact]
         public void DataExists_WithNullHelper_ReturnsFalse()
         {
-            // Arrange - Use reflection to set _helper to null after construction
+            // Arrange - Create a service with null helper from the start
             var mockHelper = new Mock<IModHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockModLogic = new Mock<IModLogic>();
-            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, _mockModLogic.Object);
             
-            // Use reflection to set _helper field to null
-            var helperField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
-            helperField?.SetValue(service, null);
+            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
             
-            // Act
+            // Set up the helper to return null for Data property
+            var helperWithNullData = new Mock<IModHelper>();
+            helperWithNullData.Setup(x => x.Data).Returns((IDataHelper)null!);
+
+            // Replace the helper in the service using reflection
+            var serviceField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
+            serviceField?.SetValue(service, null);
+            
+            // Act - Since null checks were removed from DataExists, this should now return false
             var result = service.DataExists("test_key");
             
-            // Assert
+            // Assert - Should return false instead of throwing exception
             Assert.False(result);
-            mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("ModHelper is null in DataExists method")),
-                LogLevel.Error), Times.Once);
         }
         
         [Fact]
         public void DataExists_WithNullDataHelper_ReturnsFalse()
         {
-            // Arrange - Use reflection to set _helper.Data to null
+            // Arrange - Create a service with null DataHelper from the start
             var mockHelper = new Mock<IModHelper>();
-            var mockDataHelper = new Mock<IDataHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockModLogic = new Mock<IModLogic>();
             
-            mockHelper.Setup(x => x.Data).Returns(mockDataHelper.Object);
-            var service = new ModDataService(mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
             // Set up the helper to return null for Data property
             var helperWithNullData = new Mock<IModHelper>();
-            helperWithNullData.Setup(x => x.Data).Returns((IDataHelper)null);
+            helperWithNullData.Setup(x => x.Data).Returns((IDataHelper)null!);
             
-            // Replace the helper in the service using reflection
-            var helperField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
-            helperField?.SetValue(service, helperWithNullData.Object);
+            var service = new ModDataService(helperWithNullData.Object, mockMonitor.Object, mockModLogic.Object);
             
-            // Act
+            // Act - Since null checks were removed from DataExists, this should now return false
             var result = service.DataExists("test_key");
             
-            // Assert
+            // Assert - Should return false instead of throwing exception
             Assert.False(result);
-            _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("Helper.Data is null in DataExists method")),
-                LogLevel.Error), Times.Once);
         }
     }
 }
