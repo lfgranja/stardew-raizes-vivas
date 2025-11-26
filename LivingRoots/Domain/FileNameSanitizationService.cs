@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace LivingRoots.Domain
 {
@@ -41,7 +42,7 @@ namespace LivingRoots.Domain
             ".pm", ".plx", ".perl", ".php3", ".php4", ".php5", ".phtml", ".pyc", ".pyo",
             ".pyd", ".asm", ".asmx", ".psc1", ".psd1", ".psm1", ".gadget", ".cer", ".crt", ".crl", ".der", ".p12", ".p7b",
             ".p7c", ".p7m", ".p7r", ".p7s", ".pem", ".pfx", ".pgm", ".pgp", ".pki", ".pko", ".plc", ".plg", ".plp", 
-            ".plx", ".pm", ".pmc", ".pmw", ".po", ".pot", ".potm", ".potx", ".ppa", ".ppam", ".pps", ".ppsm", ".ppsx", 
+            ".plx", ".pm", ".pmc", ".pmw", ".po", ".pot", ".potm", ".potx", ".ppam", ".pps", ".ppsm", ".ppsx", 
             ".ppt", ".pptm", ".pptx", ".prf", ".prg", ".printerexport", ".prl", ".prm", ".prx", ".pst", ".pyw", 
             ".pyz", ".pyzw", ".rb", ".rbw", ".rbx", ".gem", ".gemspec", ".ru", ".rbi", ".rake", ".cap", ".thor", 
             ".watchr", ".ahkl", ".cgi", ".fcgi", ".pod", ".t", ".aws", ".msc", ".mst", 
@@ -532,10 +533,6 @@ namespace LivingRoots.Domain
             {
                 char c = input[i];
 
-                // Actively reject control chars (including null) to avoid smuggling/collisions
-                if (char.IsControl(c))
-                    throw new ArgumentException("Filename contains control characters.", nameof(input));
-
                 // Handle surrogate pairs (needed for emojis and other characters outside BMP)
                 if (char.IsHighSurrogate(c) && i + 1 < input.Length && char.IsLowSurrogate(input[i + 1]))
                 {
@@ -607,34 +604,57 @@ namespace LivingRoots.Domain
         /// <returns>The start index of the extension (including the dot) if valid, or -1 if no valid extension found.</returns>
         private static int FindExtensionStartIndex(string filename)
         {
-            int lastDotIndex = filename.LastIndexOf('.');
+            // Normalize to NFC to reduce homoglyph tricks
+            string normalized = filename.Normalize(NormalizationForm.FormC);
+
+            int lastDotIndex = normalized.LastIndexOf('.');
 
             // No dot found or dot is at the end
-            if (lastDotIndex < 0 || lastDotIndex >= filename.Length - 1)
+            if (lastDotIndex < 0 || lastDotIndex >= normalized.Length - 1)
                 return -1;
 
             // Extract potential extension (including the dot)
-            string potentialExtension = filename.Substring(lastDotIndex);
+            string potentialExtension = normalized.Substring(lastDotIndex);
 
-            // Check if the part after the dot contains at least one alphanumeric character
-            string extensionPart = potentialExtension.Substring(1);
-            if (!extensionPart.Any(c => char.IsLetterOrDigit(c)))
+            // Normalize and pre-trim to avoid homoglyph/whitespace edge-cases
+            var extNormalized = potentialExtension.Normalize(NormalizationForm.FormC);
+
+            // Reject if extension ends with whitespace or an extra dot
+            if (char.IsWhiteSpace(extNormalized[^1]) || extNormalized[^1] == '.')
+                return -1;
+
+            string extensionPart = extNormalized.Substring(1);
+
+            // If the extension part trimmed of fillers has no alphanumerics, it's not a real extension
+            var trimmedPart = extensionPart.Trim('_', ' ', '.');
+            if (trimmedPart.Length == 0 || !trimmedPart.Any(c => char.IsLetterOrDigit(c)))
+                return -1;
+
+            // Reject if extension contains any bidi/control characters that could obfuscate
+            // U+202A..U+202E (bidi overrides), U+2066..U+2069 (isolate), and general control chars
+            if (extensionPart.Any(ch => char.IsControl(ch) ||
+                                       (ch >= '\u202A' && ch <= '\u202E') ||
+                                       (ch >= '\u2066' && ch <= '\u2069')))
+                return -1;
+
+            // Allow only ASCII letters/digits for core of extension
+            if (!extensionPart.All(c => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || char.IsDigit(c)))
                 return -1;
 
             // Check if extension contains path separators
-            if (potentialExtension.Contains('/') || potentialExtension.Contains('\\'))
+            if (extNormalized.Contains('/') || extNormalized.Contains('\\'))
                 return -1;
 
             // For security: if the filename starts with a dot followed by a dangerous extension, still detect it
-            if (lastDotIndex == 0 && IsBlockedExtension(potentialExtension))
+            if (lastDotIndex == 0 && IsBlockedExtension(extNormalized))
                 return 0; // Return 0 for simple dotfiles with dangerous extensions like ".exe"
 
             // For simple dotfiles (e.g., ".profile"), check if it's not a dangerous extension
-            if (lastDotIndex == 0 && !IsBlockedExtension(potentialExtension))
+            if (lastDotIndex == 0 && !IsBlockedExtension(extNormalized))
                 return -1; // Don't treat simple dotfiles as having extensions unless they're dangerous
 
             // Check if the extension contains invalid filename characters
-            if (potentialExtension.IndexOfAny(Path.GetInvalidFileNameChars()) != -1)
+            if (extNormalized.IndexOfAny(Path.GetInvalidFileNameChars()) != -1)
                 return -1;
 
             // If all checks pass, return the index of the dot
