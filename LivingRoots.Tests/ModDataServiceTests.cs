@@ -8,6 +8,8 @@ using Newtonsoft.Json;
 using System.IO;
 using System.Reflection;
 
+#nullable disable
+
 namespace LivingRoots.Tests
 {
     public class ModDataServiceTests
@@ -419,19 +421,45 @@ namespace LivingRoots.Tests
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             
-            // Configure helper to return a directory path for file check
-            _mockHelper.Setup(x => x.DirectoryPath).Returns("/test/directory");
+            // To simulate a file that exists but contains invalid data for the requested type:
+            // We need to differentiate between the first call (for specific type) and the second call (existence probe).
+            // We'll use a sequence of calls to mock the behavior:
+            // 1. First call to ReadJsonFile<T> returns null (invalid data for the specific type)
+            // 2. Second call to ReadJsonFile<object> (existence probe) returns non-null (file exists)
             
-            // Mock File.Exists to return true to simulate file exists but has corrupt content
-            // We'll set up ReadJsonFile to return null (which happens with empty/corrupt files)
-            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Returns<object>(null);
+            // We'll reset the mock for this specific test to avoid conflicts with other tests
+            var testDataHelper = new Mock<IDataHelper>();
+            var mockHelper = new Mock<IModHelper>();
+            var mockMonitor = new Mock<IMonitor>();
+            var mockModLogic = new Mock<IModLogic>();
+            
+            mockHelper.Setup(x => x.DirectoryPath).Returns("/test/directory");
+            mockHelper.Setup(x => x.Data).Returns(testDataHelper.Object);
+            mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(s => s);
+            mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Verifiable();
+            
+            var serviceWithCustomMocks = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            
+            // Setup mock behavior for sequence of calls
+            // Use a counter to track which call we're on
+            int callCount = 0;
+            object[] responses = { null, new { some = "data" } }; // First call returns null, second returns data
+            
+            testDataHelper
+                .Setup(x => x.ReadJsonFile<object>(It.IsAny<string>()))
+                .Returns(() => 
+                {
+                    var response = callCount < responses.Length ? responses[callCount] : null;
+                    callCount++;
+                    return response;
+                });
 
             // Act
-            var result = service.LoadData<object>("test_key");
+            var result = serviceWithCustomMocks.LoadData<object>("test_key");
 
             // Assert
             Assert.Null(result);
-            _mockMonitor.Verify(x => x.Log(
+            mockMonitor.Verify(x => x.Log(
                 It.Is<string>(msg => msg.Contains("test_key") && msg.Contains("contains no valid data")),
                 LogLevel.Warn), Times.Once);
         }
@@ -542,7 +570,7 @@ namespace LivingRoots.Tests
                 .Throws(new System.IO.IOException("Test exception"));
 
             // Act - Use try-catch to decouple exception handling from logging verification
-            Exception? caughtException = null;
+            Exception caughtException = null;
             try
             {
                 service.SaveData(testData, "dangerous/path.exe");
@@ -573,7 +601,7 @@ namespace LivingRoots.Tests
             // This test addresses second issue: Eliminate Dot-Segment Traversal Risk
             // In SanitizePathSegments, we should skip . segments instead of preserving them
             // The path should pass validation and . segments should be skipped during sanitization
-            // 
+            
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             
@@ -594,7 +622,7 @@ namespace LivingRoots.Tests
         {
             // This test addresses second issue: Eliminate Dot-Segment Traversal Risk
             // Path traversal with ".." segments should be caught by PathValidationService first
-            // 
+            
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             
@@ -670,7 +698,7 @@ namespace LivingRoots.Tests
         {
             // This test verifies that SanitizePathSegments throws ArgumentException instead of InvalidOperationException
             // when encountering .. segments
-            // 
+            
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             

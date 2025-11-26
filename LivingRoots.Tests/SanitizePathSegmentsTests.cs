@@ -7,6 +7,8 @@ using System;
 using System.IO;
 using System.Reflection;
 
+#nullable disable
+
 namespace LivingRoots.Tests
 {
     public class SanitizePathSegmentsTests

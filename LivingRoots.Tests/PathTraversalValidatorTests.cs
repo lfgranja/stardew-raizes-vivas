@@ -5,6 +5,8 @@ using Moq;
 using StardewModdingAPI;
 using Xunit;
 
+#nullable disable
+
 namespace LivingRoots.Tests
 {
     public class PathTraversalValidatorTests
