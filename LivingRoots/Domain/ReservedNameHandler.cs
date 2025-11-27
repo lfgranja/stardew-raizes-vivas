@@ -11,8 +11,8 @@ namespace LivingRoots.Domain
     /// This implementation follows the Dependency Inversion Principle by depending on abstractions.
     /// 
     /// IMPROVEMENTS SUMMARY:
-    /// - Simplified UNC path handling by relying on built-in Path.GetDirectoryName and Path.GetFileName methods
-    /// - Removed complex manual path parsing logic that was previously used to handle UNC paths
+    /// - Simplified UNC path handling by using a minimal approach to detect and handle UNC paths
+    /// - Reduced complex manual path parsing while still ensuring cross-platform compatibility
     /// - Maintained security by ensuring proper filename component processing
     /// </summary>
     public class ReservedNameHandler : IReservedNameHandler
@@ -32,7 +32,7 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Handles reserved Windows filenames by appending an underscore to base name if necessary.
-        /// Simplified UNC path handling using built-in methods instead of complex manual parsing.
+        /// Uses built-in .NET Path methods with minimal manual handling for cross-platform UNC compatibility.
         /// </summary>
         /// <param name="filename">The filename to check for reserved names.</param>
         /// <returns>A filename with reserved names handled appropriately.</returns>
@@ -45,61 +45,80 @@ namespace LivingRoots.Domain
             // Check if this is a UNC path (starts with \\ or //)
             bool isUncPath = IsUncPath(filename);
             string uncPrefix = "";
+            string pathWithoutUncPrefix = filename;
+
             if (isUncPath)
             {
                 // Extract the UNC prefix to preserve it
                 if (filename.StartsWith("\\\\"))
                 {
                     uncPrefix = "\\\\";
+                    pathWithoutUncPrefix = filename.Substring(2);
                 }
                 else if (filename.StartsWith("//"))
                 {
                     uncPrefix = "//";
+                    pathWithoutUncPrefix = filename.Substring(2);
                 }
-                
-                // Remove the UNC prefix for processing
-                filename = filename.Substring(uncPrefix.Length);
             }
 
-            // Normalize path separators to the current platform's separator to ensure consistent parsing
-            // This handles cross-platform issues where Windows UNC paths might use backslashes on Unix systems
-            string normalizedPath = NormalizePathSeparators(filename);
+            // Process the path without UNC prefix
+            string processedPath;
+            if (isUncPath)
+            {
+                processedPath = ProcessPath(pathWithoutUncPrefix);
+            }
+            else
+            {
+                processedPath = ProcessPath(filename);
+            }
 
+            // If processing didn't change anything, return original
+            if (processedPath == filename)
+                return filename;
+
+            // Restore UNC prefix if it existed
+            return uncPrefix + processedPath;
+        }
+
+        /// <summary>
+        /// Process a path to handle reserved names in the filename component
+        /// </summary>
+        /// <param name="path">The path without UNC prefix to process</param>
+        /// <returns>The path with reserved names handled appropriately</returns>
+        private string ProcessPath(string path)
+        {
             // Extract path components using built-in methods for improved reliability and simplicity
-            // This replaces the complex manual UNC path parsing logic with standard .NET methods
+            // Normalize to platform-specific separators first to ensure consistent parsing
+            string normalizedPath = NormalizePathSeparators(path);
+            
             string? directoryPath = Path.GetDirectoryName(normalizedPath);
             string fullFileName = Path.GetFileName(normalizedPath);
 
             // If Path.GetFileName returns an empty string, 
             // this means input ends with a directory separator
-            // In this case, we should return the original filename to avoid incorrect mutation of directory paths
+            // In this case, we should return the original path to avoid incorrect mutation of directory paths
             if (string.IsNullOrEmpty(fullFileName))
-                return RestoreUncPath(filename, uncPrefix); // Return original with UNC prefix if it had one
+                return path;
 
             // Process the filename component separately
             string? processedFileName = ProcessFileName(fullFileName);
 
-            // If no change or processing failed, return original with UNC prefix restored
+            // If no change or processing failed, return original
             if (processedFileName == null || processedFileName == fullFileName)
-                return RestoreUncPath(filename, uncPrefix);
+                return path;
 
             // Rebuild path with processed filename using Path.Combine for proper path handling
-            // This maintains proper path reconstruction while using simplified logic
-            string result;
             if (!string.IsNullOrEmpty(directoryPath))
             {
-                result = Path.Combine(directoryPath, processedFileName);
+                string result = Path.Combine(directoryPath, processedFileName);
+                // Convert back to original separator format to maintain consistency
+                return RestoreOriginalPathSeparators(result, path);
             }
             else
             {
-                result = processedFileName;
+                return processedFileName;
             }
-
-            // Convert back to the original path separator format to maintain consistency with input
-            result = RestoreOriginalPathSeparators(result, filename);
-            
-            // Restore the UNC prefix if the original had one
-            return uncPrefix + result;
         }
         
         /// <summary>
@@ -110,19 +129,6 @@ namespace LivingRoots.Domain
         private static bool IsUncPath(string path)
         {
             return path.Length >= 2 && ((path[0] == '\\' && path[1] == '\\') || (path[0] == '/' && path[1] == '/'));
-        }
-        
-        /// <summary>
-        /// Restores the UNC prefix to a path
-        /// </summary>
-        /// <param name="path">The path without UNC prefix</param>
-        /// <param name="uncPrefix">The UNC prefix to add</param>
-        /// <returns>The path with the UNC prefix restored</returns>
-        private static string RestoreUncPath(string path, string uncPrefix)
-        {
-            if (string.IsNullOrEmpty(uncPrefix))
-                return path;
-            return uncPrefix + path;
         }
         
         /// <summary>
