@@ -49,23 +49,18 @@ namespace LivingRoots.Domain
             if (normalizedPath == null)
                 throw new ArgumentException("Path normalization returned null, validation cannot proceed", nameof(path));
 
-            // Run all validation checks - include essential security validations that were previously in separate methods
-            ValidateStandaloneDot(normalizedPath);
-            ValidateStandaloneDotDot(normalizedPath);
-            ValidateDotSlashAtStart(normalizedPath);
-            ValidateDotDotSlashAtStart(normalizedPath);
+            // Run all essential validation checks
             ValidateAbsolutePathOrUri(normalizedPath);
             ValidateEncodedTraversal(normalizedPath);
             ValidatePathTraversalDepth(normalizedPath);
         }
 
         /// <summary>
-        /// Validates path traversal using depth-based analysis to distinguish between
-        /// legitimate uses of ".." and malicious path traversal attempts.
+        /// Normalizes a path by canonicalizing separators and mapping dot-homoglyphs to ASCII '.'
         /// </summary>
-        /// <param name="path">The normalized path to validate.</param>
-        /// <exception cref="ArgumentException">Thrown when path traversal is detected.</exception>
-        private void ValidatePathTraversalDepth(string path)
+        /// <param name="path">The path to normalize</param>
+        /// <returns>The normalized path</returns>
+        private string NormalizePath(string path)
         {
             // Canonicalize separators
             string normalized = path.Replace('\\', '/');
@@ -78,15 +73,56 @@ namespace LivingRoots.Domain
                 .Replace('\u2026', '.')
                 .Replace('\uFF0E', '.');
             
+            return normalized;
+        }
+
+        /// <summary>
+        /// Validates path traversal using depth-based analysis to distinguish between
+        /// legitimate uses of ".." and malicious path traversal attempts.
+        /// </summary>
+        /// <param name="path">The normalized path to validate.</param>
+        /// <exception cref="ArgumentException">Thrown when path traversal is detected.</exception>
+        private void ValidatePathTraversalDepth(string path)
+        {
+            string normalized = NormalizePath(path);
+            
+            // Check for standalone "." or paths starting with "./"
+            if (normalized.Equals(".", StringComparison.Ordinal) || 
+                normalized.StartsWith("./", StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
+            
+            // Check for standalone "..", "../", or "..\"
+            if (normalized.Equals("..", StringComparison.Ordinal) || 
+                normalized.Equals("../", StringComparison.Ordinal) || 
+                normalized.Equals("..\\", StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
+            
             // Split into segments ignoring empty parts from repeated separators
             string[] segments = normalized.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            // Add a hard cap to prevent excessive processing of pathological inputs
+            const int MaxSegments = 1000;
+            if (segments.Length > MaxSegments)
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
             
             int depth = 0;
             
             foreach (string segment in segments)
             {
+                // Check for integer overflow before decrementing
                 if (segment.Equals("..", StringComparison.Ordinal))
                 {
+                    // Prevent integer underflow by checking bounds
+                    if (depth <= int.MinValue + 1)
+                    {
+                        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+                    }
                     depth--;
                     // If depth goes negative, it means we're trying to go above the intended root
                     if (depth < 0)
@@ -96,68 +132,19 @@ namespace LivingRoots.Domain
                 }
                 else if (!segment.Equals(".", StringComparison.Ordinal))
                 {
+                    // Check for integer overflow before incrementing
+                    if (depth >= int.MaxValue - 1)
+                    {
+                        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+                    }
                     // Regular directory/file names increase the depth
                     depth++;
                 }
                 // If segment is ".", we don't change the depth since it refers to current directory
             }
-        }
-
-        /// <summary>
-        /// Validates that a path is not a standalone "." (current directory)
-        /// </summary>
-        /// <param name="path">The path to validate.</param>
-        /// <exception cref="ArgumentException">Thrown when path is a standalone "."</exception>
-        private void ValidateStandaloneDot(string path)
-        {
-            // Apply the same normalization for consistency
-            string normalized = path.Replace('\\', '/').Replace('\u2024', '.').Replace('\u2025', '.').Replace('\u2026', '.').Replace('\uFF0E', '.');
-            if (normalized.Equals(".", StringComparison.Ordinal))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
-        }
-
-        /// <summary>
-        /// Validates that a path is not a standalone ".." (parent directory)
-        /// </summary>
-        /// <param name="path">The path to validate.</param>
-        /// <exception cref="ArgumentException">Thrown when path is a standalone ".."</exception>
-        private void ValidateStandaloneDotDot(string path)
-        {
-            // Apply the same normalization for consistency
-            string normalized = path.Replace('\\', '/').Replace('\u2024', '.').Replace('\u2025', '.').Replace('\u2026', '.').Replace('\uFF0E', '.');
-            if (normalized.Equals("..", StringComparison.Ordinal) || normalized.Equals("../", StringComparison.Ordinal) || normalized.Equals("..\\", StringComparison.Ordinal))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
-        }
-
-        /// <summary>
-        /// Validates that a path does not start with "./" or ".\" (explicit current directory navigation at the beginning)
-        /// </summary>
-        /// <param name="path">The path to validate.</param>
-        /// <exception cref="ArgumentException">Thrown when path starts with "./" or ".\"</exception>
-        private void ValidateDotSlashAtStart(string path)
-        {
-            // Apply the same normalization for consistency
-            string normalized = path.Replace('\\', '/');
-            if (normalized.StartsWith("./", StringComparison.Ordinal))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
-        }
-
-        /// <summary>
-        /// Validates that a path does not start with "../" or "..\" (explicit parent directory navigation at the beginning)
-        /// </summary>
-        /// <param name="path">The path to validate.</param>
-        /// <exception cref="ArgumentException">Thrown when path starts with "../" or "..\"</exception>
-        private void ValidateDotDotSlashAtStart(string path)
-        {
-            // Apply the same normalization for consistency
-            string normalized = path.Replace('\\', '/');
-            if (normalized.StartsWith("../", StringComparison.Ordinal))
+            
+            // Add bounds checking to prevent integer overflow/underflow
+            if (depth < 0 || depth > 10) // reasonable upper bound
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
