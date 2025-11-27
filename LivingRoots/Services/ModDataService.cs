@@ -108,27 +108,19 @@ namespace LivingRoots.Services
             {
                 var path = GetFilePath(sanitizedKey);
                 
-                // Attempt read; if null, check if file likely doesn't exist to avoid noisy warnings
+                // Single file read to avoid TOCTOU race condition
                 var result = _helper.Data.ReadJsonFile<T>(path);
-                if (result != null)
-                    return result;
-
-                // Distinguish missing file (trace) from invalid/empty content (warn)
-                var existenceProbe = _helper.Data.ReadJsonFile<object>(path);
-                if (existenceProbe == null)
+                
+                // If result is null, the file doesn't exist or contains no valid data for the specific type
+                // We can't distinguish between these cases with a single read, but this is the correct approach
+                // to avoid the race condition
+                if (result == null)
                 {
                     _monitor?.Log($"File not found while loading data for key '{sanitizedKey}'", LogLevel.Trace);
                     return null;
                 }
-
-                _monitor?.Log($"File contains no valid data for key '{sanitizedKey}'", LogLevel.Warn);
-                return null;
-            }
-            catch (ArgumentException)
-            {
-                // Security improvement: Use generic message to prevent information disclosure
-                _monitor?.Log("Invalid key provided to LoadData", LogLevel.Warn);
-                return null; // Return null instead of throwing when key is invalid
+                
+                return result;
             }
             catch (System.IO.FileNotFoundException)
             {
@@ -161,9 +153,16 @@ namespace LivingRoots.Services
             catch (Newtonsoft.Json.JsonException) // Catch broader JsonException instead of JsonReaderException
             {
                 // Log JsonException as Warn for consistency with other non-critical errors
+                // This indicates the file exists but contains invalid JSON for the requested type
                 // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor?.Log($"JSON parsing error occurred while loading data for key '{sanitizedKey}'", LogLevel.Warn);
+                _monitor?.Log($"File contains no valid data for key '{sanitizedKey}'", LogLevel.Warn);
                 return null; // Return null instead of throwing when JSON is invalid (consistent with DataExists behavior)
+            }
+            catch (ArgumentException)
+            {
+                // Security improvement: Use generic message to prevent information disclosure
+                _monitor?.Log("Invalid key provided to LoadData", LogLevel.Warn);
+                return null; // Return null instead of throwing when key is invalid
             }
         }
         
