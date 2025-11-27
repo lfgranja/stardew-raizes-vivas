@@ -116,7 +116,7 @@ namespace LivingRoots.Services
                 // to avoid the race condition
                 if (result == null)
                 {
-                    _monitor?.Log($"File not found while loading data for key '{sanitizedKey}'", LogLevel.Trace);
+                    _monitor?.Log($"No valid data found for key '{sanitizedKey}'", LogLevel.Trace);
                     return null;
                 }
                 

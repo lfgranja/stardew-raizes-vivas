@@ -411,7 +411,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Null(result);
             mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("test_key") && msg.Contains("File not found")),
+                It.Is<string>(msg => msg.Contains("test_key") && msg.Contains("No valid data found")),
                 LogLevel.Trace), Times.Once);
         }
         
