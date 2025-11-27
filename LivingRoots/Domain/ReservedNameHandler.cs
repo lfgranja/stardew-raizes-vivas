@@ -11,7 +11,7 @@ namespace LivingRoots.Domain
     /// This implementation follows the Dependency Inversion Principle by depending on abstractions.
     /// 
     /// IMPROVEMENTS SUMMARY:
-    /// - Simplified UNC path handling by using a minimal approach to detect and handle UNC paths
+    /// - Simplified UNC path handling by using .NET's Path methods for cross-platform compatibility
     /// - Reduced complex manual path parsing while still ensuring cross-platform compatibility
     /// - Maintained security by ensuring proper filename component processing
     /// </summary>
@@ -32,7 +32,7 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Handles reserved Windows filenames by appending an underscore to base name if necessary.
-        /// Uses built-in .NET Path methods with minimal manual handling for cross-platform UNC compatibility.
+        /// Uses built-in .NET Path methods for cross-platform UNC compatibility.
         /// </summary>
         /// <param name="filename">The filename to check for reserved names.</param>
         /// <returns>A filename with reserved names handled appropriately.</returns>
@@ -42,123 +42,75 @@ namespace LivingRoots.Domain
             if (string.IsNullOrEmpty(filename))
                 return filename;
 
-            // Check if this is a UNC path (starts with \\ or //)
-            bool isUncPath = IsUncPath(filename);
-            string uncPrefix = "";
-            string pathWithoutUncPrefix = filename;
-
-            if (isUncPath)
+            // For UNC paths, we need to be more careful about parsing to ensure the format is preserved
+            // Check if it's a UNC path (starts with \\)
+            if (filename.Length >= 2 && filename[0] == '\\' && filename[1] == '\\')
             {
-                // Extract the UNC prefix to preserve it
-                if (filename.StartsWith("\\\\"))
+                // For UNC paths, manually extract the server/share part from the filename part
+                // Find the last path separator after the server/share portion
+                int lastSeparator = -1;
+                for (int i = 2; i < filename.Length; i++) // Start from index 2 to skip initial \\
                 {
-                    uncPrefix = "\\\\";
-                    pathWithoutUncPrefix = filename.Substring(2);
+                    if (filename[i] == '\\' || filename[i] == '/')
+                    {
+                        lastSeparator = i;
+                    }
                 }
-                else if (filename.StartsWith("//"))
-                {
-                    uncPrefix = "//";
-                    pathWithoutUncPrefix = filename.Substring(2);
-                }
-            }
 
-            // Process the path without UNC prefix
-            string processedPath;
-            if (isUncPath)
-            {
-                processedPath = ProcessPath(pathWithoutUncPrefix);
+                if (lastSeparator != -1)
+                {
+                    string directoryPart = filename.Substring(0, lastSeparator);
+                    string filePart = filename.Substring(lastSeparator + 1);
+
+                    // Process only the file part
+                    string processedFilePart = ProcessFileName(filePart);
+
+                    // If no change, return original
+                    if (processedFilePart == filePart)
+                    {
+                        return filename;
+                    }
+
+                    // Reconstruct with the same separator format
+                    return directoryPart + filename[lastSeparator] + processedFilePart;
+                }
+                else
+                {
+                    // No separator found after the initial \\, so the whole thing is treated as a filename
+                    return ProcessFileName(filename);
+                }
             }
             else
             {
-                processedPath = ProcessPath(filename);
+                // For non-UNC paths, use Path methods
+                string? directoryPath = Path.GetDirectoryName(filename);
+                string fullFileName = Path.GetFileName(filename);
+
+                // If Path.GetFileName returns an empty string, 
+                // this means input ends with a directory separator
+                // In this case, we should return the original path to avoid incorrect mutation of directory paths
+                if (string.IsNullOrEmpty(fullFileName))
+                    return filename;
+
+                // Process the filename component separately
+                string? processedFileName = ProcessFileName(fullFileName);
+
+                // If no change or processing failed, return original
+                if (processedFileName == null || processedFileName == fullFileName)
+                {
+                    return filename;
+                }
+
+                // Rebuild path with processed filename using Path.Combine for proper path handling
+                if (!string.IsNullOrEmpty(directoryPath))
+                {
+                    return Path.Combine(directoryPath, processedFileName);
+                }
+                else
+                {
+                    return processedFileName;
+                }
             }
-
-            // If processing didn't change anything, return original
-            if (processedPath == filename)
-                return filename;
-
-            // Restore UNC prefix if it existed
-            return uncPrefix + processedPath;
-        }
-
-        /// <summary>
-        /// Process a path to handle reserved names in the filename component
-        /// </summary>
-        /// <param name="path">The path without UNC prefix to process</param>
-        /// <returns>The path with reserved names handled appropriately</returns>
-        private string ProcessPath(string path)
-        {
-            // Extract path components using built-in methods for improved reliability and simplicity
-            // Normalize to platform-specific separators first to ensure consistent parsing
-            string normalizedPath = NormalizePathSeparators(path);
-            
-            string? directoryPath = Path.GetDirectoryName(normalizedPath);
-            string fullFileName = Path.GetFileName(normalizedPath);
-
-            // If Path.GetFileName returns an empty string, 
-            // this means input ends with a directory separator
-            // In this case, we should return the original path to avoid incorrect mutation of directory paths
-            if (string.IsNullOrEmpty(fullFileName))
-                return path;
-
-            // Process the filename component separately
-            string? processedFileName = ProcessFileName(fullFileName);
-
-            // If no change or processing failed, return original
-            if (processedFileName == null || processedFileName == fullFileName)
-                return path;
-
-            // Rebuild path with processed filename using Path.Combine for proper path handling
-            if (!string.IsNullOrEmpty(directoryPath))
-            {
-                string result = Path.Combine(directoryPath, processedFileName);
-                // Convert back to original separator format to maintain consistency
-                return RestoreOriginalPathSeparators(result, path);
-            }
-            else
-            {
-                return processedFileName;
-            }
-        }
-        
-        /// <summary>
-        /// Checks if the path is a UNC path (starts with \\ or //)
-        /// </summary>
-        /// <param name="path">The path to check</param>
-        /// <returns>True if the path is a UNC path, false otherwise</returns>
-        private static bool IsUncPath(string path)
-        {
-            return path.Length >= 2 && ((path[0] == '\\' && path[1] == '\\') || (path[0] == '/' && path[1] == '/'));
-        }
-        
-        /// <summary>
-        /// Normalize path separators to the current platform's separator for consistent parsing
-        /// </summary>
-        /// <param name="path">The path to normalize</param>
-        /// <returns>The path with normalized separators</returns>
-        private static string NormalizePathSeparators(string path)
-        {
-            // Convert all path separators to the current platform's separator for consistent parsing
-            return path.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
-        }
-        
-        /// <summary>
-        /// Restore the original path separator format to maintain consistency with input
-        /// </summary>
-        /// <param name="normalizedPath">The path with normalized separators</param>
-        /// <param name="originalPath">The original path to match separator format</param>
-        /// <returns>The path with original separator format</returns>
-        private static string RestoreOriginalPathSeparators(string normalizedPath, string originalPath)
-        {
-            // IMPROVEMENT: Preserve original directory paths by using original path separators
-            // Determine which separator was used in the original path. Prioritize backslash for Windows compatibility.
-            if (originalPath.Contains('\\'))
-            {
-                return normalizedPath.Replace(Path.DirectorySeparatorChar, '\\');
-            }
-            
-            // Default to forward slash if no backslash is present.
-            return normalizedPath.Replace(Path.DirectorySeparatorChar, '/');
         }
         
         /// <summary>
