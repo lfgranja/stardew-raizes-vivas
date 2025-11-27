@@ -453,5 +453,27 @@ namespace LivingRoots.Tests
             var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("\u2025\u2025\\file.txt")); // ".." with backslash
             Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
+        
+        [Fact]
+        public void Validate_WithExcessivePathSegments_ThrowsArgumentException()
+        {
+            // Create a path with more segments than MaxSegments (1000) to test the hard cap
+            string path = string.Join("/", new string[1001].Select((_, i) => $"dir{i}"));
+            
+            // Act & Assert - This should throw because it exceeds MaxSegments
+            var exception = Assert.Throws<ArgumentException>(() => _service.Validate(path));
+            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+        }
+        
+        [Fact]
+        public void Validate_WithValidPathBelowSegmentLimit_DoesNotThrow()
+        {
+            // Create a path with fewer segments than MaxSegments (1000) to ensure normal operation still works
+            // Use 5 segments to stay well within the depth limit (depth <= 10)
+            string path = string.Join("/", new string[5].Select((_, i) => $"dir{i}"));
+            
+            // Act & Assert - This should not throw since it's below the limits
+            _service.Validate(path); // Should not throw
+        }
     }
 }

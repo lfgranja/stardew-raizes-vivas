@@ -75,7 +75,7 @@ namespace LivingRoots.Tests
                 ContainsIgnoreCase(s, "ftp://") ||
                 ContainsIgnoreCase(s, "file://")))).Throws<ArgumentException>();
         }
-
+        
         // Helper method for case-insensitive string containment check
         private static bool ContainsIgnoreCase(string source, string value)
         {
@@ -421,46 +421,18 @@ namespace LivingRoots.Tests
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             
-            // To simulate a file that exists but contains invalid data for the requested type:
-            // We need to differentiate between the first call (for specific type) and the second call (existence probe).
-            // We'll use a sequence of calls to mock the behavior:
-            // 1. First call to ReadJsonFile<T> returns null (invalid data for the specific type)
-            // 2. Second call to ReadJsonFile<object> (existence probe) returns non-null (file exists)
-            
-            // We'll reset the mock for this specific test to avoid conflicts with other tests
-            var testDataHelper = new Mock<IDataHelper>();
-            var mockHelper = new Mock<IModHelper>();
-            var mockMonitor = new Mock<IMonitor>();
-            var mockModLogic = new Mock<IModLogic>();
-            
-            mockHelper.Setup(x => x.DirectoryPath).Returns("/test/directory");
-            mockHelper.Setup(x => x.Data).Returns(testDataHelper.Object);
-            mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(s => s);
-            mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Verifiable();
-            
-            var serviceWithCustomMocks = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
-            
-            // Setup mock behavior for sequence of calls
-            // Use a counter to track which call we're on
-            int callCount = 0;
-            object[] responses = { null, new { some = "data" } }; // First call returns null, second returns data
-            
-            testDataHelper
-                .Setup(x => x.ReadJsonFile<object>(It.IsAny<string>()))
-                .Returns(() => 
-                {
-                    var response = callCount < responses.Length ? responses[callCount] : null;
-                    callCount++;
-                    return response;
-                });
+            // With the single read approach, when a file contains invalid JSON,
+            // ReadJsonFile throws JsonException which is caught and logged appropriately
+            var jsonException = new Newtonsoft.Json.JsonException("Invalid JSON format");
+            _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(jsonException);
 
             // Act
-            var result = serviceWithCustomMocks.LoadData<object>("test_key");
+            var result = service.LoadData<object>("test_key");
 
             // Assert
             Assert.Null(result);
-            mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("test_key") && msg.Contains("contains no valid data")),
+            _mockMonitor.Verify(x => x.Log(
+                It.Is<string>(msg => msg.Contains("test_key") && msg.Contains("File contains no valid data")),
                 LogLevel.Warn), Times.Once);
         }
         
