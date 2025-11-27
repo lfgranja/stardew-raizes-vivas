@@ -17,21 +17,16 @@ namespace LivingRoots.Controllers
         private readonly IManifest _manifest;
         private readonly IModDataService _modDataService;
         
-        private int _eventsRegistered = 0; // Use int (0 = false, 1 = true) for atomic operations
-        
-        /// <summary>
-        /// Tracks whether the 'lr_version' console command has been registered to prevent duplicate registrations.
-        /// Note: SMAPI does not provide a direct method to remove console commands, so once registered,
-        /// the command remains active until the mod is disposed. This flag ensures the command is only
-        /// registered once even if the GameLaunched event fires multiple times or during mod reloads.
-        /// </summary>
-        private int _commandRegistered = 0; // Use int (0 = false, 1 = true) for atomic operations
+        // Single atomic state for thread-safe management of controller state
+        // Using bit flags: 0x01 = events registered, 0x02 = command registered, 0x04 = disposed
+        private int _state = 0;
         
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
 
-        // Single integer field for atomic disposal check to prevent race conditions
-        // Using 0 for not disposed, 1 for disposed
-        private int _disposed = 0;
+        // State bit flags
+        private const int EventsRegisteredFlag = 0x01;
+        private const int CommandRegisteredFlag = 0x02;
+        private const int DisposedFlag = 0x04;
 
         public ModController(IModHelper helper, IMonitor monitor, IManifest manifest, IModDataService modDataService)
         {
@@ -43,23 +38,40 @@ namespace LivingRoots.Controllers
 
         public void RegisterEvents()
         {
-            // Check if disposed using single integer flag
-            if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
+            // Early exit if already disposed - single atomic check
+            if (IsDisposed())
             {
                 _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
                 return;
             }
             
+            // Attempt to set the events registered flag atomically
+            int currentState, newState;
+            do
+            {
+                currentState = _state;
+                
+                // Single check for disposed state after reading state
+                if ((currentState & DisposedFlag) != 0)
+                {
+                    _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
+                    return;
+                }
+                
+                // If already registered, exit
+                if ((currentState & EventsRegisteredFlag) != 0)
+                {
+                    _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
+                    return;
+                }
+                
+                newState = currentState | EventsRegisteredFlag;
+            }
+            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
             var helper = _helper;
-            
-            // Try to set the event registration flag atomically
-            if (Interlocked.CompareExchange(ref _eventsRegistered, 1, 0) == 1)
-            {
-                monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
-                return;
-            }
             
             try
             {
@@ -67,8 +79,14 @@ namespace LivingRoots.Controllers
                 if (gameLoop == null)
                 {
                     monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
-                    // Reset flag since registration failed
-                    Interlocked.Exchange(ref _eventsRegistered, 0);
+                    // Reset flag since registration failed - ensure disposed flag is preserved
+                    int resetState;
+                    do
+                    {
+                        resetState = _state;
+                        newState = resetState & ~EventsRegisteredFlag;
+                    }
+                    while (Interlocked.CompareExchange(ref _state, newState, resetState) != resetState);
                     return;
                 }
 
@@ -82,16 +100,24 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                // Log error and reset the flag if registration failed
+                // Log error and reset the flag if registration failed - ensure disposed flag is preserved
                 monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
                 _onGameLaunchedHandler = null;
-                Interlocked.Exchange(ref _eventsRegistered, 0);
+                
+                int resetState;
+                do
+                {
+                    resetState = _state;
+                    newState = resetState & ~EventsRegisteredFlag;
+                }
+                while (Interlocked.CompareExchange(ref _state, newState, resetState) != resetState);
             }
         }
 
         public void UnregisterEvents()
         {
-            if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
+            // Early exit if already disposed - single atomic check
+            if (IsDisposed())
             {
                 _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
                 return;
@@ -133,7 +159,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Unregister console command if it was registered
-                if (Interlocked.CompareExchange(ref _commandRegistered, 0, 0) == 1 && localHelper?.ConsoleCommands != null)
+                if (IsCommandRegistered() && localHelper?.ConsoleCommands != null)
                 {
                     // In SMAPI, there's no direct method to remove a console command
                     // The command will be automatically removed when the mod is disposed
@@ -141,8 +167,15 @@ namespace LivingRoots.Controllers
                     localMonitor.Log("Controller state for command 'lr_version' has been reset. The command will be removed on mod disposal.", LogLevel.Trace);
                 }
                 
-                Interlocked.Exchange(ref _eventsRegistered, 0);
-                Interlocked.Exchange(ref _commandRegistered, 0);
+                // Reset state flags atomically - ensure disposed flag is preserved
+                int currentState, newState;
+                do
+                {
+                    currentState = _state;
+                    newState = (currentState & ~EventsRegisteredFlag) & ~CommandRegisteredFlag;
+                }
+                while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+                
                 localMonitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
             catch (Exception ex)
@@ -153,7 +186,7 @@ namespace LivingRoots.Controllers
 
         /// <summary>
         /// Handles the GameLaunched event to register the 'lr_version' console command.
-        /// This method ensures the command is only registered once using the <see cref="_commandRegistered"/> flag
+        /// This method ensures the command is only registered once using the state flags
         /// to prevent double-registration across multiple GameLaunched events or mod reloads.
         /// Note: SMAPI does not provide a method to remove console commands directly, so the command
         /// lifecycle is tied to the mod's lifecycle (registered on mod load, removed on mod disposal).
@@ -162,40 +195,54 @@ namespace LivingRoots.Controllers
         /// <param name="e">The event arguments</param>
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
+            // Early exit if disposed - single atomic check at the beginning
+            if (IsDisposed())
+            {
+                _monitor.Log("OnGameLaunched called after disposal. Operation skipped.", LogLevel.Trace);
+                return;
+            }
+
+            // Create snapshots of dependencies to avoid errors if disposed mid-execution
+            var monitor = _monitor;
+            var helper = _helper;
+            
             try
             {
-                // Check if disposed at the beginning
-                if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
-                {
-                    _monitor.Log("OnGameLaunched called after disposal. Operation skipped.", LogLevel.Trace);
-                    return;
-                }
-
-                // Create snapshots of dependencies to avoid errors if disposed mid-execution
-                var monitor = _monitor;
-                var helper = _helper;
-                
                 monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
                 
-                // Use CompareExchange to make command registration atomic
-                if (Interlocked.CompareExchange(ref _commandRegistered, 1, 0) == 0)
+                // Use atomic operation to check and set command registration flag
+                if (!IsCommandRegistered())
                 {
-                    // Check again after disposal check to ensure we're not disposed during execution
-                    if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
+                    // Double-check disposal after the atomic operation
+                    if (IsDisposed())
                         return;
 
                     var commands = helper?.ConsoleCommands;
                     if (commands != null)
                     {
+                        // Attempt to set the command registered flag atomically
+                        int currentState, newState;
+                        do
+                        {
+                            currentState = _state;
+                            
+                            // If already disposed, exit
+                            if ((currentState & DisposedFlag) != 0)
+                                return;
+                            
+                            // If already registered, exit
+                            if ((currentState & CommandRegisteredFlag) != 0)
+                                break;
+                            
+                            newState = currentState | CommandRegisteredFlag;
+                        }
+                        while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+
                         commands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
                         monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
                     }
                 }
                 
-                // Check again before unsubscribing to ensure we're still not disposed
-                if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
-                    return;
-
                 // Use Interlocked.Exchange to safely get and clear the handler to avoid race condition
                 var handler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                 if (handler != null && helper?.Events?.GameLoop != null)
@@ -212,18 +259,18 @@ namespace LivingRoots.Controllers
 
         private void PrintVersion(string command, string[] args)
         {
+            // Early exit if disposed - single atomic check at the beginning
+            if (IsDisposed())
+            {
+                return; // Skip execution if disposed
+            }
+            
+            // Snapshot dependencies to local variables to avoid NullReferenceExceptions
+            var monitor = _monitor;
+            var manifest = _manifest;
+            
             try
             {
-                // Check disposal flag at start of method to prevent execution after disposal
-                if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
-                {
-                    return; // Skip execution if disposed
-                }
-                
-                // Snapshot dependencies to local variables to avoid NullReferenceExceptions
-                var monitor = _monitor;
-                var manifest = _manifest;
-                
                 // Add null check for args parameter and use case-insensitive comparison
                 args = args ?? Array.Empty<string>();
                 
@@ -261,9 +308,17 @@ namespace LivingRoots.Controllers
 
         public void Dispose()
         {
-            // Ensure only one thread executes disposal logic
-            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
-                return;
+            // Ensure only one thread executes disposal logic using atomic compare-and-swap
+            int currentState, newState;
+            do
+            {
+                currentState = _state;
+                if ((currentState & DisposedFlag) != 0)
+                    return; // Already disposed
+                
+                newState = currentState | DisposedFlag;
+            }
+            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             // Perform cleanup in a thread-safe manner
             PerformCleanup();
@@ -299,14 +354,35 @@ namespace LivingRoots.Controllers
                     }
                 }
 
-                // Reset flags before returning so other threads won't attempt registration
-                Interlocked.Exchange(ref _eventsRegistered, 0);
-                Interlocked.Exchange(ref _commandRegistered, 0);
+                // Ensure the disposed flag remains set and clear other flags
+                int currentState, newState;
+                do
+                {
+                    currentState = _state;
+                    newState = currentState | DisposedFlag; // Ensure disposed flag remains set
+                }
+                while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
             }
             finally
             {
                 // No re-registration after this point; avoid further cleanup that touches SMAPI
             }
+        }
+        
+        // Helper methods for state checking
+        private bool IsDisposed()
+        {
+            return (_state & DisposedFlag) != 0;
+        }
+        
+        private bool IsEventsRegistered()
+        {
+            return (_state & EventsRegisteredFlag) != 0;
+        }
+        
+        private bool IsCommandRegistered()
+        {
+            return (_state & CommandRegisteredFlag) != 0;
         }
     }
 }
