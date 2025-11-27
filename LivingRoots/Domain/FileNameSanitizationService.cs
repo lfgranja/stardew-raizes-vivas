@@ -26,28 +26,24 @@ namespace LivingRoots.Domain
         private readonly IReservedNameHandler _reservedNameHandler;
 
         // Static readonly field to avoid rebuilding the blocked extensions set on every call
-        // IMPROVEMENT: Removed duplicate blocked extensions to eliminate redundancy
+        // IMPROVEMENT: Refocused the blocked extensions list to include only truly dangerous executable and script file types
         private static readonly HashSet<string> BlockedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            ".exe", ".dll", ".bat", ".sh", ".ps1", ".cmd", ".com", ".scr", ".pif", ".lnk", 
-            ".msi", ".msp", ".vbs", ".js", ".jse", ".wsf", ".wsh", ".hta", ".cpl", ".msc", ".inf",
-            ".py", ".rb", ".apk", ".ipa", ".jar", ".msix", ".appx", ".reg", ".iso", ".img", ".pkg", ".dmg",
-            ".vbe", ".vbscript", ".ws", ".wsc", ".msh1", ".msh2", ".mshxml", ".msh1xml", ".msh2xml",
-            ".scf", ".url", ".sys", ".bin", ".pl", ".php", ".asp", ".aspx", ".cgi",
-            ".sql", ".mdb", ".accdb", ".db", ".dbf", ".sqlite", ".sqlite3", ".war", ".ear",
-            ".class", ".dex", ".so", ".dylib", ".drv", ".ocx", ".mst", ".vxd", ".acm", ".ax", ".efi", 
-            ".fon", ".ime", ".kbd", ".vbx", ".xll", ".app", ".deb", ".rpm", ".sct", ".mof", ".shb",
-            ".shs", ".u3p", ".wse", ".mcr", ".mce", ".mcf", ".jnlp", ".xap", ".swf", ".flash", ".action", ".workflow",
-            ".command", ".csh", ".tcsh", ".zsh", ".fish", ".ksh", ".bash", ".rbw", ".rbx", ".gem",
-            ".pm", ".plx", ".perl", ".php3", ".php4", ".php5", ".phtml", ".pyc", ".pyo",
-            ".pyd", ".asm", ".asmx", ".psc1", ".psd1", ".psm1", ".gadget", ".cer", ".crt", ".crl", ".der", ".p12", ".p7b",
-            ".p7c", ".p7m", ".p7r", ".p7s", ".pem", ".pfx", ".pgm", ".pgp", ".pki", ".pko", ".plc", ".plg", ".plp", 
-            ".plx", ".pm", ".pmc", ".pmw", ".po", ".pot", ".potm", ".potx", ".ppam", ".pps", ".ppsm", ".ppsx", 
-            ".ppt", ".pptm", ".pptx", ".prf", ".prg", ".printerexport", ".prl", ".prm", ".prx", ".pst", ".pyw", 
-            ".pyz", ".pyzw", ".rb", ".rbw", ".rbx", ".gem", ".gemspec", ".ru", ".rbi", ".rake", ".cap", ".thor", 
-            ".watchr", ".ahkl", ".cgi", ".fcgi", ".pod", ".t", ".aws", ".msc", ".mst", 
-            ".vbe", ".vbs", ".wsf", ".wsh", ".hta", ".htr", ".ins", ".isp", ".sct", ".sh", ".shb", ".shs",
-            ".vb", ".xsl", ".xslt"
+            // Executable files
+            ".exe", ".dll", ".bat", ".com", ".scr", ".pif", ".lnk", ".msi", ".msp", 
+            ".cpl", ".msc", ".sys", ".bin", ".drv", ".ocx", ".efi", ".app", ".apk", ".ipa",
+            
+            // Script files
+            ".sh", ".ps1", ".cmd", ".vbs", ".js", ".jse", ".wsf", ".wsh", ".hta", 
+            ".py", ".rb", ".pl", ".php", ".asp", ".aspx", ".cgi", ".vbe", ".vbscript", 
+            ".ws", ".wsc", ".scf", ".url", ".mof", ".sct", ".reg", ".inf",
+            
+            // Installers and packages
+            ".jar", ".msix", ".appx", ".deb", ".rpm", ".pkg", ".dmg", ".iso", ".img",
+            
+            // Other potentially dangerous files
+            ".swf", ".flash", ".class", ".dex", ".jnlp", ".xap", ".action", ".workflow",
+            ".command", ".csh", ".tcsh", ".zsh", ".fish", ".ksh", ".bash"
         };
 
         public FileNameSanitizationService(IUnicodeNormalizationService unicodeNormalizationService, IReservedNameHandler reservedNameHandler)
@@ -604,19 +600,17 @@ namespace LivingRoots.Domain
         /// <returns>The start index of the extension (including the dot) if valid, or -1 if no valid extension found.</returns>
         private static int FindExtensionStartIndex(string filename)
         {
-            // Normalize to NFC to reduce homoglyph tricks
-            string normalized = filename.Normalize(NormalizationForm.FormC);
-
-            int lastDotIndex = normalized.LastIndexOf('.');
+            // Find the last dot in the original filename string
+            int lastDotIndex = filename.LastIndexOf('.');
 
             // No dot found or dot is at the end
-            if (lastDotIndex < 0 || lastDotIndex >= normalized.Length - 1)
+            if (lastDotIndex < 0 || lastDotIndex >= filename.Length - 1)
                 return -1;
 
-            // Extract potential extension (including the dot)
-            string potentialExtension = normalized.Substring(lastDotIndex);
+            // Extract potential extension from the original string (including the dot)
+            string potentialExtension = filename.Substring(lastDotIndex);
 
-            // Normalize and pre-trim to avoid homoglyph/whitespace edge-cases
+            // Normalize the potential extension for validation purposes only
             var extNormalized = potentialExtension.Normalize(NormalizationForm.FormC);
 
             // Reject if extension ends with whitespace or an extra dot
@@ -657,7 +651,7 @@ namespace LivingRoots.Domain
             if (extNormalized.IndexOfAny(Path.GetInvalidFileNameChars()) != -1)
                 return -1;
 
-            // If all checks pass, return the index of the dot
+            // If all checks pass, return the index from the original string
             return lastDotIndex;
         }
 
