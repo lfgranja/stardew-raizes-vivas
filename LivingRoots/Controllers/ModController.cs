@@ -30,7 +30,8 @@ namespace LivingRoots.Controllers
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
 
         // Single integer field for atomic disposal check to prevent race conditions
-        private int _disposedInt = 0;
+        // Using 0 for not disposed, 1 for disposed
+        private int _disposed = 0;
 
         public ModController(IModHelper helper, IMonitor monitor, IManifest manifest, IModDataService modDataService)
         {
@@ -43,7 +44,7 @@ namespace LivingRoots.Controllers
         public void RegisterEvents()
         {
             // Check if disposed using single integer flag
-            if (Volatile.Read(ref _disposedInt) == 1)
+            if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
             {
                 _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
                 return;
@@ -90,7 +91,7 @@ namespace LivingRoots.Controllers
 
         public void UnregisterEvents()
         {
-            if (Volatile.Read(ref _disposedInt) == 1)
+            if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
             {
                 _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
                 return;
@@ -122,15 +123,17 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
+                // Use Interlocked.Exchange to safely get and clear the handler
+                var handler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                
                 // Always attempt to detach to avoid leaked handlers
-                if (_onGameLaunchedHandler != null)
+                if (handler != null)
                 {
-                    gameLoop.GameLaunched -= _onGameLaunchedHandler;
-                    _onGameLaunchedHandler = null; // Clear the handler to prevent potential memory leaks
+                    gameLoop.GameLaunched -= handler;
                 }
 
                 // Unregister console command if it was registered
-                if (Volatile.Read(ref _commandRegistered) == 1 && localHelper?.ConsoleCommands != null)
+                if (Interlocked.CompareExchange(ref _commandRegistered, 0, 0) == 1 && localHelper?.ConsoleCommands != null)
                 {
                     // In SMAPI, there's no direct method to remove a console command
                     // The command will be automatically removed when the mod is disposed
@@ -162,7 +165,7 @@ namespace LivingRoots.Controllers
             try
             {
                 // Check if disposed at the beginning
-                if (Volatile.Read(ref _disposedInt) == 1)
+                if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
                 {
                     _monitor.Log("OnGameLaunched called after disposal. Operation skipped.", LogLevel.Trace);
                     return;
@@ -178,7 +181,7 @@ namespace LivingRoots.Controllers
                 if (Interlocked.CompareExchange(ref _commandRegistered, 1, 0) == 0)
                 {
                     // Check again after disposal check to ensure we're not disposed during execution
-                    if (Volatile.Read(ref _disposedInt) == 1)
+                    if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
                         return;
 
                     var commands = helper?.ConsoleCommands;
@@ -190,16 +193,14 @@ namespace LivingRoots.Controllers
                 }
                 
                 // Check again before unsubscribing to ensure we're still not disposed
-                if (Volatile.Read(ref _disposedInt) == 1)
+                if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
                     return;
 
-                // Snapshot handler to avoid race condition
-                var handler = _onGameLaunchedHandler;
+                // Use Interlocked.Exchange to safely get and clear the handler to avoid race condition
+                var handler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                 if (handler != null && helper?.Events?.GameLoop != null)
                 {
                     helper.Events.GameLoop.GameLaunched -= handler;
-                    // Only null out after successful unsubscribe
-                    _onGameLaunchedHandler = null;
                     monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
                 }
             }
@@ -214,7 +215,7 @@ namespace LivingRoots.Controllers
             try
             {
                 // Check disposal flag at start of method to prevent execution after disposal
-                if (Volatile.Read(ref _disposedInt) == 1)
+                if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
                 {
                     return; // Skip execution if disposed
                 }
@@ -261,20 +262,31 @@ namespace LivingRoots.Controllers
         public void Dispose()
         {
             // Ensure only one thread executes disposal logic
-            if (Interlocked.CompareExchange(ref _disposedInt, 1, 0) == 1)
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) == 1)
                 return;
 
-            // Snapshot handler to avoid TOCTOU between null check and unsubscribe
-            var handler = _onGameLaunchedHandler;
-            _onGameLaunchedHandler = null;
+            // Perform cleanup in a thread-safe manner
+            PerformCleanup();
+        }
 
+        /// <summary>
+        /// Performs cleanup operations in a thread-safe manner.
+        /// This method is used by both the public Dispose method and internally
+        /// to ensure consistent cleanup behavior.
+        /// </summary>
+        private void PerformCleanup()
+        {
             try
             {
-                // Unregister events deterministically and idempotently
+                // Snapshot dependencies to avoid accessing disposed objects
                 var helper = _helper;
                 var monitor = _monitor;
 
                 var gameLoop = helper?.Events?.GameLoop;
+                
+                // Use Interlocked.Exchange to safely get and clear the handler
+                var handler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                
                 if (gameLoop != null && handler != null)
                 {
                     try
