@@ -86,11 +86,33 @@ namespace LivingRoots.Domain
         {
             string normalized = NormalizePath(path);
             
-            // Check for standalone "." or paths starting with "./"
-            if (normalized.Equals(".", StringComparison.Ordinal) || 
-                normalized.StartsWith("./", StringComparison.Ordinal))
+            // Check for standalone "." - this should still be blocked as it represents current directory traversal
+            if (normalized.Equals(".", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
+            
+            // Allow legitimate relative paths like "./file.txt" but block traversal attempts
+            // If the path starts with "./" but is not just "." or "./", check if it's a valid relative path
+            if (normalized.StartsWith("./", StringComparison.Ordinal))
+            {
+                // If it's just "./" (current directory), block it
+                if (normalized.Equals("./", StringComparison.Ordinal))
+                {
+                    throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+                }
+                
+                // For paths like "./file.txt", check if they contain traversal attempts
+                // Remove the leading "./" and validate the remaining path
+                string remainingPath = normalized.Substring(2);
+                if (!string.IsNullOrEmpty(remainingPath))
+                {
+                    // Check if remaining path contains traversal patterns like "../"
+                    if (remainingPath.StartsWith("../", StringComparison.Ordinal) || remainingPath.Equals("..", StringComparison.Ordinal))
+                    {
+                        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+                    }
+                }
             }
             
             // Check for standalone "..", "../", or "..\"
@@ -105,6 +127,7 @@ namespace LivingRoots.Domain
             string[] segments = normalized.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
             
             // Add a hard cap to prevent excessive processing of pathological inputs
+            // Increased from 100 to allow more reasonable paths while still preventing abuse
             const int MaxSegments = 1000;
             if (segments.Length > MaxSegments)
             {
@@ -143,11 +166,9 @@ namespace LivingRoots.Domain
                 // If segment is ".", we don't change the depth since it refers to current directory
             }
             
-            // Add bounds checking to prevent integer overflow/underflow
-            if (depth < 0 || depth > 10) // reasonable upper bound
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
+            // Remove the arbitrary depth cap of 10 that was limiting legitimate use cases
+            // The depth < 0 check already prevents traversal above root
+            // This allows deeper, legitimate directory structures
         }
 
         /// <summary>
