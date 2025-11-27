@@ -427,7 +427,12 @@ QWEN.md
 **/bin/Release/
 **/obj/
 *.zip
-*.dll
+# Specific build output DLLs (instead of broad *.dll)
+**/bin/Debug/*.dll
+**/bin/Release/*.dll
+**/bin/DebugPublic/*.dll
+**/bin/ReleasePublic/*.dll
+**/obj/**/*.dll
 *.deps.json
 *.runtimeconfig.json
 
