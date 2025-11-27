@@ -148,46 +148,8 @@ namespace LivingRoots.Domain
             {
                 // If the name part is empty but there's a blocked extension, create a safe filename
                 // For hidden files (starting with dot), we preserve the dot
-                if (originalFilename?.StartsWith(".", StringComparison.Ordinal) == true)
-                {
-                    // Create a minimal safe hidden filename with blocked extension
-                    string safeResult = ".file.blocked";
-                    // Validate the result after extension blocking
-                    string baseAfterBlock = RemoveFileExtension(safeResult).Trim('_', ' ', '.');
-                    if (string.IsNullOrWhiteSpace(baseAfterBlock) || baseAfterBlock == "." || baseAfterBlock == "..")
-                    {
-                        throw new ArgumentException($"Filename sanitizes to an invalid state after extension blocking: '{safeResult}'.", nameof(safeResult));
-                    }
-                    // Perform final cleanup after all processing
-                    safeResult = PerformFinalCleanup(safeResult, true);
-                    
-                    // Check length after creating the blocked extension result
-                    if (safeResult.Length > MaxFileNameLength)
-                    {
-                        safeResult = TruncateToMaxLength(safeResult);
-                    }
-                    return safeResult;
-                }
-                else
-                {
-                    // For non-hidden files, create a minimal safe filename
-                    string safeResult = "file.blocked";
-                    // Validate the result after extension blocking
-                    string baseAfterBlock = RemoveFileExtension(safeResult).Trim('_', ' ', '.');
-                    if (string.IsNullOrWhiteSpace(baseAfterBlock) || baseAfterBlock == "." || baseAfterBlock == "..")
-                    {
-                        throw new ArgumentException($"Filename sanitizes to an invalid state after extension blocking: '{safeResult}'.", nameof(safeResult));
-                    }
-                    // Perform final cleanup after all processing
-                    safeResult = PerformFinalCleanup(safeResult, false);
-                    
-                    // Check length after creating the blocked extension result
-                    if (safeResult.Length > MaxFileNameLength)
-                    {
-                        safeResult = TruncateToMaxLength(safeResult);
-                    }
-                    return safeResult;
-                }
+                bool isHiddenFile = originalFilename?.StartsWith(".", StringComparison.Ordinal) == true;
+                return CreateAndValidateSafeBlockedFilename(isHiddenFile, originalFilename);
             }
 
             // Trim leading/trailing problematic characters (but preserve leading dots for hidden files)
@@ -243,6 +205,34 @@ namespace LivingRoots.Domain
             }
 
             return trimmed;
+        }
+
+        /// <summary>
+        /// Creates and validates a safe filename for blocked extensions
+        /// </summary>
+        /// <param name="isHidden">Whether the file should be treated as hidden</param>
+        /// <param name="originalFilename">The original filename</param>
+        /// <returns>A safe filename with blocked extension</returns>
+        private static string CreateAndValidateSafeBlockedFilename(bool isHidden, string? originalFilename)
+        {
+            string safeResult = isHidden ? ".file.blocked" : "file.blocked";
+            
+            // Validate the result after extension blocking
+            string baseAfterBlock = RemoveFileExtension(safeResult).Trim('_', ' ', '.');
+            if (string.IsNullOrWhiteSpace(baseAfterBlock) || baseAfterBlock == "." || baseAfterBlock == "..")
+            {
+                throw new ArgumentException($"Filename sanitizes to an invalid state after extension blocking: '{safeResult}'.", nameof(safeResult));
+            }
+            
+            // Perform final cleanup after all processing
+            safeResult = PerformFinalCleanup(safeResult, isHidden);
+            
+            // Check length after creating the blocked extension result
+            if (safeResult.Length > MaxFileNameLength)
+            {
+                safeResult = TruncateToMaxLength(safeResult);
+            }
+            return safeResult;
         }
 
         /// <summary>
