@@ -124,37 +124,31 @@ namespace LivingRoots.Services
             }
             catch (System.IO.FileNotFoundException)
             {
-                // Log FileNotFoundException as Trace to reduce log noise
-                // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor?.Log($"File not found while loading data for key '{sanitizedKey}'", LogLevel.Trace);
+                // Log as generic message to prevent information disclosure about file existence
+                _monitor?.Log($"No valid data found for key '{sanitizedKey}'", LogLevel.Trace);
                 return null; // Return null instead of throwing when file doesn't exist
             }
             catch (System.IO.DirectoryNotFoundException)
             {
-                // Log DirectoryNotFoundException as Warn to reduce log noise from non-critical issues
-                // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor?.Log($"Directory not found while loading data for key '{sanitizedKey}'", LogLevel.Warn);
+                // Log as generic message to prevent information disclosure about directory existence
+                _monitor?.Log($"No valid data found for key '{sanitizedKey}'", LogLevel.Trace);
                 return null; // Return null instead of throwing when directory doesn't exist
             }
             catch (System.UnauthorizedAccessException)
             {
-                // Log UnauthorizedAccessException as Warn to reduce log noise from non-critical issues
-                // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor?.Log($"Access denied while loading data for key '{sanitizedKey}'", LogLevel.Warn);
+                // Log as generic message to prevent information disclosure about access permissions
+                _monitor?.Log($"No valid data found for key '{sanitizedKey}'", LogLevel.Trace);
                 return null; // Return null instead of throwing when access is denied
             }
             catch (System.IO.IOException)
             {
-                // Log other IOExceptions as Warn to reduce log noise from non-critical issues
-                // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor?.Log($"IOException occurred while loading data for key '{sanitizedKey}'", LogLevel.Warn);
+                // Log as generic message to prevent information disclosure about IO errors
+                _monitor?.Log($"No valid data found for key '{sanitizedKey}'", LogLevel.Trace);
                 return null; // Return null instead of throwing when IO error occurs
             }
             catch (Newtonsoft.Json.JsonException) // Catch broader JsonException instead of JsonReaderException
             {
-                // Log JsonException as Warn for consistency with other non-critical errors
-                // This indicates the file exists but contains invalid JSON for the requested type
-                // Security improvement: Don't log exception message to prevent information disclosure
+                // Log as generic message but with Warn level since JSON parsing errors indicate data corruption
                 _monitor?.Log($"File contains no valid data for key '{sanitizedKey}'", LogLevel.Warn);
                 return null; // Return null instead of throwing when JSON is invalid (consistent with DataExists behavior)
             }

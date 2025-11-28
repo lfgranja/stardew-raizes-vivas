@@ -92,27 +92,16 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
-            // Allow legitimate relative paths like "./file.txt" but block traversal attempts
-            // If the path starts with "./" but is not just "." or "./", check if it's a valid relative path
+            // Check for standalone "./" - this should be blocked as it represents current directory navigation
+            if (normalized.Equals("./", StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+            }
+            
+            // Block any path that starts with "./" as this represents explicit current directory navigation
             if (normalized.StartsWith("./", StringComparison.Ordinal))
             {
-                // If it's just "./" (current directory), block it
-                if (normalized.Equals("./", StringComparison.Ordinal))
-                {
-                    throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-                }
-                
-                // For paths like "./file.txt", check if they contain traversal attempts
-                // Remove the leading "./" and validate the remaining path
-                string remainingPath = normalized.Substring(2);
-                if (!string.IsNullOrEmpty(remainingPath))
-                {
-                    // Check if remaining path contains traversal patterns like "../"
-                    if (remainingPath.StartsWith("../", StringComparison.Ordinal) || remainingPath.Equals("..", StringComparison.Ordinal))
-                    {
-                        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-                    }
-                }
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
             // Check for standalone "..", "../", or "..\"
