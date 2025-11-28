@@ -293,11 +293,11 @@ namespace LivingRoots.Services
             }
             catch (System.IO.DirectoryNotFoundException)
             {
-                // Log DirectoryNotFoundException as Warn to reduce log noise from non-critical issues
+                // If the directory doesn't exist, the objective ("remove the data") is already achieved successfully
+                // Log as Trace instead of throwing an exception to follow the "fail successfully" principle
+                // This maintains idempotency: calling RemoveData multiple times should succeed even if data doesn't exist
                 // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor?.Log($"Directory not found while removing data for key '{sanitizedKey}'", LogLevel.Warn);
-                // For critical removal operations, rethrow the exception to signal failure
-                throw;
+                _monitor?.Log($"Directory not found while removing data for key '{sanitizedKey}'", LogLevel.Trace);
             }
             catch (System.UnauthorizedAccessException)
             {
