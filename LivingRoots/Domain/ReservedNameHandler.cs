@@ -42,47 +42,12 @@ namespace LivingRoots.Domain
             if (string.IsNullOrEmpty(filename))
                 return filename;
 
-            // Determine if this is a UNC path (starts with \\ followed by non-separator)
-            bool isUncPath = filename.Length >= 2 && filename[0] == '\\' && filename[1] == '\\' 
-                            && (filename.Length <= 2 || (filename[2] != '\\' && filename[2] != '/'));
-
-            string processedResult;
-            
-            if (isUncPath)
+            // For most paths, use Path methods
+            // But for UNC paths, we need special handling since Path.GetDirectoryName doesn't work properly
+            if (IsUncPath(filename))
             {
-                // For UNC paths, manually parse to preserve format
-                // Find the last path separator to separate directory from filename
-                int lastSeparatorIndex = -1;
-                for (int i = 2; i < filename.Length; i++) // Start after the initial \\
-                {
-                    if (filename[i] == '\\' || filename[i] == '/')
-                    {
-                        lastSeparatorIndex = i;
-                    }
-                }
-
-                if (lastSeparatorIndex != -1)
-                {
-                    string directoryPart = filename.Substring(0, lastSeparatorIndex + 1);
-                    string filePart = filename.Substring(lastSeparatorIndex + 1);
-
-                    // Process only the file part
-                    string processedFilePart = ProcessFileName(filePart);
-
-                    // If no change, return original
-                    if (processedFilePart == filePart)
-                    {
-                        return filename;
-                    }
-
-                    // Reconstruct with the same separator format
-                    processedResult = directoryPart + processedFilePart;
-                }
-                else
-                {
-                    // No separator found after the initial \\, so the whole thing is treated as a filename
-                    processedResult = ProcessFileName(filename);
-                }
+                // For UNC paths, manually parse to preserve UNC format
+                return HandleUncPath(filename);
             }
             else
             {
@@ -108,15 +73,65 @@ namespace LivingRoots.Domain
                 // Rebuild path with processed filename using Path.Combine for proper path handling
                 if (!string.IsNullOrEmpty(directoryPath))
                 {
-                    processedResult = Path.Combine(directoryPath, processedFileName);
+                    return Path.Combine(directoryPath, processedFileName);
                 }
                 else
                 {
-                    processedResult = processedFileName;
+                    return processedFileName;
                 }
             }
-            
-            return processedResult;
+        }
+
+        /// <summary>
+        /// Handles UNC paths specifically
+        /// </summary>
+        /// <param name="filename">The UNC path to handle</param>
+        /// <returns>A filename with reserved names handled appropriately</returns>
+        private string? HandleUncPath(string filename)
+        {
+            // Find the last path separator to separate directory from filename
+            int lastSeparatorIndex = -1;
+            for (int i = 2; i < filename.Length; i++) // Start after the initial \\
+            {
+                if (filename[i] == '\\' || filename[i] == '/')
+                {
+                    lastSeparatorIndex = i;
+                }
+            }
+
+            if (lastSeparatorIndex != -1)
+            {
+                string directoryPart = filename.Substring(0, lastSeparatorIndex + 1);
+                string filePart = filename.Substring(lastSeparatorIndex + 1);
+
+                // Process only the file part
+                string processedFilePart = ProcessFileName(filePart);
+
+                // If no change, return original
+                if (processedFilePart == filePart)
+                {
+                    return filename;
+                }
+
+                // Reconstruct with the same separator format
+                return directoryPart + processedFilePart;
+            }
+            else
+            {
+                // No separator found after the initial \\, so the whole thing is treated as a filename
+                return ProcessFileName(filename);
+            }
+        }
+        
+        /// <summary>
+        /// Checks if a path is a UNC path (starts with \\ followed by non-separator)
+        /// </summary>
+        /// <param name="path">The path to check</param>
+        /// <returns>True if the path is a UNC path, false otherwise</returns>
+        private static bool IsUncPath(string path)
+        {
+            return path.Length >= 2 && path[0] == '\\' && path[1] == '\\' 
+                   && (path.Length <= 2 || (path[2] != '\\' && path[2] != '/'));
         }
         
         /// <summary>

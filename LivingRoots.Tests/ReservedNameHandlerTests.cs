@@ -592,7 +592,7 @@ namespace LivingRoots.Tests
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
-
+            
             // Assert - The result should have the reserved name processed (PRN_ instead of PRN)
             // Expected result should be \\server\share\PRN_.log
             Assert.Equal(@"\\server\share\PRN_.log", result);
