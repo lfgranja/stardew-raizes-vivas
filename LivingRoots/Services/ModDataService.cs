@@ -158,6 +158,12 @@ namespace LivingRoots.Services
                 _monitor?.Log("Invalid key provided to LoadData", LogLevel.Warn);
                 return null; // Return null instead of throwing when key is invalid
             }
+            catch (Exception)
+            {
+                // Log unexpected errors and return null to maintain consistency with DataExists behavior
+                _monitor?.Log($"Unexpected error occurred while loading data for key '{sanitizedKey}'.", LogLevel.Error);
+                return null; // Return null instead of throwing for unexpected errors to maintain consistency
+            }
         }
         
         /// <summary>
@@ -234,9 +240,9 @@ namespace LivingRoots.Services
             }
             catch (Exception)
             {
-                // Log unexpected errors and rethrow to avoid masking critical faults
-                _monitor?.Log("Unexpected error occurred while checking data existence.", LogLevel.Error);
-                throw;
+                // Log unexpected errors and return false to maintain consistency with LoadData behavior
+                _monitor?.Log($"Unexpected error occurred while checking data existence for key '{sanitizedKey}'.", LogLevel.Error);
+                return false; // Return false instead of rethrowing to maintain consistency with LoadData
             }
         }
         
@@ -391,9 +397,9 @@ namespace LivingRoots.Services
             if (validSegments.Count == 0)
                 throw new ArgumentException("Sanitized path cannot be empty.", nameof(path));
             
-            // Join sanitized segments back together using system's directory separator
-            // Use IEnumerable<string> directly instead of converting to array
-            return string.Join(Path.DirectorySeparatorChar.ToString(), validSegments);
+            // Join sanitized segments back together using forward slash for consistency across platforms
+            // This ensures keys are consistent regardless of the operating system
+            return string.Join("/", validSegments);
         }
     }
 }
