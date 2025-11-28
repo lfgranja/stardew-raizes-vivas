@@ -53,10 +53,20 @@ LivingRoots.Tests/          # Unit Tests Project
         ```csharp
         public override void Entry(IModHelper helper)
         {
-            // Create controller with dependency injection
-            _controller = new ModController(helper, this.Monitor, this.ModManifest);
+            // Create domain services - Composition Root
+            var unicodeNormalizationService = new UnicodeNormalizationService();
+            var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
+            var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
+            var pathValidationService = new PathValidationService(unicodeNormalizationService);
+            var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
             
-            // Register events through the controller
+            // Create application services
+            var modDataService = new ModDataService(helper, this.Monitor, modLogic);
+            
+            // Create controller with dependency injection
+            _controller = new ModController(helper, this.Monitor, this.ModManifest, modDataService);
+            
+            // Register events through the Controller
             _controller.RegisterEvents();
         }
 ```
@@ -87,7 +97,7 @@ LivingRoots.Tests/          # Unit Tests Project
 
 ## Data and Control Flow (Example: Soil Health)
 
-1.  **`ModEntry`** initializes `ModController`, injecting dependencies like `IModHelper`, `IMonitor`, and `IManifest`.
+1.  **`ModEntry`** initializes `ModController`, injecting dependencies like `IModHelper`, `IMonitor`, `IManifest`, and `IModDataService`.
 2.  **`ModController`** listens to the `GameLoop.GameLaunched` event from SMAPI.
 3.  When the game launches, `ModController`:
     *   Registers console commands (e.g., `lr_version`).
