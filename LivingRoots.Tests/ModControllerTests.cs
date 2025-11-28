@@ -33,8 +33,6 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             
-            
-            
             _mockMonitor.Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>())).Verifiable();
             
             return (mockEvents, mockGameLoopEvents);
@@ -502,6 +500,43 @@ namespace LivingRoots.Tests
             // Assert - Event registration should not occur after disposal
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+        }
+        
+        [Fact]
+        public async System.Threading.Tasks.Task OnGameLaunched_CommandRegistration_IsThreadSafe()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            var mockCommandHelper = new Mock<ICommandHelper>(MockBehavior.Strict);
+            mockCommandHelper
+                .Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
+                .Verifiable();
+            
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+            
+            var mockModDataService = new Mock<IModDataService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            
+            // Act - Simulate concurrent calls to OnGameLaunched to test command registration race condition
+            var tasks = new System.Threading.Tasks.Task[10];
+            for (int i = 0; i < 10; i++)
+            {
+                tasks[i] = System.Threading.Tasks.Task.Run(() =>
+                {
+                    var args = new GameLaunchedEventArgs();
+                    controller.GetType().GetMethod("OnGameLaunched", 
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                        ?.Invoke(controller, new object[] { null, args });
+                });
+            }
+            
+            // Wait for all tasks to complete
+            await System.Threading.Tasks.Task.WhenAll(tasks);
+            
+            // Assert - Command should only be registered once despite multiple concurrent calls
+            mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
         }
     }

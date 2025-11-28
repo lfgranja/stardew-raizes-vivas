@@ -38,36 +38,19 @@ namespace LivingRoots.Controllers
 
         public void RegisterEvents()
         {
-            // Early exit if already disposed - single atomic check
+            // Early exit if already disposed - single atomic check using volatile read
             if (IsDisposed())
             {
                 _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
                 return;
             }
             
-            // Attempt to set the events registered flag atomically
-            int currentState, newState;
-            do
+            // Use TrySetStateOnce to ensure events are only registered once
+            if (!TrySetStateOnce(EventsRegisteredFlag))
             {
-                currentState = _state;
-                
-                // Single check for disposed state after reading state
-                if ((currentState & DisposedFlag) != 0)
-                {
-                    _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
-                    return;
-                }
-                
-                // If already registered, exit
-                if ((currentState & EventsRegisteredFlag) != 0)
-                {
-                    _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
-                    return;
-                }
-                
-                newState = currentState | EventsRegisteredFlag;
+                _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
+                return;
             }
-            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
             
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
@@ -81,9 +64,10 @@ namespace LivingRoots.Controllers
                     monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                     // Reset flag since registration failed - ensure disposed flag is preserved
                     int resetState;
+                    int newState;
                     do
                     {
-                        resetState = _state;
+                        resetState = Volatile.Read(ref _state);
                         newState = resetState & ~EventsRegisteredFlag;
                     }
                     while (Interlocked.CompareExchange(ref _state, newState, resetState) != resetState);
@@ -105,9 +89,10 @@ namespace LivingRoots.Controllers
                 _onGameLaunchedHandler = null;
                 
                 int resetState;
+                int newState;
                 do
                 {
-                    resetState = _state;
+                    resetState = Volatile.Read(ref _state);
                     newState = resetState & ~EventsRegisteredFlag;
                 }
                 while (Interlocked.CompareExchange(ref _state, newState, resetState) != resetState);
@@ -116,7 +101,7 @@ namespace LivingRoots.Controllers
 
         public void UnregisterEvents()
         {
-            // Early exit if already disposed - single atomic check
+            // Early exit if already disposed - single atomic check using volatile read
             if (IsDisposed())
             {
                 _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
@@ -171,7 +156,7 @@ namespace LivingRoots.Controllers
                 int currentState, newState;
                 do
                 {
-                    currentState = _state;
+                    currentState = Volatile.Read(ref _state);
                     newState = (currentState & ~EventsRegisteredFlag) & ~CommandRegisteredFlag;
                 }
                 while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
@@ -195,7 +180,7 @@ namespace LivingRoots.Controllers
         /// <param name="e">The event arguments</param>
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
-            // Early exit if disposed - single atomic check at the beginning
+            // Early exit if disposed - single atomic check at the beginning using volatile read
             if (IsDisposed())
             {
                 _monitor.Log("OnGameLaunched called after disposal. Operation skipped.", LogLevel.Trace);
@@ -210,34 +195,15 @@ namespace LivingRoots.Controllers
             {
                 monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
                 
-                // Use atomic operation to check and set command registration flag
-                if (!IsCommandRegistered())
+                // Use TrySetStateOnce to ensure the command is only registered once
+                bool wasCommandRegistered = TrySetStateOnce(CommandRegisteredFlag);
+                
+                // Only register the command if we successfully set the flag (meaning were the first thread to do so)
+                if (wasCommandRegistered)
                 {
-                    // Double-check disposal after the atomic operation
-                    if (IsDisposed())
-                        return;
-
                     var commands = helper?.ConsoleCommands;
                     if (commands != null)
                     {
-                        // Attempt to set the command registered flag atomically
-                        int currentState, newState;
-                        do
-                        {
-                            currentState = _state;
-                            
-                            // If already disposed, exit
-                            if ((currentState & DisposedFlag) != 0)
-                                return;
-                            
-                            // If already registered, exit
-                            if ((currentState & CommandRegisteredFlag) != 0)
-                                break;
-                            
-                            newState = currentState | CommandRegisteredFlag;
-                        }
-                        while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
-
                         commands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
                         monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
                     }
@@ -259,7 +225,7 @@ namespace LivingRoots.Controllers
 
         private void PrintVersion(string command, string[] args)
         {
-            // Early exit if disposed - single atomic check at the beginning
+            // Early exit if disposed - single atomic check at the beginning using volatile read
             if (IsDisposed())
             {
                 return; // Skip execution if disposed
@@ -308,17 +274,12 @@ namespace LivingRoots.Controllers
 
         public void Dispose()
         {
-            // Ensure only one thread executes disposal logic using atomic compare-and-swap
-            int currentState, newState;
-            do
+            // Use TrySetStateOnce to ensure disposal flag is only set once
+            if (!TrySetStateOnce(DisposedFlag))
             {
-                currentState = _state;
-                if ((currentState & DisposedFlag) != 0)
-                    return; // Already disposed
-                
-                newState = currentState | DisposedFlag;
+                _monitor.Log("Controller is already disposed.", LogLevel.Trace);
+                return; // Already disposed
             }
-            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             // Perform cleanup in a thread-safe manner
             PerformCleanup();
@@ -358,7 +319,7 @@ namespace LivingRoots.Controllers
                 int currentState, newState;
                 do
                 {
-                    currentState = _state;
+                    currentState = Volatile.Read(ref _state);
                     newState = currentState | DisposedFlag; // Ensure disposed flag remains set
                 }
                 while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
@@ -369,20 +330,51 @@ namespace LivingRoots.Controllers
             }
         }
         
-        // Helper methods for state checking
+        // Helper methods for state checking using volatile reads
         private bool IsDisposed()
         {
-            return (_state & DisposedFlag) != 0;
+            return (Volatile.Read(ref _state) & DisposedFlag) != 0;
         }
         
         private bool IsEventsRegistered()
         {
-            return (_state & EventsRegisteredFlag) != 0;
+            return (Volatile.Read(ref _state) & EventsRegisteredFlag) != 0;
         }
         
         private bool IsCommandRegistered()
         {
-            return (_state & CommandRegisteredFlag) != 0;
+            return (Volatile.Read(ref _state) & CommandRegisteredFlag) != 0;
+        }
+        
+        /// <summary>
+        /// Attempts to set a specific state flag only once, ensuring thread safety.
+        /// This method uses atomic operations to ensure that the flag is only set once.
+        /// </summary>
+        /// <param name="flag">The flag to set</param>
+        /// <returns>True if the flag was set (meaning this was the first thread to set it), false otherwise</returns>
+        private bool TrySetStateOnce(int flag)
+        {
+            int currentState, newState;
+            bool wasSet = false;
+            
+            do
+            {
+                currentState = Volatile.Read(ref _state);
+                
+                // If flag is already set, return false
+                if ((currentState & flag) != 0)
+                    return false;
+                
+                // If disposed, return false
+                if ((currentState & DisposedFlag) != 0)
+                    return false;
+                
+                newState = currentState | flag;
+                wasSet = Interlocked.CompareExchange(ref _state, newState, currentState) == currentState;
+            }
+            while (!wasSet);
+            
+            return wasSet;
         }
     }
 }
