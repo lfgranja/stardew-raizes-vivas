@@ -42,25 +42,29 @@ namespace LivingRoots.Domain
             if (string.IsNullOrEmpty(filename))
                 return filename;
 
-            // For UNC paths, we need to be more careful about parsing to ensure the format is preserved
-            // Check if it's a UNC path (starts with \\)
-            if (filename.Length >= 2 && filename[0] == '\\' && filename[1] == '\\')
+            // Determine if this is a UNC path (starts with \\ followed by non-separator)
+            bool isUncPath = filename.Length >= 2 && filename[0] == '\\' && filename[1] == '\\' 
+                            && (filename.Length <= 2 || (filename[2] != '\\' && filename[2] != '/'));
+
+            string processedResult;
+            
+            if (isUncPath)
             {
-                // For UNC paths, manually extract the server/share part from the filename part
-                // Find the last path separator after the server/share portion
-                int lastSeparator = -1;
-                for (int i = 2; i < filename.Length; i++) // Start from index 2 to skip initial \\
+                // For UNC paths, manually parse to preserve format
+                // Find the last path separator to separate directory from filename
+                int lastSeparatorIndex = -1;
+                for (int i = 2; i < filename.Length; i++) // Start after the initial \\
                 {
                     if (filename[i] == '\\' || filename[i] == '/')
                     {
-                        lastSeparator = i;
+                        lastSeparatorIndex = i;
                     }
                 }
 
-                if (lastSeparator != -1)
+                if (lastSeparatorIndex != -1)
                 {
-                    string directoryPart = filename.Substring(0, lastSeparator);
-                    string filePart = filename.Substring(lastSeparator + 1);
+                    string directoryPart = filename.Substring(0, lastSeparatorIndex + 1);
+                    string filePart = filename.Substring(lastSeparatorIndex + 1);
 
                     // Process only the file part
                     string processedFilePart = ProcessFileName(filePart);
@@ -72,12 +76,12 @@ namespace LivingRoots.Domain
                     }
 
                     // Reconstruct with the same separator format
-                    return directoryPart + filename[lastSeparator] + processedFilePart;
+                    processedResult = directoryPart + processedFilePart;
                 }
                 else
                 {
                     // No separator found after the initial \\, so the whole thing is treated as a filename
-                    return ProcessFileName(filename);
+                    processedResult = ProcessFileName(filename);
                 }
             }
             else
@@ -104,13 +108,15 @@ namespace LivingRoots.Domain
                 // Rebuild path with processed filename using Path.Combine for proper path handling
                 if (!string.IsNullOrEmpty(directoryPath))
                 {
-                    return Path.Combine(directoryPath, processedFileName);
+                    processedResult = Path.Combine(directoryPath, processedFileName);
                 }
                 else
                 {
-                    return processedFileName;
+                    processedResult = processedFileName;
                 }
             }
+            
+            return processedResult;
         }
         
         /// <summary>
