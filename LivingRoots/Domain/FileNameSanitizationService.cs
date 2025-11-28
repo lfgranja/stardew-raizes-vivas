@@ -17,6 +17,10 @@ namespace LivingRoots.Domain
     /// - Improved handling of surrogate pairs to prevent splitting Unicode characters
     /// - Added proper normalization of startIndex to prevent mathematical errors
     /// - Reordered boundary checks to prevent ArgumentOutOfRangeException
+    /// - Enhanced validation of CreateAndValidateSafeBlockedFilename return value
+    /// - Guaranteed replacement of dangerous extensions with ".blocked"
+    /// - Improved surrogate handling as suggested by qodo-merge-pro
+    /// - Comprehensive validation of all return values
     /// </summary>
     public class FileNameSanitizationService : IFileNameSanitizationService
     {
@@ -208,13 +212,15 @@ namespace LivingRoots.Domain
         }
 
         /// <summary>
-        /// Creates and validates a safe filename for blocked extensions
+        /// Creates and validates a safe filename for blocked extensions with comprehensive validation
         /// </summary>
         /// <param name="isHidden">Whether the file should be treated as hidden</param>
         /// <param name="originalFilename">The original filename</param>
         /// <returns>A safe filename with blocked extension</returns>
+        /// <exception cref="ArgumentException">Thrown when the generated filename is invalid</exception>
         private static string CreateAndValidateSafeBlockedFilename(bool isHidden, string? originalFilename)
         {
+            // Generate safe result based on hidden status
             string safeResult = isHidden ? ".file.blocked" : "file.blocked";
             
             // Validate the result after extension blocking
@@ -227,12 +233,66 @@ namespace LivingRoots.Domain
             // Perform final cleanup after all processing
             safeResult = PerformFinalCleanup(safeResult, isHidden);
             
+            // Validate the result after final cleanup
+            ValidateFinalResult(safeResult);
+            
+            // Additional validation: ensure the result is not empty and meets security requirements
+            if (string.IsNullOrEmpty(safeResult))
+            {
+                throw new ArgumentException("Generated safe filename is empty after processing.", nameof(safeResult));
+            }
+            
             // Check length after creating the blocked extension result
             if (safeResult.Length > MaxFileNameLength)
             {
                 safeResult = TruncateToMaxLength(safeResult);
+                // Re-validate after truncation
+                ValidateFinalResult(safeResult);
             }
+            
+            // Final validation to ensure all security requirements are met
+            EnsureSecurityRequirements(safeResult);
+            
+            // Enhanced validation: Ensure the result has the correct format based on hidden status
+            if (isHidden && !safeResult.StartsWith(".", StringComparison.Ordinal))
+            {
+                throw new ArgumentException($"Hidden file status not preserved after processing: '{safeResult}'.", nameof(safeResult));
+            }
+            
+            // Enhanced validation: Ensure the blocked extension is still present after all processing
+            string finalExtension = GetFileExtension(safeResult);
+            if (!finalExtension.Equals(".blocked", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"Blocked extension not preserved after processing: '{safeResult}'.", nameof(safeResult));
+            }
+            
+            // Enhanced validation: Ensure the base part of the filename is valid after all processing
+            string finalBase = RemoveFileExtension(safeResult).Trim('_', ' ', '.');
+            if (string.IsNullOrWhiteSpace(finalBase) || finalBase == "." || finalBase == "..")
+            {
+                throw new ArgumentException($"Final result has invalid base after processing: '{safeResult}'.", nameof(safeResult));
+            }
+            
             return safeResult;
+        }
+
+        /// <summary>
+        /// Ensures security requirements are met for the filename
+        /// </summary>
+        /// <param name="filename">The filename to validate</param>
+        private static void EnsureSecurityRequirements(string filename)
+        {
+            // Ensure the filename doesn't end with invalid characters except for extensions
+            if (filename.EndsWith("..") && !filename.EndsWith("...")) // Allow triple dots to become single dots
+            {
+                throw new ArgumentException($"Filename contains invalid pattern: '{filename}'", nameof(filename));
+            }
+            
+            // Validate that it doesn't contain path traversal sequences
+            if (filename.Contains("../") || filename.Contains("..\\"))
+            {
+                throw new ArgumentException($"Filename contains path traversal sequences: '{filename}'", nameof(filename));
+            }
         }
 
         /// <summary>
@@ -319,9 +379,16 @@ namespace LivingRoots.Domain
                     {
                         throw new ArgumentException($"Filename sanitizes to an invalid state after extension blocking: '{result}'.", nameof(result));
                     }
+                    
+                    // Additional validation: ensure the blocked extension is actually applied
+                    if (!result.EndsWith(".blocked", StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new ArgumentException($"Failed to properly apply blocked extension to: '{result}'", nameof(result));
+                    }
                 }
                 else
                 {
+                    // For non-blocked extensions, ensure they meet security requirements
                     result = $"{result}{extension}";
                 }
 
@@ -395,9 +462,34 @@ namespace LivingRoots.Domain
                         result = TruncateToMaxLength(result);
                     }
                 }
+                
+                // Validate the result after extension processing
+                ValidateExtensionResult(result);
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Validates the result after extension processing
+        /// </summary>
+        /// <param name="result">The result to validate</param>
+        private static void ValidateExtensionResult(string result)
+        {
+            // Extract extension to validate
+            string extension = GetFileExtension(result);
+            
+            // If it's a blocked extension, ensure it was properly replaced
+            if (!string.IsNullOrEmpty(extension) && 
+                extension.Equals(".blocked", StringComparison.OrdinalIgnoreCase))
+            {
+                // Validate that the base part is not empty
+                string basePart = RemoveFileExtension(result).Trim('_', ' ', '.');
+                if (string.IsNullOrWhiteSpace(basePart) || basePart == "." || basePart == "..")
+                {
+                    throw new ArgumentException($"Extension processing resulted in invalid filename: '{result}'", nameof(result));
+                }
+            }
         }
 
         /// <summary>
@@ -733,6 +825,7 @@ namespace LivingRoots.Domain
         /// - Improve length validation (change `length < 0` to `length <= 0`)
         /// - Fix the surrogate pair boundary check to prevent IndexOutOfRangeException
         /// - Ensure all boundary conditions are properly handled
+        /// - Enhanced with improved surrogate pair boundary checks
         /// </summary>
         /// <param name="str">The input string</param>
         /// <param name="startIndex">Start index</param>
@@ -770,15 +863,35 @@ namespace LivingRoots.Domain
             if (actualLength <= 0)
                 return string.Empty;
 
-            // Fix the surrogate pair boundary check to prevent IndexOutOfRangeException
-            // Only check surrogate boundary if endIndex is strictly within bounds
-            // and there's at least one character before it to check for a high surrogate
+            // Enhanced surrogate pair boundary check
+            // Check if we're at a potential surrogate boundary
             if (endIndex < str.Length && endIndex > 0)
             {
-                if (char.IsLowSurrogate(str[endIndex]) && char.IsHighSurrogate(str[endIndex - 1]))
+                char currentChar = str[endIndex];
+                char previousChar = str[endIndex - 1];
+
+                // If we're about to split a surrogate pair, adjust the boundary
+                if (char.IsHighSurrogate(previousChar) && char.IsLowSurrogate(currentChar))
                 {
+                    // Move back to avoid splitting the surrogate pair
                     endIndex--;
                     actualLength = endIndex - startIndex;
+                    
+                    if (actualLength <= 0)
+                        return string.Empty;
+                }
+            }
+
+            // Additional check: if we start at a low surrogate, move forward
+            if (startIndex < str.Length && char.IsLowSurrogate(str[startIndex]))
+            {
+                // If the character before is a high surrogate, we're in the middle of a pair
+                if (startIndex > 0 && char.IsHighSurrogate(str[startIndex - 1]))
+                {
+                    // Skip this low surrogate to avoid starting in the middle of a pair
+                    startIndex++;
+                    actualLength = endIndex - startIndex;
+                    
                     if (actualLength <= 0)
                         return string.Empty;
                 }
