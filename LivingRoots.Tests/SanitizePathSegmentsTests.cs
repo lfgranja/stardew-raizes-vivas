@@ -169,12 +169,8 @@ namespace LivingRoots.Tests
             
             // Assert
             Assert.NotNull(result);
-            // The result should handle mixed separators properly
-            var normalizedResult = result.ToString()
-                .Replace(Path.DirectorySeparatorChar, '/')
-                .Replace(Path.AltDirectorySeparatorChar, '/');
-            // The actual result should be "segment1/segment2/segment3" after processing
-            Assert.Equal("segment1/segment2/segment3", normalizedResult);
+            // The result should handle mixed separators properly and return forward slashes consistently
+            Assert.Equal("segment1/segment2/segment3", result.ToString());
         }
     }
 }
