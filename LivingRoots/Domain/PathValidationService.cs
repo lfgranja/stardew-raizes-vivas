@@ -49,9 +49,12 @@ namespace LivingRoots.Domain
             if (normalizedPath == null)
                 throw new ArgumentException("Path normalization returned null, validation cannot proceed", nameof(path));
 
+            // Apply dot-homoglyph normalization for comprehensive security
+            string processedPath = NormalizePath(normalizedPath);
+            
             // Run all essential validation checks
-            ValidatePathSecurity(normalizedPath);
-            ValidatePathTraversalDepth(normalizedPath);
+            ValidatePathSecurity(processedPath);
+            ValidatePathTraversalDepth(processedPath);
         }
 
         /// <summary>
@@ -83,36 +86,34 @@ namespace LivingRoots.Domain
         /// <exception cref="ArgumentException">Thrown when path traversal is detected.</exception>
         private void ValidatePathTraversalDepth(string path)
         {
-            string normalized = NormalizePath(path);
-            
             // Check for standalone "." - this should still be blocked as it represents current directory traversal
-            if (normalized.Equals(".", StringComparison.Ordinal))
+            if (path.Equals(".", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
             // Check for standalone "./" - this should be blocked as it represents current directory navigation
-            if (normalized.Equals("./", StringComparison.Ordinal))
+            if (path.Equals("./", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
             // Block any path that starts with "./" as this represents explicit current directory navigation
-            if (normalized.StartsWith("./", StringComparison.Ordinal))
+            if (path.StartsWith("./", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
             // Check for standalone "..", "../", or "..\"
-            if (normalized.Equals("..", StringComparison.Ordinal) || 
-                normalized.Equals("../", StringComparison.Ordinal) || 
-                normalized.Equals("..\\", StringComparison.Ordinal))
+            if (path.Equals("..", StringComparison.Ordinal) || 
+                path.Equals("../", StringComparison.Ordinal) || 
+                path.Equals("..\\", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
             // Split into segments ignoring empty parts from repeated separators
-            string[] segments = normalized.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] segments = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
             
             // Add a hard cap to prevent excessive processing of pathological inputs
             // Increased from 100 to allow more reasonable paths while still preventing abuse
