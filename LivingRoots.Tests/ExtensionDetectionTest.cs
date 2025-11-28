@@ -57,6 +57,35 @@ namespace LivingRoots.Tests
                 Assert.Equal(expectedIndex, result);
             }
         }
+        
+        [Fact]
+        public void TestExtensionDetectionWithHyphensAndUnderscores()
+        {
+            // Get the method using reflection to test it directly
+            var method = typeof(FileNameSanitizationService)
+                .GetMethod("FindExtensionStartIndex", BindingFlags.NonPublic | BindingFlags.Static);
+            
+            Assert.NotNull(method);
+            
+            // Test various extensions with hyphens and underscores
+            var testCases = new[]
+            {
+                ("test.my-ext", 4),      // Extension with hyphen - should be valid
+                ("file.my_ext", 4),      // Extension with underscore - should be valid
+                ("data.config-file", 4), // Extension with hyphen - should be valid
+                ("image.photo_v2", 5),   // Extension with underscore - should be valid
+                ("doc.file-name.txt", 13), // Multiple dots, extension with hyphen - should be valid
+                ("archive.backup_v1.7z", 17), // Multiple dots, extension with underscore - should be valid
+                ("script.test-script.js", 18), // Extension with hyphen - should be valid
+                ("config.my_app.config", 13),  // Extension with underscore - should be valid
+            };
+            
+            foreach (var (input, expectedIndex) in testCases)
+            {
+                var result = (int)method.Invoke(null, new object[] { input });
+                Assert.Equal(expectedIndex, result);
+            }
+        }
     }
     
     // Mock implementations for testing

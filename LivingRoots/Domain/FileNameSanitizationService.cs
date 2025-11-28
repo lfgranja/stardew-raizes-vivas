@@ -707,14 +707,14 @@ namespace LivingRoots.Domain
                 return -1;
 
             // Reject if extension contains any bidi/control characters that could obfuscate
-            // U+202A..U+202E (bidi overrides), U+2066..U+2069 (isolate), and general control chars
+            // U+202A..U+202E (bidi overrides), U+206..U+2069 (isolate), and general control chars
             if (extensionPart.Any(ch => char.IsControl(ch) ||
                                        (ch >= '\u202A' && ch <= '\u202E') ||
                                        (ch >= '\u2066' && ch <= '\u2069')))
                 return -1;
 
-            // Allow only ASCII letters/digits for core of extension
-            if (!extensionPart.All(c => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || char.IsDigit(c)))
+            // Allow ASCII letters/digits/hyphens/underscores for core of extension
+            if (!extensionPart.All(c => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || char.IsDigit(c) || c == '-' || c == '_'))
                 return -1;
 
             // Check if extension contains path separators
