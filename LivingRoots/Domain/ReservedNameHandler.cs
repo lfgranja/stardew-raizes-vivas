@@ -42,8 +42,8 @@ namespace LivingRoots.Domain
             if (string.IsNullOrEmpty(filename))
                 return filename;
 
-            // For most paths, use Path methods
-            // But for UNC paths, we need special handling since Path.GetDirectoryName doesn't work properly
+            // For UNC paths, we need special handling since Path.GetFileName and Path.GetDirectoryName 
+            // may not work properly with UNC paths like \\server\share\file.txt
             if (IsUncPath(filename))
             {
                 // For UNC paths, manually parse to preserve UNC format
@@ -52,7 +52,7 @@ namespace LivingRoots.Domain
             else
             {
                 // For non-UNC paths, use Path methods
-                string? directoryPath = Path.GetDirectoryName(filename);
+                string directoryPath = Path.GetDirectoryName(filename) ?? string.Empty;
                 string fullFileName = Path.GetFileName(filename);
 
                 // If Path.GetFileName returns an empty string, 
@@ -89,9 +89,10 @@ namespace LivingRoots.Domain
         /// <returns>A filename with reserved names handled appropriately</returns>
         private string? HandleUncPath(string filename)
         {
-            // Find the last path separator to separate directory from filename
+            // For UNC paths, find the last path separator to separate directory from filename
             int lastSeparatorIndex = -1;
-            for (int i = 2; i < filename.Length; i++) // Start after the initial \\
+            // Start from index 2 to skip the initial \\ of UNC path
+            for (int i = 2; i < filename.Length; i++)
             {
                 if (filename[i] == '\\' || filename[i] == '/')
                 {
