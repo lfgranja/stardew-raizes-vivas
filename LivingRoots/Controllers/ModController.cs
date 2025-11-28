@@ -63,14 +63,7 @@ namespace LivingRoots.Controllers
                 {
                     monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                     // Reset flag since registration failed - ensure disposed flag is preserved
-                    int resetState;
-                    int newState;
-                    do
-                    {
-                        resetState = Volatile.Read(ref _state);
-                        newState = resetState & ~EventsRegisteredFlag;
-                    }
-                    while (Interlocked.CompareExchange(ref _state, newState, resetState) != resetState);
+                    Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                     return;
                 }
 
@@ -88,14 +81,7 @@ namespace LivingRoots.Controllers
                 monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
                 _onGameLaunchedHandler = null;
                 
-                int resetState;
-                int newState;
-                do
-                {
-                    resetState = Volatile.Read(ref _state);
-                    newState = resetState & ~EventsRegisteredFlag;
-                }
-                while (Interlocked.CompareExchange(ref _state, newState, resetState) != resetState);
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
             }
         }
 
@@ -153,13 +139,7 @@ namespace LivingRoots.Controllers
                 }
                 
                 // Reset state flags atomically - ensure disposed flag is preserved
-                int currentState, newState;
-                do
-                {
-                    currentState = Volatile.Read(ref _state);
-                    newState = (currentState & ~EventsRegisteredFlag) & ~CommandRegisteredFlag;
-                }
-                while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
                 
                 localMonitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
@@ -316,13 +296,10 @@ namespace LivingRoots.Controllers
                 }
 
                 // Ensure the disposed flag remains set and clear other flags
-                int currentState, newState;
-                do
-                {
-                    currentState = Volatile.Read(ref _state);
-                    newState = currentState | DisposedFlag; // Ensure disposed flag remains set
-                }
-                while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+                // First, ensure the disposed flag is set
+                Interlocked.Or(ref _state, DisposedFlag);
+                // Then clear the other flags
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
             }
             finally
             {
