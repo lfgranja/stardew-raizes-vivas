@@ -37,12 +37,11 @@ namespace LivingRoots.Tests
             
             var confusables = confusablesField.GetValue(null) as System.Collections.Generic.IDictionary<char, string>;
 
-            // Check for any mappings where the key and value are the same
+            // Check for any mappings where the value is a single character and it's the same as the key
             if (confusables != null)
             {
                 foreach (var kvp in confusables)
                 {
-                    // If the value is a single character and it's the same as the key, it's redundant
                     if (kvp.Value.Length == 1 && kvp.Value[0] == kvp.Key)
                     {
                         Assert.Fail($"Found redundant mapping: {{ '{kvp.Key}', \"{kvp.Value}\" }} maps character to itself");
@@ -357,7 +356,7 @@ namespace LivingRoots.Tests
             string input3 = "о"; // Cyrillic 'o'
             string input4 = "р"; // Cyrillic 'p'
             string input5 = "с"; // Cyrillic 'c'
-            string input6 = "х"; // Cyrillic 'h'
+            string input6 = "х"; // Cyrillic 'x' (was incorrectly mapped to 'h', now correctly mapped to 'x')
             string input7 = "у"; // Cyrillic 'y'
 
             // Act
@@ -375,7 +374,7 @@ namespace LivingRoots.Tests
             Assert.Equal("o", result3);
             Assert.Equal("p", result4);
             Assert.Equal("c", result5);
-            Assert.Equal("h", result6);
+            Assert.Equal("x", result6); // Updated from "h" to "x" - Cyrillic 'х' should map to Latin 'x', not 'h'
             Assert.Equal("y", result7);
         }
 

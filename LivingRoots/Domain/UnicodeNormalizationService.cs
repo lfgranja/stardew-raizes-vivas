@@ -23,8 +23,8 @@ namespace LivingRoots.Domain
         {
             // Characters that are commonly used in homoglyph attacks (always converted for security)
             // Cyrillic lookalikes that can be used to disguise Latin text
-            { 'а', "a" }, { 'е', "e" }, { 'о', "o" }, { 'р', "p" }, { 'с', "c" }, { 'х', "h" }, { 'у', "y" }, // Cyrillic lowercase lookalikes
-            { 'А', "A" }, { 'Е', "E" }, { 'О', "O" }, { 'Р', "P" }, { 'С', "C" }, { 'Х', "H" }, { 'У', "Y" }, // Cyrillic uppercase lookalikes
+            { 'а', "a" }, { 'е', "e" }, { 'о', "o" }, { 'р', "p" }, { 'с', "c" }, { 'х', "x" }, { 'у', "y" }, // Cyrillic lowercase lookalikes
+            { 'А', "A" }, { 'Е', "E" }, { 'О', "O" }, { 'Р', "P" }, { 'С', "C" }, { 'Х', "X" }, { 'У', "Y" }, // Cyrillic uppercase lookalikes
             { 'і', "i" }, { 'І', "I" }, // Additional Cyrillic lookalikes
             // Other confusable characters
             { '–', "-" }, { '—', "-" }, // Different types of dashes (en dash and em dash to regular hyphen)
