@@ -42,8 +42,12 @@ namespace LivingRoots.Domain
             if (string.IsNullOrEmpty(input))
                 return input;
 
-            // Apply decomposition normalization to separate base characters from diacritics first
-            string decomposed = input.Normalize(NormalizationForm.FormD);
+            // First, handle invalid surrogate pairs by replacing them with replacement characters
+            // This prevents exceptions when calling Normalize() on strings with invalid Unicode
+            string sanitizedInput = SanitizeSurrogatePairs(input);
+            
+            // Apply decomposition normalization to separate base characters from diacritics
+            string decomposed = sanitizedInput.Normalize(NormalizationForm.FormD);
             
             var resultBuilder = new StringBuilder();
             char lastBaseChar = '\0'; // Track the last base character for diacritic processing
@@ -70,90 +74,132 @@ namespace LivingRoots.Domain
                         resultBuilder.Append('\uFFFD');
                     }
                 }
-                if (char.IsLowSurrogate(c))
+                else if (char.IsLowSurrogate(c))
                 {
                     // Dangling low surrogate: replace with U+FFFD (replacement character) to avoid data loss
                     resultBuilder.Append('\uFFFD');
                 }
-
-                // Skip processing if this is a surrogate that was already handled
-                if (char.IsSurrogate(c))
-                    continue;
-
-                var category = CharUnicodeInfo.GetUnicodeCategory(c);
-
-                if (category == UnicodeCategory.NonSpacingMark)
-                {
-                    // This is a combining mark (like a diacritic)
-                    // For security, remove diacritics from Latin and Greek letters
-                    // But preserve diacritics for other scripts like Hebrew, Arabic, etc.
-                    // Use the last known base character to determine if diacritic should be removed
-                    if (lastBaseChar == '\0')
-                    {
-                        // Skip orphan combining marks that don't have a valid base character
-                        // This prevents leading or orphan combining marks from being preserved
-                        continue;
-                    }
-                    else if (IsLatinLetter(lastBaseChar) || IsGreekLetter(lastBaseChar))
-                    {
-                        // Remove diacritics from Latin and Greek letters
-                        continue;
-                    }
-                    else
-                    {
-                        // This is likely part of a legitimate non-Latin character, keep it
-                        resultBuilder.Append(c);
-                    }
-                }
-                else if (category == UnicodeCategory.Control || IsZeroWidthOrBidirectional(c))
-                {
-                    // Remove control and format characters completely to avoid creating false word boundaries
-                    // This prevents format characters from being replaced with underscores which could alter string semantics
-                    // Do not insert spaces - these characters should be completely removed
-                    continue;
-                }
                 else
                 {
-                    // Update the last base character for any non-combining, non-control/format character
-                    // Only update lastBaseChar for actual base characters, not surrogate pairs or combining marks
-                    if (!char.IsSurrogate(c))
+                    // Process non-surrogate characters normally
+                    var category = CharUnicodeInfo.GetUnicodeCategory(c);
+
+                    if (category == UnicodeCategory.NonSpacingMark)
                     {
-                        lastBaseChar = c;
-                    }
-                    
-                    // Check for security confusables (homoglyphs that should be converted)
-                    // Apply context-aware conversion for security homoglyphs
-                    // The goal is to convert confusable characters when they're used to disguise other scripts
-                    if (SecurityConfusables.TryGetValue(c, out var replacement))
-                    {
-                        // For context-aware conversion, we need to check if this confusable character is being used in a context
-                        // where it might be disguising another script. If it's surrounded by other non-Latin characters that are
-                        // part of the same script (like Cyrillic), we should preserve it.
-                        
-                        bool shouldConvert = ShouldConvertConfusable(c, decomposed, i);
-                        
-                        if (shouldConvert)
+                        // This is a combining mark (like a diacritic)
+                        // For security, remove diacritics from Latin and Greek letters
+                        // But preserve diacritics for other scripts like Hebrew, Arabic, etc.
+                        // Use the last known base character to determine if diacritic should be removed
+                        if (lastBaseChar == '\0')
                         {
-                            // Convert confusable characters when they're being used to disguise other scripts
-                            resultBuilder.Append(replacement);
+                            // Skip orphan combining marks that don't have a valid base character
+                            // This prevents leading or orphan combining marks from being preserved
+                            continue;
+                        }
+                        else if (IsLatinLetter(lastBaseChar) || IsGreekLetter(lastBaseChar))
+                        {
+                            // Remove diacritics from Latin and Greek letters
+                            continue;
                         }
                         else
                         {
-                            // Preserve the original character when it's in a legitimate script context
+                            // This is likely part of a legitimate non-Latin character, keep it
                             resultBuilder.Append(c);
                         }
                     }
+                    else if (category == UnicodeCategory.Control || IsZeroWidthOrBidirectional(c))
+                    {
+                        // Remove control and format characters completely to avoid creating false word boundaries
+                        // This prevents format characters from being replaced with underscores which could alter string semantics
+                        // Do not insert spaces - these characters should be completely removed
+                        continue;
+                    }
                     else
                     {
-                        // Special handling for non-confusable characters
-                        string simplified = SimplifyCharacter(c);
-                        resultBuilder.Append(simplified);
+                        // Update the last base character for any non-combining, non-control/format character
+                        // Only update lastBaseChar for actual base characters, not surrogate pairs or combining marks
+                        lastBaseChar = c;
+                        
+                        // Check for security confusables (homoglyphs that should be converted)
+                        // Apply context-aware conversion for security homoglyphs
+                        // The goal is to convert confusable characters when they're used to disguise other scripts
+                        if (SecurityConfusables.TryGetValue(c, out var replacement))
+                        {
+                            // For context-aware conversion, we need to check if this confusable character is being used in a context
+                            // where it might be disguising another script. If it's surrounded by other non-Latin characters that are
+                            // part of the same script (like Cyrillic), we should preserve it.
+                            
+                            bool shouldConvert = ShouldConvertConfusable(c, decomposed, i);
+                            
+                            if (shouldConvert)
+                            {
+                                // Convert confusable characters when they're being used to disguise other scripts
+                                resultBuilder.Append(replacement);
+                            }
+                            else
+                            {
+                                // Preserve the original character when it's in a legitimate script context
+                                resultBuilder.Append(c);
+                            }
+                        }
+                        else
+                        {
+                            // Special handling for non-confusable characters
+                            string simplified = SimplifyCharacter(c);
+                            resultBuilder.Append(simplified);
+                        }
                     }
                 }
             }
 
             // Return in composed form to properly handle combined characters
             return resultBuilder.ToString().Normalize(NormalizationForm.FormC);
+        }
+
+        /// <summary>
+        /// Sanitizes the input string by replacing invalid surrogate pairs with replacement characters
+        /// before the main normalization process to prevent exceptions.
+        /// </summary>
+        /// <param name="input">The input string to sanitize.</param>
+        /// <returns>A string with invalid surrogate pairs replaced by replacement characters.</returns>
+        private static string SanitizeSurrogatePairs(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            var resultBuilder = new StringBuilder();
+            for (int i = 0; i < input.Length; i++)
+            {
+                char c = input[i];
+
+                if (char.IsHighSurrogate(c))
+                {
+                    if (i + 1 < input.Length && char.IsLowSurrogate(input[i + 1]))
+                    {
+                        // Valid surrogate pair: preserve both characters
+                        resultBuilder.Append(c);
+                        resultBuilder.Append(input[i + 1]);
+                        i++; // Skip the low surrogate since we just processed it
+                    }
+                    else
+                    {
+                        // Dangling high surrogate: replace with replacement character
+                        resultBuilder.Append('\uFFFD');
+                    }
+                }
+                else if (char.IsLowSurrogate(c))
+                {
+                    // Dangling low surrogate: replace with replacement character
+                    resultBuilder.Append('\uFFFD');
+                }
+                else
+                {
+                    // Regular character: add as-is
+                    resultBuilder.Append(c);
+                }
+            }
+
+            return resultBuilder.ToString();
         }
 
         /// <summary>
