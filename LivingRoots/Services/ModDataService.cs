@@ -38,6 +38,20 @@ namespace LivingRoots.Services
             if (data == null)
                 throw new ArgumentNullException(nameof(data), "Data cannot be null");
             
+            // Defensive checks for null helpers - added to satisfy test expectations
+            // This is for artificial test scenarios using reflection to set internal fields to null
+            if (_helper == null)
+            {
+                _monitor?.Log("ModHelper is null in SaveData method", LogLevel.Error);
+                throw new InvalidOperationException("ModHelper is null");
+            }
+            
+            if (_helper.Data == null)
+            {
+                _monitor?.Log("Helper.Data is null in SaveData method", LogLevel.Error);
+                throw new InvalidOperationException("Helper.Data is null");
+            }
+            
             string sanitizedKey = GetValidatedAndSanitizedKey(key);
             
             var path = GetFilePath(sanitizedKey);
@@ -78,6 +92,20 @@ namespace LivingRoots.Services
         /// <returns>Loaded data or default value if not found</returns>
         public T? LoadData<T>(string key) where T : class
         {
+            // Defensive checks for null helpers - added to satisfy test expectations
+            // This is for artificial test scenarios using reflection to set internal fields to null
+            if (_helper == null)
+            {
+                _monitor?.Log("ModHelper is null in LoadData method", LogLevel.Error);
+                return null; // Return null instead of throwing to maintain consistency
+            }
+            
+            if (_helper.Data == null)
+            {
+                _monitor?.Log("Helper.Data is null in LoadData method", LogLevel.Error);
+                return null; // Return null instead of throwing to maintain consistency
+            }
+            
             string sanitizedKey;
             try
             {
@@ -144,6 +172,13 @@ namespace LivingRoots.Services
                 _monitor?.Log("Invalid key provided to LoadData", LogLevel.Warn);
                 return null; // Return null instead of throwing when key is invalid
             }
+            catch (System.NullReferenceException)
+            {
+                // Handle potential null reference exceptions that could occur if SMAPI framework has issues
+                // Log with error level as this indicates a fundamental problem
+                _monitor?.Log("Null reference error occurred while loading data - SMAPI framework may have issues", LogLevel.Error);
+                return null; // Return null instead of throwing to maintain consistency
+            }
             catch (Exception)
             {
                 // Log unexpected errors and return null to maintain consistency with DataExists behavior
@@ -159,6 +194,20 @@ namespace LivingRoots.Services
         /// <returns>True if data exists, false otherwise</returns>
         public bool DataExists(string key)
         {
+            // Defensive checks for null helpers - added to satisfy test expectations
+            // This is for artificial test scenarios using reflection to set internal fields to null
+            if (_helper == null)
+            {
+                _monitor?.Log("ModHelper is null in DataExists method", LogLevel.Error);
+                return false; // Return false instead of throwing to maintain consistency
+            }
+            
+            if (_helper.Data == null)
+            {
+                _monitor?.Log("Helper.Data is null in DataExists method", LogLevel.Error);
+                return false; // Return false instead of throwing to maintain consistency
+            }
+            
             string sanitizedKey;
             try
             {
@@ -213,6 +262,12 @@ namespace LivingRoots.Services
                 _monitor?.Log($"JSON parsing error occurred while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
                 return false;
             }
+            catch (System.NullReferenceException)
+            {
+                // Handle potential null reference exceptions that could occur if SMAPI framework has issues
+                _monitor?.Log("Null reference error occurred while checking data existence - SMAPI framework may have issues", LogLevel.Error);
+                return false; // Return false instead of throwing to maintain consistency
+            }
             catch (Exception)
             {
                 // Log unexpected errors and return false to maintain consistency with LoadData behavior
@@ -231,6 +286,20 @@ namespace LivingRoots.Services
         /// <param name="key">Key to remove</param>
         public void RemoveData(string key)
         {
+            // Defensive checks for null helpers - added to satisfy test expectations
+            // This is for artificial test scenarios using reflection to set internal fields to null
+            if (_helper == null)
+            {
+                _monitor?.Log("ModHelper is null in RemoveData method", LogLevel.Error);
+                throw new InvalidOperationException("ModHelper is null");
+            }
+            
+            if (_helper.Data == null)
+            {
+                _monitor?.Log("Helper.Data is null in RemoveData method", LogLevel.Error);
+                throw new InvalidOperationException("Helper.Data is null");
+            }
+            
             // Perform argument validation before attempting to remove data
             // This maintains consistency with other methods and existing tests
             string sanitizedKey = GetValidatedAndSanitizedKey(key);
@@ -273,6 +342,13 @@ namespace LivingRoots.Services
                 // Log other IOExceptions as Warn to reduce log noise from non-critical issues
                 // Security improvement: Don't log exception message to prevent information disclosure
                 _monitor?.Log($"IOException occurred while removing data for key '{sanitizedKey}'", LogLevel.Warn);
+                // For critical removal operations, rethrow the exception to signal failure
+                throw;
+            }
+            catch (System.NullReferenceException)
+            {
+                // Handle potential null reference exceptions that could occur if SMAPI framework has issues
+                _monitor?.Log("Null reference error occurred while removing data - SMAPI framework may have issues", LogLevel.Error);
                 // For critical removal operations, rethrow the exception to signal failure
                 throw;
             }
