@@ -130,8 +130,14 @@ namespace LivingRoots.Domain
         /// <returns>True if the path is a UNC path, false otherwise</returns>
         private static bool IsUncPath(string path)
         {
-            return path.Length >= 2 && path[0] == '\\' && path[1] == '\\' 
-                   && (path.Length <= 2 || (path[2] != '\\' && path[2] != '/'));
+            // Check if path starts with exactly two backslashes followed by a non-separator character
+            // This properly identifies UNC paths like \\server\share\file.txt
+            // while excluding paths that start with more than two backslashes
+            return path != null && 
+                   path.Length >= 2 && 
+                   path[0] == '\\' && 
+                   path[1] == '\\' && 
+                   !(path.Length > 2 && (path[2] == '\\' || path[2] == '/'));
         }
         
         /// <summary>
