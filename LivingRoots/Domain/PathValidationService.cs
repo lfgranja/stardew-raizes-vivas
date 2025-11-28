@@ -50,8 +50,7 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path normalization returned null, validation cannot proceed", nameof(path));
 
             // Run all essential validation checks
-            ValidateAbsolutePathOrUri(normalizedPath);
-            ValidateEncodedTraversal(normalizedPath);
+            ValidatePathSecurity(normalizedPath);
             ValidatePathTraversalDepth(normalizedPath);
         }
 
@@ -161,25 +160,20 @@ namespace LivingRoots.Domain
         }
 
         /// <summary>
-        /// Checks if a path is an absolute path or URI.
+        /// Validates path security by checking for absolute paths/URIs and encoded traversal patterns.
+        /// Consolidated validation method that combines both security checks.
         /// </summary>
         /// <param name="path">The path to check.</param>
-        /// <exception cref="ArgumentException">Thrown when path is absolute or URI</exception>
-        private void ValidateAbsolutePathOrUri(string path)
+        /// <exception cref="ArgumentException">Thrown when path is absolute/URI or contains encoded traversal</exception>
+        private void ValidatePathSecurity(string path)
         {
+            // Check if path is an absolute path or URI
             if (AbsolutePathPattern.IsMatch(path))
             {
                 throw new ArgumentException("Path cannot be an absolute path or URI", nameof(path));
             }
-        }
-
-        /// <summary>
-        /// Checks if a path contains encoded traversal patterns.
-        /// </summary>
-        /// <param name="path">The path to check.</param>
-        /// <exception cref="ArgumentException">Thrown when path contains encoded traversal</exception>
-        private void ValidateEncodedTraversal(string path)
-        {
+            
+            // Check if path contains encoded traversal patterns
             if (EncodedTraversalPattern.IsMatch(path))
             {
                 throw new ArgumentException("Path cannot contain encoded path traversal patterns", nameof(path));
