@@ -78,20 +78,6 @@ namespace LivingRoots.Services
         /// <returns>Loaded data or default value if not found</returns>
         public T? LoadData<T>(string key) where T : class
         {
-            // Basic null checks for injected dependencies - these are critical infrastructure checks
-            // If these are null, something went wrong during dependency injection
-            if (_helper == null)
-            {
-                _monitor?.Log("Critical infrastructure error: ModHelper is null in LoadData method.", LogLevel.Error);
-                return null;
-            }
-            
-            if (_helper.Data == null)
-            {
-                _monitor?.Log("Critical infrastructure error: Helper.Data is null in LoadData method.", LogLevel.Error);
-                return null;
-            }
-            
             string sanitizedKey;
             try
             {
@@ -173,17 +159,6 @@ namespace LivingRoots.Services
         /// <returns>True if data exists, false otherwise</returns>
         public bool DataExists(string key)
         {
-            if (_helper == null)
-            {
-                _monitor?.Log("Critical infrastructure error: ModHelper is null in DataExists method.", LogLevel.Error);
-                return false;
-            }
-            if (_helper.Data == null)
-            {
-                _monitor?.Log("Critical infrastructure error: Helper.Data is null in DataExists method.", LogLevel.Error);
-                return false;
-            }
-
             string sanitizedKey;
             try
             {
@@ -256,20 +231,6 @@ namespace LivingRoots.Services
         /// <param name="key">Key to remove</param>
         public void RemoveData(string key)
         {
-            // Basic null checks for injected dependencies - these are critical infrastructure checks
-            // If these are null, something went wrong during dependency injection
-            if (_helper == null)
-            {
-                _monitor?.Log("Critical infrastructure error: ModHelper is null in RemoveData method.", LogLevel.Error);
-                throw new InvalidOperationException("ModHelper is null in RemoveData method.");
-            }
-            
-            if (_helper.Data == null)
-            {
-                _monitor?.Log("Critical infrastructure error: Helper.Data is null in RemoveData method.", LogLevel.Error);
-                throw new InvalidOperationException("Helper.Data is null in RemoveData method.");
-            }
-            
             // Perform argument validation before attempting to remove data
             // This maintains consistency with other methods and existing tests
             string sanitizedKey = GetValidatedAndSanitizedKey(key);

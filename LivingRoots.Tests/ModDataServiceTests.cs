@@ -702,6 +702,10 @@ namespace LivingRoots.Tests
             var result = method?.Invoke(service, new object[] { "segment1/segment2/segment3" });
             
             // Assert
+            // Assert
+            Assert.Equal("segment1/segment2/segment3", result);
+
+
             Assert.Equal($"segment1{Path.DirectorySeparatorChar}segment2{Path.DirectorySeparatorChar}segment3", result);
         }
         
