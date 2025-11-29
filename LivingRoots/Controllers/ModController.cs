@@ -296,11 +296,9 @@ namespace LivingRoots.Controllers
                 }
 
                 // Ensure the disposed flag remains set and clear other flags
-                // First, ensure the disposed flag is set
-                Interlocked.Or(ref _state, DisposedFlag);
-                // Then clear the other flags
+                // Clear other state flags, preserving the disposed flag.
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
-            }
+                }
             finally
             {
                 // No re-registration after this point; avoid further cleanup that touches SMAPI
