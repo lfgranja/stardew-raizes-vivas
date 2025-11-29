@@ -38,85 +38,24 @@ namespace LivingRoots.Domain
         /// <returns>A filename with reserved names handled appropriately.</returns>
         public string? Handle(string? filename)
         {
-            // Handle null/empty strings
-            if (string.IsNullOrEmpty(filename))
-                return filename;
+            if (string.IsNullOrEmpty(filename)) return filename;
 
-            // For cross-platform compatibility, we need to handle UNC paths specially
-            // UNC paths start with \\ (on Windows) and may not be handled correctly by Path.GetDirectoryName on all platforms
-            string directoryPath = string.Empty;
-            string fullFileName = filename;
-            
-            // Check if this looks like a UNC path (starts with \\ followed by non-separator)
-            if (!string.IsNullOrEmpty(filename) && filename.Length > 2 && 
-                filename[0] == '\\' && filename[1] == '\\' && 
-                filename[2] != '\\' && filename[2] != '/')
-            {
-                // This appears to be a UNC path, manually extract the filename part
-                // Find the last occurrence of directory separator after the server/share part
-                int lastSeparatorIndex = -1;
-                for (int i = 2; i < filename.Length; i++) // Start after the \\
-                {
-                    if (filename[i] == '\\' || filename[i] == '/')
-                    {
-                        lastSeparatorIndex = i;
-                    }
-                }
-                
-                if (lastSeparatorIndex != -1 && lastSeparatorIndex < filename.Length - 1)
-                {
-                    directoryPath = filename.Substring(0, lastSeparatorIndex);
-                    fullFileName = filename.Substring(lastSeparatorIndex + 1);
-                }
-            }
-            else
-            {
-                // Use Path methods for standard paths (non-UNC)
-                directoryPath = Path.GetDirectoryName(filename) ?? string.Empty;
-                fullFileName = Path.GetFileName(filename);
-            }
+            // O .NET lida com UNC automaticamente
+            string? directoryPath = Path.GetDirectoryName(filename);
+            string fullFileName = Path.GetFileName(filename);
 
-            // If Path.GetFileName or manual extraction returns an empty string, 
-            // this means input ends with a directory separator
-            // In this case, we should return the original path to avoid incorrect mutation of directory paths
-            if (string.IsNullOrEmpty(fullFileName))
-                return filename;
+            // Se não tem nome de arquivo (ex: diretório "C:\Con\"), retorne original
+            if (string.IsNullOrEmpty(fullFileName)) return filename;
 
-            // Special handling for "." and ".." as these are special path components and should not be treated as filenames
-            if (fullFileName == "." || fullFileName == "..")
-            {
-                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
-            }
-
-            // Process the filename component separately
             string? processedFileName = ProcessFileName(fullFileName);
 
-            // If no change or processing failed, return original
             if (processedFileName == null || processedFileName == fullFileName)
-            {
                 return filename;
-            }
 
-            // Rebuild path with processed filename
             if (!string.IsNullOrEmpty(directoryPath))
-            {
-                // For UNC paths, preserve the UNC format with backslashes
-                // For regular paths, use Path.Combine to handle separators appropriately
-                if (directoryPath.StartsWith(@"\\"))
-                {
-                    // This is a UNC path, preserve the UNC format with backslashes
-                    return directoryPath + "\\" + processedFileName;
-                }
-                else
-                {
-                    // This is a regular path, use Path.Combine for proper cross-platform handling
-                    return Path.Combine(directoryPath, processedFileName);
-                }
-            }
-            else
-            {
-                return processedFileName;
-            }
+                return Path.Combine(directoryPath, processedFileName);
+
+            return processedFileName;
         }
 
         /// <summary>
@@ -134,7 +73,7 @@ namespace LivingRoots.Domain
                 // Replace fully insignificant names with a safe placeholder
                 return "_";
             }
-            
+
             // Separate name from extension properly
             (string namePart, string extensionPart) = ExtractNameAndExtension(filename);
 
@@ -145,7 +84,7 @@ namespace LivingRoots.Domain
                 // Replace fully insignificant names with a safe placeholder
                 return "_" + extensionPart;
             }
-            
+
             // Extract the core name (without leading/trailing insignificant chars) and preserve context
             (string coreName, string leadingChars) = ExtractCoreNameAndLeadingChars(namePart);
 
@@ -175,7 +114,7 @@ namespace LivingRoots.Domain
             {
                 return ConstructReservedNameResult(leadingChars, actualCoreName, coreName, extensionPart);
             }
-            
+
             // If not reserved, check if the name part is fully insignificant (consists only of dots, spaces, tabs)
             string trimmedForInsignificantCheck = namePart.Trim('.', ' ', '\t');
             if (string.IsNullOrEmpty(trimmedForInsignificantCheck))
@@ -196,7 +135,7 @@ namespace LivingRoots.Domain
         private static (string namePart, string extensionPart) ExtractNameAndExtension(string filename)
         {
             string namePart, extensionPart = "";
-            
+
             int lastDotIndex = filename.LastIndexOf('.');
             // Only consider it an extension if the dot is not at beginning or end and there's content after it
             if (lastDotIndex > 0 && lastDotIndex < filename.Length - 1)
@@ -221,7 +160,7 @@ namespace LivingRoots.Domain
         {
             // Get the core name by trimming both leading and trailing insignificant characters
             string coreName = namePart.Trim('.', ' ', '\t');
-            
+
             // Get the leading chars that were trimmed
             int leadingCharsLength = 0;
             for (int i = 0; i < namePart.Length; i++)
@@ -246,7 +185,7 @@ namespace LivingRoots.Domain
         {
             string actualCoreName = coreName;
             bool isReserved = false;
-            
+
             // First, check if the original core name starts with a reserved name (for embedded cases)
             foreach (string reservedName in ReservedWindowsFileNames)
             {
@@ -321,7 +260,7 @@ namespace LivingRoots.Domain
             {
                 // Normalize the core name to detect homoglyphs and combining marks that might be used to bypass detection
                 string? normalizedCore = _unicodeNormalizationService.Normalize(coreName);
-                
+
                 if (normalizedCore != null && !string.Equals(coreName, normalizedCore, StringComparison.Ordinal))
                 {
                     // It's a homoglyph - check if the normalized form is a reserved name
@@ -335,7 +274,7 @@ namespace LivingRoots.Domain
                             break;
                         }
                     }
-                    
+
                     // Also check for embedded reserved names in the normalized form
                     if (!isReserved)
                     {
@@ -389,7 +328,7 @@ namespace LivingRoots.Domain
             {
                 // Remove combining marks to detect attempts to bypass using diacritics
                 string nameWithoutCombiningMarks = RemoveCombiningMarks(coreName);
-                
+
                 if (!string.Equals(nameWithoutCombiningMarks, coreName, StringComparison.Ordinal))
                 {
                     // The name had combining marks, so check if the stripped version matches a reserved name
@@ -402,7 +341,7 @@ namespace LivingRoots.Domain
                             break;
                         }
                     }
-                    
+
                     // Also check for embedded names without combining marks
                     if (!isReserved)
                     {
@@ -454,22 +393,22 @@ namespace LivingRoots.Domain
         {
             // For reserved names, construct the result by using leading characters from the original name
             // and adding an underscore to the base name
-            
+
             // Determine the base name to use in the result
             // If we detected it as a homoglyph, actualCoreName is already the normalized form
             // Otherwise, it's the original form
             string coreNameForResult = actualCoreName;
-            
+
             // The new name part is: leading characters + core name (normalized if it was a homoglyph) + underscore + rest of name after reserved part
             // For homoglyphs that matched exactly, there's no "rest" - for embedded matches, there might be
             string restOfName = coreName.Length > actualCoreName.Length ? coreName.Substring(actualCoreName.Length) : "";
-            
+
             // For homoglyphs, we use the normalized form, so no need to normalize again
             string newNamePart = leadingChars + coreNameForResult + "_" + restOfName;
-            
+
             return newNamePart + extensionPart;
         }
-        
+
         /// <summary>
         /// Removes combining marks from a string to detect attempts to bypass reserved name checks using diacritics.
         /// </summary>
@@ -484,8 +423,8 @@ namespace LivingRoots.Domain
             foreach (char c in input)
             {
                 var category = CharUnicodeInfo.GetUnicodeCategory(c);
-                if (category != UnicodeCategory.NonSpacingMark && 
-                    category != UnicodeCategory.SpacingCombiningMark && 
+                if (category != UnicodeCategory.NonSpacingMark &&
+                    category != UnicodeCategory.SpacingCombiningMark &&
                     category != UnicodeCategory.EnclosingMark)
                 {
                     result.Append(c);
@@ -495,4 +434,3 @@ namespace LivingRoots.Domain
         }
     }
 }
-  
