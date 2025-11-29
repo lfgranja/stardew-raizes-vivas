@@ -16,6 +16,7 @@
 
   <PropertyGroup>
     <!-- Optional override path; leave empty by default -->
+    <SmapiInternalPath>$(NuGetPackageRoot)pathoschild.stardew.modbuildconfig/4.4.0/build</SmapiInternalPath>
     <SmapiInternalPath Condition="'$(SmapiInternalPath)'==''"></SmapiInternalPath>
   </PropertyGroup>
 
