@@ -40,22 +40,101 @@ namespace LivingRoots.Domain
         {
             if (string.IsNullOrEmpty(filename)) return filename;
 
-            // O .NET lida com UNC automaticamente
-            string? directoryPath = Path.GetDirectoryName(filename);
-            string fullFileName = Path.GetFileName(filename);
+            // Não podemos usar Path.GetFileName puramente, pois no Linux ele
+            // não reconhece '\' como separador, falhando ao processar caminhos Windows/UNC.
+            // Precisamos encontrar o último separador manualmente para ser agnóstico ao SO.
+
+            int lastSeparatorIndex = filename.LastIndexOfAny(new[] { '/', '\\' });
+
+            string directoryPath;
+            string fullFileName;
+
+            if (lastSeparatorIndex >= 0)
+            {
+                // Separa o caminho do arquivo
+                // Nota: Não usamos Path.Combine depois para evitar misturar separadores
+                directoryPath = filename.Substring(0, lastSeparatorIndex);
+                fullFileName = filename.Substring(lastSeparatorIndex + 1);
+            }
+            else
+            {
+                directoryPath = string.Empty;
+                fullFileName = filename;
+            }
 
             // Se não tem nome de arquivo (ex: diretório "C:\Con\"), retorne original
             if (string.IsNullOrEmpty(fullFileName)) return filename;
 
             string? processedFileName = ProcessFileName(fullFileName);
 
+            // Se não houve mudança ou falhou, retorna original
             if (processedFileName == null || processedFileName == fullFileName)
                 return filename;
 
+            // Reconstrói o caminho preservando o separador original usado
             if (!string.IsNullOrEmpty(directoryPath))
-                return Path.Combine(directoryPath, processedFileName);
+            {
+                // Usa o caractere separador que estava lá originalmente
+                char separator = filename[lastSeparatorIndex];
+                return directoryPath + separator + processedFileName;
+            }
 
             return processedFileName;
+        }
+
+        /// <summary>
+        /// Handles UNC paths specially since Path.GetDirectoryName/GetFileName don't work properly with them
+        /// </summary>
+        /// <param name="filename">The UNC path to handle</param>
+        /// <returns>A filename with reserved names handled appropriately</returns>
+        private string? HandleUncPath(string filename)
+        {
+            // For UNC paths like \\server\share\filename, we need to manually extract the filename
+            // Find the position of the last separator to get the filename part
+            // We check for both forward slash and backslash, not just the system's default separator
+            int lastSeparatorPos = -1;
+            for (int i = filename.Length - 1; i >= 0; i--)
+            {
+                char c = filename[i];
+                if (c == '\\' || c == '/')
+                {
+                    lastSeparatorPos = i;
+                    break;
+                }
+            }
+
+            if (lastSeparatorPos == -1)
+            {
+                // No separator found, treat the whole string as filename
+                string? processedFileNameResult = ProcessFileName(filename);
+                return processedFileNameResult == filename ? filename : processedFileNameResult;
+            }
+
+            // Extract the directory path (including UNC prefix) and filename
+            string directoryPath = filename.Substring(0, lastSeparatorPos + 1);
+            string fileName = filename.Substring(lastSeparatorPos + 1);
+
+            string? processedFileName = ProcessFileName(fileName);
+
+            if (processedFileName == null || processedFileName == fileName)
+                return filename;
+
+            // Reconstruct the full path
+            return directoryPath + processedFileName;
+        }
+
+        /// <summary>
+        /// Checks if a path is a UNC path (starts with \\ or //)
+        /// </summary>
+        /// <param name="path">The path to check</param>
+        /// <returns>True if the path is a UNC path</returns>
+        private static bool IsUncPath(string path)
+        {
+            if (string.IsNullOrEmpty(path) || path.Length < 2)
+                return false;
+
+            return (path[0] == '\\' && path[1] == '\\') ||
+                   (path[0] == '/' && path[1] == '/');
         }
 
         /// <summary>
