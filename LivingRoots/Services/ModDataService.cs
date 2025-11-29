@@ -239,8 +239,8 @@ namespace LivingRoots.Services
             }
             catch (System.IO.DirectoryNotFoundException)
             {
-                // Directory does not exist - log as warn
-                _monitor?.Log($"Directory not found while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
+                // Directory does not exist - log as trace to reduce noise and for consistency
+                _monitor?.Log($"Directory not found while checking data existence for key '{sanitizedKey}'", LogLevel.Trace);
                 return false;
             }
             catch (System.UnauthorizedAccessException)
