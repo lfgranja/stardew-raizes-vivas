@@ -67,6 +67,12 @@ namespace LivingRoots.Domain
             if (filename == null) return null;
             ValidateInput(filename);
 
+            // Special handling for "." and ".." as these are special path components and should not be treated as filenames
+            if (filename == "." || filename == "..")
+            {
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(filename));
+            }
+
             var normalized = _unicodeNormalizationService.Normalize(filename) 
                              ?? throw new ArgumentException("Normalized filename is null.", nameof(filename));
 
@@ -682,6 +688,10 @@ namespace LivingRoots.Domain
         /// <returns>The start index of the extension (including the dot) if valid, or -1 if no valid extension found.</returns>
         private static int FindExtensionStartIndex(string filename)
         {
+            // Special handling for "." and ".." - these are special path components, not filenames with extensions
+            if (filename == "." || filename == "..")
+                return -1;
+            
             // Find the last dot in the original filename string
             int lastDotIndex = filename.LastIndexOf('.');
 
@@ -901,3 +911,4 @@ namespace LivingRoots.Domain
         }
     }
 }
+  
