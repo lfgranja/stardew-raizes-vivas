@@ -240,7 +240,7 @@ namespace LivingRoots.Controllers
                 }
                 
                 // Include the mod's UniqueID in the output for better usability and clarity
-                // Explicitly format the version string using MajorVersion, MinorVersion, and PatchVersion properties for consistent output
+                // Make sure version?.ToString() is formatted using MajorVersion, MinorVersion, and PatchVersion properties for consistent output
                 var version = manifest?.Version;
                 string versionString = version?.ToString() ?? "unknown";
                     
