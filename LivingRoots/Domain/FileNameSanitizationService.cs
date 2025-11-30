@@ -706,7 +706,7 @@ namespace LivingRoots.Domain
             var extNormalized = potentialExtension.Normalize(NormalizationForm.FormC);
 
             // Reject if extension ends with whitespace or an extra dot
-            if (char.IsWhiteSpace(extNormalized[^1]) || extNormalized[^1] == '.')
+            if (char.IsWhiteSpace(extNormalized[extNormalized.Length - 1]) || extNormalized[extNormalized.Length - 1] == '.')
                 return -1;
 
             string extensionPart = extNormalized.Substring(1);
@@ -911,4 +911,3 @@ namespace LivingRoots.Domain
         }
     }
 }
-  
