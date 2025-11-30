@@ -40,10 +40,13 @@ namespace LivingRoots.Domain
         {
             if (string.IsNullOrEmpty(filename)) return filename;
 
-            // Não podemos usar Path.GetFileName puramente, pois no Linux ele
-            // não reconhece '\' como separador, falhando ao processar caminhos Windows/UNC.
-            // Precisamos encontrar o último separador manualmente para ser agnóstico ao SO.
+            // Check if it's a UNC path first to handle specially
+            if (IsUncPath(filename))
+            {
+                return HandleUncPath(filename);
+            }
 
+            // For non-UNC paths, find the last separator manually to be cross-platform compatible
             int lastSeparatorIndex = filename.LastIndexOfAny(new[] { '/', '\\' });
 
             string directoryPath;
