@@ -62,6 +62,13 @@ namespace LivingRoots.Services
                 _monitor?.Log($"Saved data for key '{sanitizedKey}'.", LogLevel.Trace);
             }
             
+            catch (System.IO.DirectoryNotFoundException)
+            {
+                // Handle DirectoryNotFoundException specifically to maintain consistency with other methods
+                // Log as error since this is a save operation and the directory should exist
+                _monitor?.Log($"Directory not found while saving data for key '{sanitizedKey}'", LogLevel.Error);
+                throw; // Re-throw for save operations as these are critical
+            }
             catch (System.IO.IOException)
             {
                 _monitor?.Log("IOException occurred while saving data", LogLevel.Warn);
