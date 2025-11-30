@@ -26,8 +26,21 @@ namespace LivingRoots.Domain
             { 'а', "a" }, { 'е', "e" }, { 'о', "o" }, { 'р', "p" }, { 'с', "c" }, { 'х', "x" }, { 'у', "y" }, // Cyrillic lowercase lookalikes
             { 'А', "A" }, { 'Е', "E" }, { 'О', "O" }, { 'Р', "P" }, { 'С', "C" }, { 'Х', "X" }, { 'У', "Y" }, // Cyrillic uppercase lookalikes
             { 'і', "i" }, { 'І', "I" }, // Additional Cyrillic lookalikes
+            // Extended Cyrillic lookalikes
+            { 'в', "b" }, { 'к', "k" }, { 'м', "m" }, { 'н', "n" }, { 'т', "t" }, // More Cyrillic lookalikes
+            { 'В', "B" }, { 'К', "K" }, { 'М', "M" }, { 'Н', "H" }, { 'Т', "T" }, // More Cyrillic lookalikes
+            // Greek lookalikes
+            { 'α', "a" }, { 'β', "b" }, { 'ε', "e" }, { 'ζ', "z" }, { 'η', "n" }, { 'ι', "i" }, { 'κ', "k" }, { 'μ', "m" }, { 'ν', "v" }, { 'ο', "o" }, { 'ρ', "p" }, { 'τ', "t" }, { 'υ', "y" }, { 'χ', "x" }, // Greek lowercase lookalikes
+            { 'Α', "A" }, { 'Β', "B" }, { 'Ε', "E" }, { 'Ζ', "Z" }, { 'Η', "N" }, { 'Ι', "I" }, { 'Κ', "K" }, { 'Μ', "M" }, { 'Ν', "N" }, { 'Ο', "O" }, { 'Ρ', "P" }, { 'Τ', "T" }, { 'Υ', "Y" }, { 'Χ', "X" }, // Greek uppercase lookalikes
             // Other confusable characters
             { '–', "-" }, { '—', "-" }, // Different types of dashes (en dash and em dash to regular hyphen)
+            { '‐', "-" }, { '‑', "-" }, // Hyphen and non-breaking hyphen to regular hyphen
+            { '′', "'" }, { '″', "\"" }, // Prime and double prime to regular quotes
+            { '‘', "'" }, { '’', "'" }, { '‚', "'" }, // Different single quotes to regular apostrophe
+            { '“', "\"" }, { '”', "\"" }, { '„', "\"" }, // Different double quotes to regular quotes
+            { '‐', "-" }, { '‑', "-" }, // Hyphen alternatives
+            { '⁰', "0" }, { '¹', "1" }, { '²', "2" }, { '³', "3" }, { '⁴', "4" }, { '⁵', "5" }, { '⁶', "6" }, { '⁷', "7" }, { '⁸', "8" }, { '⁹', "9" }, // Superscript numbers
+            { '₀', "0" }, { '₁', "1" }, { '₂', "2" }, { '₃', "3" }, { '₄', "4" }, { '₅', "5" }, { '₆', "6" }, { '₇', "7" }, { '₈', "8" }, { '₉', "9" }, // Subscript numbers
         });
         
         
