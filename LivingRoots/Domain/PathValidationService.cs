@@ -120,7 +120,7 @@ namespace LivingRoots.Domain
             const int MaxSegments = 1000;
             if (segments.Length > MaxSegments)
             {
-                throw new ArgumentException("Path exceeds maximum segment limit", nameof(path));
+                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
             int depth = 0;
@@ -182,4 +182,3 @@ namespace LivingRoots.Domain
         }
     }
 }
-  
