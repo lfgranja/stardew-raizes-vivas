@@ -64,9 +64,9 @@ namespace LivingRoots.Services
             
             catch (System.IO.DirectoryNotFoundException)
             {
-                // Handle DirectoryNotFoundException specifically to maintain consistency with other methods
-                // Log as error since this is a save operation and the directory should exist
-                _monitor?.Log($"Directory not found while saving data for key '{sanitizedKey}'", LogLevel.Error);
+                // Handle DirectoryNotFoundException consistently with other methods
+                // Log as trace to maintain consistency with LoadData, DataExists, and RemoveData
+                _monitor?.Log($"Directory not found while saving data for key '{sanitizedKey}'", LogLevel.Trace);
                 throw; // Re-throw for save operations as these are critical
             }
             catch (System.IO.IOException)
@@ -247,7 +247,7 @@ namespace LivingRoots.Services
             catch (System.IO.DirectoryNotFoundException)
             {
                 // Directory does not exist - log as trace to reduce noise and for consistency
-                _monitor?.Log($"Directory not found while checking data existence for key '{sanitizedKey}'", LogLevel.Trace);
+                _monitor?.Log($"No valid data found for key '{sanitizedKey}'", LogLevel.Trace);
                 return false;
             }
             catch (System.UnauthorizedAccessException)
@@ -334,7 +334,7 @@ namespace LivingRoots.Services
                 // Log as Trace instead of throwing an exception to follow the "fail successfully" principle
                 // This maintains idempotency: calling RemoveData multiple times should succeed even if data doesn't exist
                 // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor?.Log($"Directory not found while removing data for key '{sanitizedKey}'", LogLevel.Trace);
+                _monitor?.Log($"No valid data found for key '{sanitizedKey}'", LogLevel.Trace);
             }
             catch (System.UnauthorizedAccessException)
             {
