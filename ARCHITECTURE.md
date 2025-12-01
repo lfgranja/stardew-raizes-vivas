@@ -104,3 +104,29 @@ LivingRoots.Tests/          # Unit Tests Project
     *   Logs the successful loading of the mod.
 4.  **`ModDataService`** handles data persistence operations when needed by controllers or domain logic.
 5.  The architecture ensures that business logic is independent of the game and UI, making it easier to test and maintain. Interaction with the game is encapsulated in services and controllers, minimizing coupling.
+## Recent Improvements and Fixes
+
+The following improvements and security fixes have been implemented to enhance the mod's robustness:
+
+1. **Thread Safety in ModController Command Registration**: Implemented atomic state management with bit flags and thread-safe operations to prevent race conditions during command registration. Uses `Interlocked` operations to ensure only one thread can register commands or events.
+
+2. **Static Readonly HashSet Optimization**: Optimized the blocked extensions list by making it a static readonly field to avoid rebuilding the set on every call, improving performance.
+
+3. **Error Message Consistency**: Standardized error messages in PathValidationService to ensure consistent error reporting across all validation methods, following security best practices for not revealing specific attack vectors.
+
+4. **Extension Detection Edge Cases**: Enhanced the extension detection algorithm to handle more complex edge cases including:
+   - Proper handling of Unicode normalization to prevent homoglyph attacks
+   - Robust detection of extensions in filenames with consecutive dots
+   - Validation of extension content to prevent bypass attempts using control characters
+   
+5. **Cross-Platform Path Separator Handling**: Improved handling of both forward slashes and backslashes as path separators to ensure consistent behavior across different operating systems.
+
+6. **UNC Path Handling**: Enhanced ReservedNameHandler to properly handle UNC paths (Universal Naming Convention paths starting with `\\` or `//`) by implementing specialized parsing logic that preserves the UNC structure while still processing the filename component.
+
+7. **Surrogate Pair Handling**: Improved SafeSubstring method to prevent splitting Unicode surrogate pairs (used for emojis and other characters outside the Basic Multilingual Plane), ensuring character integrity.
+
+8. **Integer Overflow Protection**: Added protection against integer overflow and underflow in path traversal depth calculations to prevent potential security vulnerabilities.
+
+9. **Path Traversal Security**: Enhanced validation logic to distinguish between legitimate uses of `.` and `..` segments and malicious path traversal attempts, allowing safe relative paths while blocking dangerous traversal patterns.
+
+10. **Security Requirements Validation**: Added comprehensive validation to ensure filenames meet all security requirements after processing, preventing invalid states that could lead to vulnerabilities.
