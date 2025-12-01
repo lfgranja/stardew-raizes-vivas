@@ -38,8 +38,9 @@ O `ModEntry` agora atua como a "Raiz de Composição" onde todas as dependência
 ```csharp
 // Create domain services - Composition Root
 var unicodeNormalizationService = new UnicodeNormalizationService();
-var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService);
-var pathValidationService = new PathValidationService();
+var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
+var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
+var pathValidationService = new PathValidationService(unicodeNormalizationService);
 var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
 
 // Create application services
