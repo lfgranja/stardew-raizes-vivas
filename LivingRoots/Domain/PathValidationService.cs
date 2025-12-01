@@ -133,7 +133,7 @@ namespace LivingRoots.Domain
                     // Prevent integer underflow by checking bounds
                     if (depth <= int.MinValue + 1)
                     {
-                        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+                        throw new ArgumentException("Path contains invalid depth calculation", nameof(path));
                     }
                     depth--;
                     // If depth goes negative, it means we're trying to go above the intended root
@@ -147,7 +147,7 @@ namespace LivingRoots.Domain
                     // Check for integer overflow before incrementing
                     if (depth >= int.MaxValue - 1)
                     {
-                        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+                        throw new ArgumentException("Path contains invalid depth calculation", nameof(path));
                     }
                     // Regular directory/file names increase the depth
                     depth++;
