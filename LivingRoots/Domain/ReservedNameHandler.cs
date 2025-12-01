@@ -46,40 +46,23 @@ namespace LivingRoots.Domain
                 return HandleUncPath(filename);
             }
 
-            // For non-UNC paths, find the last separator manually to be cross-platform compatible
-            int lastSeparatorIndex = filename.LastIndexOfAny(new[] { '/', '\\' });
+            // For non-UNC paths, use Path methods for directory and filename extraction
+            string directoryPath = Path.GetDirectoryName(filename) ?? string.Empty;
+            string fileName = Path.GetFileName(filename);
 
-            string directoryPath;
-            string fullFileName;
+            // If Path.GetFileName returns empty (for directory paths ending with separator), return original
+            if (string.IsNullOrEmpty(fileName)) return filename;
 
-            if (lastSeparatorIndex >= 0)
-            {
-                // Separa o caminho do arquivo
-                // Nota: Não usamos Path.Combine depois para evitar misturar separadores
-                directoryPath = filename.Substring(0, lastSeparatorIndex);
-                fullFileName = filename.Substring(lastSeparatorIndex + 1);
-            }
-            else
-            {
-                directoryPath = string.Empty;
-                fullFileName = filename;
-            }
+            string? processedFileName = ProcessFileName(fileName);
 
-            // Se não tem nome de arquivo (ex: diretório "C:\Con\"), retorne original
-            if (string.IsNullOrEmpty(fullFileName)) return filename;
-
-            string? processedFileName = ProcessFileName(fullFileName);
-
-            // Se não houve mudança ou falhou, retorna original
-            if (processedFileName == null || processedFileName == fullFileName)
+            // If no change was made, return original
+            if (processedFileName == null || processedFileName == fileName)
                 return filename;
 
-            // Reconstrói o caminho preservando o separador original usado
+            // Use Path.Combine to properly reconstruct the path with appropriate separators for the platform
             if (!string.IsNullOrEmpty(directoryPath))
             {
-                // Usa o caractere separador que estava lá originalmente
-                char separator = filename[lastSeparatorIndex];
-                return directoryPath + separator + processedFileName;
+                return Path.Combine(directoryPath, processedFileName);
             }
 
             return processedFileName;
