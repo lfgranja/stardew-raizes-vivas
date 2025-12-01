@@ -462,7 +462,7 @@ namespace LivingRoots.Tests
             
             // Act & Assert - This should throw because it exceeds MaxSegments
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate(path));
-            Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
+            Assert.Contains("Path contains too many segments", exception.Message);
         }
         
         [Fact]
