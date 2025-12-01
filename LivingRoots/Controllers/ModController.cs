@@ -16,6 +16,12 @@ namespace LivingRoots.Controllers
         private readonly IMonitor _monitor;
         private readonly IManifest _manifest;
         private readonly IModDataService _modDataService;
+        private static readonly HashSet<string> HelpFlags = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "--help",
+            "-h",
+            "/?"
+        };
         
         // Single atomic state for thread-safe management of controller state
         // Using bit flags: 0x01 = events registered, 0x02 = command registered, 0x04 = disposed
@@ -223,16 +229,8 @@ namespace LivingRoots.Controllers
                 // Filter out whitespace-only arguments to normalize the input
                 var normalizedArgs = args.Where(arg => !string.IsNullOrWhiteSpace(arg)).ToArray();
                 
-                // Define help flags in a HashSet for better maintainability
-                var helpFlags = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    "--help",
-                    "-h",
-                    "/?"
-                };
-                
                 // Check if any argument matches a help flag
-                if (normalizedArgs.Any(arg => helpFlags.Contains(arg)))
+                if (normalizedArgs.Any(arg => HelpFlags.Contains(arg)))
                 {
                     monitor?.Log("Usage: lr_version", LogLevel.Info);
                     monitor?.Log("Shows the Living Roots mod version and UniqueID.", LogLevel.Info);
