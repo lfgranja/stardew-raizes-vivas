@@ -95,16 +95,7 @@ namespace LivingRoots.Domain
             // For UNC paths like \\server\share\filename, we need to manually extract the filename
             // Find the position of the last separator to get the filename part
             // We check for both forward slash and backslash, not just the system's default separator
-            int lastSeparatorPos = -1;
-            for (int i = filename.Length - 1; i >= 0; i--)
-            {
-                char c = filename[i];
-                if (c == '\\' || c == '/')
-                {
-                    lastSeparatorPos = i;
-                    break;
-                }
-            }
+            int lastSeparatorPos = filename.LastIndexOfAny(new[] { '\\', '/' });
 
             if (lastSeparatorPos == -1)
             {
