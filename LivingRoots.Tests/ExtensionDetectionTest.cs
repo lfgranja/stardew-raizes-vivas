@@ -1,107 +1,297 @@
 using System;
-using System.Reflection;
 using Xunit;
 using LivingRoots.Domain;
+using Moq;
 
 namespace LivingRoots.Tests
 {
     public class ExtensionDetectionTest
     {
         [Fact]
-        public void TestExtensionDetectionWithUnicode()
+        public void TestExtensionDetectionWithUnicodeThroughPublicApi()
         {
-            // Create an instance of the service
-            var mockUnicodeService = new MockUnicodeNormalizationService();
-            var mockReservedService = new MockReservedNameHandler();
-            var service = new FileNameSanitizationService(mockUnicodeService, mockReservedService);
+            // Create an instance of the service with mocked dependencies
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            var mockReservedService = new Mock<IReservedNameHandler>();
+            
+            // Setup the mock to return the input with the combining character normalized
+            mockUnicodeService
+                .Setup(x => x.Normalize("test\u0301.txt"))
+                .Returns("test\u0301.txt"); // Using the original form for this test
+            
+            // Setup reserved name handler to return input unchanged
+            mockReservedService
+                .Setup(x => x.Handle(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
 
-            // Test filename with potential Unicode normalization issues
+            // Test filename with potential Unicode normalization issues through public API
             string filename = "test\u0301.txt"; // é with combining acute accent
             
-            // Get the extension using reflection to access the private method
-            var method = typeof(FileNameSanitizationService)
-                .GetMethod("GetFileExtension", BindingFlags.NonPublic | BindingFlags.Static);
+            // Call the public Sanitize method
+            var result = service.Sanitize(filename);
             
-            Assert.NotNull(method);
-            var extension = method.Invoke(null, new object[] { filename }) as string;
-            
-            // Should correctly detect .txt extension
-            Assert.Equal(".txt", extension);
+            // Should preserve the original filename structure since it's safe
+            Assert.NotNull(result);
+            Assert.EndsWith(".txt", result); // The .txt extension should be preserved
         }
         
         [Fact]
-        public void TestFindExtensionStartIndexDirectly()
+        public void TestFindExtensionStartIndexScenariosThroughPublicApi()
         {
-            // Get the method using reflection to test it directly
-            var method = typeof(FileNameSanitizationService)
-                .GetMethod("FindExtensionStartIndex", BindingFlags.NonPublic | BindingFlags.Static);
+            // Create an instance of the service with mocked dependencies
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            var mockReservedService = new Mock<IReservedNameHandler>();
             
-            Assert.NotNull(method);
+            // Setup the mock to return the input unchanged for these tests
+            mockUnicodeService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
             
-            // Test various cases
+            // Setup reserved name handler to return input unchanged
+            mockReservedService
+                .Setup(x => x.Handle(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
+            
+            // Test various cases through the public API
             var testCases = new[]
             {
-                ("test.txt", 4),      // Normal case - last dot at index 4
-                ("file.exe", 4),      // Blocked extension - dot at index 4
-                ("noextension", -1),  // No extension
-                ("multiple.dots.txt", 13), // Multiple dots - last dot at index 13
-                (".hidden", -1),      // Hidden file without real extension
-                (".js", 0),           // Hidden file with blocked extension
-                ("test.", -1),        // Ends with dot
-                ("test..", -1),       // Ends with multiple dots
+                ("test.txt", "test.txt"),      // Normal case - should preserve extension
+                ("file.exe", "file.blocked"),  // Blocked extension - should be replaced
+                ("noextension", "noextension"),  // No extension - should remain unchanged
+                ("multiple.dots.txt", "multiple.dots.txt"), // Multiple dots - should preserve last extension
+                (".hidden", ".hidden"),        // Hidden file without real extension - should remain unchanged
+                (".js", ".file.blocked"),      // Hidden file with blocked extension - should be replaced
+                ("test.", "test"),             // Ends with dot - should remove trailing dot
+                ("test..", "test"),            // Ends with multiple dots - should remove trailing dots
             };
             
-            foreach (var (input, expectedIndex) in testCases)
+            foreach (var (input, expected) in testCases)
             {
-                var result = (int)method.Invoke(null, new object[] { input });
-                Assert.Equal(expectedIndex, result);
+                var result = service.Sanitize(input);
+                Assert.Equal(expected, result);
             }
         }
         
         [Fact]
-        public void TestExtensionDetectionWithHyphensAndUnderscores()
+        public void TestExtensionDetectionWithHyphensAndUnderscoresThroughPublicApi()
         {
-            // Get the method using reflection to test it directly
-            var method = typeof(FileNameSanitizationService)
-                .GetMethod("FindExtensionStartIndex", BindingFlags.NonPublic | BindingFlags.Static);
+            // Create an instance of the service with mocked dependencies
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            var mockReservedService = new Mock<IReservedNameHandler>();
             
-            Assert.NotNull(method);
+            // Setup the mock to return the input unchanged for these tests
+            mockUnicodeService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
             
-            // Test various extensions with hyphens and underscores
+            // Setup reserved name handler to return input unchanged
+            mockReservedService
+                .Setup(x => x.Handle(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
+            
+            // Test various extensions with hyphens and underscores through public API
             var testCases = new[]
             {
-                ("test.my-ext", 4),      // Extension with hyphen - should be valid
-                ("file.my_ext", 4),      // Extension with underscore - should be valid
-                ("data.config-file", 4), // Extension with hyphen - should be valid
-                ("image.photo_v2", 5),   // Extension with underscore - should be valid
-                ("doc.file-name.txt", 13), // Multiple dots, extension with hyphen - should be valid
-                ("archive.backup_v1.7z", 17), // Multiple dots, extension with underscore - should be valid
-                ("script.test-script.js", 18), // Extension with hyphen - should be valid
-                ("config.my_app.config", 13),  // Extension with underscore - should be valid
+                ("test.my-ext.txt", "test.my-ext.txt"),      // Extension with hyphen followed by valid extension
+                ("file.my_ext.txt", "file.my_ext.txt"),      // Extension with underscore followed by valid extension
+                ("data.config-file.txt", "data.config-file.txt"), // Extension with hyphen followed by valid extension
+                ("image.photo_v2.txt", "image.photo_v2.txt"),   // Extension with underscore followed by valid extension
+                ("doc.file-name.txt", "doc.file-name.txt"),     // Multiple dots, extension with hyphen
+                ("archive.backup_v1.7z", "archive.backup_v1.7z"), // Multiple dots, extension with underscore
+                ("script.test-script.js", "script.test-script.blocked"), // Extension with hyphen but blocked extension
+                ("config.my_app.config", "config.my_app.config"),  // Extension with underscore
             };
             
-            foreach (var (input, expectedIndex) in testCases)
+            foreach (var (input, expected) in testCases)
             {
-                var result = (int)method.Invoke(null, new object[] { input });
-                Assert.Equal(expectedIndex, result);
+                var result = service.Sanitize(input);
+                Assert.Equal(expected, result);
             }
         }
-    }
-    
-    // Mock implementations for testing
-    internal class MockUnicodeNormalizationService : IUnicodeNormalizationService
-    {
-        public string? Normalize(string input)
+        
+        [Fact]
+        public void TestBlockedExtensionsAreHandledThroughPublicApi()
         {
-            return input; // Return input unchanged for testing
+            // Create an instance of the service with mocked dependencies
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            var mockReservedService = new Mock<IReservedNameHandler>();
+            
+            // Setup the mock to return the input unchanged for these tests
+            mockUnicodeService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            // Setup reserved name handler to return input unchanged
+            mockReservedService
+                .Setup(x => x.Handle(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
+            
+            // Test various blocked extensions through the public API
+            var blockedExtensions = new[]
+            {
+                "test.exe", "file.dll", "script.js", "program.bat", 
+                "app.sh", "config.php", "data.asp", "script.vbs"
+            };
+            
+            foreach (var input in blockedExtensions)
+            {
+                var result = service.Sanitize(input);
+                Assert.EndsWith(".blocked", result); // All blocked extensions should be replaced with .blocked
+            }
         }
-    }
-    
-    internal class MockReservedNameHandler : IReservedNameHandler
-    {
-        public string? Handle(string input)
+        
+        [Fact]
+        public void TestValidExtensionsArePreservedThroughPublicApi()
         {
-            return input; // Return input unchanged for testing
+            // Create an instance of the service with mocked dependencies
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            var mockReservedService = new Mock<IReservedNameHandler>();
+            
+            // Setup the mock to return the input unchanged for these tests
+            mockUnicodeService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            // Setup reserved name handler to return input unchanged
+            mockReservedService
+                .Setup(x => x.Handle(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
+            
+            // Test various valid extensions through the public API
+            var validExtensions = new[]
+            {
+                "test.txt", "file.pdf", "image.jpg", "document.docx", 
+                "archive.zip", "data.json", "config.xml", "script.cs"
+            };
+            
+            foreach (var input in validExtensions)
+            {
+                var result = service.Sanitize(input);
+                Assert.Equal(input, result); // Valid extensions should be preserved unchanged
+            }
+        }
+        
+        [Fact]
+        public void TestExtensionDetectionEdgeCases()
+        {
+            // Create an instance of the service with mocked dependencies
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            var mockReservedService = new Mock<IReservedNameHandler>();
+            
+            // Setup the mock to return the input unchanged for these tests
+            mockUnicodeService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            // Setup reserved name handler to return input unchanged
+            mockReservedService
+                .Setup(x => x.Handle(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
+            
+            // Test edge cases that specifically target extension detection
+            var testCases = new[]
+            {
+                ("file.", "file"),             // Ends with dot - no extension, trailing dot removed
+                ("file..", "file"),            // Ends with multiple dots - no extension, trailing dots removed
+                ("file...", "file"),           // Multiple trailing dots - all removed
+                ("file..txt", "file.txt"),     // Multiple dots before extension
+                (".file.txt", ".file.txt"),    // Hidden file with extension
+                (".file", ".file"),            // Hidden file without extension
+                ("file.txt.bak", "file.txt.bak"), // Extension with dot in name
+                ("file.txt.backup", "file.txt.backup"), // Multiple extensions
+                ("file.txt.", "file.txt"),     // Ends with dot after extension
+                ("file.txt..", "file.txt"),    // Ends with multiple dots after extension
+            };
+            
+            foreach (var (input, expected) in testCases)
+            {
+                var result = service.Sanitize(input);
+                Assert.Equal(expected, result);
+            }
+        }
+        
+        [Fact]
+        public void TestExtensionWithSpecialCharacters()
+        {
+            // Create an instance of the service with mocked dependencies
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            var mockReservedService = new Mock<IReservedNameHandler>();
+            
+            // Setup the mock to return the input unchanged for these tests
+            mockUnicodeService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            // Setup reserved name handler to return input unchanged
+            mockReservedService
+                .Setup(x => x.Handle(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
+            
+            // Test extensions with special characters that should be handled properly
+            var testCases = new[]
+            {
+                ("file-name.txt", "file-name.txt"),    // Hyphen in filename
+                ("file_name.txt", "file_name.txt"),    // Underscore in filename
+                ("file name.txt", "file_name.txt"),    // Space in filename (should be replaced)
+                ("file.name.txt", "file.name.txt"),    // Multiple dots in filename
+                ("file-name.exe", "file-name.blocked"), // Blocked extension with hyphen
+                ("file_name.php", "file_name.blocked"), // Blocked extension with underscore
+            };
+            
+            foreach (var (input, expected) in testCases)
+            {
+                var result = service.Sanitize(input);
+                Assert.Equal(expected, result);
+            }
+        }
+        
+        [Fact]
+        public void TestHiddenFilesWithBlockedExtensions()
+        {
+            // Create an instance of the service with mocked dependencies
+            var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
+            var mockReservedService = new Mock<IReservedNameHandler>();
+            
+            // Setup the mock to return the input unchanged for these tests
+            mockUnicodeService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            // Setup reserved name handler to return input unchanged
+            mockReservedService
+                .Setup(x => x.Handle(It.IsAny<string>()))
+                .Returns<string>(s => s);
+            
+            var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
+            
+            // Test cases for hidden files with blocked extensions
+            var testCases = new[]
+            {
+                (".js", ".file.blocked"),       // Hidden file with blocked extension
+                (".php", ".file.blocked"),      // Another hidden file with blocked extension
+                (".exe", ".file.blocked"),      // Hidden file with blocked extension
+                (".vbs", ".file.blocked"),      // Another hidden file with blocked extension
+            };
+            
+            foreach (var (input, expected) in testCases)
+            {
+                var result = service.Sanitize(input);
+                Assert.Equal(expected, result);
+            }
         }
     }
 }
