@@ -188,12 +188,21 @@ namespace LivingRoots.Domain
                 
                 if (uncPrefixEnd == -1)
                 {
-                    // This doesn't look like a proper UNC path, treat the part after \\ or // as filename
+                    // This doesn't look like a proper UNC path with a server and share, 
+                    // treat the part after \\ or // as the filename
                     if (uncPath.Length > 2)
                     {
                         fileName = uncPath.Substring(2);
+                        // For the edge case of just server/share without filename, 
+                        // we need to extract the share name as the filename
+                        // Find the last separator in the remaining part to extract the last segment
+                        int lastSeparator = fileName.LastIndexOfAny(new char[] { '\\', '/' });
+                        if (lastSeparator >= 0)
+                        {
+                            fileName = fileName.Substring(lastSeparator + 1);
+                        }
                     }
-                    return fileName != null;
+                    return !string.IsNullOrEmpty(fileName);
                 }
                 
                 // Extract the filename part (everything after the last separator)
@@ -214,7 +223,33 @@ namespace LivingRoots.Domain
                 else
                 {
                     // No additional separators after the share name, treat the rest as filename
-                    fileName = uncPath.Substring(uncPrefixEnd);
+                    // This handles the edge case of \\server\share without additional path segments
+                    // Extract the share name part from the remaining string after the initial UNC prefix
+                    string remainingPath = uncPath.Substring(uncPrefixEnd);
+                    int shareEnd = remainingPath.IndexOfAny(new char[] { '\\', '/' });
+                    if (shareEnd > 0)
+                    {
+                        // If there are additional segments after the share, take the last one
+                        string[] pathParts = remainingPath.Split(new char[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (pathParts.Length > 0)
+                        {
+                            fileName = pathParts[pathParts.Length - 1];
+                        }
+                        else
+                        {
+                            fileName = remainingPath;
+                        }
+                    }
+                    else if (shareEnd == 0)
+                    {
+                        // If the remaining path starts with a separator, take the part after it
+                        fileName = remainingPath.Substring(1);
+                    }
+                    else
+                    {
+                        // If there are no more separators, the remaining part is the filename/share name
+                        fileName = remainingPath;
+                    }
                 }
                 
                 return !string.IsNullOrEmpty(fileName);
