@@ -103,14 +103,13 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_WithDotSlashAtStart_ThrowsArgumentException()
+        public void Validate_WithDotSlashAtStart_DoesNotThrow()
         {
             // Act & Assert - Test both forward slash and backslash separators
-            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("./file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
-            
-            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate(".\\file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+            // After removing overly restrictive check, "./file.txt" and ".\file.txt" should be allowed
+            // as they represent relative paths to current directory which is safe
+            _service.Validate("./file.txt"); // Should not throw
+            _service.Validate(".\\file.txt"); // Should not throw
         }
 
         [Fact]
@@ -123,7 +122,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_WithMultipleDotDot_ThrowsArgumentException()
+        public void Validate_WithMultipleDot_ThrowsArgumentException()
         {
             // Act & Assert - Test both forward slash and backslash separators
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("../../file.txt"));
