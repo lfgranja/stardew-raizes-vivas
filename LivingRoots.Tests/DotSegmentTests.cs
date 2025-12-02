@@ -48,21 +48,21 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_ExplicitCurrentDirectoryTraversal_ShouldBeTreatedCorrectly()
         {
-            // "./file" should be blocked (caught by start path checks)
-            var exception1 = Assert.Throws<ArgumentException>(() => _validator.Validate("./file"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
-            
-            // Also test with backslash separator
-            var exception2 = Assert.Throws<ArgumentException>(() => _validator.Validate(".\\file"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
-            
-            // But "file/." should be allowed (as it refers to a directory)
-            var ex1 = Record.Exception(() => _validator.Validate("file/."));
+            // After removing overly restrictive check, "./file" should now be allowed (as it refers to current directory)
+            var ex1 = Record.Exception(() => _validator.Validate("./file"));
             Assert.Null(ex1);
             
             // Also test with backslash separator
-            var ex2 = Record.Exception(() => _validator.Validate("file\\."));
+            var ex2 = Record.Exception(() => _validator.Validate(".\\file"));
             Assert.Null(ex2);
+            
+            // But "file/." should still be allowed (as it refers to a directory)
+            var ex3 = Record.Exception(() => _validator.Validate("file/."));
+            Assert.Null(ex3);
+            
+            // Also test with backslash separator
+            var ex4 = Record.Exception(() => _validator.Validate("file\\."));
+            Assert.Null(ex4);
             
             // And "folder/./file" should be allowed (middle "." segments are safe)
             _validator.Validate("folder/./file"); // This should not throw
@@ -85,21 +85,21 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_PathWithDotAtStartOrEnd_ShouldBeTreatedCorrectly()
         {
-            // Paths that start with "." should be blocked as they represent directory navigation
-            var exception1 = Assert.Throws<ArgumentException>(() => _validator.Validate("./path"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
-            
-            // Also test with backslash separator
-            var exception2 = Assert.Throws<ArgumentException>(() => _validator.Validate(".\\path"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
-            
-            // But paths that end with "." should be allowed as they refer to directories
-            var ex1 = Record.Exception(() => _validator.Validate("path/."));
+            // After removing overly restrictive check, paths that start with "." should now be allowed as they represent relative paths to current directory
+            var ex1 = Record.Exception(() => _validator.Validate("./path"));
             Assert.Null(ex1);
             
             // Also test with backslash separator
-            var ex2 = Record.Exception(() => _validator.Validate("path\\."));
+            var ex2 = Record.Exception(() => _validator.Validate(".\\path"));
             Assert.Null(ex2);
+            
+            // Paths that end with "." should be allowed as they refer to directories
+            var ex3 = Record.Exception(() => _validator.Validate("path/."));
+            Assert.Null(ex3);
+            
+            // Also test with backslash separator
+            var ex4 = Record.Exception(() => _validator.Validate("path\\."));
+            Assert.Null(ex4);
         }
         
         [Fact]
