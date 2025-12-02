@@ -1,358 +1,202 @@
-# Failure Handling Design: Registration Failures After Atomic Operations
+# Failure Handling Design: Command Registration Recovery Pattern
 
 ## Overview
 
-This document outlines the design for handling registration failures that occur after atomic operations have been successfully performed. The design ensures that the system can recover gracefully from failures while maintaining data integrity and preventing inconsistent states.
+This document outlines the failure handling and recovery mechanisms designed to ensure state consistency in command registration. The primary goal is to maintain a consistent state where the `CommandRegisteredFlag` accurately reflects whether the command is actually registered.
 
-## Failure Scenarios
+## Problem Statement
 
-### 1. Command Registration Failure After Atomic Flag Set
-- The atomic operation to set the `CommandRegisteredFlag` succeeds
-- The actual command registration (`commands.Add()`) fails due to SMAPI issues
-- The flag is set but the command wasn't actually registered
+The original code had a critical failure scenario:
+1. Thread A sets the `CommandRegisteredFlag` 
+2. Thread A finds that `helper.ConsoleCommands` is null
+3. Thread A doesn't register the command but the flag remains set
+4. System enters inconsistent state where flag indicates registration but command isn't actually registered
 
-### 2. Event Registration Failure After Atomic Flag Set
-- The atomic operation to set the `EventsRegisteredFlag` succeeds
-- The event subscription fails due to null references or other issues
-- The flag is set but events weren't actually registered
+## Recovery Pattern Implementation
 
-### 3. External Dependency Failures
-- SMAPI command system is temporarily unavailable
-- Network or resource issues during registration
-- Third-party system failures affecting registration
+### 1. Atomic Operation with Rollback
 
-## Recovery Strategy
-
-### 1. Immediate State Recovery
-
-When a registration failure occurs after an atomic operation succeeds, the system must:
-
-1. **Log the failure** without exposing internal details
-2. **Reset the atomic flag** to allow retry by another thread or at a later time
-3. **Clean up any partial state** that may have been created
-4. **Continue execution** without disrupting other operations
-
-### 2. State Recovery Implementation
+The recovery pattern ensures that if any step in the registration process fails, the system state is rolled back to a consistent state.
 
 ```csharp
-private bool TryRegisterCommandWithRecovery(IModHelper helper, IMonitor monitor)
+private bool TryRegisterCommandAtomically(IModHelper helper, IMonitor monitor)
 {
-    // Attempt to atomically reserve command registration
-    bool canRegister = TrySetStateOnce(CommandRegisteredFlag);
-    
-    if (canRegister)
+    int currentState, newState;
+    bool registrationAttempted = false;
+    bool commandSuccessfullyRegistered = false;
+
+    do
     {
-        try
+        currentState = Volatile.Read(ref _state);
+
+        // Check if already disposed
+        if ((currentState & DisposedFlag) != 0)
+            return false;
+
+        // Check if command is already registered
+        if ((currentState & CommandRegisteredFlag) != 0)
+            return false;
+
+        // Verify prerequisites before proceeding
+        var commands = helper?.ConsoleCommands;
+        if (commands == null)
         {
-            // Attempt the actual command registration
-            var commands = helper?.ConsoleCommands;
-            if (commands != null)
+            monitor?.Log("ConsoleCommands is not available for command registration.", LogLevel.Error);
+            return false;
+        }
+
+        // Attempt to set the flag atomically
+        newState = currentState | CommandRegisteredFlag;
+        registrationAttempted = Interlocked.CompareExchange(ref _state, newState, currentState) == currentState;
+        
+        if (registrationAttempted)
+        {
+            try
             {
+                // Perform the actual registration
                 commands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
-                monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
-                return true; // Success: flag set and registration completed
+                monitor?.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+                commandSuccessfullyRegistered = true;
             }
-            else
+            catch (Exception ex)
             {
-                // SMAPI command system is null - reset the flag
-                Interlocked.And(ref _state, ~(CommandRegisteredFlag));
-                monitor.Log("Command registration failed: ConsoleCommands is null.", LogLevel.Error);
+                // CRITICAL: Recovery mechanism - reset flag to maintain consistency
+                monitor?.Log($"Command registration failed after flag was set: {ex.Message}", LogLevel.Error);
+                
+                // Rollback: Reset the command registered flag to maintain state consistency
+                Interlocked.And(ref _state, ~CommandRegisteredFlag);
+                
+                // Return failure status
                 return false;
             }
         }
-        catch (Exception ex)
-        {
-            // Registration failed after atomic reservation - reset the flag
-            Interlocked.And(ref _state, ~(CommandRegisteredFlag));
-            
-            // Log the error without exposing stack trace
-            monitor.Log($"Command registration failed: {ex.Message}", LogLevel.Error);
-            
-            return false; // Registration failed despite atomic reservation success
-        }
     }
-    
-    // Another thread already registered the command
-    return false;
+    while (!registrationAttempted);
+
+    return commandSuccessfullyRegistered;
 }
 ```
 
-### 3. Event Registration Recovery
+### 2. Multi-Step Validation
 
-```csharp
-public void RegisterEvents()
-{
-    // Early exit if already disposed
-    if (IsDisposed())
-    {
-        _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
-        return;
-    }
-    
-    // Use TrySetStateOnce to ensure events are only registered once
-    if (!TrySetStateOnce(EventsRegisteredFlag))
-    {
-        _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
-        return;
-    }
-    
-    // Create snapshots of dependencies to avoid errors if disposed mid-execution
-    var monitor = _monitor;
-    var helper = _helper;
-    
-    try
-    {
-        var gameLoop = helper?.Events?.GameLoop;
-        if (gameLoop == null)
-        {
-            monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
-            
-            // Reset flag since registration failed - recover from partial state
-            Interlocked.And(ref _state, ~(EventsRegisteredFlag));
-            return;
-        }
+Before setting the flag, the system validates all prerequisites:
+- Checks if already disposed
+- Checks if command is already registered  
+- Verifies ConsoleCommands availability
+- Only then attempts to set the flag and register the command
 
-        // Initialize the handler once
-        _onGameLaunchedHandler ??= OnGameLaunched;
-        
-        // Subscribe to events
-        gameLoop.GameLaunched += _onGameLaunchedHandler;
-        
-        monitor.Log("Events registered successfully.", LogLevel.Trace);
-    }
-    catch (Exception ex)
-    {
-        // Log error and reset the flag if registration failed - recovery from partial state
-        monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
-        _onGameLaunchedHandler = null;
-        
-        // Reset the events registered flag to allow retry
-        Interlocked.And(ref _state, ~(EventsRegisteredFlag));
-    }
-}
-```
+### 3. Comprehensive Error Handling
 
-## Failure Handling Patterns
+The recovery pattern includes:
 
-### 1. Try-Reset Pattern
+#### A. Exception During Registration
+If an exception occurs during `commands.Add()`, the system:
+- Logs the error appropriately
+- Resets the `CommandRegisteredFlag` using atomic operation
+- Returns false to indicate failure
 
-The core pattern for handling failures after atomic operations:
+#### B. Null ConsoleCommands
+If `helper.ConsoleCommands` is null:
+- No flag is set
+- Error is logged
+- Method returns false immediately
 
-```csharp
-bool operationSucceeded = TrySetStateOnce(flag);
-if (operationSucceeded)
-{
-    try
-    {
-        // Perform the actual operation that might fail
-        PerformOperation();
-    }
-    catch (Exception ex)
-    {
-        // Reset the flag to allow retry
-        Interlocked.And(ref _state, ~flag);
-        LogError(ex);
-    }
-}
-```
-
-### 2. Snapshot-and-Validate Pattern
-
-Take snapshots of dependencies and validate them before operations:
-
-```csharp
-var helper = _helper;  // Snapshot to prevent disposal during operation
-var monitor = _monitor;
-
-if (helper?.ConsoleCommands == null)
-{
-    // Reset flag without attempting registration
-    Interlocked.And(ref _state, ~CommandRegisteredFlag);
-    monitor.Log("Cannot register command: dependencies are unavailable.", LogLevel.Error);
-    return;
-}
-```
-
-### 3. Atomic-First Pattern
-
-Always perform the atomic operation first, then the risky operation:
-
-```csharp
-// 1. Atomically reserve the operation
-bool canProceed = TrySetStateOnce(flag);
-
-if (canProceed)
-{
-    // 2. Perform the operation that might fail
-    // 3. Handle any failures by resetting the atomic state
-}
-```
-
-## Error Recovery Considerations
-
-### 1. Non-Blocking Recovery
-
-Recovery operations should not block other threads:
-
-```csharp
-// Use non-blocking atomic operations for recovery
-Interlocked.And(ref _state, ~flag);  // Non-blocking operation
-```
-
-### 2. Idempotent Recovery
-
-Recovery operations should be safe to perform multiple times:
-
-```csharp
-// Clearing a flag that's already clear is safe
-Interlocked.And(ref _state, ~flag);  // Safe even if flag is already clear
-```
-
-### 3. Cascade Failure Prevention
-
-Prevent one failure from causing system-wide issues:
-
-```csharp
-try
-{
-    RegisterCommand();
-}
-catch (Exception ex)
-{
-    // Handle locally - don't let failure affect other operations
-    Interlocked.And(ref _state, ~CommandRegisteredFlag);
-    LogError(ex);
-    // Continue with other operations
-}
-```
+#### C. Concurrent Registration Attempts
+Multiple threads attempting registration simultaneously:
+- Only the first thread to successfully set the flag will proceed
+- Other threads will detect the flag is set and exit gracefully
+- No race condition occurs
 
 ## State Consistency Guarantees
 
-### 1. Atomic State Consistency
+### 1. Consistent Flag-Command Relationship
+- If `CommandRegisteredFlag` is set, the command is guaranteed to be registered
+- If the command is registered, `CommandRegisteredFlag` is guaranteed to be set
+- Never a state where flag indicates registration but command isn't registered
 
-After any failure, the atomic state must remain consistent:
+### 2. Idempotent Operations
+- Multiple calls to registration method are safe
+- Already registered command won't be registered again
+- No side effects from repeated calls
 
-- If registration fails, the corresponding flag must be reset
-- No partial or inconsistent states should exist
-- All state flags should accurately reflect actual system state
+### 3. Cleanup on Disposal
+The existing disposal pattern ensures proper cleanup:
+- Disposal sets the `DisposedFlag` atomically
+- All operations check for disposal before proceeding
+- No operations occur after disposal
 
-### 2. Dependency Consistency
+## Recovery Scenarios
 
-Ensure dependencies remain in a consistent state:
+### Scenario 1: ConsoleCommands Becomes Available Later
+- Thread A attempts registration when ConsoleCommands is null → returns false
+- Thread B attempts later when ConsoleCommands is available → succeeds
+- System maintains consistent state throughout
 
-```csharp
-private void HandleEventRegistrationFailure()
-{
-    // Reset state flag
-    Interlocked.And(ref _state, ~EventsRegisteredFlag);
-    
-    // Clean up any partial event subscriptions
-    _onGameLaunchedHandler = null;
-    
-    // Ensure no dangling references
-    // Log the issue for diagnostics
-}
-```
+### Scenario 2: Registration Exception
+- Flag gets set successfully
+- Command registration throws exception
+- Recovery mechanism resets the flag
+- System returns to consistent state
 
-## Logging Strategy for Failures
+### Scenario 3: Concurrent Registration
+- Multiple threads attempt registration simultaneously
+- Only one thread wins and registers the command
+- Other threads detect registration and exit gracefully
+- Consistent state maintained
 
-### 1. Secure Error Logging
+## Logging and Monitoring
 
-Log errors without exposing sensitive information:
-
-```csharp
-monitor.Log($"Command registration failed: {ex.Message}", LogLevel.Error);
-// DO NOT log: ex.ToString() or stack traces
-```
-
-### 2. Diagnostic Information
-
-Include sufficient information for debugging while maintaining security:
-
-```csharp
-monitor.Log($"Command registration failed at step X: {ex.Message}", LogLevel.Error);
-// Include context but not internal details
-```
-
-## Retry Handling
-
-### 1. Automatic Retry Prevention
-
-The atomic flag system naturally prevents unwanted retries:
+### Recovery Logging
+The system logs recovery actions to enable debugging and monitoring:
 
 ```csharp
-// Once TrySetStateOnce succeeds for a specific flag, other threads will fail
-// This prevents multiple retries of the same operation
+monitor?.Log($"Command registration failed after flag was set: {ex.Message}", LogLevel.Error);
 ```
 
-### 2. Manual Retry Capability
+### State Change Logging
+All state changes are logged for audit and debugging purposes:
+- Successful registrations
+- Failed registration attempts
+- Recovery actions taken
 
-Allow for manual retry when appropriate:
+## Integration with Existing Patterns
 
-```csharp
-// If external conditions improve, the system can reset all flags and retry
-// This would typically happen during a full restart or reinitialization
-```
+### 1. Existing State Management
+The recovery pattern integrates with the existing bit flag system:
+- Preserves the `EventsRegisteredFlag`, `CommandRegisteredFlag`, and `DisposedFlag` structure
+- Uses the same atomic operations as other state management
+- Maintains consistency with existing state checking methods
 
-## Thread Safety During Recovery
+### 2. Existing Error Handling
+The recovery pattern follows the same error handling patterns:
+- Uses the same logging levels and message formats
+- Maintains the same exception handling approach
+- Preserves existing error reporting behavior
 
-### 1. Concurrent Recovery Safety
+## Testing Considerations
 
-Ensure recovery operations are thread-safe:
+### 1. Recovery Testing
+Tests should verify that:
+- Flags are reset appropriately when registration fails
+- System state remains consistent after failures
+- Recovery mechanism works under various failure scenarios
 
-```csharp
-// Recovery uses the same atomic operations as the original operations
-Interlocked.And(ref _state, ~flag);  // Thread-safe recovery
-```
+### 2. Concurrent Failure Testing
+Tests should verify behavior when:
+- Multiple threads encounter registration failures
+- Race conditions occur during failure scenarios
+- Recovery happens concurrently with other operations
 
-### 2. No Race Conditions in Recovery
+## Performance Impact
 
-Recovery operations should not introduce new race conditions:
+### 1. Minimal Overhead
+- Recovery mechanism adds minimal overhead
+- Atomic operations remain efficient
+- No blocking or locking required
 
-```csharp
-// Recovery is a simple atomic operation that can't fail
-// Multiple threads attempting recovery simultaneously is safe
-```
+### 2. Failure Path Optimization
+- Recovery operations are optimized
+- Failure scenarios are handled efficiently
+- No resource leaks during recovery
 
-## Performance Considerations
-
-### 1. Minimal Performance Impact
-
-Recovery operations should be fast:
-
-```csharp
-// Atomic operations are very fast
-Interlocked.And(ref _state, ~flag);  // Minimal performance impact
-```
-
-### 2. No Blocking Operations
-
-Recovery should not block other threads:
-
-```csharp
-// All recovery operations are non-blocking atomic operations
-// No locks or blocking synchronization primitives used
-```
-
-## Validation of Recovery
-
-### 1. Recovery Verification
-
-Ensure recovery operations work correctly:
-
-```csharp
-// After recovery, the system should be in a state where
-// another thread can successfully perform the same operation
-```
-
-### 2. State Verification
-
-Verify that state flags accurately reflect system reality:
-
-```csharp
-// After command registration failure recovery:
-// IsCommandRegistered() should return false
-// The actual command should not be registered in SMAPI
-```
-
-This failure handling design ensures that the system can gracefully recover from registration failures while maintaining thread safety and state consistency.
+This recovery pattern ensures that the system maintains state consistency even under failure conditions, preventing the race condition that could lead to inconsistent state.

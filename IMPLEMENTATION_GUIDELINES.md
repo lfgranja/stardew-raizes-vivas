@@ -1,77 +1,93 @@
-# Implementation Guidelines: Thread-Safe Command Registration
+# Implementation Guidelines: Command Registration Race Condition Fix
 
 ## Overview
 
-These guidelines provide step-by-step instructions for implementing the thread-safe command registration solution in ModController. The implementation ensures atomic operations prevent race conditions while maintaining all existing functionality.
+This document provides detailed implementation guidelines for fixing the race condition in command registration in `ModController.cs`. The guidelines ensure proper implementation of the atomic registration pattern with error recovery.
 
-## Prerequisites
+## Implementation Prerequisites
 
-Before implementing the thread-safe solution, ensure:
+### 1. Required Knowledge
+- Understanding of atomic operations and thread safety
+- Familiarity with SMAPI (Stardew Modding API) console command system
+- Knowledge of C# Interlocked operations
+- Understanding of the existing ModController architecture
 
-1. **Understanding of Current Implementation**: Familiarize yourself with the existing ModController code
-2. **Testing Environment**: Have a working test suite to verify changes
-3. **Backup**: Create a backup of the current implementation
-4. **Dependencies**: Confirm all dependencies (SMAPI, .NET framework) are properly configured
+### 2. Development Environment
+- .NET development environment
+- Access to StardewModdingAPI references
+- Unit testing framework (xUnit)
 
-## Implementation Steps
+## Core Implementation Steps
 
-### Step 1: Atomic State Management Setup
+### Step 1: Add the Atomic Registration Method
 
-#### 1.1 Verify State Management Structure
-
-Ensure the following state management structure is in place:
-
-```csharp
-// State variable and flags should already exist
-private int _state = 0;
-
-private const int EventsRegisteredFlag = 0x01;
-private const int CommandRegisteredFlag = 0x02;
-private const int DisposedFlag = 0x04;
-```
-
-#### 1.2 Verify Atomic Operation Methods
-
-Ensure the `TrySetStateOnce` method exists with the following implementation:
+Implement the new `TryRegisterCommandAtomically` method in `ModController.cs`:
 
 ```csharp
-/// <summary>
-/// Attempts to set a specific state flag only once, ensuring thread safety.
-/// This method uses atomic operations to ensure that the flag is only set once.
-/// </summary>
-/// <param name="flag">The flag to set</param>
-/// <returns>True if the flag was set (meaning this was the first thread to set it), false otherwise</returns>
-private bool TrySetStateOnce(int flag)
+private bool TryRegisterCommandAtomically(IModHelper helper, IMonitor monitor)
 {
+    // Use a loop to handle potential race conditions during the multi-step process
     int currentState, newState;
-    bool wasSet = false;
-    
+    bool registrationAttempted = false;
+    bool commandSuccessfullyRegistered = false;
+
     do
     {
         currentState = Volatile.Read(ref _state);
-        
-        // If flag is already set, return false
-        if ((currentState & flag) != 0)
-            return false;
-        
-        // If disposed, return false
+
+        // If already disposed, exit immediately
         if ((currentState & DisposedFlag) != 0)
             return false;
+
+        // If command is already registered, return false (no work needed)
+        if ((currentState & CommandRegisteredFlag) != 0)
+            return false;
+
+        // Check if ConsoleCommands is available before proceeding
+        var commands = helper?.ConsoleCommands;
+        if (commands == null)
+        {
+            monitor?.Log("ConsoleCommands is not available for command registration.", LogLevel.Error);
+            return false;
+        }
+
+        // Attempt to set the flag atomically while preserving other flags
+        newState = currentState | CommandRegisteredFlag;
         
-        newState = currentState | flag;
-        wasSet = Interlocked.CompareExchange(ref _state, newState, currentState) == currentState;
+        // Attempt to set the state atomically
+        registrationAttempted = Interlocked.CompareExchange(ref _state, newState, currentState) == currentState;
+        
+        if (registrationAttempted)
+        {
+            try
+            {
+                // Actually register the command
+                commands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
+                monitor?.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+                commandSuccessfullyRegistered = true;
+            }
+            catch (Exception ex)
+            {
+                // CRITICAL: Recovery mechanism - reset flag to maintain consistency
+                monitor?.Log($"Command registration failed after flag was set: {ex.Message}", LogLevel.Error);
+                
+                // Reset the command registered flag to maintain state consistency
+                Interlocked.And(ref _state, ~CommandRegisteredFlag);
+                
+                // Return failure status
+                return false;
+            }
+        }
     }
-    while (!wasSet);
-    
-    return wasSet;
+    while (!registrationAttempted);
+
+    return commandSuccessfullyRegistered;
 }
 ```
 
-### Step 2: Command Registration Implementation
+### Step 2: Update the OnGameLaunched Method
 
-#### 2.1 Update OnGameLaunched Method
-
-Modify the `OnGameLaunched` method to use atomic operations for command registration:
+Replace the existing command registration logic in the `OnGameLaunched` method:
 
 ```csharp
 private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
@@ -86,34 +102,19 @@ private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
     // Create snapshots of dependencies to avoid errors if disposed mid-execution
     var monitor = _monitor;
     var helper = _helper;
-    
+
     try
     {
         monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
-        
-        // Use TrySetStateOnce to ensure the command is only registered once
-        bool wasCommandRegistered = TrySetStateOnce(CommandRegisteredFlag);
-        
-        // Only register the command if we successfully set the flag (meaning were the first thread to do so)
-        if (wasCommandRegistered)
+
+        // Use the new atomic registration method
+        bool commandRegistered = TryRegisterCommandAtomically(helper, monitor);
+
+        if (!commandRegistered)
         {
-            var commands = helper?.ConsoleCommands;
-            if (commands != null)
-            {
-                commands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
-                monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
-            }
-            else
-            {
-                // Command system unavailable - reset flag to allow retry
-                Interlocked.And(ref _state, ~(CommandRegisteredFlag));
-                monitor.Log("Command registration failed: ConsoleCommands is null.", LogLevel.Error);
-            }
-        else
-        {
-            monitor.Log("Command 'lr_version' already registered by another thread.", LogLevel.Trace);
+            monitor.Log("Command registration was not performed (already registered or unavailable).", LogLevel.Trace);
         }
-        
+
         // Use Interlocked.Exchange to safely get and clear the handler to avoid race condition
         var handler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
         if (handler != null && helper?.Events?.GameLoop != null)
@@ -129,268 +130,164 @@ private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
 }
 ```
 
-### Step 3: Error Handling and Recovery
+## Implementation Best Practices
 
-#### 3.1 Implement Failure Recovery
+### 1. Atomic Operation Patterns
 
-Ensure that registration failures properly reset atomic flags:
+#### A. Compare-And-Swap Loop
+- Use a do-while loop with `Interlocked.CompareExchange` for multi-step atomic operations
+- Always read the current state with `Volatile.Read` before each operation
+- Continue looping until the operation succeeds
 
-```csharp
-// In any method where registration might fail after atomic operation:
-try
-{
-    // Perform the operation that might fail
-    PerformRegistration();
-}
-catch (Exception ex)
-{
-    // Reset the flag to allow retry by another thread
-    Interlocked.And(ref _state, ~flagThatWasSet);
-    
-    // Log the error without exposing internal details
-    _monitor.Log($"Operation failed: {ex.Message}", LogLevel.Error);
-    
-    // Continue with appropriate error handling
-}
-```
+#### B. State Preservation
+- When setting flags, use bitwise OR (`|`) to preserve other flags
+- When clearing flags, use bitwise AND with negation (`& ~`) to preserve other flags
+- Never clear the `DisposedFlag` accidentally
 
-#### 3.2 Verify Event Registration Error Handling
+### 2. Error Recovery Patterns
 
-Ensure the `RegisterEvents` method properly handles failures:
+#### A. Recovery on Exception
+- Always reset the state flag if an operation fails after the flag has been set
+- Use `Interlocked.And` with bitwise negation to atomically clear flags
+- Log the recovery action for debugging purposes
 
-```csharp
-public void RegisterEvents()
-{
-    // Early exit if already disposed
-    if (IsDisposed())
-    {
-        _monitor.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace);
-        return;
-    }
-    
-    // Use TrySetStateOnce to ensure events are only registered once
-    if (!TrySetStateOnce(EventsRegisteredFlag))
-    {
-        _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
-        return;
-    }
-    
-    // Create snapshots of dependencies to avoid errors if disposed mid-execution
-    var monitor = _monitor;
-    var helper = _helper;
-    
-    try
-    {
-        var gameLoop = helper?.Events?.GameLoop;
-        if (gameLoop == null)
-        {
-            monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
-            // Reset flag since registration failed - ensure disposed flag is preserved
-            Interlocked.And(ref _state, ~(EventsRegisteredFlag));
-            return;
-        }
+#### B. Recovery on Prerequisites Failure
+- Check all prerequisites before setting any flags
+- Return false without setting flags if prerequisites are not met
+- Log appropriate error messages for different failure scenarios
 
-        // Initialize the handler once
-        _onGameLaunchedHandler ??= OnGameLaunched;
-        
-        // Subscribe to events
-        gameLoop.GameLaunched += _onGameLaunchedHandler;
-        
-        monitor.Log("Events registered successfully.", LogLevel.Trace);
-    }
-    catch (Exception ex)
-    {
-        // Log error and reset the flag if registration failed - ensure disposed flag is preserved
-        monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
-        _onGameLaunchedHandler = null;
-        
-        Interlocked.And(ref _state, ~(EventsRegisteredFlag));
-    }
-}
-```
+### 3. Thread Safety Considerations
 
-### Step 4: State Checking Methods
+#### A. Dependency Snapshots
+- Create local snapshots of dependencies (`helper`, `monitor`) to prevent null reference exceptions
+- Use these snapshots throughout the method to avoid accessing disposed objects
 
-#### 4.1 Verify State Checking Implementation
+#### B. Volatile Reads
+- Always use `Volatile.Read` when checking state flags
+- This ensures you get the most current value across all threads
 
-Ensure all state checking methods use `Volatile.Read`:
+## Code Quality Standards
 
-```csharp
-private bool IsDisposed()
-{
-    return (Volatile.Read(ref _state) & DisposedFlag) != 0;
-}
+### 1. Naming Conventions
+- Use descriptive method names: `TryRegisterCommandAtomically`
+- Follow C# naming conventions (PascalCase for methods, camelCase for parameters)
+- Use clear variable names that indicate their purpose
 
-private bool IsEventsRegistered()
-{
-    return (Volatile.Read(ref _state) & EventsRegisteredFlag) != 0;
-}
+### 2. Documentation Standards
+- Add XML documentation comments for all new public and private methods
+- Document the atomic nature and thread safety of operations
+- Include remarks about error recovery behavior
 
-private bool IsCommandRegistered()
-{
-    return (Volatile.Read(ref _state) & CommandRegisteredFlag) != 0;
-}
-```
+### 3. Logging Standards
+- Use appropriate log levels (Trace for detailed info, Error for problems)
+- Include descriptive messages that help with debugging
+- Follow existing logging patterns in the codebase
 
-### Step 5: Disposal Implementation
+## Testing Implementation Guidelines
 
-#### 5.1 Verify Thread-Safe Disposal
+### 1. Unit Test Structure
+- Test the atomic registration method in isolation
+- Verify all code paths including success and failure scenarios
+- Test concurrent execution scenarios
 
-Ensure the `Dispose` method is thread-safe:
+### 2. Mock Configuration
+- Mock `ICommandHelper` to simulate different ConsoleCommands states
+- Test with null ConsoleCommands to verify recovery
+- Simulate exceptions during command registration
 
-```csharp
-public void Dispose()
-{
-    // Use TrySetStateOnce to ensure disposal flag is only set once
-    if (!TrySetStateOnce(DisposedFlag))
-    {
-        _monitor.Log("Controller is already disposed.", LogLevel.Trace);
-        return; // Already disposed
-    }
-
-    // Perform cleanup in a thread-safe manner
-    PerformCleanup();
-}
-```
-
-### Step 6: Testing Implementation
-
-#### 6.1 Add Concurrency Tests
-
-Add tests to verify the race condition is fixed:
-
-```csharp
-[Fact]
-public async Task OnGameLaunched_CommandRegistration_IsThreadSafe()
-{
-    // Arrange
-    var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
-    
-    var mockCommandHelper = new Mock<ICommandHelper>(MockBehavior.Strict);
-    int registrationCount = 0;
-    
-    mockCommandHelper
-        .Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
-        .Callback(() => Interlocked.Increment(ref registrationCount))
-        .Verifiable();
-    
-    _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
-    
-    var mockModDataService = new Mock<IModDataService>();
-    var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
-    
-    // Act - Simulate concurrent calls to OnGameLaunched to test command registration race condition
-    var tasks = new Task[10];
-    for (int i = 0; i < 10; i++)
-    {
-        tasks[i] = Task.Run(() =>
-        {
-            var args = new GameLaunchedEventArgs();
-            controller.GetType().GetMethod("OnGameLaunched", 
-                BindingFlags.NonPublic | BindingFlags.Instance)
-                ?.Invoke(controller, new object[] { null, args });
-        });
-    }
-    
-    // Wait for all tasks to complete
-    await Task.WhenAll(tasks);
-    
-    // Assert - Command should only be registered once despite multiple concurrent calls
-    mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
-    Assert.Equal(1, registrationCount); // Verify actual registration count
-    _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
-}
-```
-
-## Implementation Verification
-
-### Step 7: Verification Checklist
-
-Before deploying the implementation, verify:
-
-#### 7.1 Atomic Operation Verification
-- [ ] `TrySetStateOnce` method uses proper compare-and-swap pattern
-- [ ] All state reads use `Volatile.Read`
-- [ ] All state modifications use `Interlocked` operations
-- [ ] Retry loops are properly implemented
-
-#### 7.2 Thread Safety Verification
-- [ ] Only one thread can successfully register the command
-- [ ] No race conditions exist in state management
-- [ ] Disposal is thread-safe
-- [ ] Concurrent operations don't interfere with each other
-
-#### 7.3 Error Handling Verification
-- [ ] Registration failures properly reset atomic flags
-- [ ] No partial states remain after failures
-- [ ] Error logging doesn't expose internal details
-- [ ] Recovery operations are thread-safe
-
-#### 7.4 Functionality Verification
-- [ ] All existing functionality remains intact
-- [ ] Public interfaces unchanged
-- [ ] Event registration behavior preserved
-- [ ] Command registration behavior preserved
-- [ ] Disposal behavior preserved
+### 3. Assertion Strategy
+- Verify that state flags match actual registration status
+- Confirm that error recovery properly resets flags
+- Validate that only one registration occurs in concurrent scenarios
 
 ## Performance Considerations
 
-### Step 8: Performance Validation
+### 1. Atomic Operation Efficiency
+- Compare-and-swap loops are efficient under low to moderate contention
+- No blocking or locking mechanisms are used
+- The operation complexity remains constant
 
-#### 8.1 Atomic Operation Performance
-- Verify that atomic operations don't introduce significant overhead
-- Ensure compare-and-swap retry loops don't cause excessive spinning
-- Monitor for any performance degradation under high concurrency
+### 2. Memory Usage
+- No additional memory allocation beyond existing patterns
+- Uses the same bit flag system as existing code
+- Minimal overhead for atomic operations
 
-#### 8.2 Memory Usage
-- Confirm that memory usage remains minimal
-- Verify no unnecessary object allocations during atomic operations
-- Ensure state management doesn't increase memory footprint
+## Integration Considerations
 
-## Common Implementation Pitfalls
+### 1. Existing Architecture Compatibility
+- Maintain compatibility with existing state management patterns
+- Preserve existing disposal and cleanup behavior
+- Keep the same logging and monitoring integration
 
-### Step 9: Avoid These Mistakes
+### 2. External API Integration
+- Continue to use SMAPI's `ConsoleCommands.Add` method
+- Maintain the same command name, description, and handler
+- Preserve all existing event handling behavior
 
-#### 9.1 Race Condition Pitfalls
-- ❌ **Don't** directly modify the `_state` variable without atomic operations
-- ❌ **Don't** use regular reads instead of `Volatile.Read` for state checking
-- ❌ **Don't** forget to reset flags when operations fail after atomic reservation
-- ❌ **Don't** use locks when atomic operations are sufficient
+## Error Handling Implementation
 
-#### 9.2 Error Handling Pitfalls
-- ❌ **Don't** forget to reset atomic flags when registration fails
-- ❌ **Don't** expose stack traces in error logs
-- ❌ **Don't** allow partial states to persist after failures
-- ❌ **Don't** ignore exceptions in atomic operations
+### 1. Exception Safety
+- Wrap command registration in try-catch to handle potential exceptions
+- Ensure recovery mechanism executes even if registration throws
+- Log exceptions appropriately without exposing internal details
+
+### 2. Null Reference Prevention
+- Check for null dependencies before use
+- Handle cases where SMAPI services become unavailable
+- Provide graceful degradation when services are not available
+
+## Verification Implementation
+
+### 1. State Consistency Checks
+- Verify that the flag accurately reflects registration status
+- Confirm recovery mechanism works properly
+- Test all failure scenarios thoroughly
+
+### 2. Concurrency Verification
+- Run tests with multiple concurrent threads
+- Verify atomic behavior under high contention
+- Test boundary conditions with rapid state changes
 
 ## Deployment Guidelines
 
-### Step 10: Safe Deployment
+### 1. Backward Compatibility
+- Maintain all existing public interfaces
+- Preserve existing behavior for all success scenarios
+- Ensure no breaking changes to external dependencies
 
-#### 10.1 Pre-Deployment
-- Run complete test suite including concurrency tests
-- Verify all existing functionality tests pass
-- Perform performance benchmarking
-- Review code changes for any missed race conditions
+### 2. Forward Compatibility
+- Design for potential future command registration needs
+- Keep the atomic registration method generalizable
+- Maintain clear separation of concerns
 
-#### 10.2 Post-Deployment Monitoring
-- Monitor for any new error patterns
-- Track command registration success rates
-- Watch for performance regressions
-- Verify thread safety in production environment
+## Code Review Checklist
 
-## Maintenance Guidelines
+Before merging the implementation, verify:
 
-### Step 11: Ongoing Maintenance
+- [ ] Atomic registration method properly implements the compare-and-swap pattern
+- [ ] Recovery mechanism correctly resets flags on failure
+- [ ] All existing functionality remains intact
+- [ ] Thread safety is maintained in all scenarios
+- [ ] Error handling and logging follow established patterns
+- [ ] Unit tests cover all code paths and scenarios
+- [ ] Performance characteristics are maintained
+- [ ] Code follows established naming and documentation conventions
 
-#### 11.1 Code Changes
-- Any changes to state management must use atomic operations
-- New state flags must follow the same atomic patterns
-- Never bypass the atomic operation system for state changes
+## Common Implementation Pitfalls to Avoid
 
-#### 11.2 Testing Updates
-- Add new concurrency tests when adding functionality
-- Update existing tests if state management changes
-- Maintain comprehensive test coverage for atomic operations
+### 1. Incorrect Flag Management
+- Don't clear the `DisposedFlag` during recovery
+- Always preserve other state flags when modifying the state
+- Use proper bitwise operations to avoid unintended side effects
 
-These implementation guidelines ensure that the thread-safe command registration solution is properly implemented, thoroughly tested, and maintains all existing functionality while eliminating the race condition.
+### 2. Race Condition Creation
+- Don't set flags before checking prerequisites
+- Always use atomic operations for state changes
+- Don't assume state won't change between read and write operations
+
+### 3. Incomplete Error Recovery
+- Always reset flags when operations fail after setting them
+- Don't leave the system in an inconsistent state
+- Log recovery actions for debugging purposes
+
+Following these implementation guidelines will ensure a robust, thread-safe solution that properly fixes the race condition while maintaining all existing functionality.
