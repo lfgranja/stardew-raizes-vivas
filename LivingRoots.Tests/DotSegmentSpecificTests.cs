@@ -61,14 +61,14 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Validate_ExplicitCurrentDirectoryAtStart_ShouldBeBlocked()
+        public void Validate_ExplicitCurrentDirectoryAtStart_ShouldBeAllowed()
         {
-            // These should be blocked - explicit current directory navigation at start
-            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("./file"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            // After removing overly restrictive check, these should be allowed - they are relative paths to current directory
+            var ex1 = Record.Exception(() => _service.Validate("./file"));
+            Assert.Null(ex1);
             
-            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("./path/to/file.txt"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+            var ex2 = Record.Exception(() => _service.Validate("./path/to/file.txt"));
+            Assert.Null(ex2);
         }
 
         [Fact]
@@ -85,7 +85,7 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_StandaloneDotOrDotSlash_ShouldBeBlocked()
         {
-            // These should be blocked - standalone navigation
+            // These should still be blocked - standalone navigation
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("."));
             Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
             
@@ -123,14 +123,11 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_PathWithDotAtVariousPositions_ShouldBeTreatedCorrectly()
         {
-            // Valid cases - "." in middle and at end
+            // Valid cases - "." in middle and at end, and now also at start (after removing overly restrictive check)
             _service.Validate("folder/./file");
             _service.Validate("a/./b/./c.txt");
             _service.Validate("file/."); // This should be allowed as it refers to directory
-            
-            // Invalid cases - "." at start only
-            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("./file"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
+            _service.Validate("./file"); // This should now be allowed as it refers to current directory
         }
     }
 }
