@@ -362,6 +362,80 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal("test.txt", result);
         }
+        [Fact]
+        public void Sanitize_WithExtensionContainingHyphens_KeepsExtension()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize("test.config-xml"))
+                .Returns("test.config-xml");
+
+            // Act
+            var result = _service.Sanitize("test.config-xml");
+
+            // Assert
+            Assert.Equal("test.config-xml", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithExtensionContainingUnderscores_KeepsExtension()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize("test.config_xml"))
+                .Returns("test.config_xml");
+
+            // Act
+            var result = _service.Sanitize("test.config_xml");
+
+            // Assert
+            Assert.Equal("test.config_xml", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithExtensionContainingHyphensAndUnderscores_KeepsExtension()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize("test.config_xml-dev"))
+                .Returns("test.config_xml-dev");
+
+            // Act
+            var result = _service.Sanitize("test.config_xml-dev");
+
+            // Assert
+            Assert.Equal("test.config_xml-dev", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithMultipleHyphensInExtension_KeepsExtension()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize("test.config--xml"))
+                .Returns("test.config--xml");
+
+            // Act
+            var result = _service.Sanitize("test.config--xml");
+
+            // Assert
+            Assert.Equal("test.config--xml", result);
+        }
+        
+        [Fact]
+        public void Sanitize_WithMultipleUnderscoresInExtension_KeepsExtension()
+        {
+            // Arrange
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize("test.config__xml"))
+                .Returns("test.config__xml");
+
+            // Act
+            var result = _service.Sanitize("test.config__xml");
+
+            // Assert
+            Assert.Equal("test.config__xml", result);
+        }
 
         [Fact]
         public void Sanitize_WithFileNameThatBecomesDot_ThrowsArgumentException()
