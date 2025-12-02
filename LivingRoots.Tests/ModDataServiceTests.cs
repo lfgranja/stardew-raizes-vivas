@@ -908,5 +908,21 @@ namespace LivingRoots.Tests
             // Assert - Should return false instead of throwing exception
             Assert.False(result);
         }
+        
+        [Fact]
+        public void GetFilePath_WithCrossPlatformPathSeparators_ConstructsCorrectly()
+        {
+            // Arrange
+            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var testData = new { Name = "Test", Value = 123 };
+
+            // Act
+            service.SaveData(testData, "test/key" + Path.DirectorySeparatorChar + "with:invalid|chars");
+
+            // Assert - Use Path.Combine for cross-platform compatibility
+            _mockDataHelper.Verify(x => x.WriteJsonFile(
+                Path.Combine("data", "test", "key", "with_invalid_chars.json").Replace('\\', '/'), 
+                testData), Times.Once);
+        }
     }
 }
