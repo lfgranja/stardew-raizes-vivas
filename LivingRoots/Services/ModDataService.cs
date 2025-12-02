@@ -395,8 +395,8 @@ namespace LivingRoots.Services
             // The key should already be sanitized at this point, so we just return path
             // The validation already happened when SanitizeFileName was called in public methods
 
-            // Return final path with .json extension
-            return Path.Combine("data", $"{key}.json");
+            // Return final path with .json extension using forward slash for cross-platform consistency
+            return $"data/{key}.json";
         }
         
         /// <summary>
