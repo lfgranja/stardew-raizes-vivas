@@ -98,20 +98,6 @@ namespace LivingRoots.Domain
                 throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
             }
             
-            // Block any path that starts with "./" as this represents explicit current directory navigation
-            if (path.StartsWith("./", StringComparison.Ordinal))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
-            
-            // Check for standalone "..", "../", or "..\"
-            if (path.Equals("..", StringComparison.Ordinal) || 
-                path.Equals("../", StringComparison.Ordinal) || 
-                path.Equals("..\\", StringComparison.Ordinal))
-            {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
-            }
-            
             // Split into segments ignoring empty parts from repeated separators
             string[] segments = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
             
