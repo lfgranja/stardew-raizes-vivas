@@ -190,8 +190,18 @@ namespace LivingRoots.Controllers
                     var commands = helper?.ConsoleCommands;
                     if (commands != null)
                     {
-                        commands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
-                        monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+                        // Register the command with rollback logic
+                        try
+                        {
+                            commands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
+                            monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+                        }
+                        catch (Exception commandEx)
+                        {
+                            monitor.Log($"Error registering console command 'lr_version': {commandEx.Message}", LogLevel.Error);
+                            // Rollback the command registration flag if the command registration failed
+                            Interlocked.And(ref _state, ~CommandRegisteredFlag);
+                        }
                     }
                     else
                     {
