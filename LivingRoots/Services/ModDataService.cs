@@ -38,6 +38,9 @@ namespace LivingRoots.Services
             if (data == null)
                 throw new ArgumentNullException(nameof(data), "Data cannot be null");
             
+            if (key == null)
+                throw new ArgumentException("Key cannot be null", nameof(key));
+            
             // Defensive checks for null helpers - added to satisfy test expectations
             // This is for artificial test scenarios using reflection to set internal fields to null
             if (_helper == null)
@@ -425,7 +428,14 @@ namespace LivingRoots.Services
                     // Skip . segments to prevent unnecessary directory references
                     continue;
                 }
-                // Removed redundant .. check since path traversal validation happens in ValidatePath
+                
+                // Defense-in-depth security check: explicitly block .. segments and segments with multiple consecutive dots
+                // Even though path traversal validation happens in ValidatePath, this provides additional protection
+                if (IsPathTraversalSegment(segments[i]))
+                {
+                    throw new ArgumentException("Path cannot contain '..' segments for security reasons.", nameof(path));
+                }
+                
                 // Use existing SanitizeFileName method for other segments
                 string? sanitizedSegment = _modLogic.SanitizeFileName(segments[i]);
                 
@@ -444,6 +454,73 @@ namespace LivingRoots.Services
             // Join sanitized segments back together using forward slash for consistency across platforms
             // This ensures keys are consistent regardless of the operating system
             return string.Join("/", validSegments);
+        }
+        
+        /// <summary>
+        /// Checks if a segment is a path traversal attempt (e.g., "..", multiple consecutive dots, etc.)
+        /// Enhanced defense-in-depth security check to catch more potential path traversal attempts
+        /// </summary>
+        /// <param name="segment">The segment to check</param>
+        /// <returns>True if the segment is a path traversal attempt, false otherwise</returns>
+        private static bool IsPathTraversalSegment(string segment)
+        {
+            if (string.IsNullOrEmpty(segment))
+                return false;
+            
+            // Check for exact ".." match
+            if (segment == "..")
+                return true;
+            
+            // Check for exact "." match (should be handled separately in the main method, but defensive check)
+            if (segment == ".")
+                return true;
+            
+            // Check for segments with multiple consecutive dots (defense-in-depth against bypass attempts)
+            // Look for patterns like "....", ".....", etc. that could be attempts to bypass simple ".." filters
+            // This is a defense-in-depth check to catch evasion attempts
+            int consecutiveDots = 0;
+            int maxConsecutiveDots = 0;
+            
+            for (int i = 0; i < segment.Length; i++)
+            {
+                if (segment[i] == '.')
+                {
+                    consecutiveDots++;
+                    maxConsecutiveDots = Math.Max(maxConsecutiveDots, consecutiveDots);
+                }
+                else
+                {
+                    consecutiveDots = 0;
+                }
+            }
+            
+            // If there are more than 2 consecutive dots, it could be an evasion attempt
+            // (e.g., "...." might be used to bypass a simple ".." filter)
+            if (maxConsecutiveDots > 2)
+                return true;
+            
+            // Additional defense-in-depth checks for common path traversal patterns
+            // Check if segment contains path traversal indicators combined with other characters
+            // Examples: "....", "....", "....", etc. where dots might be separated by other characters
+            string lowerSegment = segment.ToLowerInvariant();
+            
+            // Check for patterns that might represent path traversal in different encodings or formats
+            // These are additional patterns beyond simple consecutive dots
+            if (lowerSegment.Contains(".."))
+            {
+                // If the segment contains ".." but is not exactly "..", it might be an attempt to obfuscate path traversal
+                // For example: "...", "....", "a..b", "..x", etc.
+                return true;
+            }
+            
+            // Check for other potential path traversal indicators
+            // Examples: segments that contain path separators within them (which shouldn't happen in a properly segmented path)
+            if (segment.Contains('/') || segment.Contains('\\'))
+            {
+                return true;
+            }
+            
+            return false;
         }
     }
 }
