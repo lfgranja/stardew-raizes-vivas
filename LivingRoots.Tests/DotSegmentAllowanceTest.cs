@@ -67,12 +67,13 @@ namespace LivingRoots.Tests
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, modLogic);
             var testData = new { Name = "Test", Value = 123 };
 
-            // Act & Assert - These should be blocked as they represent directory navigation
+            // Act & Assert - These should still be blocked as they represent directory navigation
             var exception1 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "."));
             Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
 
-            var exception2 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "./file"));
-            Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
+            // After removing overly restrictive check, "./file" should now be allowed
+            var ex2 = Record.Exception(() => service.SaveData(testData, "./file"));
+            Assert.Null(ex2);
 
             var exception3 = Assert.Throws<ArgumentException>(() => service.SaveData(testData, "../file"));
             Assert.Contains("Path cannot contain path traversal patterns", exception3.Message);
