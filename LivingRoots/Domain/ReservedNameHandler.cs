@@ -11,7 +11,7 @@ namespace LivingRoots.Domain
     /// This implementation follows the Dependency Inversion Principle by depending on abstractions.
     /// 
     /// IMPROVEMENTS SUMMARY:
-    /// - Simplified UNC path handling by using .NET's Path methods for cross-platform compatibility
+    /// - Simplified UNC path handling by using System.Uri for cross-platform compatibility
     /// - Reduced complex manual path parsing while still ensuring cross-platform compatibility
     /// - Maintained security by ensuring proper filename component processing
     /// </summary>
@@ -32,7 +32,7 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Handles reserved Windows filenames by appending an underscore to base name if necessary.
-        /// Uses built-in .NET Path methods for cross-platform UNC compatibility.
+        /// Uses System.Uri for proper UNC path handling and cross-platform compatibility.
         /// </summary>
         /// <param name="filename">The filename to check for reserved names.</param>
         /// <returns>A filename with reserved names handled appropriately.</returns>
@@ -40,42 +40,33 @@ namespace LivingRoots.Domain
         {
             if (string.IsNullOrEmpty(filename)) return filename;
 
-            // For UNC paths, we need to extract the filename part manually since Path methods don't work correctly
+            // For UNC paths, we'll use System.Uri to properly extract the filename part
             if (IsUncPath(filename))
             {
-                // Find the last separator to extract the filename part
-                int lastSeparatorPos = -1;
-                for (int i = 2; i < filename.Length; i++) // Start from 2 to skip the UNC prefix (\\)
+                // Use Uri to properly handle UNC paths
+                if (TryGetFileNameFromUncPath(filename, out string? fileName))
                 {
-                    if ((filename[i] == '\\' || filename[i] == '/') && 
-                        (i == 0 || filename[i-1] != ':')) // Not after a drive letter
-                    {
-                        lastSeparatorPos = i;
-                    }
-                }
-
-                if (lastSeparatorPos == -1)
-                {
-                    // No separator found after UNC prefix, treat the whole path (after UNC) as filename
-                    string fileName = filename.Substring(2); // Remove the UNC prefix (\\)
                     string? processedFileName = ProcessFileName(fileName);
+                    
                     if (processedFileName == fileName)
-                        return filename; // No change needed
+                    {
+                        // No change needed, return original
+                        return filename;
+                    }
                     else
-                        return "\\\\" + processedFileName; // Re-add UNC prefix
+                    {
+                        // Replace the filename part in the original path
+                        return ReplaceFileNameInPath(filename, fileName, processedFileName);
+                    }
                 }
                 else
                 {
-                    // Extract directory path and filename
-                    string directoryPath = filename.Substring(0, lastSeparatorPos + 1);
-                    string fileName = filename.Substring(lastSeparatorPos + 1);
-
-                    string? processedFileName = ProcessFileName(fileName);
-
-                    if (processedFileName == fileName)
-                        return filename; // No change needed
+                    // If we can't extract the filename from UNC path, process the whole path as filename
+                    string? processedFileName = ProcessFileName(filename);
+                    if (processedFileName == filename)
+                        return filename;
                     else
-                        return directoryPath + processedFileName; // Reconstruct with processed filename
+                        return processedFileName;
                 }
             }
             else
@@ -100,6 +91,172 @@ namespace LivingRoots.Domain
                 }
 
                 return processedFileName;
+            }
+        }
+
+        /// <summary>
+        /// Uses System.Uri to extract the filename from a UNC path
+        /// </summary>
+        /// <param name="uncPath">The UNC path to process</param>
+        /// <param name="fileName">The extracted filename</param>
+        /// <returns>True if the filename was successfully extracted</returns>
+        private static bool TryGetFileNameFromUncPath(string uncPath, out string? fileName)
+        {
+            fileName = null;
+            
+            try
+            {
+                // Convert UNC path to file URI format: \\server\share\path -> file://server/share/path
+                // Properly handle UNC paths by creating a file URI
+                string fileUriString;
+                if (uncPath.StartsWith(@"\\"))
+                {
+                    fileUriString = "file://" + uncPath.Substring(2).Replace('\\', '/');
+                }
+                else if (uncPath.StartsWith("//"))
+                {
+                    fileUriString = "file://" + uncPath.Substring(2);
+                }
+                else
+                {
+                    // Not a UNC path, return false to use fallback
+                    return false;
+                }
+                
+                // Create a Uri from the file URI string
+                Uri uri = new Uri(fileUriString);
+                
+                // Get the filename from the URI - use the URI segments to get the last segment
+                var segments = uri.Segments;
+                if (segments.Length > 0)
+                {
+                    fileName = segments[segments.Length - 1]; // Get the last segment which is the filename
+                    // URL decode the filename to handle any encoded characters
+                    fileName = Uri.UnescapeDataString(fileName);
+                }
+                
+                return !string.IsNullOrEmpty(fileName);
+            }
+            catch (UriFormatException)
+            {
+                // If URI creation fails, fall back to manual parsing
+                return TryGetFileNameFromUncPathManual(uncPath, out fileName);
+            }
+            catch
+            {
+                // If any other error occurs during parsing, return false
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Manually extract filename from UNC path as a fallback
+        /// </summary>
+        /// <param name="uncPath">The UNC path to process</param>
+        /// <param name="fileName">The extracted filename</param>
+        /// <returns>True if the filename was successfully extracted</returns>
+        private static bool TryGetFileNameFromUncPathManual(string uncPath, out string? fileName)
+        {
+            fileName = null;
+            
+            try
+            {
+                // Find the last directory separator after the UNC prefix (\\server\share)
+                int uncPrefixEnd = -1;
+                // Find the end of the UNC prefix (first two backslashes)
+                int backslashCount = 0;
+                for (int i = 0; i < uncPath.Length; i++)
+                {
+                    if (uncPath[i] == '\\' || uncPath[i] == '/')
+                    {
+                        backslashCount++;
+                        if (backslashCount == 2)
+                        {
+                            // Skip past the server name and find the end of the share name
+                            for (int j = i + 1; j < uncPath.Length; j++)
+                            {
+                                if (uncPath[j] == '\\' || uncPath[j] == '/')
+                                {
+                                    uncPrefixEnd = j;
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                
+                if (uncPrefixEnd == -1)
+                {
+                    // This doesn't look like a proper UNC path, treat the part after \\ or // as filename
+                    if (uncPath.Length > 2)
+                    {
+                        fileName = uncPath.Substring(2);
+                    }
+                    return fileName != null;
+                }
+                
+                // Extract the filename part (everything after the last separator)
+                int lastSeparatorPos = -1;
+                for (int i = uncPath.Length - 1; i >= uncPrefixEnd; i--)
+                {
+                    if (uncPath[i] == '\\' || uncPath[i] == '/')
+                    {
+                        lastSeparatorPos = i;
+                        break;
+                    }
+                }
+                
+                if (lastSeparatorPos > uncPrefixEnd)
+                {
+                    fileName = uncPath.Substring(lastSeparatorPos + 1);
+                }
+                else
+                {
+                    // No additional separators after the share name, treat the rest as filename
+                    fileName = uncPath.Substring(uncPrefixEnd);
+                }
+                
+                return !string.IsNullOrEmpty(fileName);
+            }
+            catch
+            {
+                // If any error occurs during parsing, return false
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Replaces the filename part in a UNC path with a new filename
+        /// </summary>
+        /// <param name="originalPath">The original UNC path</param>
+        /// <param name="oldFileName">The old filename to replace</param>
+        /// <param name="newFileName">The new filename to use</param>
+        /// <returns>The path with the filename replaced</returns>
+        private static string ReplaceFileNameInPath(string originalPath, string oldFileName, string newFileName)
+        {
+            // Find the last occurrence of the filename in the path
+            // We need to be careful to replace only the filename part, not any directory names that might match
+            int lastSeparatorIndex = -1;
+            for (int i = originalPath.Length - 1; i >= 0; i--)
+            {
+                if (originalPath[i] == '\\' || originalPath[i] == '/')
+                {
+                    lastSeparatorIndex = i;
+                    break;
+                }
+            }
+            
+            if (lastSeparatorIndex >= 0)
+            {
+                // The filename part is everything after the last separator
+                string directoryPath = originalPath.Substring(0, lastSeparatorIndex + 1);
+                return directoryPath + newFileName;
+            }
+            else
+            {
+                // If there's no separator, the whole path is the filename
+                return newFileName;
             }
         }
 
