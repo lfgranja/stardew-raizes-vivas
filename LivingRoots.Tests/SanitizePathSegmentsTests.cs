@@ -172,5 +172,69 @@ namespace LivingRoots.Tests
             // The result should handle mixed separators properly and return forward slashes consistently
             Assert.Equal("segment1/segment2/segment3", result.ToString());
         }
+        
+        [Fact]
+        public void SanitizePathSegments_WithDotDotSegment_ThrowsArgumentException()
+        {
+            // Arrange
+            var method = _service.GetType()
+                .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
+            
+            // Act & Assert
+            var exception = Assert.Throws<TargetInvocationException>(() => 
+                method?.Invoke(_service, new object[] { ".." }));
+            
+            Assert.IsType<ArgumentException>(exception.InnerException);
+            Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
+            Assert.Contains("Path cannot contain '..' segments for security reasons", exception.InnerException.Message);
+        }
+        
+        [Fact]
+        public void SanitizePathSegments_WithDotDotSegmentInPath_ThrowsArgumentException()
+        {
+            // Arrange
+            var method = _service.GetType()
+                .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
+            
+            // Act & Assert
+            var exception = Assert.Throws<TargetInvocationException>(() => 
+                method?.Invoke(_service, new object[] { "valid/..../invalid" }));
+            
+            Assert.IsType<ArgumentException>(exception.InnerException);
+            Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
+            Assert.Contains("Path cannot contain '..' segments for security reasons", exception.InnerException.Message);
+        }
+        
+        [Fact]
+        public void SanitizePathSegments_WithDotDotSegmentWithBackslashes_ThrowsArgumentException()
+        {
+            // Arrange
+            var method = _service.GetType()
+                .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
+            
+            // Act & Assert
+            var exception = Assert.Throws<TargetInvocationException>(() => 
+                method?.Invoke(_service, new object[] { @"valid\..\invalid" }));
+            
+            Assert.IsType<ArgumentException>(exception.InnerException);
+            Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
+            Assert.Contains("Path cannot contain '..' segments for security reasons", exception.InnerException.Message);
+        }
+        
+        [Fact]
+        public void SanitizePathSegments_WithMultipleDotDotSegments_ThrowsArgumentException()
+        {
+            // Arrange
+            var method = _service.GetType()
+                .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
+            
+            // Act & Assert
+            var exception = Assert.Throws<TargetInvocationException>(() => 
+                method?.Invoke(_service, new object[] { "../.." }));
+            
+            Assert.IsType<ArgumentException>(exception.InnerException);
+            Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
+            Assert.Contains("Path cannot contain '..' segments for security reasons", exception.InnerException.Message);
+        }
     }
 }
