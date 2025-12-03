@@ -663,6 +663,10 @@ namespace LivingRoots.Tests
                 
             // The actual exception should be an ArgumentException from GetValidatedAndSanitizedKey
             Assert.IsType<ArgumentException>(exception.InnerException);
+            // Verify that the exception message doesn't contain the raw key
+            Assert.DoesNotContain("<>:\"|?*", exception.InnerException.Message);
+            // Verify that the exception message contains the new generic message from SanitizePathSegments
+            Assert.Contains("Path sanitization resulted in empty path", exception.InnerException.Message);
         }
         
         [Fact]
@@ -871,7 +875,7 @@ namespace LivingRoots.Tests
             var mockMonitor = new Mock<IMonitor>();
             var mockModLogic = new Mock<IModLogic>();
             
-            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            var service = new ModDataService(mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             
             // Set up the helper to return null for Data property
             var helperWithNullData = new Mock<IModHelper>();
@@ -900,7 +904,7 @@ namespace LivingRoots.Tests
             var helperWithNullData = new Mock<IModHelper>();
             helperWithNullData.Setup(x => x.Data).Returns((IDataHelper)null!);
             
-            var service = new ModDataService(helperWithNullData.Object, mockMonitor.Object, mockModLogic.Object);
+            var service = new ModDataService(helperWithNullData.Object, _mockMonitor.Object, _mockModLogic.Object);
             
             // Act - Since null checks were removed from DataExists, this should now return false
             var result = service.DataExists("test_key");
