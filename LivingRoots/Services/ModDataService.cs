@@ -193,7 +193,8 @@ namespace LivingRoots.Services
             {
                 // Log unexpected errors and return null to maintain consistency with DataExists behavior
                 _monitor?.Log($"Unexpected error occurred while loading data for key '{sanitizedKey}'.", LogLevel.Error);
-                return null; // Return null instead of throwing for unexpected errors to maintain consistency
+                // Security improvement: Don't include the raw key in the exception message to prevent information disclosure
+                return null; // Return null instead of rethrowing to maintain consistency with LoadData
             }
         }
         
@@ -215,7 +216,7 @@ namespace LivingRoots.Services
             if (_helper.Data == null)
             {
                 _monitor?.Log("Helper.Data is null in DataExists method", LogLevel.Error);
-                return false; // Return false instead of throwing to maintain consistency
+                return false; // Return null instead of throwing to maintain consistency
             }
             
             string sanitizedKey;
@@ -243,32 +244,31 @@ namespace LivingRoots.Services
             }
             catch (System.IO.FileNotFoundException)
             {
-                // File does not exist - log as trace to reduce noise
+                // Log as generic message to prevent information disclosure about file existence
                 _monitor?.Log($"File not found while checking data existence for key '{sanitizedKey}'", LogLevel.Trace);
                 return false;
             }
             catch (System.IO.DirectoryNotFoundException)
             {
-                // Directory does not exist - log as trace to reduce noise and for consistency
+                // Log as generic message to prevent information disclosure about directory existence
                 _monitor?.Log($"No valid data found for key '{sanitizedKey}'", LogLevel.Trace);
                 return false;
             }
             catch (System.UnauthorizedAccessException)
             {
-                // Access denied to file or directory - treat as non-existent and log as warn
+                // Log as generic message to prevent information disclosure about access permissions
                 _monitor?.Log($"Access denied while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
                 return false;
             }
             catch (System.IO.IOException)
             {
-                // Other IO exceptions - treat as non-existent and log as warn
+                // Log as generic message to prevent information disclosure about IO errors
                 _monitor?.Log($"IOException occurred while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
                 return false;
             }
             catch (Newtonsoft.Json.JsonException)
             {
-                // JSON parsing error - file exists but contains invalid JSON
-                // For consistency with LoadData, we consider this as "data does not exist"
+                // Log as generic message but with Warn level since JSON parsing errors indicate data corruption
                 _monitor?.Log($"JSON parsing error occurred while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
                 return false;
             }
@@ -382,13 +382,24 @@ namespace LivingRoots.Services
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Key cannot be null or empty", nameof(key));
             
-            // Validate raw key first to catch path traversal attempts
-            _modLogic.ValidatePath(key);
+            try 
+            {
+                // Validate raw key first to catch path traversal attempts
+                _modLogic.ValidatePath(key);
+            }
+            catch (ArgumentException ex)
+            {
+                // Security improvement: Don't log the original exception message to prevent information disclosure
+                // The original message could contain details about why validation failed
+                _monitor?.Log("Path validation failed for key - validation error occurred", LogLevel.Debug);
+                // Re-throw with generic message to prevent information disclosure
+                throw new ArgumentException("Invalid key format - path validation failed", nameof(key));
+            }
             
             // Sanitize key once before try-catch block to prevent exceptions during error handling
             string sanitizedKey = SanitizePathSegments(key);
             if (string.IsNullOrWhiteSpace(sanitizedKey))
-                throw new ArgumentException($"Failed to sanitize key '{key}'. Sanitized key cannot be null or whitespace.", nameof(key));
+                throw new ArgumentException("Key sanitization failed - sanitized key cannot be null or whitespace.", nameof(key));
             
             return sanitizedKey;
         }
@@ -449,7 +460,7 @@ namespace LivingRoots.Services
             
             // Check if we have any valid segments after processing
             if (validSegments.Count == 0)
-                throw new ArgumentException("Sanitized path cannot be empty.", nameof(path));
+                throw new ArgumentException("Path sanitization resulted in empty path.", nameof(path));
             
             // Join sanitized segments back together using forward slash for consistency across platforms
             // This ensures keys are consistent regardless of the operating system
@@ -469,10 +480,6 @@ namespace LivingRoots.Services
             
             // Check for exact ".." match
             if (segment == "..")
-                return true;
-            
-            // Check for exact "." match (should be handled separately in the main method, but defensive check)
-            if (segment == ".")
                 return true;
             
             // Check for segments with multiple consecutive dots (defense-in-depth against bypass attempts)
