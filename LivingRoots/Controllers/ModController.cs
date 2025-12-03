@@ -3,6 +3,7 @@ using StardewModdingAPI.Events;
 using System;
 using System.Threading;
 using System.Linq;
+using System.Collections.Generic;
 using LivingRoots.Services;
 
 namespace LivingRoots.Controllers
@@ -51,8 +52,8 @@ namespace LivingRoots.Controllers
                 return;
             }
 
-            // Use TrySetStateOnce to ensure events are only registered once
-            if (!TrySetStateOnce(EventsRegisteredFlag))
+            // Use TrySetStateFlag to ensure events are only registered once
+            if (!TrySetStateFlag(EventsRegisteredFlag))
             {
                 _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
                 return;
@@ -314,8 +315,8 @@ namespace LivingRoots.Controllers
 
         public void Dispose()
         {
-            // Use TrySetStateOnce to ensure disposal flag is only set once
-            if (!TrySetStateOnce(DisposedFlag))
+            // Use TrySetStateFlag to ensure disposal flag is only set once
+            if (!TrySetStateFlag(DisposedFlag))
             {
                 _monitor.Log("Controller is already disposed.", LogLevel.Trace);
                 return; // Already disposed
@@ -382,12 +383,12 @@ namespace LivingRoots.Controllers
         }
 
         /// <summary>
-        /// Attempts to set a specific state flag only once, ensuring thread safety.
-        /// This method uses atomic operations to ensure that the flag is only set once.
+        /// Attempts to set a specific state flag, ensuring thread safety.
+        /// This method uses atomic operations to update the state.
         /// </summary>
         /// <param name="flag">The flag to set</param>
-        /// <returns>True if the flag was set (meaning this was the first thread to set it), false otherwise</returns>
-        private bool TrySetStateOnce(int flag)
+        /// <returns>True if the flag was set, false if it was already set</returns>
+        private bool TrySetStateFlag(int flag)
         {
             int currentState, newState;
             bool wasSet = false;
@@ -400,8 +401,8 @@ namespace LivingRoots.Controllers
                 if ((currentState & flag) != 0)
                     return false;
 
-                // If disposed, return false
-                if ((currentState & DisposedFlag) != 0)
+                // If disposed and trying to set non-disposal flags, return false
+                if ((flag != DisposedFlag) && ((currentState & DisposedFlag) != 0))
                     return false;
 
                 newState = currentState | flag;
