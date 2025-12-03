@@ -230,8 +230,8 @@ namespace LivingRoots.Tests
             Assert.Null(ex); // Exception should be caught and logged, not thrown
             
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.Once);
-            Assert.Contains("Test exception", loggedMessage);
-            Assert.DoesNotContain("System.InvalidOperationException", loggedMessage); // Should not contain full type name
+            Assert.Contains("Error occurred while registering game events", loggedMessage);
+            Assert.DoesNotContain("Test exception", loggedMessage); // Should not contain raw exception message for security
             Assert.Equal(LogLevel.Error, loggedLevel);
         }
         
@@ -304,10 +304,10 @@ namespace LivingRoots.Tests
             var ex = Record.Exception(() => controller.UnregisterEvents());
             Assert.Null(ex); // Exception should be caught and logged, not thrown
             
-            // Verify logging occurred with the exception message but not the full stack trace
+            // Verify logging occurred with the generic message, not the raw exception
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
-            Assert.Contains("Test exception for unregister", loggedMessage);
-            Assert.DoesNotContain("System.InvalidOperationException", loggedMessage); // Should not contain full type name
+            Assert.Contains("Error occurred while unregistering game events", loggedMessage);
+            Assert.DoesNotContain("Test exception for unregister", loggedMessage); // Should not contain raw exception message for security
             Assert.Equal(LogLevel.Error, loggedLevel);
         }
         
@@ -514,6 +514,7 @@ namespace LivingRoots.Tests
                 .Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
                 .Verifiable();
             
+            // Need to set up the helper mock to return the command helper
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
             
             var mockModDataService = new Mock<IModDataService>();
