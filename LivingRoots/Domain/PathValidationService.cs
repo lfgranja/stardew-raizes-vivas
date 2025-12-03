@@ -103,7 +103,7 @@ namespace LivingRoots.Domain
             
             // Add a hard cap to prevent excessive processing of pathological inputs
             // Increased from 100 to allow more reasonable paths while still preventing abuse
-            const int MaxSegments = 1000;
+            const int MaxSegments = 100;
             if (segments.Length > MaxSegments)
             {
                 throw new ArgumentException("Path contains too many segments", nameof(path));
