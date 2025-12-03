@@ -9,15 +9,17 @@ namespace LivingRoots.Domain
     /// <summary>
     /// Implementation for handling reserved Windows filenames to prevent conflicts with system files.
     /// This implementation follows the Dependency Inversion Principle by depending on abstractions.
-    /// 
-    /// IMPROVEMENTS SUMMARY:
-    /// - Simplified UNC path handling by using System.Uri for cross-platform compatibility
-    /// - Reduced complex manual path parsing while still ensuring cross-platform compatibility
-    /// - Maintained security by ensuring proper filename component processing
     /// </summary>
+    /// <remarks>
+    /// Conversion Rules:
+    /// 1. Diacritics: Removed from Latin and Greek letters, preserved for other scripts
+    /// 2. Security Confusables: Cyrillic lookalikes are converted to Latin equivalents unless they appear in legitimate non-Latin script contexts
+    /// 3. Zero-width and bidirectional characters: Removed completely for security
+    /// 4. Control characters: Removed completely
+    /// 5. Precomposed characters: Simplified to base forms (e.g., 'ø' → 'o')
+    /// </remarks>
     public class ReservedNameHandler : IReservedNameHandler
     {
-        private readonly IUnicodeNormalizationService _unicodeNormalizationService;
         private static readonly HashSet<string> ReservedWindowsFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "CON", "PRN", "AUX", "NUL",
@@ -25,66 +27,77 @@ namespace LivingRoots.Domain
             "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
         };
 
+        private readonly IUnicodeNormalizationService _unicodeNormalizationService;
+
         public ReservedNameHandler(IUnicodeNormalizationService unicodeNormalizationService)
         {
             _unicodeNormalizationService = unicodeNormalizationService ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
         }
 
         /// <summary>
-        /// Handles reserved Windows filenames by appending an underscore to base name if necessary.
+        /// Handles reserved Windows filenames by appending an underscore to the base name if necessary.
         /// Uses System.Uri for proper UNC path handling and cross-platform compatibility.
+        /// For directory paths ending with separators, returns the original path unchanged.
         /// </summary>
-        /// <param name="filename">The filename to check for reserved names.</param>
-        /// <returns>A filename with reserved names handled appropriately.</returns>
+        /// <param name="filename">The filename or path to check for reserved names.</param>
+        /// <returns>A filename or path with reserved names handled appropriately.</returns>
         public string? Handle(string? filename)
         {
             if (string.IsNullOrEmpty(filename)) return filename;
 
-            // For UNC paths, we'll use System.Uri to properly extract the filename part
-            if (IsUncPath(filename))
+            // First, normalize Unicode characters to handle diacritics and homoglyphs
+            string? normalizedInput = _unicodeNormalizationService?.Normalize(filename);
+            
+            // Security fix: Add null check for normalizedInput to prevent validation bypass
+            if (normalizedInput == null)
+                throw new ArgumentException("Filename normalization returned null, validation cannot proceed", nameof(filename));
+
+            // For UNC paths (starting with \\ or //), we need special handling
+            if (IsUncPath(normalizedInput))
             {
-                // Use Uri to properly handle UNC paths
-                if (TryGetFileNameFromUncPath(filename, out string? fileName))
-                {
-                    string? processedFileName = ProcessFileName(fileName);
-                    
-                    if (processedFileName == fileName)
-                    {
-                        // No change needed, return original
-                        return filename;
-                    }
-                    else
-                    {
-                        // Replace the filename part in the original path
-                        return ReplaceFileNameInPath(filename, fileName, processedFileName);
-                    }
-                }
-                else
-                {
-                    // If we can't extract the filename from UNC path, process the whole path as filename
-                    string? processedFileName = ProcessFileName(filename);
-                    if (processedFileName == filename)
-                        return filename;
-                    else
-                        return processedFileName;
-                }
-            }
-            else
-            {
-                // For non-UNC paths, use Path methods for directory and filename extraction
-                string directoryPath = Path.GetDirectoryName(filename) ?? string.Empty;
-                string fileName = Path.GetFileName(filename);
+                // Extract the filename component from the UNC path
+                string fileName = Path.GetFileName(normalizedInput);
 
                 // If Path.GetFileName returns empty (for directory paths ending with separator), return original
                 if (string.IsNullOrEmpty(fileName)) return filename;
 
-                string? processedFileName = ProcessFileName(fileName);
+                // For UNC paths, extract directory path separately
+                string directoryPath = Path.GetDirectoryName(normalizedInput) ?? string.Empty;
 
-                // If no change was made, return original
+                // Process just the filename component for reserved names
+                string? processedFileName = ProcessFileNameInternal(fileName);
+
+                // If the filename component didn't change, return the original path
+                if (processedFileName == fileName)
+                    return filename;
+
+                // Reconstruct the UNC path with the processed filename component
+                if (!string.IsNullOrEmpty(directoryPath))
+                {
+                    return Path.Combine(directoryPath, processedFileName);
+                }
+
+                return processedFileName;
+            }
+            else
+            {
+                // For regular paths, extract the filename component using Path methods
+                string fileName = Path.GetFileName(normalizedInput);
+
+                // If Path.GetFileName returns empty (for directory paths ending with separator), return original
+                if (string.IsNullOrEmpty(fileName)) return filename;
+
+                // Extract the directory path separately
+                string directoryPath = Path.GetDirectoryName(normalizedInput) ?? string.Empty;
+
+                // Process just the filename component for reserved names
+                string? processedFileName = ProcessFileNameInternal(fileName);
+
+                // If no change was made to the filename component, return the original path
                 if (processedFileName == null || processedFileName == fileName)
                     return filename;
 
-                // Use Path.Combine to properly reconstruct the path with appropriate separators for the platform
+                // Reconstruct the full path with the processed filename component
                 if (!string.IsNullOrEmpty(directoryPath))
                 {
                     return Path.Combine(directoryPath, processedFileName);
@@ -95,206 +108,170 @@ namespace LivingRoots.Domain
         }
 
         /// <summary>
-        /// Uses System.Uri to extract the filename from a UNC path
+        /// Process a filename for reserved name handling
         /// </summary>
-        /// <param name="uncPath">The UNC path to process</param>
-        /// <param name="fileName">The extracted filename</param>
-        /// <returns>True if the filename was successfully extracted</returns>
-        private static bool TryGetFileNameFromUncPath(string uncPath, out string? fileName)
+        /// <param name="filename">The filename to process</param>
+        /// <returns>A filename with reserved names handled appropriately</returns>
+        private string ProcessFileNameInternal(string filename)
         {
-            fileName = null;
+            // Check if the entire filename consists entirely of insignificant characters (dots, spaces, tabs)
+            // This handles cases like " . " where the entire name is insignificant
+            string trimmedAll = filename.Trim('.', ' ', '\t');
+            if (string.IsNullOrEmpty(trimmedAll))
+            {
+                // Replace fully insignificant names with a safe placeholder
+                return "_";
+            }
+
+            // Split the filename to separate the base name from the extension(s)
+            // For "COM1.tar.gz", we want to identify "COM1" as the base name and ".tar.gz" as extensions
+            // For "COM1.txt", we want to identify "COM1" as the base name and ".txt" as extension
+            string baseName = filename;
+            string extensionPart = "";
+
+            // Find the first dot that indicates the start of extensions
+            // This is more complex than just finding the last dot because we need to handle multiple extensions properly
+            int firstExtensionIndex = FindFirstExtensionIndex(filename);
             
-            try
+            if (firstExtensionIndex != -1)
             {
-                // Convert UNC path to file URI format: \\server\share\path -> file://server/share/path
-                // Properly handle UNC paths by creating a file URI
-                string fileUriString;
-                if (uncPath.StartsWith(@"\\"))
-                {
-                    fileUriString = "file://" + uncPath.Substring(2).Replace('\\', '/');
-                }
-                else if (uncPath.StartsWith("//"))
-                {
-                    fileUriString = "file://" + uncPath.Substring(2);
-                }
-                else
-                {
-                    // Not a UNC path, return false to use fallback
-                    return false;
-                }
-                
-                // Create a Uri from the file URI string
-                Uri uri = new Uri(fileUriString);
-                
-                // Get the filename from the URI - use the URI segments to get the last segment
-                var segments = uri.Segments;
-                if (segments.Length > 0)
-                {
-                    fileName = segments[segments.Length - 1]; // Get the last segment which is the filename
-                    // URL decode the filename to handle any encoded characters
-                    fileName = Uri.UnescapeDataString(fileName);
-                }
-                
-                return !string.IsNullOrEmpty(fileName);
+                baseName = filename.Substring(0, firstExtensionIndex);
+                extensionPart = filename.Substring(firstExtensionIndex); // Include the dot in the extension
             }
-            catch (UriFormatException)
+
+            // Check if the base name part is a reserved Windows filename
+            if (IsReservedName(baseName))
             {
-                // If URI creation fails, fall back to manual parsing
-                return TryGetFileNameFromUncPathManual(uncPath, out fileName);
+                // If the base name is reserved, add an underscore to make it safe
+                // Return the reserved base name with underscore, plus extension part
+                return baseName + "_" + extensionPart;
             }
-            catch
+            
+            // If not reserved, check if the name part is fully insignificant (consists only of dots, spaces, tabs)
+            string trimmedForInsignificantCheck = baseName.Trim('.', ' ', '\t');
+            if (string.IsNullOrEmpty(trimmedForInsignificantCheck))
             {
-                // If any other error occurs during parsing, return false
-                return false;
+                // Replace fully insignificant names with a safe placeholder
+                return "_" + extensionPart;
             }
+            
+            // If not reserved, return the original filename
+            return filename;
         }
 
         /// <summary>
-        /// Manually extract filename from UNC path as a fallback
+        /// Determines the index where the extension starts in a filename.
+        /// For "COM1.tar.gz", this should return the position of the first dot (after "COM1").
+        /// For "COM1.txt", this should return the position of the dot (after "COM1").
         /// </summary>
-        /// <param name="uncPath">The UNC path to process</param>
-        /// <param name="fileName">The extracted filename</param>
-        /// <returns>True if the filename was successfully extracted</returns>
-        private static bool TryGetFileNameFromUncPathManual(string uncPath, out string? fileName)
+        /// <param name="filename">The filename to analyze</param>
+        /// <returns>The index where the extension starts, or -1 if no extension found</returns>
+        private static int FindFirstExtensionIndex(string filename)
         {
-            fileName = null;
+            // Look for the first dot that indicates the start of an extension
+            // This should be after the actual base name, not in the middle of a multipart extension
+            // For "COM1.tar.gz", we want to find the first dot after "COM1"
+            // For "COM1.txt", we want to find the dot after "COM1"
             
-            try
+            // Check if the filename starts with a dot (hidden file) - special case
+            if (filename.StartsWith("."))
             {
-                // Find the last directory separator after the UNC prefix (\\server\share)
-                int uncPrefixEnd = -1;
-                // Find the end of the UNC prefix (first two backslashes)
-                int backslashCount = 0;
-                for (int i = 0; i < uncPath.Length; i++)
+                // Hidden files like ".bashrc" - the extension starts after the first dot
+                int firstDotAfterInitial = filename.IndexOf('.', 1);
+                if (firstDotAfterInitial > 0)
                 {
-                    if (uncPath[i] == '\\' || uncPath[i] == '/')
+                    return firstDotAfterInitial;
+                }
+                return -1; // No extension in a simple hidden file
+            }
+            
+            // For regular filenames, find the first dot that separates the base name from extensions
+            // The challenge is to distinguish between a reserved name with a multi-part extension
+            // vs. a non-reserved name with a reserved-looking extension part
+            for (int i = 0; i < filename.Length; i++)
+            {
+                if (filename[i] == '.')
+                {
+                    // Extract the part before this dot to check if it's a reserved name
+                    string potentialBaseName = filename.Substring(0, i);
+                    
+                    // If the potential base name is a reserved name, then this dot marks the start of extensions
+                    if (ReservedWindowsFileNames.Contains(potentialBaseName, StringComparer.OrdinalIgnoreCase))
                     {
-                        backslashCount++;
-                        if (backslashCount == 2)
+                        return i;
+                    }
+                    
+                    // Also check if the potential base name starts with a reserved name followed by non-alphanumeric characters
+                    // For example, if filename is "COM1.tar.gz", potentialBaseName is "COM1" which is reserved
+                    foreach (string reservedName in ReservedWindowsFileNames)
+                    {
+                        if (potentialBaseName.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase))
                         {
-                            // Skip past the server name and find the end of the share name
-                            for (int j = i + 1; j < uncPath.Length; j++)
+                            int reservedNameLength = reservedName.Length;
+                            if (reservedNameLength < potentialBaseName.Length)
                             {
-                                if (uncPath[j] == '\\' || uncPath[j] == '/')
+                                // Check if what follows is not alphanumeric (meaning it's not just a longer non-reserved name)
+                                char nextChar = potentialBaseName[reservedNameLength];
+                                if (!char.IsLetterOrDigit(nextChar))
                                 {
-                                    uncPrefixEnd = j;
-                                    break;
+                                    // The potential base name contains a reserved name followed by non-alphanumeric chars
+                                    // So this dot marks the start of extensions
+                                    return i;
                                 }
                             }
-                            break;
+                            else if (reservedNameLength == potentialBaseName.Length)
+                            {
+                                // Exact match with reserved name
+                                return i;
+                            }
                         }
                     }
-                }
-                
-                if (uncPrefixEnd == -1)
-                {
-                    // This doesn't look like a proper UNC path with a server and share, 
-                    // treat the part after \\ or // as the filename
-                    if (uncPath.Length > 2)
-                    {
-                        fileName = uncPath.Substring(2);
-                        // For the edge case of just server/share without filename, 
-                        // we need to extract the share name as the filename
-                        // Find the last separator in the remaining part to extract the last segment
-                        int lastSeparator = fileName.LastIndexOfAny(new char[] { '\\', '/' });
-                        if (lastSeparator >= 0)
-                        {
-                            fileName = fileName.Substring(lastSeparator + 1);
-                        }
-                    }
-                    return !string.IsNullOrEmpty(fileName);
-                }
-                
-                // Extract the filename part (everything after the last separator)
-                int lastSeparatorPos = -1;
-                for (int i = uncPath.Length - 1; i >= uncPrefixEnd; i--)
-                {
-                    if (uncPath[i] == '\\' || uncPath[i] == '/')
-                    {
-                        lastSeparatorPos = i;
-                        break;
-                    }
-                }
-                
-                if (lastSeparatorPos > uncPrefixEnd)
-                {
-                    fileName = uncPath.Substring(lastSeparatorPos + 1);
-                }
-                else
-                {
-                    // No additional separators after the share name, treat the rest as filename
-                    // This handles the edge case of \\server\share without additional path segments
-                    // Extract the share name part from the remaining string after the initial UNC prefix
-                    string remainingPath = uncPath.Substring(uncPrefixEnd);
-                    int shareEnd = remainingPath.IndexOfAny(new char[] { '\\', '/' });
-                    if (shareEnd > 0)
-                    {
-                        // If there are additional segments after the share, take the last one
-                        string[] pathParts = remainingPath.Split(new char[] { '\\', '/' }, StringSplitOptions.RemoveEmptyEntries);
-                        if (pathParts.Length > 0)
-                        {
-                            fileName = pathParts[pathParts.Length - 1];
-                        }
-                        else
-                        {
-                            fileName = remainingPath;
-                        }
-                    }
-                    else if (shareEnd == 0)
-                    {
-                        // If the remaining path starts with a separator, take the part after it
-                        fileName = remainingPath.Substring(1);
-                    }
-                    else
-                    {
-                        // If there are no more separators, the remaining part is the filename/share name
-                        fileName = remainingPath;
-                    }
-                }
-                
-                return !string.IsNullOrEmpty(fileName);
-            }
-            catch
-            {
-                // If any error occurs during parsing, return false
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Replaces the filename part in a UNC path with a new filename
-        /// </summary>
-        /// <param name="originalPath">The original UNC path</param>
-        /// <param name="oldFileName">The old filename to replace</param>
-        /// <param name="newFileName">The new filename to use</param>
-        /// <returns>The path with the filename replaced</returns>
-        private static string ReplaceFileNameInPath(string originalPath, string oldFileName, string newFileName)
-        {
-            // Find the last occurrence of the filename in the path
-            // We need to be careful to replace only the filename part, not any directory names that might match
-            int lastSeparatorIndex = -1;
-            for (int i = originalPath.Length - 1; i >= 0; i--)
-            {
-                if (originalPath[i] == '\\' || originalPath[i] == '/')
-                {
-                    lastSeparatorIndex = i;
-                    break;
                 }
             }
             
-            if (lastSeparatorIndex >= 0)
-            {
-                // The filename part is everything after the last separator
-                string directoryPath = originalPath.Substring(0, lastSeparatorIndex + 1);
-                return directoryPath + newFileName;
-            }
-            else
-            {
-                // If there's no separator, the whole path is the filename
-                return newFileName;
-            }
+            // No extension found that follows a reserved name pattern
+            return -1;
         }
 
+        /// <summary>
+        /// Checks if a name is a reserved Windows filename.
+        /// </summary>
+        /// <param name="name">The name to check.</param>
+        /// <returns>True if the name is reserved, false otherwise.</returns>
+        private static bool IsReservedName(string name)
+        {
+            // First check if the entire name is a reserved name
+            if (ReservedWindowsFileNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+                return true;
+
+            // Then check if the name starts with a reserved name followed by non-alphanumeric characters
+            // For example, "COM1.txt" - "COM1" is reserved, followed by ".txt"
+            foreach (string reservedName in ReservedWindowsFileNames)
+            {
+                if (name.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase))
+                {
+                    int reservedNameLength = reservedName.Length;
+                    if (reservedNameLength < name.Length)
+                    {
+                        // Check if what follows is not alphanumeric (meaning it's not just a longer non-reserved name)
+                        char nextChar = name[reservedNameLength];
+                        if (!char.IsLetterOrDigit(nextChar))
+                        {
+                            // This is a reserved name with additional characters (like extensions), so it's reserved
+                            return true;
+                        }
+                    }
+                    else if (reservedNameLength == name.Length)
+                    {
+                        // Exact match
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+        
         /// <summary>
         /// Checks if a path is a UNC path (starts with \\ or //)
         /// </summary>
@@ -307,381 +284,6 @@ namespace LivingRoots.Domain
 
             return (path[0] == '\\' && path[1] == '\\') ||
                    (path[0] == '/' && path[1] == '/');
-        }
-
-        /// <summary>
-        /// Process a filename for reserved name handling
-        /// </summary>
-        /// <param name="filename">The filename to process</param>
-        /// <returns>A filename with reserved names handled appropriately</returns>
-        private string ProcessFileName(string filename)
-        {
-            // Check if the entire filename consists entirely of insignificant characters (dots, spaces, tabs)
-            // This handles cases like " . " where the entire name is insignificant
-            string trimmedAll = filename.Trim('.', ' ', '\t');
-            if (string.IsNullOrEmpty(trimmedAll))
-            {
-                // Replace fully insignificant names with a safe placeholder
-                return "_";
-            }
-
-            // Separate name from extension properly
-            (string namePart, string extensionPart) = ExtractNameAndExtension(filename);
-
-            // Check if the name part consists entirely of insignificant characters (dots, spaces, tabs)
-            string trimmedNamePartAll = namePart.Trim('.', ' ', '\t');
-            if (string.IsNullOrEmpty(trimmedNamePartAll))
-            {
-                // Replace fully insignificant names with a safe placeholder
-                return "_" + extensionPart;
-            }
-
-            // Extract the core name (without leading/trailing insignificant chars) and preserve context
-            (string coreName, string leadingChars) = ExtractCoreNameAndLeadingChars(namePart);
-
-            // Check if the core name (before trimming) starts with a reserved name
-            // This handles cases like "COM1.tar" where "COM1" is reserved but embedded in a longer name
-            (string actualCoreName, bool isReserved) = CheckForReservedNameStart(coreName);
-
-            if (!isReserved)
-            {
-                // Check if the core name is reserved (full match)
-                (actualCoreName, isReserved) = CheckForReservedNameFullMatch(coreName, actualCoreName, isReserved);
-            }
-
-            // If not found as original, try normalization to detect homoglyphs and combining marks
-            if (!isReserved)
-            {
-                (actualCoreName, isReserved) = CheckForNormalizedReservedNames(coreName, actualCoreName, isReserved);
-            }
-
-            // Additional check: normalize the core name with combining marks removed for more thorough detection
-            if (!isReserved)
-            {
-                (actualCoreName, isReserved) = CheckForReservedNamesWithoutCombiningMarks(coreName, actualCoreName, isReserved);
-            }
-
-            if (isReserved)
-            {
-                return ConstructReservedNameResult(leadingChars, actualCoreName, coreName, extensionPart);
-            }
-
-            // If not reserved, check if the name part is fully insignificant (consists only of dots, spaces, tabs)
-            string trimmedForInsignificantCheck = namePart.Trim('.', ' ', '\t');
-            if (string.IsNullOrEmpty(trimmedForInsignificantCheck))
-            {
-                // Replace fully insignificant names with a safe placeholder
-                return "_" + extensionPart;
-            }
-
-            // If not reserved, return the original filename
-            return filename;
-        }
-
-        /// <summary>
-        /// Extracts the name part and extension part from a filename
-        /// </summary>
-        /// <param name="filename">The filename to process</param>
-        /// <returns>Tuple containing name part and extension part</returns>
-        private static (string namePart, string extensionPart) ExtractNameAndExtension(string filename)
-        {
-            string namePart, extensionPart = "";
-
-            int lastDotIndex = filename.LastIndexOf('.');
-            // Only consider it an extension if the dot is not at beginning or end and there's content after it
-            if (lastDotIndex > 0 && lastDotIndex < filename.Length - 1)
-            {
-                namePart = filename.Substring(0, lastDotIndex);
-                extensionPart = filename.Substring(lastDotIndex);
-            }
-            else
-            {
-                namePart = filename;
-            }
-
-            return (namePart, extensionPart);
-        }
-
-        /// <summary>
-        /// Extracts the core name (without leading/trailing insignificant chars) and leading characters
-        /// </summary>
-        /// <param name="namePart">The name part to process</param>
-        /// <returns>Tuple containing core name and leading characters</returns>
-        private static (string coreName, string leadingChars) ExtractCoreNameAndLeadingChars(string namePart)
-        {
-            // Get the core name by trimming both leading and trailing insignificant characters
-            string coreName = namePart.Trim('.', ' ', '\t');
-
-            // Get the leading chars that were trimmed
-            int leadingCharsLength = 0;
-            for (int i = 0; i < namePart.Length; i++)
-            {
-                char c = namePart[i];
-                if (c == '.' || c == ' ' || c == '\t')
-                    leadingCharsLength++;
-                else
-                    break;
-            }
-            string leadingChars = namePart.Substring(0, leadingCharsLength);
-
-            return (coreName, leadingChars);
-        }
-
-        /// <summary>
-        /// Checks if the core name starts with a reserved name
-        /// </summary>
-        /// <param name="coreName">The core name to check</param>
-        /// <returns>Tuple containing actual core name and whether it's reserved</returns>
-        private static (string actualCoreName, bool isReserved) CheckForReservedNameStart(string coreName)
-        {
-            string actualCoreName = coreName;
-            bool isReserved = false;
-
-            // First, check if the original core name starts with a reserved name (for embedded cases)
-            foreach (string reservedName in ReservedWindowsFileNames)
-            {
-                if (coreName.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase))
-                {
-                    // Verify that what follows is not alphanumeric (to avoid false positives)
-                    int reservedNameLength = reservedName.Length;
-                    if (reservedNameLength <= coreName.Length)
-                    {
-                        if (reservedNameLength == coreName.Length)
-                        {
-                            // Exact match
-                            isReserved = true;
-                            actualCoreName = coreName.Substring(0, reservedNameLength); // Use original case
-                            break;
-                        }
-                        else
-                        {
-                            // Check the character after the reserved name
-                            char nextChar = coreName[reservedNameLength];
-                            if (!char.IsLetterOrDigit(nextChar))
-                            {
-                                // The reserved name is followed by a non-alphanumeric character, so it's a match
-                                isReserved = true;
-                                actualCoreName = coreName.Substring(0, reservedNameLength); // Use original case
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return (actualCoreName, isReserved);
-        }
-
-        /// <summary>
-        /// Checks if the core name is reserved with a full match
-        /// </summary>
-        /// <param name="coreName">The core name to check</param>
-        /// <param name="actualCoreName">The current actual core name</param>
-        /// <param name="isReserved">The current reserved status</param>
-        /// <returns>Tuple containing actual core name and whether it's reserved</returns>
-        private static (string actualCoreName, bool isReserved) CheckForReservedNameFullMatch(string coreName, string actualCoreName, bool isReserved)
-        {
-            if (!isReserved)
-            {
-                // Check if the core name is reserved (full match)
-                foreach (string reservedName in ReservedWindowsFileNames)
-                {
-                    if (string.Equals(coreName, reservedName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        isReserved = true;
-                        actualCoreName = coreName; // Use the original case
-                        break;
-                    }
-                }
-            }
-
-            return (actualCoreName, isReserved);
-        }
-
-        /// <summary>
-        /// Checks for reserved names using normalization to detect homoglyphs
-        /// </summary>
-        /// <param name="coreName">The core name to check</param>
-        /// <param name="actualCoreName">The current actual core name</param>
-        /// <param name="isReserved">The current reserved status</param>
-        /// <returns>Tuple containing actual core name and whether it's reserved</returns>
-        private (string actualCoreName, bool isReserved) CheckForNormalizedReservedNames(string coreName, string actualCoreName, bool isReserved)
-        {
-            if (!isReserved)
-            {
-                // Normalize the core name to detect homoglyphs and combining marks that might be used to bypass detection
-                string? normalizedCore = _unicodeNormalizationService.Normalize(coreName);
-
-                if (normalizedCore != null && !string.Equals(coreName, normalizedCore, StringComparison.Ordinal))
-                {
-                    // It's a homoglyph - check if the normalized form is a reserved name
-                    foreach (string reservedName in ReservedWindowsFileNames)
-                    {
-                        if (string.Equals(normalizedCore, reservedName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            // This is a homoglyph of a reserved name
-                            isReserved = true;
-                            actualCoreName = normalizedCore; // Use the normalized form
-                            break;
-                        }
-                    }
-
-                    // Also check for embedded reserved names in the normalized form
-                    if (!isReserved)
-                    {
-                        foreach (string reservedName in ReservedWindowsFileNames)
-                        {
-                            if (normalizedCore.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase))
-                            {
-                                int reservedNameLength = reservedName.Length;
-                                if (reservedNameLength <= normalizedCore.Length)
-                                {
-                                    if (reservedNameLength == normalizedCore.Length)
-                                    {
-                                        // Exact match with normalized form
-                                        isReserved = true;
-                                        actualCoreName = normalizedCore; // Use the normalized form
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        // Check the character after the reserved name in normalized form
-                                        char nextChar = normalizedCore[reservedNameLength];
-                                        if (!char.IsLetterOrDigit(nextChar))
-                                        {
-                                            // The reserved name is followed by a non-alphanumeric character in normalized form
-                                            isReserved = true;
-                                            actualCoreName = normalizedCore.Substring(0, reservedNameLength); // Use the matching part
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            return (actualCoreName, isReserved);
-        }
-
-        /// <summary>
-        /// Checks for reserved names without combining marks
-        /// </summary>
-        /// <param name="coreName">The core name to check</param>
-        /// <param name="actualCoreName">The current actual core name</param>
-        /// <param name="isReserved">The current reserved status</param>
-        /// <returns>Tuple containing actual core name and whether it's reserved</returns>
-        private static (string actualCoreName, bool isReserved) CheckForReservedNamesWithoutCombiningMarks(string coreName, string actualCoreName, bool isReserved)
-        {
-            // Additional check: normalize the core name with combining marks removed for more thorough detection
-            if (!isReserved)
-            {
-                // Remove combining marks to detect attempts to bypass using diacritics
-                string nameWithoutCombiningMarks = RemoveCombiningMarks(coreName);
-
-                if (!string.Equals(nameWithoutCombiningMarks, coreName, StringComparison.Ordinal))
-                {
-                    // The name had combining marks, so check if the stripped version matches a reserved name
-                    foreach (string reservedName in ReservedWindowsFileNames)
-                    {
-                        if (string.Equals(nameWithoutCombiningMarks, reservedName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            isReserved = true;
-                            actualCoreName = coreName; // Keep the original with combining marks for processing
-                            break;
-                        }
-                    }
-
-                    // Also check for embedded names without combining marks
-                    if (!isReserved)
-                    {
-                        foreach (string reservedName in ReservedWindowsFileNames)
-                        {
-                            if (nameWithoutCombiningMarks.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase))
-                            {
-                                int reservedNameLength = reservedName.Length;
-                                if (reservedNameLength <= nameWithoutCombiningMarks.Length)
-                                {
-                                    if (reservedNameLength == nameWithoutCombiningMarks.Length)
-                                    {
-                                        // Exact match without combining marks
-                                        isReserved = true;
-                                        actualCoreName = coreName; // Keep the original with combining marks
-                                        break;
-                                    }
-                                    else
-                                    {
-                                        // Check the character after the reserved name in the combining-mark-stripped form
-                                        char nextChar = nameWithoutCombiningMarks[reservedNameLength];
-                                        if (!char.IsLetterOrDigit(nextChar))
-                                        {
-                                            // The reserved name is followed by a non-alphanumeric character in the stripped form
-                                            isReserved = true;
-                                            actualCoreName = coreName; // Keep the original with combining marks
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            return (actualCoreName, isReserved);
-        }
-
-        /// <summary>
-        /// Constructs the result for a reserved name
-        /// </summary>
-        /// <param name="leadingChars">The leading characters from the original name</param>
-        /// <param name="actualCoreName">The actual core name that was detected as reserved</param>
-        /// <param name="coreName">The original core name</param>
-        /// <param name="extensionPart">The extension part of the filename</param>
-        /// <returns>The constructed filename with reserved name handled</returns>
-        private static string ConstructReservedNameResult(string leadingChars, string actualCoreName, string coreName, string extensionPart)
-        {
-            // For reserved names, construct the result by using leading characters from the original name
-            // and adding an underscore to the base name
-
-            // Determine the base name to use in the result
-            // If we detected it as a homoglyph, actualCoreName is already the normalized form
-            // Otherwise, it's the original form
-            string coreNameForResult = actualCoreName;
-
-            // The new name part is: leading characters + core name (normalized if it was a homoglyph) + underscore + rest of name after reserved part
-            // For homoglyphs that matched exactly, there's no "rest" - for embedded matches, there might be
-            string restOfName = coreName.Length > actualCoreName.Length ? coreName.Substring(actualCoreName.Length) : "";
-
-            // For homoglyphs, we use the normalized form, so no need to normalize again
-            string newNamePart = leadingChars + coreNameForResult + "_" + restOfName;
-
-            return newNamePart + extensionPart;
-        }
-
-        /// <summary>
-        /// Removes combining marks from a string to detect attempts to bypass reserved name checks using diacritics.
-        /// </summary>
-        /// <param name="input">The input string to process</param>
-        /// <returns>The string with combining marks removed</returns>
-        private static string RemoveCombiningMarks(string input)
-        {
-            if (string.IsNullOrEmpty(input))
-                return input;
-
-            var result = new StringBuilder();
-            foreach (char c in input)
-            {
-                var category = CharUnicodeInfo.GetUnicodeCategory(c);
-                if (category != UnicodeCategory.NonSpacingMark &&
-                    category != UnicodeCategory.SpacingCombiningMark &&
-                    category != UnicodeCategory.EnclosingMark)
-                {
-                    result.Append(c);
-                }
-            }
-            return result.ToString();
         }
     }
 }
