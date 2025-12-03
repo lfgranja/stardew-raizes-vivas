@@ -85,13 +85,13 @@ namespace LivingRoots.Tests
             var mockModLogic = new Mock<IModLogic>();
             
             // Setup the mod logic to throw an exception when validating path
-            mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Throws(new InvalidOperationException("Invalid path"));
+            mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Throws(new ArgumentException("Invalid path"));
             
             var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
 
             // Act & Assert
-            var exception = Assert.Throws<InvalidOperationException>(() => GetValidatedAndSanitizedKeyTest(service, "invalid_path"));
-            Assert.Contains("Invalid path", exception.Message);
+            var exception = Assert.Throws<ArgumentException>(() => GetValidatedAndSanitizedKeyTest(service, "invalid_path"));
+            Assert.Contains("path validation failed", exception.Message);
         }
 
         // Helper method to access the private GetValidatedAndSanitizedKey method via reflection
