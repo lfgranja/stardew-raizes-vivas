@@ -84,7 +84,7 @@ namespace LivingRoots.Controllers
             catch (Exception ex)
             {
                 // Log error and reset the flag if registration failed - ensure disposed flag is preserved
-                monitor.Log($"Error registering events: {ex.Message}", LogLevel.Error);
+                monitor.Log("Error occurred while registering game events.", LogLevel.Error);
                 _onGameLaunchedHandler = null;
 
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
@@ -151,7 +151,7 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                localMonitor.Log($"Error while unregistering events: {ex.Message}", LogLevel.Error);
+                localMonitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
             }
         }
 
@@ -181,36 +181,13 @@ namespace LivingRoots.Controllers
             {
                 monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
 
-                // Use TrySetStateOnce to ensure the command is only registered once
-                bool wasCommandRegistered = TrySetStateOnce(CommandRegisteredFlag);
+                // Use the new atomic registration method
+                bool commandRegistered = TryRegisterCommandAtomically(helper, monitor);
 
-                // Only register the command if we successfully set the flag (meaning were the first thread to do so)
-                if (wasCommandRegistered)
+                if (!commandRegistered)
                 {
-                    var commands = helper?.ConsoleCommands;
-                    if (commands != null)
-                    {
-                        // Register the command with rollback logic
-                        try
-                        {
-                            commands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
-                            monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
-                        }
-                        catch (Exception commandEx)
-                        {
-                            monitor.Log($"Error registering console command 'lr_version': {commandEx.Message}", LogLevel.Error);
-                            // Rollback the command registration flag if the command registration failed
-                            Interlocked.And(ref _state, ~CommandRegisteredFlag);
-                        }
-                    }
-                    else
-                    {
-                        monitor.Log("Command registration failed: ConsoleCommands is null.", LogLevel.Error);
-                        // Reset the flag since registration failed
-                        Interlocked.And(ref _state, ~CommandRegisteredFlag);
-                    }
+                    monitor.Log("Command registration was not performed (already registered or unavailable).", LogLevel.Trace);
                 }
-                // If wasCommandRegistered is false, another thread already registered the command, so we do nothing
 
                 // Use Interlocked.Exchange to safely get and clear the handler to avoid race condition
                 var handler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
@@ -222,8 +199,77 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error in OnGameLaunched: {ex.Message}", LogLevel.Error);
+                _monitor.Log("Error occurred in game launched event handler.", LogLevel.Error);
             }
+        }
+
+        /// <summary>
+        /// Attempts to register the console command atomically, ensuring thread safety and state consistency.
+        /// This method performs the complete registration operation atomically:
+        /// 1. Checks if command is already registered
+        /// 2. Verifies ConsoleCommands is available
+        /// 3. Registers the command
+        /// 4. Sets the flag - only if all previous steps succeeded
+        /// </summary>
+        /// <param name="helper">The mod helper instance</param>
+        /// <param name="monitor">The monitor instance for logging</param>
+        /// <returns>True if the command was successfully registered, false otherwise</returns>
+        private bool TryRegisterCommandAtomically(IModHelper? helper, IMonitor? monitor)
+        {
+            // Use a loop to handle potential race conditions during the multi-step process
+            int currentState, newState;
+            bool registrationAttempted = false;
+            bool commandAvailable = false;
+
+            do
+            {
+                currentState = Volatile.Read(ref _state);
+
+                // If already disposed, exit immediately
+                if ((currentState & DisposedFlag) != 0)
+                    return false;
+
+                // If command is already registered, return false (no work needed)
+                if ((currentState & CommandRegisteredFlag) != 0)
+                    return false;
+
+                // Check if ConsoleCommands is available before proceeding
+                var commands = helper?.ConsoleCommands;
+                if (commands == null)
+                {
+                    monitor?.Log("Command registration deferred: ConsoleCommands is not yet available.", LogLevel.Trace);
+                    return false;
+                }
+
+                // Set the flag and proceed with registration
+                newState = currentState | CommandRegisteredFlag;
+                
+                // Attempt to set the state atomically
+                registrationAttempted = Interlocked.CompareExchange(ref _state, newState, currentState) == currentState;
+                
+                if (registrationAttempted)
+                {
+                    try
+                    {
+                        // Actually register the command
+                        commands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
+                        monitor?.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+                        commandAvailable = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        // If registration failed after setting the flag, reset the flag to maintain consistency
+                        monitor?.Log("Error occurred while registering console command 'lr_version'.", LogLevel.Error);
+                        
+                        // Reset the command registered flag to maintain state consistency
+                        Interlocked.And(ref _state, ~CommandRegisteredFlag);
+                        return false;
+                    }
+                }
+            }
+            while (!registrationAttempted);
+
+            return commandAvailable;
         }
 
         private void PrintVersion(string command, string[] args)
@@ -262,7 +308,7 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                _monitor?.Log($"Error in PrintVersion: {ex.Message}", LogLevel.Error);
+                _monitor?.Log("Error occurred while executing version command.", LogLevel.Error);
             }
         }
 
@@ -305,7 +351,7 @@ namespace LivingRoots.Controllers
                     }
                     catch (Exception ex)
                     {
-                        monitor?.Log($"Error while unregistering GameLaunched: {ex.Message}", LogLevel.Error);
+                        monitor?.Log("Error occurred while unregistering GameLaunched event.", LogLevel.Error);
                     }
                 }
 
