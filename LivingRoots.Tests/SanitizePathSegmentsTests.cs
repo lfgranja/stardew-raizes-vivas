@@ -72,7 +72,7 @@ namespace LivingRoots.Tests
             
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
-            Assert.Contains("Sanitized path cannot be empty", exception.InnerException.Message);
+            Assert.Contains("Path sanitization resulted in empty path", exception.InnerException.Message);
         }
 
         [Fact]
@@ -91,7 +91,7 @@ namespace LivingRoots.Tests
             
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
-            Assert.Contains("Sanitized path cannot be empty", exception.InnerException.Message);
+            Assert.Contains("Path sanitization resulted in empty path", exception.InnerException.Message);
         }
 
         [Fact]
@@ -110,7 +110,7 @@ namespace LivingRoots.Tests
             
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
-            Assert.Contains("Sanitized path cannot be empty", exception.InnerException.Message);
+            Assert.Contains("Path sanitization resulted in empty path", exception.InnerException.Message);
         }
 
         [Fact]
