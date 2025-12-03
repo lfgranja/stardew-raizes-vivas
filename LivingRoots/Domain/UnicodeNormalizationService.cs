@@ -58,7 +58,8 @@ namespace LivingRoots.Domain
             // This prevents exceptions when calling Normalize() on strings with invalid Unicode
             string sanitizedInput = SanitizeSurrogatePairs(input);
             
-            // Apply decomposition normalization to separate base characters from diacritics
+            // Apply canonical decomposition normalization to separate base characters from diacritics
+            // FormD (Canonical Decomposition) separates combined characters like 'é' into 'e' + combining acute accent
             string decomposed = sanitizedInput.Normalize(NormalizationForm.FormD);
             
             var resultBuilder = new StringBuilder();
@@ -164,8 +165,10 @@ namespace LivingRoots.Domain
                 }
             }
 
-            // Return in composed form to properly handle combined characters
-            return resultBuilder.ToString().Normalize(NormalizationForm.FormC);
+            // Apply FormC to ensure proper composition after processing
+            // This handles cases where compatibility normalization might have preserved some diacritics
+            string result = resultBuilder.ToString();
+            return result.Normalize(NormalizationForm.FormC);
         }
 
         /// <summary>
@@ -309,6 +312,7 @@ namespace LivingRoots.Domain
                 
             return false;
         }
+        
         /// <summary>
         /// Determines whether a confusable character should be converted based on its context.
         /// </summary>
