@@ -36,7 +36,7 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Handles reserved Windows filenames by appending an underscore to the base name if necessary.
-        /// Uses System.Uri for proper UNC path handling and cross-platform compatibility.
+        /// Uses Path.GetFileName and Path.GetDirectoryName for regular paths, with special handling for UNC paths.
         /// For directory paths ending with separators, returns the original path unchanged.
         /// </summary>
         /// <param name="filename">The filename or path to check for reserved names.</param>
@@ -52,12 +52,13 @@ namespace LivingRoots.Domain
             if (normalizedInput == null)
                 throw new ArgumentException("Filename normalization returned null, validation cannot proceed", nameof(filename));
 
-            // For UNC paths (starting with \\ or //), we need special handling
+            // Check if this is a UNC path (starts with \\ or //)
             if (IsUncPath(normalizedInput))
             {
-                // For UNC paths, extract the filename component manually since Path.GetFileName doesn't work reliably with UNC paths
+                // For UNC paths, we need to manually extract the filename and directory parts
+                // since Path.GetFileName and Path.GetDirectoryName don't handle UNC paths consistently across platforms
                 string fileName = ExtractFileNameFromUncPath(normalizedInput);
-
+                
                 // If extraction returns empty (for directory paths ending with separator), return original
                 if (string.IsNullOrEmpty(fileName)) return filename;
 
@@ -68,15 +69,13 @@ namespace LivingRoots.Domain
                 string? processedFileName = ProcessFileNameInternal(fileName);
 
                 // If no change was made to the filename component, return the original path
-                // Use consistent check with regular path handling
                 if (processedFileName == fileName)
                     return filename;
 
                 // Reconstruct the UNC path with the processed filename component
-                // For UNC paths, we need to preserve the UNC format properly
+                // For UNC paths, construct the path manually to preserve the UNC format
                 if (!string.IsNullOrEmpty(directoryPath))
                 {
-                    // For UNC paths, construct the path manually to preserve the UNC format
                     // Always use backslash for path separator in UNC paths
                     return directoryPath + "\\" + processedFileName;
                 }
