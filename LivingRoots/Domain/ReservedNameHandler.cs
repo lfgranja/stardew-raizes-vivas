@@ -55,26 +55,30 @@ namespace LivingRoots.Domain
             // For UNC paths (starting with \\ or //), we need special handling
             if (IsUncPath(normalizedInput))
             {
-                // Extract the filename component from the UNC path
-                string fileName = Path.GetFileName(normalizedInput);
+                // For UNC paths, extract the filename component manually since Path.GetFileName doesn't work reliably with UNC paths
+                string fileName = ExtractFileNameFromUncPath(normalizedInput);
 
-                // If Path.GetFileName returns empty (for directory paths ending with separator), return original
+                // If extraction returns empty (for directory paths ending with separator), return original
                 if (string.IsNullOrEmpty(fileName)) return filename;
 
                 // For UNC paths, extract directory path separately
-                string directoryPath = Path.GetDirectoryName(normalizedInput) ?? string.Empty;
+                string directoryPath = ExtractDirectoryPathFromUncPath(normalizedInput) ?? string.Empty;
 
                 // Process just the filename component for reserved names
                 string? processedFileName = ProcessFileNameInternal(fileName);
 
-                // If the filename component didn't change, return the original path
+                // If no change was made to the filename component, return the original path
+                // Use consistent check with regular path handling
                 if (processedFileName == fileName)
                     return filename;
 
                 // Reconstruct the UNC path with the processed filename component
+                // For UNC paths, we need to preserve the UNC format properly
                 if (!string.IsNullOrEmpty(directoryPath))
                 {
-                    return Path.Combine(directoryPath, processedFileName);
+                    // For UNC paths, construct the path manually to preserve the UNC format
+                    // Always use backslash for path separator in UNC paths
+                    return directoryPath + "\\" + processedFileName;
                 }
 
                 return processedFileName;
@@ -94,7 +98,7 @@ namespace LivingRoots.Domain
                 string? processedFileName = ProcessFileNameInternal(fileName);
 
                 // If no change was made to the filename component, return the original path
-                if (processedFileName == null || processedFileName == fileName)
+                if (processedFileName == fileName)
                     return filename;
 
                 // Reconstruct the full path with the processed filename component
@@ -105,6 +109,111 @@ namespace LivingRoots.Domain
 
                 return processedFileName;
             }
+        }
+
+        /// <summary>
+        /// Extracts the filename component from a UNC path.
+        /// Path.GetFileName doesn't work reliably with UNC paths using backslashes on all platforms.
+        /// </summary>
+        /// <param name="uncPath">The UNC path to extract the filename from</param>
+        /// <returns>The filename component of the UNC path</returns>
+        private static string ExtractFileNameFromUncPath(string uncPath)
+        {
+            // Find the last path separator after the UNC prefix (\\server\share\...)
+            // The UNC prefix is at least 2 characters (\\), then there's server and share
+            int uncPrefixEnd = -1;
+            
+            // Skip the initial UNC markers (\\ or //)
+            if (uncPath.Length >= 2 && ((uncPath[0] == '\\' && uncPath[1] == '\\') || (uncPath[0] == '/' && uncPath[1] == '/')))
+            {
+                uncPrefixEnd = 2;
+                
+                // Find the end of the server name (first separator after \\)
+                int serverEnd = -1;
+                char separator = uncPath[0]; // Use the same separator as the UNC prefix
+                
+                for (int i = uncPrefixEnd; i < uncPath.Length; i++)
+                {
+                    if (uncPath[i] == separator)
+                    {
+                        serverEnd = i;
+                        break;
+                    }
+                }
+                
+                if (serverEnd != -1)
+                {
+                    // Find the end of the share name (second separator after \\)
+                    for (int i = serverEnd + 1; i < uncPath.Length; i++)
+                    {
+                        if (uncPath[i] == separator)
+                        {
+                            // The filename starts after this separator
+                            int fileNameStart = i + 1;
+                            if (fileNameStart < uncPath.Length)
+                            {
+                                return uncPath.Substring(fileNameStart);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // If we can't properly parse it as a UNC path, return the original
+            return Path.GetFileName(uncPath);
+        }
+
+        /// <summary>
+        /// Extracts the directory path component from a UNC path.
+        /// </summary>
+        /// <param name="uncPath">The UNC path to extract the directory path from</param>
+        /// <returns>The directory path component of the UNC path</returns>
+        private static string? ExtractDirectoryPathFromUncPath(string uncPath)
+        {
+            // Find the last path separator after the UNC prefix (\\server\share\...)
+            // The UNC prefix is at least 2 characters (\\), then there's server and share
+            int uncPrefixEnd = -1;
+            
+            // Skip the initial UNC markers (\\ or //)
+            if (uncPath.Length >= 2 && ((uncPath[0] == '\\' && uncPath[1] == '\\') || (uncPath[0] == '/' && uncPath[1] == '/')))
+            {
+                uncPrefixEnd = 2;
+                
+                // Find the end of the server name (first separator after \\)
+                int serverEnd = -1;
+                char separator = uncPath[0]; // Use the same separator as the UNC prefix
+                
+                for (int i = uncPrefixEnd; i < uncPath.Length; i++)
+                {
+                    if (uncPath[i] == separator)
+                    {
+                        serverEnd = i;
+                        break;
+                    }
+                }
+                
+                if (serverEnd != -1)
+                {
+                    // Find the end of the share name (second separator after \\)
+                    for (int i = serverEnd + 1; i < uncPath.Length; i++)
+                    {
+                        if (uncPath[i] == separator)
+                        {
+                            // The directory path ends at this separator
+                            int dirEnd = i;
+                            if (dirEnd < uncPath.Length)
+                            {
+                                return uncPath.Substring(0, dirEnd);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // If we can't properly parse it as a UNC path, return what Path.GetDirectoryName returns
+            return Path.GetDirectoryName(uncPath);
         }
 
         /// <summary>
@@ -143,8 +252,48 @@ namespace LivingRoots.Domain
             if (IsReservedName(baseName))
             {
                 // If the base name is reserved, add an underscore to make it safe
-                // Return the reserved base name with underscore, plus extension part
-                return baseName + "_" + extensionPart;
+                // But first, remove any trailing insignificant characters from the extension part
+                // to prevent issues like "CON_..." where the trailing dots are still there
+                string sanitizedExtension = SanitizeTrailingInsignificantChars(extensionPart);
+                
+                // Special handling for cases where the base name is reserved due to trailing insignificant characters
+                // For example: "CON   " should become "CON_" (not "CON   _")
+                if (baseName.Trim('.', ' ', '\t') != baseName)
+                {
+                    // The base name contains trailing insignificant characters
+                    // Extract the significant part and add underscore to that
+                    string significantPart = baseName.TrimEnd('.', ' ', '\t');
+                    return significantPart + "_" + sanitizedExtension;
+                }
+                
+                // Return the reserved base name with underscore, plus sanitized extension part
+                return baseName + "_" + sanitizedExtension;
+            }
+            
+            // Check if the base name part (after trimming insignificant characters) is a reserved Windows filename
+            // This handles cases like " CON " where we need to check if "CON" is reserved
+            string baseNameTrimmed = baseName.Trim('.', ' ', '\t');
+            if (IsReservedName(baseNameTrimmed))
+            {
+                // If the trimmed base name is reserved, we need to preserve the original format
+                // but add an underscore to the reserved part
+                // For example: " CON " should become " CON_"
+                // For example: "CON   " should become "CON_" (not "CON   _")
+                
+                // Find the start and end positions of the trimmed part within the original baseName
+                int startIndex = FindStartIndexAfterInsignificantChars(baseName);
+                int endIndex = FindEndIndexBeforeInsignificantChars(baseName);
+                
+                // Extract the leading insignificant characters, the core name, and trailing insignificant characters
+                string leadingChars = startIndex > 0 ? baseName.Substring(0, startIndex) : "";
+                string coreName = baseName.Substring(startIndex, endIndex - startIndex + 1);
+                
+                // Add underscore to the core reserved name
+                string modifiedCore = coreName + "_";
+                
+                // Combine everything back together with the extension
+                // Don't include trailing insignificant characters after the core name
+                string sanitizedExtensionForContext = SanitizeTrailingInsignificantChars(extensionPart); return leadingChars + modifiedCore + sanitizedExtensionForContext;
             }
             
             // If not reserved, check if the name part is fully insignificant (consists only of dots, spaces, tabs)
@@ -152,11 +301,58 @@ namespace LivingRoots.Domain
             if (string.IsNullOrEmpty(trimmedForInsignificantCheck))
             {
                 // Replace fully insignificant names with a safe placeholder
-                return "_" + extensionPart;
+                string sanitizedExtension = SanitizeTrailingInsignificantChars(extensionPart);
+                return "_" + sanitizedExtension;
             }
             
             // If not reserved, return the original filename
             return filename;
+        }
+
+        /// <summary>
+        /// Finds the start index after insignificant characters
+        /// </summary>
+        /// <param name="str">The string to check</param>
+        /// <returns>The index of the first non-insignificant character</returns>
+        private static int FindStartIndexAfterInsignificantChars(string str)
+        {
+            for (int i = 0; i < str.Length; i++)
+            {
+                char c = str[i];
+                if (c != '.' && c != ' ' && c != '\t')
+                    return i;
+            }
+            return str.Length; // If all characters are insignificant
+        }
+
+        /// <summary>
+        /// Finds the end index before insignificant characters
+        /// </summary>
+        /// <param name="str">The string to check</param>
+        /// <returns>The index of the last non-insignificant character</returns>
+        private static int FindEndIndexBeforeInsignificantChars(string str)
+        {
+            for (int i = str.Length - 1; i >= 0; i--)
+            {
+                char c = str[i];
+                if (c != '.' && c != ' ' && c != '\t')
+                    return i;
+            }
+            return -1; // If all characters are insignificant
+        }
+
+        /// <summary>
+        /// Sanitizes trailing insignificant characters (dots, spaces, tabs) from a string
+        /// </summary>
+        /// <param name="input">The input string to sanitize</param>
+        /// <returns>The sanitized string with trailing insignificant characters removed</returns>
+        private static string SanitizeTrailingInsignificantChars(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+            
+            // Remove trailing insignificant characters (dots, spaces, tabs)
+            return input.TrimEnd('.', ' ', '\t');
         }
 
         /// <summary>
