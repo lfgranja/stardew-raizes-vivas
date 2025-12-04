@@ -470,6 +470,10 @@ namespace LivingRoots.Services
         /// <summary>
         /// Checks if a segment is a path traversal attempt (e.g., "..", multiple consecutive dots, etc.)
         /// Enhanced defense-in-depth security check to catch more potential path traversal attempts
+        /// 
+        /// IMPROVEMENT: Refactored to only block actual path traversal patterns, not legitimate filenames
+        /// containing ".." like "file..backup.txt". The overly restrictive check for any segment containing
+        /// ".." has been replaced with more precise pattern detection.
         /// </summary>
         /// <param name="segment">The segment to check</param>
         /// <returns>True if the segment is a path traversal attempt, false otherwise</returns>
@@ -478,13 +482,16 @@ namespace LivingRoots.Services
             if (string.IsNullOrEmpty(segment))
                 return false;
             
-            // Check for exact ".." match
+            // Check for exact ".." match - this is a direct path traversal attempt
             if (segment == "..")
                 return true;
             
+            // Check for exact "." match - this represents current directory navigation
+            if (segment == ".")
+                return false; // Not a traversal, but handled elsewhere in SanitizePathSegments
+            
             // Check for segments with multiple consecutive dots (defense-in-depth against bypass attempts)
             // Look for patterns like "....", ".....", etc. that could be attempts to bypass simple ".." filters
-            // This is a defense-in-depth check to catch evasion attempts
             int consecutiveDots = 0;
             int maxConsecutiveDots = 0;
             
@@ -506,18 +513,17 @@ namespace LivingRoots.Services
             if (maxConsecutiveDots > 2)
                 return true;
             
-            // Additional defense-in-depth checks for common path traversal patterns
-            // Check if segment contains path traversal indicators combined with other characters
-            // Examples: "....", "....", "....", etc. where dots might be separated by other characters
-            string lowerSegment = segment.ToLowerInvariant();
-            
-            // Check for patterns that might represent path traversal in different encodings or formats
-            // These are additional patterns beyond simple consecutive dots
-            if (lowerSegment.Contains(".."))
+            // Additional defense-in-depth checks for actual path traversal patterns
+            // Only block if the segment contains ".." as a complete traversal pattern
+            // Allow legitimate filenames like "file..backup.txt" where ".." is not a traversal pattern
+            if (segment.Contains(".."))
             {
-                // If the segment contains ".." but is not exactly "..", it might be an attempt to obfuscate path traversal
-                // For example: "...", "....", "a..b", "..x", etc.
-                return true;
+                // Check if the segment contains actual path traversal patterns
+                // This is more precise than the previous overly restrictive check
+                if (IsActualPathTraversalPattern(segment))
+                {
+                    return true;
+                }
             }
             
             // Check for other potential path traversal indicators
@@ -527,6 +533,46 @@ namespace LivingRoots.Services
                 return true;
             }
             
+            return false;
+        }
+        
+        /// <summary>
+        /// Helper method to determine if a segment containing ".." is actually a path traversal pattern
+        /// rather than a legitimate filename containing dots.
+        /// 
+        /// This method provides precise detection that allows filenames like "file..backup.txt"
+        /// while still blocking actual traversal attempts like "../etc/passwd" or "dir/../etc".
+        /// </summary>
+        /// <param name="segment">The segment to analyze</param>
+        /// <returns>True if the segment contains an actual path traversal pattern, false otherwise</returns>
+        private static bool IsActualPathTraversalPattern(string segment)
+        {
+            // If segment is exactly "..", it's a traversal attempt
+            if (segment == "..")
+                return true;
+            
+            // Check for patterns where ".." is followed or preceded by path separators
+            // These indicate actual traversal attempts like "../", "/..", "..\\", "\\..", etc.
+            if (segment.Contains("../") || segment.Contains("/..") || 
+                segment.Contains("..\\") || segment.Contains("\\.."))
+            {
+                return true;
+            }
+            
+            // Check if the segment starts or ends with ".." followed/preceded by a separator
+            // This would indicate traversal attempts like ".." at the start or end of a path component
+            if (segment.StartsWith("..") && segment.Length >= 3 && (segment[2] == '/' || segment[2] == '\\'))
+            {
+                return true;
+            }
+            
+            if (segment.EndsWith("..") && segment.Length >= 3 && (segment[segment.Length - 3] == '/' || segment[segment.Length - 3] == '\\'))
+            {
+                return true;
+            }
+            
+            // For segments that contain ".." but don't match traversal patterns,
+            // they are likely legitimate filenames like "file..backup.txt"
             return false;
         }
     }
