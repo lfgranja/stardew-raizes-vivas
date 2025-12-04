@@ -1,293 +1,168 @@
-# Implementation Guidelines: Command Registration Race Condition Fix
+# Implementation Guidelines for ReservedNameHandler UNC Path Refactoring
 
-## Overview
+## 1. Executive Summary
 
-This document provides detailed implementation guidelines for fixing the race condition in command registration in `ModController.cs`. The guidelines ensure proper implementation of the atomic registration pattern with error recovery.
+This document provides the complete architectural plan for refactoring the ReservedNameHandler to simplify UNC path handling by leveraging .NET's built-in `Path.GetFileName` and `Path.GetDirectoryName` methods. This refactoring eliminates complex manual string manipulation while maintaining all existing security validations and functionality.
 
-## Implementation Prerequisites
+## 2. Refactoring Overview
 
-### 1. Required Knowledge
-- Understanding of atomic operations and thread safety
-- Familiarity with SMAPI (Stardew Modding API) console command system
-- Knowledge of C# Interlocked operations
-- Understanding of the existing ModController architecture
+### 2.1. Current State
+- Manual UNC path detection using `IsUncPath` method
+- Separate code paths for UNC and non-UNC paths
+- Complex string manipulation for path parsing
+- Maintained security validations but complex implementation
 
-### 2. Development Environment
-- .NET development environment
-- Access to StardewModdingAPI references
-- Unit testing framework (xUnit)
+### 2.2. Target State
+- Unified path processing using .NET built-in methods
+- Single code path for all path types (UNC, local, relative, rooted)
+- Simplified implementation with improved maintainability
+- Preserved all security validations and functionality
 
-## Core Implementation Steps
+## 3. Implementation Steps
 
-### Step 1: Add the Atomic Registration Method
-
-Implement the new `TryRegisterCommandAtomically` method in `ModController.cs`:
+### 3.1. Step 1: Update the Handle Method
+Replace the current implementation with the simplified approach:
 
 ```csharp
-private bool TryRegisterCommandAtomically(IModHelper helper, IMonitor monitor)
+public string? Handle(string? filename)
 {
-    // Use a loop to handle potential race conditions during the multi-step process
-    int currentState, newState;
-    bool registrationAttempted = false;
-    bool commandSuccessfullyRegistered = false;
+    if (string.IsNullOrEmpty(filename)) return filename;
 
-    do
+    // First, normalize Unicode characters to handle diacritics and homoglyphs
+    string? normalizedInput = _unicodeNormalizationService?.Normalize(filename);
+    
+    // Security fix: Add null check for normalizedInput to prevent validation bypass
+    if (normalizedInput == null)
+        throw new ArgumentException("Filename normalization returned null, validation cannot proceed", nameof(filename));
+
+    // Extract the filename component using Path.GetFileName which handles UNC paths correctly
+    string fileName = Path.GetFileName(normalizedInput);
+
+    // If Path.GetFileName returns empty (for directory paths ending with separator), return original
+    if (string.IsNullOrEmpty(fileName)) return filename;
+
+    // Extract the directory path using Path.GetDirectoryName which handles UNC paths correctly
+    string directoryPath = Path.GetDirectoryName(normalizedInput) ?? string.Empty;
+
+    // Process just the filename component for reserved names
+    string? processedFileName = ProcessFileNameInternal(fileName);
+
+    // If no change was made to the filename component, return the original path
+    if (processedFileName == null || processedFileName == fileName)
+        return filename;
+
+    // Reconstruct the full path with the processed filename component
+    if (!string.IsNullOrEmpty(directoryPath))
     {
-        currentState = Volatile.Read(ref _state);
-
-        // If already disposed, exit immediately
-        if ((currentState & DisposedFlag) != 0)
-            return false;
-
-        // If command is already registered, return false (no work needed)
-        if ((currentState & CommandRegisteredFlag) != 0)
-            return false;
-
-        // Check if ConsoleCommands is available before proceeding
-        var commands = helper?.ConsoleCommands;
-        if (commands == null)
-        {
-            monitor?.Log("ConsoleCommands is not available for command registration.", LogLevel.Error);
-            return false;
-        }
-
-        // Attempt to set the flag atomically while preserving other flags
-        newState = currentState | CommandRegisteredFlag;
-        
-        // Attempt to set the state atomically
-        registrationAttempted = Interlocked.CompareExchange(ref _state, newState, currentState) == currentState;
-        
-        if (registrationAttempted)
-        {
-            try
-            {
-                // Actually register the command
-                commands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
-                monitor?.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
-                commandSuccessfullyRegistered = true;
-            }
-            catch (Exception ex)
-            {
-                // CRITICAL: Recovery mechanism - reset flag to maintain consistency
-                monitor?.Log($"Command registration failed after flag was set: {ex.Message}", LogLevel.Error);
-                
-                // Reset the command registered flag to maintain state consistency
-                Interlocked.And(ref _state, ~CommandRegisteredFlag);
-                
-                // Return failure status
-                return false;
-            }
-        }
+        return Path.Combine(directoryPath, processedFileName);
     }
-    while (!registrationAttempted);
 
-    return commandSuccessfullyRegistered;
+    return processedFileName;
 }
 ```
 
-### Step 2: Update the OnGameLaunched Method
-
-Replace the existing command registration logic in the `OnGameLaunched` method:
+### 3.2. Step 2: Remove Manual UNC Detection
+Eliminate the `IsUncPath` method as it's no longer needed:
 
 ```csharp
-private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
+// This method should be removed entirely
+private static bool IsUncPath(string path)
 {
-    // Early exit if disposed - single atomic check at the beginning using volatile read
-    if (IsDisposed())
-    {
-        _monitor.Log("OnGameLaunched called after disposal. Operation skipped.", LogLevel.Trace);
-        return;
-    }
+    if (string.IsNullOrEmpty(path) || path.Length < 2)
+        return false;
 
-    // Create snapshots of dependencies to avoid errors if disposed mid-execution
-    var monitor = _monitor;
-    var helper = _helper;
-
-    try
-    {
-        monitor.Log("The 'Living Roots' mod was loaded successfully!", LogLevel.Info);
-
-        // Use the new atomic registration method
-        bool commandRegistered = TryRegisterCommandAtomically(helper, monitor);
-
-        if (!commandRegistered)
-        {
-            monitor.Log("Command registration was not performed (already registered or unavailable).", LogLevel.Trace);
-        }
-
-        // Use Interlocked.Exchange to safely get and clear the handler to avoid race condition
-        var handler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-        if (handler != null && helper?.Events?.GameLoop != null)
-        {
-            helper.Events.GameLoop.GameLaunched -= handler;
-            monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
-        }
-    }
-    catch (Exception ex)
-    {
-        _monitor.Log($"Error in OnGameLaunched: {ex.Message}", LogLevel.Error);
-    }
+    return (path[0] == '\\' && path[1] == '\\') ||
+           (path[0] == '/' && path[1] == '/');
 }
 ```
 
-## Implementation Best Practices
+### 3.3. Step 3: Maintain All Other Methods
+Keep all other methods unchanged:
+- `ProcessFileNameInternal`
+- `FindFirstExtensionIndex` 
+- `IsReservedName`
+- All security validation logic remains identical
 
-### 1. Atomic Operation Patterns
+## 4. Key Benefits
 
-#### A. Compare-And-Swap Loop
-- Use a do-while loop with `Interlocked.CompareExchange` for multi-step atomic operations
-- Always read the current state with `Volatile.Read` before each operation
-- Continue looping until the operation succeeds
+### 4.1. Improved Maintainability
+- **Reduced complexity**: Single code path instead of multiple branches
+- **Clearer logic**: Separation of path parsing (handled by .NET) and business logic
+- **Easier debugging**: Fewer conditional branches to trace through
+- **Better readability**: More straightforward implementation
 
-#### B. State Preservation
-- When setting flags, use bitwise OR (`|`) to preserve other flags
-- When clearing flags, use bitwise AND with negation (`& ~`) to preserve other flags
-- Never clear the `DisposedFlag` accidentally
+### 4.2. Enhanced Robustness
+- **Built-in handling**: .NET methods handle edge cases automatically
+- **Cross-platform compatibility**: Proper handling across Windows, Linux, and macOS
+- **Standard implementation**: Leverages battle-tested .NET framework code
+- **Future-proof**: New path formats handled by .NET framework
 
-### 2. Error Recovery Patterns
+### 4.3. Preserved Security
+- **All validations maintained**: Reserved name detection unchanged
+- **Homoglyph protection**: Unicode normalization continues to work
+- **Extension handling**: Multi-part extension logic preserved
+- **Insignificant character handling**: All security checks intact
 
-#### A. Recovery on Exception
-- Always reset the state flag if an operation fails after the flag has been set
-- Use `Interlocked.And` with bitwise negation to atomically clear flags
-- Log the recovery action for debugging purposes
+## 5. Quality Assurance
 
-#### B. Recovery on Prerequisites Failure
-- Check all prerequisites before setting any flags
-- Return false without setting flags if prerequisites are not met
-- Log appropriate error messages for different failure scenarios
+### 5.1. Testing Requirements
+- Execute all existing unit tests to verify no regressions
+- Run integration tests to ensure system-level compatibility
+- Validate cross-platform behavior on different operating systems
+- Performance test to ensure no degradation
+- Security tests to verify all protections remain active
 
-### 3. Thread Safety Considerations
+### 5.2. Verification Checklist
+- [ ] All ReservedNameHandler unit tests pass
+- [ ] All integration tests pass
+- [ ] Performance remains within acceptable bounds
+- [ ] Security validations continue to function
+- [ ] UNC path handling works correctly
+- [ ] All path formats are supported (local, UNC, relative, rooted)
+- [ ] Edge cases are handled properly
+- [ ] Cross-platform compatibility verified
 
-#### A. Dependency Snapshots
-- Create local snapshots of dependencies (`helper`, `monitor`) to prevent null reference exceptions
-- Use these snapshots throughout the method to avoid accessing disposed objects
+## 6. Risk Mitigation
 
-#### B. Volatile Reads
-- Always use `Volatile.Read` when checking state flags
-- This ensures you get the most current value across all threads
+### 6.1. Potential Risks
+- **Behavioral changes**: Ensure no functional differences from original
+- **Performance impact**: Verify no significant performance degradation
+- **Edge case handling**: Confirm .NET methods handle all scenarios correctly
 
-## Code Quality Standards
+### 6.2. Mitigation Strategies
+- **Comprehensive testing**: Execute full test suite before deployment
+- **Performance benchmarking**: Compare performance metrics with baseline
+- **Gradual rollout**: Implement with monitoring and quick rollback capability
+- **Code review**: Peer review of the simplified implementation
 
-### 1. Naming Conventions
-- Use descriptive method names: `TryRegisterCommandAtomically`
-- Follow C# naming conventions (PascalCase for methods, camelCase for parameters)
-- Use clear variable names that indicate their purpose
+## 7. Success Metrics
 
-### 2. Documentation Standards
-- Add XML documentation comments for all new public and private methods
-- Document the atomic nature and thread safety of operations
-- Include remarks about error recovery behavior
+### 7.1. Maintainability Improvements
+- **Lines of code reduction**: Significant reduction in complexity
+- **Cognitive complexity**: Easier to understand and modify
+- **Code duplication**: Elimination of duplicate path handling logic
+- **Separation of concerns**: Clearer distinction between infrastructure and business logic
 
-### 3. Logging Standards
-- Use appropriate log levels (Trace for detailed info, Error for problems)
-- Include descriptive messages that help with debugging
-- Follow existing logging patterns in the codebase
+### 7.2. Quality Maintenance
+- **Security**: All existing protections preserved
+- **Functionality**: Identical behavior for all inputs
+- **Performance**: Maintained or improved execution characteristics
+- **Reliability**: Better handling of edge cases through .NET framework
 
-## Testing Implementation Guidelines
+## 8. Post-Implementation Activities
 
-### 1. Unit Test Structure
-- Test the atomic registration method in isolation
-- Verify all code paths including success and failure scenarios
-- Test concurrent execution scenarios
+### 8.1. Monitoring
+- Monitor application logs for any unexpected path handling issues
+- Track performance metrics to ensure no degradation
+- Watch for any security-related anomalies
 
-### 2. Mock Configuration
-- Mock `ICommandHelper` to simulate different ConsoleCommands states
-- Test with null ConsoleCommands to verify recovery
-- Simulate exceptions during command registration
+### 8.2. Documentation Updates
+- Update any implementation-specific documentation
+- Ensure comments reflect the new approach
+- Update any architectural documentation that references the old implementation
 
-### 3. Assertion Strategy
-- Verify that state flags match actual registration status
-- Confirm that error recovery properly resets flags
-- Validate that only one registration occurs in concurrent scenarios
+## 9. Conclusion
 
-## Performance Considerations
+The refactoring of ReservedNameHandler to use .NET's built-in path methods represents a significant improvement in maintainability while preserving all existing functionality and security validations. The unified approach simplifies the codebase, reduces complexity, and leverages robust framework functionality while maintaining identical behavior for all inputs.
 
-### 1. Atomic Operation Efficiency
-- Compare-and-swap loops are efficient under low to moderate contention
-- No blocking or locking mechanisms are used
-- The operation complexity remains constant
-
-### 2. Memory Usage
-- No additional memory allocation beyond existing patterns
-- Uses the same bit flag system as existing code
-- Minimal overhead for atomic operations
-
-## Integration Considerations
-
-### 1. Existing Architecture Compatibility
-- Maintain compatibility with existing state management patterns
-- Preserve existing disposal and cleanup behavior
-- Keep the same logging and monitoring integration
-
-### 2. External API Integration
-- Continue to use SMAPI's `ConsoleCommands.Add` method
-- Maintain the same command name, description, and handler
-- Preserve all existing event handling behavior
-
-## Error Handling Implementation
-
-### 1. Exception Safety
-- Wrap command registration in try-catch to handle potential exceptions
-- Ensure recovery mechanism executes even if registration throws
-- Log exceptions appropriately without exposing internal details
-
-### 2. Null Reference Prevention
-- Check for null dependencies before use
-- Handle cases where SMAPI services become unavailable
-- Provide graceful degradation when services are not available
-
-## Verification Implementation
-
-### 1. State Consistency Checks
-- Verify that the flag accurately reflects registration status
-- Confirm recovery mechanism works properly
-- Test all failure scenarios thoroughly
-
-### 2. Concurrency Verification
-- Run tests with multiple concurrent threads
-- Verify atomic behavior under high contention
-- Test boundary conditions with rapid state changes
-
-## Deployment Guidelines
-
-### 1. Backward Compatibility
-- Maintain all existing public interfaces
-- Preserve existing behavior for all success scenarios
-- Ensure no breaking changes to external dependencies
-
-### 2. Forward Compatibility
-- Design for potential future command registration needs
-- Keep the atomic registration method generalizable
-- Maintain clear separation of concerns
-
-## Code Review Checklist
-
-Before merging the implementation, verify:
-
-- [ ] Atomic registration method properly implements the compare-and-swap pattern
-- [ ] Recovery mechanism correctly resets flags on failure
-- [ ] All existing functionality remains intact
-- [ ] Thread safety is maintained in all scenarios
-- [ ] Error handling and logging follow established patterns
-- [ ] Unit tests cover all code paths and scenarios
-- [ ] Performance characteristics are maintained
-- [ ] Code follows established naming and documentation conventions
-
-## Common Implementation Pitfalls to Avoid
-
-### 1. Incorrect Flag Management
-- Don't clear the `DisposedFlag` during recovery
-- Always preserve other state flags when modifying the state
-- Use proper bitwise operations to avoid unintended side effects
-
-### 2. Race Condition Creation
-- Don't set flags before checking prerequisites
-- Always use atomic operations for state changes
-- Don't assume state won't change between read and write operations
-
-### 3. Incomplete Error Recovery
-- Always reset flags when operations fail after setting them
-- Don't leave the system in an inconsistent state
-- Log recovery actions for debugging purposes
-
-Following these implementation guidelines will ensure a robust, thread-safe solution that properly fixes the race condition while maintaining all existing functionality.
+This architectural approach follows best practices for software design and ensures that the improvement in maintainability does not come at the cost of security or functionality. The comprehensive verification strategy ensures that all aspects of the system remain robust after the refactoring.

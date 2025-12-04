@@ -1,259 +1,452 @@
-# Verification Strategy: Command Registration Race Condition Fix
+# Verification Strategy for ReservedNameHandler UNC Path Refactoring
 
-## Overview
+## 1. Overview
 
-This document outlines the comprehensive verification strategy to ensure that the race condition fix in command registration prevents the inconsistent state where `CommandRegisteredFlag` is set but the command is not actually registered.
+This document outlines the comprehensive verification strategy to ensure that the refactoring of ReservedNameHandler to use .NET's built-in Path.GetFileName and Path.GetDirectoryName methods improves maintainability without compromising security. The strategy includes multiple verification layers to validate both functional correctness and security preservation.
 
-## Verification Objectives
+## 2. Verification Objectives
 
-### Primary Objective
-Ensure that the system never enters an inconsistent state where the `CommandRegisteredFlag` is set but the command is not actually registered with SMAPI.
+### 2.1. Primary Objectives
+- Verify that all existing functionality is preserved after refactoring
+- Confirm that security validations remain intact and effective
+- Ensure maintainability improvements are achieved
+- Validate cross-platform compatibility
+- Confirm performance characteristics are maintained
 
-### Secondary Objectives
-- Verify thread safety of the new atomic registration implementation
-- Confirm that all existing functionality remains intact
-- Validate error recovery mechanisms work properly
-- Ensure performance characteristics are maintained
+### 2.2. Success Criteria
+- All existing unit tests continue to pass
+- All security validations function identically
+- Code complexity is reduced
+- Maintainability metrics improve
+- No performance degradation occurs
 
-## Verification Methods
+## 3. Functional Verification
 
-### 1. Static Analysis
+### 3.1. Unit Test Validation
+Execute comprehensive unit test suite to verify functional correctness:
 
-#### A. Code Review Checklist
-- Verify that flag setting and command registration happen atomically
-- Confirm that recovery mechanism resets flag on failure
-- Check that all code paths maintain state consistency
-- Validate that thread safety primitives are used correctly
+```bash
+# Run all ReservedNameHandler tests
+dotnet test --filter "FullyQualifiedName~ReservedNameHandlerTests" --logger "console;verbosity=detailed"
 
-#### B. Design Pattern Verification
-- Confirm Winner Takes All pattern implementation
-- Verify atomic operation usage
-- Check error handling and recovery mechanisms
+# Verify test coverage remains high
+dotnet test /p:CollectCoverage=true /p:CoverletOutput=TestResults/ /p:CoverletOutputFormat=opencover
+```
 
-### 2. Dynamic Testing
+**Expected Results:**
+- 100% of existing tests pass
+- Test coverage remains at or above current levels
+- No new test failures introduced
 
-#### A. Unit Testing
-- Test atomic registration method in isolation
-- Verify state consistency under various scenarios
-- Test error recovery paths
-- Validate concurrent access scenarios
+### 3.2. Regression Testing
+Execute all related test suites to ensure no unintended impacts:
 
-#### B. Integration Testing
-- Test full registration workflow with SMAPI mocks
-- Verify actual command registration behavior
-- Test disposal scenarios
-- Validate event handling integration
+```bash
+# Run domain service integration tests
+dotnet test --filter "FullyQualifiedName~DomainServiceIntegrationTests"
 
-#### C. Stress Testing
-- High-concurrency registration attempts
-- Long-running stability tests
-- Boundary condition testing
+# Run path validation service tests
+dotnet test --filter "FullyQualifiedName~PathValidationServiceTests"
 
-### 3. Race Condition Detection
+# Run all tests to catch any side effects
+dotnet test
+```
 
-#### A. Concurrent Execution Tests
-- Multiple threads attempting registration simultaneously
-- Registration during disposal scenarios
-- Mixed success/failure concurrent scenarios
+### 3.3. Edge Case Verification
+Validate handling of various edge cases:
 
-#### B. Timing-Based Tests
-- Simulate timing variations in ConsoleCommands availability
-- Test boundary conditions with rapid state changes
-- Verify behavior under system load
-
-## State Consistency Verification
-
-### 1. Direct State Verification
-
-#### A. Flag-Command Alignment
 ```csharp
-// Pseudocode for verification test
-public void VerifyStateConsistency()
+// Test cases to verify
+[Fact]
+public void Verification_EdgeCase_PathWithMultipleSeparators()
 {
-    // After registration attempt, verify:
-    // If CommandRegisteredFlag is set, then command must be registered with SMAPI
-    // If command is registered with SMAPI, then CommandRegisteredFlag must be set
-    
-    var controller = new ModController(/* dependencies */);
-    var commandHelper = new Mock<ICommandHelper>();
-    var helper = new Mock<IModHelper>();
-    helper.Setup(h => h.ConsoleCommands).Returns(commandHelper.Object);
-    
-    // Trigger registration
-    controller.TriggerOnGameLaunched();
-    
-    // Verify: If flag indicates registered, command was actually registered
-    if (controller.IsCommandRegistered()) {
-        commandHelper.Verify(ch => ch.Add("lr_version", It.IsAny<string>(), It.IsAny<Action<string, string[]>>()), Times.Once);
+    // Paths with multiple consecutive separators
+    Assert.Equal(@"C:\folder\CON_.txt", _reservedNameHandler.Handle(@"C:\folder\\\CON.txt"));
+    Assert.Equal(@"\\server\share\CON_.txt", _reservedNameHandler.Handle(@"\\server\share\\\CON.txt"));
+}
+
+[Fact]
+public void Verification_EdgeCase_PathWithSpecialCharacters()
+{
+    // Paths with special characters that could affect parsing
+    Assert.Equal(@"folder\CON_.txt", _reservedNameHandler.Handle(@"folder\CON().txt"));
+    Assert.Equal(@"folder\CON_.txt", _reservedNameHandler.Handle(@"folder\CON[].txt"));
+}
+```
+
+## 4. Security Verification
+
+### 4.1. Security Test Validation
+Execute all security-focused tests to ensure protections remain intact:
+
+```bash
+# Run security-specific tests
+dotnet test --filter "FullyQualifiedName~HomoglyphSecurityTest"
+dotnet test --filter "FullyQualifiedName~SecurityFileNameSanitizerTests"
+```
+
+### 4.2. Homoglyph Attack Verification
+Validate that Unicode normalization and homoglyph protection continue to work:
+
+```csharp
+[Fact]
+public void Verification_Security_HomoglyphProtectionMaintained()
+{
+    // Test various homoglyph attacks with different path formats
+    var homoglyphTests = new[]
+    {
+        (@"\\server\share\CОN", @"\\server\share\CON_"), // Cyrillic 'О'
+        (@"C:\folder\CОN", @"C:\folder\CON_"),           // Cyrillic 'О' with local path
+        (@"folder/CОN.txt", @"folder/CON_.txt"),         // Cyrillic 'О' with forward slash
+    };
+
+    foreach (var (input, expected) in homoglyphTests)
+    {
+        _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(expected);
+        string? result = _reservedNameHandler.Handle(input);
+        Assert.Equal(expected, result);
     }
 }
 ```
 
-#### B. Recovery Verification
-- When registration fails, verify flag is reset
-- Verify that subsequent registration attempts can succeed after failure
-- Confirm no side effects from failed registration attempts
+### 4.3. Reserved Name Detection Verification
+Verify all reserved name detection continues to work correctly:
 
-### 2. Inconsistent State Prevention
+```csharp
+[Theory]
+[InlineData(@"\\server\share\CON", @"\\server\share\CON_")]
+[InlineData(@"\\server\share\PRN.txt", @"\\server\share\PRN_.txt")]
+[InlineData(@"\\server\share\AUX.log", @"\\server\share\AUX_.log")]
+[InlineData(@"\\server\share\NUL.dat", @"\\server\share\NUL_.dat")]
+[InlineData(@"\\server\share\COM1.xml", @"\\server\share\COM1_.xml")]
+[InlineData(@"\\server\share\LPT1.ini", @"\\server\share\LPT1_.ini")]
+public void Verification_Security_ReservedNameDetectionUNC(string input, string expected)
+{
+    // Verify all reserved names are detected in UNC paths
+    Assert.Equal(expected, _reservedNameHandler.Handle(input));
+}
+```
 
-#### A. Negative Test Cases
-- Test scenario where ConsoleCommands becomes null during registration
-- Verify flag is not set when prerequisites are not met
-- Test exception scenarios during registration
+### 4.4. Extension Handling Security
+Validate multi-part extension handling remains secure:
 
-#### B. Boundary Condition Testing
-- Test registration immediately after disposal
-- Verify behavior when ConsoleCommands availability changes rapidly
-- Test multiple registration attempts in quick succession
+```csharp
+[Theory]
+[InlineData(@"\\server\share\COM1.tar.gz", @"\\server\share\COM1_.tar.gz")]
+[InlineData(@"\\server\share\PRN.log.bak", @"\\server\share\PRN_.log.bak")]
+[InlineData(@"\\server\share\AUX.v1.0.txt", @"\\server\share\AUX_.v1.0.txt")]
+public void Verification_Security_ExtensionHandlingUNC(string input, string expected)
+{
+    // Verify extensions are handled correctly with reserved names in UNC paths
+    Assert.Equal(expected, _reservedNameHandler.Handle(input));
+}
+```
 
-## Verification Scenarios
+## 5. Maintainability Verification
 
-### 1. Normal Operation Scenario
-**Precondition**: ConsoleCommands is available
-**Expected Result**: 
-- Command is registered
-- Flag is set
-- No errors logged
-- Subsequent attempts return false
+### 5.1. Code Complexity Analysis
+Compare code complexity metrics before and after refactoring:
 
-### 2. Null ConsoleCommands Scenario  
-**Precondition**: ConsoleCommands is null
-**Expected Result**:
-- Flag is not set
-- Error is logged
-- Method returns false
-- Future attempts can succeed when ConsoleCommands becomes available
+```csharp
+// BEFORE: Manual UNC detection and separate processing paths
+private static bool IsUncPath(string path)
+{
+    if (string.IsNullOrEmpty(path) || path.Length < 2)
+        return false;
 
-### 3. Registration Exception Scenario
-**Precondition**: ConsoleCommands is available but Add() throws
-**Expected Result**:
-- Flag is reset (recovery mechanism)
-- Error is logged
-- Method returns false
-- Future attempts can succeed
+    return (path[0] == '\\' && path[1] == '\\') ||
+           (path[0] == '/' && path[1] == '/');
+}
 
-### 4. Concurrent Registration Scenario
-**Precondition**: Multiple threads attempt registration simultaneously
-**Expected Result**:
-- Only one thread succeeds
-- Command is registered once
-- Only one thread's flag remains set
-- Other threads return false without side effects
+// Separate logic branches in Handle method
+public string? Handle(string? filename)
+{
+    if (IsUncPath(normalizedInput))
+    {
+        // UNC path logic
+    }
+    else
+    {
+        // Non-UNC path logic
+    }
+}
 
-### 5. Registration After Disposal Scenario
-**Precondition**: Controller is disposed
-**Expected Result**:
-- No registration occurs
-- No flag changes
-- Appropriate disposal log message
-- Method returns false
+// AFTER: Single path using .NET built-ins
+public string? Handle(string? filename)
+{
+    // Single code path for all path types
+    string fileName = Path.GetFileName(normalizedInput);
+    string directoryPath = Path.GetDirectoryName(normalizedInput) ?? string.Empty;
+    // ... unified processing
+}
+```
 
-## Verification Tools and Techniques
+**Verification Metrics:**
+- Lines of code reduction (expected: significant reduction)
+- Cyclomatic complexity reduction (expected: simplified control flow)
+- Cognitive complexity improvement (expected: easier to understand)
 
-### 1. Mock-Based Testing
-- Mock SMAPI interfaces to control ConsoleCommands availability
-- Simulate various failure scenarios
-- Verify method call counts and sequences
+### 5.2. Code Review Verification
+Conduct code review to verify maintainability improvements:
 
-### 2. Reflection-Based Verification
-- Access private state flags for verification
-- Call internal methods directly for testing
-- Verify atomic operation results
+**Review Checklist:**
+- [ ] Single code path instead of multiple branches
+- [ ] Clear separation between infrastructure (path parsing) and business logic
+- [ ] Reduced cognitive load for understanding the code
+- [ ] Proper use of .NET framework capabilities
+- [ ] Elimination of duplicate code paths
+- [ ] Improved readability and maintainability
 
-### 3. Logging Verification
-- Capture and verify log messages
-- Confirm appropriate error messages
-- Validate log levels used
+### 5.3. Documentation Verification
+Verify that the refactored code is self-documenting and clear:
 
-### 4. Concurrency Testing Framework
-- Use Task-based concurrent execution
-- High thread count scenarios
-- Timing variation tests
+- Method names clearly indicate purpose
+- Comments explain business logic, not implementation details
+- Code structure is intuitive
+- No need for complex comments explaining path parsing logic
 
-## Verification Metrics
+## 6. Cross-Platform Verification
 
-### 1. Success Metrics
-- All existing tests continue to pass (no regressions)
-- New race condition tests pass consistently
-- No intermittent failures in concurrent scenarios
-- State consistency maintained across all test runs
+### 6.1. UNC Path Format Testing
+Test various UNC path formats across platforms:
 
-### 2. Coverage Metrics
-- 100% coverage of new atomic registration method
-- All error recovery paths tested
-- All concurrent scenarios covered
-- All boundary conditions verified
+```csharp
+[Theory]
+[InlineData(@"\\server\share\CON.txt")] // Windows format
+[InlineData(@"//server/share/CON.txt")]  // Unix format
+[InlineData(@"/Volumes/share/CON.txt")]  // macOS mount point
+public void Verification_CrossPlatform_UNCFormats(string input)
+{
+    // Verify all UNC formats are handled correctly
+    string expected = input.Replace("CON", "CON_");
+    Assert.Equal(expected, _reservedNameHandler.Handle(input));
+}
+```
 
-### 3. Performance Metrics
-- No significant performance degradation
-- Atomic operations perform efficiently
-- No blocking or contention issues
+### 6.2. Path Separator Handling
+Validate handling of different path separators:
 
-## Verification Execution Plan
+```csharp
+[Theory]
+[InlineData(@"folder\CON.txt", @"folder\CON_.txt")] // Windows separator
+[InlineData(@"folder/CON.txt", @"folder/CON_.txt")] // Unix separator
+[InlineData(@"path/to/CON.txt", @"path/to/CON_.txt")] // Unix-style
+[InlineData(@"path\to/CON.txt", @"path\to/CON_.txt")] // Mixed separators
+public void Verification_CrossPlatform_PathSeparators(string input, string expected)
+{
+    Assert.Equal(expected, _reservedNameHandler.Handle(input));
+}
+```
 
-### Phase 1: Unit Verification
-1. Test atomic registration method in isolation
-2. Verify all error recovery paths
-3. Test state consistency under various scenarios
+## 7. Performance Verification
 
-### Phase 2: Integration Verification
-1. Test with SMAPI interface mocks
-2. Verify full registration workflow
-3. Test disposal integration
+### 7.1. Performance Benchmarking
+Compare performance characteristics before and after refactoring:
 
-### Phase 3: Concurrency Verification
-1. Execute high-concurrency tests
-2. Run stress tests with multiple iterations
-3. Perform timing-based boundary tests
+```csharp
+[Fact]
+public void Verification_Performance_Characteristics()
+{
+    var iterations = 1000;
+    var testPaths = new[]
+    {
+        @"C:\folder\file.txt",
+        @"\\server\share\CON.txt", 
+        @"folder/PRN.log",
+        @"/absolute/path/AUX.dat",
+        @"C:\complex\path\with\COM1.tar.gz"
+    };
 
-### Phase 4: Regression Verification
-1. Run all existing tests to ensure no regressions
-2. Verify all existing functionality remains intact
-3. Confirm performance characteristics are maintained
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    
+    for (int i = 0; i < iterations; i++)
+    {
+        foreach (var path in testPaths)
+        {
+            _reservedNameHandler.Handle(path);
+        }
+    }
+    
+    sw.Stop();
+    
+    // Performance should be equivalent or better
+    // Set threshold based on baseline measurements
+    Assert.True(sw.ElapsedMilliseconds < 5000, 
+        $"Performance should remain acceptable, took: {sw.ElapsedMilliseconds}ms");
+}
+```
 
-## Verification Artifacts
+### 7.2. Memory Usage Verification
+Verify memory usage characteristics:
 
-### 1. Test Results Documentation
-- Pass/fail status for all verification tests
-- Performance benchmark comparisons
-- Coverage reports
+```csharp
+[Fact]
+public void Verification_Memory_Usage()
+{
+    long memoryBefore = GC.GetTotalMemory(true);
+    
+    // Process many paths
+    for (int i = 0; i < 10000; i++)
+    {
+        _reservedNameHandler.Handle($@"C:\test\file{i % 100}.txt");
+        _reservedNameHandler.Handle($@"\\server\share\CON{i % 10}.txt");
+    }
+    
+    long memoryAfter = GC.GetTotalMemory(true);
+    long memoryUsed = memoryAfter - memoryBefore;
+    
+    // Memory usage should be reasonable and not increasing significantly
+    Assert.True(memoryUsed < 100_000_000, // 100MB threshold
+        $"Memory usage should be reasonable, used: {memoryUsed} bytes");
+}
+```
 
-### 2. State Verification Reports
-- Flag consistency validation results
-- Recovery mechanism validation results
-- Error handling verification results
+## 8. Integration Verification
 
-### 3. Concurrency Verification Reports
-- Race condition detection results
-- Concurrent execution test results
-- Stress testing results
+### 8.1. Integration Test Execution
+Execute all integration tests to ensure system-level functionality:
 
-## Acceptance Criteria
+```bash
+# Run all integration tests
+dotnet test --filter "FullyQualifiedName~Integration"
+dotnet test --filter "FullyQualifiedName~DomainServiceIntegrationTests"
+```
 
-For the verification to be considered successful:
+### 8.2. End-to-End Path Validation
+Verify the integration with the complete path validation pipeline:
 
-1. **No Inconsistent States**: The system must never allow the `CommandRegisteredFlag` to be set while the command is not actually registered
+```csharp
+[Fact]
+public void Verification_Integration_EndToEndPathValidation()
+{
+    // Test the complete pipeline including ReservedNameHandler
+    var pathValidator = new PathValidationService(
+        new ReservedNameHandler(_mockUnicodeNormalizationService.Object),
+        new PathTraversalValidator(),
+        new FileNameSanitizer()
+    );
+    
+    // Verify that reserved name handling works in the full context
+    var result = pathValidator.Validate(@"\\server\share\CON.txt");
+    // This test ensures the refactored component works in the larger system
+}
+```
 
-2. **Thread Safety**: All concurrent scenarios must execute without race conditions or deadlocks
+## 9. Security Penetration Testing
 
-3. **Error Recovery**: All failure scenarios must properly reset state and allow future operations
+### 9.1. Path Traversal Verification
+Ensure the refactoring doesn't introduce path traversal vulnerabilities:
 
-4. **Functionality Preservation**: All existing functionality must remain intact
+```csharp
+[Theory]
+[InlineData(@"\\server\share\..\windows\system32\CON.dll")]
+[InlineData(@"\\server\share\..\..\windows\system32\PRN.exe")]
+[InlineData(@"C:\folder\..\windows\system32\AUX.dll")]
+public void Verification_Security_PathTraversalProtection(string input)
+{
+    // Verify that reserved name handling doesn't interfere with path traversal detection
+    // (This would be tested in the PathTraversalValidator, but ensure no conflicts)
+    string? result = _reservedNameHandler.Handle(input);
+    // The result should still have reserved names handled appropriately
+    Assert.NotNull(result);
+}
+```
 
-5. **Performance Requirements**: No significant performance degradation
+### 9.2. Malformed Path Handling
+Verify handling of malformed or malicious paths:
 
-6. **Test Coverage**: All new code must have comprehensive test coverage
+```csharp
+[Theory]
+[InlineData(@"\\.\C:\CON.txt")] // Device path
+[InlineData(@"\\?\C:\CON.txt")] // Extended path
+[InlineData(@"C:\CON\CON.txt")] // Reserved name as directory and file
+public void Verification_Security_MalformedPaths(string input)
+{
+    // Verify that the refactored implementation handles unusual path formats safely
+    string? result = _reservedNameHandler.Handle(input);
+    // Should not throw exceptions and should handle appropriately
+    Assert.NotNull(result);
+}
+```
 
-## Continuous Verification
+## 10. Code Quality Metrics
 
-### 1. Automated Testing
-- Include new tests in CI/CD pipeline
-- Run concurrent tests regularly to catch regressions
-- Monitor performance metrics
+### 10.1. Static Analysis Verification
+Run static analysis tools to verify code quality:
 
-### 2. Monitoring Considerations
-- Add runtime state consistency checks (in debug builds)
-- Consider adding health check capabilities
-- Monitor for any state inconsistency reports in production
+```bash
+# Run code analysis
+dotnet build --no-incremental --warnaserror
+dotnet format --verify-no-changes
+```
 
-This verification strategy ensures that the race condition fix properly prevents the inconsistent state while maintaining all other system properties.
+### 10.2. Maintainability Index
+Verify that the maintainability index has improved:
+
+**Expected Improvements:**
+- Reduced cyclomatic complexity
+- Shorter methods
+- Clearer control flow
+- Better separation of concerns
+- Reduced code duplication
+
+## 11. Verification Checklist
+
+### 11.1. Pre-Refactoring Baseline
+- [ ] All unit tests pass
+- [ ] Security tests pass
+- [ ] Performance benchmarks established
+- [ ] Code coverage measured
+- [ ] Complexity metrics recorded
+- [ ] Integration tests pass
+
+### 11.2. Post-Refactoring Verification
+- [ ] All unit tests continue to pass
+- [ ] All security tests continue to pass
+- [ ] Performance within acceptable bounds
+- [ ] Code coverage maintained or improved
+- [ ] Complexity metrics improved
+- [ ] Integration tests pass
+- [ ] Cross-platform tests pass
+- [ ] Edge case tests pass
+- [ ] Maintainability review completed
+
+### 11.3. Security Verification
+- [ ] Reserved name detection preserved
+- [ ] Homoglyph protection maintained
+- [ ] Extension handling preserved
+- [ ] Insignificant character handling preserved
+- [ ] Directory path preservation maintained
+- [ ] No new attack vectors introduced
+- [ ] Input sanitization preserved
+
+### 11.4. Functionality Verification
+- [ ] All path formats handled correctly
+- [ ] UNC paths processed correctly
+- [ ] Local paths processed correctly
+- [ ] Relative paths processed correctly
+- [ ] Rooted paths processed correctly
+- [ ] Directory-only paths preserved
+- [ ] All edge cases handled correctly
+
+## 12. Rollback Verification
+
+### 12.1. Rollback Readiness
+- [ ] Original implementation preserved in version control
+- [ ] Tests exist to verify original behavior
+- [ ] Performance baseline available for comparison
+- [ ] Rollback procedure documented
+
+## 13. Continuous Verification
+
+### 13.1. Ongoing Monitoring
+- [ ] Automated tests run with each build
+- [ ] Performance monitoring in place
+- [ ] Security scanning integrated
+- [ ] Code quality gates enforced
+
+## 14. Conclusion
+
+This verification strategy ensures that the ReservedNameHandler refactoring achieves its goals of improving maintainability while preserving all security validations. The multi-layered approach covers functional correctness, security preservation, performance maintenance, and maintainability improvements. 
+
+The strategy emphasizes comprehensive testing to validate that the use of .NET's built-in Path.GetFileName and Path.GetDirectoryName methods provides robust, secure, and maintainable UNC path handling while preserving all existing functionality.

@@ -1,332 +1,348 @@
-# Test Update Plan: Command Registration Race Condition Fix
+# Test Update Plan for ReservedNameHandler Refactoring
 
-## Overview
+## 1. Overview
 
-This document outlines the necessary updates to existing tests and new tests required to verify the race condition fix in command registration. The goal is to ensure comprehensive test coverage for the new atomic registration implementation.
+This document outlines the testing strategy and required updates to ensure the ReservedNameHandler refactoring maintains all functionality while using .NET's built-in Path.GetFileName and Path.GetDirectoryName methods. The refactoring should not require changes to existing test expectations since the behavior remains identical.
 
-## Existing Test Analysis
+## 2. Test Impact Assessment
 
-### Current Test Coverage in ModControllerTests.cs
+### 2.1. No Expected Behavior Changes
+Since the refactoring only changes the internal path parsing mechanism while preserving all external behavior, **no test updates should be necessary**. All existing test cases should continue to pass with identical results.
 
-The existing tests cover:
-- Basic event registration functionality
-- Idempotent behavior for event registration
-- Thread safety for concurrent operations
-- Exception handling during registration
-- Disposal behavior
-- Concurrent disposal scenarios
-- Basic command registration thread safety test
+### 2.2. Test Categories Analysis
+- **Reserved name detection tests**: No changes needed (behavior unchanged)
+- **Extension handling tests**: No changes needed (behavior unchanged) 
+- **UNC path tests**: No changes needed (behavior unchanged)
+- **Unicode normalization tests**: No changes needed (behavior unchanged)
+- **Edge case tests**: No changes needed (behavior unchanged)
+- **Security-focused tests**: No changes needed (behavior unchanged)
 
-### Tests That Need Updates
+## 3. Required Test Updates
 
-Some existing tests may need updates due to the refactoring, particularly those that directly test the internal behavior of command registration.
+### 3.1. Minimal Code Updates
+The only potential test update is to remove the dependency on the now-eliminated `IsUncPath` method if any tests directly accessed it (which is unlikely since it's a private method).
 
-## Test Updates Required
-
-### 1. Update OnGameLaunched_CommandRegistration_IsThreadSafe Test
-
-**Current Issue**: The existing test calls the private `OnGameLaunched` method using reflection, which may need adjustment for the new implementation.
-
-**Required Update**:
-- Verify that the new atomic registration properly handles concurrent access
-- Ensure command is registered only once despite multiple concurrent calls
-- Verify that the recovery mechanism works under concurrent failure scenarios
+### 3.2. Test Coverage Enhancement
+Add new tests to specifically validate that the .NET built-in methods are properly handling various path formats:
 
 ```csharp
 [Fact]
-public async System.Threading.Tasks.Task OnGameLaunched_CommandRegistration_IsThreadSafe()
+public void Handle_WithVariousPathFormats_UsesNetBuiltInMethodsCorrectly()
 {
-    // Arrange
-    var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+    // This test validates that the refactored implementation correctly
+    // uses Path.GetFileName and Path.GetDirectoryName for all path types
     
-    var mockCommandHelper = new Mock<ICommandHelper>(MockBehavior.Strict);
-    mockCommandHelper
-        .Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
-        .Verifiable();
+    // UNC path
+    string uncPath = @"\\server\share\CON.txt";
+    string uncExpected = @"\\server\share\CON_.txt";
+    Assert.Equal(uncExpected, _reservedNameHandler.Handle(uncPath));
     
-    _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+    // Unix-style UNC path
+    string unixUncPath = @"//server/share/CON.txt";
+    string unixUncExpected = @"//server/share/CON_.txt";
+    Assert.Equal(unixUncExpected, _reservedNameHandler.Handle(unixUncPath));
     
-    var mockModDataService = new Mock<IModDataService>();
-    var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+    // Local path
+    string localPath = @"C:\folder\PRN.txt";
+    string localExpected = @"C:\folder\PRN_.txt";
+    Assert.Equal(localExpected, _reservedNameHandler.Handle(localPath));
     
-    // Act - Simulate concurrent calls to OnGameLaunched to test command registration race condition
-    var tasks = new System.Threading.Tasks.Task[10];
-    for (int i = 0; i < 10; i++)
+    // Relative path
+    string relativePath = @"folder\AUX.txt";
+    string relativeExpected = @"folder\AUX_.txt";
+    Assert.Equal(relativeExpected, _reservedNameHandler.Handle(relativePath));
+    
+    // Path with forward slashes
+    string forwardSlashPath = @"folder/AUX.txt";
+    string forwardSlashExpected = @"folder/AUX_.txt";
+    Assert.Equal(forwardSlashExpected, _reservedNameHandler.Handle(forwardSlashPath));
+}
+
+[Fact]
+public void Handle_WithComplexUNCPaths_HandlesCorrectly()
+{
+    // Test complex UNC paths to ensure .NET methods handle them properly
+    string complexUncPath = @"\\server\share\folder1\folder2\COM1.tar.gz";
+    string complexUncExpected = @"\\server\share\folder1\folder2\COM1_.tar.gz";
+    Assert.Equal(complexUncExpected, _reservedNameHandler.Handle(complexUncPath));
+}
+
+[Fact]
+public void Handle_WithNetworkPaths_HandlesCorrectly()
+{
+    // Test various network path formats
+    string networkPath = @"\\?\C:\folder\NUL.txt";
+    string networkExpected = @"\\?\C:\folder\NUL_.txt";
+    Assert.Equal(networkExpected, _reservedNameHandler.Handle(networkPath));
+}
+```
+
+## 4. Test Execution Strategy
+
+### 4.1. Comprehensive Test Execution
+Execute all existing tests to verify no regressions:
+
+```bash
+dotnet test --filter "FullyQualifiedName~ReservedNameHandlerTests"
+```
+
+### 4.2. Specific Test Categories to Run
+- All existing ReservedNameHandler test methods
+- Integration tests that depend on ReservedNameHandler
+- Any tests that might indirectly use path validation functionality
+- Security-focused tests that validate reserved name handling
+
+### 4.3. Cross-Platform Test Validation
+Since the refactored implementation relies on .NET built-ins, validate on multiple platforms:
+- Windows (traditional UNC path format: `\\server\share`)
+- Linux/Unix (URL-style UNC: `//server/share` or paths with forward slashes)
+- macOS (with various path formats)
+
+## 5. New Test Scenarios
+
+### 5.1. Path Format Diversity Tests
+Add tests to ensure various path formats are handled correctly:
+
+```csharp
+[Theory]
+[InlineData(@"\\server\share\CON.txt", @"\\server\share\CON_.txt")]
+[InlineData(@"//server/share/CON.txt", @"//server/share/CON_.txt")]
+[InlineData(@"C:\folder\CON.txt", @"C:\folder\CON_.txt")]
+[InlineData(@"folder/CON.txt", @"folder/CON_.txt")]
+[InlineData(@"/absolute/path/CON.txt", @"/absolute/path/CON_.txt")]
+public void Handle_WithDifferentPathFormats_HandlesReservedNames(string input, string expected)
+{
+    // Verify that all path formats are handled consistently
+    Assert.Equal(expected, _reservedNameHandler.Handle(input));
+}
+```
+
+### 5.2. Directory Path Preservation Tests
+Validate that directory paths ending with separators are preserved:
+
+```csharp
+[Theory]
+[InlineData(@"\\server\share\", @"\\server\share\")]
+[InlineData(@"C:\folder\", @"C:\folder\")]
+[InlineData(@"folder/", @"folder/")]
+[InlineData(@"/absolute/path/", @"/absolute/path/")]
+public void Handle_WithDirectoryPaths_ReturnsUnchanged(string input, string expected)
+{
+    // Verify that paths ending with separators (directories) are not modified
+    Assert.Equal(expected, _reservedNameHandler.Handle(input));
+}
+```
+
+### 5.3. Path Separator Handling Tests
+Test that different separator formats are handled properly:
+
+```csharp
+[Theory]
+[InlineData(@"folder\CON.txt", @"folder\CON_.txt")]
+[InlineData(@"folder/CON.txt", @"folder/CON_.txt")]
+[InlineData(@"path/to/PRN.log", @"path/to/PRN_.log")]
+[InlineData(@"path\to\PRN.log", @"path\to\PRN_.log")]
+public void Handle_WithPathSeparators_HandlesConsistently(string input, string expected)
+{
+    // Verify that both forward and backward slashes are handled consistently
+    Assert.Equal(expected, _reservedNameHandler.Handle(input));
+}
+```
+
+## 6. Performance Tests
+
+### 6.1. Baseline Performance Comparison
+Create performance tests to ensure no degradation:
+
+```csharp
+[Fact]
+public void Handle_Performance_NoDegradation()
+{
+    // Performance test to ensure .NET built-ins don't cause degradation
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    
+    for (int i = 0; i < 10000; i++)
     {
-        tasks[i] = System.Threading.Tasks.Task.Run(() =>
-        {
-            var args = new GameLaunchedEventArgs();
-            controller.GetType().GetMethod("OnGameLaunched", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                ?.Invoke(controller, new object[] { null, args });
-        });
+        _reservedNameHandler.Handle($"file{i % 100}.txt");
+        _reservedNameHandler.Handle($"CON{i % 10}.txt");  // Some reserved names
+        _reservedNameHandler.Handle($"\\server\\share\\file{i % 50}.txt"); // UNC paths
     }
     
-    // Wait for all tasks to complete
-    await System.Threading.Tasks.Task.WhenAll(tasks);
+    sw.Stop();
     
-    // Assert - Command should only be registered once despite multiple concurrent calls
-    mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
-    _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+    // The refactored version should not be significantly slower
+    // (Set appropriate threshold based on baseline measurements)
+    Assert.True(sw.ElapsedMilliseconds < 1000, "Performance should not degrade significantly");
 }
 ```
 
-### 2. Add New Test: CommandRegistration_Failure_Recovery
+## 7. Security Tests
 
-**Purpose**: Verify that when command registration fails, the state is properly recovered (flag is reset).
+### 7.1. Homoglyph Attack Tests
+Ensure homoglyph protection continues to work:
 
 ```csharp
 [Fact]
-public void CommandRegistration_WhenConsoleCommandsIsNull_ResetsFlagAndHandlesGracefully()
+public void Handle_WithHomoglyphUNCPaths_Protected()
 {
-    // Arrange
-    var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
-    _mockHelper.Setup(x => x.ConsoleCommands).Returns((ICommandHelper)null); // Return null to simulate failure condition
+    // Test homoglyph attacks with UNC paths
+    string input = @"\\server\share\CОN"; // Cyrillic 'О'
+    string expected = @"\\server\share\CON_"; // Should normalize to Latin and add underscore
     
-    var mockModDataService = new Mock<IModDataService>();
-    var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+    _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(@"\\server\share\CON");
     
-    string errorMessage = "";
-    _mockMonitor.Setup(x => x.Log(It.IsAny<string>(), LogLevel.Error))
-        .Callback<string, LogLevel>((message, level) =>
-        {
-            if (message.Contains("ConsoleCommands is not available"))
-                errorMessage = message;
-        });
-    
-    // Act - Trigger OnGameLaunched which should attempt command registration
-    var args = new GameLaunchedEventArgs();
-    controller.GetType().GetMethod("OnGameLaunched", 
-        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-        ?.Invoke(controller, new object[] { null, args });
-    
-    // Assert - Verify flag was not set (since registration failed)
-    // We need to check the internal state - since we can't directly access _state, 
-    // we can check if the command was attempted to be registered
-    Assert.NotEmpty(errorMessage); // Should have logged the error about ConsoleCommands being unavailable
+    string? result = _reservedNameHandler.Handle(input);
+    Assert.Equal(expected, result);
 }
 ```
 
-### 3. Add New Test: CommandRegistration_Exception_Recovery
-
-**Purpose**: Verify that when an exception occurs during command registration, the recovery mechanism resets the flag.
+### 7.2. Multi-Extension Tests
+Ensure multi-extension handling continues to work with various path formats:
 
 ```csharp
 [Fact]
-public void CommandRegistration_WhenExceptionOccurs_ResetsFlag()
+public void Handle_WithMultiExtensionUNCPaths_HandlesCorrectly()
 {
-    // Arrange
-    var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+    string input = @"\\server\share\COM1.tar.gz";
+    string expected = @"\\server\share\COM1_.tar.gz";
     
-    var mockCommandHelper = new Mock<ICommandHelper>();
-    mockCommandHelper
-        .Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
-        .Throws(new InvalidOperationException("Registration failed"));
-    
-    _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
-    
-    var mockModDataService = new Mock<IModDataService>();
-    var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
-    
-    string errorMessage = "";
-    _mockMonitor.Setup(x => x.Log(It.IsAny<string>(), LogLevel.Error))
-        .Callback<string, LogLevel>((message, level) =>
-        {
-            if (message.Contains("Command registration failed"))
-                errorMessage = message;
-        });
-    
-    // Act - Trigger OnGameLaunched which should attempt command registration and fail
-    var args = new GameLaunchedEventArgs();
-    controller.GetType().GetMethod("OnGameLaunched", 
-        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-        ?.Invoke(controller, new object[] { null, args });
-    
-    // Assert - Verify error was logged and recovery occurred
-    Assert.NotEmpty(errorMessage);
-    mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
+    Assert.Equal(expected, _reservedNameHandler.Handle(input));
 }
 ```
 
-### 4. Add New Test: AtomicCommandRegistration_Success
+## 8. Regression Testing Strategy
 
-**Purpose**: Test the new atomic registration method directly.
+### 8.1. Full Test Suite Execution
+Execute the complete test suite to catch any unexpected impacts:
+
+```bash
+dotnet test --logger "trx" --results-directory ./test-results
+```
+
+### 8.2. Integration Test Validation
+Run all integration tests that might be affected:
+
+```bash
+dotnet test --filter "FullyQualifiedName~DomainServiceIntegrationTests"
+dotnet test --filter "FullyQualifiedName~PathValidationServiceTests"
+```
+
+### 8.3. Test Coverage Validation
+Ensure test coverage is maintained:
+
+```bash
+dotnet test /p:CollectCoverage=true /p:CoverletOutput=TestResults/ /p:CoverletOutputFormat=lcov
+```
+
+## 9. Test Data Updates
+
+### 9.1. No Test Data Changes Required
+Since the external behavior is unchanged, no test data updates are needed. All existing test inputs and expected outputs remain valid.
+
+### 9.2. Additional Test Data for Path Diversity
+Consider adding test data to validate the robustness of .NET built-in methods:
 
 ```csharp
-[Fact]
-public void TryRegisterCommandAtomically_WhenConsoleCommandsAvailable_RegistersCommandAndSetsFlag()
+public static TheoryData<string, string> PathFormatTestData()
 {
-    // Arrange
-    var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+    var data = new TheoryData<string, string>();
     
-    var mockCommandHelper = new Mock<ICommandHelper>();
-    mockCommandHelper
-        .Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
-        .Verifiable();
+    // UNC paths
+    data.Add(@"\\server\share\CON.txt", @"\\server\share\CON_.txt");
+    data.Add(@"//server/share/CON.txt", @"//server/share/CON_.txt");
     
-    _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+    // Various local paths
+    data.Add(@"C:\folder\CON.txt", @"C:\folder\CON_.txt");
+    data.Add(@"folder\CON.txt", @"folder\CON_.txt");
+    data.Add(@"folder/CON.txt", @"folder/CON_.txt");
     
-    var mockModDataService = new Mock<IModDataService>();
-    var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+    // Paths with multiple segments
+    data.Add(@"\\server\share\folder\CON.txt", @"\\server\share\folder\CON_.txt");
+    data.Add(@"C:\path\to\folder\CON.txt", @"C:\path\to\folder\CON_.txt");
     
-    // Act - Call the internal atomic registration method directly
-    var result = controller.GetType().GetMethod("TryRegisterCommandAtomically", 
-        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-        ?.Invoke(controller, new object[] { _mockHelper.Object, _mockMonitor.Object });
-    
-    bool registrationResult = (bool)(result ?? false);
-    
-    // Assert
-    Assert.True(registrationResult);
-    mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
-    _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+    return data;
 }
 ```
 
-### 5. Add New Test: AtomicCommandRegistration_AlreadyRegistered
+## 10. Test Documentation Updates
 
-**Purpose**: Test that atomic registration returns false when already registered.
+### 10.1. Update Test Comments
+Update any test comments that reference the old implementation details:
 
 ```csharp
+// OLD COMMENT: "This test verifies the manual UNC path parsing logic"
+// NEW COMMENT: "This test verifies UNC path handling using .NET built-in methods"
+
 [Fact]
-public void TryRegisterCommandAtomically_WhenAlreadyRegistered_ReturnsFalse()
+public void Handle_WithUNCPathAndReservedName_ProcessesFileNameComponent()
 {
-    // Arrange
-    var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+    // This test verifies UNC path handling using .NET built-in methods
+    // The Path.GetFileName method correctly extracts the filename component
+    // from UNC paths, and the reserved name handling logic remains unchanged
     
-    var mockCommandHelper = new Mock<ICommandHelper>();
-    mockCommandHelper
-        .Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
-        .Verifiable();
+    string input = @"\\server\share\PRN.log";
+    string fileNamePart = "PRN";
     
-    _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+    _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
+
+    string? result = _reservedNameHandler.Handle(input);
     
-    var mockModDataService = new Mock<IModDataService>();
-    var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
-    
-    // First successful registration
-    var firstResult = controller.GetType().GetMethod("TryRegisterCommandAtomically", 
-        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-        ?.Invoke(controller, new object[] { _mockHelper.Object, _mockMonitor.Object });
-    
-    // Act - Try to register again
-    var secondResult = controller.GetType().GetMethod("TryRegisterCommandAtomically", 
-        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-        ?.Invoke(controller, new object[] { _mockHelper.Object, _mockMonitor.Object });
-    
-    bool firstRegistrationResult = (bool)(firstResult ?? false);
-    bool secondRegistrationResult = (bool)(secondResult ?? false);
-    
-    // Assert
-    Assert.True(firstRegistrationResult);
-    Assert.False(secondRegistrationResult);
-    mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
+    Assert.Equal(@"\\server\share\PRN_.log", result);
 }
 ```
 
-### 6. Enhanced Concurrent Test: MultipleFailureScenarios
+## 11. Test Environment Considerations
 
-**Purpose**: Test concurrent scenarios where some threads fail and others succeed.
+### 11.1. Cross-Platform Testing
+Ensure tests run correctly on all target platforms since .NET path methods have platform-specific behaviors:
 
-```csharp
-[Fact]
-public async System.Threading.Tasks.Task CommandRegistration_ConcurrentMixedScenarios_HandlesProperly()
-{
-    // Arrange - Create mock with conditional behavior for different calls
-    var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
-    
-    var mockCommandHelper = new Mock<ICommandHelper>();
-    int callCount = 0;
-    mockCommandHelper
-        .Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
-        .Callback(() => {
-            int currentCall = Interlocked.Increment(ref callCount);
-            // Simulate that only the first call succeeds, subsequent ones throw
-            if (currentCall > 1)
-                throw new InvalidOperationException("Only one registration allowed");
-        })
-        .Verifiable();
-    
-    _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
-    
-    var mockModDataService = new Mock<IModDataService>();
-    var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
-    
-    // Act - Multiple concurrent registration attempts
-    var tasks = new System.Threading.Tasks.Task<bool>[10];
-    for (int i = 0; i < 10; i++)
-    {
-        tasks[i] = System.Threading.Tasks.Task.Run(() =>
-        {
-            return (bool)controller.GetType().GetMethod("TryRegisterCommandAtomically", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                ?.Invoke(controller, new object[] { _mockHelper.Object, _mockMonitor.Object });
-        });
-    }
-    
-    var results = await System.Threading.Tasks.Task.WhenAll(tasks);
-    
-    // Assert - Only one should succeed
-    var successfulRegistrations = results.Count(r => r);
-    Assert.Equal(1, successfulRegistrations);
-    // Command should only be added once despite multiple attempts
-    mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
-}
-```
+- Windows: UNC paths use `\\server\share` format
+- Unix/Linux: UNC paths may use `//server/share` format
+- Cross-platform: Forward slashes work on all platforms
 
-## Test Strategy for Race Condition Verification
+### 11.2. .NET Version Compatibility
+Verify the refactored implementation works across target .NET versions since Path.GetFileName and Path.GetDirectoryName are core .NET functionality available in all supported versions.
 
-### 1. Stress Testing Approach
-- Run concurrent tests with high thread counts (20-50 threads)
-- Perform multiple iterations of the same test to increase probability of catching race conditions
-- Test boundary conditions where ConsoleCommands availability changes during execution
+## 12. Test Verification Checklist
 
-### 2. Failure Injection Testing
-- Mock ConsoleCommands to return null in specific scenarios
-- Inject exceptions at various points in the registration process
-- Test disposal occurring during registration attempts
+### 12.1. Pre-Implementation Verification
+- [ ] All existing tests pass with current implementation
+- [ ] Test coverage metrics established as baseline
+- [ ] Performance benchmarks established
+- [ ] Security test results documented
 
-### 3. State Verification Testing
-- Verify that the CommandRegisteredFlag accurately reflects actual registration status
-- Test that after failed registration, the system allows future registration attempts
-- Ensure that successful registration prevents duplicate registrations
+### 12.2. Post-Implementation Verification
+- [ ] All existing tests continue to pass
+- [ ] New path format tests pass
+- [ ] Performance remains within acceptable bounds
+- [ ] Security tests continue to pass
+- [ ] Cross-platform tests pass
+- [ ] Integration tests pass
+- [ ] Test coverage maintained or improved
 
-## Updated Test Categories
+### 12.3. Regression Verification
+- [ ] No new test failures introduced
+- [ ] No behavior changes in unrelated functionality
+- [ ] All security validations still working
+- [ ] Performance characteristics maintained
 
-### 1. Unit Tests
-- Individual method testing (TryRegisterCommandAtomically)
-- State management verification
-- Error handling validation
+## 13. Rollback Strategy
 
-### 2. Integration Tests  
-- Full OnGameLaunched workflow testing
-- SMAPI integration testing
-- Event lifecycle testing
+### 13.1. Test-Based Rollback Validation
+If issues are discovered, have tests ready to validate the rollback:
 
-### 3. Concurrency Tests
-- High-concurrency registration attempts
-- Mixed success/failure scenarios
-- Disposal during registration scenarios
+- Maintain a copy of the original test suite
+- Ensure rollback returns to the same test results
+- Validate that all functionality returns to original state
 
-### 4. Edge Case Tests
-- Rapid disposal and registration
-- Multiple game launch events
-- Null dependency injection tests
+## 14. Conclusion
 
-## Test Execution Order
+The test update strategy for the ReservedNameHandler refactoring is minimal because:
 
-1. Run existing tests to ensure no regressions
-2. Add new unit tests for atomic registration method
-3. Add concurrency tests to verify race condition fix
-4. Add failure scenario tests to verify recovery
-5. Run all tests multiple times to ensure reliability
+1. **No behavior changes**: The refactored implementation produces identical results
+2. **All existing tests remain valid**: No test expectations need modification
+3. **Enhanced coverage**: Additional tests validate the robustness of .NET built-ins
+4. **Comprehensive validation**: Multiple test layers ensure quality
+5. **Safety net**: Full test suite execution catches any regressions
 
-## Verification Metrics
-
-- All existing tests continue to pass
-- New race condition tests pass consistently
-- No intermittent failures in concurrent tests
-- Proper error handling verified through logging checks
-- State consistency maintained across all scenarios
-
-This test update plan ensures comprehensive coverage of the race condition fix while maintaining all existing functionality.
+The primary focus is on ensuring all existing tests continue to pass while adding a few new tests to validate the diversity of path formats that .NET built-in methods can handle.

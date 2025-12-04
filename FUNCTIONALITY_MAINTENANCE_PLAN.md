@@ -1,194 +1,267 @@
-# Functionality Maintenance Plan: Command Registration Fix
+# Functionality Maintenance Plan for ReservedNameHandler Refactoring
 
-## Overview
+## 1. Overview
 
-This document outlines how the refactored command registration code maintains all existing functionality while fixing the race condition. The goal is to ensure that all current behaviors, interfaces, and capabilities remain unchanged for users and calling code.
+This document outlines how all existing functionality will be maintained in the ReservedNameHandler while simplifying the implementation through the use of .NET's built-in Path.GetFileName and Path.GetDirectoryName methods. The refactoring focuses on path parsing simplification while preserving all business logic and behaviors.
 
-## Existing Functionality Inventory
+## 2. Input/Output Behavior Preservation
 
-### 1. Core Features
-- **Command Registration**: Register the `lr_version` console command with SMAPI
-- **Event Handling**: Handle the `GameLaunched` event to trigger command registration
-- **Thread Safety**: Ensure only one command registration occurs across multiple threads
-- **State Management**: Track registration state using atomic bit flags
-- **Error Handling**: Log errors appropriately without crashing the mod
-- **Disposal**: Proper cleanup during mod disposal
+### 2.1. Input Handling
+**Before and After Refactoring:**
+- Null input returns null
+- Empty string input returns empty string
+- Whitespace-only input returns "_"
+- All other inputs are processed according to business rules
+- Input validation and error handling remain identical
 
-### 2. Public Interfaces
-- `ModController` constructor: Creates controller with dependencies
-- `RegisterEvents()`: Registers game events (including GameLaunched)
-- `UnregisterEvents()`: Unregisters game events
-- `Dispose()`: Disposes of resources and cleans up
+### 2.2. Output Consistency
+**Before and After Refactoring:**
+- All return values for identical inputs remain the same
+- Reserved names continue to be suffixed with "_"
+- Non-reserved names remain unchanged
+- Extensions are preserved in the same format
+- Directory paths are maintained without modification
 
-### 3. Internal Behaviors
-- `OnGameLaunched` event handler: Triggers command registration on game launch
-- `PrintVersion` command handler: Handles the `lr_version` command execution
-- State flag management: Tracks registration status using bit flags
-- Logging: Appropriate logging at various levels (Info, Trace, Error)
+## 3. Path Type Support Maintenance
 
-## Maintained Functionality
+### 3.1. UNC Paths
+**Before Refactoring:**
+- UNC paths like `\\server\share\file.txt` were detected and processed separately
+- Manual parsing extracted the filename component
+- Processed paths were reconstructed manually
 
-### 1. Command Registration Behavior
-**Before**: The `lr_version` command is registered when `OnGameLaunched` is triggered
-**After**: The `lr_version` command is still registered when `OnGameLaunched` is triggered
-**Verification**: Same command name, description, and handler function maintained
+**After Refactoring:**
+- UNC paths like `\\server\share\file.txt` are handled by `Path.GetFileName`
+- `Path.GetFileName(@"\\server\share\file.txt")` returns `"file.txt"`
+- `Path.GetDirectoryName(@"\\server\share\file.txt")` returns `"\\server\share"`
+- Path reconstruction uses `Path.Combine` for proper formatting
+- **Result**: Identical behavior with simplified implementation
 
-### 2. Command Functionality
-**Before**: `lr_version` command prints mod version and UniqueID
-**After**: `lr_version` command still prints mod version and UniqueID
-**Verification**: Same command behavior with help flag support maintained
+### 3.2. Local Paths
+**Before and After Refactoring:**
+- Local paths like `C:\folder\file.txt` continue to work identically
+- Relative paths like `folder/file.txt` continue to work identically
+- Forward slash paths like `folder/file.txt` continue to work identically
+- Backslash paths like `folder\file.txt` continue to work identically
 
-### 3. Event Handling
-**Before**: `GameLaunched` event triggers command registration and then unsubscribes
-**After**: `GameLaunched` event still triggers command registration and then unsubscribes
-**Verification**: Event is still unsubscribed after first execution
+### 3.3. Rooted vs Relative Paths
+**Before and After Refactoring:**
+- Rooted paths (starting with drive letter or `/`) maintain same behavior
+- Relative paths maintain same behavior
+- Path reconstruction preserves original structure
+- Directory separators are handled appropriately by .NET methods
 
-### 4. Thread Safety
-**Before**: Only one command registration occurs (with race condition risk)
-**After**: Only one command registration occurs (with guaranteed thread safety)
-**Verification**: Same idempotent behavior maintained
+## 4. Reserved Name Detection and Handling
 
-### 5. State Management
-**Before**: Uses bit flags to track registration state
-**After**: Still uses bit flags to track registration state
-**Verification**: Same state flags (EventsRegisteredFlag, CommandRegisteredFlag, DisposedFlag) maintained
+### 4.1. Exact Match Detection
+**Before and After Refactoring:**
+- "CON" → "CON_" (exact match)
+- "PRN" → "PRN_" (exact match)
+- "AUX" → "AUX_" (exact match)
+- Case-insensitive matching preserved (con, Con, CoN → con_, Con_, CoN_)
 
-### 6. Logging
-**Before**: Logs appropriate messages at Info, Trace, and Error levels
-**After**: Still logs appropriate messages at Info, Trace, and Error levels
-**Verification**: Same logging behavior and message formats maintained
+### 4.2. Prefix Match Detection
+**Before and After Refactoring:**
+- "COM1.txt" → "COM1_.txt" (prefix match with extension)
+- "LPT9.log" → "LPT9_.log" (prefix match with extension)
+- "CONSOLE.txt" → "CONSOLE.txt" (no match, not a reserved prefix)
+- Non-alphanumeric character detection preserved
 
-### 7. Error Handling
-**Before**: Handles exceptions during registration without crashing
-**After**: Still handles exceptions during registration without crashing
-**Verification**: Same exception handling patterns maintained
+### 4.3. Extension Handling
+**Before and After Refactoring:**
+- Multi-part extensions: "COM1.tar.gz" → "COM1_.tar.gz"
+- Single extensions: "PRN.txt" → "PRN_.txt"
+- No extensions: "AUX" → "AUX_"
+- Hidden files: ".COM1" → ".COM1" (not treated as reserved since it's a hidden file)
 
-## Interface Compatibility
+## 5. Security Feature Preservation
 
-### 1. Constructor Interface
-```csharp
-public ModController(IModHelper helper, IMonitor monitor, IManifest manifest, IModDataService modDataService)
-```
-**Status**: Unchanged - maintains full backward compatibility
+### 5.1. Unicode Normalization
+**Before and After Refactoring:**
+- Homoglyph protection (CОN with Cyrillic 'О' → CON_)
+- Diacritic removal for Latin and Greek letters
+- Zero-width character removal
+- Bidirectional character removal
+- Control character removal
+- Precomposed character simplification
 
-### 2. Public Method Interfaces
-- `RegisterEvents()` - Interface unchanged
-- `UnregisterEvents()` - Interface unchanged  
-- `Dispose()` - Interface unchanged
+### 5.2. Insignificant Character Handling
+**Before and After Refactoring:**
+- Fully insignificant names ("   ", "...", " . ") → "_"
+- Leading/trailing insignificant characters trimmed appropriately
+- Mixed insignificant characters handled consistently
+- Safe placeholder replacement preserved
 
-### 3. Event Handler Behavior
-- `OnGameLaunched` - Internal method, behavior conceptually unchanged
-- `PrintVersion` - Internal command handler, behavior unchanged
+### 5.3. Directory Path Preservation
+**Before and After Refactoring:**
+- Directory paths ending with separators remain unchanged
+- `Path.GetFileName("C:\\temp\\")` returns empty string
+- When filename is empty, original path is returned unchanged
+- This prevents modification of directory-only paths
 
-## Behavioral Guarantees Maintained
+## 6. Edge Case Handling
 
-### 1. Idempotency
-- **Guarantee**: Multiple calls to registration methods are safe
-- **Implementation**: Maintained through atomic state checking
-- **Verification**: Same behavior as before but with better thread safety
+### 6.1. Special Path Formats
+**Before and After Refactoring:**
+- UNC server-only paths: `\\server` → `\\server` (unchanged)
+- UNC server-share paths: `\\server\share` → `\\server\share` (unchanged)
+- Paths with multiple separators: `C:\\\\temp\\\\file.txt` → handled by .NET methods
+- Mixed separators: `C:/temp\\file.txt` → handled by .NET methods
 
-### 2. One-Time Execution
-- **Guarantee**: Command is registered only once, even with multiple GameLaunched events
-- **Implementation**: Maintained through CommandRegisteredFlag checking
-- **Verification**: Same outcome as before but with guaranteed consistency
+### 6.2. Invalid Path Handling
+**Before and After Refactoring:**
+- Invalid paths are processed by .NET methods safely
+- .NET methods handle malformed paths appropriately
+- No exceptions thrown during path parsing
+- Graceful degradation for invalid inputs
 
-### 3. Proper Cleanup
-- **Guarantee**: Resources are properly cleaned up during disposal
-- **Implementation**: Maintained through existing disposal patterns
-- **Verification**: Same cleanup behavior preserved
+### 6.3. Cross-Platform Path Handling
+**Before and After Refactoring:**
+- Windows paths: `C:\folder\file.txt` → processed correctly
+- Unix paths: `/home/user/file.txt` → processed correctly
+- UNC paths: `\\server\share\file.txt` → processed correctly
+- Forward slash paths on Windows: `/folder/file.txt` → processed correctly
 
-### 4. Graceful Degradation
-- **Guarantee**: System continues to function if command registration fails
-- **Implementation**: Maintained through proper error handling
-- **Verification**: Same error tolerance preserved
+## 7. Performance Characteristics
 
-## Integration Points Preserved
+### 7.1. Execution Time
+**Before and After Refactoring:**
+- No performance degradation expected
+- .NET built-in methods are optimized
+- Path parsing complexity remains O(n) where n is path length
+- Business logic execution time unchanged
 
-### 1. SMAPI Integration
-- **Console Commands**: Still integrates with `helper.ConsoleCommands`
-- **Events**: Still integrates with `helper.Events.GameLoop.GameLaunched`
-- **Logging**: Still integrates with `monitor.Log()`
+### 7.2. Memory Usage
+**Before and After Refactoring:**
+- Similar memory allocation patterns
+- .NET methods handle memory efficiently
+- No additional memory overhead introduced
+- Temporary string allocations remain similar
 
-### 2. Mod Lifecycle
-- **Initialization**: Still works with mod loading process
-- **Runtime**: Still functions during game execution
-- **Disposal**: Still works with mod unloading process
+## 8. Integration Points
 
-## Configuration and Settings
-- **Command Name**: `lr_version` - unchanged
-- **Command Description**: "Shows the Living Roots version." - unchanged
-- **Help Flags**: `--help`, `-h`, `/?" - unchanged
-- **Output Format**: Version and UniqueID display - unchanged
+### 8.1. Interface Compatibility
+**Before and After Refactoring:**
+- `IReservedNameHandler` interface remains unchanged
+- Method signatures identical
+- Return types identical
+- Exception contracts identical
 
-## Performance Characteristics Maintained
+### 8.2. Dependency Contracts
+**Before and After Refactoring:**
+- `IUnicodeNormalizationService` dependency continues to work identically
+- Method calls to dependency unchanged
+- Input/output contracts with dependency preserved
+- Error handling with dependency unchanged
 
-### 1. Execution Time
-- **Before**: Fast registration with minimal overhead
-- **After**: Still fast registration with minimal overhead
-- **Impact**: No performance degradation, potentially slightly better due to optimized atomic operations
+### 8.3. Integration with Other Components
+**Before and After Refactoring:**
+- `PathValidationService` integration remains unchanged
+- `FileNameSanitizationService` integration remains unchanged
+- `PathTraversalValidator` integration remains unchanged
+- All external contracts preserved
 
-### 2. Memory Usage
-- **Before**: Minimal memory footprint with bit flags
-- **After**: Same minimal memory footprint with bit flags
-- **Impact**: No change in memory usage patterns
+## 9. Test Compatibility
 
-### 3. Thread Behavior
-- **Before**: Non-blocking operations with atomic operations
-- **After**: Still non-blocking operations with atomic operations
-- **Impact**: Better thread safety without blocking
+### 9.1. Existing Unit Tests
+**Before and After Refactoring:**
+- All existing test cases continue to pass
+- Input/output expectations remain identical
+- Edge case tests continue to work
+- Security-focused tests continue to pass
 
-## Error Scenarios Handled
+### 9.2. Integration Tests
+**Before and After Refactoring:**
+- Integration test behavior remains unchanged
+- External component interactions unchanged
+- System-level functionality preserved
+- No changes needed to integration test expectations
 
-### 1. ConsoleCommands Null
-- **Before**: Flag could be set while command wasn't registered
-- **After**: Flag is not set if ConsoleCommands is null
-- **User Impact**: Now properly handles this scenario instead of leaving inconsistent state
+## 10. Configuration and Behavior Options
 
-### 2. Registration Exception
-- **Before**: Exception during registration could leave inconsistent state
-- **After**: Exception during registration triggers recovery mechanism
-- **User Impact**: More robust error handling
+### 10.1. Static Configuration
+**Before and After Refactoring:**
+- Reserved Windows file names collection unchanged
+- Case sensitivity settings preserved
+- Extension handling logic unchanged
+- All static configuration remains identical
 
-### 3. Concurrent Access
-- **Before**: Race condition could occur during registration
-- **After**: Guaranteed thread safety during registration
-- **User Impact**: More reliable behavior under concurrent access
+### 10.2. Runtime Behavior
+**Before and After Refactoring:**
+- Runtime decision making logic unchanged
+- Conditional processing remains identical
+- All business rules preserved
+- Security validations unchanged
 
-## Testing Compatibility
+## 11. Error Handling and Logging
 
-### 1. Existing Tests
-- **Unit Tests**: All existing tests should continue to pass
-- **Integration Tests**: All existing integration tests should continue to work
-- **Concurrent Tests**: Existing concurrent tests will now pass more reliably
+### 11.1. Exception Handling
+**Before and After Refactoring:**
+- Same exception types thrown under same conditions
+- Error message content preserved
+- Exception handling contracts unchanged
+- No new exception types introduced
 
-### 2. Mocking and Dependencies
-- **Dependencies**: Same interfaces and dependencies maintained
-- **Mocking**: Same mocking patterns continue to work
-- **Testability**: Potentially better testability due to clearer separation of concerns
+### 11.2. Logging Behavior
+**Before and After Refactoring:**
+- Logging contracts unchanged (if any exist)
+- Same log messages under same conditions
+- No change to monitoring or alerting behavior
+- Audit trail behavior preserved
 
-## Migration Considerations
+## 12. Verification Checklist
 
-### 1. No Breaking Changes
-- **API**: No public API changes
-- **Behavior**: No functional behavior changes for users
-- **Dependencies**: No new dependencies introduced
+### 12.1. Functional Verification
+- [ ] Reserved name detection works identically
+- [ ] Extension handling works identically  
+- [ ] Unicode normalization integration works identically
+- [ ] Path reconstruction works identically
+- [ ] Directory path preservation works identically
+- [ ] UNC path handling works identically
+- [ ] All edge cases handled identically
 
-### 2. Deployment
-- **Assembly**: Same assembly structure maintained
-- **Distribution**: No changes to distribution requirements
-- **Compatibility**: Full backward compatibility maintained
+### 12.2. Security Verification
+- [ ] Homoglyph protection maintained
+- [ ] Insignificant character handling maintained
+- [ ] All security validations preserved
+- [ ] No security regressions introduced
+- [ ] Input sanitization preserved
 
-## Verification Checklist
+### 12.3. Performance Verification
+- [ ] No performance degradation
+- [ ] Memory usage similar or improved
+- [ ] Same scalability characteristics
+- [ ] No new bottlenecks introduced
 
-- [ ] Command registration still works as expected
-- [ ] Event handling behavior unchanged
-- [ ] All public interfaces remain the same
-- [ ] Error handling patterns maintained
-- [ ] Logging behavior consistent
-- [ ] State management preserved
-- [ ] Disposal behavior unchanged
-- [ ] Performance characteristics maintained
-- [ ] Thread safety improved without breaking functionality
-- [ ] All existing tests continue to pass
+### 12.4. Compatibility Verification
+- [ ] All existing tests pass
+- [ ] Integration points unchanged
+- [ ] Interface contracts preserved
+- [ ] Dependency contracts preserved
 
-This functionality maintenance plan ensures that while fixing the race condition, all existing functionality remains intact and behaves exactly as users expect.
+## 13. Migration Strategy
+
+### 13.1. Risk Mitigation
+- Comprehensive test coverage before implementation
+- Gradual rollout with monitoring
+- Rollback plan if issues arise
+- Performance benchmarking against original
+
+### 13.2. Validation Process
+- Unit test validation
+- Integration test validation
+- Security validation
+- Performance validation
+- Cross-platform validation
+
+## 14. Conclusion
+
+The refactored ReservedNameHandler implementation maintains all existing functionality through:
+
+1. **Identical Input/Output Behavior**: All inputs produce identical outputs
+2. **Preserved Business Logic**: Core security and validation logic unchanged
+3. **Maintained Integration Points**: All external contracts preserved
+4. **Consistent Error Handling**: Same exception and error behavior
+5. **Preserved Edge Case Handling**: All special cases handled identically
+
+The simplification focuses solely on the path parsing mechanism, using .NET's built-in methods instead of manual string manipulation, while ensuring that all functional, security, and behavioral aspects remain unchanged.
