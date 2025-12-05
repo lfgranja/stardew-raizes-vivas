@@ -500,7 +500,7 @@ namespace LivingRoots.Services
                 if (segment[i] == '.')
                 {
                     consecutiveDots++;
-                    maxConsecutiveDots = Math.Max(maxConsecutiveDots, consecutiveDots);
+                    maxConsecutiveDots = System.Math.Max(maxConsecutiveDots, consecutiveDots);
                 }
                 else
                 {
