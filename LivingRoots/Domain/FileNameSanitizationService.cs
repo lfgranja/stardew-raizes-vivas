@@ -21,6 +21,7 @@ namespace LivingRoots.Domain
     /// - Guaranteed replacement of dangerous extensions with ".blocked"
     /// - Improved surrogate handling as suggested by qodo-merge-pro
     /// - Comprehensive validation of all return values
+    /// - Enhanced hidden-name core revalidation for additional security
     /// </summary>
     public class FileNameSanitizationService : IFileNameSanitizationService
     {
@@ -103,6 +104,10 @@ namespace LivingRoots.Domain
 
             // Step 6: Reserved names and final validation
             result = HandleReservedNames(result);
+            
+            // Revalidate hidden-name core after all processing to ensure hidden file status is preserved
+            result = RevalidateHiddenNameCore(result);
+            
             ValidateFinalResult(result);
 
             return result;
@@ -418,7 +423,7 @@ namespace LivingRoots.Domain
                             {
                                 // For hidden files, keep the dot and truncate the content part
                                 string contentPart = namePart.Substring(1);
-                                int contentBudget = Math.Max(0, availableLength - 1); // Reserve 1 char for the dot if possible
+                                int contentBudget = System.Math.Max(0, availableLength - 1); // Reserve 1 char for the dot if possible
                                 if (contentBudget > 0)
                                 {
                                     string truncatedContent = SafeSubstring(contentPart, 0, contentBudget);
@@ -429,7 +434,7 @@ namespace LivingRoots.Domain
                                     else
                                     {
                                         // If truncation results in empty content, ensure we have at least a minimal name
-                                        int minimalBudget = Math.Max(1, contentBudget);
+                                        int minimalBudget = System.Math.Max(1, contentBudget);
                                         namePart = "." + SafeSubstring(contentPart, 0, minimalBudget);
                                     }
                                 }
@@ -449,11 +454,11 @@ namespace LivingRoots.Domain
                         else
                         {
                             // If there's no space for the name part, just use a minimal safe name instead
-                            int extensionLength = Math.Max(0, MaxFileNameLength - finalExtension.Length);
+                            int extensionLength = System.Math.Max(0, MaxFileNameLength - finalExtension.Length);
                             if (extensionLength > 0)
                             {
                                 // If there's some space for a name part, use a minimal safe name
-                                result = SafeSubstring("file", 0, Math.Max(1, extensionLength)) + finalExtension;
+                                result = SafeSubstring("file", 0, System.Math.Max(1, extensionLength)) + finalExtension;
                             }
                             else
                             {
@@ -520,15 +525,11 @@ namespace LivingRoots.Domain
         /// <returns>A safe filename with blocked extension</returns>
         private string CreateSafeNameForBlockedExtension(string normalized, string extension)
         {
-            // For hidden files (starting with dot), we preserve the dot
-            if (normalized.StartsWith(".", StringComparison.Ordinal))
-            {
-                return ".file.blocked";
-            }
-            else
-            {
-                return "file.blocked";
-            }
+            // Determine if the file should be treated as hidden based on whether the normalized filename starts with a dot
+            bool isHidden = normalized.StartsWith(".", StringComparison.Ordinal);
+            
+            // Reuse the existing validated method that performs comprehensive validation
+            return CreateAndValidateSafeBlockedFilename(isHidden, normalized);
         }
 
         /// <summary>
@@ -595,6 +596,40 @@ namespace LivingRoots.Domain
                 result = PerformFinalCleanup(result, DetermineHiddenFileStatus(result));
             }
 
+            return result;
+        }
+
+        /// <summary>
+        /// Revalidates the hidden-name core to ensure that hidden file status is properly preserved
+        /// and validated after all other processing steps.
+        /// </summary>
+        /// <param name="result">The filename after all other processing</param>
+        /// <returns>The filename with validated hidden file status</returns>
+        private static string RevalidateHiddenNameCore(string result)
+        {
+            // Revalidate that if the filename starts with a dot, it has meaningful content after sanitization
+            if (result.StartsWith(".", StringComparison.Ordinal))
+            {
+                // Extract the content after the leading dot
+                string contentAfterDot = result.Length > 1 ? result.Substring(1) : string.Empty;
+                
+                // Ensure the content after the dot is meaningful (not empty, not just fillers)
+                string trimmedContent = contentAfterDot.Trim('_', ' ', '.');
+                
+                // If the trimmed content is empty, contains only "." or "..", or is whitespace, it's invalid
+                if (string.IsNullOrWhiteSpace(trimmedContent) || trimmedContent == "." || trimmedContent == "..")
+                {
+                    throw new ArgumentException("Hidden file has invalid content after sanitization.", nameof(result));
+                }
+            }
+            
+            // Additional validation: ensure the result is not just a dot or a dot followed by only fillers
+            string trimmedResult = result.Trim('_', ' ', '.');
+            if (trimmedResult == "." || string.IsNullOrWhiteSpace(trimmedResult))
+            {
+                throw new ArgumentException("Filename sanitizes to an invalid hidden file name.", nameof(result));
+            }
+            
             return result;
         }
 
