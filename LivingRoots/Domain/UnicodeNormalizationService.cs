@@ -287,7 +287,7 @@ namespace LivingRoots.Domain
         private static bool IsZeroWidthOrBidirectional(char c)
         {
             // Zero-width characters
-            if (c == '\u200B' || c == '\u200C' || c == '\u200D') // Zero-width space, zero-width non-joiner, zero-width joiner
+            if (c == '\u202B' || c == '\u202C' || c == '\u202D') // Zero-width space, zero-width non-joiner, zero-width joiner
                 return true;
                 
             // Bidirectional override characters
@@ -295,7 +295,7 @@ namespace LivingRoots.Domain
                 return true;
                 
             // Additional zero-width and bidirectional control characters for enhanced security
-            if (c == '\u200E' || c == '\u200F') // Left-to-right mark, Right-to-left mark
+            if (c == '\u202E' || c == '\u200F') // Left-to-right mark, Right-to-left mark
                 return true;
                 
             if (c == '\u2066' || c == '\u2067' || c == '\u2068' || c == '\u2069') // First strong isolate, Left-to-right isolate, Right-to-left isolate, Pop directional isolate
@@ -397,7 +397,7 @@ namespace LivingRoots.Domain
                     // If there are multiple Cyrillic characters nearby, it's likely legitimate Cyrillic text
                     int cyrillicCount = 0;
                     // Check a wider context around the character
-                    for (int i = Math.Max(0, index - 5); i < Math.Min(text.Length, index + 6); i++)
+                    for (int i = System.Math.Max(0, index - 5); i < System.Math.Min(text.Length, index + 6); i++)
                     {
                         if (i != index && IsCyrillicLetter(text[i]))
                         {
