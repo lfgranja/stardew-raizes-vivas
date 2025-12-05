@@ -22,7 +22,7 @@ namespace LivingRoots.Domain
         // Enhanced to detect more path traversal attack variations including Unicode escapes, URL encoding variations, and hex encodings
         // Improved to reduce false positives by being more specific about dangerous patterns
         private static readonly Regex EncodedTraversalPattern = new Regex(
-            @"(?:%2e%2e%2[fF]|%2e%2e[/\\]|%2e%2e%0|%%32[eE]%%32[fF]|%25%32%65%25%32%65%25%32%66|%252[eE]%252[eE][/\\%3F%5C%2F]|%c0%ae%c0%ae|%e0%80%ae%e0%80%ae|%f0%80%80%ae%f0%80%80%ae|%c0%2e%c0%2e|%c0%2[fF]|%c0%5[cC]|%c0%af|%e2%80%a5%e2%80%a5%e2%80%a5|%ef%bc%8[fF]%ef%bc%8[eE]%ef%bc%8[eE]%ef%bc%8[fF]|%ef%bc%9[cC]%ef%bc%9[eE]%ef%bc%9[cC]%ef%bc%9[eE]|\.%252[eE]|%252[eE]\.|%252[eE]%252[eE]|\.%00\.|%00\.\.|%u02e%u02e%u002[fF]|%u002e%u002e%u005[cC]|%uff0[eE]%uff0[eE]|%u2024%u2024|%u2025%u2025|%u2026%u2026|%u302e%u3002|%uff0[fF]|%uff3[cC]|%u221[56])",
+            @"(?:%2e%2e%2[fF]|%2e%2e[/\\]|%2e%2e%0|%%32[eE]%%32[fF]|%25%32%65%25%32%65%25%32%66|%252[eE]%252[eE][/\\%3F%5C%2F]|%c0%ae%c0%ae|%e0%80%ae%e0%80%ae|%f0%80%80%ae%f0%80%80%ae|%c0%2e%c0%2e|%c0%2[fF]|%c0%5[cC]|%c0%af|%e2%80%a5%e2%80%a5%e2%80%a5|%ef%bc%8[fF]%ef%bc%8[eE]%ef%bc%8[eE]%ef%bc%8[fF]|%ef%bc%9[cC]%ef%bc%9[eE]%ef%bc%9[cC]%ef%bc%9[eE]|\.%252[eE]|%252[eE]\.|%252[eE]%252[eE]|\.%00\.|%00\.\.|%u02e%u02e%u002[fF]|%u02e%u002e%u005[cC]|%uff0[eE]%uff0[eE]|%u2024%u2024|%u2025%u2025|%u2026%u2026|%u302e%u3002|%uff0[fF]|%uff3[cC]|%u221[56])",
             RegexOptions.Compiled | RegexOptions.IgnoreCase
         );
 
@@ -55,6 +55,7 @@ namespace LivingRoots.Domain
             // Run all essential validation checks
             ValidatePathSecurity(processedPath);
             ValidatePathTraversalDepth(processedPath);
+            ValidatePathContainment(processedPath);
         }
 
         /// <summary>
@@ -64,9 +65,15 @@ namespace LivingRoots.Domain
         /// <returns>The normalized path</returns>
         private string NormalizePath(string path)
         {
-            // Canonicalize separators
-            string normalized = path.Replace('\\', '/');
- 
+            // Canonicalize separators - handle various Unicode separators and normalize them to forward slash
+            string normalized = path.Replace('\\', '/')
+                                   .Replace('\u002f', '/')    // SOLIDUS (/)
+                                   .Replace('\u005c', '/')    // REVERSE SOLIDUS (\) - normalized to forward slash
+                                   .Replace('\u2044', '/')    // FRACTION SLASH
+                                   .Replace('\u2215', '/')    // DIVISION SLASH
+                                   .Replace('\ufe6f', '/')    // SMALL REVERSE SOLIDUS
+                                   .Replace('\uff0f', '/');   // FULLWIDTH SOLIDUS
+
             // Map dot-homoglyphs used in traversal tricks to ASCII '.'
             // U+2024 (ONE DOT LEADER), U+2025 (TWO DOT LEADER), U+2026 (HORIZONTAL ELLIPSIS), U+FF0E (FULLWIDTH FULL STOP)
             normalized = normalized
@@ -99,7 +106,8 @@ namespace LivingRoots.Domain
             }
             
             // Split into segments ignoring empty parts from repeated separators
-            string[] segments = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            // Use the hardened separator detection to split on all possible separator characters
+            string[] segments = SplitPathSegments(path);
             
             // Add a hard cap to prevent excessive processing of pathological inputs
             // Increased from 100 to allow more reasonable paths while still preventing abuse
@@ -113,10 +121,9 @@ namespace LivingRoots.Domain
             
             foreach (string segment in segments)
             {
-                // Check for integer overflow before decrementing
-                if (segment.Equals("..", StringComparison.Ordinal))
+                if (IsPathTraversalSegment(segment))
                 {
-                    // Prevent integer underflow by checking bounds
+                    // Check for integer overflow before decrementing
                     if (depth <= int.MinValue + 1)
                     {
                         throw new ArgumentException("Path contains invalid depth calculation", nameof(path));
@@ -128,7 +135,7 @@ namespace LivingRoots.Domain
                         throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
                     }
                 }
-                else if (!segment.Equals(".", StringComparison.Ordinal))
+                else if (!IsCurrentDirectorySegment(segment))
                 {
                     // Check for integer overflow before incrementing
                     if (depth >= int.MaxValue - 1)
@@ -144,6 +151,105 @@ namespace LivingRoots.Domain
             // Remove the arbitrary depth cap of 10 that was limiting legitimate use cases
             // The depth < 0 check already prevents traversal above root
             // This allows deeper, legitimate directory structures
+        }
+
+        /// <summary>
+        /// Validates path containment to ensure the path is properly contained and cannot escape the intended root directory.
+        /// This provides an additional layer of security beyond the depth-based analysis.
+        /// </summary>
+        /// <param name="path">The normalized path to validate.</param>
+        /// <exception cref="ArgumentException">Thrown when path containment is violated.</exception>
+        private void ValidatePathContainment(string path)
+        {
+            // Check for relative path components that could lead outside the intended directory
+            // This check looks for patterns that could escape the root directory
+            
+            // Check if the path starts with parent directory navigation patterns
+            if (path.StartsWith("../") || path.StartsWith("..\\") || path.StartsWith("../") || path.StartsWith("..\\"))
+            {
+                throw new ArgumentException("Path cannot start with parent directory navigation", nameof(path));
+            }
+            
+            // Additional containment validation: ensure the path doesn't contain patterns that could
+            // lead to directory traversal beyond intended boundaries
+            string[] segments = SplitPathSegments(path);
+            
+            // Count parent directory references to ensure they don't exceed the number of actual directory levels
+            int parentDirCount = 0;
+            int actualDirCount = 0;
+            
+            foreach (string segment in segments)
+            {
+                if (IsPathTraversalSegment(segment))
+                {
+                    parentDirCount++;
+                    // If parent directory count exceeds actual directory count, it's a containment violation
+                    if (parentDirCount > actualDirCount)
+                    {
+                        throw new ArgumentException("Path contains invalid containment pattern", nameof(path));
+                    }
+                }
+                else if (!IsCurrentDirectorySegment(segment))
+                {
+                    // Regular directory/file names increase the actual directory count
+                    actualDirCount++;
+                    // Reset parent count since we've moved deeper into the directory structure
+                    if (parentDirCount > 0)
+                    {
+                        // Decrement parent count when we go deeper, but don't let it go negative
+                        parentDirCount = System.Math.Max(0, parentDirCount - 1);
+                    }
+                }
+            }
+            
+            // Final check: if there are more parent directory references than actual directories,
+            // the path would attempt to escape the intended root
+            if (parentDirCount > actualDirCount)
+            {
+                throw new ArgumentException("Path contains invalid containment pattern", nameof(path));
+            }
+        }
+
+        /// <summary>
+        /// Splits a path into segments using hardened separator detection to handle various Unicode separators.
+        /// </summary>
+        /// <param name="path">The path to split into segments</param>
+        /// <returns>An array of path segments</returns>
+        private static string[] SplitPathSegments(string path)
+        {
+            // Create a character array that includes all possible path separators
+            char[] separators = {
+                '/',                    // Forward slash
+                '\\',                   // Backslash
+                '\u002f',              // SOLIDUS
+                '\u005c',              // REVERSE SOLIDUS
+                '\u2044',              // FRACTION SLASH
+                '\u2215',              // DIVISION SLASH
+                '\ufe6f',              // SMALL REVERSE SOLIDUS
+                '\uff0f'               // FULLWIDTH SOLIDUS
+            };
+            
+            return path.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        /// <summary>
+        /// Checks if a path segment is a path traversal segment (represents parent directory navigation).
+        /// </summary>
+        /// <param name="segment">The path segment to check</param>
+        /// <returns>True if the segment represents parent directory navigation, false otherwise</returns>
+        private static bool IsPathTraversalSegment(string segment)
+        {
+            return segment.Equals("..", StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Checks if a path segment represents the current directory.
+        /// </summary>
+        /// <param name="segment">The path segment to check</param>
+        /// <returns>True if the segment represents current directory, false otherwise</returns>
+        private static bool IsCurrentDirectorySegment(string segment)
+        {
+            return segment.Equals(".", StringComparison.Ordinal);
         }
 
         /// <summary>
