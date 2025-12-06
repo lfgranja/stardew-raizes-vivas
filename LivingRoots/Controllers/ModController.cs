@@ -5,7 +5,7 @@ using System.Threading;
 using System.Linq;
 using System.Collections.Generic;
 using LivingRoots.Services;
-using LivingRoots.Domain; // Adicionar
+using LivingRoots.Domain; // Add
 
 namespace LivingRoots.Controllers
 {
@@ -18,7 +18,7 @@ namespace LivingRoots.Controllers
         private readonly IMonitor _monitor;
         private readonly IManifest _manifest;
         private readonly IModDataService _modDataService;
-        private readonly ISoilHealthService _soilHealthService; // NOVA DEPENDÊNCIA
+        private readonly ISoilHealthService _soilHealthService; // NEW DEPENDENCY
 
         private static readonly HashSet<string> HelpFlags = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -32,15 +32,15 @@ namespace LivingRoots.Controllers
         private int _state = 0;
 
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
-        private EventHandler<SaveLoadedEventArgs>? _onSaveLoadedHandler; // NOVO
-        private EventHandler<SavingEventArgs>? _onSavingHandler; // NOVO
+        private EventHandler<SaveLoadedEventArgs>? _onSaveLoadedHandler; // NEW
+        private EventHandler<SavingEventArgs>? _onSavingHandler; // NEW
 
         // State bit flags
         private const int EventsRegisteredFlag = 0x01;
         private const int CommandRegisteredFlag = 0x02;
         private const int DisposedFlag = 0x04;
 
-        public ModController(IModHelper helper, IMonitor monitor, IManifest manifest, IModDataService modDataService, ISoilHealthService soilHealthService) // Atualizar construtor
+        public ModController(IModHelper helper, IMonitor monitor, IManifest manifest, IModDataService modDataService, ISoilHealthService soilHealthService) // Update constructor
         {
             _helper = helper ?? throw new ArgumentNullException(nameof(helper));
             _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
@@ -82,15 +82,15 @@ namespace LivingRoots.Controllers
 
                 // Initialize the handlers once
                 _onGameLaunchedHandler ??= OnGameLaunched;
-                _onSaveLoadedHandler ??= OnSaveLoaded; // NOVO
-                _onSavingHandler ??= OnSaving; // NOVO
+                _onSaveLoadedHandler ??= OnSaveLoaded; // NEW
+                _onSavingHandler ??= OnSaving; // NEW
 
                 // Subscribe to events
                 gameLoop.GameLaunched += _onGameLaunchedHandler;
                 
-                // NOVOS EVENTOS - Carregar e salvar dados de saúde do solo
-                gameLoop.SaveLoaded += _onSaveLoadedHandler; // NOVO
-                gameLoop.Saving += _onSavingHandler; // NOVO
+                // NEW EVENTS - Loading and saving soil health data
+                gameLoop.SaveLoaded += _onSaveLoadedHandler; // NEW
+                gameLoop.Saving += _onSavingHandler; // NEW
 
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
@@ -108,9 +108,9 @@ namespace LivingRoots.Controllers
                         if (_onGameLaunchedHandler != null)
                             gameLoop.GameLaunched -= _onGameLaunchedHandler;
                         if (_onSaveLoadedHandler != null)
-                            gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NOVO
+                            gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NEW
                         if (_onSavingHandler != null)
-                            gameLoop.Saving -= _onSavingHandler; // NOVO
+                            gameLoop.Saving -= _onSavingHandler; // NEW
                     }
                 }
                 catch
@@ -119,8 +119,8 @@ namespace LivingRoots.Controllers
                 }
                 
                 _onGameLaunchedHandler = null;
-                _onSaveLoadedHandler = null; // NOVO
-                _onSavingHandler = null; // NOVO
+                _onSaveLoadedHandler = null; // NEW
+                _onSavingHandler = null; // NEW
 
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
             }
@@ -163,8 +163,8 @@ namespace LivingRoots.Controllers
 
                 // Use Interlocked.Exchange to safely get and clear the handlers
                 var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NOVO
-                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NOVO
+                var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NEW
+                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NEW
 
                 // Always attempt to detach to avoid leaked handlers
                 if (gameLaunchedHandler != null)
@@ -173,12 +173,12 @@ namespace LivingRoots.Controllers
                 }
                 
                 // Detach new handlers as well
-                if (saveLoadedHandler != null) // NOVO
+                if (saveLoadedHandler != null) // NEW
                 {
                     gameLoop.SaveLoaded -= saveLoadedHandler;
                 }
                 
-                if (savingHandler != null) // NOVO
+                if (savingHandler != null) // NEW
                 {
                     gameLoop.Saving -= savingHandler;
                 }
@@ -203,27 +203,27 @@ namespace LivingRoots.Controllers
             }
         }
 
-        private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e) // NOVO
+        private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e) // NEW
         {
             try
             {
-                // Carrega os dados usando o nome da pasta do save como ID único
+                // Load data using the save folder name as unique ID
                 if (string.IsNullOrEmpty(Constants.SaveFolderName))
                 {
                     _monitor.Log("Cannot load soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
                     return;
                 }
                 
-                string saveId = Constants.SaveFolderName; // Usando a constante do SMAPI para obter o ID do save
+                string saveId = Constants.SaveFolderName; // Using SMAPI constant to get the save ID
                 _soilHealthService.LoadData(saveId);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _monitor.Log($"Error occurred while loading soil health data: {ex.Message}", LogLevel.Error);
+                _monitor.Log("Error occurred while loading soil health data.", LogLevel.Error);
             }
         }
 
-        private void OnSaving(object? sender, SavingEventArgs e) // NOVO
+        private void OnSaving(object? sender, SavingEventArgs e) // NEW
         {
             // Skip if controller has been disposed
             if (IsDisposed())
@@ -231,19 +231,19 @@ namespace LivingRoots.Controllers
             
             try
             {
-                // Salva os dados antes do jogo fechar/salvar
+                // Save data before the game saves/exits
                 if (string.IsNullOrEmpty(Constants.SaveFolderName))
                 {
                     _monitor.Log("Cannot save soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
                     return;
                 }
                 
-                string saveId = Constants.SaveFolderName; // Usando a constante do SMAPI para obter o ID do save
+                string saveId = Constants.SaveFolderName; // Using SMAPI constant to get the save ID
                 _soilHealthService.SaveData(saveId);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _monitor.Log($"Error occurred while saving soil health data: {ex.Message}", LogLevel.Error);
+                _monitor.Log("Error occurred while saving soil health data.", LogLevel.Error);
             }
         }
 
