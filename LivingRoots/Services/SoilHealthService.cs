@@ -13,9 +13,9 @@ namespace LivingRoots.Services
         private readonly IModDataService _modDataService;
         private readonly IMonitor _monitor;
         
-        // Runtime cache using Vector2 directly as key for better performance
+        // Runtime cache using Point directly as key for better performance and precision
         // Dictionary<LocationName, Dictionary<TileCoordinates, HealthValue>>
-        private readonly Dictionary<string, Dictionary<Vector2, float>> _runtimeCache = new();
+        private readonly Dictionary<string, Dictionary<Point, float>> _runtimeCache = new();
         private const string KeyPrefix = "soil_health_data_";
         
         // Lock object for thread safety
@@ -40,7 +40,7 @@ namespace LivingRoots.Services
                 string dataKey = GetSaveKey(saveId);
                 var savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
                 
-                // Convert from disk format (string keys) to runtime format (Vector2 keys)
+                // Convert from disk format (string keys) to runtime format (Point keys)
                 _runtimeCache.Clear();
                 if (savedData != null)
                 {
@@ -49,15 +49,15 @@ namespace LivingRoots.Services
                         // Skip if the value is null to prevent NullReferenceException
                         if (locationEntry.Value == null) continue;
                         
-                        var tileDict = new Dictionary<Vector2, float>();
+                        var tileDict = new Dictionary<Point, float>();
                         bool warnedForLocation = false; // Only warn once per location
                         foreach (var tileEntry in locationEntry.Value)
                         {
-                            // Parse "X,Y" string back to Vector2
+                            // Parse "X,Y" string back to Point (using integers for tile coordinates)
                             string[] parts = tileEntry.Key.Split(',');
                             if (parts.Length == 2 && 
-                                float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float x) &&
-                                float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float y))
+                                int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
+                                int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
                             {
                                 // Validate the loaded value by checking for NaN/Infinity and clamping to [0, 100] range
                                 var rawValue = tileEntry.Value;
@@ -72,7 +72,7 @@ namespace LivingRoots.Services
                                 }
                                 
                                 float clamped = Math.Clamp(rawValue, 0f, 100f);
-                                tileDict[new Vector2(x, y)] = clamped;
+                                tileDict[new Point(x, y)] = clamped;
                             }
                             else
                             {
@@ -104,7 +104,7 @@ namespace LivingRoots.Services
             
             lock (_lock)
             {
-                // Validate and convert from runtime format (Vector2 keys) to disk format (string keys)
+                // Validate and convert from runtime format (Point keys) to disk format (string keys)
                 var stateToSave = new SoilHealthState();
                 foreach (var locationEntry in _runtimeCache)
                 {
@@ -135,18 +135,27 @@ namespace LivingRoots.Services
         {
             // Validate input to prevent potential exceptions
             if (string.IsNullOrWhiteSpace(locationName)) 
+            {
+                _monitor.Log($"GetSoilHealth: Invalid locationName '{locationName}'. Returning default 0f.", LogLevel.Trace);
                 return 0f; // Return default (Poor Soil) if location is invalid
+            }
 
             lock (_lock)
             {
                 if (_runtimeCache.TryGetValue(locationName, out var tiles))
                 {
-                    // Direct lookup using Vector2 key - no string allocation or parsing
-                    if (tiles.TryGetValue(tile, out float health))
+                    // Convert Vector2 to Point for lookup (using integer coordinates)
+                    var key = new Point((int)tile.X, (int)tile.Y);
+                    
+                    // Direct lookup using Point key - no string allocation or parsing
+                    if (tiles.TryGetValue(key, out float health))
                     {
                         return health;
                     }
                 }
+                
+                // Log if the tile doesn't have data (but location exists)
+                _monitor.Log($"GetSoilHealth: No data found for tile ({tile.X},{tile.Y}) in '{locationName}'. Returning default 0f.", LogLevel.Trace);
                 return 0f; // Return default (Poor Soil) if no data exists
             }
         }
@@ -172,10 +181,13 @@ namespace LivingRoots.Services
                 // Use TryGetValue to perform a single lookup instead of ContainsKey + indexer
                 if (!_runtimeCache.TryGetValue(locationName, out var tiles))
                 {
-                    tiles = new Dictionary<Vector2, float>();
+                    tiles = new Dictionary<Point, float>();
                     _runtimeCache[locationName] = tiles;
                 }
-                tiles[tile] = clampedValue;
+                
+                // Convert Vector2 to Point for storage (using integer coordinates)
+                var key = new Point((int)tile.X, (int)tile.Y);
+                tiles[key] = clampedValue;
             }
         }
 
@@ -197,14 +209,17 @@ namespace LivingRoots.Services
                 // Perform the update operation in a single lock to avoid reentrant calls
                 if (!_runtimeCache.TryGetValue(locationName, out var tiles))
                 {
-                    tiles = new Dictionary<Vector2, float>();
+                    tiles = new Dictionary<Point, float>();
                     _runtimeCache[locationName] = tiles;
                 }
 
+                // Convert Vector2 to Point for lookup (using integer coordinates)
+                var key = new Point((int)tile.X, (int)tile.Y);
+                
                 // Get current value (0 if tile doesn't exist) and calculate new value
-                tiles.TryGetValue(tile, out float currentHealth);
+                tiles.TryGetValue(key, out float currentHealth);
                 float newHealth = Math.Clamp(currentHealth + delta, 0f, 100f);
-                tiles[tile] = newHealth;
+                tiles[key] = newHealth;
             }
         }
 
