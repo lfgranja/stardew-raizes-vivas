@@ -28,15 +28,34 @@ namespace LivingRoots.Tests
             var tile = new Vector2(10, 10);
 
             // Act
-            service.SetSoilHealth(location, tile, 150.0f); // Tenta setar 150
+            service.SetSoilHealth(location, tile, 150.0f); // Try to set 150
             var resultMax = service.GetSoilHealth(location, tile);
 
-            service.SetSoilHealth(location, tile, -50.0f); // Tenta setar -50
+            service.SetSoilHealth(location, tile, -50.0f); // Try to set -50
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
             Assert.Equal(100.0f, resultMax);
             Assert.Equal(0.0f, resultMin);
+        }
+
+        [Theory]
+        [InlineData(150.0f, 100.0f)]
+        [InlineData(-50.0f, 0.0f)]
+        [InlineData(50.0f, 50.0f)]
+        public void SetSoilHealth_ValueIsClamped(float healthToSet, float expectedHealth)
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
+            var tile = new Vector2(10, 10);
+
+            // Act
+            service.SetSoilHealth(location, tile, healthToSet);
+            var result = service.GetSoilHealth(location, tile);
+
+            // Assert
+            Assert.Equal(expectedHealth, result);
         }
 
         [Fact]
