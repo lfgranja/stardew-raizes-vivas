@@ -12,8 +12,9 @@ namespace LivingRoots.Services
         private readonly IModDataService _modDataService;
         private readonly IMonitor _monitor;
         
-        // Cache em memória para acesso rápido durante o jogo
-        private SoilHealthState _currentState = new SoilHealthState();
+        // Runtime cache using Vector2 directly as key for better performance
+        // Dictionary<LocationName, Dictionary<TileCoordinates, HealthValue>>
+        private Dictionary<string, Dictionary<Vector2, float>> _runtimeCache = new();
         private const string KeyPrefix = "soil_health_data_";
         
         // Lock object for thread safety
@@ -35,17 +36,32 @@ namespace LivingRoots.Services
             
             lock (_lock)
             {
-                string key = GetSaveKey(saveId);
-                var data = _modDataService.LoadData<SoilHealthState>(key);
-                
-                if (data != null)
+                string dataKey = GetSaveKey(saveId);
+                var savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
+
+                // Convert from disk format (string keys) to runtime format (Vector2 keys)
+                _runtimeCache.Clear();
+                if (savedData != null)
                 {
-                    _currentState = data;
-                    _monitor.Log($"Soil Health data loaded for save {saveId}", LogLevel.Trace);
+                    foreach (var locationEntry in savedData.LocationHealthData)
+                    {
+                        var tileDict = new Dictionary<Vector2, float>();
+                        foreach (var tileEntry in locationEntry.Value)
+                        {
+                            // Parse "X,Y" string back to Vector2
+                            string[] parts = tileEntry.Key.Split(',');
+                            if (parts.Length == 2 && 
+                                float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float x) &&
+                                float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float y))
+                            {
+                                tileDict[new Vector2(x, y)] = tileEntry.Value;
+                            }
+                        }
+                        _runtimeCache[locationEntry.Key] = tileDict;
+                    }
                 }
                 else
                 {
-                    _currentState = new SoilHealthState();
                     _monitor.Log($"No existing Soil Health data found for save {saveId}. Starting fresh.", LogLevel.Info);
                 }
             }
@@ -61,43 +77,59 @@ namespace LivingRoots.Services
             
             lock (_lock)
             {
-                string key = GetSaveKey(saveId);
-                _modDataService.SaveData(_currentState, key);
+                // Convert from runtime format (Vector2 keys) to disk format (string keys)
+                var stateToSave = new SoilHealthState();
+                foreach (var locationEntry in _runtimeCache)
+                {
+                    var stringDict = new Dictionary<string, float>();
+                    foreach (var tileEntry in locationEntry.Value)
+                    {
+                        string key = $"{tileEntry.Key.X.ToString(CultureInfo.InvariantCulture)},{tileEntry.Key.Y.ToString(CultureInfo.InvariantCulture)}";
+                        stringDict[key] = tileEntry.Value;
+                    }
+                    stateToSave.LocationHealthData[locationEntry.Key] = stringDict;
+                }
+
+                string saveKey = GetSaveKey(saveId);
+                _modDataService.SaveData(stateToSave, saveKey);
                 _monitor.Log($"Soil Health data saved for {saveId}", LogLevel.Trace);
             }
         }
 
         public float GetSoilHealth(string locationName, Vector2 tile)
         {
+            if (string.IsNullOrWhiteSpace(locationName)) 
+                return 0f; // Return default (Poor Soil) if location is invalid
+
             lock (_lock)
             {
-                if (_currentState.LocationHealthData.TryGetValue(locationName, out var tiles))
+                if (_runtimeCache.TryGetValue(locationName, out var tiles))
                 {
-                    string tileKey = $"{tile.X.ToString(CultureInfo.InvariantCulture)},{tile.Y.ToString(CultureInfo.InvariantCulture)}";
-                    if (tiles.TryGetValue(tileKey, out float health))
+                    // Direct lookup using Vector2 key - no string allocation or parsing
+                    if (tiles.TryGetValue(tile, out float health))
                     {
                         return health;
                     }
                 }
-                return 0f; // Valor padrão (Solo Pobre) se não houver dados
+                return 0f; // Return default (Poor Soil) if no data exists
             }
         }
 
         public void SetSoilHealth(string locationName, Vector2 tile, float value)
         {
+            if (string.IsNullOrWhiteSpace(locationName)) 
+                return; // Skip if location is invalid
+
             lock (_lock)
             {
-                // Regra de Domínio: Clamp entre 0 e 100
+                // Domain Rule: Clamp between 0 and 100
                 float clampedValue = Math.Clamp(value, 0f, 100f);
 
-                if (!_currentState.LocationHealthData.TryGetValue(locationName, out var tiles))
+                if (!_runtimeCache.ContainsKey(locationName))
                 {
-                    tiles = new Dictionary<string, float>();
-                    _currentState.LocationHealthData[locationName] = tiles;
+                    _runtimeCache[locationName] = new Dictionary<Vector2, float>();
                 }
-
-                string tileKey = $"{tile.X.ToString(CultureInfo.InvariantCulture)},{tile.Y.ToString(CultureInfo.InvariantCulture)}";
-                tiles[tileKey] = clampedValue;
+                _runtimeCache[locationName][tile] = clampedValue;
             }
         }
 
@@ -112,8 +144,8 @@ namespace LivingRoots.Services
 
         private string GetSaveKey(string saveId)
         {
-            // Sanitização básica da chave é feita pelo ModDataService, 
-            // mas garantimos que o ID do save faça parte da chave para separar arquivos.
+            // Basic key sanitization is handled by ModDataService, 
+            // but we ensure the save ID is part of the key to separate files.
             return $"{KeyPrefix}{saveId}";
         }
     }
