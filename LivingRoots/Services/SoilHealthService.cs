@@ -46,6 +46,9 @@ namespace LivingRoots.Services
                 {
                     foreach (var locationEntry in savedData.LocationHealthData)
                     {
+                        // Skip if the value is null to prevent NullReferenceException
+                        if (locationEntry.Value == null) continue;
+                        
                         var tileDict = new Dictionary<Vector2, float>();
                         bool warnedForLocation = false; // Only warn once per location
                         foreach (var tileEntry in locationEntry.Value)
@@ -130,6 +133,13 @@ namespace LivingRoots.Services
         {
             if (string.IsNullOrWhiteSpace(locationName)) 
                 return; // Skip if location is invalid
+                
+            // Guard against invalid coordinates to prevent data corruption
+            if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
+            {
+                _monitor.Log("SetSoilHealth skipped: invalid tile coordinates.", LogLevel.Warn);
+                return;
+            }
 
             lock (_lock)
             {
@@ -150,6 +160,13 @@ namespace LivingRoots.Services
         {
             if (string.IsNullOrWhiteSpace(locationName)) 
                 return; // Skip if location is invalid
+                
+            // Guard against invalid coordinates to prevent data corruption
+            if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
+            {
+                _monitor.Log("UpdateHealth skipped: invalid tile coordinates.", LogLevel.Warn);
+                return;
+            }
 
             lock (_lock)
             {
