@@ -37,7 +37,7 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Handles reserved Windows filenames by appending an underscore to the base name if necessary.
         /// Uses Path.GetFileName and Path.GetDirectoryName for regular paths, with special handling for UNC paths.
-        /// For directory paths ending with separators, returns the original path unchanged.
+        /// For directory paths ending with separators, checks if the last directory component is a reserved name.
         /// </summary>
         /// <param name="filename">The filename or path to check for reserved names.</param>
         /// <returns>A filename or path with reserved names handled appropriately.</returns>
@@ -59,11 +59,31 @@ namespace LivingRoots.Domain
                 // since Path.GetFileName and Path.GetDirectoryName don't handle UNC paths consistently across platforms
                 string fileName = ExtractFileNameFromUncPath(normalizedInput);
                 
-                // If extraction returns empty (for directory paths ending with separator), return original
-                if (string.IsNullOrEmpty(fileName)) return filename;
+                // If extraction returns empty (for directory paths ending with separator), 
+                // check if the last directory component is a reserved name
+                if (string.IsNullOrEmpty(fileName))
+                {
+                    // This is a directory path ending with a separator
+                    // Extract the last directory component before the separator and check if it's reserved
+                    string uncDirectoryPath = ExtractDirectoryPathFromUncPath(normalizedInput) ?? string.Empty;
+                    if (!string.IsNullOrEmpty(uncDirectoryPath))
+                    {
+                        // Extract the last directory component from the directory path
+                        string lastDirComponent = ExtractLastPathComponent(uncDirectoryPath, GetUncPathSeparator(uncDirectoryPath));
+                        if (!string.IsNullOrEmpty(lastDirComponent) && IsReservedName(lastDirComponent))
+                        {
+                            // If the last directory component is reserved, modify the directory path
+                            string modifiedDirPath = ModifyLastPathComponent(uncDirectoryPath, lastDirComponent, GetUncPathSeparator(uncDirectoryPath));
+                            // Return the modified path with the separator still at the end
+                            return modifiedDirPath + normalizedInput.Substring(uncDirectoryPath.Length);
+                        }
+                    }
+                    // If no reserved name is found in the last directory component, return original
+                    return filename;
+                }
 
                 // For UNC paths, extract directory path separately
-                string directoryPath = ExtractDirectoryPathFromUncPath(normalizedInput) ?? string.Empty;
+                string uncDirectoryPath2 = ExtractDirectoryPathFromUncPath(normalizedInput) ?? string.Empty;
 
                 // Process just the filename component for reserved names
                 string? processedFileName = ProcessFileNameInternal(fileName);
@@ -74,10 +94,10 @@ namespace LivingRoots.Domain
 
                 // Reconstruct the UNC path with the processed filename component
                 // For UNC paths, construct the path manually to preserve the UNC format
-                if (!string.IsNullOrEmpty(directoryPath))
+                if (!string.IsNullOrEmpty(uncDirectoryPath2))
                 {
                     // Always use backslash for path separator in UNC paths
-                    return directoryPath + "\\" + processedFileName;
+                    return uncDirectoryPath2 + "\\" + processedFileName;
                 }
 
                 return processedFileName;
@@ -87,11 +107,31 @@ namespace LivingRoots.Domain
                 // For regular paths, extract the filename component using Path methods
                 string fileName = Path.GetFileName(normalizedInput);
 
-                // If Path.GetFileName returns empty (for directory paths ending with separator), return original
-                if (string.IsNullOrEmpty(fileName)) return filename;
+                // If Path.GetFileName returns empty (for directory paths ending with separator), 
+                // check if the last directory component is a reserved name
+                if (string.IsNullOrEmpty(fileName))
+                {
+                    // This is a directory path ending with a separator
+                    // Extract the last directory component before the separator and check if it's reserved
+                    string regDirectoryPath = Path.GetDirectoryName(normalizedInput) ?? string.Empty;
+                    if (!string.IsNullOrEmpty(regDirectoryPath))
+                    {
+                        // Extract the last directory component from the directory path
+                        string lastDirComponent = ExtractLastPathComponent(regDirectoryPath, Path.DirectorySeparatorChar);
+                        if (!string.IsNullOrEmpty(lastDirComponent) && IsReservedName(lastDirComponent))
+                        {
+                            // If the last directory component is reserved, modify the directory path
+                            string modifiedDirPath = ModifyLastPathComponent(regDirectoryPath, lastDirComponent, Path.DirectorySeparatorChar);
+                            // Return the modified path with the separator still at the end
+                            return modifiedDirPath + normalizedInput.Substring(regDirectoryPath.Length);
+                        }
+                    }
+                    // If no reserved name is found in the last directory component, return original
+                    return filename;
+                }
 
                 // Extract the directory path separately
-                string directoryPath = Path.GetDirectoryName(normalizedInput) ?? string.Empty;
+                string regDirectoryPath2 = Path.GetDirectoryName(normalizedInput) ?? string.Empty;
 
                 // Process just the filename component for reserved names
                 string? processedFileName = ProcessFileNameInternal(fileName);
@@ -101,13 +141,118 @@ namespace LivingRoots.Domain
                     return filename;
 
                 // Reconstruct the full path with the processed filename component
-                if (!string.IsNullOrEmpty(directoryPath))
+                if (!string.IsNullOrEmpty(regDirectoryPath2))
                 {
-                    return Path.Combine(directoryPath, processedFileName);
+                    return Path.Combine(regDirectoryPath2, processedFileName);
                 }
 
                 return processedFileName;
             }
+        }
+
+        /// <summary>
+        /// Extracts the last path component from a directory path
+        /// </summary>
+        /// <param name="path">The directory path</param>
+        /// <param name="separator">The path separator to use</param>
+        /// <returns>The last path component</returns>
+        private static string ExtractLastPathComponent(string path, char separator)
+        {
+            if (string.IsNullOrEmpty(path)) return string.Empty;
+            
+            // Find the last separator in the path
+            int lastSeparatorIndex = -1;
+            for (int i = path.Length - 1; i >= 0; i--)
+            {
+                if (path[i] == separator)
+                {
+                    lastSeparatorIndex = i;
+                    break;
+                }
+            }
+            
+            if (lastSeparatorIndex == -1)
+            {
+                // No separator found, the entire path is the component
+                return path;
+            }
+            else if (lastSeparatorIndex == path.Length - 1)
+            {
+                // Path ends with separator, find the previous separator
+                for (int i = lastSeparatorIndex - 1; i >= 0; i--)
+                {
+                    if (path[i] == separator)
+                    {
+                        // Extract the component between the two separators
+                        return path.Substring(i + 1, lastSeparatorIndex - i - 1);
+                    }
+                }
+                // If only one separator at the beginning, return what's after it
+                return path.Substring(lastSeparatorIndex + 1);
+            }
+            else
+            {
+                // Return the component after the last separator
+                return path.Substring(lastSeparatorIndex + 1);
+            }
+        }
+
+        /// <summary>
+        /// Modifies the last path component by adding an underscore to handle reserved names
+        /// </summary>
+        /// <param name="path">The original path</param>
+        /// <param name="lastComponent">The last component to modify</param>
+        /// <param name="separator">The path separator to use</param>
+        /// <returns>The modified path with the last component changed</returns>
+        private string ModifyLastPathComponent(string path, string lastComponent, char separator)
+        {
+            if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(lastComponent)) return path;
+            
+            // Find the last occurrence of the last component in the path
+            // We need to replace the last component with lastComponent + "_"
+            string modifiedComponent = ProcessFileNameInternal(lastComponent);
+            
+            // Find the last occurrence of the component in the path
+            int lastSeparatorIndex = -1;
+            for (int i = path.Length - 1; i >= 0; i--)
+            {
+                if (path[i] == separator)
+                {
+                    lastSeparatorIndex = i;
+                    break;
+                }
+            }
+            
+            if (lastSeparatorIndex == -1)
+            {
+                // No separator found, the entire path is the component
+                return modifiedComponent;
+            }
+            else
+            {
+                // Replace the component after the last separator
+                string dirBeforeLastComponent = path.Substring(0, lastSeparatorIndex + 1);
+                return dirBeforeLastComponent + modifiedComponent;
+            }
+        }
+
+        /// <summary>
+        /// Gets the appropriate path separator for UNC paths
+        /// </summary>
+        /// <param name="uncPath">The UNC path</param>
+        /// <returns>The path separator character</returns>
+        private static char GetUncPathSeparator(string uncPath)
+        {
+            if (uncPath.Length >= 2 && uncPath[0] == '\\' && uncPath[1] == '\\')
+            {
+                return '\\';
+            }
+            else if (uncPath.Length >= 2 && uncPath[0] == '/' && uncPath[1] == '/')
+            {
+                return '/';
+            }
+            // Default to backslash for UNC paths
+            return '\\';
         }
 
         /// <summary>
@@ -292,7 +437,8 @@ namespace LivingRoots.Domain
                 
                 // Combine everything back together with the extension
                 // Don't include trailing insignificant characters after the core name
-                string sanitizedExtensionForContext = SanitizeTrailingInsignificantChars(extensionPart); return leadingChars + modifiedCore + sanitizedExtensionForContext;
+                string sanitizedExtensionForContext = SanitizeTrailingInsignificantChars(extensionPart); 
+                return leadingChars + modifiedCore + sanitizedExtensionForContext;
             }
             
             // If not reserved, check if the name part is fully insignificant (consists only of dots, spaces, tabs)
