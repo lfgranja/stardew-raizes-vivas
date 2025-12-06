@@ -9,10 +9,7 @@
 # Project-Specific Files and Directories (Stardew Valley SMAPI Mod)
 # -----------------------------------------------------------------------------------
 # Stardew Valley SMAPI mod specific build outputs
-**/bin/Debug/
-**/bin/Release/
-**/bin/DebugPublic/
-**/bin/ReleasePublic/
+**/bin/
 **/obj/
 *.deps.json
 *.runtimeconfig.json
