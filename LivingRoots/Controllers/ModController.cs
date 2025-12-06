@@ -186,6 +186,12 @@ namespace LivingRoots.Controllers
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e) // NOVO
         {
             // Carrega os dados usando o nome da pasta do save como ID único
+            if (string.IsNullOrEmpty(Constants.SaveFolderName))
+            {
+                _monitor.Log("Cannot load soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
+                return;
+            }
+            
             string saveId = Constants.SaveFolderName; // Usando a constante do SMAPI para obter o ID do save
             _soilHealthService.LoadData(saveId);
         }
@@ -193,6 +199,12 @@ namespace LivingRoots.Controllers
         private void OnSaving(object? sender, SavingEventArgs e) // NOVO
         {
             // Salva os dados antes do jogo fechar/salvar
+            if (string.IsNullOrEmpty(Constants.SaveFolderName))
+            {
+                _monitor.Log("Cannot save soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
+                return;
+            }
+            
             string saveId = Constants.SaveFolderName; // Usando a constante do SMAPI para obter o ID do save
             _soilHealthService.SaveData(saveId);
         }
@@ -410,7 +422,7 @@ namespace LivingRoots.Controllers
                     {
                         monitor?.Log("Error occurred while unregistering SaveLoaded event.", LogLevel.Error);
                     }
-                } // Fechar o if corretamente
+                }
 
                 if (gameLoop != null && savingHandler != null) // NOVO
                 {
