@@ -683,13 +683,14 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Processes consecutive dots by replacing multiple consecutive dots with a single dot.
+        /// Added null check to improve security and robustness.
         /// </summary>
         /// <param name="input">The input string to process</param>
         /// <returns>The processed string</returns>
-        private static string ProcessConsecutiveDots(string input)
+        private static string ProcessConsecutiveDots(string? input)
         {
-            if (string.IsNullOrEmpty(input))
-                return input;
+            if (input == null)
+                return string.Empty;
 
             // Replace multiple consecutive dots with a single dot
             var result = new StringBuilder();
