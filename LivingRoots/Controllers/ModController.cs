@@ -5,7 +5,7 @@ using System.Threading;
 using System.Linq;
 using System.Collections.Generic;
 using LivingRoots.Services;
-using LivingRoots.Domain; // Adicionar
+using LivingRoots.Domain; // Add
 
 namespace LivingRoots.Controllers
 {
@@ -75,7 +75,12 @@ namespace LivingRoots.Controllers
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                 // Reset flag since registration failed - ensure disposed flag is preserved
-                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                int cur, upd;
+                do
+                {
+                    cur = Volatile.Read(ref _state);
+                    upd = cur & ~EventsRegisteredFlag;
+                } while (Interlocked.CompareExchange(ref _state, upd, cur) != cur);
                 return;
             }
 
@@ -95,7 +100,12 @@ namespace LivingRoots.Controllers
                 if (IsDisposed())
                 {
                     monitor.Log("Controller disposed during registration. Skipping event subscription.", LogLevel.Trace);
-                    Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                    int cur, upd;
+                    do
+                    {
+                        cur = Volatile.Read(ref _state);
+                        upd = cur & ~EventsRegisteredFlag;
+                    } while (Interlocked.CompareExchange(ref _state, upd, cur) != cur);
                     return;
                 }
 
@@ -119,20 +129,33 @@ namespace LivingRoots.Controllers
                 // Attempt to rollback any partial subscriptions
                 try
                 {
-                    if (gameLaunchedAdded && _onGameLaunchedHandler != null)
-                        gameLoop.GameLaunched -= _onGameLaunchedHandler;
-                    if (saveLoadedAdded && _onSaveLoadedHandler != null)
-                        gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NEW
-                    if (savingAdded && _onSavingHandler != null)
-                        gameLoop.Saving -= _onSavingHandler; // NEW
+                    if (gameLoop != null) // Guard against null gameLoop in rollback
+                    {
+                        if (gameLaunchedAdded && _onGameLaunchedHandler != null)
+                            gameLoop.GameLaunched -= _onGameLaunchedHandler;
+                        if (saveLoadedAdded && _onSaveLoadedHandler != null)
+                            gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NEW
+                        if (savingAdded && _onSavingHandler != null)
+                            gameLoop.Saving -= _onSavingHandler; // NEW
+                    }
                 }
-                catch { /* avoid masking original failure */ }
+                catch (Exception rollbackEx)
+                {
+                    // Log rollback exception at trace level to provide debugging info without cluttering main logs
+                    monitor.Log($"An error occurred during event registration rollback: {rollbackEx.Message}", LogLevel.Trace);
+                }
 
                 _onGameLaunchedHandler = null;
                 _onSaveLoadedHandler = null; // NEW
                 _onSavingHandler = null; // NEW
 
-                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                // Safely clear the EventsRegisteredFlag using compare-and-swap
+                int current, updated;
+                do
+                {
+                    current = Volatile.Read(ref _state);
+                    updated = current & ~EventsRegisteredFlag;
+                } while (Interlocked.CompareExchange(ref _state, updated, current) != current);
             }
         }
 
