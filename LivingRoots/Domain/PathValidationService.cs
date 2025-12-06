@@ -111,7 +111,7 @@ namespace LivingRoots.Domain
             
             // Add a hard cap to prevent excessive processing of pathological inputs
             // Increased from 100 to allow more reasonable paths while still preventing abuse
-            const int MaxSegments = 100;
+            const int MaxSegments = 10;
             if (segments.Length > MaxSegments)
             {
                 throw new ArgumentException("Path contains too many segments", nameof(path));
@@ -164,8 +164,8 @@ namespace LivingRoots.Domain
             // Check for relative path components that could lead outside the intended directory
             // This check looks for patterns that could escape the root directory
             
-            // Check if the path starts with parent directory navigation patterns
-            if (path.StartsWith("../") || path.StartsWith("..\\") || path.StartsWith("../") || path.StartsWith("..\\"))
+            // Check if the path starts with parent directory navigation patterns - removing redundant checks
+            if (path.StartsWith("../") || path.StartsWith("..\\"))
             {
                 throw new ArgumentException("Path cannot start with parent directory navigation", nameof(path));
             }
