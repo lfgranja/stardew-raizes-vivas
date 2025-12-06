@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <EnableModDeploy>false</EnableModDeploy>
+    <EnableModZip>false</EnableModZip>
+    <BundleExtraAssemblies>All</BundleExtraAssemblies>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <SuppressTfmSupportBuildErrors>true</SuppressTfmSupportBuildErrors>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Optional override path; leave empty by default -->
+    <SmapiInternalPath>$(NuGetPackageRoot)pathoschild.stardew.modbuildconfig/4.4.0/build</SmapiInternalPath>
+    <SmapiInternalPath Condition="'$(SmapiInternalPath)'==''"></SmapiInternalPath>
+  </PropertyGroup>
+
+  <Target Name="CopySMAPIAssemblies" AfterTargets="Build" Condition="'$(SmapiInternalPath)'!=''">
+    <ItemGroup>
+      <SMAPIFiles Include="$(SmapiInternalPath)/*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SMAPIFiles)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.2" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
+    
+    
+  </ItemGroup>
+
+  <ItemGroup>
+     <ProjectReference Include="..\LivingRoots\LivingRoots.csproj" />
+      
+  </ItemGroup>
+
+</Project>
