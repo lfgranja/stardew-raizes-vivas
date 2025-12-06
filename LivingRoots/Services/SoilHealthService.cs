@@ -15,7 +15,7 @@ namespace LivingRoots.Services
         
         // Runtime cache using Vector2 directly as key for better performance
         // Dictionary<LocationName, Dictionary<TileCoordinates, HealthValue>>
-        private readonly Dictionary<string, Dictionary<Vector2, float>> _runtimeCache = new(); // Tornar readonly
+        private readonly Dictionary<string, Dictionary<Vector2, float>> _runtimeCache = new();
         private const string KeyPrefix = "soil_health_data_";
         
         // Lock object for thread safety
@@ -39,7 +39,7 @@ namespace LivingRoots.Services
             {
                 string dataKey = GetSaveKey(saveId);
                 var savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
-
+                
                 // Convert from disk format (string keys) to runtime format (Vector2 keys)
                 _runtimeCache.Clear();
                 if (savedData != null)
@@ -59,7 +59,20 @@ namespace LivingRoots.Services
                                 float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float x) &&
                                 float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float y))
                             {
-                                tileDict[new Vector2(x, y)] = tileEntry.Value;
+                                // Validate the loaded value by checking for NaN/Infinity and clamping to [0, 100] range
+                                var rawValue = tileEntry.Value;
+                                if (float.IsNaN(rawValue) || float.IsInfinity(rawValue))
+                                {
+                                    if (!warnedForLocation)
+                                    {
+                                        _monitor.Log($"Skipped invalid soil health value (NaN/Infinity) in location '{locationEntry.Key}'.", LogLevel.Warn);
+                                        warnedForLocation = true;
+                                    }
+                                    continue;
+                                }
+                                
+                                float clamped = Math.Clamp(rawValue, 0f, 100f);
+                                tileDict[new Vector2(x, y)] = clamped;
                             }
                             else
                             {
@@ -91,15 +104,23 @@ namespace LivingRoots.Services
             
             lock (_lock)
             {
-                // Convert from runtime format (Vector2 keys) to disk format (string keys)
+                // Validate and convert from runtime format (Vector2 keys) to disk format (string keys)
                 var stateToSave = new SoilHealthState();
                 foreach (var locationEntry in _runtimeCache)
                 {
                     var stringDict = new Dictionary<string, float>();
                     foreach (var tileEntry in locationEntry.Value)
                     {
+                        var val = tileEntry.Value;
+                        if (float.IsNaN(val) || float.IsInfinity(val))
+                        {
+                            _monitor.Log("Skipped saving soil health value (NaN/Infinity) for a tile due to invalid state.", LogLevel.Warn);
+                            continue;
+                        }
+                        
+                        float clamped = Math.Clamp(val, 0f, 100f);
                         string key = $"{tileEntry.Key.X.ToString(CultureInfo.InvariantCulture)},{tileEntry.Key.Y.ToString(CultureInfo.InvariantCulture)}";
-                        stringDict[key] = tileEntry.Value;
+                        stringDict[key] = clamped;
                     }
                     stateToSave.LocationHealthData[locationEntry.Key] = stringDict;
                 }
@@ -112,6 +133,7 @@ namespace LivingRoots.Services
 
         public float GetSoilHealth(string locationName, Vector2 tile)
         {
+            // Validate input to prevent potential exceptions
             if (string.IsNullOrWhiteSpace(locationName)) 
                 return 0f; // Return default (Poor Soil) if location is invalid
 
@@ -131,6 +153,7 @@ namespace LivingRoots.Services
 
         public void SetSoilHealth(string locationName, Vector2 tile, float value)
         {
+            // Validate input to prevent adding entries with invalid keys
             if (string.IsNullOrWhiteSpace(locationName)) 
                 return; // Skip if location is invalid
                 
@@ -158,6 +181,7 @@ namespace LivingRoots.Services
 
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
         {
+            // Validate input to prevent adding entries with invalid keys
             if (string.IsNullOrWhiteSpace(locationName)) 
                 return; // Skip if location is invalid
                 
