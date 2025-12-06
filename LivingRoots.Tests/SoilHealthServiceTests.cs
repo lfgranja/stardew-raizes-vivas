@@ -19,26 +19,6 @@ namespace LivingRoots.Tests
             _mockMonitor = new Mock<IMonitor>();
         }
 
-        [Fact]
-        public void SetHealth_ValuesAreClampedTo0And100()
-        {
-            // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
-            string location = "Farm";
-            var tile = new Vector2(10, 10);
-
-            // Act
-            service.SetSoilHealth(location, tile, 150.0f); // Try to set 150
-            var resultMax = service.GetSoilHealth(location, tile);
-
-            service.SetSoilHealth(location, tile, -50.0f); // Try to set -50
-            var resultMin = service.GetSoilHealth(location, tile);
-
-            // Assert
-            Assert.Equal(100.0f, resultMax);
-            Assert.Equal(0.0f, resultMin);
-        }
-
         [Theory]
         [InlineData(150.0f, 100.0f)]
         [InlineData(-50.0f, 0.0f)]
