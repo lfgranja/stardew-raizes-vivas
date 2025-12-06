@@ -42,7 +42,7 @@ namespace LivingRoots.Services
                 
                 // Convert from disk format (string keys) to runtime format (Point keys)
                 _runtimeCache.Clear();
-                if (savedData != null)
+                if (savedData?.LocationHealthData != null) // Check if savedData and its LocationHealthData property are not null
                 {
                     foreach (var locationEntry in savedData.LocationHealthData)
                     {
@@ -53,11 +53,13 @@ namespace LivingRoots.Services
                         bool warnedForLocation = false; // Only warn once per location
                         foreach (var tileEntry in locationEntry.Value)
                         {
-                            // Parse "X,Y" string back to Point (using integers for tile coordinates)
-                            string[] parts = tileEntry.Key.Split(',');
-                            if (parts.Length == 2 && 
-                                int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
-                                int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
+                            // Parse "X,Y" string back to Point using ReadOnlySpan for better performance
+                            ReadOnlySpan<char> keySpan = tileEntry.Key.AsSpan();
+                            int commaIndex = keySpan.IndexOf(',');
+
+                            if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
+                                int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
+                                int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
                             {
                                 // Validate the loaded value by checking for NaN/Infinity and clamping to [0, 100] range
                                 var rawValue = tileEntry.Value;
@@ -136,7 +138,6 @@ namespace LivingRoots.Services
             // Validate input to prevent potential exceptions
             if (string.IsNullOrWhiteSpace(locationName)) 
             {
-                _monitor.Log($"GetSoilHealth: Invalid locationName '{locationName}'. Returning default 0f.", LogLevel.Trace);
                 return 0f; // Return default (Poor Soil) if location is invalid
             }
 
@@ -153,9 +154,6 @@ namespace LivingRoots.Services
                         return health;
                     }
                 }
-                
-                // Log if the tile doesn't have data (but location exists)
-                _monitor.Log($"GetSoilHealth: No data found for tile ({tile.X},{tile.Y}) in '{locationName}'. Returning default 0f.", LogLevel.Trace);
                 return 0f; // Return default (Poor Soil) if no data exists
             }
         }
