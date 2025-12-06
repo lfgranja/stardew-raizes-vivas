@@ -424,20 +424,23 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Handle_WithAnotherDirectoryPathEndingWithSeparator_ReturnsOriginal()
+        public void Handle_WithDirectoryPathEndingWithReservedNameSeparator_AddsUnderscore()
         {
-            // This test addresses the fourth issue: Avoid Mutating Directory-Only Paths
-            // If Path.GetFileName results in an empty string (directory path ending with separator),
-            // return the original path without modification
+            // This test addresses the updated behavior: Reserved names in directory paths should be handled
+            // If the last directory component is a reserved name, it should be modified with an underscore
 
             // Arrange - Use platform-agnostic separator
             string input = "CON" + Path.DirectorySeparatorChar; // Directory path ending with separator, where base name is reserved
+            string expected = "CON_" + Path.DirectorySeparatorChar; // Expected result with underscore added to reserved name
+
+            // Setup mock to return the same string for normalization
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize("CON")).Returns("CON");
 
             // Act
             string? result = _reservedNameHandler.Handle(input);
 
-            // Assert - Should return the original input since it's a directory path (Path.GetFileName returns empty)
-            Assert.Equal(input, result);
+            // Assert - Should return the input with underscore added to the reserved directory name
+            Assert.Equal(expected, result);
         }
         
         [Fact]
