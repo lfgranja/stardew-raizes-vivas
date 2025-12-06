@@ -14,6 +14,9 @@ namespace LivingRoots.Services
         // Cache em memória para acesso rápido durante o jogo
         private SoilHealthState _currentState = new SoilHealthState();
         private const string KeyPrefix = "soil_health_data_";
+        
+        // Lock object for thread safety
+        private readonly object _lock = new object();
 
         public SoilHealthService(IModDataService modDataService, IMonitor monitor)
         {
@@ -23,59 +26,74 @@ namespace LivingRoots.Services
 
         public void LoadData(string saveId)
         {
-            string key = GetSaveKey(saveId);
-            var data = _modDataService.LoadData<SoilHealthState>(key);
-            
-            if (data != null)
+            lock (_lock)
             {
-                _currentState = data;
-                _monitor.Log($"Soil Health data loaded for save {saveId}", LogLevel.Trace);
-            }
-            else
-            {
-                _currentState = new SoilHealthState();
-                _monitor.Log($"No existing Soil Health data found for save {saveId}. Starting fresh.", LogLevel.Info);
+                string key = GetSaveKey(saveId);
+                var data = _modDataService.LoadData<SoilHealthState>(key);
+                
+                if (data != null)
+                {
+                    _currentState = data;
+                    _monitor.Log($"Soil Health data loaded for save {saveId}", LogLevel.Trace);
+                }
+                else
+                {
+                    _currentState = new SoilHealthState();
+                    _monitor.Log($"No existing Soil Health data found for save {saveId}. Starting fresh.", LogLevel.Info);
+                }
             }
         }
 
         public void SaveData(string saveId)
         {
-            string key = GetSaveKey(saveId);
-            _modDataService.SaveData(_currentState, key);
-            _monitor.Log($"Soil Health data saved for {saveId}", LogLevel.Trace);
+            lock (_lock)
+            {
+                string key = GetSaveKey(saveId);
+                _modDataService.SaveData(_currentState, key);
+                _monitor.Log($"Soil Health data saved for {saveId}", LogLevel.Trace);
+            }
         }
 
         public float GetSoilHealth(string locationName, Vector2 tile)
         {
-            if (_currentState.LocationHealthData.TryGetValue(locationName, out var tiles))
+            lock (_lock)
             {
-                string tileKey = $"{tile.X},{tile.Y}";
-                if (tiles.TryGetValue(tileKey, out float health))
+                if (_currentState.LocationHealthData.TryGetValue(locationName, out var tiles))
                 {
-                    return health;
+                    string tileKey = $"{tile.X},{tile.Y}";
+                    if (tiles.TryGetValue(tileKey, out float health))
+                    {
+                        return health;
+                    }
                 }
+                return 0f; // Valor padrão (Solo Pobre) se não houver dados
             }
-            return 0f; // Valor padrão (Solo Pobre) se não houver dados
         }
 
         public void SetSoilHealth(string locationName, Vector2 tile, float value)
         {
-            // Regra de Domínio: Clamp entre 0 e 100
-            float clampedValue = Math.Clamp(value, 0f, 100f);
-
-            if (!_currentState.LocationHealthData.ContainsKey(locationName))
+            lock (_lock)
             {
-                _currentState.LocationHealthData[locationName] = new Dictionary<string, float>();
-            }
+                // Regra de Domínio: Clamp entre 0 e 100
+                float clampedValue = Math.Clamp(value, 0f, 100f);
 
-            string tileKey = $"{tile.X},{tile.Y}";
-            _currentState.LocationHealthData[locationName][tileKey] = clampedValue;
+                if (!_currentState.LocationHealthData.ContainsKey(locationName))
+                {
+                    _currentState.LocationHealthData[locationName] = new Dictionary<string, float>();
+                }
+
+                string tileKey = $"{tile.X},{tile.Y}";
+                _currentState.LocationHealthData[locationName][tileKey] = clampedValue;
+            }
         }
 
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
         {
-            float current = GetSoilHealth(locationName, tile);
-            SetSoilHealth(locationName, tile, current + delta);
+            lock (_lock)
+            {
+                float current = GetSoilHealth(locationName, tile);
+                SetSoilHealth(locationName, tile, current + delta);
+            }
         }
 
         private string GetSaveKey(string saveId)
