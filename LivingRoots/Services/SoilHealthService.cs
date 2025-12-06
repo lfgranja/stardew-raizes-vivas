@@ -15,7 +15,7 @@ namespace LivingRoots.Services
         
         // Runtime cache using Vector2 directly as key for better performance
         // Dictionary<LocationName, Dictionary<TileCoordinates, HealthValue>>
-        private Dictionary<string, Dictionary<Vector2, float>> _runtimeCache = new();
+        private readonly Dictionary<string, Dictionary<Vector2, float>> _runtimeCache = new(); // Tornar readonly
         private const string KeyPrefix = "soil_health_data_";
         
         // Lock object for thread safety
