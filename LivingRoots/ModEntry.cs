@@ -34,7 +34,7 @@ namespace LivingRoots
             // Create application services
             var modDataService = new ModDataService(helper, this.Monitor, modLogic);
             
-            // NOVO: Serviço de Saúde do Solo
+            // Create the soil health service
             var soilHealthService = new SoilHealthService(modDataService, this.Monitor);
             
             // Create controller with dependency injection
