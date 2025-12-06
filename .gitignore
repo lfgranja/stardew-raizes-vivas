@@ -9,6 +9,8 @@
 # Project-Specific Files and Directories (Stardew Valley SMAPI Mod)
 # -----------------------------------------------------------------------------------
 # Stardew Valley SMAPI mod specific build outputs
+LivingRoots/bin/
+LivingRoots.Tests/bin/
 **/bin/Debug/
 **/bin/Release/
 **/bin/DebugPublic/
