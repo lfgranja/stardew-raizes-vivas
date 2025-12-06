@@ -5,7 +5,7 @@ using System.Threading;
 using System.Linq;
 using System.Collections.Generic;
 using LivingRoots.Services;
-using LivingRoots.Domain; // Add
+using LivingRoots.Domain; // Adicionar
 
 namespace LivingRoots.Controllers
 {
@@ -90,6 +90,14 @@ namespace LivingRoots.Controllers
                 _onSaveLoadedHandler ??= OnSaveLoaded; // NEW
                 _onSavingHandler ??= OnSaving; // NEW
 
+                // Double-check disposed state before subscribing to prevent race condition
+                if (IsDisposed())
+                {
+                    monitor.Log("Controller disposed during registration. Skipping event subscription.", LogLevel.Trace);
+                    Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                    return;
+                }
+
                 // Subscribe to events
                 gameLoop.GameLaunched += _onGameLaunchedHandler;
                 gameLaunchedAdded = true;
@@ -102,7 +110,7 @@ namespace LivingRoots.Controllers
 
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
-            catch (Exception ex)
+            catch
             {
                 // Log error and reset the flag if registration failed - ensure disposed flag is preserved
                 monitor.Log("Error occurred while registering game events.", LogLevel.Error);
@@ -121,11 +129,8 @@ namespace LivingRoots.Controllers
                             gameLoop.Saving -= _onSavingHandler; // NEW
                     }
                 }
-                catch
-                {
-                    // Swallow to avoid masking original failure
-                }
-                
+                catch { /* avoid masking original failure */ }
+
                 _onGameLaunchedHandler = null;
                 _onSaveLoadedHandler = null; // NEW
                 _onSavingHandler = null; // NEW
@@ -160,35 +165,38 @@ namespace LivingRoots.Controllers
             var localMonitor = monitor ?? _monitor;
             var localHelper = helper ?? _helper;
 
+            // Capture GameLoop once to avoid races with helper changes
+            var gameLoop = localHelper?.Events?.GameLoop;
+            if (gameLoop == null)
+            {
+                localMonitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Trace);
+                return;
+            }
+
+            // Take local copies then clear refs to avoid double-unsubscribe races
+            var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+            var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NEW
+            var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NEW
+
             try
             {
-                var gameLoop = localHelper?.Events?.GameLoop;
-                if (gameLoop == null)
-                {
-                    localMonitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Trace);
-                    return;
-                }
-
-                // Use Interlocked.Exchange to safely get and clear the handlers
-                var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NEW
-                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NEW
-
-                // Always attempt to detach to avoid leaked handlers
                 if (gameLaunchedHandler != null)
                 {
-                    gameLoop.GameLaunched -= gameLaunchedHandler;
+                    try { gameLoop.GameLaunched -= gameLaunchedHandler; }
+                    catch { localMonitor.Log("Error occurred while unregistering GameLaunched event.", LogLevel.Error); }
                 }
-                
+
                 // Detach new handlers as well
                 if (saveLoadedHandler != null) // NEW
                 {
-                    gameLoop.SaveLoaded -= saveLoadedHandler;
+                    try { gameLoop.SaveLoaded -= saveLoadedHandler; }
+                    catch { localMonitor.Log("Error occurred while unregistering SaveLoaded event.", LogLevel.Error); }
                 }
-                
+
                 if (savingHandler != null) // NEW
                 {
-                    gameLoop.Saving -= savingHandler;
+                    try { gameLoop.Saving -= savingHandler; }
+                    catch { localMonitor.Log("Error occurred while unregistering Saving event.", LogLevel.Error); }
                 }
 
                 // Unregister console command if it was registered
@@ -200,23 +208,21 @@ namespace LivingRoots.Controllers
                     localMonitor.Log("Controller state for command 'lr_version' has been reset. The command will be removed on mod disposal.", LogLevel.Trace);
                 }
 
-                // Reset state flags atomically - ensure disposed flag is preserved
-                Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
-
                 localMonitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
-            catch (Exception ex)
+            catch
             {
                 localMonitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
+            }
+            finally
+            {
+                // Always reset flags even if detach throws, while preserving disposed flag
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
             }
         }
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e) // NEW
         {
-            // Skip if controller has been disposed
-            if (IsDisposed())
-                return;
-                
             try
             {
                 // Load data using the save folder name as unique ID
@@ -229,12 +235,9 @@ namespace LivingRoots.Controllers
                 string saveId = Constants.SaveFolderName; // Using SMAPI constant to get the save ID
                 _soilHealthService.LoadData(saveId);
             }
-            catch (Exception ex)
+            catch
             {
-                // Log generic error message to avoid leaking implementation details
                 _monitor.Log("Error occurred while loading soil health data.", LogLevel.Error);
-                // Log technical details at trace level for debugging purposes
-                _monitor.Log($"Technical details: {ex.Message}", LogLevel.Trace);
             }
         }
 
@@ -256,12 +259,9 @@ namespace LivingRoots.Controllers
                 string saveId = Constants.SaveFolderName; // Using SMAPI constant to get the save ID
                 _soilHealthService.SaveData(saveId);
             }
-            catch (Exception ex)
+            catch
             {
-                // Log generic error message to avoid leaking implementation details
                 _monitor.Log("Error occurred while saving soil health data.", LogLevel.Error);
-                // Log technical details at trace level for debugging purposes
-                _monitor.Log($"Technical details: {ex.Message}", LogLevel.Trace);
             }
         }
 
@@ -307,7 +307,7 @@ namespace LivingRoots.Controllers
                     monitor.Log("GameLaunched event handler unsubscribed after first execution.", LogLevel.Trace);
                 }
             }
-            catch (Exception ex)
+            catch
             {
                 _monitor.Log("Error occurred in game launched event handler.", LogLevel.Error);
             }
@@ -366,7 +366,7 @@ namespace LivingRoots.Controllers
                         monitor?.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
                         commandAvailable = true;
                     }
-                    catch (Exception ex)
+                    catch
                     {
                         // If registration failed after setting the flag, reset the flag to maintain consistency
                         monitor?.Log("Error occurred while registering console command 'lr_version'.", LogLevel.Error);
@@ -416,7 +416,7 @@ namespace LivingRoots.Controllers
 
                 monitor?.Log($"Living Roots Mod Version: {versionString} (UniqueID: {manifest?.UniqueID ?? "unknown"})", LogLevel.Info);
             }
-            catch (Exception ex)
+            catch
             {
                 _monitor?.Log("Error occurred while executing version command.", LogLevel.Error);
             }
@@ -450,27 +450,47 @@ namespace LivingRoots.Controllers
 
                 var gameLoop = helper?.Events?.GameLoop;
 
-                // Define local function to avoid code duplication
-                void Unsubscribe<T>(ref EventHandler<T>? handlerRef, Action<EventHandler<T>> removeAction, string eventName) where T : EventArgs
+                // Use Interlocked.Exchange to safely get and clear the handlers
+                var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NEW
+                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NEW
+
+                if (gameLoop != null && gameLaunchedHandler != null)
                 {
-                    var handler = Interlocked.Exchange(ref handlerRef, null);
-                    if (gameLoop != null && handler != null)
+                    try
                     {
-                        try
-                        {
-                            removeAction(handler);
-                        }
-                        catch (Exception)
-                        {
-                            monitor?.Log($"Error occurred while unregistering {eventName} event.", LogLevel.Error);
-                        }
+                        gameLoop.GameLaunched -= gameLaunchedHandler;
+                    }
+                    catch
+                    {
+                        monitor?.Log("Error occurred while unregistering GameLaunched event.", LogLevel.Error);
                     }
                 }
 
-                // Unregister all handlers using the local function
-                Unsubscribe(ref _onGameLaunchedHandler, h => gameLoop.GameLaunched -= h, "GameLaunched");
-                Unsubscribe(ref _onSaveLoadedHandler, h => gameLoop.SaveLoaded -= h, "SaveLoaded");
-                Unsubscribe(ref _onSavingHandler, h => gameLoop.Saving -= h, "Saving");
+                // Unregister new handlers as well
+                if (gameLoop != null && saveLoadedHandler != null) // NEW
+                {
+                    try
+                    {
+                        gameLoop.SaveLoaded -= saveLoadedHandler;
+                    }
+                    catch
+                    {
+                        monitor?.Log("Error occurred while unregistering SaveLoaded event.", LogLevel.Error);
+                    }
+                }
+                
+                if (gameLoop != null && savingHandler != null) // NEW
+                {
+                    try
+                    {
+                        gameLoop.Saving -= savingHandler;
+                    }
+                    catch
+                    {
+                        monitor?.Log("Error occurred while unregistering Saving event.", LogLevel.Error);
+                    }
+                }
 
                 // Ensure the disposed flag remains set and clear other flags
                 // Clear other state flags, preserving the disposed flag.
