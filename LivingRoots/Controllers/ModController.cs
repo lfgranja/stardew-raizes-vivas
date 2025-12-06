@@ -5,6 +5,7 @@ using System.Threading;
 using System.Linq;
 using System.Collections.Generic;
 using LivingRoots.Services;
+using LivingRoots.Domain; // Adicionar
 
 namespace LivingRoots.Controllers
 {
@@ -17,6 +18,8 @@ namespace LivingRoots.Controllers
         private readonly IMonitor _monitor;
         private readonly IManifest _manifest;
         private readonly IModDataService _modDataService;
+        private readonly ISoilHealthService _soilHealthService; // NOVA DEPENDÊNCIA
+
         private static readonly HashSet<string> HelpFlags = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "--help",
@@ -29,18 +32,21 @@ namespace LivingRoots.Controllers
         private int _state = 0;
 
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
+        private EventHandler<SaveLoadedEventArgs>? _onSaveLoadedHandler; // NOVO
+        private EventHandler<SavingEventArgs>? _onSavingHandler; // NOVO
 
         // State bit flags
         private const int EventsRegisteredFlag = 0x01;
         private const int CommandRegisteredFlag = 0x02;
         private const int DisposedFlag = 0x04;
 
-        public ModController(IModHelper helper, IMonitor monitor, IManifest manifest, IModDataService modDataService)
+        public ModController(IModHelper helper, IMonitor monitor, IManifest manifest, IModDataService modDataService, ISoilHealthService soilHealthService) // Atualizar construtor
         {
             _helper = helper ?? throw new ArgumentNullException(nameof(helper));
             _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
             _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
             _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
+            _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
         }
 
         public void RegisterEvents()
@@ -74,11 +80,17 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                // Initialize the handler once
+                // Initialize the handlers once
                 _onGameLaunchedHandler ??= OnGameLaunched;
+                _onSaveLoadedHandler ??= OnSaveLoaded; // NOVO
+                _onSavingHandler ??= OnSaving; // NOVO
 
                 // Subscribe to events
                 gameLoop.GameLaunched += _onGameLaunchedHandler;
+                
+                // NOVOS EVENTOS - Carregar e salvar dados de saúde do solo
+                gameLoop.SaveLoaded += _onSaveLoadedHandler; // NOVO
+                gameLoop.Saving += _onSavingHandler; // NOVO
 
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
@@ -87,6 +99,8 @@ namespace LivingRoots.Controllers
                 // Log error and reset the flag if registration failed - ensure disposed flag is preserved
                 monitor.Log("Error occurred while registering game events.", LogLevel.Error);
                 _onGameLaunchedHandler = null;
+                _onSaveLoadedHandler = null; // NOVO
+                _onSavingHandler = null; // NOVO
 
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
             }
@@ -127,13 +141,26 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                // Use Interlocked.Exchange to safely get and clear the handler
-                var handler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                // Use Interlocked.Exchange to safely get and clear the handlers
+                var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NOVO
+                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NOVO
 
                 // Always attempt to detach to avoid leaked handlers
-                if (handler != null)
+                if (gameLaunchedHandler != null)
                 {
-                    gameLoop.GameLaunched -= handler;
+                    gameLoop.GameLaunched -= gameLaunchedHandler;
+                }
+                
+                // Detach new handlers as well
+                if (saveLoadedHandler != null) // NOVO
+                {
+                    gameLoop.SaveLoaded -= saveLoadedHandler;
+                }
+                
+                if (savingHandler != null) // NOVO
+                {
+                    gameLoop.Saving -= savingHandler;
                 }
 
                 // Unregister console command if it was registered
@@ -154,6 +181,20 @@ namespace LivingRoots.Controllers
             {
                 localMonitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
             }
+        }
+
+        private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e) // NOVO
+        {
+            // Carrega os dados usando o nome da pasta do save como ID único
+            string saveId = Constants.SaveFolderName; // Usando a constante do SMAPI para obter o ID do save
+            _soilHealthService.LoadData(saveId);
+        }
+
+        private void OnSaving(object? sender, SavingEventArgs e) // NOVO
+        {
+            // Salva os dados antes do jogo fechar/salvar
+            string saveId = Constants.SaveFolderName; // Usando a constante do SMAPI para obter o ID do save
+            _soilHealthService.SaveData(saveId);
         }
 
         /// <summary>
@@ -341,18 +382,45 @@ namespace LivingRoots.Controllers
 
                 var gameLoop = helper?.Events?.GameLoop;
 
-                // Use Interlocked.Exchange to safely get and clear the handler
-                var handler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                // Use Interlocked.Exchange to safely get and clear the handlers
+                var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NOVO
+                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NOVO
 
-                if (gameLoop != null && handler != null)
+                if (gameLoop != null && gameLaunchedHandler != null)
                 {
                     try
                     {
-                        gameLoop.GameLaunched -= handler;
+                        gameLoop.GameLaunched -= gameLaunchedHandler;
                     }
                     catch (Exception ex)
                     {
                         monitor?.Log("Error occurred while unregistering GameLaunched event.", LogLevel.Error);
+                    }
+                }
+
+                // Unregister new handlers as well
+                if (gameLoop != null && saveLoadedHandler != null) // NOVO
+                {
+                    try
+                    {
+                        gameLoop.SaveLoaded -= saveLoadedHandler;
+                    }
+                    catch (Exception ex)
+                    {
+                        monitor?.Log("Error occurred while unregistering SaveLoaded event.", LogLevel.Error);
+                    }
+                } // Fechar o if corretamente
+
+                if (gameLoop != null && savingHandler != null) // NOVO
+                {
+                    try
+                    {
+                        gameLoop.Saving -= savingHandler;
+                    }
+                    catch (Exception ex)
+                    {
+                        monitor?.Log("Error occurred while unregistering Saving event.", LogLevel.Error);
                     }
                 }
 
