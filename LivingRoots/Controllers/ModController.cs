@@ -5,7 +5,7 @@ using System.Threading;
 using System.Linq;
 using System.Collections.Generic;
 using LivingRoots.Services;
-using LivingRoots.Domain; // Add
+using LivingRoots.Domain; // Adicionar
 
 namespace LivingRoots.Controllers
 {
@@ -74,6 +74,7 @@ namespace LivingRoots.Controllers
             if (gameLoop == null)
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
+                // Reset flag since registration failed - ensure disposed flag is preserved
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
             }
@@ -221,19 +222,20 @@ namespace LivingRoots.Controllers
             try
             {
                 // Load data using the save folder name as unique ID
-                if (string.IsNullOrEmpty(Constants.SaveFolderName))
+                var saveId = Constants.SaveFolderName;
+                if (string.IsNullOrWhiteSpace(saveId))
                 {
                     _monitor.Log("Cannot load soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
                     return;
                 }
                 
-                string saveId = Constants.SaveFolderName; // Using SMAPI constant to get the save ID
                 _soilHealthService.LoadData(saveId);
                 _monitor.Log($"Soil health data loaded for save '{saveId}'.", LogLevel.Trace);
             }
             catch (Exception)
             {
-                _monitor.Log("Error occurred while loading soil health data.", LogLevel.Error);
+                var saveId = Constants.SaveFolderName ?? "unknown";
+                _monitor.Log($"Error occurred while loading soil health data for save '{saveId}'.", LogLevel.Error);
             }
         }
 
@@ -246,19 +248,20 @@ namespace LivingRoots.Controllers
             try
             {
                 // Save data before the game saves/exits
-                if (string.IsNullOrEmpty(Constants.SaveFolderName))
+                var saveId = Constants.SaveFolderName;
+                if (string.IsNullOrWhiteSpace(saveId))
                 {
                     _monitor.Log("Cannot save soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
                     return;
                 }
                 
-                string saveId = Constants.SaveFolderName; // Using SMAPI constant to get the save ID
                 _soilHealthService.SaveData(saveId);
                 _monitor.Log($"Soil health data saved for save '{saveId}'.", LogLevel.Trace);
             }
             catch (Exception)
             {
-                _monitor.Log("Error occurred while saving soil health data.", LogLevel.Error);
+                var saveId = Constants.SaveFolderName ?? "unknown";
+                _monitor.Log($"Error occurred while saving soil health data for save '{saveId}'.", LogLevel.Error);
             }
         }
 
@@ -476,7 +479,7 @@ namespace LivingRoots.Controllers
                         monitor?.Log("Error occurred while unregistering SaveLoaded event.", LogLevel.Error);
                     }
                 }
-
+                
                 if (gameLoop != null && savingHandler != null) // NEW
                 {
                     try
