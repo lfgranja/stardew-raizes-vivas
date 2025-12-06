@@ -69,6 +69,11 @@ namespace LivingRoots.Controllers
             var monitor = _monitor;
             var helper = _helper;
 
+            // Track which events were successfully added for proper rollback
+            bool gameLaunchedAdded = false;
+            bool saveLoadedAdded = false;
+            bool savingAdded = false;
+
             try
             {
                 var gameLoop = helper?.Events?.GameLoop;
@@ -87,10 +92,13 @@ namespace LivingRoots.Controllers
 
                 // Subscribe to events
                 gameLoop.GameLaunched += _onGameLaunchedHandler;
+                gameLaunchedAdded = true;
                 
                 // NEW EVENTS - Loading and saving soil health data
                 gameLoop.SaveLoaded += _onSaveLoadedHandler; // NEW
+                saveLoadedAdded = true;
                 gameLoop.Saving += _onSavingHandler; // NEW
+                savingAdded = true;
 
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
@@ -105,11 +113,11 @@ namespace LivingRoots.Controllers
                     var gameLoop = helper?.Events?.GameLoop;
                     if (gameLoop != null)
                     {
-                        if (_onGameLaunchedHandler != null)
+                        if (gameLaunchedAdded && _onGameLaunchedHandler != null)
                             gameLoop.GameLaunched -= _onGameLaunchedHandler;
-                        if (_onSaveLoadedHandler != null)
+                        if (saveLoadedAdded && _onSaveLoadedHandler != null)
                             gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NEW
-                        if (_onSavingHandler != null)
+                        if (savingAdded && _onSavingHandler != null)
                             gameLoop.Saving -= _onSavingHandler; // NEW
                     }
                 }
@@ -205,6 +213,10 @@ namespace LivingRoots.Controllers
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e) // NEW
         {
+            // Skip if controller has been disposed
+            if (IsDisposed())
+                return;
+                
             try
             {
                 // Load data using the save folder name as unique ID
@@ -217,9 +229,9 @@ namespace LivingRoots.Controllers
                 string saveId = Constants.SaveFolderName; // Using SMAPI constant to get the save ID
                 _soilHealthService.LoadData(saveId);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                _monitor.Log("Error occurred while loading soil health data.", LogLevel.Error);
+                _monitor.Log($"Error occurred while loading soil health data: {ex.Message}", LogLevel.Error);
             }
         }
 
@@ -241,9 +253,9 @@ namespace LivingRoots.Controllers
                 string saveId = Constants.SaveFolderName; // Using SMAPI constant to get the save ID
                 _soilHealthService.SaveData(saveId);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                _monitor.Log("Error occurred while saving soil health data.", LogLevel.Error);
+                _monitor.Log($"Error occurred while saving soil health data: {ex.Message}", LogLevel.Error);
             }
         }
 
