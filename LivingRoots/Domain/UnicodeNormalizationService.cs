@@ -281,21 +281,21 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Checks if a character is a zero-width or bidirectional control character.
         /// These characters can be used for security attacks and should be removed.
+        /// Added missing zero-width characters: U+200B (ZERO WIDTH SPACE), U+20C (ZERO WIDTH NON-JOINER), U+200D (ZERO WIDTH JOINER)
         /// </summary>
         /// <param name="c">The character to check.</param>
         /// <returns>True if the character should be removed, false otherwise.</returns>
         private static bool IsZeroWidthOrBidirectional(char c)
         {
-            // Zero-width characters
-            if (c == '\u202B' || c == '\u202C' || c == '\u202D') // Zero-width space, zero-width non-joiner, zero-width joiner
+            // Zero-width characters - added the missing U+200B, U+200C, U+200D
+            if (c == '\u200B' || c == '\u200C' || c == '\u200D') // ZERO WIDTH SPACE, ZERO WIDTH NON-JOINER, ZERO WIDTH JOINER
                 return true;
                 
-            // Bidirectional override characters
             if (c == '\u202A' || c == '\u202B' || c == '\u202C' || c == '\u202D' || c == '\u202E') // LRE, RLE, PDF, LRO, RLO
                 return true;
                 
             // Additional zero-width and bidirectional control characters for enhanced security
-            if (c == '\u202E' || c == '\u200F') // Left-to-right mark, Right-to-left mark
+            if (c == '\u202E' || c == '\u202F') // Left-to-right mark, Right-to-left mark
                 return true;
                 
             if (c == '\u2066' || c == '\u2067' || c == '\u2068' || c == '\u2069') // First strong isolate, Left-to-right isolate, Right-to-left isolate, Pop directional isolate
