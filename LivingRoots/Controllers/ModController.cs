@@ -5,7 +5,7 @@ using System.Threading;
 using System.Linq;
 using System.Collections.Generic;
 using LivingRoots.Services;
-using LivingRoots.Domain; // Add
+using LivingRoots.Domain; // Adicionar
 
 namespace LivingRoots.Controllers
 {
@@ -242,23 +242,33 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
                 
+            // Capture save ID once to avoid inconsistencies between try/catch
+            var capturedSaveId = Constants.SaveFolderName;
+            var safeId = string.IsNullOrWhiteSpace(capturedSaveId) ? "unknown" : capturedSaveId;
+                
             try
             {
                 // Load data using the save folder name as unique ID
-                var saveId = Constants.SaveFolderName;
-                if (string.IsNullOrWhiteSpace(saveId))
+                if (string.IsNullOrWhiteSpace(capturedSaveId))
                 {
                     _monitor.Log("Cannot load soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
                     return;
                 }
                 
-                _soilHealthService.LoadData(saveId);
-                _monitor.Log($"Soil health data loaded for save '{saveId}'.", LogLevel.Trace);
+                _soilHealthService.LoadData(capturedSaveId);
+                _monitor.Log($"Soil health data loaded for save '{safeId}'.", LogLevel.Trace);
+            }
+            catch (System.IO.IOException)
+            {
+                _monitor.Log($"IO Error while loading soil health data for save '{safeId}'.", LogLevel.Error);
+            }
+            catch (Newtonsoft.Json.JsonException)
+            {
+                _monitor.Log($"JSON Error while loading soil health data for save '{safeId}'. Save file may be corrupt.", LogLevel.Error);
             }
             catch (Exception)
             {
-                var saveId = Constants.SaveFolderName ?? "unknown";
-                _monitor.Log($"Error occurred while loading soil health data for save '{saveId}'.", LogLevel.Error);
+                _monitor.Log($"Unexpected error while loading soil health data for save '{safeId}'.", LogLevel.Error);
             }
         }
 
@@ -268,23 +278,33 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
             
+            // Capture save ID once to avoid inconsistencies between try/catch
+            var capturedSaveId = Constants.SaveFolderName;
+            var safeId = string.IsNullOrWhiteSpace(capturedSaveId) ? "unknown" : capturedSaveId;
+                
             try
             {
                 // Save data before the game saves/exits
-                var saveId = Constants.SaveFolderName;
-                if (string.IsNullOrWhiteSpace(saveId))
+                if (string.IsNullOrWhiteSpace(capturedSaveId))
                 {
                     _monitor.Log("Cannot save soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
                     return;
                 }
                 
-                _soilHealthService.SaveData(saveId);
-                _monitor.Log($"Soil health data saved for save '{saveId}'.", LogLevel.Trace);
+                _soilHealthService.SaveData(capturedSaveId);
+                _monitor.Log($"Soil health data saved for save '{safeId}'.", LogLevel.Trace);
+            }
+            catch (System.IO.IOException)
+            {
+                _monitor.Log($"IO Error while saving soil health data for save '{safeId}'.", LogLevel.Error);
+            }
+            catch (Newtonsoft.Json.JsonException)
+            {
+                _monitor.Log($"JSON Error while saving soil health data for save '{safeId}'.", LogLevel.Error);
             }
             catch (Exception)
             {
-                var saveId = Constants.SaveFolderName ?? "unknown";
-                _monitor.Log($"Error occurred while saving soil health data for save '{saveId}'.", LogLevel.Error);
+                _monitor.Log($"Unexpected error while saving soil health data for save '{safeId}'.", LogLevel.Error);
             }
         }
 
