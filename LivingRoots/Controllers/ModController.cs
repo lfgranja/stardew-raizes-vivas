@@ -98,6 +98,26 @@ namespace LivingRoots.Controllers
             {
                 // Log error and reset the flag if registration failed - ensure disposed flag is preserved
                 monitor.Log("Error occurred while registering game events.", LogLevel.Error);
+                
+                // Attempt to rollback any partial subscriptions
+                try
+                {
+                    var gameLoop = helper?.Events?.GameLoop;
+                    if (gameLoop != null)
+                    {
+                        if (_onGameLaunchedHandler != null)
+                            gameLoop.GameLaunched -= _onGameLaunchedHandler;
+                        if (_onSaveLoadedHandler != null)
+                            gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NOVO
+                        if (_onSavingHandler != null)
+                            gameLoop.Saving -= _onSavingHandler; // NOVO
+                    }
+                }
+                catch
+                {
+                    // Swallow to avoid masking original failure
+                }
+                
                 _onGameLaunchedHandler = null;
                 _onSaveLoadedHandler = null; // NOVO
                 _onSavingHandler = null; // NOVO
@@ -185,28 +205,46 @@ namespace LivingRoots.Controllers
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e) // NOVO
         {
-            // Carrega os dados usando o nome da pasta do save como ID único
-            if (string.IsNullOrEmpty(Constants.SaveFolderName))
+            try
             {
-                _monitor.Log("Cannot load soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
-                return;
+                // Carrega os dados usando o nome da pasta do save como ID único
+                if (string.IsNullOrEmpty(Constants.SaveFolderName))
+                {
+                    _monitor.Log("Cannot load soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
+                    return;
+                }
+                
+                string saveId = Constants.SaveFolderName; // Usando a constante do SMAPI para obter o ID do save
+                _soilHealthService.LoadData(saveId);
             }
-            
-            string saveId = Constants.SaveFolderName; // Usando a constante do SMAPI para obter o ID do save
-            _soilHealthService.LoadData(saveId);
+            catch (Exception ex)
+            {
+                _monitor.Log($"Error occurred while loading soil health data: {ex.Message}", LogLevel.Error);
+            }
         }
 
         private void OnSaving(object? sender, SavingEventArgs e) // NOVO
         {
-            // Salva os dados antes do jogo fechar/salvar
-            if (string.IsNullOrEmpty(Constants.SaveFolderName))
-            {
-                _monitor.Log("Cannot save soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
+            // Skip if controller has been disposed
+            if (IsDisposed())
                 return;
-            }
             
-            string saveId = Constants.SaveFolderName; // Usando a constante do SMAPI para obter o ID do save
-            _soilHealthService.SaveData(saveId);
+            try
+            {
+                // Salva os dados antes do jogo fechar/salvar
+                if (string.IsNullOrEmpty(Constants.SaveFolderName))
+                {
+                    _monitor.Log("Cannot save soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
+                    return;
+                }
+                
+                string saveId = Constants.SaveFolderName; // Usando a constante do SMAPI para obter o ID do save
+                _soilHealthService.SaveData(saveId);
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Error occurred while saving soil health data: {ex.Message}", LogLevel.Error);
+            }
         }
 
         /// <summary>
@@ -394,47 +432,27 @@ namespace LivingRoots.Controllers
 
                 var gameLoop = helper?.Events?.GameLoop;
 
-                // Use Interlocked.Exchange to safely get and clear the handlers
-                var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NOVO
-                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NOVO
-
-                if (gameLoop != null && gameLaunchedHandler != null)
+                // Define local function to avoid code duplication
+                void Unsubscribe<T>(ref EventHandler<T>? handlerRef, Action<EventHandler<T>> removeAction, string eventName) where T : EventArgs
                 {
-                    try
+                    var handler = Interlocked.Exchange(ref handlerRef, null);
+                    if (gameLoop != null && handler != null)
                     {
-                        gameLoop.GameLaunched -= gameLaunchedHandler;
-                    }
-                    catch (Exception ex)
-                    {
-                        monitor?.Log("Error occurred while unregistering GameLaunched event.", LogLevel.Error);
+                        try
+                        {
+                            removeAction(handler);
+                        }
+                        catch (Exception)
+                        {
+                            monitor?.Log($"Error occurred while unregistering {eventName} event.", LogLevel.Error);
+                        }
                     }
                 }
 
-                // Unregister new handlers as well
-                if (gameLoop != null && saveLoadedHandler != null) // NOVO
-                {
-                    try
-                    {
-                        gameLoop.SaveLoaded -= saveLoadedHandler;
-                    }
-                    catch (Exception ex)
-                    {
-                        monitor?.Log("Error occurred while unregistering SaveLoaded event.", LogLevel.Error);
-                    }
-                }
-
-                if (gameLoop != null && savingHandler != null) // NOVO
-                {
-                    try
-                    {
-                        gameLoop.Saving -= savingHandler;
-                    }
-                    catch (Exception ex)
-                    {
-                        monitor?.Log("Error occurred while unregistering Saving event.", LogLevel.Error);
-                    }
-                }
+                // Unregister all handlers using the local function
+                Unsubscribe(ref _onGameLaunchedHandler, h => gameLoop.GameLaunched -= h, "GameLaunched");
+                Unsubscribe(ref _onSaveLoadedHandler, h => gameLoop.SaveLoaded -= h, "SaveLoaded");
+                Unsubscribe(ref _onSavingHandler, h => gameLoop.Saving -= h, "Saving");
 
                 // Ensure the disposed flag remains set and clear other flags
                 // Clear other state flags, preserving the disposed flag.
