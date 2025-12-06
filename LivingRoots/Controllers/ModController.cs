@@ -231,7 +231,10 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error occurred while loading soil health data: {ex.Message}", LogLevel.Error);
+                // Log generic error message to avoid leaking implementation details
+                _monitor.Log("Error occurred while loading soil health data.", LogLevel.Error);
+                // Log technical details at trace level for debugging purposes
+                _monitor.Log($"Technical details: {ex.Message}", LogLevel.Trace);
             }
         }
 
@@ -255,7 +258,10 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error occurred while saving soil health data: {ex.Message}", LogLevel.Error);
+                // Log generic error message to avoid leaking implementation details
+                _monitor.Log("Error occurred while saving soil health data.", LogLevel.Error);
+                // Log technical details at trace level for debugging purposes
+                _monitor.Log($"Technical details: {ex.Message}", LogLevel.Trace);
             }
         }
 
