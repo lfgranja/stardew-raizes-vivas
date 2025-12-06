@@ -40,9 +40,10 @@ namespace LivingRoots.Services
                 string dataKey = GetSaveKey(saveId);
                 var savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
                 
-                // Convert from disk format (string keys) to runtime format (Point keys)
-                _runtimeCache.Clear();
-                if (savedData?.LocationHealthData != null) // Check if savedData and its LocationHealthData property are not null
+                // Prepare a temporary cache; only swap on success to prevent data loss on partial failure
+                var newCache = new Dictionary<string, Dictionary<Point, float>>();
+
+                if (savedData?.LocationHealthData != null)
                 {
                     foreach (var locationEntry in savedData.LocationHealthData)
                     {
@@ -86,12 +87,19 @@ namespace LivingRoots.Services
                                 }
                             }
                         }
-                        _runtimeCache[locationEntry.Key] = tileDict;
+                        newCache[locationEntry.Key] = tileDict;
                     }
                 }
                 else
                 {
                     _monitor.Log($"No existing Soil Health data found for save {saveId}. Starting fresh.", LogLevel.Info);
+                }
+
+                // Atomically replace the runtime cache with the new one to prevent data loss
+                _runtimeCache.Clear();
+                foreach (var kv in newCache)
+                {
+                    _runtimeCache[kv.Key] = kv.Value;
                 }
             }
         }
@@ -138,6 +146,7 @@ namespace LivingRoots.Services
             // Validate input to prevent potential exceptions
             if (string.IsNullOrWhiteSpace(locationName)) 
             {
+                _monitor.Log($"GetSoilHealth: Invalid locationName '{locationName}'. Returning default 0f.", LogLevel.Trace);
                 return 0f; // Return default (Poor Soil) if location is invalid
             }
 
