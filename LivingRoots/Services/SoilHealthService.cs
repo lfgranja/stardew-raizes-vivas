@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using LivingRoots.Domain;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
@@ -26,6 +27,12 @@ namespace LivingRoots.Services
 
         public void LoadData(string saveId)
         {
+            if (string.IsNullOrWhiteSpace(saveId))
+            {
+                _monitor.Log("LoadData aborted: invalid saveId.", LogLevel.Warn);
+                return;
+            }
+            
             lock (_lock)
             {
                 string key = GetSaveKey(saveId);
@@ -46,6 +53,12 @@ namespace LivingRoots.Services
 
         public void SaveData(string saveId)
         {
+            if (string.IsNullOrWhiteSpace(saveId))
+            {
+                _monitor.Log("SaveData aborted: invalid saveId.", LogLevel.Warn);
+                return;
+            }
+            
             lock (_lock)
             {
                 string key = GetSaveKey(saveId);
@@ -60,7 +73,7 @@ namespace LivingRoots.Services
             {
                 if (_currentState.LocationHealthData.TryGetValue(locationName, out var tiles))
                 {
-                    string tileKey = $"{tile.X},{tile.Y}";
+                    string tileKey = $"{tile.X.ToString(CultureInfo.InvariantCulture)},{tile.Y.ToString(CultureInfo.InvariantCulture)}";
                     if (tiles.TryGetValue(tileKey, out float health))
                     {
                         return health;
@@ -77,13 +90,14 @@ namespace LivingRoots.Services
                 // Regra de Domínio: Clamp entre 0 e 100
                 float clampedValue = Math.Clamp(value, 0f, 100f);
 
-                if (!_currentState.LocationHealthData.ContainsKey(locationName))
+                if (!_currentState.LocationHealthData.TryGetValue(locationName, out var tiles))
                 {
-                    _currentState.LocationHealthData[locationName] = new Dictionary<string, float>();
+                    tiles = new Dictionary<string, float>();
+                    _currentState.LocationHealthData[locationName] = tiles;
                 }
 
-                string tileKey = $"{tile.X},{tile.Y}";
-                _currentState.LocationHealthData[locationName][tileKey] = clampedValue;
+                string tileKey = $"{tile.X.ToString(CultureInfo.InvariantCulture)},{tile.Y.ToString(CultureInfo.InvariantCulture)}";
+                tiles[tileKey] = clampedValue;
             }
         }
 
