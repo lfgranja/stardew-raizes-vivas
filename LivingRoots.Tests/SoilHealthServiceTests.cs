@@ -187,5 +187,92 @@ namespace LivingRoots.Tests
             // Assert
             _mockDataService.Verify(ds => ds.SaveData(It.IsAny<SoilHealthState>(), $"soil_health_data_{saveId}"), Times.Once);
         }
+        
+        [Fact]
+        public void LoadData_WithMalformedKeys_LogsWarningAndSkips()
+        {
+            // Arrange
+            var corruptedData = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    { "Farm", new Dictionary<string, float> { { "10,10,10", 85.5f } } } // Malformed key with 3 coordinates
+                }
+            };
+
+            _mockDataService
+                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Returns(corruptedData);
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+
+            // Act
+            service.LoadData("test_save");
+
+            // Assert - The malformed key should be skipped, so tile (10,10) should return default 0f
+            var result = service.GetSoilHealth("Farm", new Vector2(10, 10));
+            Assert.Equal(0.0f, result);
+            
+            // Verify that a warning was logged about the malformed key
+            _mockMonitor.Verify(m => m.Log(It.IsAny<string>(), LogLevel.Warn), Times.Once);
+        }
+        
+        [Fact]
+        public void LoadData_WithNaNValue_LogsWarningAndSkips()
+        {
+            // Arrange
+            var corruptedData = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    { "Farm", new Dictionary<string, float> { { "10,10", float.NaN } } } // NaN value
+                }
+            };
+
+            _mockDataService
+                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Returns(corruptedData);
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+
+            // Act
+            service.LoadData("test_save");
+
+            // Assert - The NaN value should be skipped, so tile (10,10) should return default 0f
+            var result = service.GetSoilHealth("Farm", new Vector2(10, 10));
+            Assert.Equal(0.0f, result);
+            
+            // Verify that a warning was logged about the invalid value
+            _mockMonitor.Verify(m => m.Log(It.IsAny<string>(), LogLevel.Warn), Times.Once);
+        }
+        
+        [Fact]
+        public void LoadData_WithInfinityValue_LogsWarningAndSkips()
+        {
+            // Arrange
+            var corruptedData = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    { "Farm", new Dictionary<string, float> { { "10,10", float.PositiveInfinity } } } // Infinity value
+                }
+            };
+
+            _mockDataService
+                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Returns(corruptedData);
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+
+            // Act
+            service.LoadData("test_save");
+
+            // Assert - The infinity value should be skipped, so tile (10,10) should return default 0f
+            var result = service.GetSoilHealth("Farm", new Vector2(10, 10));
+            Assert.Equal(0.0f, result);
+            
+            // Verify that a warning was logged about the invalid value
+            _mockMonitor.Verify(m => m.Log(It.IsAny<string>(), LogLevel.Warn), Times.Once);
+        }
     }
 }
