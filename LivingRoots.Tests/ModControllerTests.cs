@@ -3,6 +3,7 @@ using StardewModdingAPI.Events;
 using Moq;
 using LivingRoots.Controllers;
 using LivingRoots.Services;
+using LivingRoots.Domain;
 using Xunit;
 using System;
 
@@ -49,7 +50,8 @@ namespace LivingRoots.Tests
                 .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Act & Assert
             var ex = Record.Exception(() => controller.RegisterEvents());
@@ -71,7 +73,8 @@ namespace LivingRoots.Tests
                 .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Act
             controller.RegisterEvents();
@@ -94,7 +97,8 @@ namespace LivingRoots.Tests
                 .Callback<EventHandler<GameLaunchedEventArgs>>(handler => { eventHandler = handler; });
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Act
             controller.RegisterEvents();
@@ -115,7 +119,8 @@ namespace LivingRoots.Tests
                 .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
                 
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Act - Register events twice
             controller.RegisterEvents();
@@ -140,7 +145,8 @@ namespace LivingRoots.Tests
                 .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // First register events to set _eventsRegistered to true
             controller.RegisterEvents();
@@ -167,7 +173,8 @@ namespace LivingRoots.Tests
                 .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Act - Simulate concurrent registration and unregistration
             var tasks = new System.Threading.Tasks.Task[10];
@@ -223,7 +230,8 @@ namespace LivingRoots.Tests
                 .Verifiable();
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Act & Assert
             var ex = Record.Exception(() => controller.RegisterEvents());
@@ -257,7 +265,8 @@ namespace LivingRoots.Tests
                 .Verifiable();
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Act - This should cause an exception in the event registration which should clear the handler
             controller.RegisterEvents();
@@ -295,7 +304,8 @@ namespace LivingRoots.Tests
                 .Verifiable();
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // First register events to set up the handler
             controller.RegisterEvents();
@@ -344,7 +354,8 @@ namespace LivingRoots.Tests
                 .Verifiable();
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(mockHelper.Object, mockMonitor.Object, mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(mockHelper.Object, mockMonitor.Object, mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -394,7 +405,8 @@ namespace LivingRoots.Tests
                 .Verifiable();
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(mockHelper.Object, mockMonitor.Object, mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(mockHelper.Object, mockMonitor.Object, mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -424,7 +436,8 @@ namespace LivingRoots.Tests
                 .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -452,7 +465,8 @@ namespace LivingRoots.Tests
                 .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -486,7 +500,8 @@ namespace LivingRoots.Tests
                 .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -518,7 +533,8 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
             
             var mockModDataService = new Mock<IModDataService>();
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object);
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, mockModDataService.Object, mockSoilHealthService.Object);
             
             // Act - Simulate concurrent calls to OnGameLaunched to test command registration race condition
             var tasks = new System.Threading.Tasks.Task[10];
