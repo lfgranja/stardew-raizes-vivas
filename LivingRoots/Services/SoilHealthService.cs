@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Threading;
 using LivingRoots.Domain;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
@@ -46,6 +47,7 @@ namespace LivingRoots.Services
                     foreach (var locationEntry in savedData.LocationHealthData)
                     {
                         var tileDict = new Dictionary<Vector2, float>();
+                        bool warnedForLocation = false; // Only warn once per location
                         foreach (var tileEntry in locationEntry.Value)
                         {
                             // Parse "X,Y" string back to Vector2
@@ -55,6 +57,15 @@ namespace LivingRoots.Services
                                 float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float y))
                             {
                                 tileDict[new Vector2(x, y)] = tileEntry.Value;
+                            }
+                            else
+                            {
+                                // Warn about malformed keys to help diagnose corrupted save data
+                                if (!warnedForLocation)
+                                {
+                                    _monitor.Log($"Skipped malformed soil health tile key(s) in location '{locationEntry.Key}'.", LogLevel.Warn);
+                                    warnedForLocation = true;
+                                }
                             }
                         }
                         _runtimeCache[locationEntry.Key] = tileDict;
@@ -125,20 +136,34 @@ namespace LivingRoots.Services
                 // Domain Rule: Clamp between 0 and 100
                 float clampedValue = Math.Clamp(value, 0f, 100f);
 
-                if (!_runtimeCache.ContainsKey(locationName))
+                // Use TryGetValue to perform a single lookup instead of ContainsKey + indexer
+                if (!_runtimeCache.TryGetValue(locationName, out var tiles))
                 {
-                    _runtimeCache[locationName] = new Dictionary<Vector2, float>();
+                    tiles = new Dictionary<Vector2, float>();
+                    _runtimeCache[locationName] = tiles;
                 }
-                _runtimeCache[locationName][tile] = clampedValue;
+                tiles[tile] = clampedValue;
             }
         }
 
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
         {
+            if (string.IsNullOrWhiteSpace(locationName)) 
+                return; // Skip if location is invalid
+
             lock (_lock)
             {
-                float current = GetSoilHealth(locationName, tile);
-                SetSoilHealth(locationName, tile, current + delta);
+                // Perform the update operation in a single lock to avoid reentrant calls
+                if (!_runtimeCache.TryGetValue(locationName, out var tiles))
+                {
+                    tiles = new Dictionary<Vector2, float>();
+                    _runtimeCache[locationName] = tiles;
+                }
+
+                // Get current value (0 if tile doesn't exist) and calculate new value
+                tiles.TryGetValue(tile, out float currentHealth);
+                float newHealth = Math.Clamp(currentHealth + delta, 0f, 100f);
+                tiles[tile] = newHealth;
             }
         }
 
