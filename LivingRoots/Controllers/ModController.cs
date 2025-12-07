@@ -5,7 +5,7 @@ using System.Threading;
 using System.Linq;
 using System.Collections.Generic;
 using LivingRoots.Services;
-using LivingRoots.Domain; // Adicionar
+using LivingRoots.Domain; // Add
 
 namespace LivingRoots.Controllers
 {
@@ -28,7 +28,7 @@ namespace LivingRoots.Controllers
         };
 
         // Single atomic state for thread-safe management of controller state
-        // Using bit flags: 0x01 = events registered, 0x02 = command registered, 0x04 = disposed
+        // Using bit flags: 0x01 = events registered, 0x02 = command registered, 0x04 = disposed, 0x08 = disposed message logged
         private int _state = 0;
 
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
@@ -39,6 +39,7 @@ namespace LivingRoots.Controllers
         private const int EventsRegisteredFlag = 0x01;
         private const int CommandRegisteredFlag = 0x02;
         private const int DisposedFlag = 0x04;
+        private const int DisposedMessageLoggedFlag = 0x08; // NEW: Flag to track if disposal message was already logged
 
         public ModController(IModHelper helper, IMonitor monitor, IManifest manifest, IModDataService modDataService, ISoilHealthService soilHealthService) // Update constructor
         {
@@ -75,19 +76,15 @@ namespace LivingRoots.Controllers
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                 // Reset flag since registration failed - ensure disposed flag is preserved
-                int cur, upd;
-                do
-                {
-                    cur = Volatile.Read(ref _state);
-                    upd = cur & ~EventsRegisteredFlag;
-                } while (Interlocked.CompareExchange(ref _state, upd, cur) != cur);
+                // Use Interlocked.And for simple flag clearing
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
             }
 
             // Track which events were successfully added for proper rollback
             bool gameLaunchedAdded = false;
             bool saveLoadedAdded = false;
-            bool savingAdded = false;
+            bool savingAdded = false; // NEW
 
             try
             {
@@ -100,12 +97,7 @@ namespace LivingRoots.Controllers
                 if (IsDisposed())
                 {
                     monitor.Log("Controller disposed during registration. Skipping event subscription.", LogLevel.Trace);
-                    int cur, upd;
-                    do
-                    {
-                        cur = Volatile.Read(ref _state);
-                        upd = cur & ~EventsRegisteredFlag;
-                    } while (Interlocked.CompareExchange(ref _state, upd, cur) != cur);
+                    Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                     return;
                 }
 
@@ -117,7 +109,7 @@ namespace LivingRoots.Controllers
                 gameLoop.SaveLoaded += _onSaveLoadedHandler; // NEW
                 saveLoadedAdded = true;
                 gameLoop.Saving += _onSavingHandler; // NEW
-                savingAdded = true;
+                savingAdded = true; // NEW
 
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
@@ -135,27 +127,17 @@ namespace LivingRoots.Controllers
                             gameLoop.GameLaunched -= _onGameLaunchedHandler;
                         if (saveLoadedAdded && _onSaveLoadedHandler != null)
                             gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NEW
-                        if (savingAdded && _onSavingHandler != null)
+                        if (savingAdded && _onSavingHandler != null) // NEW
                             gameLoop.Saving -= _onSavingHandler; // NEW
                     }
                 }
-                catch (Exception rollbackEx)
-                {
-                    // Log rollback exception at trace level to provide debugging info without cluttering main logs
-                    monitor.Log($"An error occurred during event registration rollback: {rollbackEx.Message}", LogLevel.Trace);
-                }
+                catch { /* avoid masking original failure */ }
 
                 _onGameLaunchedHandler = null;
                 _onSaveLoadedHandler = null; // NEW
                 _onSavingHandler = null; // NEW
 
-                // Safely clear the EventsRegisteredFlag using compare-and-swap
-                int current, updated;
-                do
-                {
-                    current = Volatile.Read(ref _state);
-                    updated = current & ~EventsRegisteredFlag;
-                } while (Interlocked.CompareExchange(ref _state, updated, current) != current);
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
             }
         }
 
@@ -242,33 +224,23 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
                 
-            // Capture save ID once to avoid inconsistencies between try/catch
-            var capturedSaveId = Constants.SaveFolderName;
-            var safeId = string.IsNullOrWhiteSpace(capturedSaveId) ? "unknown" : capturedSaveId;
-                
             try
             {
                 // Load data using the save folder name as unique ID
-                if (string.IsNullOrWhiteSpace(capturedSaveId))
+                var saveId = Constants.SaveFolderName;
+                if (string.IsNullOrWhiteSpace(saveId))
                 {
                     _monitor.Log("Cannot load soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
                     return;
                 }
                 
-                _soilHealthService.LoadData(capturedSaveId);
-                _monitor.Log($"Soil health data loaded for save '{safeId}'.", LogLevel.Trace);
-            }
-            catch (System.IO.IOException)
-            {
-                _monitor.Log($"IO Error while loading soil health data for save '{safeId}'.", LogLevel.Error);
-            }
-            catch (Newtonsoft.Json.JsonException)
-            {
-                _monitor.Log($"JSON Error while loading soil health data for save '{safeId}'. Save file may be corrupt.", LogLevel.Error);
+                _soilHealthService.LoadData(saveId);
+                _monitor.Log($"Soil health data loaded for save '{saveId}'.", LogLevel.Trace);
             }
             catch (Exception)
             {
-                _monitor.Log($"Unexpected error while loading soil health data for save '{safeId}'.", LogLevel.Error);
+                var saveId = Constants.SaveFolderName ?? "unknown";
+                _monitor.Log($"Error occurred while loading soil health data for save '{saveId}'.", LogLevel.Error);
             }
         }
 
@@ -278,33 +250,23 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
             
-            // Capture save ID once to avoid inconsistencies between try/catch
-            var capturedSaveId = Constants.SaveFolderName;
-            var safeId = string.IsNullOrWhiteSpace(capturedSaveId) ? "unknown" : capturedSaveId;
-                
             try
             {
                 // Save data before the game saves/exits
-                if (string.IsNullOrWhiteSpace(capturedSaveId))
+                var saveId = Constants.SaveFolderName;
+                if (string.IsNullOrWhiteSpace(saveId))
                 {
                     _monitor.Log("Cannot save soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
                     return;
                 }
                 
-                _soilHealthService.SaveData(capturedSaveId);
-                _monitor.Log($"Soil health data saved for save '{safeId}'.", LogLevel.Trace);
-            }
-            catch (System.IO.IOException)
-            {
-                _monitor.Log($"IO Error while saving soil health data for save '{safeId}'.", LogLevel.Error);
-            }
-            catch (Newtonsoft.Json.JsonException)
-            {
-                _monitor.Log($"JSON Error while saving soil health data for save '{safeId}'.", LogLevel.Error);
+                _soilHealthService.SaveData(saveId);
+                _monitor.Log($"Soil health data saved for save '{saveId}'.", LogLevel.Trace);
             }
             catch (Exception)
             {
-                _monitor.Log($"Unexpected error while saving soil health data for save '{safeId}'.", LogLevel.Error);
+                var saveId = Constants.SaveFolderName ?? "unknown";
+                _monitor.Log($"Error occurred while saving soil health data for save '{saveId}'.", LogLevel.Error);
             }
         }
 
@@ -470,10 +432,22 @@ namespace LivingRoots.Controllers
             // Use TrySetStateFlag to ensure disposal flag is only set once
             if (!TrySetStateFlag(DisposedFlag))
             {
-                _monitor.Log("Controller is already disposed.", LogLevel.Trace);
+                // Check if the disposal message has already been logged
+                int currentState = Volatile.Read(ref _state);
+                if ((currentState & DisposedMessageLoggedFlag) == 0)
+                {
+                    // Try to set the flag to indicate we've logged the disposal message
+                    int newState = currentState | DisposedMessageLoggedFlag;
+                    if (Interlocked.CompareExchange(ref _state, newState, currentState) == currentState)
+                    {
+                        // Only log if we successfully set the flag (meaning this is the first time logging)
+                        _monitor.Log("Controller is already disposed.", LogLevel.Trace);
+                    }
+                }
                 return; // Already disposed
             }
 
+            // If we reach this point, we successfully set the disposed flag and can proceed with cleanup
             // Perform cleanup in a thread-safe manner
             PerformCleanup();
         }
