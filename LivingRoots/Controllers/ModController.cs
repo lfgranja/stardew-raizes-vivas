@@ -119,14 +119,22 @@ namespace LivingRoots.Controllers
                 monitor.Log("Error occurred while registering game events.", LogLevel.Error);
                 
                 // Attempt to rollback any partial subscriptions with individual exception handling
-                if (gameLoop != null) // Guard against null gameLoop in rollback
+                try
                 {
-                    if (gameLaunchedAdded && _onGameLaunchedHandler != null) 
-                        TryUnsubscribe(() => gameLoop.GameLaunched -= _onGameLaunchedHandler, "GameLaunched", monitor);
-                    if (saveLoadedAdded && _onSaveLoadedHandler != null) // NEW
-                        TryUnsubscribe(() => gameLoop.SaveLoaded -= _onSaveLoadedHandler, "SaveLoaded", monitor); // NEW
-                    if (savingAdded && _onSavingHandler != null) // CORRIGIDO: Era _onSavedHandler // NEW
-                        TryUnsubscribe(() => gameLoop.Saving -= _onSavingHandler, "Saving", monitor); // NEW
+                    if (gameLoop != null) // Guard against null gameLoop in rollback
+                    {
+                        if (gameLaunchedAdded && _onGameLaunchedHandler != null)
+                            gameLoop.GameLaunched -= _onGameLaunchedHandler;
+                        if (saveLoadedAdded && _onSaveLoadedHandler != null)
+                            gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NEW
+                        if (savingAdded && _onSavingHandler != null) // CORRIGIDO: Era _onSavedHandler // NEW
+                            gameLoop.Saving -= _onSavingHandler; // CORRIGIDO: Era gameLoop.Saved // NEW
+                    }
+                }
+                catch // Changed from catch (Exception rollbackEx) to catch to remove unused variable
+                { 
+                    monitor.Log("Error during event subscription rollback.", LogLevel.Trace); 
+                    /* avoid masking original failure */ 
                 }
 
                 _onGameLaunchedHandler = null;
@@ -138,25 +146,6 @@ namespace LivingRoots.Controllers
                 // According to code review feedback, we should NOT re-throw the exception to maintain consistency with tests
                 // The method should handle failures gracefully without propagating exceptions
                 return; // Exit gracefully without re-throwing
-            }
-        }
-
-        /// <summary>
-        /// Attempts to unsubscribe from an event, logging errors without rethrowing.
-        /// This method reduces code duplication in rollback logic.
-        /// </summary>
-        /// <param name="unsubscribeAction">The action to unsubscribe from the event</param>
-        /// <param name="eventName">The name of the event for logging purposes</param>
-        /// <param name="monitor">The monitor instance for logging</param>
-        private void TryUnsubscribe(Action unsubscribeAction, string eventName, IMonitor monitor)
-        {
-            try
-            {
-                unsubscribeAction();
-            }
-            catch (Exception)
-            {
-                monitor.Log($"Error during rollback of {eventName} subscription.", LogLevel.Trace);
             }
         }
 
@@ -253,13 +242,10 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
                 
-            // Get saveId once to use in both try and catch blocks
-            var saveId = Constants.SaveFolderName;
-            var safeId = saveId ?? "unknown";
-            
             try
             {
                 // Load data using the save folder name as unique ID
+                var saveId = Constants.SaveFolderName;
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
                     _monitor.Log("Cannot load soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
@@ -271,8 +257,8 @@ namespace LivingRoots.Controllers
             }
             catch (Exception)
             {
-                // According to security review, avoid logging sensitive save IDs in error messages
-                _monitor.Log("Error occurred while loading soil health data.", LogLevel.Error);
+                var saveId = Constants.SaveFolderName ?? "unknown";
+                _monitor.Log($"Error occurred while loading soil health data for save '{saveId}'.", LogLevel.Error);
             }
         }
 
@@ -282,13 +268,10 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
             
-            // Get saveId once to use in both try and catch blocks
-            var saveId = Constants.SaveFolderName;
-            var safeId = saveId ?? "unknown";
-            
             try
             {
                 // Save data before the game saves/exits (using the saving event)
+                var saveId = Constants.SaveFolderName;
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
                     _monitor.Log("Cannot save soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
@@ -300,8 +283,8 @@ namespace LivingRoots.Controllers
             }
             catch (Exception)
             {
-                // According to security review, avoid logging sensitive save IDs in error messages
-                _monitor.Log("Error occurred while saving soil health data.", LogLevel.Error);
+                var saveId = Constants.SaveFolderName ?? "unknown";
+                _monitor.Log($"Error occurred while saving soil health data for save '{saveId}'.", LogLevel.Error);
             }
         }
 
