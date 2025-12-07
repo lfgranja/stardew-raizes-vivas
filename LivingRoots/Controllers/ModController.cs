@@ -33,7 +33,7 @@ namespace LivingRoots.Controllers
 
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
         private EventHandler<SaveLoadedEventArgs>? _onSaveLoadedHandler; // NEW
-        private EventHandler<SavingEventArgs>? _onSavingHandler; // NEW
+        private EventHandler<SavedEventArgs>? _onSavedHandler; // NEW - CORRIGIDO: Era _onSavingHandler
 
         // State bit flags
         private const int EventsRegisteredFlag = 0x01;
@@ -84,14 +84,14 @@ namespace LivingRoots.Controllers
             // Track which events were successfully added for proper rollback
             bool gameLaunchedAdded = false;
             bool saveLoadedAdded = false;
-            bool savingAdded = false; // NEW
+            bool savedAdded = false; // NEW - CORRIGIDO: Era savingAdded
 
             try
             {
                 // Initialize the handlers once
                 _onGameLaunchedHandler ??= OnGameLaunched;
                 _onSaveLoadedHandler ??= OnSaveLoaded; // NEW
-                _onSavingHandler ??= OnSaving; // NEW
+                _onSavedHandler ??= OnSaved; // NEW - CORRIGIDO: Era _onSavingHandler
 
                 // Double-check disposed state before subscribing to prevent race condition
                 if (IsDisposed())
@@ -108,8 +108,8 @@ namespace LivingRoots.Controllers
                 // NEW EVENTS - Loading and saving soil health data
                 gameLoop.SaveLoaded += _onSaveLoadedHandler; // NEW
                 saveLoadedAdded = true;
-                gameLoop.Saving += _onSavingHandler; // NEW
-                savingAdded = true; // NEW
+                gameLoop.Saved += _onSavedHandler; // NEW - CORRIGIDO: Era gameLoop.Saving
+                savedAdded = true; // NEW - CORRIGIDO: Era savingAdded
 
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
@@ -127,15 +127,15 @@ namespace LivingRoots.Controllers
                             gameLoop.GameLaunched -= _onGameLaunchedHandler;
                         if (saveLoadedAdded && _onSaveLoadedHandler != null)
                             gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NEW
-                        if (savingAdded && _onSavingHandler != null) // NEW
-                            gameLoop.Saving -= _onSavingHandler; // NEW
+                        if (savedAdded && _onSavedHandler != null) // NEW - CORRIGIDO: Era _onSavingHandler
+                            gameLoop.Saved -= _onSavedHandler; // NEW - CORRIGIDO: Era gameLoop.Saving
                     }
                 }
                 catch { /* avoid masking original failure */ }
 
                 _onGameLaunchedHandler = null;
                 _onSaveLoadedHandler = null; // NEW
-                _onSavingHandler = null; // NEW
+                _onSavedHandler = null; // NEW - CORRIGIDO: Era _onSavingHandler
 
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
             }
@@ -179,7 +179,7 @@ namespace LivingRoots.Controllers
                 // Use Interlocked.Exchange to safely get and clear the handlers
                 var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                 var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NEW
-                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NEW
+                var savedHandler = Interlocked.Exchange(ref _onSavedHandler, null); // NEW - CORRIGIDO: Era _onSavingHandler
 
                 // Always attempt to detach to avoid leaked handlers
                 if (gameLaunchedHandler != null)
@@ -193,9 +193,9 @@ namespace LivingRoots.Controllers
                     gameLoop.SaveLoaded -= saveLoadedHandler;
                 }
                 
-                if (savingHandler != null) // NEW
+                if (savedHandler != null) // NEW - CORRIGIDO: Era _onSavingHandler
                 {
-                    gameLoop.Saving -= savingHandler;
+                    gameLoop.Saved -= savedHandler; // NEW - CORRIGIDO: Era gameLoop.Saving
                 }
 
                 // Unregister console command if it was registered
@@ -244,7 +244,7 @@ namespace LivingRoots.Controllers
             }
         }
 
-        private void OnSaving(object? sender, SavingEventArgs e) // NEW
+        private void OnSaved(object? sender, SavedEventArgs e) // NEW - CORRIGIDO: Era OnSaving
         {
             // Skip if controller has been disposed
             if (IsDisposed())
@@ -252,7 +252,7 @@ namespace LivingRoots.Controllers
             
             try
             {
-                // Save data before the game saves/exits
+                // Save data after the game saves (using the saved event)
                 var saveId = Constants.SaveFolderName;
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
@@ -440,7 +440,7 @@ namespace LivingRoots.Controllers
                     int newState = currentState | DisposedMessageLoggedFlag;
                     if (Interlocked.CompareExchange(ref _state, newState, currentState) == currentState)
                     {
-                        // Only log if we successfully set the flag (meaning this is the first time logging)
+                        // Only log if we successfully set the flag (meaning this is the first time logging after disposal)
                         _monitor.Log("Controller is already disposed.", LogLevel.Trace);
                     }
                 }
@@ -470,7 +470,7 @@ namespace LivingRoots.Controllers
                 // Use Interlocked.Exchange to safely get and clear the handlers
                 var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                 var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NEW
-                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NEW
+                var savedHandler = Interlocked.Exchange(ref _onSavedHandler, null); // NEW - CORRIGIDO: Era _onSavingHandler
 
                 if (gameLoop != null && gameLaunchedHandler != null)
                 {
@@ -497,15 +497,15 @@ namespace LivingRoots.Controllers
                     }
                 }
                 
-                if (gameLoop != null && savingHandler != null) // NEW
+                if (gameLoop != null && savedHandler != null) // NEW - CORRIGIDO: Era _onSavingHandler
                 {
                     try
                     {
-                        gameLoop.Saving -= savingHandler;
+                        gameLoop.Saved -= savedHandler; // NEW - CORRIGIDO: Era gameLoop.Saving
                     }
                     catch (Exception)
                     {
-                        monitor?.Log("Error occurred while unregistering Saving event.", LogLevel.Error);
+                        monitor?.Log("Error occurred while unregistering Saved event.", LogLevel.Error);
                     }
                 }
 
