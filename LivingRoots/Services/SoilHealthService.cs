@@ -49,7 +49,10 @@ namespace LivingRoots.Services
                     _runtimeCache.Clear();
                     if (savedData != null)
                     {
-                        foreach (var locationEntry in savedData.LocationHealthData)
+                        // Guard against null LocationHealthData to prevent NullReferenceException during deserialization
+                        var locations = savedData.LocationHealthData ?? new Dictionary<string, Dictionary<string, float>>();
+                        
+                        foreach (var locationEntry in locations)
                         {
                             // Skip if the location name is null or empty to prevent invalid entries in the cache
                             if (string.IsNullOrWhiteSpace(locationEntry.Key))
@@ -62,8 +65,7 @@ namespace LivingRoots.Services
                             if (locationEntry.Value == null) continue;
                             
                             var tileDict = new Dictionary<Point, float>();
-                            bool malformedKeyWarned = false; // Only warn once per location about malformed keys
-                            bool invalidValueWarned = false; // Only warn once per location about invalid values
+                            bool warnedForLocation = false; // Only warn once per location
                             foreach (var tileEntry in locationEntry.Value)
                             {
                                 // Parse "X,Y" string back to Point (using integers for tile coordinates)
@@ -78,10 +80,10 @@ namespace LivingRoots.Services
                                     var rawValue = tileEntry.Value;
                                     if (float.IsNaN(rawValue) || float.IsInfinity(rawValue))
                                     {
-                                        if (!invalidValueWarned)
+                                        if (!warnedForLocation)
                                         {
                                             _monitor.Log($"Skipped invalid soil health value (NaN/Infinity) in location '{locationEntry.Key}'.", LogLevel.Warn);
-                                            invalidValueWarned = true;
+                                            warnedForLocation = true;
                                         }
                                         continue;
                                     }
@@ -92,10 +94,10 @@ namespace LivingRoots.Services
                                 else
                                 {
                                     // Warn about malformed keys to help diagnose corrupted save data
-                                    if (!malformedKeyWarned)
+                                    if (!warnedForLocation)
                                     {
                                         _monitor.Log($"Skipped malformed soil health tile key(s) in location '{locationEntry.Key}'.", LogLevel.Warn);
-                                        malformedKeyWarned = true;
+                                        warnedForLocation = true;
                                     }
                                 }
                             }
