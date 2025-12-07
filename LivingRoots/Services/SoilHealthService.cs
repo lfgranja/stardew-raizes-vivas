@@ -95,7 +95,11 @@ namespace LivingRoots.Services
                                 }
                             }
                         }
-                        _runtimeCache[locationEntry.Key] = tileDict;
+                        // Only add location if at least one valid tile exists
+                        if (tileDict.Count > 0)
+                        {
+                            _runtimeCache[locationEntry.Key] = tileDict;
+                        }
                     }
                 }
                 else
@@ -119,6 +123,13 @@ namespace LivingRoots.Services
                 var stateToSave = new SoilHealthState();
                 foreach (var locationEntry in _runtimeCache)
                 {
+                    // Skip invalid location names to prevent corrupt entries
+                    if (string.IsNullOrWhiteSpace(locationEntry.Key))
+                    {
+                        _monitor.Log("Skipped saving soil health for null or empty location name.", LogLevel.Warn);
+                        continue;
+                    }
+                    
                     var stringDict = new Dictionary<string, float>();
                     foreach (var tileEntry in locationEntry.Value)
                     {
@@ -133,7 +144,11 @@ namespace LivingRoots.Services
                         string key = $"{tileEntry.Key.X.ToString(CultureInfo.InvariantCulture)},{tileEntry.Key.Y.ToString(CultureInfo.InvariantCulture)}";
                         stringDict[key] = clamped;
                     }
-                    stateToSave.LocationHealthData[locationEntry.Key] = stringDict;
+                    // Only add location if it has valid tiles
+                    if (stringDict.Count > 0)
+                    {
+                        stateToSave.LocationHealthData[locationEntry.Key] = stringDict;
+                    }
                 }
 
                 string saveKey = GetSaveKey(saveId);
@@ -147,6 +162,10 @@ namespace LivingRoots.Services
             // Validate input to prevent potential exceptions
             if (string.IsNullOrWhiteSpace(locationName)) 
                 return 0f; // Return default (Poor Soil) if location is invalid
+
+            // Guard against invalid coordinates to prevent misleading lookups
+            if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
+                return 0f;
 
             lock (_lock)
             {
