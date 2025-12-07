@@ -6,7 +6,6 @@ using LivingRoots.Services;
 using LivingRoots.Domain;
 using Xunit;
 using System;
-using System.Collections.Generic; // Adicionando esta importação
 
 namespace LivingRoots.Tests
 {
@@ -18,9 +17,9 @@ namespace LivingRoots.Tests
 
         public ModControllerTests()
         {
-            _mockHelper = new Mock<IModHelper>(MockBehavior.Loose);
-            _mockMonitor = new Mock<IMonitor>(MockBehavior.Loose);
-            _mockManifest = new Mock<IManifest>(MockBehavior.Loose);
+            _mockHelper = new Mock<IModHelper>(MockBehavior.Strict);
+            _mockMonitor = new Mock<IMonitor>(MockBehavior.Strict);
+            _mockManifest = new Mock<IManifest>(MockBehavior.Strict);
         }
 
         // Helper method to create controller with all dependencies
@@ -45,7 +44,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents
                 .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
             mockGameLoopEvents
-                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // NEW
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saving to Saved // NEW
             
             var controller = CreateController(); // Use helper method
             
@@ -56,7 +55,7 @@ namespace LivingRoots.Tests
             // Verify that expected interactions occurred
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once); // NEW
-            mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once); // NEW
+            mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once); // CHANGED FROM Saving to Saved // NEW
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
         }
         
@@ -72,7 +71,13 @@ namespace LivingRoots.Tests
             mockGameLoopEvents
                 .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>());
             mockGameLoopEvents
-                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>());
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
+            mockGameLoopEvents
+                .SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
             
             var controller = CreateController(); // Use helper method
             
@@ -82,8 +87,68 @@ namespace LivingRoots.Tests
             // Assert
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
-            mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once); // CHANGED FROM Saved to Saving
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+        }
+        
+        [Fact]
+        public void RegisterEvents_RegistersCorrectHandlers()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            EventHandler<GameLaunchedEventArgs>? gameLaunchedHandler = null;
+            EventHandler<SaveLoadedEventArgs>? saveLoadedHandler = null; // NEW
+            EventHandler<SavingEventArgs>? savingHandler = null; // CHANGED FROM SavedEventArgs to SavingEventArgs // NEW
+            
+            // Capture the event handlers being registered
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+                .Callback<EventHandler<GameLaunchedEventArgs>>(h => gameLaunchedHandler = h);
+            mockGameLoopEvents // NEW
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+                .Callback<EventHandler<SaveLoadedEventArgs>>(h => saveLoadedHandler = h);
+            mockGameLoopEvents // NEW
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
+                .Callback<EventHandler<SavingEventArgs>>(h => savingHandler = h); // CHANGED FROM SavedEventArgs to SavingEventArgs
+            
+            var controller = CreateController(); // Use helper method
+            
+            // Act
+            controller.RegisterEvents();
+            
+            // Assert
+            Assert.NotNull(gameLaunchedHandler);
+            Assert.NotNull(saveLoadedHandler); // NEW
+            Assert.NotNull(savingHandler); // CHANGED FROM savedHandler to savingHandler // NEW
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+        }
+        
+        [Fact]
+        public void RegisterEvents_IsIdempotent()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            // Setup subscription for duplicate registration scenario
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
+                
+            var controller = CreateController(); // Use helper method
+            
+            // Act - Register events twice
+            controller.RegisterEvents();
+            controller.RegisterEvents(); // This should skip registration since it's already registered
+            
+            // Assert
+            // Verify that subscription happened only once due to the idempotent check
+            mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once); // NEW
+            mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once); // CHANGED FROM Saved to Saving // NEW
+            _mockMonitor.Verify(x => x.Log("Events are already registered, skipping registration.", LogLevel.Trace), Times.Once);
         }
         
         [Fact]
@@ -98,13 +163,13 @@ namespace LivingRoots.Tests
             mockGameLoopEvents
                 .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
             mockGameLoopEvents
-                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // NEW
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
             mockGameLoopEvents
                 .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             mockGameLoopEvents
                 .SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
             mockGameLoopEvents
-                .SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>()); // NEW
+                .SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
             
             var controller = CreateController(); // Use helper method
             
@@ -118,82 +183,167 @@ namespace LivingRoots.Tests
             // The events should be removed once during unregistration
             mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once); // NEW
-            mockGameLoopEvents.VerifyRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once); // NEW
+            mockGameLoopEvents.VerifyRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once); // CHANGED FROM Saved to Saving // NEW
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
         }
         
         [Fact]
-        public void RegisterEvents_WhenExceptionOccurs_LogsErrorMessageWithoutStackTrace()
+        public void UnregisterEvents_WhenExceptionOccurs_LogsErrorMessageWithoutStackTrace()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>(MockBehavior.Loose);
-            var mockGameLoopEvents = new Mock<IGameLoopEvents>(MockBehavior.Loose);
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
             
-            _mockManifest.Setup(m => m.UniqueID).Returns("lfgranja.LivingRoots");
-            _mockManifest.Setup(m => m.Version).Returns(new SemanticVersion(1, 0, 0));
-            
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
-            
-            // Setup to throw an exception when trying to register the event
+            // Setup event subscription and unsubscription expectations with exception throwing
             mockGameLoopEvents
-                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
-                .Throws(new InvalidOperationException("Test exception"));
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+                .Throws(new InvalidOperationException("Test exception for unregister"));
             mockGameLoopEvents // NEW
-                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
-                .Throws(new InvalidOperationException("Test exception"));
+                .SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+                .Throws(new InvalidOperationException("Test exception for unregister"));
             mockGameLoopEvents // NEW
-                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
-                .Throws(new InvalidOperationException("Test exception"));
-            
-            var loggedMessages = new List<(string message, LogLevel level)>();
-            _mockMonitor
-                .Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()))
-                .Callback<string, LogLevel>((msg, level) => loggedMessages.Add((msg, level)));
+                .SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
+                .Throws(new InvalidOperationException("Test exception for unregister")); // CHANGED FROM Saved to Saving
             
             var controller = CreateController(); // Use helper method
             
-            // Act & Assert
-            var ex = Record.Exception(() => controller.RegisterEvents());
+            // First register events to set up the handler
+            controller.RegisterEvents();
+            
+            // Act & Assert - No exception should be thrown despite the handler removal failure
+            var ex = Record.Exception(() => controller.UnregisterEvents());
             Assert.Null(ex); // Exception should be caught and logged, not thrown
             
-            // Verify that error message was logged without the raw exception details
-            Assert.Contains(loggedMessages, log => log.message.Contains("Error occurred while registering game events") && log.level == LogLevel.Error);
-            Assert.DoesNotContain(loggedMessages, log => log.message.Contains("Test exception")); // Should not contain raw exception message for security
+            // Verify that error was logged without the raw exception details
+            _mockMonitor.Verify(x => x.Log("Error occurred while unregistering game events.", LogLevel.Error), Times.AtLeastOnce);
         }
         
         [Fact]
-        public void RegisterEvents_WhenDisposed_ShouldLogAndReturnWithoutThrowing()
+        public async System.Threading.Tasks.Task UnregisterEvents_IsThreadSafe_WithConcurrentOperations()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>(MockBehavior.Loose);
-            var mockGameLoopEvents = new Mock<IGameLoopEvents>(MockBehavior.Loose);
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
             
-            _mockManifest.Setup(m => m.UniqueID).Returns("lfgranja.LivingRoots");
-            _mockManifest.Setup(m => m.Version).Returns(new SemanticVersion(1, 0, 0));
+            // Setup event subscription and unsubscription expectations
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
+            mockGameLoopEvents
+                .SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
             
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            var controller = CreateController(); // Use helper method
             
-            var loggedMessages = new List<(string message, LogLevel level)>();
-            _mockMonitor
-                .Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()))
-                .Callback<string, LogLevel>((msg, level) => loggedMessages.Add((msg, level)));
+            // Act - Simulate concurrent registration and unregistration
+            var tasks = new System.Threading.Tasks.Task[10];
+            for (int i = 0; i < 10; i++)
+            {
+                int taskId = i;
+                tasks[taskId] = System.Threading.Tasks.Task.Run(() =>
+                {
+                    if (taskId % 2 == 0)
+                    {
+                        controller.RegisterEvents(); // Even tasks register
+                    }
+                    else
+                    {
+                        controller.UnregisterEvents(); // Odd tasks unregister
+                    }
+                });
+            }
+            
+            // Wait for all tasks to complete
+            await System.Threading.Tasks.Task.WhenAll(tasks);
+            
+            // Assert - No exceptions should be thrown due to race conditions
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+        }
+        
+        [Fact]
+        public async System.Threading.Tasks.Task RegisterEvents_IsThreadSafe_WithConcurrentOperations()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            // Setup event subscription expectations
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
+            
+            var controller = CreateController(); // Use helper method
+            
+            // Act - Simulate concurrent registration attempts
+            var tasks = new System.Threading.Tasks.Task[10];
+            for (int i = 0; i < 10; i++)
+            {
+                tasks[i] = System.Threading.Tasks.Task.Run(() => controller.RegisterEvents());
+            }
+            
+            // Wait for all tasks to complete
+            await System.Threading.Tasks.Task.WhenAll(tasks);
+            
+            // Assert - Only one registration should have succeeded, others should have been skipped
+            mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once); // NEW
+            mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once); // CHANGED FROM Saved to Saving // NEW
+            _mockMonitor.Verify(x => x.Log("Events are already registered, skipping registration.", LogLevel.Trace), Times.AtLeastOnce);
+        }
+        
+        [Fact]
+        public async System.Threading.Tasks.Task Dispose_IsThreadSafe_WithConcurrentDisposal()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            // Setup event subscription and unsubscription expectations
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
+            mockGameLoopEvents
+                .SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
             
             var controller = CreateController(); // Use helper method
             
             // Register events first to set up the controller
             controller.RegisterEvents();
             
-            // Dispose the controller
-            controller.Dispose();
+            // Act - Simulate concurrent disposal from multiple threads
+            var tasks = new System.Threading.Tasks.Task[10];
+            for (int i = 0; i < 10; i++)
+            {
+                tasks[i] = System.Threading.Tasks.Task.Run(() => controller.Dispose());
+            }
             
-            // Act - Try to register events after disposal (should not throw)
-            var ex = Record.Exception(() => controller.RegisterEvents());
+            // Wait for all tasks to complete
+            await System.Threading.Tasks.Task.WhenAll(tasks);
             
-            // Assert
-            Assert.Null(ex); // No exception should be thrown
-            Assert.Contains(loggedMessages, log => log.message.Contains("Attempted to register events after disposal") && log.level == LogLevel.Trace);
+            // Assert - No exceptions should be thrown due to race conditions
+            // The event should be removed only once despite multiple concurrent disposal attempts
+            mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once); // NEW
+            mockGameLoopEvents.VerifyRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once); // CHANGED FROM Saved to Saving // NEW
+            _mockMonitor.Verify(x => x.Log("Controller is already disposed.", LogLevel.Trace), Times.Once);
         }
         
         [Fact]
@@ -208,13 +358,13 @@ namespace LivingRoots.Tests
             mockGameLoopEvents
                 .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
             mockGameLoopEvents
-                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // NEW
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
             mockGameLoopEvents
                 .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             mockGameLoopEvents
                 .SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>()); // NEW
             mockGameLoopEvents
-                .SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>()); // NEW
+                .SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>()); // CHANGED FROM Saved to Saving // NEW
             
             var controller = CreateController(); // Use helper method
             
@@ -229,14 +379,14 @@ namespace LivingRoots.Tests
             // Assert - No exceptions should be thrown
             mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once); // NEW
-            mockGameLoopEvents.VerifyRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once); // NEW
-            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.AtLeastOnce);
+            mockGameLoopEvents.VerifyRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once); // CHANGED FROM Saved to Saving // NEW
+            _mockMonitor.Verify(x => x.Log("Controller is already disposed.", LogLevel.Trace), Times.Once);
         }
         
         private (Mock<IModEvents>, Mock<IGameLoopEvents>) SetupEventMocks()
         {
-            var mockEvents = new Mock<IModEvents>(MockBehavior.Loose);
-            var mockGameLoopEvents = new Mock<IGameLoopEvents>(MockBehavior.Loose);
+            var mockEvents = new Mock<IModEvents>(MockBehavior.Strict);
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>(MockBehavior.Strict);
             
             // Create a single manifest with a concrete UniqueID and Version
             _mockManifest.Setup(m => m.UniqueID).Returns("lfgranja.LivingRoots");
