@@ -31,11 +31,10 @@ namespace LivingRoots.Services
         {
             lock (_lock)
             {
-                // Clear the cache if saveId is invalid to prevent stale data from persisting across different game saves
+                // Preserve the cache if saveId is invalid to prevent accidental in-session data loss
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
-                    _runtimeCache.Clear(); // ensure no stale state remains
-                    _monitor.Log("LoadData aborted: invalid saveId. Runtime cache cleared.", LogLevel.Warn);
+                    _monitor.Log("LoadData aborted: invalid saveId. Preserving current runtime cache.", LogLevel.Warn);
                     return;
                 }
                 
@@ -144,12 +143,18 @@ namespace LivingRoots.Services
                     }
                     
                     var stringDict = new Dictionary<string, float>();
+                    bool warnedForInvalidValue = false; // Only warn once per location about invalid values
+                    
                     foreach (var tileEntry in locationEntry.Value)
                     {
                         var val = tileEntry.Value;
                         if (float.IsNaN(val) || float.IsInfinity(val))
                         {
-                            _monitor.Log("Skipped saving soil health value (NaN/Infinity) for a tile due to invalid state.", LogLevel.Warn);
+                            if (!warnedForInvalidValue)
+                            {
+                                _monitor.Log($"Skipped invalid soil health value(s) (NaN/Infinity) in location '{locationEntry.Key}'.", LogLevel.Warn);
+                                warnedForInvalidValue = true;
+                            }
                             continue;
                         }
                         
@@ -196,9 +201,18 @@ namespace LivingRoots.Services
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
                 return 0f;
 
+            // Check for potential integer overflow before converting coordinates
+            float fx = MathF.Floor(tile.X);
+            float fy = MathF.Floor(tile.Y);
+            if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
+            {
+                _monitor.Log("GetSoilHealth skipped: coordinates out of integer range.", LogLevel.Trace);
+                return 0f;
+            }
+
             // Map to tile indices consistently (using MathF.Floor to handle negatives and fractions correctly)
-            int ix = (int)MathF.Floor(tile.X);
-            int iy = (int)MathF.Floor(tile.Y);
+            int ix = (int)fx;
+            int iy = (int)fy;
 
             lock (_lock)
             {
@@ -228,9 +242,18 @@ namespace LivingRoots.Services
                 return;
             }
 
+            // Check for potential integer overflow before converting coordinates
+            float fx = MathF.Floor(tile.X);
+            float fy = MathF.Floor(tile.Y);
+            if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
+            {
+                _monitor.Log("SetSoilHealth skipped: coordinates out of integer range.", LogLevel.Trace);
+                return;
+            }
+
             // Map to tile indices consistently (using MathF.Floor to handle negatives and fractions correctly)
-            int ix = (int)MathF.Floor(tile.X);
-            int iy = (int)MathF.Floor(tile.Y);
+            int ix = (int)fx;
+            int iy = (int)fy;
 
             lock (_lock)
             {
@@ -258,9 +281,18 @@ namespace LivingRoots.Services
                 return;
             }
 
+            // Check for potential integer overflow before converting coordinates
+            float fx = MathF.Floor(tile.X);
+            float fy = MathF.Floor(tile.Y);
+            if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
+            {
+                _monitor.Log("UpdateHealth skipped: coordinates out of integer range.", LogLevel.Trace);
+                return;
+            }
+
             // Map to tile indices consistently (using MathF.Floor to handle negatives and fractions correctly)
-            int ix = (int)MathF.Floor(tile.X);
-            int iy = (int)MathF.Floor(tile.Y);
+            int ix = (int)fx;
+            int iy = (int)fy;
 
             lock (_lock)
             {

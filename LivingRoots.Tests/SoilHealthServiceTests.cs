@@ -69,45 +69,45 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void LoadData_ClearsCache_WhenSaveIdIsNullOrWhitespace()
+        public void LoadData_DoesNotClearCache_WhenSaveIdIsNullOrWhitespace()
         {
             // Arrange
             var service = CreateService();
             
-            // Set some initial data in the cache to verify it gets cleared
+            // Set some initial data in the cache to verify it's preserved
             service.SetSoilHealth("Farm", new Vector2(0, 0), 50f);
 
             // Setup monitor to expect the specific log message
-            _mockMonitor.Setup(m => m.Log("LoadData aborted: invalid saveId. Runtime cache cleared.", LogLevel.Warn)).Verifiable();
+            _mockMonitor.Setup(m => m.Log("LoadData aborted: invalid saveId. Preserving current runtime cache.", LogLevel.Warn)).Verifiable();
 
             // Act
             service.LoadData(""); // Empty save ID
 
             // Assert
             var health = service.GetSoilHealth("Farm", new Vector2(0, 0));
-            Assert.Equal(0f, health); // Should be default value after clear
-            _mockMonitor.Verify(m => m.Log("LoadData aborted: invalid saveId. Runtime cache cleared.", LogLevel.Warn), Times.Once);
+            Assert.Equal(50f, health); // Should preserve existing data instead of clearing
+            _mockMonitor.Verify(m => m.Log("LoadData aborted: invalid saveId. Preserving current runtime cache.", LogLevel.Warn), Times.Once);
         }
 
         [Fact]
-        public void LoadData_ClearsCache_WhenSaveIdIsInvalid()
+        public void LoadData_DoesNotClearCache_WhenSaveIdIsInvalid()
         {
             // Arrange
             var service = CreateService();
             
-            // Set some initial data in the cache to verify it gets cleared
+            // Set some initial data in the cache to verify it's preserved
             service.SetSoilHealth("Farm", new Vector2(0, 0), 50f);
 
             // Setup monitor to expect the specific log message
-            _mockMonitor.Setup(m => m.Log("LoadData aborted: invalid saveId. Runtime cache cleared.", LogLevel.Warn)).Verifiable();
+            _mockMonitor.Setup(m => m.Log("LoadData aborted: invalid saveId. Preserving current runtime cache.", LogLevel.Warn)).Verifiable();
 
             // Act
             service.LoadData("   "); // Whitespace-only save ID
 
             // Assert
             var health = service.GetSoilHealth("Farm", new Vector2(0, 0));
-            Assert.Equal(0f, health); // Should be default value after clear
-            _mockMonitor.Verify(m => m.Log("LoadData aborted: invalid saveId. Runtime cache cleared.", LogLevel.Warn), Times.Once);
+            Assert.Equal(50f, health); // Should preserve existing data instead of clearing
+            _mockMonitor.Verify(m => m.Log("LoadData aborted: invalid saveId. Preserving current runtime cache.", LogLevel.Warn), Times.Once);
         }
 
         [Fact]
@@ -764,7 +764,6 @@ namespace LivingRoots.Tests
             // Assert
             // SaveData should not be called on the mock data service since there's no valid data
             _mockModDataService.Verify(ds => ds.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
-            // The log message should be called since we have the condition to check if LocationHealthData is empty
             _mockMonitor.Verify(m => m.Log("No valid soil health data to save; skipping persistence.", LogLevel.Trace), Times.Once);
         }
     }
