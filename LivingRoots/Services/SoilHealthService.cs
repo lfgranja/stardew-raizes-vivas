@@ -63,10 +63,12 @@ namespace LivingRoots.Services
                         foreach (var tileEntry in locationEntry.Value)
                         {
                             // Parse "X,Y" string back to Point (using integers for tile coordinates)
-                            string[] parts = tileEntry.Key.Split(',');
-                            if (parts.Length == 2 && 
-                                int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
-                                int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
+                            // Use ReadOnlySpan<char> to avoid string.Split allocation for better performance
+                            ReadOnlySpan<char> keySpan = tileEntry.Key;
+                            int commaIndex = keySpan.IndexOf(',');
+                            if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
+                                int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
+                                int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
                             {
                                 // Validate the loaded value by checking for NaN/Infinity and clamping to [0, 100] range
                                 var rawValue = tileEntry.Value;
@@ -98,7 +100,7 @@ namespace LivingRoots.Services
                 }
                 else
                 {
-                    _monitor.Log($"No existing Soil Health data found for save {saveId}. Starting fresh.", LogLevel.Info);
+                    _monitor.Log("No existing Soil Health data found. Starting fresh.", LogLevel.Info);
                 }
             }
         }
@@ -136,7 +138,7 @@ namespace LivingRoots.Services
 
                 string saveKey = GetSaveKey(saveId);
                 _modDataService.SaveData(stateToSave, saveKey);
-                _monitor.Log($"Soil Health data saved for {saveId}", LogLevel.Trace);
+                _monitor.Log("Soil Health data saved successfully.", LogLevel.Trace);
             }
         }
 
