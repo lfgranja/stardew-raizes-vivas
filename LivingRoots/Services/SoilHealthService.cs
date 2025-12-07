@@ -40,71 +40,80 @@ namespace LivingRoots.Services
                 }
                 
                 string dataKey = GetSaveKey(saveId);
-                var savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
-
-                // Convert from disk format (string keys) to runtime format (Point keys)
-                _runtimeCache.Clear();
-                if (savedData != null)
+                
+                try
                 {
-                    foreach (var locationEntry in savedData.LocationHealthData)
+                    var savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
+
+                    // Convert from disk format (string keys) to runtime format (Point keys)
+                    _runtimeCache.Clear();
+                    if (savedData != null)
                     {
-                        // Skip if the location name is null or empty to prevent invalid entries in the cache
-                        if (string.IsNullOrWhiteSpace(locationEntry.Key))
+                        foreach (var locationEntry in savedData.LocationHealthData)
                         {
-                            _monitor.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn);
-                            continue;
-                        }
-                        
-                        // Skip if the value is null to prevent NullReferenceException
-                        if (locationEntry.Value == null) continue;
-                        
-                        var tileDict = new Dictionary<Point, float>();
-                        bool warnedForLocation = false; // Only warn once per location
-                        foreach (var tileEntry in locationEntry.Value)
-                        {
-                            // Parse "X,Y" string back to Point (using integers for tile coordinates)
-                            // Use ReadOnlySpan<char> to avoid string.Split allocation for better performance
-                            ReadOnlySpan<char> keySpan = tileEntry.Key;
-                            int commaIndex = keySpan.IndexOf(',');
-                            if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
-                                int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
-                                int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
+                            // Skip if the location name is null or empty to prevent invalid entries in the cache
+                            if (string.IsNullOrWhiteSpace(locationEntry.Key))
                             {
-                                // Validate the loaded value by checking for NaN/Infinity and clamping to [0, 100] range
-                                var rawValue = tileEntry.Value;
-                                if (float.IsNaN(rawValue) || float.IsInfinity(rawValue))
+                                _monitor.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn);
+                                continue;
+                            }
+                            
+                            // Skip if the value is null to prevent NullReferenceException
+                            if (locationEntry.Value == null) continue;
+                            
+                            var tileDict = new Dictionary<Point, float>();
+                            bool warnedForLocation = false; // Only warn once per location
+                            foreach (var tileEntry in locationEntry.Value)
+                            {
+                                // Parse "X,Y" string back to Point (using integers for tile coordinates)
+                                // Use ReadOnlySpan<char> to avoid string.Split allocation for better performance
+                                ReadOnlySpan<char> keySpan = tileEntry.Key;
+                                int commaIndex = keySpan.IndexOf(',');
+                                if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
+                                    int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
+                                    int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
                                 {
+                                    // Validate the loaded value by checking for NaN/Infinity and clamping to [0, 100] range
+                                    var rawValue = tileEntry.Value;
+                                    if (float.IsNaN(rawValue) || float.IsInfinity(rawValue))
+                                    {
+                                        if (!warnedForLocation)
+                                        {
+                                            _monitor.Log($"Skipped invalid soil health value (NaN/Infinity) in location '{locationEntry.Key}'.", LogLevel.Warn);
+                                            warnedForLocation = true;
+                                        }
+                                        continue;
+                                    }
+                                    
+                                    float clamped = Math.Clamp(rawValue, 0f, 100f);
+                                    tileDict[new Point(x, y)] = clamped;
+                                }
+                                else
+                                {
+                                    // Warn about malformed keys to help diagnose corrupted save data
                                     if (!warnedForLocation)
                                     {
-                                        _monitor.Log($"Skipped invalid soil health value (NaN/Infinity) in location '{locationEntry.Key}'.", LogLevel.Warn);
+                                        _monitor.Log($"Skipped malformed soil health tile key(s) in location '{locationEntry.Key}'.", LogLevel.Warn);
                                         warnedForLocation = true;
                                     }
-                                    continue;
                                 }
-                                
-                                float clamped = Math.Clamp(rawValue, 0f, 100f);
-                                tileDict[new Point(x, y)] = clamped;
                             }
-                            else
+                            // Only add location if at least one valid tile exists
+                            if (tileDict.Count > 0)
                             {
-                                // Warn about malformed keys to help diagnose corrupted save data
-                                if (!warnedForLocation)
-                                {
-                                    _monitor.Log($"Skipped malformed soil health tile key(s) in location '{locationEntry.Key}'.", LogLevel.Warn);
-                                    warnedForLocation = true;
-                                }
+                                _runtimeCache[locationEntry.Key] = tileDict;
                             }
-                        }
-                        // Only add location if at least one valid tile exists
-                        if (tileDict.Count > 0)
-                        {
-                            _runtimeCache[locationEntry.Key] = tileDict;
                         }
                     }
+                    else
+                    {
+                        _monitor.Log("No existing Soil Health data found. Starting fresh.", LogLevel.Info);
+                    }
                 }
-                else
+                catch (Exception)
                 {
-                    _monitor.Log("No existing Soil Health data found. Starting fresh.", LogLevel.Info);
+                    _monitor.Log("Error occurred while loading soil health data.", LogLevel.Error);
+                    // Keep cache cleared; don't throw to avoid breaking game load
                 }
             }
         }
@@ -152,8 +161,17 @@ namespace LivingRoots.Services
                 }
 
                 string saveKey = GetSaveKey(saveId);
-                _modDataService.SaveData(stateToSave, saveKey);
-                _monitor.Log("Soil Health data saved successfully.", LogLevel.Trace);
+                
+                try
+                {
+                    _modDataService.SaveData(stateToSave, saveKey);
+                    _monitor.Log("Soil Health data saved successfully.", LogLevel.Trace);
+                }
+                catch (Exception)
+                {
+                    _monitor.Log("Error occurred while persisting soil health data.", LogLevel.Error);
+                    // Intentionally do not rethrow; keep runtime cache intact so the game can continue.
+                }
             }
         }
 
@@ -167,14 +185,16 @@ namespace LivingRoots.Services
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
                 return 0f;
 
+            // Map to tile indices consistently (flooring handles negatives and fractions correctly)
+            int ix = (int)MathF.Floor(tile.X);
+            int iy = (int)MathF.Floor(tile.Y);
+
             lock (_lock)
             {
                 if (_runtimeCache.TryGetValue(locationName, out var tiles))
                 {
-                    // Convert Vector2 to Point for lookup (using integer coordinates)
-                    var key = new Point((int)tile.X, (int)tile.Y);
+                    var key = new Point(ix, iy);
                     
-                    // Direct lookup using Point key - no string allocation or parsing
                     if (tiles.TryGetValue(key, out float health))
                     {
                         return health;
@@ -197,6 +217,10 @@ namespace LivingRoots.Services
                 return;
             }
 
+            // Map to tile indices consistently (flooring handles negatives and fractions correctly)
+            int ix = (int)MathF.Floor(tile.X);
+            int iy = (int)MathF.Floor(tile.Y);
+
             lock (_lock)
             {
                 // Domain Rule: Clamp between 0 and 100
@@ -209,8 +233,7 @@ namespace LivingRoots.Services
                     _runtimeCache[locationName] = tiles;
                 }
                 
-                // Convert Vector2 to Point for storage (using integer coordinates)
-                var key = new Point((int)tile.X, (int)tile.Y);
+                var key = new Point(ix, iy);
                 tiles[key] = clampedValue;
             }
         }
@@ -228,6 +251,10 @@ namespace LivingRoots.Services
                 return;
             }
 
+            // Map to tile indices consistently (flooring handles negatives and fractions correctly)
+            int ix = (int)MathF.Floor(tile.X);
+            int iy = (int)MathF.Floor(tile.Y);
+
             lock (_lock)
             {
                 // Perform the update operation in a single lock to avoid reentrant calls
@@ -237,8 +264,7 @@ namespace LivingRoots.Services
                     _runtimeCache[locationName] = tiles;
                 }
 
-                // Convert Vector2 to Point for lookup (using integer coordinates)
-                var key = new Point((int)tile.X, (int)tile.Y);
+                var key = new Point(ix, iy);
                 
                 // Get current value (0 if tile doesn't exist) and calculate new value
                 tiles.TryGetValue(key, out float currentHealth);
