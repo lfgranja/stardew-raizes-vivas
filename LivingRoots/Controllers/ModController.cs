@@ -131,9 +131,9 @@ namespace LivingRoots.Controllers
                             gameLoop.Saving -= _onSavingHandler; // CORRIGIDO: Era gameLoop.Saved // NEW
                     }
                 }
-                catch (Exception rollbackEx) 
+                catch (Exception) 
                 { 
-                    monitor.Log($"Error during event subscription rollback: {rollbackEx.Message}", LogLevel.Trace); 
+                    monitor.Log("Error during event subscription rollback.", LogLevel.Trace); 
                     /* avoid masking original failure */ 
                 }
 
