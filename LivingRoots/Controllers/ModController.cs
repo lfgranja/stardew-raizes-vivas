@@ -33,7 +33,7 @@ namespace LivingRoots.Controllers
 
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
         private EventHandler<SaveLoadedEventArgs>? _onSaveLoadedHandler; // NEW
-        private EventHandler<SavingEventArgs>? _onSavingHandler; // CORRIGIDO: Era _onSavedHandler // NEW
+        private EventHandler<SavingEventArgs>? _onSavingHandler; // NEW - Was _onSavedHandler
 
         // State bit flags
         private const int EventsRegisteredFlag = 0x01;
@@ -84,14 +84,14 @@ namespace LivingRoots.Controllers
             // Track which events were successfully added for proper rollback
             bool gameLaunchedAdded = false;
             bool saveLoadedAdded = false;
-            bool savingAdded = false; // CORRIGIDO: Era savedAdded // NEW
+            bool savingAdded = false; // NEW - Was savedAdded
 
             try
             {
                 // Initialize the handlers once
                 _onGameLaunchedHandler ??= OnGameLaunched;
                 _onSaveLoadedHandler ??= OnSaveLoaded; // NEW
-                _onSavingHandler ??= OnSaving; // CORRIGIDO: Era _onSavedHandler // NEW
+                _onSavingHandler ??= OnSaving; // NEW - Was _onSavedHandler
 
                 // Double-check disposed state before subscribing to prevent race condition
                 if (IsDisposed())
@@ -108,8 +108,8 @@ namespace LivingRoots.Controllers
                 // NEW EVENTS - Loading and saving soil health data
                 gameLoop.SaveLoaded += _onSaveLoadedHandler; // NEW
                 saveLoadedAdded = true;
-                gameLoop.Saving += _onSavingHandler; // CORRIGIDO: Era gameLoop.Saved // NEW
-                savingAdded = true; // CORRIGIDO: Era savedAdded // NEW
+                gameLoop.Saving += _onSavingHandler; // NEW - Was gameLoop.Saved
+                savingAdded = true; // NEW - Was savedAdded
 
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
@@ -123,23 +123,23 @@ namespace LivingRoots.Controllers
                 {
                     if (gameLoop != null) // Guard against null gameLoop in rollback
                     {
-                        if (gameLaunchedAdded)
-                            gameLoop.GameLaunched -= _onGameLaunchedHandler; // REMOVIDO: && _onGameLaunchedHandler != null
-                        if (saveLoadedAdded)
-                            gameLoop.SaveLoaded -= _onSaveLoadedHandler; // REMOVIDO: && _onSaveLoadedHandler != null // NEW
-                        if (savingAdded)
-                            gameLoop.Saving -= _onSavingHandler; // REMOVIDO: && _onSavingHandler != null // CORRIGIDO: Era gameLoop.Saved // NEW
+                        if (gameLaunchedAdded && _onGameLaunchedHandler != null)
+                            gameLoop.GameLaunched -= _onGameLaunchedHandler;
+                        if (saveLoadedAdded && _onSaveLoadedHandler != null)
+                            gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NEW
+                        if (savingAdded && _onSavingHandler != null) // NEW - Was _onSavedHandler
+                            gameLoop.Saving -= _onSavingHandler; // NEW - Was gameLoop.Saved
                     }
                 }
                 catch (Exception rollbackEx) 
                 { 
-                    monitor.Log("Error during event subscription rollback.", LogLevel.Trace); 
+                    monitor.Log($"Error during event subscription rollback: {rollbackEx.Message}", LogLevel.Trace); 
                     /* avoid masking original failure */ 
                 }
 
                 _onGameLaunchedHandler = null;
                 _onSaveLoadedHandler = null; // NEW
-                _onSavingHandler = null; // CORRIGIDO: Era _onSavedHandler // NEW
+                _onSavingHandler = null; // NEW - Was _onSavedHandler
 
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
 
@@ -194,7 +194,7 @@ namespace LivingRoots.Controllers
                 // Use Interlocked.Exchange to safely get and clear the handlers
                 var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                 var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NEW
-                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // CORRIGIDO: Era _onSavedHandler // NEW
+                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NEW - Was _onSavedHandler
 
                 // Always attempt to detach to avoid leaked handlers - each with its own exception handling
                 if (gameLaunchedHandler != null)
@@ -210,10 +210,10 @@ namespace LivingRoots.Controllers
                     catch (Exception) { localMonitor.Log("Error occurred while unregistering SaveLoaded event.", LogLevel.Error); }
                 }
                 
-                if (savingHandler != null) // CORRIGIDO: Era _onSavedHandler // NEW
+                if (savingHandler != null) // NEW - Was _onSavedHandler
                 {
-                    try { gameLoop.Saving -= savingHandler; } // CORRIGIDO: Era gameLoop.Saved // NEW
-                    catch (Exception) { localMonitor.Log("Error occurred while unregistering Saving event.", LogLevel.Error); } // CORRIGIDO: Era Saving event // NEW
+                    try { gameLoop.Saving -= savingHandler; } // NEW - Was gameLoop.Saved
+                    catch (Exception) { localMonitor.Log("Error occurred while unregistering Saving event.", LogLevel.Error); } // NEW - Was Saving event
                 }
 
                 // Unregister console command if it was registered
@@ -257,12 +257,12 @@ namespace LivingRoots.Controllers
             }
             catch (Exception)
             {
-                // According to security review, avoid logging sensitive save IDs in error messages
-                _monitor.Log("Error occurred while loading soil health data.", LogLevel.Error);
+                var saveId = Constants.SaveFolderName ?? "unknown";
+                _monitor.Log($"Error occurred while loading soil health data for save '{saveId}'.", LogLevel.Error);
             }
         }
 
-        private void OnSaving(object? sender, SavingEventArgs e) // NEW - CORRIGIDO: Era OnSaved
+        private void OnSaving(object? sender, SavingEventArgs e) // NEW - Was OnSaved
         {
             // Skip if controller has been disposed
             if (IsDisposed())
@@ -283,8 +283,8 @@ namespace LivingRoots.Controllers
             }
             catch (Exception)
             {
-                // According to security review, avoid logging sensitive save IDs in error messages
-                _monitor.Log("Error occurred while saving soil health data.", LogLevel.Error);
+                var saveId = Constants.SaveFolderName ?? "unknown";
+                _monitor.Log($"Error occurred while saving soil health data for save '{saveId}'.", LogLevel.Error);
             }
         }
 
@@ -490,7 +490,7 @@ namespace LivingRoots.Controllers
                 // Use Interlocked.Exchange to safely get and clear the handlers
                 var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                 var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NEW
-                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // CORRIGIDO: Era _onSavedHandler // NEW
+                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // NEW - Was _onSavedHandler
 
                 if (gameLoop != null && gameLaunchedHandler != null)
                 {
@@ -517,11 +517,11 @@ namespace LivingRoots.Controllers
                     }
                 }
                 
-                if (gameLoop != null && savingHandler != null) // CORRIGIDO: Era _onSavedHandler // NEW
+                if (gameLoop != null && savingHandler != null) // NEW - Was _onSavedHandler
                 {
                     try
                     {
-                        gameLoop.Saving -= savingHandler; // CORRIGIDO: Era gameLoop.Saved // NEW
+                        gameLoop.Saving -= savingHandler; // NEW - Was gameLoop.Saved
                     }
                     catch (Exception)
                     {

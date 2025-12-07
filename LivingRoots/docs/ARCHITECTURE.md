@@ -76,7 +76,7 @@ LivingRoots.Tests/          # Unit Tests Project
     *   Planned folder for classes that will encapsulate the mod's core logic, directly related to agroecology concepts.
     *   These classes will be **pure**, meaning they will not directly interact with the game (SMAPI) or data persistence.
     *   They will be highly testable via TDD, as they will have no complex external dependencies.
-    *   Planned to contain `IModLogic.cs` interface for future domain logic implementations.
+    *   Contains interfaces like `ISoilHealthService` for future domain logic implementations.
 
 3. **`Services/` (SMAPI Interaction and Persistence)**
     *   Responsible for interacting with SMAPI APIs to:
@@ -84,10 +84,11 @@ LivingRoots.Tests/          # Unit Tests Project
         *   Access game information (locations, tiles, objects).
         *   Provide interfaces for other components to access data abstractly (following the I of SOLID principle).
     *   `ModDataService.cs` (implementation) and `IModDataService.cs` (interface) handle generic mod data saving/loading.
+    *   `SoilHealthService.cs` (implementation) and `ISoilHealthService.cs` (interface) handle soil health data persistence.
 
 4. **`Controllers/` (Event Management and Interaction)**
     *   Responsible for listening to game events (via `helper.Events`) and reacting to them, orchestrating calls to domain logic and services.
-    *   `ModController.cs` is the main controller that handles game events like `GameLaunched`.
+    *   `ModController.cs` is the main controller that handles game events like `GameLaunched`, `SaveLoaded`, and `Saving`.
 
 5. **`Models/` (Data Classes)**
     *   Simple classes (POCOs - Plain Old C# Objects) that represent the structure of mod data.
@@ -97,13 +98,14 @@ LivingRoots.Tests/          # Unit Tests Project
 
 ## Data and Control Flow (Example: Soil Health)
 
-1.  **`ModEntry`** initializes `ModController`, injecting dependencies like `IModHelper`, `IMonitor`, `IManifest`, and `IModDataService`.
-2.  **`ModController`** listens to the `GameLoop.GameLaunched` event from SMAPI.
-3.  When the game launches, `ModController`:
-    *   Registers console commands (e.g., `lr_version`).
-    *   Logs the successful loading of the mod.
-4.  **`ModDataService`** handles data persistence operations when needed by controllers or domain logic.
-5.  The architecture ensures that business logic is independent of the game and UI, making it easier to test and maintain. Interaction with the game is encapsulated in services and controllers, minimizing coupling.
+1.  **`ModEntry`** initializes `ModController`, injecting dependencies like `IModHelper`, `IMonitor`, `IManifest`, `IModDataService`, and `ISoilHealthService`.
+2.  **`ModController`** listens to the `GameLoop.SaveLoaded` event from SMAPI to load soil health data when a save is loaded.
+3.  **`ModController`** listens to the `GameLoop.Saving` event from SMAPI to save soil health data before the game saves.
+4.  When a save is loaded, `ModController` calls `ISoilHealthService.LoadData()` to retrieve soil health values from the save file.
+5.  When the game is about to save, `ModController` calls `ISoilHealthService.SaveData()` to persist soil health values to the save file.
+6.  **`SoilHealthService`** manages the runtime cache and handles conversion between disk format (string keys) and runtime format (Point keys) for optimal performance.
+7.  The architecture ensures that business logic is independent of the game and UI, making it easier to test and maintain. Interaction with the game is encapsulated in services and controllers, minimizing coupling.
+
 ## Recent Improvements and Fixes
 
 The following improvements and security fixes have been implemented to enhance the mod's robustness:
@@ -130,3 +132,10 @@ The following improvements and security fixes have been implemented to enhance t
 9. **Path Traversal Security**: Enhanced validation logic to distinguish between legitimate uses of `.` and `..` segments and malicious path traversal attempts, allowing safe relative paths while blocking dangerous traversal patterns.
 
 10. **Security Requirements Validation**: Added comprehensive validation to ensure filenames meet all security requirements after processing, preventing invalid states that could lead to vulnerabilities.
+
+11. **Soil Health Persistence Integration**: Added comprehensive soil health data persistence system with:
+    - `SoilHealthState` model for data serialization
+    - `ISoilHealthService` and `SoilHealthService` for managing soil health values
+    - Integration with `ModController` to handle `SaveLoaded` and `Saving` events
+    - Thread-safe caching and data access
+    - Robust error handling for corrupted save data
