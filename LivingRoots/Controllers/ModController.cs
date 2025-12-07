@@ -113,7 +113,7 @@ namespace LivingRoots.Controllers
 
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Log error and reset the flag if registration failed - ensure disposed flag is preserved
                 monitor.Log("Error occurred while registering game events.", LogLevel.Error);
@@ -131,7 +131,7 @@ namespace LivingRoots.Controllers
                             gameLoop.Saving -= _onSavingHandler; // CORRIGIDO: Era gameLoop.Saved // NEW
                     }
                 }
-                catch (Exception) 
+                catch (Exception rollbackEx) 
                 { 
                     monitor.Log("Error during event subscription rollback.", LogLevel.Trace); 
                     /* avoid masking original failure */ 
@@ -142,6 +142,9 @@ namespace LivingRoots.Controllers
                 _onSavingHandler = null; // CORRIGIDO: Era _onSavedHandler // NEW
 
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                
+                // Re-throw the original exception to propagate the error to the caller
+                throw;
             }
         }
 
@@ -151,6 +154,13 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
             {
                 _monitor.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace);
+                return;
+            }
+
+            // Fast path: if events were never registered, skip unregistration
+            if ((Volatile.Read(ref _state) & EventsRegisteredFlag) == 0)
+            {
+                _monitor.Log("Events are not registered; skipping unregistration.", LogLevel.Trace);
                 return;
             }
 
