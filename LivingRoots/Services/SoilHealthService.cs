@@ -46,6 +46,13 @@ namespace LivingRoots.Services
                 {
                     foreach (var locationEntry in savedData.LocationHealthData)
                     {
+                        // NEW: Skip if the location key is invalid to prevent invalid entries in the cache
+                        if (string.IsNullOrWhiteSpace(locationEntry.Key))
+                        {
+                            _monitor.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn);
+                            continue;
+                        }
+                        
                         // Skip if the value is null to prevent NullReferenceException
                         if (locationEntry.Value == null) continue;
                         
@@ -102,12 +109,10 @@ namespace LivingRoots.Services
                 return;
             }
             
-            // Build snapshot inside lock to avoid holding it during I/O
-            SoilHealthState stateToSave;
             lock (_lock)
             {
                 // Validate and convert from runtime format (Point keys) to disk format (string keys)
-                stateToSave = new SoilHealthState();
+                var stateToSave = new SoilHealthState();
                 foreach (var locationEntry in _runtimeCache)
                 {
                     var stringDict = new Dictionary<string, float>();
@@ -126,22 +131,18 @@ namespace LivingRoots.Services
                     }
                     stateToSave.LocationHealthData[locationEntry.Key] = stringDict;
                 }
+
+                string saveKey = GetSaveKey(saveId);
+                _modDataService.SaveData(stateToSave, saveKey);
+                _monitor.Log($"Soil Health data saved for {saveId}", LogLevel.Trace);
             }
-            
-            // Perform I/O operation outside the lock to avoid blocking other threads
-            string saveKey = GetSaveKey(saveId);
-            _modDataService.SaveData(stateToSave, saveKey);
-            _monitor.Log($"Soil Health data saved for {saveId}", LogLevel.Trace);
         }
 
         public float GetSoilHealth(string locationName, Vector2 tile)
         {
             // Validate input to prevent potential exceptions
             if (string.IsNullOrWhiteSpace(locationName)) 
-            {
-                _monitor.Log($"GetSoilHealth: Invalid locationName '{locationName}'. Returning default 0f.", LogLevel.Trace);
                 return 0f; // Return default (Poor Soil) if location is invalid
-            }
 
             lock (_lock)
             {
