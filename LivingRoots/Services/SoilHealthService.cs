@@ -29,24 +29,26 @@ namespace LivingRoots.Services
 
         public void LoadData(string saveId)
         {
-            if (string.IsNullOrWhiteSpace(saveId))
-            {
-                _monitor.Log("LoadData aborted: invalid saveId.", LogLevel.Warn);
-                return;
-            }
-            
             lock (_lock)
             {
+                // Clear the cache if saveId is invalid to prevent stale data from persisting across different game saves
+                if (string.IsNullOrWhiteSpace(saveId))
+                {
+                    _runtimeCache.Clear(); // ensure no stale state remains
+                    _monitor.Log("LoadData aborted: invalid saveId. Runtime cache cleared.", LogLevel.Warn);
+                    return;
+                }
+                
                 string dataKey = GetSaveKey(saveId);
                 var savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
-                
+
                 // Convert from disk format (string keys) to runtime format (Point keys)
                 _runtimeCache.Clear();
                 if (savedData != null)
                 {
                     foreach (var locationEntry in savedData.LocationHealthData)
                     {
-                        // NEW: Skip if the location key is invalid to prevent invalid entries in the cache
+                        // Skip if the location name is null or empty to prevent invalid entries in the cache
                         if (string.IsNullOrWhiteSpace(locationEntry.Key))
                         {
                             _monitor.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn);

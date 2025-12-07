@@ -33,7 +33,7 @@ namespace LivingRoots.Controllers
 
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
         private EventHandler<SaveLoadedEventArgs>? _onSaveLoadedHandler; // NEW
-        private EventHandler<SavedEventArgs>? _onSavedHandler; // NEW - CORRIGIDO: Era _onSavingHandler
+        private EventHandler<SavingEventArgs>? _onSavingHandler; // CORRIGIDO: Era _onSavedHandler // NEW
 
         // State bit flags
         private const int EventsRegisteredFlag = 0x01;
@@ -84,14 +84,14 @@ namespace LivingRoots.Controllers
             // Track which events were successfully added for proper rollback
             bool gameLaunchedAdded = false;
             bool saveLoadedAdded = false;
-            bool savedAdded = false; // NEW - CORRIGIDO: Era savingAdded
+            bool savingAdded = false; // CORRIGIDO: Era savedAdded // NEW
 
             try
             {
                 // Initialize the handlers once
                 _onGameLaunchedHandler ??= OnGameLaunched;
                 _onSaveLoadedHandler ??= OnSaveLoaded; // NEW
-                _onSavedHandler ??= OnSaved; // NEW - CORRIGIDO: Era _onSavingHandler
+                _onSavingHandler ??= OnSaving; // CORRIGIDO: Era _onSavedHandler // NEW
 
                 // Double-check disposed state before subscribing to prevent race condition
                 if (IsDisposed())
@@ -108,8 +108,8 @@ namespace LivingRoots.Controllers
                 // NEW EVENTS - Loading and saving soil health data
                 gameLoop.SaveLoaded += _onSaveLoadedHandler; // NEW
                 saveLoadedAdded = true;
-                gameLoop.Saved += _onSavedHandler; // NEW - CORRIGIDO: Era gameLoop.Saving
-                savedAdded = true; // NEW - CORRIGIDO: Era savingAdded
+                gameLoop.Saving += _onSavingHandler; // CORRIGIDO: Era gameLoop.Saved // NEW
+                savingAdded = true; // CORRIGIDO: Era savedAdded // NEW
 
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
@@ -127,15 +127,15 @@ namespace LivingRoots.Controllers
                             gameLoop.GameLaunched -= _onGameLaunchedHandler;
                         if (saveLoadedAdded && _onSaveLoadedHandler != null)
                             gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NEW
-                        if (savedAdded && _onSavedHandler != null) // NEW - CORRIGIDO: Era _onSavingHandler
-                            gameLoop.Saved -= _onSavedHandler; // NEW - CORRIGIDO: Era gameLoop.Saving
+                        if (savingAdded && _onSavingHandler != null) // CORRIGIDO: Era _onSavedHandler // NEW
+                            gameLoop.Saving -= _onSavingHandler; // CORRIGIDO: Era gameLoop.Saved // NEW
                     }
                 }
                 catch { /* avoid masking original failure */ }
 
                 _onGameLaunchedHandler = null;
                 _onSaveLoadedHandler = null; // NEW
-                _onSavedHandler = null; // NEW - CORRIGIDO: Era _onSavingHandler
+                _onSavingHandler = null; // CORRIGIDO: Era _onSavedHandler // NEW
 
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
             }
@@ -179,23 +179,26 @@ namespace LivingRoots.Controllers
                 // Use Interlocked.Exchange to safely get and clear the handlers
                 var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                 var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NEW
-                var savedHandler = Interlocked.Exchange(ref _onSavedHandler, null); // NEW - CORRIGIDO: Era _onSavingHandler
+                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // CORRIGIDO: Era _onSavedHandler // NEW
 
-                // Always attempt to detach to avoid leaked handlers
+                // Always attempt to detach to avoid leaked handlers - each with its own exception handling
                 if (gameLaunchedHandler != null)
                 {
-                    gameLoop.GameLaunched -= gameLaunchedHandler;
+                    try { gameLoop.GameLaunched -= gameLaunchedHandler; }
+                    catch (Exception) { localMonitor.Log("Error occurred while unregistering GameLaunched event.", LogLevel.Error); }
                 }
                 
-                // Detach new handlers as well
+                // Detach new handlers as well - each with its own exception handling
                 if (saveLoadedHandler != null) // NEW
                 {
-                    gameLoop.SaveLoaded -= saveLoadedHandler;
+                    try { gameLoop.SaveLoaded -= saveLoadedHandler; }
+                    catch (Exception) { localMonitor.Log("Error occurred while unregistering SaveLoaded event.", LogLevel.Error); }
                 }
                 
-                if (savedHandler != null) // NEW - CORRIGIDO: Era _onSavingHandler
+                if (savingHandler != null) // CORRIGIDO: Era _onSavedHandler // NEW
                 {
-                    gameLoop.Saved -= savedHandler; // NEW - CORRIGIDO: Era gameLoop.Saving
+                    try { gameLoop.Saving -= savingHandler; } // CORRIGIDO: Era gameLoop.Saved // NEW
+                    catch (Exception) { localMonitor.Log("Error occurred while unregistering Saving event.", LogLevel.Error); } // CORRIGIDO: Era Saving event // NEW
                 }
 
                 // Unregister console command if it was registered
@@ -244,7 +247,7 @@ namespace LivingRoots.Controllers
             }
         }
 
-        private void OnSaved(object? sender, SavedEventArgs e) // NEW - CORRIGIDO: Era OnSaving
+        private void OnSaving(object? sender, SavingEventArgs e) // NEW - CORRIGIDO: Era OnSaved
         {
             // Skip if controller has been disposed
             if (IsDisposed())
@@ -252,7 +255,7 @@ namespace LivingRoots.Controllers
             
             try
             {
-                // Save data after the game saves (using the saved event)
+                // Save data before the game saves/exits (using the saving event)
                 var saveId = Constants.SaveFolderName;
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
@@ -448,6 +451,8 @@ namespace LivingRoots.Controllers
             }
 
             // If we reach this point, we successfully set the disposed flag and can proceed with cleanup
+            _monitor.Log("Controller disposed successfully.", LogLevel.Trace);
+            
             // Perform cleanup in a thread-safe manner
             PerformCleanup();
         }
@@ -470,7 +475,7 @@ namespace LivingRoots.Controllers
                 // Use Interlocked.Exchange to safely get and clear the handlers
                 var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                 var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null); // NEW
-                var savedHandler = Interlocked.Exchange(ref _onSavedHandler, null); // NEW - CORRIGIDO: Era _onSavingHandler
+                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null); // CORRIGIDO: Era _onSavedHandler // NEW
 
                 if (gameLoop != null && gameLaunchedHandler != null)
                 {
@@ -497,15 +502,15 @@ namespace LivingRoots.Controllers
                     }
                 }
                 
-                if (gameLoop != null && savedHandler != null) // NEW - CORRIGIDO: Era _onSavingHandler
+                if (gameLoop != null && savingHandler != null) // CORRIGIDO: Era _onSavedHandler // NEW
                 {
                     try
                     {
-                        gameLoop.Saved -= savedHandler; // NEW - CORRIGIDO: Era gameLoop.Saving
+                        gameLoop.Saving -= savingHandler; // CORRIGIDO: Era gameLoop.Saved // NEW
                     }
                     catch (Exception)
                     {
-                        monitor?.Log("Error occurred while unregistering Saved event.", LogLevel.Error);
+                        monitor?.Log("Error occurred while unregistering Saving event.", LogLevel.Error);
                     }
                 }
 
