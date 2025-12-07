@@ -23,6 +23,8 @@ namespace LivingRoots.Tests
         [InlineData(150.0f, 100.0f)]
         [InlineData(-50.0f, 0.0f)]
         [InlineData(50.0f, 50.0f)]
+        [InlineData(100.0f, 100.0f)]
+        [InlineData(0.0f, 0.0f)]
         public void SetSoilHealth_ValueIsClamped(float healthToSet, float expectedHealth)
         {
             // Arrange
@@ -273,6 +275,39 @@ namespace LivingRoots.Tests
             
             // Verify that a warning was logged about the invalid value
             _mockMonitor.Verify(m => m.Log(It.IsAny<string>(), LogLevel.Warn), Times.Once);
+        }
+        
+        [Fact]
+        public void LoadData_WithNullLocationName_LogsWarningAndSkips()
+        {
+            // Arrange
+            var corruptedData = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    { "", new Dictionary<string, float> { { "10,10", 85.5f } } }, // Empty location name
+                    { "Farm", new Dictionary<string, float> { { "10,10", 75.5f } } }
+                }
+            };
+
+            _mockDataService
+                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Returns(corruptedData);
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+
+            // Act
+            service.LoadData("test_save");
+
+            // Assert - The empty location should be skipped but Farm should be loaded
+            var result = service.GetSoilHealth("", new Vector2(10, 10)); // Empty location
+            Assert.Equal(0.0f, result);
+            
+            var farmResult = service.GetSoilHealth("Farm", new Vector2(10, 10)); // Valid location
+            Assert.Equal(75.5f, farmResult);
+            
+            // Verify that a warning was logged about the invalid location name
+            _mockMonitor.Verify(m => m.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn), Times.Once);
         }
     }
 }
