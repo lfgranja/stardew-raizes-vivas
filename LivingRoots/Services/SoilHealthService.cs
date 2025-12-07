@@ -62,7 +62,8 @@ namespace LivingRoots.Services
                             if (locationEntry.Value == null) continue;
                             
                             var tileDict = new Dictionary<Point, float>();
-                            bool warnedForLocation = false; // Only warn once per location
+                            bool malformedKeyWarned = false; // Only warn once per location about malformed keys
+                            bool invalidValueWarned = false; // Only warn once per location about invalid values
                             foreach (var tileEntry in locationEntry.Value)
                             {
                                 // Parse "X,Y" string back to Point (using integers for tile coordinates)
@@ -77,10 +78,10 @@ namespace LivingRoots.Services
                                     var rawValue = tileEntry.Value;
                                     if (float.IsNaN(rawValue) || float.IsInfinity(rawValue))
                                     {
-                                        if (!warnedForLocation)
+                                        if (!invalidValueWarned)
                                         {
                                             _monitor.Log($"Skipped invalid soil health value (NaN/Infinity) in location '{locationEntry.Key}'.", LogLevel.Warn);
-                                            warnedForLocation = true;
+                                            invalidValueWarned = true;
                                         }
                                         continue;
                                     }
@@ -91,10 +92,10 @@ namespace LivingRoots.Services
                                 else
                                 {
                                     // Warn about malformed keys to help diagnose corrupted save data
-                                    if (!warnedForLocation)
+                                    if (!malformedKeyWarned)
                                     {
                                         _monitor.Log($"Skipped malformed soil health tile key(s) in location '{locationEntry.Key}'.", LogLevel.Warn);
-                                        warnedForLocation = true;
+                                        malformedKeyWarned = true;
                                     }
                                 }
                             }
