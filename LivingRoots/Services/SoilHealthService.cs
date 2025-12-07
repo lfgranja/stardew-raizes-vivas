@@ -40,10 +40,9 @@ namespace LivingRoots.Services
                 string dataKey = GetSaveKey(saveId);
                 var savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
                 
-                // Prepare a temporary cache; only swap on success to prevent data loss on partial failure
-                var newCache = new Dictionary<string, Dictionary<Point, float>>();
-
-                if (savedData?.LocationHealthData != null)
+                // Convert from disk format (string keys) to runtime format (Point keys)
+                _runtimeCache.Clear();
+                if (savedData != null)
                 {
                     foreach (var locationEntry in savedData.LocationHealthData)
                     {
@@ -54,13 +53,11 @@ namespace LivingRoots.Services
                         bool warnedForLocation = false; // Only warn once per location
                         foreach (var tileEntry in locationEntry.Value)
                         {
-                            // Parse "X,Y" string back to Point using ReadOnlySpan for better performance
-                            ReadOnlySpan<char> keySpan = tileEntry.Key.AsSpan();
-                            int commaIndex = keySpan.IndexOf(',');
-
-                            if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
-                                int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
-                                int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
+                            // Parse "X,Y" string back to Point (using integers for tile coordinates)
+                            string[] parts = tileEntry.Key.Split(',');
+                            if (parts.Length == 2 && 
+                                int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
+                                int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
                             {
                                 // Validate the loaded value by checking for NaN/Infinity and clamping to [0, 100] range
                                 var rawValue = tileEntry.Value;
@@ -87,19 +84,12 @@ namespace LivingRoots.Services
                                 }
                             }
                         }
-                        newCache[locationEntry.Key] = tileDict;
+                        _runtimeCache[locationEntry.Key] = tileDict;
                     }
                 }
                 else
                 {
                     _monitor.Log($"No existing Soil Health data found for save {saveId}. Starting fresh.", LogLevel.Info);
-                }
-
-                // Atomically replace the runtime cache with the new one to prevent data loss
-                _runtimeCache.Clear();
-                foreach (var kv in newCache)
-                {
-                    _runtimeCache[kv.Key] = kv.Value;
                 }
             }
         }
@@ -112,10 +102,12 @@ namespace LivingRoots.Services
                 return;
             }
             
+            // Build snapshot inside lock to avoid holding it during I/O
+            SoilHealthState stateToSave;
             lock (_lock)
             {
                 // Validate and convert from runtime format (Point keys) to disk format (string keys)
-                var stateToSave = new SoilHealthState();
+                stateToSave = new SoilHealthState();
                 foreach (var locationEntry in _runtimeCache)
                 {
                     var stringDict = new Dictionary<string, float>();
@@ -134,11 +126,12 @@ namespace LivingRoots.Services
                     }
                     stateToSave.LocationHealthData[locationEntry.Key] = stringDict;
                 }
-
-                string saveKey = GetSaveKey(saveId);
-                _modDataService.SaveData(stateToSave, saveKey);
-                _monitor.Log($"Soil Health data saved for {saveId}", LogLevel.Trace);
             }
+            
+            // Perform I/O operation outside the lock to avoid blocking other threads
+            string saveKey = GetSaveKey(saveId);
+            _modDataService.SaveData(stateToSave, saveKey);
+            _monitor.Log($"Soil Health data saved for {saveId}", LogLevel.Trace);
         }
 
         public float GetSoilHealth(string locationName, Vector2 tile)
