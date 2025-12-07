@@ -49,7 +49,10 @@ namespace LivingRoots.Services
                     _runtimeCache.Clear();
                     if (savedData != null)
                     {
-                        foreach (var locationEntry in savedData.LocationHealthData)
+                        // Guard against null LocationHealthData to prevent NullReferenceException during deserialization
+                        var locations = savedData.LocationHealthData ?? new Dictionary<string, Dictionary<string, float>>();
+                        
+                        foreach (var locationEntry in locations)
                         {
                             // Skip if the location name is null or empty to prevent invalid entries in the cache
                             if (string.IsNullOrWhiteSpace(locationEntry.Key))
@@ -280,22 +283,6 @@ namespace LivingRoots.Services
                 _runtimeCache[locationName] = tiles;
             }
             return tiles;
-        }
-
-        /// <summary>
-        /// Helper method to log a warning message only once per location.
-        /// This reduces code duplication in the LoadData method for different types of data issues.
-        /// </summary>
-        /// <param name="warned">Reference to the flag indicating if a warning was already logged for this location</param>
-        /// <param name="location">The name of the location</param>
-        /// <param name="message">The warning message to log</param>
-        private void WarnOnceForLocation(ref bool warned, string location, string message)
-        {
-            if (!warned)
-            {
-                _monitor.Log($"{message} in location '{location}'.", LogLevel.Warn);
-                warned = true;
-            }
         }
 
         private string GetSaveKey(string saveId)

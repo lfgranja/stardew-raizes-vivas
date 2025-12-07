@@ -253,10 +253,13 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
                 
+            // Get saveId once to use in both try and catch blocks
+            var saveId = Constants.SaveFolderName;
+            var safeId = saveId ?? "unknown";
+            
             try
             {
                 // Load data using the save folder name as unique ID
-                var saveId = Constants.SaveFolderName;
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
                     _monitor.Log("Cannot load soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
@@ -268,8 +271,8 @@ namespace LivingRoots.Controllers
             }
             catch (Exception)
             {
-                var saveId = Constants.SaveFolderName ?? "unknown";
-                _monitor.Log($"Error occurred while loading soil health data for save '{saveId}'.", LogLevel.Error);
+                // According to security review, avoid logging sensitive save IDs in error messages
+                _monitor.Log("Error occurred while loading soil health data.", LogLevel.Error);
             }
         }
 
@@ -279,10 +282,13 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
             
+            // Get saveId once to use in both try and catch blocks
+            var saveId = Constants.SaveFolderName;
+            var safeId = saveId ?? "unknown";
+            
             try
             {
                 // Save data before the game saves/exits (using the saving event)
-                var saveId = Constants.SaveFolderName;
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
                     _monitor.Log("Cannot save soil health data: SaveFolderName is unavailable.", LogLevel.Warn);
@@ -294,8 +300,8 @@ namespace LivingRoots.Controllers
             }
             catch (Exception)
             {
-                var saveId = Constants.SaveFolderName ?? "unknown";
-                _monitor.Log($"Error occurred while saving soil health data for save '{saveId}'.", LogLevel.Error);
+                // According to security review, avoid logging sensitive save IDs in error messages
+                _monitor.Log("Error occurred while saving soil health data.", LogLevel.Error);
             }
         }
 
