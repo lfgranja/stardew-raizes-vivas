@@ -123,15 +123,15 @@ namespace LivingRoots.Controllers
                 {
                     if (gameLoop != null) // Guard against null gameLoop in rollback
                     {
-                        if (gameLaunchedAdded && _onGameLaunchedHandler != null)
-                            gameLoop.GameLaunched -= _onGameLaunchedHandler;
-                        if (saveLoadedAdded && _onSaveLoadedHandler != null)
-                            gameLoop.SaveLoaded -= _onSaveLoadedHandler; // NEW
-                        if (savingAdded && _onSavingHandler != null) // CORRIGIDO: Era _onSavedHandler // NEW
-                            gameLoop.Saving -= _onSavingHandler; // CORRIGIDO: Era gameLoop.Saved // NEW
+                        if (gameLaunchedAdded)
+                            gameLoop.GameLaunched -= _onGameLaunchedHandler; // REMOVIDO: && _onGameLaunchedHandler != null
+                        if (saveLoadedAdded)
+                            gameLoop.SaveLoaded -= _onSaveLoadedHandler; // REMOVIDO: && _onSaveLoadedHandler != null // NEW
+                        if (savingAdded)
+                            gameLoop.Saving -= _onSavingHandler; // REMOVIDO: && _onSavingHandler != null // CORRIGIDO: Era gameLoop.Saved // NEW
                     }
                 }
-                catch // Changed from catch (Exception rollbackEx) to catch to follow secure logging practices
+                catch (Exception rollbackEx) 
                 { 
                     monitor.Log("Error during event subscription rollback.", LogLevel.Trace); 
                     /* avoid masking original failure */ 

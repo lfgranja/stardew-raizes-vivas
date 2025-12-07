@@ -185,7 +185,7 @@ namespace LivingRoots.Services
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
                 return 0f;
 
-            // Map to tile indices consistently (flooring handles negatives and fractions correctly)
+            // Map to tile indices consistently (using MathF.Floor to handle negatives and fractions correctly)
             int ix = (int)MathF.Floor(tile.X);
             int iy = (int)MathF.Floor(tile.Y);
 
@@ -217,7 +217,7 @@ namespace LivingRoots.Services
                 return;
             }
 
-            // Map to tile indices consistently (flooring handles negatives and fractions correctly)
+            // Map to tile indices consistently (using MathF.Floor to handle negatives and fractions correctly)
             int ix = (int)MathF.Floor(tile.X);
             int iy = (int)MathF.Floor(tile.Y);
 
@@ -226,12 +226,8 @@ namespace LivingRoots.Services
                 // Domain Rule: Clamp between 0 and 100
                 float clampedValue = Math.Clamp(value, 0f, 100f);
 
-                // Use TryGetValue to perform a single lookup instead of ContainsKey + indexer
-                if (!_runtimeCache.TryGetValue(locationName, out var tiles))
-                {
-                    tiles = new Dictionary<Point, float>();
-                    _runtimeCache[locationName] = tiles;
-                }
+                // Use GetOrAddLocationCache to avoid code duplication
+                var tiles = GetOrAddLocationCache(locationName);
                 
                 var key = new Point(ix, iy);
                 tiles[key] = clampedValue;
@@ -251,19 +247,16 @@ namespace LivingRoots.Services
                 return;
             }
 
-            // Map to tile indices consistently (flooring handles negatives and fractions correctly)
+            // Map to tile indices consistently (using MathF.Floor to handle negatives and fractions correctly)
             int ix = (int)MathF.Floor(tile.X);
             int iy = (int)MathF.Floor(tile.Y);
 
             lock (_lock)
             {
                 // Perform the update operation in a single lock to avoid reentrant calls
-                if (!_runtimeCache.TryGetValue(locationName, out var tiles))
-                {
-                    tiles = new Dictionary<Point, float>();
-                    _runtimeCache[locationName] = tiles;
-                }
+                var tiles = GetOrAddLocationCache(locationName);
 
+                // Convert Vector2 to Point for lookup (using integer coordinates)
                 var key = new Point(ix, iy);
                 
                 // Get current value (0 if tile doesn't exist) and calculate new value
@@ -271,6 +264,22 @@ namespace LivingRoots.Services
                 float newHealth = Math.Clamp(currentHealth + delta, 0f, 100f);
                 tiles[key] = newHealth;
             }
+        }
+
+        /// <summary>
+        /// Gets or creates the tile dictionary for a given location.
+        /// This method reduces code duplication between SetSoilHealth and UpdateHealth methods.
+        /// </summary>
+        /// <param name="locationName">The name of the location</param>
+        /// <returns>The tile dictionary for the location</returns>
+        private Dictionary<Point, float> GetOrAddLocationCache(string locationName)
+        {
+            if (!_runtimeCache.TryGetValue(locationName, out var tiles))
+            {
+                tiles = new Dictionary<Point, float>();
+                _runtimeCache[locationName] = tiles;
+            }
+            return tiles;
         }
 
         private string GetSaveKey(string saveId)
