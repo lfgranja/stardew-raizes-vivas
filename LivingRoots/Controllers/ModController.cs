@@ -119,31 +119,14 @@ namespace LivingRoots.Controllers
                 monitor.Log("Error occurred while registering game events.", LogLevel.Error);
                 
                 // Attempt to rollback any partial subscriptions with individual exception handling
-                try
+                if (gameLoop != null) // Guard against null gameLoop in rollback
                 {
-                    if (gameLoop != null) // Guard against null gameLoop in rollback
-                    {
-                        if (gameLaunchedAdded && _onGameLaunchedHandler != null)
-                        {
-                            try { gameLoop.GameLaunched -= _onGameLaunchedHandler; }
-                            catch (Exception) { monitor.Log("Error during rollback of GameLaunched subscription.", LogLevel.Trace); }
-                        }
-                        if (saveLoadedAdded && _onSaveLoadedHandler != null) // NEW
-                        {
-                            try { gameLoop.SaveLoaded -= _onSaveLoadedHandler; }
-                            catch (Exception) { monitor.Log("Error during rollback of SaveLoaded subscription.", LogLevel.Trace); } // NEW
-                        }
-                        if (savingAdded && _onSavingHandler != null) // CORRIGIDO: Era _onSavedHandler // NEW
-                        {
-                            try { gameLoop.Saving -= _onSavingHandler; } // CORRIGIDO: Era gameLoop.Saved // NEW
-                            catch (Exception) { monitor.Log("Error during rollback of Saving subscription.", LogLevel.Trace); } // NEW
-                        }
-                    }
-                }
-                catch (Exception) 
-                { 
-                    monitor.Log("Error during event subscription rollback.", LogLevel.Trace); 
-                    /* avoid masking original failure */ 
+                    if (gameLaunchedAdded && _onGameLaunchedHandler != null) 
+                        TryUnsubscribe(() => gameLoop.GameLaunched -= _onGameLaunchedHandler, "GameLaunched", monitor);
+                    if (saveLoadedAdded && _onSaveLoadedHandler != null) // NEW
+                        TryUnsubscribe(() => gameLoop.SaveLoaded -= _onSaveLoadedHandler, "SaveLoaded", monitor); // NEW
+                    if (savingAdded && _onSavingHandler != null) // CORRIGIDO: Era _onSavedHandler // NEW
+                        TryUnsubscribe(() => gameLoop.Saving -= _onSavingHandler, "Saving", monitor); // NEW
                 }
 
                 _onGameLaunchedHandler = null;
@@ -155,6 +138,25 @@ namespace LivingRoots.Controllers
                 // According to code review feedback, we should NOT re-throw the exception to maintain consistency with tests
                 // The method should handle failures gracefully without propagating exceptions
                 return; // Exit gracefully without re-throwing
+            }
+        }
+
+        /// <summary>
+        /// Attempts to unsubscribe from an event, logging errors without rethrowing.
+        /// This method reduces code duplication in rollback logic.
+        /// </summary>
+        /// <param name="unsubscribeAction">The action to unsubscribe from the event</param>
+        /// <param name="eventName">The name of the event for logging purposes</param>
+        /// <param name="monitor">The monitor instance for logging</param>
+        private void TryUnsubscribe(Action unsubscribeAction, string eventName, IMonitor monitor)
+        {
+            try
+            {
+                unsubscribeAction();
+            }
+            catch (Exception)
+            {
+                monitor.Log($"Error during rollback of {eventName} subscription.", LogLevel.Trace);
             }
         }
 
