@@ -131,7 +131,11 @@ namespace LivingRoots.Controllers
                             gameLoop.Saving -= _onSavingHandler; // CORRIGIDO: Era gameLoop.Saved // NEW
                     }
                 }
-                catch { /* avoid masking original failure */ }
+                catch (Exception rollbackEx) 
+                { 
+                    monitor.Log($"Error during event subscription rollback: {rollbackEx.Message}", LogLevel.Trace); 
+                    /* avoid masking original failure */ 
+                }
 
                 _onGameLaunchedHandler = null;
                 _onSaveLoadedHandler = null; // NEW
@@ -238,7 +242,7 @@ namespace LivingRoots.Controllers
                 }
                 
                 _soilHealthService.LoadData(saveId);
-                _monitor.Log($"Soil health data loaded for save '{saveId}'.", LogLevel.Trace);
+                _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace); // CORRECTED: Removed save ID from success log
             }
             catch (Exception)
             {
@@ -264,7 +268,7 @@ namespace LivingRoots.Controllers
                 }
                 
                 _soilHealthService.SaveData(saveId);
-                _monitor.Log($"Soil health data saved for save '{saveId}'.", LogLevel.Trace);
+                _monitor.Log("Soil health data saved successfully.", LogLevel.Trace); // CORRECTED: Removed save ID from success log
             }
             catch (Exception)
             {

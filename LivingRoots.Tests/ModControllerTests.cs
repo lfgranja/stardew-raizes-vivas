@@ -385,6 +385,147 @@ namespace LivingRoots.Tests
             _mockMonitor.Verify(x => x.Log("Controller is already disposed.", LogLevel.Trace), Times.Once);
         }
         
+        [Fact]
+        public void RegisterEvents_WhenExceptionOccurs_HandlerIsCleared()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            // Setup event subscription to throw an exception on one of the events
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+                .Callback<EventHandler<GameLaunchedEventArgs>>((h) => { /* Success */ });
+            mockGameLoopEvents
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+                .Callback<EventHandler<SaveLoadedEventArgs>>((h) => { /* Success */ });
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
+                .Throws(new InvalidOperationException("Test exception during registration")); // This will cause rollback
+            
+            // Setup removal expectations for rollback
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>());
+            
+            var controller = CreateController();
+            
+            // Act - This should trigger the rollback logic
+            var ex = Record.Exception(() => controller.RegisterEvents());
+            
+            // Assert - RegisterEvents should not throw, but should handle the exception internally
+            Assert.Null(ex); // No exception should be thrown to the caller
+            
+            // Verify that error was logged
+            _mockMonitor.Verify(x => x.Log("Error occurred while registering game events.", LogLevel.Error), Times.Once);
+            
+            // Verify that rollback handlers were properly removed
+            mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
+            
+            // Verify that the state flag was reset after the failure
+            _mockMonitor.Verify(x => x.Log("Events are already registered, skipping registration.", LogLevel.Trace), Times.Never);
+        }
+        
+        [Fact]
+        public void RegisterEvents_WhenExceptionOccurs_LogsErrorMessageWithoutStackTrace()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            // Setup event subscription to throw an exception
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+                .Callback<EventHandler<GameLaunchedEventArgs>>((h) => { /* Success */ });
+            mockGameLoopEvents
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+                .Callback<EventHandler<SaveLoadedEventArgs>>((h) => { /* Success */ });
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
+                .Throws(new InvalidOperationException("Test exception during registration"));
+            
+            // Setup removal expectations for rollback
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents
+                .SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>());
+            
+            var controller = CreateController();
+            
+            // Act
+            var ex = Record.Exception(() => controller.RegisterEvents());
+            
+            // Assert - No exception should be thrown to the caller
+            Assert.Null(ex);
+            
+            // Verify that only the error message was logged, not the raw exception details
+            _mockMonitor.Verify(x => x.Log("Error occurred while registering game events.", LogLevel.Error), Times.Once);
+            
+            // Verify that no raw exception details were logged (only the message)
+            _mockMonitor.Verify(x => x.Log(It.Is<string>(s => s.Contains("InvalidOperationException") || s.Contains("Test exception")), It.IsAny<LogLevel>()), Times.Never);
+        }
+        
+        [Fact]
+        public void RegisterEvents_WhenDisposed_ShouldLogAndReturnWithoutThrowing()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            var controller = CreateController();
+            
+            // Dispose the controller first
+            controller.Dispose();
+            
+            // Act & Assert
+            var ex = Record.Exception(() => controller.RegisterEvents());
+            Assert.Null(ex); // Should not throw
+            
+            _mockMonitor.Verify(x => x.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace), Times.Once);
+        }
+        
+        [Fact]
+        public void UnregisterEvents_WhenDisposed_ShouldLogAndReturnWithoutThrowing()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            var controller = CreateController();
+            
+            // Register events first
+            controller.RegisterEvents();
+            
+            // Dispose the controller
+            controller.Dispose();
+            
+            // Act & Assert
+            var ex = Record.Exception(() => controller.UnregisterEvents());
+            Assert.Null(ex); // Should not throw
+            
+            _mockMonitor.Verify(x => x.Log("Attempted to unregister events after disposal. Operation skipped.", LogLevel.Trace), Times.Once);
+        }
+        
+        [Fact]
+        public void Dispose_PreventsEventRegistrationAfterDisposal()
+        {
+            // Arrange
+            var (mockEvents, mockGameLoopEvents) = SetupEventMocks();
+            
+            var controller = CreateController();
+            
+            // Register events first
+            controller.RegisterEvents();
+            
+            // Dispose the controller
+            controller.Dispose();
+            
+            // Act - Try to register events again after disposal
+            var ex = Record.Exception(() => controller.RegisterEvents());
+            
+            // Assert
+            Assert.Null(ex); // Should not throw
+            _mockMonitor.Verify(x => x.Log("Attempted to register events after disposal. Operation skipped.", LogLevel.Trace), Times.Once);
+        }
+        
         private (Mock<IModEvents>, Mock<IGameLoopEvents>) SetupEventMocks()
         {
             var mockEvents = new Mock<IModEvents>(MockBehavior.Strict);
