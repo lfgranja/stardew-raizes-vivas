@@ -140,6 +140,8 @@ namespace LivingRoots.Services
                 return;
             }
             
+            // Create snapshot of data to write outside the lock for better performance
+            SoilHealthState snapshotState;
             lock (_lock)
             {
                 // Validate and convert from runtime format (Point keys) to disk format (string keys)
@@ -153,13 +155,15 @@ namespace LivingRoots.Services
                         continue;
                     }
                     
-                    var stringDict = new Dictionary<string, float>();
+                    var stringDict = new Dictionary<string, float>(locationEntry.Value.Count);
+                    int invalidCount = 0; // Count invalid entries to aggregate warnings
+                    
                     foreach (var tileEntry in locationEntry.Value)
                     {
                         var val = tileEntry.Value;
                         if (float.IsNaN(val) || float.IsInfinity(val))
                         {
-                            _monitor.Log("Skipped saving soil health value (NaN/Infinity) for a tile due to invalid state.", LogLevel.Warn);
+                            invalidCount++;
                             continue;
                         }
                         
@@ -167,6 +171,12 @@ namespace LivingRoots.Services
                         string key = $"{tileEntry.Key.X.ToString(CultureInfo.InvariantCulture)},{tileEntry.Key.Y.ToString(CultureInfo.InvariantCulture)}";
                         stringDict[key] = clamped;
                     }
+                    
+                    if (invalidCount > 0)
+                    {
+                        _monitor.Log($"Skipped {invalidCount} invalid soil health entr(ies) in location '{locationEntry.Key}' during save.", LogLevel.Warn);
+                    }
+                    
                     // Only add location if it has valid tiles
                     if (stringDict.Count > 0)
                     {
@@ -181,18 +191,21 @@ namespace LivingRoots.Services
                     return;
                 }
 
-                string saveKey = GetSaveKey(saveId);
-                
-                try
-                {
-                    _modDataService.SaveData(stateToSave, saveKey);
-                    _monitor.Log("Soil Health data saved successfully.", LogLevel.Trace);
-                }
-                catch (Exception)
-                {
-                    _monitor.Log("Error occurred while persisting soil health data.", LogLevel.Error);
-                    // Intentionally do not rethrow; keep runtime cache intact so the game can continue.
-                }
+                // Capture snapshot to write outside the lock
+                snapshotState = stateToSave;
+            }
+
+            string saveKey = GetSaveKey(saveId);
+            
+            try
+            {
+                _modDataService.SaveData(snapshotState, saveKey);
+                _monitor.Log("Soil Health data saved successfully.", LogLevel.Trace);
+            }
+            catch (Exception)
+            {
+                _monitor.Log("Error occurred while persisting soil health data.", LogLevel.Error);
+                // Intentionally do not rethrow; keep runtime cache intact so the game can continue.
             }
         }
 
