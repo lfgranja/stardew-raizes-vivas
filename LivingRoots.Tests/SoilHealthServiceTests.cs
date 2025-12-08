@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Threading;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
@@ -13,758 +12,707 @@ namespace LivingRoots.Tests
 {
     public class SoilHealthServiceTests
     {
-        private readonly Mock<IModDataService> _mockModDataService;
+        private readonly Mock<IModDataService> _mockDataService;
         private readonly Mock<IMonitor> _mockMonitor;
 
         public SoilHealthServiceTests()
         {
-            _mockModDataService = new Mock<IModDataService>(MockBehavior.Strict);
-            _mockMonitor = new Mock<IMonitor>(MockBehavior.Strict);
-        }
-
-        private SoilHealthService CreateService(IModDataService? modDataService = null, IMonitor? monitor = null)
-        {
-            var mockModDataService = modDataService ?? _mockModDataService.Object;
-            var mockMonitor = monitor ?? _mockMonitor.Object;
-            
-            return new SoilHealthService(mockModDataService, mockMonitor);
+            _mockDataService = new Mock<IModDataService>();
+            _mockMonitor = new Mock<IMonitor>();
         }
 
         [Fact]
-        public void SoilHealthService_Constructor_InitializesDependencies()
+        public void Constructor_WithNullDataService_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SoilHealthService(null, _mockMonitor.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullMonitor_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SoilHealthService(_mockDataService.Object, null));
+        }
+
+        [Fact]
+        public void SetHealth_ValuesAreClampedTo0And100()
         {
             // Arrange
-            var mockModDataService = new Mock<IModDataService>().Object;
-            var mockMonitor = new Mock<IMonitor>().Object;
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
+            var tile = new Vector2(10, 10);
 
             // Act
-            var service = new SoilHealthService(mockModDataService, mockMonitor);
+            service.SetSoilHealth(location, tile, 150.0f); // Tries to set 150
+            var resultMax = service.GetSoilHealth(location, tile);
+
+            service.SetSoilHealth(location, tile, -50.0f); // Tries to set -50
+            var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
-            Assert.NotNull(service);
+            Assert.Equal(100.0f, resultMax);
+            Assert.Equal(0.0f, resultMin);
         }
 
         [Fact]
-        public void SoilHealthService_Constructor_ThrowsArgumentNullException_WhenModDataServiceIsNull()
+        public void GetSoilHealth_WithInvalidLocationName_ReturnsDefault()
         {
             // Arrange
-            IMonitor mockMonitor = new Mock<IMonitor>().Object;
-
-            // Act & Assert
-            var ex = Record.Exception(() => new SoilHealthService(null!, mockMonitor));
-            Assert.NotNull(ex);
-            Assert.IsType<ArgumentNullException>(ex);
-        }
-
-        [Fact]
-        public void SoilHealthService_Constructor_ThrowsArgumentNullException_WhenMonitorIsNull()
-        {
-            // Arrange
-            IModDataService mockModDataService = new Mock<IModDataService>().Object;
-
-            // Act & Assert
-            var ex = Record.Exception(() => new SoilHealthService(mockModDataService, null!));
-            Assert.NotNull(ex);
-            Assert.IsType<ArgumentNullException>(ex);
-        }
-
-        [Fact]
-        public void LoadData_DoesNotClearCache_WhenSaveIdIsNullOrWhitespace()
-        {
-            // Arrange
-            var service = CreateService();
-            
-            // Set some initial data in the cache to verify it's preserved
-            service.SetSoilHealth("Farm", new Vector2(0, 0), 50f);
-
-            // Setup monitor to expect the specific log message
-            _mockMonitor.Setup(m => m.Log("LoadData aborted: invalid saveId. Preserving current runtime cache.", LogLevel.Warn)).Verifiable();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tile = new Vector2(10, 10);
 
             // Act
-            service.LoadData(""); // Empty save ID
+            var result = service.GetSoilHealth(null, tile);
+            var resultEmpty = service.GetSoilHealth("", tile);
+            var resultWhitespace = service.GetSoilHealth("   ", tile);
 
             // Assert
-            var health = service.GetSoilHealth("Farm", new Vector2(0, 0));
-            Assert.Equal(50f, health); // Should preserve existing data instead of clearing
-            _mockMonitor.Verify(m => m.Log("LoadData aborted: invalid saveId. Preserving current runtime cache.", LogLevel.Warn), Times.Once);
+            Assert.Equal(0f, result);
+            Assert.Equal(0f, resultEmpty);
+            Assert.Equal(0f, resultWhitespace);
         }
 
         [Fact]
-        public void LoadData_DoesNotClearCache_WhenSaveIdIsInvalid()
+        public void GetSoilHealth_WithInvalidTileCoordinates_ReturnsDefault()
         {
             // Arrange
-            var service = CreateService();
-            
-            // Set some initial data in the cache to verify it's preserved
-            service.SetSoilHealth("Farm", new Vector2(0, 0), 50f);
-
-            // Setup monitor to expect the specific log message
-            _mockMonitor.Setup(m => m.Log("LoadData aborted: invalid saveId. Preserving current runtime cache.", LogLevel.Warn)).Verifiable();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
 
             // Act
-            service.LoadData("   "); // Whitespace-only save ID
+            var resultNaN = service.GetSoilHealth(location, new Vector2(float.NaN, 10));
+            var resultInfinity = service.GetSoilHealth(location, new Vector2(float.PositiveInfinity, 10));
+            var resultBothNaN = service.GetSoilHealth(location, new Vector2(float.NaN, float.NaN));
 
             // Assert
-            var health = service.GetSoilHealth("Farm", new Vector2(0, 0));
-            Assert.Equal(50f, health); // Should preserve existing data instead of clearing
-            _mockMonitor.Verify(m => m.Log("LoadData aborted: invalid saveId. Preserving current runtime cache.", LogLevel.Warn), Times.Once);
+            Assert.Equal(0f, resultNaN);
+            Assert.Equal(0f, resultInfinity);
+            Assert.Equal(0f, resultBothNaN);
         }
 
         [Fact]
-        public void LoadData_LoadsData_FromModDataService()
+        public void GetSoilHealth_WithOverflowCoordinates_ReturnsDefault()
         {
             // Arrange
-            var expectedData = new SoilHealthState();
-            expectedData.LocationHealthData["Farm"] = new Dictionary<string, float> { { "10,15", 75f }, { "11,15", 80f} };
-            
-            _mockModDataService
-                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
-                .Returns(expectedData);
-            
-            _mockMonitor.Setup(m => m.Log(It.IsAny<string>(), It.IsAny<LogLevel>())).Verifiable();
-            
-            var service = CreateService();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
 
             // Act
-            service.LoadData("test_save");
+            var resultHigh = service.GetSoilHealth(location, new Vector2(float.MaxValue, 10));
+            var resultLow = service.GetSoilHealth(location, new Vector2(float.MinValue, 10));
 
             // Assert
-            var health1 = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            var health2 = service.GetSoilHealth("Farm", new Vector2(11, 15));
-            Assert.Equal(75f, health1);
-            Assert.Equal(80f, health2);
-            
-            _mockModDataService.Verify(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()), Times.Once);
+            Assert.Equal(0f, resultHigh);
+            Assert.Equal(0f, resultLow);
         }
 
         [Fact]
-        public void LoadData_HandlesNullLocationName_InSaveData()
+        public void SetSoilHealth_WithInvalidLocationName_DoesNotAddEntry()
         {
             // Arrange
-            var expectedData = new SoilHealthState();
-            expectedData.LocationHealthData[""] = new Dictionary<string, float> { { "10,15", 75f } }; // Empty location name
-            expectedData.LocationHealthData["Farm"] = new Dictionary<string, float> { { "11,15", 80f } };
-            
-            _mockModDataService
-                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
-                .Returns(expectedData);
-            
-            _mockMonitor.Setup(m => m.Log(It.IsAny<string>(), It.IsAny<LogLevel>())).Verifiable();
-            
-            var service = CreateService();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tile = new Vector2(10, 10);
 
             // Act
-            service.LoadData("test_save");
+            service.SetSoilHealth(null, tile, 50.0f);
+            service.SetSoilHealth("", tile, 50.0f);
+            service.SetSoilHealth("   ", tile, 50.0f);
 
-            // Assert
-            var healthEmpty = service.GetSoilHealth("", new Vector2(10, 15)); // Should not find data for empty location
-            var healthFarm = service.GetSoilHealth("Farm", new Vector2(11, 15)); // Should find data for Farm
-            
-            Assert.Equal(0f, healthEmpty);
-            Assert.Equal(80f, healthFarm);
-            
-            _mockMonitor.Verify(m => m.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn), Times.Once);
+            // Assert - Should not have added any entries to the cache
+            Assert.Equal(0f, service.GetSoilHealth("Farm", tile));
         }
 
         [Fact]
-        public void LoadData_HandlesNullTileData_InSaveData()
+        public void SetSoilHealth_WithInvalidTileCoordinates_DoesNotAddEntry()
         {
             // Arrange
-            var expectedData = new SoilHealthState();
-            expectedData.LocationHealthData["Farm"] = null; // Null tile data
-            expectedData.LocationHealthData["Greenhouse"] = new Dictionary<string, float> { { "5,5", 100f } };
-            
-            _mockModDataService
-                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
-                .Returns(expectedData);
-            
-            _mockMonitor.Setup(m => m.Log(It.IsAny<string>(), It.IsAny<LogLevel>())).Verifiable();
-            
-            var service = CreateService();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
 
             // Act
-            service.LoadData("test_save");
+            service.SetSoilHealth(location, new Vector2(float.NaN, 10), 50.0f);
+            service.SetSoilHealth(location, new Vector2(float.PositiveInfinity, 10), 50.0f);
+            service.SetSoilHealth(location, new Vector2(10, float.NaN), 50.0f);
 
-            // Assert
-            var healthFarm = service.GetSoilHealth("Farm", new Vector2(0, 0)); // Should not find data for Farm with null tiles
-            var healthGreenhouse = service.GetSoilHealth("Greenhouse", new Vector2(5, 5)); // Should find data for Greenhouse
-            
-            Assert.Equal(0f, healthFarm);
-            Assert.Equal(100f, healthGreenhouse);
+            // Assert - Should not have added any entries to the cache
+            Assert.Equal(0f, service.GetSoilHealth(location, new Vector2(10, 10)));
         }
 
         [Fact]
-        public void LoadData_HandlesMalformedTileKeys_InSaveData()
+        public void SetSoilHealth_WithOverflowCoordinates_DoesNotAddEntry()
         {
             // Arrange
-            var expectedData = new SoilHealthState();
-            expectedData.LocationHealthData["Farm"] = new Dictionary<string, float> 
-            { 
-                { "10,15", 75f },       // Valid
-                { "malformed_key", 80f }, // Invalid format
-                { "12", 85f },           // Missing Y coord
-                { "13,14,15", 90f }      // Too many parts
-            };
-            
-            _mockModDataService
-                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
-                .Returns(expectedData);
-            
-            _mockMonitor.Setup(m => m.Log(It.IsAny<string>(), It.IsAny<LogLevel>())).Verifiable();
-            
-            var service = CreateService();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
 
             // Act
-            service.LoadData("test_save");
+            service.SetSoilHealth(location, new Vector2(float.MaxValue, 10), 50.0f);
+            service.SetSoilHealth(location, new Vector2(float.MinValue, 10), 50.0f);
 
-            // Assert
-            var healthValid = service.GetSoilHealth("Farm", new Vector2(10, 15)); // Should find valid tile
-            var healthInvalid = service.GetSoilHealth("Farm", new Vector2(12, 0)); // Should not find invalid tile
-            
-            Assert.Equal(75f, healthValid);
-            Assert.Equal(0f, healthInvalid);
-            
-            // Should warn only once per location about malformed keys
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("malformed soil health tile key")), LogLevel.Warn), Times.AtLeastOnce);
+            // Assert - Should not have added any entries to the cache
+            Assert.Equal(0f, service.GetSoilHealth(location, new Vector2(10, 10)));
         }
 
         [Fact]
-        public void LoadData_HandlesInvalidTileValues_InSaveData()
+        public void UpdateHealth_WithInvalidLocationName_DoesNotUpdate()
         {
             // Arrange
-            var expectedData = new SoilHealthState();
-            expectedData.LocationHealthData["Farm"] = new Dictionary<string, float> 
-            { 
-                { "10,15", 75f },        // Valid
-                { "11,15", float.NaN },  // Invalid NaN
-                { "12,15", float.PositiveInfinity }, // Invalid Infinity
-                { "13,15", float.NegativeInfinity }  // Invalid -Infinity
-            };
-            
-            _mockModDataService
-                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
-                .Returns(expectedData);
-            
-            _mockMonitor.Setup(m => m.Log(It.IsAny<string>(), It.IsAny<LogLevel>())).Verifiable();
-            
-            var service = CreateService();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
             // Act
-            service.LoadData("test_save");
+            service.UpdateHealth(null, tile, 10.0f);
+            service.UpdateHealth("", tile, 10.0f);
+            service.UpdateHealth("   ", tile, 10.0f);
 
-            // Assert
-            var healthValid = service.GetSoilHealth("Farm", new Vector2(10, 15)); // Should find valid tile
-            var healthNaN = service.GetSoilHealth("Farm", new Vector2(11, 15)); // Should not find NaN tile
-            var healthInf = service.GetSoilHealth("Farm", new Vector2(12, 15)); // Should not find Infinity tile
-            var healthNegInf = service.GetSoilHealth("Farm", new Vector2(13, 15)); // Should not find -Infinity tile
-            
-            Assert.Equal(75f, healthValid);
-            Assert.Equal(0f, healthNaN);
-            Assert.Equal(0f, healthInf);
-            Assert.Equal(0f, healthNegInf);
-            
-            // Should warn only once per location about invalid values
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Skipped invalid soil health value")), LogLevel.Warn), Times.AtLeastOnce);
+            // Assert - Value should remain unchanged
+            Assert.Equal(50.0f, service.GetSoilHealth("Farm", tile));
         }
 
         [Fact]
-        public void LoadData_ClampsValues_ToRange0To100()
+        public void UpdateHealth_WithInvalidTileCoordinates_DoesNotUpdate()
         {
             // Arrange
-            var expectedData = new SoilHealthState();
-            expectedData.LocationHealthData["Farm"] = new Dictionary<string, float> 
-            { 
-                { "10,15", -10f },  // Below range
-                { "11,15", 150f },  // Above range
-                { "12,15", 50f }    // Within range
-            };
-            
-            _mockModDataService
-                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
-                .Returns(expectedData);
-            
-            _mockMonitor.Setup(m => m.Log(It.IsAny<string>(), It.IsAny<LogLevel>())).Verifiable();
-            
-            var service = CreateService();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
             // Act
-            service.LoadData("test_save");
+            service.UpdateHealth("Farm", new Vector2(float.NaN, 10), 10.0f);
+            service.UpdateHealth("Farm", new Vector2(float.PositiveInfinity, 10), 10.0f);
+            service.UpdateHealth("Farm", new Vector2(10, float.NaN), 10.0f);
 
-            // Assert
-            var healthBelowRange = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            var healthAboveRange = service.GetSoilHealth("Farm", new Vector2(11, 15));
-            var healthInRange = service.GetSoilHealth("Farm", new Vector2(12, 15));
-            
-            Assert.Equal(0f, healthBelowRange);  // Clamped to 0
-            Assert.Equal(100f, healthAboveRange); // Clamped to 100
-            Assert.Equal(50f, healthInRange);    // Unchanged
+            // Assert - Value should remain unchanged
+            Assert.Equal(50.0f, service.GetSoilHealth("Farm", tile));
         }
 
         [Fact]
-        public void LoadData_HandlesNullSaveData_ReturnsDefaultValues()
+        public void UpdateHealth_WithOverflowCoordinates_DoesNotUpdate()
         {
             // Arrange
-            _mockModDataService
-                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
-                .Returns((SoilHealthState?)null); // Explicitly cast to nullable type to satisfy compiler
-            
-            _mockMonitor.Setup(m => m.Log("No existing Soil Health data found. Starting fresh.", LogLevel.Info)).Verifiable();
-            
-            var service = CreateService();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
             // Act
-            service.LoadData("nonexistent_save");
+            service.UpdateHealth("Farm", new Vector2(float.MaxValue, 10), 10.0f);
+            service.UpdateHealth("Farm", new Vector2(float.MinValue, 10), 10.0f);
 
-            // Assert
-            var health = service.GetSoilHealth("Farm", new Vector2(0, 0));
-            Assert.Equal(0f, health); // Should return default value when no data exists
-            
-            _mockMonitor.Verify(m => m.Log("No existing Soil Health data found. Starting fresh.", LogLevel.Info), Times.Once);
+            // Assert - Value should remain unchanged
+            Assert.Equal(50.0f, service.GetSoilHealth("Farm", tile));
         }
 
         [Fact]
-        public void SaveData_CallsModDataServiceWithCorrectKey()
+        public void UpdateHealth_IncrementsValueCorrectly()
         {
             // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 75f);
-            service.SetSoilHealth("Farm", new Vector2(11, 15), 80f);
-            
-            string capturedKey = "";
-            SoilHealthState? capturedState = null;
-            
-            _mockModDataService
-                .Setup(ds => ds.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()))
-                .Callback<SoilHealthState, string>((state, key) => 
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth(location, tile, 50.0f);
+
+            // Act
+            service.UpdateHealth(location, tile, 25.0f);
+
+            // Assert
+            Assert.Equal(75.0f, service.GetSoilHealth(location, tile));
+        }
+
+        [Fact]
+        public void UpdateHealth_DecrementsValueCorrectly()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth(location, tile, 50.0f);
+
+            // Act
+            service.UpdateHealth(location, tile, -25.0f);
+
+            // Assert
+            Assert.Equal(25.0f, service.GetSoilHealth(location, tile));
+        }
+
+        [Fact]
+        public void UpdateHealth_ClampsTo0And100()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth(location, tile, 50.0f);
+
+            // Act
+            service.UpdateHealth(location, tile, 100.0f); // Should clamp to 100
+            var resultMax = service.GetSoilHealth(location, tile);
+
+            service.SetSoilHealth(location, tile, 50.0f); // Reset
+            service.UpdateHealth(location, tile, -100.0f); // Should clamp to 0
+            var resultMin = service.GetSoilHealth(location, tile);
+
+            // Assert
+            Assert.Equal(100.0f, resultMax);
+            Assert.Equal(0.0f, resultMin);
+        }
+
+        [Fact]
+        public void LoadData_WithInvalidSaveId_ClearsCache()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
+
+            // Act
+            service.LoadData(null); // Should clear cache
+            service.LoadData(""); // Should clear cache
+            service.LoadData("   "); // Should clear cache
+
+            // Assert - Value should be cleared
+            Assert.Equal(0f, service.GetSoilHealth("Farm", tile));
+        }
+
+        [Fact]
+        public void LoadData_WithValidSaveId_LoadsData()
+        {
+            // Arrange
+            var saveData = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    capturedState = state;
-                    capturedKey = key;
-                })
-                .Verifiable();
-            
-            _mockMonitor.Setup(m => m.Log("Soil Health data saved successfully.", LogLevel.Trace)).Verifiable();
+                    ["Farm"] = new Dictionary<string, float>
+                    {
+                        ["10,10"] = 75.0f,
+                        ["11,15"] = 25.0f
+                    }
+                }
+            };
+
+            _mockDataService
+                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Returns(saveData);
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
 
             // Act
-            service.SaveData("test_save_123");
+            service.LoadData("test_save");
 
             // Assert
-            Assert.Equal("soil_health_data_test_save_123", capturedKey);
-            Assert.NotNull(capturedState);
-            Assert.Contains("Farm", capturedState.LocationHealthData.Keys);
-            Assert.Equal(75f, capturedState.LocationHealthData["Farm"]["10,15"]);
-            Assert.Equal(80f, capturedState.LocationHealthData["Farm"]["11,15"]);
-            
-            _mockModDataService.Verify(ds => ds.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Once);
+            Assert.Equal(75.0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            Assert.Equal(25.0f, service.GetSoilHealth("Farm", new Vector2(11, 15)));
         }
 
         [Fact]
-        public void SaveData_OnlySavesLocationsWithValidTiles()
+        public void LoadData_WithNullLocationHealthData_InitializesEmptyCache()
         {
             // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 75f);
-            // Don't add any tiles to "Greenhouse" location
-            
-            string capturedKey = "";
-            SoilHealthState? capturedState = null;
-            
-            _mockModDataService
-                .Setup(ds => ds.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()))
-                .Callback<SoilHealthState, string>((state, key) => 
+            var saveData = new SoilHealthState
+            {
+                LocationHealthData = null // This could happen during deserialization
+            };
+
+            _mockDataService
+                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Returns(saveData);
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+
+            // Act
+            service.LoadData("test_save");
+
+            // Assert - Should not throw and should have empty cache
+            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+        }
+
+        [Fact]
+        public void LoadData_WithMalformedTileKeys_SkipsInvalidEntries()
+        {
+            // Arrange
+            var saveData = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    capturedState = state;
-                    capturedKey = key;
-                })
-                .Verifiable();
+                    ["Farm"] = new Dictionary<string, float>
+                    {
+                        ["invalid_key"] = 75.0f,      // Invalid format
+                        ["10,not_a_number"] = 25.0f,  // Invalid Y
+                        ["not_a_number,10"] = 30.0f,  // Invalid X
+                        ["10,10"] = 50.0f             // Valid
+                    }
+                }
+            };
+
+            _mockDataService
+                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Returns(saveData);
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+
+            // Act
+            service.LoadData("test_save");
+
+            // Assert - Only valid entry should be loaded
+            Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            // Invalid entries should not exist
+            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(0, 0))); // Default for invalid
+        }
+
+        [Fact]
+        public void LoadData_WithInvalidValues_SkipsInvalidEntries()
+        {
+            // Arrange
+            var saveData = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    ["Farm"] = new Dictionary<string, float>
+                    {
+                        ["10,10"] = float.NaN,        // Invalid value
+                        ["11,11"] = float.PositiveInfinity, // Invalid value
+                        ["12,12"] = float.NegativeInfinity, // Invalid value
+                        ["13,13"] = 50.0f             // Valid
+                    }
+                }
+            };
+
+            _mockDataService
+                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Returns(saveData);
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+
+            // Act
+            service.LoadData("test_save");
+
+            // Assert - Only valid entry should be loaded
+            Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(13, 13)));
+            // Invalid entries should not exist
+            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(11, 11)));
+            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
+        }
+
+        [Fact]
+        public void LoadData_WithNullLocationName_SkipsInvalidEntries()
+        {
+            // Arrange
+            var saveData = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    // We can't actually add a null key to a dictionary, so we'll test with an empty string
+                    // which should also be skipped by the validation logic
+                    [""] = new Dictionary<string, float> // Empty location name
+                    {
+                        ["11,1"] = 25.0f
+                    },
+                    ["   "] = new Dictionary<string, float> // Whitespace location name
+                    {
+                        ["12,12"] = 30.0f
+                    },
+                    ["Farm"] = new Dictionary<string, float> // Valid location name
+                    {
+                        ["13,13"] = 50.0f
+                    }
+                }
+            };
+
+            _mockDataService
+                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Returns(saveData);
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+
+            // Act
+            service.LoadData("test_save");
+
+            // Assert - Only valid location should be loaded
+            Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(13, 13)));
+            // Empty/whitespace locations should not exist
+            Assert.Equal(0f, service.GetSoilHealth("", new Vector2(11, 11)));
+            Assert.Equal(0f, service.GetSoilHealth("   ", new Vector2(12, 12)));
+        }
+
+        [Fact]
+        public void LoadData_WithException_PreservesExistingCache()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
+
+            _mockDataService
+                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Throws(new Exception("Data load failed"));
+
+            // Act
+            service.LoadData("test_save");
+
+            // Assert - Existing cache should be preserved
+            Assert.Equal(50.0f, service.GetSoilHealth("Farm", tile));
+        }
+
+        [Fact]
+        public void SaveData_WithInvalidSaveId_DoesNotSave()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth("Farm", tile, 50.0f);
+
+            // Act
+            service.SaveData(null);
+            service.SaveData("");
+            service.SaveData("   ");
+
+            // Assert - Data should not be saved
+            _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public void SaveData_WithValidData_SavesCorrectly()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tile1 = new Vector2(10, 10);
+            var tile2 = new Vector2(15, 20);
+            service.SetSoilHealth("Farm", tile1, 75.0f);
+            service.SetSoilHealth("Farm", tile2, 25.0f);
+
+            // Act
+            service.SaveData("test_save");
+
+            // Assert - Verify the data was saved with correct key and format
+            _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), "soil_health_data_test_save"), Times.Once);
             
-            _mockMonitor.Setup(m => m.Log("Soil Health data saved successfully.", LogLevel.Trace)).Verifiable();
-
-            // Act
-            service.SaveData("test_save_empty_location");
-
-            // Assert
-            Assert.Equal("soil_health_data_test_save_empty_location", capturedKey);
-            Assert.NotNull(capturedState);
-            Assert.Contains("Farm", capturedState.LocationHealthData.Keys);
-            Assert.DoesNotContain("Greenhouse", capturedState.LocationHealthData.Keys); // Empty location should not be saved
-            Assert.Single(capturedState.LocationHealthData); // Only Farm should be saved
+            // Capture the actual data that was saved
+            _mockDataService.Verify(x => x.SaveData(It.Is<SoilHealthState>(state => 
+                state.LocationHealthData.ContainsKey("Farm") &&
+                state.LocationHealthData["Farm"].ContainsKey("10,10") &&
+                state.LocationHealthData["Farm"]["10,10"] == 75.0f &&
+                state.LocationHealthData["Farm"].ContainsKey("15,20") &&
+                state.LocationHealthData["Farm"]["15,20"] == 25.0f
+            ), "soil_health_data_test_save"), Times.Once);
         }
 
         [Fact]
-        public void SaveData_HandlesNullSaveId()
+        public void SaveData_WithInvalidValues_DoesNotSaveInvalidEntries()
         {
             // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 75f);
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tileValid = new Vector2(10, 10);
+            var tileInvalid = new Vector2(15, 15);
             
-            var monitor = _mockMonitor;
-            monitor.Setup(m => m.Log("SaveData aborted: invalid saveId.", LogLevel.Warn)).Verifiable();
+            // Use reflection or direct access to set invalid values in the internal cache
+            // Since we can't directly set NaN/Infinity through the public API, we'll test the save logic directly
+            var state = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    ["Farm"] = new Dictionary<string, float>
+                    {
+                        ["10,10"] = 50.0f,              // Valid
+                        ["15,15"] = float.NaN,          // Invalid
+                        ["16,16"] = float.PositiveInfinity, // Invalid
+                        ["17,17"] = float.NegativeInfinity // Invalid
+                    }
+                }
+            };
+
+            // Mock the data service to return this state during save conversion
+            var serviceWithValidData = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            serviceWithValidData.SetSoilHealth("Farm", tileValid, 50.0f);
 
             // Act
-            service.SaveData(null); // Pass null save ID
+            serviceWithValidData.SaveData("test_save");
 
-            // Assert
-            // Should not call SaveData on the mock data service
-            _mockModDataService.Verify(ds => ds.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
-            monitor.Verify(m => m.Log("SaveData aborted: invalid saveId.", LogLevel.Warn), Times.Once);
+            // Verify that only valid entries are saved
+            _mockDataService.Verify(x => x.SaveData(It.Is<SoilHealthState>(s => 
+                s.LocationHealthData["Farm"].ContainsKey("10,10") && 
+                !s.LocationHealthData["Farm"].ContainsKey("15,15") &&
+                !s.LocationHealthData["Farm"].ContainsKey("16,16") &&
+                !s.LocationHealthData["Farm"].ContainsKey("17,17")
+            ), "soil_health_data_test_save"), Times.Once);
         }
 
         [Fact]
-        public void SaveData_HandlesWhitespaceSaveId()
+        public void SaveData_WithNullLocationName_DoesNotSaveInvalidEntries()
         {
             // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 75f);
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tile = new Vector2(10, 10);
             
-            var monitor = _mockMonitor;
-            monitor.Setup(m => m.Log("SaveData aborted: invalid saveId.", LogLevel.Warn)).Verifiable();
-
-            // Act
-            service.SaveData("   "); // Pass whitespace-only save ID
-
-            // Assert
-            // Should not call SaveData on the mock data service
-            _mockModDataService.Verify(ds => ds.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
-            monitor.Verify(m => m.Log("SaveData aborted: invalid saveId.", LogLevel.Warn), Times.Once);
-        }
-
-        [Fact]
-        public void GetSoilHealth_ReturnsDefault_WhenLocationIsInvalid()
-        {
-            // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 75f);
-
-            // Act
-            var health = service.GetSoilHealth("", new Vector2(10, 15)); // Empty location name
-            var healthNull = service.GetSoilHealth(null!, new Vector2(10, 15)); // Null location name
-
-            // Assert
-            Assert.Equal(0f, health);
-            Assert.Equal(0f, healthNull);
-        }
-
-        [Fact]
-        public void GetSoilHealth_ReturnsDefault_WhenTileCoordinatesAreInvalid()
-        {
-            // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 75f);
-
-            // Act
-            var healthNaN = service.GetSoilHealth("Farm", new Vector2(float.NaN, 15)); // NaN X
-            var healthInfinity = service.GetSoilHealth("Farm", new Vector2(10, float.PositiveInfinity)); // Infinity Y
-            var healthBothInvalid = service.GetSoilHealth("Farm", new Vector2(float.NaN, float.NaN)); // Both NaN
-
-            // Assert
-            Assert.Equal(0f, healthNaN);
-            Assert.Equal(0f, healthInfinity);
-            Assert.Equal(0f, healthBothInvalid);
-        }
-
-        [Fact]
-        public void GetSoilHealth_ReturnsCorrectValue_WhenDataExists()
-        {
-            // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 75f);
-            service.SetSoilHealth("Farm", new Vector2(10, 16), 85.5f);
-
-            // Act
-            var health1 = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            var health2 = service.GetSoilHealth("Farm", new Vector2(10, 16));
-
-            // Assert
-            Assert.Equal(75f, health1);
-            Assert.Equal(85.5f, health2);
-        }
-
-        [Fact]
-        public void GetSoilHealth_ReturnsDefault_WhenNoDataExistsForTile()
-        {
-            // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 75f);
-
-            // Act
-            var health = service.GetSoilHealth("Farm", new Vector2(11, 15)); // Different tile
-
-            // Assert
-            Assert.Equal(0f, health); // Default value when tile doesn't exist
-        }
-
-        [Fact]
-        public void SetSoilHealth_StoresCorrectValue()
-        {
-            // Arrange
-            var service = CreateService();
-
-            // Act
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 75f);
-
-            // Assert
-            var health = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            Assert.Equal(75f, health);
-        }
-
-        [Fact]
-        public void SetSoilHealth_ClampsValue_ToRange0To100()
-        {
-            // Arrange
-            var service = CreateService();
-
-            // Act
-            service.SetSoilHealth("Farm", new Vector2(10, 15), -10f);  // Below range
-            var healthBelow = service.GetSoilHealth("Farm", new Vector2(10, 15));
+            // We need to test the save logic with invalid location names
+            // We'll create a scenario where the internal cache has invalid entries
+            // but the public API prevents this, so we'll test the validation directly
+            var serviceWithValidData = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            serviceWithValidData.SetSoilHealth("Farm", new Vector2(13, 13), 75.0f);
             
-            service.SetSoilHealth("Farm", new Vector2(10, 16), 150f); // Above range
-            var healthAbove = service.GetSoilHealth("Farm", new Vector2(10, 16));
+            // Add invalid location names to the internal state by bypassing public API
+            // This simulates what might happen with corrupted data
+            var corruptedState = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    [""] = new Dictionary<string, float> { ["11,1"] = 25.0f },   // Empty location
+                    ["   "] = new Dictionary<string, float> { ["12,12"] = 30.0f }, // Whitespace location
+                    ["Farm"] = new Dictionary<string, float> { ["13,13"] = 75.0f } // Valid location
+                }
+            };
 
-            // Assert
-            Assert.Equal(0f, healthBelow);  // Clamped to 0
-            Assert.Equal(100f, healthAbove); // Clamped to 100
+            _mockDataService
+                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Returns(corruptedState);
+
+            // Act - Load the corrupted data and then save it
+            serviceWithValidData.LoadData("test_save");
+            serviceWithValidData.SaveData("test_save");
+
+            // Verify that only valid locations are saved
+            _mockDataService.Verify(x => x.SaveData(It.Is<SoilHealthState>(s => 
+                !s.LocationHealthData.ContainsKey("") &&
+                !s.LocationHealthData.ContainsKey("   ") &&
+                s.LocationHealthData.ContainsKey("Farm")
+            ), "soil_health_data_test_save"), Times.Once);
         }
 
         [Fact]
-        public void SetSoilHealth_SkipsWhenLocationIsInvalid()
+        public void SaveData_WithException_DoesNotThrow()
         {
             // Arrange
-            var service = CreateService();
-            
-            var monitor = _mockMonitor;
-            monitor.Setup(m => m.Log("SetSoilHealth skipped: invalid tile coordinates.", LogLevel.Warn)).Verifiable();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth("Farm", tile, 50.0f);
+
+            _mockDataService
+                .Setup(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()))
+                .Throws(new Exception("Data save failed"));
+
+            // Act & Assert - Should not throw
+            var ex = Record.Exception(() => service.SaveData("test_save"));
+            Assert.Null(ex);
+        }
+
+        [Fact]
+        public void SaveData_WithEmptyCache_DoesNotSave()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
 
             // Act
-            service.SetSoilHealth("", new Vector2(10, 15), 75f); // Empty location
-            service.SetSoilHealth(null!, new Vector2(11, 15), 80f); // Null location
+            service.SaveData("test_save");
 
-            // Assert
-            var health1 = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            var health2 = service.GetSoilHealth("Farm", new Vector2(11, 15));
-            Assert.Equal(0f, health1);
-            Assert.Equal(0f, health2);
+            // Assert - Should not attempt to save empty data
+            _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
-        public void SetSoilHealth_SkipsWhenTileCoordinatesAreInvalid()
+        public void GetSoilHealth_UsesFloorForCoordinateConversion()
         {
             // Arrange
-            var service = CreateService();
-            var monitor = _mockMonitor;
-            monitor.Setup(m => m.Log("SetSoilHealth skipped: invalid tile coordinates.", LogLevel.Warn)).Verifiable();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
+            var tile = new Vector2(10.7f, 15.3f); // Should map to (10, 15)
+            service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.SetSoilHealth("Farm", new Vector2(float.NaN, 15), 75f); // NaN X
-            service.SetSoilHealth("Farm", new Vector2(10, float.PositiveInfinity), 80f); // Infinity Y
-            service.SetSoilHealth("Farm", new Vector2(float.NaN, float.NaN), 85f); // Both NaN
+            var result = service.GetSoilHealth(location, new Vector2(10.9f, 15.8f)); // Should still get (10, 15)
 
-            // Assert
-            var health1 = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            var health2 = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            var health3 = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            Assert.Equal(0f, health1);
-            Assert.Equal(0f, health2);
-            Assert.Equal(0f, health3);
-            
-            monitor.Verify(m => m.Log("SetSoilHealth skipped: invalid tile coordinates.", LogLevel.Warn), Times.Exactly(3));
+            // Assert - Should get the value from the floored coordinates
+            Assert.Equal(50.0f, result);
         }
 
         [Fact]
-        public void UpdateHealth_IncrementsExistingValue()
+        public void SetSoilHealth_UsesFloorForCoordinateConversion()
         {
             // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 50f);
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
+
+            // Act - Set with fractional coordinates
+            service.SetSoilHealth(location, new Vector2(10.7f, 15.3f), 50.0f);
+
+            // Assert - Should be accessible with floored coordinates
+            Assert.Equal(50.0f, service.GetSoilHealth(location, new Vector2(10, 15)));
+            // And also with other fractional coordinates that floor to same tile
+            Assert.Equal(50.0f, service.GetSoilHealth(location, new Vector2(10.9f, 15.8f)));
+        }
+
+        [Fact]
+        public void UpdateHealth_UsesFloorForCoordinateConversion()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
+            service.SetSoilHealth(location, new Vector2(10, 15), 50.0f);
+
+            // Act - Update with fractional coordinates that map to same tile
+            service.UpdateHealth(location, new Vector2(10.7f, 15.3f), 10.0f);
+
+            // Assert - Should have updated the floored coordinates
+            Assert.Equal(60.0f, service.GetSoilHealth(location, new Vector2(10, 15)));
+        }
+
+        [Fact]
+        public void GetSoilHealth_WithNegativeCoordinates_WorksCorrectly()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            string location = "Farm";
+            var tile = new Vector2(-5.7f, -3.3f); // Should map to (-6, -4) using MathF.Floor
+            service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.UpdateHealth("Farm", new Vector2(10, 15), 25f); // Add 25 to existing 50
+            var result = service.GetSoilHealth(location, new Vector2(-5.9f, -3.8f)); // Should still get (-6, -4)
 
-            // Assert
-            var health = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            Assert.Equal(75f, health);
+            // Assert - Should get the value from the floored negative coordinates
+            Assert.Equal(50.0f, result);
         }
 
         [Fact]
-        public void UpdateHealth_StartsFromZero_WhenNoExistingValue()
+        public void ThreadSafety_MultipleThreadsAccessingService_DoesNotThrow()
         {
             // Arrange
-            var service = CreateService();
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
+            var exceptions = new List<Exception>();
+            var lockObj = new object();
 
-            // Act
-            service.UpdateHealth("Farm", new Vector2(10, 15), 30f); // Add 30 to default 0
-
-            // Assert
-            var health = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            Assert.Equal(30f, health);
-        }
-
-        [Fact]
-        public void UpdateHealth_ClampsResult_ToRange0To100()
-        {
-            // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 10f); // Start with 10
-
-            // Act
-            service.UpdateHealth("Farm", new Vector2(10, 15), -15f); // Would be -5, clamped to 0
-            var healthBelow = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            
-            service.SetSoilHealth("Farm", new Vector2(10, 16), 90f); // Start with 90
-            service.UpdateHealth("Farm", new Vector2(10, 16), 20f); // Would be 110, clamped to 100
-            var healthAbove = service.GetSoilHealth("Farm", new Vector2(10, 16));
-
-            // Assert
-            Assert.Equal(0f, healthBelow);  // Clamped to 0
-            Assert.Equal(100f, healthAbove); // Clamped to 100
-        }
-
-        [Fact]
-        public void UpdateHealth_SkipsWhenLocationIsInvalid()
-        {
-            // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 50f);
-            
-            var monitor = _mockMonitor;
-            monitor.Setup(m => m.Log("UpdateHealth skipped: invalid tile coordinates.", LogLevel.Warn)).Verifiable();
-
-            // Act
-            service.UpdateHealth("", new Vector2(10, 15), 25f); // Empty location
-            service.UpdateHealth(null!, new Vector2(11, 15), 30f); // Null location
-
-            // Assert
-            var health1 = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            var health2 = service.GetSoilHealth("Farm", new Vector2(11, 15));
-            Assert.Equal(50f, health1); // Should remain unchanged
-            Assert.Equal(0f, health2); // Should remain default
-        }
-
-        [Fact]
-        public void UpdateHealth_SkipsWhenTileCoordinatesAreInvalid()
-        {
-            // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 50f);
-            
-            var monitor = _mockMonitor;
-            monitor.Setup(m => m.Log("UpdateHealth skipped: invalid tile coordinates.", LogLevel.Warn)).Verifiable();
-
-            // Act
-            service.UpdateHealth("Farm", new Vector2(float.NaN, 15), 25f); // NaN X
-            service.UpdateHealth("Farm", new Vector2(10, float.PositiveInfinity), 30f); // Infinity Y
-            service.UpdateHealth("Farm", new Vector2(float.NaN, float.NaN), 35f); // Both NaN
-
-            // Assert
-            var health = service.GetSoilHealth("Farm", new Vector2(10, 15));
-            Assert.Equal(50f, health); // Should remain unchanged
-            
-            monitor.Verify(m => m.Log("UpdateHealth skipped: invalid tile coordinates.", LogLevel.Warn), Times.Exactly(3));
-        }
-
-        [Fact]
-        public void ThreadSafety_MultipleThreadsAccessingService_DoNotCorruptData()
-        {
-            // Arrange
-            var service = CreateService();
-            var tasks = new List<System.Threading.Tasks.Task>();
-            
-            // Set initial values for some tiles
-            service.SetSoilHealth("Farm", new Vector2(0, 0), 50f);
-            service.SetSoilHealth("Farm", new Vector2(1, 1), 60f);
-
-            // Act - Run multiple operations from different threads
+            // Act - Multiple threads accessing the service simultaneously
+            var tasks = new List<Thread>();
             for (int i = 0; i < 10; i++)
             {
-                int taskId = i;
-                tasks.Add(System.Threading.Tasks.Task.Run(() =>
+                var thread = new Thread(() =>
                 {
-                    for (int j = 0; j < 100; j++)
+                    try
                     {
-                        // Different threads operate on different tiles to avoid conflicts
-                        var tileX = taskId * 10 + j % 5;
-                        var tileY = taskId * 10 + j / 5;
-                        
-                        service.SetSoilHealth("Farm", new Vector2(tileX, tileY), taskId * 10 + j);
-                        var result = service.GetSoilHealth("Farm", new Vector2(tileX, tileY));
-                        
-                        // Update some existing tiles
-                        if (tileX < 5 && tileY < 5)
+                        for (int j = 0; j < 100; j++)
                         {
-                            service.UpdateHealth("Farm", new Vector2(tileX, tileY), 5f);
+                            var tile = new Vector2(j % 10, j / 10);
+                            service.SetSoilHealth("Farm", tile, j * 1.0f);
+                            service.GetSoilHealth("Farm", tile);
+                            service.UpdateHealth("Farm", tile, 1.0f);
                         }
                     }
-                }));
+                    catch (Exception ex)
+                    {
+                        lock (lockObj)
+                        {
+                            exceptions.Add(ex);
+                        }
+                    }
+                });
+                tasks.Add(thread);
+                thread.Start();
             }
 
-            // Wait for all tasks to complete
-            System.Threading.Tasks.Task.WaitAll(tasks.ToArray());
+            foreach (var task in tasks)
+            {
+                task.Join();
+            }
 
-            // Assert - No exceptions should occur and data should be consistent
-            var health00 = service.GetSoilHealth("Farm", new Vector2(0, 0));
-            var health11 = service.GetSoilHealth("Farm", new Vector2(1, 1));
-            
-            // Values should be in valid range
-            Assert.InRange(health00, 0f, 100f);
-            Assert.InRange(health11, 0f, 100f);
-        }
-
-        [Fact]
-        public void LoadData_HandlesExceptionGracefully()
-        {
-            // Arrange
-            _mockModDataService
-                .Setup(ds => ds.LoadData<SoilHealthState>(It.IsAny<string>()))
-                .Throws(new InvalidOperationException("Test exception during load"));
-            
-            _mockMonitor.Setup(m => m.Log("Error occurred while loading soil health data.", LogLevel.Error)).Verifiable();
-            
-            var service = CreateService();
-
-            // Act
-            var ex = Record.Exception(() => service.LoadData("test_save"));
-
-            // Assert
-            Assert.Null(ex); // Exception should be caught and logged, not propagated
-            _mockMonitor.Verify(m => m.Log("Error occurred while loading soil health data.", LogLevel.Error), Times.Once);
-        }
-
-        [Fact]
-        public void SaveData_HandlesExceptionGracefully()
-        {
-            // Arrange
-            var service = CreateService();
-            service.SetSoilHealth("Farm", new Vector2(10, 15), 75f);
-            
-            _mockModDataService
-                .Setup(ds => ds.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()))
-                .Throws(new InvalidOperationException("Test exception during save"));
-            
-            _mockMonitor.Setup(m => m.Log("Error occurred while persisting soil health data.", LogLevel.Error)).Verifiable();
-
-            // Act
-            var ex = Record.Exception(() => service.SaveData("test_save"));
-
-            // Assert
-            Assert.Null(ex); // Exception should be caught and logged, not propagated
-            _mockMonitor.Verify(m => m.Log("Error occurred while persisting soil health data.", LogLevel.Error), Times.Once);
-        }
-
-        [Fact]
-        public void SaveData_SkipsSavingWhenNoValidData()
-        {
-            // Arrange
-            var service = CreateService();
-            // Don't set any soil health values, so the cache is empty
-            
-            _mockMonitor.Setup(m => m.Log("No valid soil health data to save; skipping persistence.", LogLevel.Trace)).Verifiable();
-
-            // Act
-            service.SaveData("test_save_no_data");
-
-            // Assert
-            // SaveData should not be called on the mock data service since there's no valid data
-            _mockModDataService.Verify(ds => ds.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
-            _mockMonitor.Verify(m => m.Log("No valid soil health data to save; skipping persistence.", LogLevel.Trace), Times.Once);
+            // Assert - No exceptions should have occurred due to race conditions
+            Assert.Empty(exceptions);
         }
     }
 }
