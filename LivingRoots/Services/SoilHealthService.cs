@@ -124,9 +124,9 @@ namespace LivingRoots.Services
                         _runtimeCache[kv.Key] = kv.Value;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    _monitor.Log($"Error occurred while loading soil health data: {ex.Message}. Cache preserved.", LogLevel.Error);
+                    _monitor.Log("Error occurred while loading soil health data. Cache preserved.", LogLevel.Error);
                     // Keep existing cache; don't clear it on error to prevent data loss
                 }
             }
@@ -141,9 +141,9 @@ namespace LivingRoots.Services
             }
             
             // Create snapshot of data to write outside the lock for better performance
-            SoilHealthState snapshotState;
-            List<string> postLockWarnings = new List<string>(); // List to store deferred logs
-            List<bool> isWarning = new List<bool>(); // Parallel list to know if it's Warn or Trace
+            SoilHealthState? snapshotState = null;
+            bool hasDataToSave = false;
+            var postLockMessages = new List<(string Message, LogLevel Level)>();
 
             lock (_lock)
             {
@@ -154,9 +154,7 @@ namespace LivingRoots.Services
                     // Skip invalid location names to prevent corrupt entries
                     if (string.IsNullOrWhiteSpace(locationEntry.Key))
                     {
-                        // Defer logging until after lock
-                        postLockWarnings.Add("Skipped saving soil health for null or empty location name.");
-                        isWarning.Add(true); // true = LogLevel.Warn
+                        postLockMessages.Add(("Skipped saving soil health for null or empty location name.", LogLevel.Warn));
                         continue;
                     }
                     
@@ -179,8 +177,7 @@ namespace LivingRoots.Services
                     
                     if (invalidCount > 0)
                     {
-                        postLockWarnings.Add($"Skipped {invalidCount} invalid soil health entr(ies) in location '{locationEntry.Key}' during save.");
-                        isWarning.Add(true); // true = LogLevel.Warn
+                        postLockMessages.Add(($"Skipped {invalidCount} invalid soil health entr(ies) in location '{locationEntry.Key}' during save.", LogLevel.Warn));
                     }
                     
                     // Only add location if it has valid tiles
@@ -193,25 +190,21 @@ namespace LivingRoots.Services
                 // Prevent saving empty data which could overwrite existing data
                 if (stateToSave.LocationHealthData.Count == 0)
                 {
-                    // Defer this trace log too
-                    postLockWarnings.Add("No valid soil health data to save; skipping persistence.");
-                    isWarning.Add(false); // false = LogLevel.Trace
-                    snapshotState = null!;
+                    postLockMessages.Add(("No valid soil health data to save; skipping persistence.", LogLevel.Trace));
                 }
                 else
                 {
                     // Capture snapshot to write outside the lock
                     snapshotState = stateToSave;
+                    hasDataToSave = true;
                 }
             }
 
             // Emit deferred logs after releasing the lock
-            for (int i = 0; i < postLockWarnings.Count; i++)
-            {
-                _monitor.Log(postLockWarnings[i], isWarning[i] ? LogLevel.Warn : LogLevel.Trace);
-            }
+            foreach (var (msg, level) in postLockMessages)
+                _monitor.Log(msg, level);
 
-            if (snapshotState == null) return;
+            if (!hasDataToSave || snapshotState == null) return;
 
             string saveKey = GetSaveKey(saveId);
             
@@ -220,9 +213,9 @@ namespace LivingRoots.Services
                 _modDataService.SaveData(snapshotState, saveKey);
                 _monitor.Log("Soil Health data saved successfully.", LogLevel.Trace);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _monitor.Log($"Error occurred while persisting soil health data: {ex.Message}", LogLevel.Error);
+                _monitor.Log("Error occurred while persisting soil health data.", LogLevel.Error);
                 // Intentionally do not rethrow; keep runtime cache intact so the game can continue.
             }
         }
@@ -259,14 +252,22 @@ namespace LivingRoots.Services
             float result;
             lock (_lock)
             {
-                if (_runtimeCache.TryGetValue(locationName, out var tiles) &&
-                    tiles.TryGetValue(new Point(ix, iy), out float health))
+                if (_runtimeCache.TryGetValue(locationName, out var tiles))
                 {
-                    result = health;
+                    var key = new Point(ix, iy);
+                    
+                    if (tiles.TryGetValue(key, out float health))
+                    {
+                        result = health;
+                    }
+                    else
+                    {
+                        result = 0f; // Return default (Poor Soil) if no data exists
+                    }
                 }
                 else
                 {
-                    result = 0f; // Return default (Poor Soil) if no data exists
+                    result = 0f; // Return default (Poor Soil) if location doesn't exist
                 }
             }
             return result;
