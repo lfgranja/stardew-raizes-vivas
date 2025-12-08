@@ -31,10 +31,11 @@ namespace LivingRoots.Services
         {
             lock (_lock)
             {
-                // Preserve the cache if saveId is invalid to prevent accidental in-session data loss
+                // Clear the cache if saveId is invalid to prevent stale data from persisting across different game saves
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
-                    _monitor.Log("LoadData aborted: invalid saveId. Preserving current runtime cache.", LogLevel.Warn);
+                    _monitor.Log("LoadData aborted: invalid saveId. Runtime cache cleared.", LogLevel.Warn);
+                    _runtimeCache.Clear(); // ensure no stale state remains
                     return;
                 }
                 
@@ -44,8 +45,9 @@ namespace LivingRoots.Services
                 {
                     var savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
 
-                    // Convert from disk format (string keys) to runtime format (Point keys)
-                    _runtimeCache.Clear();
+                    // Use temporary cache to prevent data loss if parsing fails partway through
+                    var tempCache = new Dictionary<string, Dictionary<Point, float>>();
+                    
                     if (savedData != null)
                     {
                         // Guard against null LocationHealthData to prevent NullReferenceException during deserialization
@@ -89,7 +91,9 @@ namespace LivingRoots.Services
                                     }
                                     
                                     float clamped = Math.Clamp(rawValue, 0f, 100f);
-                                    tileDict[new Point(x, y)] = clamped;
+                                    // Resolve duplicates deterministically: last-write-wins
+                                    var point = new Point(x, y);
+                                    tileDict[point] = clamped;
                                 }
                                 else
                                 {
@@ -104,7 +108,7 @@ namespace LivingRoots.Services
                             // Only add location if at least one valid tile exists
                             if (tileDict.Count > 0)
                             {
-                                _runtimeCache[locationEntry.Key] = tileDict;
+                                tempCache[locationEntry.Key] = tileDict;
                             }
                         }
                     }
@@ -112,11 +116,18 @@ namespace LivingRoots.Services
                     {
                         _monitor.Log("No existing Soil Health data found. Starting fresh.", LogLevel.Info);
                     }
+                    
+                    // Swap caches only after successful parsing/validation
+                    _runtimeCache.Clear();
+                    foreach (var kv in tempCache)
+                    {
+                        _runtimeCache[kv.Key] = kv.Value;
+                    }
                 }
                 catch (Exception)
                 {
-                    _monitor.Log("Error occurred while loading soil health data.", LogLevel.Error);
-                    // Keep cache cleared; don't throw to avoid breaking game load
+                    _monitor.Log("Error occurred while loading soil health data. Cache preserved.", LogLevel.Error);
+                    // Keep existing cache; don't clear it on error to prevent data loss
                 }
             }
         }
@@ -143,18 +154,12 @@ namespace LivingRoots.Services
                     }
                     
                     var stringDict = new Dictionary<string, float>();
-                    bool warnedForInvalidValue = false; // Only warn once per location about invalid values
-                    
                     foreach (var tileEntry in locationEntry.Value)
                     {
                         var val = tileEntry.Value;
                         if (float.IsNaN(val) || float.IsInfinity(val))
                         {
-                            if (!warnedForInvalidValue)
-                            {
-                                _monitor.Log($"Skipped invalid soil health value(s) (NaN/Infinity) in location '{locationEntry.Key}'.", LogLevel.Warn);
-                                warnedForInvalidValue = true;
-                            }
+                            _monitor.Log("Skipped saving soil health value (NaN/Infinity) for a tile due to invalid state.", LogLevel.Warn);
                             continue;
                         }
                         
@@ -195,11 +200,17 @@ namespace LivingRoots.Services
         {
             // Validate input to prevent potential exceptions
             if (string.IsNullOrWhiteSpace(locationName)) 
+            {
+                _monitor.Log("GetSoilHealth skipped: invalid location name.", LogLevel.Trace);
                 return 0f; // Return default (Poor Soil) if location is invalid
+            }
 
             // Guard against invalid coordinates to prevent misleading lookups
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
+            {
+                _monitor.Log("GetSoilHealth skipped: invalid tile coordinates.", LogLevel.Trace);
                 return 0f;
+            }
 
             // Check for potential integer overflow before converting coordinates
             float fx = MathF.Floor(tile.X);
@@ -233,7 +244,10 @@ namespace LivingRoots.Services
         {
             // Validate input to prevent adding entries with invalid keys
             if (string.IsNullOrWhiteSpace(locationName)) 
+            {
+                _monitor.Log("SetSoilHealth skipped: invalid location name.", LogLevel.Warn);
                 return; // Skip if location is invalid
+            }
                 
             // Guard against invalid coordinates to prevent data corruption
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
@@ -272,7 +286,10 @@ namespace LivingRoots.Services
         {
             // Validate input to prevent adding entries with invalid keys
             if (string.IsNullOrWhiteSpace(locationName)) 
+            {
+                _monitor.Log("UpdateHealth skipped: invalid location name.", LogLevel.Warn);
                 return; // Skip if location is invalid
+            }
                 
             // Guard against invalid coordinates to prevent data corruption
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
