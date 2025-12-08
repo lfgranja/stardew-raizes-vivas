@@ -17,7 +17,8 @@ Seguindo o `ARCHITECTURE.md` e o princípio de Inversão de Dependência (DIP) j
 - Implementar validação e sanitização de dados.
 
 ### Camada de Controle (`LivingRoots/Controllers`):
-- Registrar eventos de carregamento (`SaveLoaded`) e salvamento (`Saving`/`DayEnding`).
+- Registrar os eventos `SaveLoaded` e `Saving` (ou `DayEnding`).
+- Coordenar entre eventos do jogo e serviços de aplicação.
 
 ### Estrutura de Dados Proposta
 
@@ -184,7 +185,7 @@ namespace LivingRoots.Services
                                         continue;
                                     }
                                     
-                                    float clamped = Math.Clamp(rawValue, 0f, 10f);
+                                    float clamped = Math.Clamp(rawValue, 0f, 100f);
                                     // Resolve duplicates deterministically: last-write-wins
                                     var point = new Point(x, y);
                                     tileDict[point] = clamped;
@@ -366,7 +367,7 @@ namespace LivingRoots.Services
             lock (_lock)
             {
                 // Domain Rule: Clamp between 0 and 100
-                float clampedValue = Math.Clamp(value, 0f, 10f);
+                float clampedValue = Math.Clamp(value, 0f, 100f);
 
                 // Use GetOrAddLocationCache to avoid code duplication
                 var tiles = GetOrAddLocationCache(locationName);

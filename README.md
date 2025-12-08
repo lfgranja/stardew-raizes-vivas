@@ -5,7 +5,7 @@ A Stardew Valley mod that introduces sustainable farming practices through soil 
 ## Features
 
 ### Soil Health System
-- Each farm tile has a persistent soil health value (0-10%)
+- Each farm tile has a persistent soil health value (0-100%)
 - Health values are saved and loaded with the game
 - Visual indicators show soil health status
 - Health degrades over time when soil is left bare
