@@ -1,141 +1,102 @@
-# ARCHITECTURE.md - Stardew Valley: Living Roots Mod Architecture
+# LivingRoots Architecture
 
-This document describes the architecture for the "Living Roots" mod, focusing on the application of software engineering principles (SOLID, TDD, DDD) to ensure clean, modular, testable, and easily maintainable and extensible code.
+This document outlines the architecture of the LivingRoots mod for Stardew Valley, following Domain-Driven Design (DDD) principles and the Dependency Inversion Principle (DIP).
 
-## Fundamental Principles
+## Architecture Layers
 
-Our architecture is guided by the following principles:
+The mod follows a layered architecture with clear separation of concerns:
 
-*   **Separation of Concerns (SOLID - S):** Each component (class, module) will have a single, well-defined responsibility.
-*   **Dependency Inversion (SOLID - D):** High-level modules will not depend on low-level modules. Both will depend on abstractions (interfaces), facilitating testability and flexibility.
-*   **Domain-Driven Design (DDD):** The code will reflect the agroecology domain, using a "Ubiquitous Language" to name classes, methods, and variables (e.g., `SoilHealth`, `Composter`, `CropRotation`).
-*   **Test-Driven Development (TDD):** Core business logic will be developed with unit tests first, ensuring correctness and robustness.
-*   **KISS (Keep It Simple, Stupid):** Avoiding unnecessary complexity, such as wrapper interfaces when the original interface is sufficient (e.g., using `IMonitor` directly instead of creating `IMonitorWrapper`).
-*   **YAGNI (You Aren't Gonna Need It):** Avoiding premature abstractions that don't provide immediate value (e.g., removing unused interfaces like `IModService`).
+### Domain Layer (`LivingRoots/Domain`)
+- Contains domain models, interfaces, and business logic
+- Defines the core concepts of the mod using domain-driven design
+- Contains interfaces that abstract external dependencies (e.g., `IModDataService`)
+- Implements domain services with business rules (e.g., soil health clamping to 0-100 range)
 
-## Folder Structure and Components
+### Services Layer (`LivingRoots/Services`)
+- Implements application services that orchestrate domain logic
+- Contains concrete implementations of domain interfaces
+- Handles cross-cutting concerns like data validation and sanitization
+- Implements the soil health persistence mechanism using SMAPI's data system
 
-The project is organized into a folder structure that reflects the separation of concerns and Domain-Driven Design:
+### Controllers Layer (`LivingRoots/Controllers`)
+- Handles SMAPI events and game lifecycle
+- Coordinates between game events and application services
+- Implements command pattern for in-game commands
+- Acts as the boundary between the game engine and the mod's business logic
 
+### Entry Point (`ModEntry.cs`)
+- Bootstraps the application and registers services
+- Implements SMAPI's `Mod` interface
+- Handles dependency injection through constructor parameters
 
-LivingRoots/
-├── Domain/                 # Pure Business Logic (Agroecology) - Planned
-│   ├── IModLogic.cs        # Interface for mod logic - Planned
-│   └── ...
-├── Services/               # SMAPI Interaction and Data Persistence
-│   ├── IModDataService.cs  # Interface for data persistence
-│   ├── ModDataService.cs   # Implementation of data persistence
-│   └── ...
-├── Controllers/            # Game Event Management and Player Interaction
-│   ├── ModController.cs    # Main controller for game events
-│   └── ...
-├── Models/                 # Data classes (POCOs) - Planned for future use
-│   └── ...                   # Currently, data models are embedded within services or domain classes as needed
-├── docs/                   # Documentation files
-├── ModEntry.cs             # Mod Entry Point and Dependency Orchestrator
-├── LivingRoots.csproj
-└── manifest.json
+## Design Patterns
 
+### Dependency Inversion Principle (DIP)
+- High-level modules depend on abstractions, not concretions
+- Domain layer defines interfaces that services layer implements
+- Enables loose coupling and testability
 
-LivingRoots.Tests/          # Unit Tests Project
-├── LivingRoots.Tests.csproj
-├── ModControllerTests.cs
-├── ModDataServiceTests.cs
-└── Usings.cs
+### Service Layer Pattern
+- Encapsulates application logic in service classes
+- Provides a clear API for controllers to interact with business logic
+- Handles data validation, transformation, and persistence
 
+### Domain-Driven Design (DDD)
+- Models the problem domain using domain entities and value objects
+- Uses ubiquitous language throughout the codebase
+- Separates domain logic from infrastructure concerns
 
-### Component Details
+## Data Flow
 
-1.  **`ModEntry.cs` (Entry Point and Orchestrator)**
-    *   This is the main class that SMAPI loads.
-    *   Its primary responsibility is to initialize the mod, register SMAPI events, and **orchestrate the creation and injection of dependencies** for other components (following the D of SOLID principle).
-    *   Example:
-        ```csharp
-        public override void Entry(IModHelper helper)
-        {
-            // Create domain services - Composition Root
-            var unicodeNormalizationService = new UnicodeNormalizationService();
-            var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
-            var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
-            var pathValidationService = new PathValidationService(unicodeNormalizationService);
-            var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
-            
-            // Create application services
-            var modDataService = new ModDataService(helper, this.Monitor, modLogic);
-            
-            // Create controller with dependency injection
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, modDataService);
-            
-            // Register events through the Controller
-            _controller.RegisterEvents();
-        }
-```
-        
+1. Game events are captured by controllers
+2. Controllers delegate to application services
+3. Services coordinate domain objects and persistence
+4. Domain rules are enforced throughout the process
+5. Data is persisted using SMAPI's data system
 
-2. **`Domain/` (Pure Business Logic)**
-    *   Planned folder for classes that will encapsulate the mod's core logic, directly related to agroecology concepts.
-    *   These classes will be **pure**, meaning they will not directly interact with the game (SMAPI) or data persistence.
-    *   They will be highly testable via TDD, as they will have no complex external dependencies.
-    *   Contains interfaces like `ISoilHealthService` for future domain logic implementations.
+## Soil Health Implementation
 
-3. **`Services/` (SMAPI Interaction and Persistence)**
-    *   Responsible for interacting with SMAPI APIs to:
-        *   Persist and load mod data (e.g., `helper.Data.WriteJsonFile`).
-        *   Access game information (locations, tiles, objects).
-        *   Provide interfaces for other components to access data abstractly (following the I of SOLID principle).
-    *   `ModDataService.cs` (implementation) and `IModDataService.cs` (interface) handle generic mod data saving/loading.
-    *   `SoilHealthService.cs` (implementation) and `ISoilHealthService.cs` (interface) handle soil health data persistence.
+The soil health feature implements the following architecture:
 
-4. **`Controllers/` (Event Management and Interaction)**
-    *   Responsible for listening to game events (via `helper.Events`) and reacting to them, orchestrating calls to domain logic and services.
-    *   `ModController.cs` is the main controller that handles game events like `GameLaunched`, `SaveLoaded`, and `Saving`.
+### SoilHealthState Model
+- Represents the persisted state of soil health for the entire save
+- Key: Location Name (e.g., "Farm")
+- Value: Dictionary mapping Tile Coordinates "X,Y" to Health Value (float)
 
-5. **`Models/` (Data Classes)**
-    *   Simple classes (POCOs - Plain Old C# Objects) that represent the structure of mod data.
-    *   Used for serialization/deserialization of data and for passing information between components.
-    *   This directory is planned for future use to centralize data models.
-    *   Currently, data models are embedded within services or domain classes as needed.
+### ISoilHealthService Interface
+- Defines the contract for soil health operations
+- Located in the Domain layer to maintain separation of concerns
 
-## Data and Control Flow (Example: Soil Health)
+### SoilHealthService Implementation
+- Implements the soil health business logic
+- Handles data validation, sanitization, and persistence
+- Uses thread-safe operations with lock mechanisms
+- Implements temporary cache pattern to prevent data loss during load failures
+- Validates coordinates and clamps values to [0, 100] range
 
-1.  **`ModEntry`** initializes `ModController`, injecting dependencies like `IModHelper`, `IMonitor`, `IManifest`, `IModDataService`, and `ISoilHealthService`.
-2.  **`ModController`** listens to the `GameLoop.SaveLoaded` event from SMAPI to load soil health data when a save is loaded.
-3.  **`ModController`** listens to the `GameLoop.Saving` event from SMAPI to save soil health data before the game saves.
-4.  When a save is loaded, `ModController` calls `ISoilHealthService.LoadData()` to retrieve soil health values from the save file.
-5.  When the game is about to save, `ModController` calls `ISoilHealthService.SaveData()` to persist soil health values to the save file.
-6.  **`SoilHealthService`** manages the runtime cache and handles conversion between disk format (string keys) and runtime format (Point keys) for optimal performance.
-7.  The architecture ensures that business logic is independent of the game and UI, making it easier to test and maintain. Interaction with the game is encapsulated in services and controllers, minimizing coupling.
+### Integration with Game Events
+- Hooks into SMAPI's SaveLoaded and Saving events
+- Ensures data is loaded on game load and saved on game save
+- Maintains data integrity across game sessions
 
-## Recent Improvements and Fixes
+## Security Considerations
 
-The following improvements and security fixes have been implemented to enhance the mod's robustness:
+- Input validation and sanitization at all layers
+- Path traversal prevention using validation services
+- File name sanitization to prevent invalid characters
+- Proper encoding and normalization of user input
+- Secure logging practices to prevent information disclosure
 
-1. **Thread Safety in ModController Command Registration**: Implemented atomic state management with bit flags and thread-safe operations to prevent race conditions during command registration. Uses `Interlocked` operations to ensure only one thread can register commands or events.
+## Testing Strategy
 
-2. **Static Readonly HashSet Optimization**: Optimized the blocked extensions list by making it a static readonly field to avoid rebuilding the set on every call, improving performance.
+- Unit tests for all domain services
+- Integration tests for data persistence
+- Mocking of external dependencies for isolated testing
+- Test coverage of edge cases and error conditions
 
-3. **Error Message Consistency**: Standardized error messages in PathValidationService to ensure consistent error reporting across all validation methods, following security best practices for not revealing specific attack vectors.
+## Conventions
 
-4. **Extension Detection Edge Cases**: Enhanced the extension detection algorithm to handle more complex edge cases including:
-   - Proper handling of Unicode normalization to prevent homoglyph attacks
-   - Robust detection of extensions in filenames with consecutive dots
-   - Validation of extension content to prevent bypass attempts using control characters
-   
-5. **Cross-Platform Path Separator Handling**: Improved handling of both forward slashes and backslashes as path separators to ensure consistent behavior across different operating systems.
-
-6. **UNC Path Handling**: Enhanced ReservedNameHandler to properly handle UNC paths (Universal Naming Convention paths starting with `\\` or `//`) by implementing specialized parsing logic that preserves the UNC structure while still processing the filename component.
-
-7. **Surrogate Pair Handling**: Improved SafeSubstring method to prevent splitting Unicode surrogate pairs (used for emojis and other characters outside the Basic Multilingual Plane), ensuring character integrity.
-
-8. **Integer Overflow Protection**: Added protection against integer overflow and underflow in path traversal depth calculations to prevent potential security vulnerabilities.
-
-9. **Path Traversal Security**: Enhanced validation logic to distinguish between legitimate uses of `.` and `..` segments and malicious path traversal attempts, allowing safe relative paths while blocking dangerous traversal patterns.
-
-10. **Security Requirements Validation**: Added comprehensive validation to ensure filenames meet all security requirements after processing, preventing invalid states that could lead to vulnerabilities.
-
-11. **Soil Health Persistence Integration**: Added comprehensive soil health data persistence system with:
-    - `SoilHealthState` model for data serialization
-    - `ISoilHealthService` and `SoilHealthService` for managing soil health values
-    - Integration with `ModController` to handle `SaveLoaded` and `Saving` events
-    - Thread-safe caching and data access
-    - Robust error handling for corrupted save data
+- Follows Stardew Valley Modding API (SMAPI) conventions
+- Uses semantic versioning for releases
+- Implements conventional commits for version control
+- Maintains comprehensive documentation for all components
