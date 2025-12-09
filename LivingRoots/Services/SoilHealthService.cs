@@ -159,6 +159,7 @@ namespace LivingRoots.Services
             string dataKey = GetSaveKey(saveId);
 
             // Create a snapshot of the current cache to avoid holding the lock during I/O
+            // This implements the snapshot pattern to move I/O operations outside the lock
             Dictionary<string, Dictionary<string, float>>? snapshotState = null;
             bool hasDataToSave = false;
             
@@ -188,6 +189,7 @@ namespace LivingRoots.Services
             }
 
             // Only save if we have data to save (this prevents the test failure)
+            // This moves the I/O operation outside the lock for better performance
             if (hasDataToSave && snapshotState != null)
             {
                 try
@@ -208,14 +210,14 @@ namespace LivingRoots.Services
             // Validate input to prevent potential exceptions
             if (string.IsNullOrWhiteSpace(locationName))
             {
-                _monitor.Log("GetSoilHealth skipped: invalid location name.", LogLevel.Trace);
+                // Skip logging for invalid location name to reduce noise in frequently called methods
                 return 0f; // Return default (Poor Soil) if location is invalid
             }
 
             // Guard against invalid coordinates to prevent misleading lookups
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
             {
-                _monitor.Log("GetSoilHealth skipped: invalid tile coordinates.", LogLevel.Trace);
+                // Skip logging for invalid coordinates to reduce noise in frequently called methods
                 return 0f;
             }
 
@@ -224,7 +226,7 @@ namespace LivingRoots.Services
             float fy = MathF.Floor(tile.Y);
             if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
             {
-                _monitor.Log("GetSoilHealth skipped: coordinates out of integer range.", LogLevel.Trace);
+                // Skip logging for coordinate range issues to reduce noise in frequently called methods
                 return 0f;
             }
 
@@ -350,9 +352,50 @@ namespace LivingRoots.Services
 
         private string GetSaveKey(string saveId)
         {
-            // Basic key sanitization is handled by ModDataService,
-            // but we ensure the save ID is part of the key to separate files.
-            return $"{KeyPrefix}{saveId}";
+            // Implement secure sanitization with bounded stack allocation
+            if (string.IsNullOrEmpty(saveId)) saveId = "unknown";
+            
+            // Define a safe limit for stack allocation to prevent stack overflow
+            const int MaxSaveIdLength = 256;
+            
+            // Use stackalloc for small strings, heap allocation for larger ones
+            if (saveId.Length <= MaxSaveIdLength)
+            {
+                Span<char> buffer = stackalloc char[saveId.Length];
+                int j = 0;
+                for (int i = 0; i < saveId.Length; i++)
+                {
+                    char c = saveId[i];
+                    if (char.IsLetterOrDigit(c) || c == '-' || c == '_')
+                    {
+                        buffer[j++] = c;
+                    }
+                    else
+                    {
+                        buffer[j++] = '_';
+                    }
+                }
+                string sanitizedId = new string(buffer.Slice(0, j));
+                return $"{KeyPrefix}{sanitizedId}";
+            }
+            else
+            {
+                // For very long save IDs, use heap allocation instead of stack
+                var safeChars = new List<char>(saveId.Length);
+                foreach (char c in saveId)
+                {
+                    if (char.IsLetterOrDigit(c) || c == '-' || c == '_')
+                    {
+                        safeChars.Add(c);
+                    }
+                    else
+                    {
+                        safeChars.Add('_');
+                    }
+                }
+                string sanitizedId = new string(safeChars.ToArray());
+                return $"{KeyPrefix}{sanitizedId}";
+            }
         }
     }
 }
