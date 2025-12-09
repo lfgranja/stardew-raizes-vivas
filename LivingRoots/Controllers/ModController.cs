@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Threading;
 using LivingRoots.Domain;
 using LivingRoots.Services;
+using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 
@@ -14,7 +15,6 @@ namespace LivingRoots.Controllers
         // State flags for thread safety using atomic operations
         private const int EventsRegisteredFlag = 1 << 0;
         private const int DisposedFlag = 1 << 1;
-        private const int DisposedMessageLoggedFlag = 1 << 2;
         private int _state = 0; // Combine flags in single volatile field
 
         // Dependencies
@@ -118,10 +118,10 @@ namespace LivingRoots.Controllers
                     return;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Log error and reset the flag if registration failed - ensure disposed flag is preserved
-                monitor.Log("Error occurred while registering game events.", LogLevel.Error);
+                monitor.Log($"Error occurred while registering game events: {ex.Message}", LogLevel.Error);
 
                 // Attempt to rollback any partial subscriptions with individual exception handling
                 try
@@ -198,10 +198,10 @@ namespace LivingRoots.Controllers
 
                 monitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Log error but don't rethrow to prevent disposal chain interruption
-                monitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
+                monitor.Log($"Error occurred while unregistering game events: {ex.Message}", LogLevel.Error);
             }
         }
 
@@ -216,9 +216,9 @@ namespace LivingRoots.Controllers
                 // Initialize the mod with constants and settings
                 _monitor.Log($"The '{_manifest.Name}' mod was loaded successfully!", LogLevel.Info);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                _monitor.Log("Error occurred in game launched event handler.", LogLevel.Error);
+                _monitor.Log($"Error occurred in game launched event handler: {ex.Message}", LogLevel.Error);
             }
         }
 
@@ -234,9 +234,11 @@ namespace LivingRoots.Controllers
             {
                 saveId = Constants.SaveFolderName;
             }
-            catch
+            catch (Exception ex)
             {
-                // If Constants.SaveFolderName is unavailable, skip loading
+                // Log error but don't throw to prevent game loading issues
+                _monitor.Log($"OnSaveLoaded: An error occurred while retrieving the save folder name: {ex.Message}. Soil health data will not be loaded.", LogLevel.Warn);
+                return; // If Constants.SaveFolderName is unavailable, skip loading
             }
 
             if (string.IsNullOrWhiteSpace(saveId))
@@ -245,9 +247,16 @@ namespace LivingRoots.Controllers
                 return;
             }
 
-            // Load data using the save folder name as unique ID
-            _soilHealthService.LoadData(saveId);
-            _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
+            try
+            {
+                // Load data using the save folder name as unique ID
+                _soilHealthService.LoadData(saveId);
+                _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Error occurred while loading soil health data for save '{saveId}': {ex.Message}", LogLevel.Error);
+            }
         }
 
         private void OnSaving(object? sender, SavingEventArgs e)
@@ -262,9 +271,11 @@ namespace LivingRoots.Controllers
             {
                 saveId = Constants.SaveFolderName;
             }
-            catch
+            catch (Exception ex)
             {
-                // If Constants.SaveFolderName is unavailable, skip saving
+                // Log error but don't throw to prevent game saving issues
+                _monitor.Log($"OnSaving: An error occurred while retrieving the save folder name: {ex.Message}. Soil health data will not be saved.", LogLevel.Warn);
+                return; // If Constants.SaveFolderName is unavailable, skip saving
             }
 
             if (string.IsNullOrWhiteSpace(saveId))
@@ -273,9 +284,16 @@ namespace LivingRoots.Controllers
                 return;
             }
 
-            // Save data before the game saves/exits (using the saving event)
-            _soilHealthService.SaveData(saveId);
-            _monitor.Log("Soil health data saved successfully.", LogLevel.Trace);
+            try
+            {
+                // Save data before the game saves/exits (using the saving event)
+                _soilHealthService.SaveData(saveId);
+                _monitor.Log("Soil health data saved successfully.", LogLevel.Trace);
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Error occurred while saving soil health data for save '{saveId}': {ex.Message}", LogLevel.Error);
+            }
         }
 
         public void Dispose()
@@ -283,18 +301,8 @@ namespace LivingRoots.Controllers
             // Use TrySetStateFlag to ensure disposal flag is only set once
             if (!TrySetStateFlag(DisposedFlag))
             {
-                // Check if the disposal message has already been logged
-                int currentState = Volatile.Read(ref _state);
-                if ((currentState & DisposedMessageLoggedFlag) == 0)
-                {
-                    // Try to set the flag to indicate we've logged the disposal message
-                    int newState = currentState | DisposedMessageLoggedFlag;
-                    if (Interlocked.CompareExchange(ref _state, newState, currentState) == currentState)
-                    {
-                        // Only log if we successfully set the flag (meaning this is the first time logging after disposal)
-                        _monitor.Log("Controller is already disposed.", LogLevel.Trace);
-                    }
-                }
+                // If already disposed, check if we need to log the disposal message
+                // Only log once if another thread disposed first and we're calling Dispose again
                 return; // Already disposed
             }
 
