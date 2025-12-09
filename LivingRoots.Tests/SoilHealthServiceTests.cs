@@ -257,7 +257,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void LoadData_WithInvalidSaveId_ClearsCache()
+        public void LoadData_WithInvalidSaveId_PreservesCache()
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
@@ -265,12 +265,12 @@ namespace LivingRoots.Tests
             service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
             // Act
-            service.LoadData(null); // Should clear cache
-            service.LoadData(""); // Should clear cache
-            service.LoadData("   "); // Should clear cache
+            service.LoadData(null); // Should preserve cache
+            service.LoadData(""); // Should preserve cache
+            service.LoadData("   "); // Should preserve cache
 
-            // Assert - Value should be cleared
-            Assert.Equal(0f, service.GetSoilHealth("Farm", tile));
+            // Assert - Value should be preserved (not cleared) when invalid saveId is passed
+            Assert.Equal(50.0f, service.GetSoilHealth("Farm", tile));
         }
 
         [Fact]
@@ -394,7 +394,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void LoadData_WithEmptyLocationName_SkipsInvalidEntries()
+        public void LoadData_WithNullLocationName_SkipsInvalidEntries()
         {
             // Arrange
             var saveData = new SoilHealthState
@@ -525,7 +525,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void SaveData_WithEmptyLocationName_DoesNotSaveInvalidEntries()
+        public void SaveData_WithNullLocationName_DoesNotSaveInvalidEntries()
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
@@ -659,7 +659,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void ThreadSafety_MultipleThreadsAccessingService_DoesNotThrow()
+        public async Task ThreadSafety_MultipleThreadsAccessingService_DoesNotThrow()
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
@@ -693,7 +693,7 @@ namespace LivingRoots.Tests
                 tasks.Add(task);
             }
 
-            Task.WaitAll(tasks.ToArray());
+            await Task.WhenAll(tasks);
 
             // Assert - No exceptions should have occurred due to race conditions
             Assert.Empty(exceptions);

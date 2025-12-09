@@ -29,104 +29,99 @@ namespace LivingRoots.Services
 
         public void LoadData(string saveId)
         {
-            // Clear the cache if saveId is invalid to prevent stale data from persisting across different game saves
+            // If saveId is invalid, skip loading to avoid wiping runtime state
             if (string.IsNullOrWhiteSpace(saveId))
             {
-                _monitor.Log("LoadData aborted: invalid saveId. Runtime cache cleared to avoid stale state.", LogLevel.Warn);
-                lock (_lock)
-                {
-                    _runtimeCache.Clear(); // ensure no stale state remains
-                }
+                _monitor.Log("LoadData aborted: invalid saveId. Runtime cache preserved.", LogLevel.Warn);
                 return;
             }
             
             string dataKey = GetSaveKey(saveId);
             
-            // Load data outside the lock to prevent blocking
-            SoilHealthState? savedData = null;
+            // Use temporary cache to prevent data loss if parsing fails partway through
+            var tempCache = new Dictionary<string, Dictionary<Point, float>>();
+            
             try
             {
-                savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
+                var savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
+
+                if (savedData != null)
+                {
+                    // Guard against null LocationHealthData to prevent NullReferenceException during deserialization
+                    var locations = savedData.LocationHealthData ?? new Dictionary<string, Dictionary<string, float>>();
+                    
+                    foreach (var locationEntry in locations)
+                    {
+                        // Skip if the location name is null or empty to prevent invalid entries in the cache
+                        if (string.IsNullOrWhiteSpace(locationEntry.Key))
+                        {
+                            _monitor.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn);
+                            continue;
+                        }
+                        
+                        // Skip if the value is null to prevent NullReferenceException
+                        if (locationEntry.Value == null) continue;
+                        
+                        var tileDict = new Dictionary<Point, float>();
+                        bool warnedForInvalidValue = false; // Only warn once per location for invalid values
+                        bool warnedForMalformedKey = false; // Only warn once per location for malformed keys
+                        foreach (var tileEntry in locationEntry.Value)
+                        {
+                            // Parse "X,Y" string back to Point (using integers for tile coordinates)
+                            // Use ReadOnlySpan<char> to avoid string.Split allocation for better performance
+                            ReadOnlySpan<char> keySpan = tileEntry.Key;
+                            int commaIndex = keySpan.IndexOf(',');
+                            if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
+                                int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
+                                int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
+                            {
+                                // Validate the loaded value by checking for NaN/Infinity and clamping to [0, 100] range
+                                var rawValue = tileEntry.Value;
+                                if (float.IsNaN(rawValue) || float.IsInfinity(rawValue))
+                                {
+                                    if (!warnedForInvalidValue)
+                                    {
+                                        _monitor.Log($"Skipped invalid soil health value (NaN/Infinity) in location '{locationEntry.Key}'.", LogLevel.Warn);
+                                        warnedForInvalidValue = true;
+                                    }
+                                    continue;
+                                }
+                                
+                                float clamped = Math.Clamp(rawValue, 0f, 100f);
+                                // Resolve duplicates deterministically: last-write-wins
+                                var point = new Point(x, y);
+                                tileDict[point] = clamped;
+                            }
+                            else
+                            {
+                                // Warn about malformed keys to help diagnose corrupted save data
+                                if (!warnedForMalformedKey)
+                                {
+                                    _monitor.Log($"Skipped malformed soil health tile key(s) in location '{locationEntry.Key}'.", LogLevel.Warn);
+                                    warnedForMalformedKey = true;
+                                }
+                            }
+                        }
+                        // Only add location if at least one valid tile exists
+                        if (tileDict.Count > 0)
+                        {
+                            tempCache[locationEntry.Key] = tileDict;
+                        }
+                    }
+                }
+                else
+                {
+                    _monitor.Log("No existing Soil Health data found. Starting fresh.", LogLevel.Info);
+                }
             }
             catch (Exception)
             {
                 _monitor.Log("Error occurred while loading soil health data. Cache preserved.", LogLevel.Error);
-                return;
+                // Keep existing cache; don't clear it on error to prevent data loss
+                return; // keep existing cache intact
             }
 
-            // Use temporary cache to prevent data loss if parsing fails partway through
-            var tempCache = new Dictionary<string, Dictionary<Point, float>>();
-            
-            if (savedData != null)
-            {
-                // Guard against null LocationHealthData to prevent NullReferenceException during deserialization
-                var locations = savedData.LocationHealthData ?? new Dictionary<string, Dictionary<string, float>>();
-                
-                foreach (var locationEntry in locations)
-                {
-                    // Skip if the location name is null or empty to prevent invalid entries in the cache
-                    if (string.IsNullOrWhiteSpace(locationEntry.Key))
-                    {
-                        _monitor.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn);
-                        continue;
-                    }
-                    
-                    // Skip if the value is null to prevent NullReferenceException
-                    if (locationEntry.Value == null) continue;
-                    
-                    var tileDict = new Dictionary<Point, float>();
-                    bool warnedForInvalidValue = false; // Only warn once per location for invalid values
-                    bool warnedForMalformedKey = false; // Only warn once per location for malformed keys
-                    foreach (var tileEntry in locationEntry.Value)
-                    {
-                        // Parse "X,Y" string back to Point (using integers for tile coordinates)
-                        // Use ReadOnlySpan<char> to avoid string.Split allocation for better performance
-                        ReadOnlySpan<char> keySpan = tileEntry.Key;
-                        int commaIndex = keySpan.IndexOf(',');
-                        if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
-                            int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
-                            int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
-                        {
-                            // Validate the loaded value by checking for NaN/Infinity and clamping to [0, 100] range
-                            var rawValue = tileEntry.Value;
-                            if (float.IsNaN(rawValue) || float.IsInfinity(rawValue))
-                            {
-                                if (!warnedForInvalidValue)
-                                {
-                                    _monitor.Log($"Skipped invalid soil health value (NaN/Infinity) in location '{locationEntry.Key}'.", LogLevel.Warn);
-                                    warnedForInvalidValue = true;
-                                }
-                                continue;
-                            }
-                            
-                            float clamped = Math.Clamp(rawValue, 0f, 100f);
-                            // Resolve duplicates deterministically: last-write-wins
-                            var point = new Point(x, y);
-                            tileDict[point] = clamped;
-                        }
-                        else
-                        {
-                            // Warn about malformed keys to help diagnose corrupted save data
-                            if (!warnedForMalformedKey)
-                            {
-                                _monitor.Log($"Skipped malformed soil health tile key(s) in location '{locationEntry.Key}'.", LogLevel.Warn);
-                                warnedForMalformedKey = true;
-                            }
-                        }
-                    }
-                    // Only add location if at least one valid tile exists
-                    if (tileDict.Count > 0)
-                    {
-                        tempCache[locationEntry.Key] = tileDict;
-                    }
-                }
-            }
-            else
-            {
-                _monitor.Log("No existing Soil Health data found. Starting fresh.", LogLevel.Info);
-            }
-            
-            // Update cache inside lock to ensure thread safety
+            // Swap caches only after successful parsing/validation
             lock (_lock)
             {
                 _runtimeCache.Clear();
@@ -147,6 +142,8 @@ namespace LivingRoots.Services
             
             // Create snapshot of data to write outside the lock for better performance
             Dictionary<string, Dictionary<Point, float>> snapshot;
+            var postMessages = new List<(string, LogLevel)>();
+
             lock (_lock)
             {
                 // Create a shallow copy of the runtime cache first
@@ -160,7 +157,6 @@ namespace LivingRoots.Services
 
             // Now process the data outside the lock
             var stateToSave = new SoilHealthState();
-            var postMessages = new List<(string, LogLevel)>();
 
             foreach (var locationEntry in snapshot)
             {
