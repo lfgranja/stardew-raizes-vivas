@@ -245,16 +245,9 @@ namespace LivingRoots.Controllers
                 return;
             }
 
-            try
-            {
-                // Load data using the save folder name as unique ID
-                _soilHealthService.LoadData(saveId);
-                _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
-            }
-            catch (Exception)
-            {
-                _monitor.Log($"Error occurred while loading soil health data for save '{saveId}'.", LogLevel.Error);
-            }
+            // Load data using the save folder name as unique ID
+            _soilHealthService.LoadData(saveId);
+            _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
         }
 
         private void OnSaving(object? sender, SavingEventArgs e)
@@ -280,16 +273,9 @@ namespace LivingRoots.Controllers
                 return;
             }
 
-            try
-            {
-                // Save data before the game saves/exits (using the saving event)
-                _soilHealthService.SaveData(saveId);
-                _monitor.Log("Soil health data saved successfully.", LogLevel.Trace);
-            }
-            catch (Exception)
-            {
-                _monitor.Log($"Error occurred while saving soil health data for save '{saveId}'.", LogLevel.Error);
-            }
+            // Save data before the game saves/exits (using the saving event)
+            _soilHealthService.SaveData(saveId);
+            _monitor.Log("Soil health data saved successfully.", LogLevel.Trace);
         }
 
         public void Dispose()
