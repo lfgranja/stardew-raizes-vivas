@@ -30,11 +30,14 @@ namespace LivingRoots.Services
 
         public void LoadData(string saveId)
         {
-            // If saveId is invalid, preserve the cache to prevent data leakage between saves
-            // IMPORTANT: Preserving existing cache when saveId is invalid maintains data integrity
+            // If saveId is invalid, clear the cache to prevent data leakage between saves
             if (string.IsNullOrWhiteSpace(saveId))
             {
-                _monitor.Log("LoadData aborted: invalid saveId. Runtime cache preserved to prevent data leakage.", LogLevel.Warn);
+                _monitor.Log("LoadData aborted: invalid saveId. Runtime cache cleared to prevent data leakage.", LogLevel.Warn);
+                lock (_lock)
+                {
+                    _runtimeCache.Clear();
+                }
                 return; // Return early without modifying the cache
             }
 
@@ -57,7 +60,7 @@ namespace LivingRoots.Services
                 loadErrorOccurred = true;
             }
 
-            // If there was an error loading the data, return early without modifying runtime cache to preserve existing data
+            // If there was an error loading the data, return early without modifying runtime cache
             if (loadErrorOccurred)
             {
                 return;
@@ -90,8 +93,8 @@ namespace LivingRoots.Services
                         ReadOnlySpan<char> keySpan = tileEntry.Key;
                         int commaIndex = keySpan.IndexOf(',');
                         if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
-                            int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
-                            int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
+                            int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int x) &&
+                            int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int y))
                         {
                             // Validate health value range
                             float validatedValue = tileEntry.Value;
@@ -137,21 +140,20 @@ namespace LivingRoots.Services
                 }
             }
 
-            // Only replace the runtime cache if we loaded valid data
-            if (tempCache.Count > 0)
+            // Replace the runtime cache regardless of whether we loaded valid data
+            // This ensures data from one save doesn't leak into another
+            lock (_lock)
             {
-                lock (_lock)
+                _runtimeCache.Clear();
+                foreach (var location in tempCache)
                 {
-                    _runtimeCache.Clear();
-                    foreach (var location in tempCache)
-                    {
-                        _runtimeCache[location.Key] = location.Value;
-                    }
+                    _runtimeCache[location.Key] = location.Value;
                 }
             }
-            else
+            
+            if (tempCache.Count == 0)
             {
-                _monitor.Log("LoadData found no valid entries; preserving existing cache.", LogLevel.Warn);
+                _monitor.Log("LoadData found no valid entries; cache has been cleared.", LogLevel.Trace);
             }
         }
 
@@ -184,7 +186,10 @@ namespace LivingRoots.Services
                     var tileDict = new Dictionary<string, float>();
                     foreach (var tile in location.Value)
                     {
-                        // Filter out invalid values (NaN, Infinity) before saving
+                        // Convert Point back to "X,Y" string format using invariant culture for consistency
+                        string tileKey = $"{tile.Key.X.ToString(CultureInfo.InvariantCulture)},{tile.Key.Y.ToString(CultureInfo.InvariantCulture)}";
+                        
+                        // Skip invalid values (NaN, Infinity) when saving
                         if (float.IsNaN(tile.Value) || float.IsInfinity(tile.Value))
                         {
                             continue; // Skip invalid values
@@ -192,13 +197,10 @@ namespace LivingRoots.Services
                         
                         // Clamp value to valid range [0, 100] before saving
                         float clampedValue = Math.Clamp(tile.Value, 0f, 100f);
-                        
-                        // Convert Point back to "X,Y" string format using invariant culture for consistency
-                        string tileKey = $"{tile.Key.X.ToString(CultureInfo.InvariantCulture)},{tile.Key.Y.ToString(CultureInfo.InvariantCulture)}";
                         tileDict[tileKey] = clampedValue;
                     }
                     
-                    // Only add location to snapshot if it has valid entries
+                    // Only add location if it has valid tiles
                     if (tileDict.Count > 0)
                     {
                         snapshotState[location.Key] = tileDict;
@@ -206,8 +208,7 @@ namespace LivingRoots.Services
                 }
             }
 
-            // Only save if we have data to save (this prevents the test failure)
-            // This moves the I/O operation completely outside the lock for better performance
+            // Only save if we have data to save
             if (hasDataToSave && snapshotState != null && snapshotState.Count > 0)
             {
                 string dataKey = GetSaveKey(saveId);

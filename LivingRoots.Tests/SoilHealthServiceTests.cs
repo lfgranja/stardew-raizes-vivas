@@ -257,7 +257,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void LoadData_WithInvalidSaveId_PreservesCache()
+        public void LoadData_WithInvalidSaveId_ClearsCacheToPreventLeakage()
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
@@ -265,12 +265,13 @@ namespace LivingRoots.Tests
             service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
             // Act
-            service.LoadData(null); // Should preserve cache
-            service.LoadData(""); // Should preserve cache
-            service.LoadData("   "); // Should preserve cache
+            service.LoadData(null); // Should clear cache
+            service.LoadData(""); // Should clear cache
+            service.LoadData("   "); // Should clear cache
 
-            // Assert - Value should be preserved (not cleared) when invalid saveId is passed
-            Assert.Equal(50.0f, service.GetSoilHealth("Farm", tile));
+            // Assert - Value should be cleared (not preserved) when invalid saveId is passed
+            // This prevents data leakage between different game saves
+            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
         }
 
         [Fact]
@@ -369,7 +370,7 @@ namespace LivingRoots.Tests
                     ["Farm"] = new Dictionary<string, float>
                     {
                         ["10,10"] = float.NaN,        // Invalid value
-                        ["11,1"] = float.PositiveInfinity, // Invalid value
+                        ["11,11"] = float.PositiveInfinity, // Invalid value
                         ["12,12"] = float.NegativeInfinity, // Invalid value
                         ["13,13"] = 50.0f             // Valid
                     }
