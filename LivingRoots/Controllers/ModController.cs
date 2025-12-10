@@ -14,7 +14,8 @@ namespace LivingRoots.Controllers
     {
         // State flags for thread safety using atomic operations
         private const int EventsRegisteredFlag = 1 << 0;
-        private const int DisposedFlag = 1 << 1;
+        private const int CommandRegisteredFlag = 1 << 1;
+        private const int DisposedFlag = 1 << 2;
         private int _state = 0; // Combine flags in single volatile field
 
         // Dependencies
@@ -28,6 +29,27 @@ namespace LivingRoots.Controllers
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
         private EventHandler<SaveLoadedEventArgs>? _onSaveLoadedHandler;
         private EventHandler<SavingEventArgs>? _onSavingHandler;
+
+        // Console command registration state
+        private readonly object _commandLock = new object();
+
+        // Help flags for console commands
+        private static readonly HashSet<string> HelpFlags = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "/?",
+            "-?",
+            "/help",
+            "-help",
+            "--help",
+            "-h",
+            "--h",
+            "/h",
+            "/help:?",
+            "-help:?",
+            "/help-",
+            "-help-",
+            "/?"
+        };
 
         public ModController(
             IModHelper helper, 
@@ -120,8 +142,8 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                // Log error and reset the flag if registration failed - ensure disposed flag is preserved
-                monitor.Log($"Error occurred while registering game events: {ex.Message}", LogLevel.Error);
+                // Log error but don't expose raw exception message for security
+                monitor.Log("Error occurred while registering game events.", LogLevel.Error);
 
                 // Attempt to rollback any partial subscriptions with individual exception handling
                 try
@@ -200,8 +222,8 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                // Log error but don't rethrow to prevent disposal chain interruption
-                monitor.Log($"Error occurred while unregistering game events: {ex.Message}", LogLevel.Error);
+                // Log error but don't expose raw exception message for security
+                monitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
             }
         }
 
@@ -215,10 +237,80 @@ namespace LivingRoots.Controllers
             {
                 // Initialize the mod with constants and settings
                 _monitor.Log($"The '{_manifest.Name}' mod was loaded successfully!", LogLevel.Info);
+
+                // Register the console command
+                RegisterConsoleCommand();
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error occurred in game launched event handler: {ex.Message}", LogLevel.Error);
+                // Log error but don't expose raw exception message for security
+                _monitor.Log("Error occurred in game launched event handler.", LogLevel.Error);
+            }
+        }
+
+        private void RegisterConsoleCommand()
+        {
+            // Use a lock to ensure thread safety when registering the command
+            lock (_commandLock)
+            {
+                // Check if command is already registered using the state flag
+                if ((Volatile.Read(ref _state) & CommandRegisteredFlag) != 0)
+                {
+                    return; // Already registered
+                }
+
+                try
+                {
+                    _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
+                    _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+
+                    // Set the command registered flag
+                    Interlocked.Or(ref _state, CommandRegisteredFlag);
+                }
+                catch (Exception ex)
+                {
+                    // Log error but don't expose raw exception message for security
+                    _monitor.Log("Error occurred while registering console command 'lr_version'.", LogLevel.Error);
+                }
+            }
+        }
+
+        private void PrintVersion(string command, string[] args)
+        {
+            // Skip if controller has been disposed
+            if (IsDisposed())
+                return;
+
+            // Snapshot dependencies to local variables to avoid NullReferenceExceptions
+            var monitor = _monitor;
+            var manifest = _manifest;
+
+            try
+            {
+                // Add null check for args parameter and use case-insensitive comparison
+                args = args ?? Array.Empty<string>();
+
+                // Filter out whitespace-only arguments to normalize the input
+                var normalizedArgs = args.Where(arg => !string.IsNullOrWhiteSpace(arg)).ToArray();
+
+                // Check if any argument matches a help flag
+                if (normalizedArgs.Any(arg => HelpFlags.Contains(arg)))
+                {
+                    monitor?.Log("Usage: lr_version", LogLevel.Info);
+                    monitor?.Log("Shows the Living Roots mod version and UniqueID.", LogLevel.Info);
+                    return;
+                }
+
+                // Use the standard version.ToString() method which provides consistent output
+                var version = manifest?.Version;
+                string versionString = version?.ToString() ?? "unknown";
+
+                monitor?.Log($"Living Roots Mod Version: {versionString} (UniqueID: {manifest?.UniqueID ?? "unknown"})", LogLevel.Info);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't expose raw exception message for security
+                _monitor?.Log("Error occurred while executing version command.", LogLevel.Error);
             }
         }
 
@@ -237,7 +329,8 @@ namespace LivingRoots.Controllers
             catch (Exception ex)
             {
                 // Log error but don't throw to prevent game loading issues
-                _monitor.Log($"OnSaveLoaded: An error occurred while retrieving the save folder name: {ex.Message}. Soil health data will not be loaded.", LogLevel.Warn);
+                // Log error but don't expose raw exception message for security
+                _monitor.Log("OnSaveLoaded: An error occurred while retrieving the save folder name. Soil health data will not be loaded.", LogLevel.Warn);
                 return; // If Constants.SaveFolderName is unavailable, skip loading
             }
 
@@ -255,7 +348,8 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error occurred while loading soil health data for save '{saveId}': {ex.Message}", LogLevel.Error);
+                // Log error but don't expose raw exception message for security
+                _monitor.Log($"Error occurred while loading soil health data for save.", LogLevel.Error);
             }
         }
 
@@ -274,7 +368,8 @@ namespace LivingRoots.Controllers
             catch (Exception ex)
             {
                 // Log error but don't throw to prevent game saving issues
-                _monitor.Log($"OnSaving: An error occurred while retrieving the save folder name: {ex.Message}. Soil health data will not be saved.", LogLevel.Warn);
+                // Log error but don't expose raw exception message for security
+                _monitor.Log("OnSaving: An error occurred while retrieving the save folder name. Soil health data will not be saved.", LogLevel.Warn);
                 return; // If Constants.SaveFolderName is unavailable, skip saving
             }
 
@@ -292,7 +387,8 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error occurred while saving soil health data for save '{saveId}': {ex.Message}", LogLevel.Error);
+                // Log error but don't expose raw exception message for security
+                _monitor.Log($"Error occurred while saving soil health data for save.", LogLevel.Error);
             }
         }
 
