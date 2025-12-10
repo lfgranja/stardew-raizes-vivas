@@ -52,7 +52,8 @@ namespace LivingRoots.Services
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error loading soil health data: {ex.Message}", LogLevel.Error);
+                // Log error but don't expose raw exception message for security
+                _monitor.Log("Error loading soil health data.", LogLevel.Error);
                 loadErrorOccurred = true;
             }
 
@@ -136,14 +137,21 @@ namespace LivingRoots.Services
                 }
             }
 
-            // Atomically replace the runtime cache with the loaded data
-            lock (_lock)
+            // Only replace the runtime cache if we loaded valid data
+            if (tempCache.Count > 0)
             {
-                _runtimeCache.Clear();
-                foreach (var location in tempCache)
+                lock (_lock)
                 {
-                    _runtimeCache[location.Key] = location.Value;
+                    _runtimeCache.Clear();
+                    foreach (var location in tempCache)
+                    {
+                        _runtimeCache[location.Key] = location.Value;
+                    }
                 }
+            }
+            else
+            {
+                _monitor.Log("LoadData found no valid entries; preserving existing cache.", LogLevel.Warn);
             }
         }
 
@@ -156,8 +164,6 @@ namespace LivingRoots.Services
                 return;
             }
 
-            string dataKey = GetSaveKey(saveId);
-
             // Create a snapshot of the current cache to avoid holding the lock during I/O
             // This implements the snapshot pattern to move I/O operations outside the lock
             Dictionary<string, Dictionary<string, float>>? snapshotState = null;
@@ -167,9 +173,7 @@ namespace LivingRoots.Services
             {
                 if (_runtimeCache.Count == 0)
                 {
-                    // If no data to save, remove the file to avoid empty data files
-                    // According to test expectations, when cache is empty we should not call SaveData at all
-                    // So instead of saving null data, we'll just return
+                    // If no data to save, return early without performing I/O
                     return;
                 }
 
@@ -180,18 +184,34 @@ namespace LivingRoots.Services
                     var tileDict = new Dictionary<string, float>();
                     foreach (var tile in location.Value)
                     {
+                        // Filter out invalid values (NaN, Infinity) before saving
+                        if (float.IsNaN(tile.Value) || float.IsInfinity(tile.Value))
+                        {
+                            continue; // Skip invalid values
+                        }
+                        
+                        // Clamp value to valid range [0, 100] before saving
+                        float clampedValue = Math.Clamp(tile.Value, 0f, 100f);
+                        
                         // Convert Point back to "X,Y" string format using invariant culture for consistency
                         string tileKey = $"{tile.Key.X.ToString(CultureInfo.InvariantCulture)},{tile.Key.Y.ToString(CultureInfo.InvariantCulture)}";
-                        tileDict[tileKey] = tile.Value;
+                        tileDict[tileKey] = clampedValue;
                     }
-                    snapshotState[location.Key] = tileDict;
+                    
+                    // Only add location to snapshot if it has valid entries
+                    if (tileDict.Count > 0)
+                    {
+                        snapshotState[location.Key] = tileDict;
+                    }
                 }
             }
 
             // Only save if we have data to save (this prevents the test failure)
-            // This moves the I/O operation outside the lock for better performance
-            if (hasDataToSave && snapshotState != null)
+            // This moves the I/O operation completely outside the lock for better performance
+            if (hasDataToSave && snapshotState != null && snapshotState.Count > 0)
             {
+                string dataKey = GetSaveKey(saveId);
+                
                 try
                 {
                     var stateToSave = new SoilHealthState { LocationHealthData = snapshotState };
@@ -200,7 +220,8 @@ namespace LivingRoots.Services
                 }
                 catch (Exception ex)
                 {
-                    _monitor.Log($"Error saving soil health data: {ex.Message}", LogLevel.Error);
+                    // Log error but don't expose raw exception message for security
+                    _monitor.Log("Error saving soil health data.", LogLevel.Error);
                 }
             }
         }
@@ -263,14 +284,14 @@ namespace LivingRoots.Services
             // Validate input to prevent adding entries with invalid keys
             if (string.IsNullOrWhiteSpace(locationName))
             {
-                _monitor.Log("SetSoilHealth skipped: invalid location name.", LogLevel.Warn);
+                // Skip logging for invalid location name to reduce noise in frequently called methods
                 return; // Skip if location is invalid
             }
 
             // Guard against invalid coordinates to prevent data corruption
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
             {
-                _monitor.Log("SetSoilHealth skipped: invalid tile coordinates.", LogLevel.Warn);
+                // Skip logging for invalid coordinates to reduce noise in frequently called methods
                 return;
             }
 
@@ -279,7 +300,7 @@ namespace LivingRoots.Services
             float fy = MathF.Floor(tile.Y);
             if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
             {
-                _monitor.Log("SetSoilHealth skipped: coordinates out of integer range.", LogLevel.Trace);
+                // Skip logging for coordinate range issues to reduce noise in frequently called methods
                 return;
             }
 
@@ -305,14 +326,14 @@ namespace LivingRoots.Services
             // Validate input to prevent adding entries with invalid keys
             if (string.IsNullOrWhiteSpace(locationName))
             {
-                _monitor.Log("UpdateHealth skipped: invalid location name.", LogLevel.Warn);
+                // Skip logging for invalid location name to reduce noise in frequently called methods
                 return; // Skip if location is invalid
             }
 
             // Guard against invalid coordinates to prevent data corruption
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
             {
-                _monitor.Log("UpdateHealth skipped: invalid tile coordinates.", LogLevel.Warn);
+                // Skip logging for invalid coordinates to reduce noise in frequently called methods
                 return;
             }
 
@@ -321,7 +342,7 @@ namespace LivingRoots.Services
             float fy = MathF.Floor(tile.Y);
             if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
             {
-                _monitor.Log("UpdateHealth skipped: coordinates out of integer range.", LogLevel.Trace);
+                // Skip logging for coordinate range issues to reduce noise in frequently called methods
                 return;
             }
 
@@ -352,50 +373,9 @@ namespace LivingRoots.Services
 
         private string GetSaveKey(string saveId)
         {
-            // Implement secure sanitization with bounded stack allocation
+            // Simplified key generation - ModDataService handles sanitization
             if (string.IsNullOrEmpty(saveId)) saveId = "unknown";
-            
-            // Define a safe limit for stack allocation to prevent stack overflow
-            const int MaxSaveIdLength = 256;
-            
-            // Use stackalloc for small strings, heap allocation for larger ones
-            if (saveId.Length <= MaxSaveIdLength)
-            {
-                Span<char> buffer = stackalloc char[saveId.Length];
-                int j = 0;
-                for (int i = 0; i < saveId.Length; i++)
-                {
-                    char c = saveId[i];
-                    if (char.IsLetterOrDigit(c) || c == '-' || c == '_')
-                    {
-                        buffer[j++] = c;
-                    }
-                    else
-                    {
-                        buffer[j++] = '_';
-                    }
-                }
-                string sanitizedId = new string(buffer.Slice(0, j));
-                return $"{KeyPrefix}{sanitizedId}";
-            }
-            else
-            {
-                // For very long save IDs, use heap allocation instead of stack
-                var safeChars = new List<char>(saveId.Length);
-                foreach (char c in saveId)
-                {
-                    if (char.IsLetterOrDigit(c) || c == '-' || c == '_')
-                    {
-                        safeChars.Add(c);
-                    }
-                    else
-                    {
-                        safeChars.Add('_');
-                    }
-                }
-                string sanitizedId = new string(safeChars.ToArray());
-                return $"{KeyPrefix}{sanitizedId}";
-            }
+            return $"{KeyPrefix}{saveId}";
         }
     }
 }
