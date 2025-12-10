@@ -369,7 +369,7 @@ namespace LivingRoots.Tests
                     ["Farm"] = new Dictionary<string, float>
                     {
                         ["10,10"] = float.NaN,        // Invalid value
-                        ["11,11"] = float.PositiveInfinity, // Invalid value
+                        ["11,1"] = float.PositiveInfinity, // Invalid value
                         ["12,12"] = float.NegativeInfinity, // Invalid value
                         ["13,13"] = 50.0f             // Valid
                     }
@@ -488,32 +488,24 @@ namespace LivingRoots.Tests
         [Fact]
         public void SaveData_WithInvalidValues_DoesNotSaveInvalidEntries()
         {
-            // Arrange
+            // Arrange - Create a service instance and populate it with both valid and invalid values
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
-            var tileValid = new Vector2(10, 10);
             
-            // Use reflection or direct access to set invalid values in the internal cache
-            // Since we can't directly set NaN/Infinity through the public API, we'll test the save logic directly
-            var state = new SoilHealthState
+            // Use reflection to set up the internal cache with invalid values
+            var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var runtimeCache = (Dictionary<string, Dictionary<Point, float>>)runtimeCacheField.GetValue(service);
+            
+            // Add valid and invalid entries to the cache
+            runtimeCache["Farm"] = new Dictionary<Point, float>
             {
-                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
-                {
-                    ["Farm"] = new Dictionary<string, float>
-                    {
-                        ["10,10"] = 50.0f,              // Valid
-                        ["15,15"] = float.NaN,          // Invalid
-                        ["16,16"] = float.PositiveInfinity, // Invalid
-                        ["17,17"] = float.NegativeInfinity // Invalid
-                    }
-                }
+                [new Point(10, 10)] = 50.0f,              // Valid
+                [new Point(15, 15)] = float.NaN,          // Invalid
+                [new Point(16, 16)] = float.PositiveInfinity, // Invalid
+                [new Point(17, 17)] = float.NegativeInfinity // Invalid
             };
 
-            // Mock the data service to return this state during save conversion
-            var serviceWithValidData = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
-            serviceWithValidData.SetSoilHealth("Farm", tileValid, 50.0f);
-
             // Act
-            serviceWithValidData.SaveData("test_save");
+            service.SaveData("test_save");
 
             // Verify that only valid entries are saved
             _mockDataService.Verify(x => x.SaveData(It.Is<SoilHealthState>(s => 
