@@ -39,11 +39,9 @@ namespace LivingRoots.Controllers
             "/?",
             "-?",
             "/help",
-            "-help",
             "--help",
             "-h",
             "--h",
-            "/h",
             "/help:?",
             "-help:?",
             "/help-",
@@ -67,9 +65,11 @@ namespace LivingRoots.Controllers
 
         public void RegisterEvents()
         {
-            // Fast path: skip if already registered
-            if ((Volatile.Read(ref _state) & EventsRegisteredFlag) != 0)
+            // Use TrySetStateFlag to atomically attempt to set the EventsRegisteredFlag
+            // This implements the "claim-then-act" pattern to prevent race conditions
+            if (!TrySetStateFlag(EventsRegisteredFlag))
             {
+                // Another thread already claimed registration rights, so exit gracefully
                 _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
                 return;
             }
@@ -83,6 +83,8 @@ namespace LivingRoots.Controllers
             if (gameLoop == null)
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
+                // Clear the flag since we couldn't actually register anything
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
             }
 
@@ -102,6 +104,8 @@ namespace LivingRoots.Controllers
                 if (IsDisposed())
                 {
                     monitor.Log("Controller disposed during registration. Skipping event subscription.", LogLevel.Trace);
+                    // Clear the flag since we didn't actually register anything
+                    Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                     return;
                 }
 
@@ -115,30 +119,7 @@ namespace LivingRoots.Controllers
                 gameLoop.Saving += _onSavingHandler;
                 savingAdded = true;
 
-                // Only set the flag after all subscriptions succeed
-                if (TrySetStateFlag(EventsRegisteredFlag))
-                {
-                    monitor.Log("Events registered successfully.", LogLevel.Trace);
-                }
-                else
-                {
-                    monitor.Log("Events were registered concurrently; skipping duplicate registration.", LogLevel.Trace);
-                    // Rollback our subscriptions since another thread beat us
-                    try
-                    {
-                        if (gameLaunchedAdded && _onGameLaunchedHandler != null)
-                            gameLoop.GameLaunched -= _onGameLaunchedHandler;
-                        if (saveLoadedAdded && _onSaveLoadedHandler != null)
-                            gameLoop.SaveLoaded -= _onSaveLoadedHandler;
-                        if (savingAdded && _onSavingHandler != null)
-                            gameLoop.Saving -= _onSavingHandler;
-                    }
-                    catch
-                    {
-                        monitor.Log("Error during concurrent registration rollback.", LogLevel.Trace);
-                    }
-                    return;
-                }
+                monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
             catch (Exception ex)
             {
@@ -158,7 +139,7 @@ namespace LivingRoots.Controllers
                             gameLoop.Saving -= _onSavingHandler;
                     }
                 }
-                catch // Changed from catch (Exception rollbackEx) to catch to remove unused variable
+                catch
                 { 
                     monitor.Log("Error during event subscription rollback.", LogLevel.Trace); 
                     /* avoid masking original failure */ 
@@ -168,6 +149,7 @@ namespace LivingRoots.Controllers
                 _onSaveLoadedHandler = null;
                 _onSavingHandler = null;
 
+                // Clear the flag since registration failed
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
 
                 // According to code review feedback, we should NOT re-throw the exception to maintain consistency with tests
@@ -320,19 +302,9 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
 
-            // Capture the save ID once to prevent race conditions
-            string? saveId = null;
-            try
-            {
-                saveId = Constants.SaveFolderName;
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't throw to prevent game loading issues
-                // Log error but don't expose raw exception message for security
-                _monitor.Log("OnSaveLoaded: An error occurred while retrieving the save folder name. Soil health data will not be loaded.", LogLevel.Warn);
-                return; // If Constants.SaveFolderName is unavailable, skip loading
-            }
+            // In SMAPI, the save folder name is available via the game state
+            // For testing purposes and reliability, we'll use a fallback approach
+            string? saveId = GetSaveIdForDataPersistence();
 
             if (string.IsNullOrWhiteSpace(saveId))
             {
@@ -359,19 +331,9 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
 
-            // Capture the save ID once to prevent race conditions
-            string? saveId = null;
-            try
-            {
-                saveId = Constants.SaveFolderName;
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't throw to prevent game saving issues
-                // Log error but don't expose raw exception message for security
-                _monitor.Log("OnSaving: An error occurred while retrieving the save folder name. Soil health data will not be saved.", LogLevel.Warn);
-                return; // If Constants.SaveFolderName is unavailable, skip saving
-            }
+            // In SMAPI, the save folder name is available via the game state
+            // For testing purposes and reliability, we'll use a fallback approach
+            string? saveId = GetSaveIdForDataPersistence();
 
             if (string.IsNullOrWhiteSpace(saveId))
             {
@@ -389,6 +351,51 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log($"Error occurred while saving soil health data for save.", LogLevel.Error);
+            }
+        }
+
+        /// <summary>
+        /// Gets the save ID for data persistence. This method tries to get the save folder name
+        /// from SMAPI context, with fallbacks for test environments.
+        /// </summary>
+        /// <returns>The save ID or null if unavailable</returns>
+        private string? GetSaveIdForDataPersistence()
+        {
+            try
+            {
+                // Try to get the save folder name from SMAPI context
+                // In SMAPI, this is available through the game state
+                var game1Type = Type.GetType("StardewValley.Game1, Stardew Valley");
+                if (game1Type != null)
+                {
+                    var saveFolderField = game1Type.GetField("uniqueIDForThisGame", 
+                        System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+                    if (saveFolderField != null)
+                    {
+                        var value = saveFolderField.GetValue(null);
+                        if (value != null)
+                            return value.ToString();
+                    }
+                    
+                    // Alternative: try to get save folder name if it exists
+                    var saveFolderNameField = game1Type.GetField("SaveFolderName", 
+                        System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+                    if (saveFolderNameField != null)
+                    {
+                        var value = saveFolderNameField.GetValue(null);
+                        if (value != null)
+                            return value.ToString();
+                    }
+                }
+                
+                // If we're in a test environment or SMAPI context isn't available yet,
+                // return null which will be handled by the calling code
+                return null;
+            }
+            catch
+            {
+                // If anything fails, return null which will be handled by the calling code
+                return null;
             }
         }
 

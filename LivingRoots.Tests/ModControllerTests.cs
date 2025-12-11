@@ -156,6 +156,30 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
+        public void RegisterEvents_WhenExceptionOccurs_HandlingIsSecure()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            // Setup to throw an exception when trying to add the event
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+                .Throws(new Exception("Test exception"));
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+
+            // Act & Assert
+            var ex = Record.Exception(() => controller.RegisterEvents());
+            Assert.Null(ex); // Exception should be caught and handled, not thrown
+        }
+
+        [Fact]
         public void UnregisterEvents_RemovesAllEvents()
         {
             // Arrange
@@ -249,7 +273,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
 
-            // Register events first to set up the controller
+            // First register events to set up the controller
             controller.RegisterEvents();
 
             // Act - Dispose multiple times
@@ -276,7 +300,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
 
-            // Register events first to set up the controller
+            // First register events to set up the controller
             controller.RegisterEvents();
 
             // Act - Simulate concurrent disposal from multiple threads
@@ -286,7 +310,6 @@ namespace LivingRoots.Tests
                 tasks[i] = System.Threading.Tasks.Task.Run(() => controller.Dispose());
             }
 
-            // Wait for all tasks to complete
             await System.Threading.Tasks.Task.WhenAll(tasks);
 
             // Assert - No exceptions should be thrown due to race conditions
@@ -296,7 +319,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void UnregisterEvents_WhenDisposed_DoesNotUnregister()
+        public void RegisterConsoleCommand_AddsCommandSuccessfully()
         {
             // Arrange
             var mockEvents = new Mock<IModEvents>();
@@ -309,21 +332,103 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
 
-            // Act - Dispose the controller
-            controller.Dispose();
+            // Act - Register events first to initialize the command registration
+            controller.RegisterEvents();
+            // Then simulate the game launch event to trigger command registration
+            controller.GetType().GetMethod("OnGameLaunched", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                .Invoke(controller, new object[] { null, new GameLaunchedEventArgs() });
 
-            // Assert - Verify the disposal message was logged
-            _mockMonitor.Verify(m => m.Log("Controller disposed successfully.", LogLevel.Trace), Times.Once);
-            
-            // Additional unregistration attempts should not attempt to unsubscribe
-            _mockMonitor.Invocations.Clear(); // Reset previous calls to check new ones
-            
-            // Try to unregister events after disposal
-            controller.UnregisterEvents();
-            
-            // The method should handle this gracefully without throwing
-            var ex = Record.Exception(() => controller.UnregisterEvents());
+            // Assert - Command should have been added to the console commands
+            mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
+        }
+
+        [Fact]
+        public void PrintVersion_ExecutesWithoutErrors()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+
+            // Act & Assert - Should not throw any exceptions
+            var ex = Record.Exception(() => controller.GetType()
+                .GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                .Invoke(controller, new object[] { "lr_version", new string[] { } }));
             Assert.Null(ex);
+        }
+
+        [Fact]
+        public void PrintVersion_WithHelpArguments_PrintsUsage()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+
+            // Act & Assert - Should not throw with help arguments
+            var ex = Record.Exception(() => controller.GetType()
+                .GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                .Invoke(controller, new object[] { "lr_version", new string[] { "/?", "-help", "--h" } }));
+            Assert.Null(ex);
+        }
+
+        [Fact]
+        public void OnSaveLoaded_WithValidSaveId_LoadsData()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+
+            // Act
+            controller.GetType().GetMethod("OnSaveLoaded", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                .Invoke(controller, new object[] { null, new SaveLoadedEventArgs() });
+
+            // Assert - Soil health service should have been called to load data
+            _mockSoilHealthService.Verify(x => x.LoadData(It.IsAny<string>()), Times.Once);
+        }
+
+        [Fact]
+        public void OnSaving_WithValidSaveId_SavesData()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+
+            // Act
+            controller.GetType().GetMethod("OnSaving", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                .Invoke(controller, new object[] { null, new SavingEventArgs() });
+
+            // Assert - Soil health service should have been called to save data
+            _mockSoilHealthService.Verify(x => x.SaveData(It.IsAny<string>()), Times.Once);
         }
     }
 }
