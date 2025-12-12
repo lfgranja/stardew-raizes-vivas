@@ -139,13 +139,16 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            // Act - Simulate concurrent registration attempts
+            // Create a single ModController instance to be shared across all tasks
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+
+            // Act - Simulate concurrent registration attempts on the same instance
             var tasks = new System.Threading.Tasks.Task[10];
             for (int i = 0; i < 10; i++)
             {
                 tasks[i] = System.Threading.Tasks.Task.Run(() =>
                 {
-                    var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+                    // All tasks call RegisterEvents on the same controller instance
                     controller.RegisterEvents();
                 });
             }
@@ -153,6 +156,10 @@ namespace LivingRoots.Tests
             await System.Threading.Tasks.Task.WhenAll(tasks);
 
             // Assert - No exceptions should be thrown due to race conditions
+            // Verify that events were registered only once despite multiple concurrent calls
+            mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once);
         }
 
         [Fact]

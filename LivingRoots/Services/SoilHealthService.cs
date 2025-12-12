@@ -359,19 +359,28 @@ namespace LivingRoots.Services
                 var tiles = GetOrAddLocationCache(locationName);
 
                 var key = new Point(ix, iy);
-                float current = tiles.ContainsKey(key) ? tiles[key] : 0f;
-                float newValue = Math.Clamp(current + delta, 0f, 100f);
-                tiles[key] = newValue;
+                if (tiles.TryGetValue(key, out float current))
+                {
+                    float newValue = Math.Clamp(current + delta, 0f, 100f);
+                    tiles[key] = newValue;
+                }
+                else
+                {
+                    // If the key doesn't exist, initialize with the delta value (starting from 0)
+                    float newValue = Math.Clamp(delta, 0f, 100f);
+                    tiles[key] = newValue;
+                }
             }
         }
 
         private Dictionary<Point, float> GetOrAddLocationCache(string locationName)
         {
-            if (!_runtimeCache.ContainsKey(locationName))
+            if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
             {
-                _runtimeCache[locationName] = new Dictionary<Point, float>();
+                locationCache = new Dictionary<Point, float>();
+                _runtimeCache[locationName] = locationCache;
             }
-            return _runtimeCache[locationName];
+            return locationCache;
         }
 
         private string GetSaveKey(string saveId)

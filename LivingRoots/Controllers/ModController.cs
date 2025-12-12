@@ -45,8 +45,7 @@ namespace LivingRoots.Controllers
             "/help:?",
             "-help:?",
             "/help-",
-            "-help-",
-            "/?"
+            "-help-"
         };
 
         public ModController(
@@ -439,10 +438,11 @@ namespace LivingRoots.Controllers
         /// <returns>True if the flag was set, false if it was already set</returns>
         private bool TrySetStateFlag(int flag)
         {
-            int spinCount = 0;
-            while (true)
+            int currentState;
+            int newState;
+            do
             {
-                int currentState = Volatile.Read(ref _state);
+                currentState = Volatile.Read(ref _state);
                 
                 // Check if already disposed when trying to set other flags
                 if ((flag & ~DisposedFlag) != 0 && (currentState & DisposedFlag) != 0)
@@ -453,25 +453,11 @@ namespace LivingRoots.Controllers
                     return false;
 
                 // Calculate new state with the flag set
-                int newState = currentState | flag;
+                newState = currentState | flag;
 
-                // Attempt to set the state atomically
-                int observedState = Interlocked.CompareExchange(ref _state, newState, currentState);
+            } while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
-                if (observedState == currentState)
-                    return true; // Successfully set the flag
-
-                // Handle spurious failures with exponential backoff
-                if (++spinCount > 10)
-                {
-                    Thread.Yield();
-                    spinCount = 0;
-                }
-                else
-                {
-                    Thread.SpinWait(1 << spinCount);
-                }
-            }
+            return true; // Successfully set the flag
         }
     }
 }

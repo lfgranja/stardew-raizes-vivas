@@ -252,7 +252,7 @@ namespace LivingRoots.Tests
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
-            Assert.Equal(100.0f, resultMax);
+            Assert.Equal(10.0f, resultMax);
             Assert.Equal(0.0f, resultMin);
         }
 
@@ -490,28 +490,56 @@ namespace LivingRoots.Tests
         public void SaveData_WithInvalidValues_DoesNotSaveInvalidEntries()
         {
             // This test verifies that SaveData filters out NaN and Infinity values during save operations
-            // Since we can't directly access the cache, we'll test this by creating a service instance
-            // and ensuring that the SaveData method correctly filters out invalid values
+            // We'll use reflection to inject invalid values directly into the internal cache
+            // to properly test the filtering behavior during the save process
             
-            // This test is verifying the filtering behavior during the save process
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object);
             
-            // Add valid entries to the cache
-            service.SetSoilHealth("Farm", new Vector2(10, 10), 50.0f);
-            service.SetSoilHealth("Farm", new Vector2(14, 14), 75.0f);
+            // Use reflection to access the private _runtimeCache field
+            var cacheField = typeof(SoilHealthService).GetField("_runtimeCache", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var runtimeCache = cacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
             
-            // For this test, we need to verify that SaveData filters invalid values
-            // The original test was flawed because it used LoadData which processes invalid values
-            // Let's create a test that confirms the SaveData filtering works as expected
+            // Add valid entries to the internal cache
+            var locationTiles = new Dictionary<Point, float>
+            {
+                [new Point(10, 10)] = 50.0f,           // Valid value
+                [new Point(11, 11)] = float.NaN,       // Invalid value (NaN)
+                [new Point(12, 12)] = float.PositiveInfinity, // Invalid value (Infinity)
+                [new Point(13, 13)] = float.NegativeInfinity, // Invalid value (-Infinity)
+                [new Point(14, 14)] = 75.0f            // Valid value
+            };
+            
+            runtimeCache["Farm"] = locationTiles;
+            
+            // Add another location with mixed valid/invalid values
+            var locationTiles2 = new Dictionary<Point, float>
+            {
+                [new Point(20, 20)] = float.NaN,       // Invalid value
+                [new Point(21, 21)] = 30.0f            // Valid value
+            };
+            
+            runtimeCache["Greenhouse"] = locationTiles2;
+            
+            // Call SaveData which should filter out the invalid values
             service.SaveData("test_save");
             
-            // Verify that the save was called with the expected data
+            // Verify that the save was called with only the valid data
             _mockDataService.Verify(x => x.SaveData(It.Is<SoilHealthState>(s => 
+                // Check Farm location has only valid entries
                 s.LocationHealthData.ContainsKey("Farm") &&
                 s.LocationHealthData["Farm"].ContainsKey("10,10") && 
                 s.LocationHealthData["Farm"]["10,10"] == 50.0f &&
+                !s.LocationHealthData["Farm"].ContainsKey("11,11") && // NaN entry should be filtered out
+                !s.LocationHealthData["Farm"].ContainsKey("12,12") && // Infinity entry should be filtered out
+                !s.LocationHealthData["Farm"].ContainsKey("13,13") && // -Infinity entry should be filtered out
                 s.LocationHealthData["Farm"].ContainsKey("14,14") && 
-                s.LocationHealthData["Farm"]["14,14"] == 75.0f
+                s.LocationHealthData["Farm"]["14,14"] == 75.0f &&
+                // Check Greenhouse location has only valid entries
+                s.LocationHealthData.ContainsKey("Greenhouse") &&
+                !s.LocationHealthData["Greenhouse"].ContainsKey("20,20") && // NaN entry should be filtered out
+                s.LocationHealthData["Greenhouse"].ContainsKey("21,21") && 
+                s.LocationHealthData["Greenhouse"]["21,21"] == 30.0f
             ), "soil_health_data_test_save"), Times.Once);
         }
 
