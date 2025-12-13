@@ -186,7 +186,7 @@ namespace LivingRoots.Services
                                     continue;
                                 }
                                 
-                                float clamped = Math.Clamp(rawValue, 0f, 100f);
+                                float clamped = ClampHealthValue(rawValue);
                                 // Resolve duplicates deterministically: last-write-wins
                                 var point = new Point(x, y);
                                 tileDict[point] = clamped;
@@ -265,7 +265,7 @@ namespace LivingRoots.Services
                             continue;
                         }
                         
-                        float clamped = Math.Clamp(val, 0f, 100f);
+                        float clamped = ClampHealthValue(val);
                         string key = $"{tileEntry.Key.X.ToString(CultureInfo.InvariantCulture)},{tileEntry.Key.Y.ToString(CultureInfo.InvariantCulture)}";
                         stringDict[key] = clamped;
                     }
@@ -392,7 +392,7 @@ namespace LivingRoots.Services
             lock (_lock)
             {
                 // Domain Rule: Clamp between 0 and 100
-                float clampedValue = Math.Clamp(value, 0f, 100f);
+                float clampedValue = ClampedHealthValue(value);
 
                 // Use GetOrAddLocationCache to avoid code duplication
                 var tiles = GetOrAddLocationCache(locationName);
@@ -441,7 +441,7 @@ namespace LivingRoots.Services
                 
                 // Get current value (0 if tile doesn't exist) and calculate new value
                 tiles.TryGetValue(key, out float currentHealth);
-                float newHealth = Math.Clamp(currentHealth + delta, 0f, 100f);
+                float newHealth = ClampHealthValue(currentHealth + delta);
                 tiles[key] = newHealth;
             }
         }

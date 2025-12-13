@@ -19,6 +19,8 @@ namespace LivingRoots.Services
         // Dictionary<LocationName, Dictionary<TileCoordinates, HealthValue>>
         private readonly Dictionary<string, Dictionary<Point, float>> _runtimeCache = new();
         private const string KeyPrefix = "soil_health_data_";
+        private const float MinSoilHealth = 0f;
+        private const float MaxSoilHealth = 100f;
 
         // Lock object for thread safety
         private readonly object _lock = new object();
@@ -122,7 +124,7 @@ namespace LivingRoots.Services
                                     _monitor.Log($"Invalid health value found in save data for location '{locationEntry.Key}'; clamping to valid range [0, 100].", LogLevel.Warn);
                                     warnedForInvalidValue = true;
                                 }
-                                validatedValue = Math.Clamp(validatedValue, 0f, 100f);
+                                validatedValue = ClampHealthValue(validatedValue);
                             }
 
                             tileDict[new Point(x, y)] = validatedValue;
@@ -200,7 +202,7 @@ namespace LivingRoots.Services
                         }
                         
                         // Clamp value to valid range [0, 100] before saving
-                        float clampedValue = Math.Clamp(tile.Value, 0f, 100f);
+                        float clampedValue = ClampHealthValue(tile.Value);
                         tileDict[tileKey] = clampedValue;
                     }
                     
@@ -317,7 +319,7 @@ namespace LivingRoots.Services
             lock (_lock)
             {
                 // Domain Rule: Clamp between 0 and 100 (not 10 as previously)
-                float clampedValue = Math.Clamp(value, 0f, 100f);
+                float clampedValue = ClampHealthValue(value);
 
                 // Use GetOrAddLocationCache to avoid code duplication
                 var tiles = GetOrAddLocationCache(locationName);
@@ -364,13 +366,13 @@ namespace LivingRoots.Services
                 var key = new Point(ix, iy);
                 if (tiles.TryGetValue(key, out float current))
                 {
-                    float newValue = Math.Clamp(current + delta, 0f, 100f);
+                    float newValue = ClampHealthValue(current + delta);
                     tiles[key] = newValue;
                 }
                 else
                 {
                     // If the key doesn't exist, initialize with the delta value (starting from 0)
-                    float newValue = Math.Clamp(delta, 0f, 100f);
+                    float newValue = ClampHealthValue(delta);
                     tiles[key] = newValue;
                 }
             }
@@ -384,6 +386,11 @@ namespace LivingRoots.Services
                 _runtimeCache[locationName] = locationCache;
             }
             return locationCache;
+        }
+        
+        private float ClampHealthValue(float value)
+        {
+            return Math.Clamp(value, MinSoilHealth, MaxSoilHealth);
         }
 
         private string GetSaveKey(string saveId)

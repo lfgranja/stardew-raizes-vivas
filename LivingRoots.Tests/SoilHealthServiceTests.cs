@@ -252,7 +252,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.UpdateHealth(location, tile, 100.0f); // Should result in 150 -> clamp to 10
+            service.UpdateHealth(location, tile, 100.0f); // Should result in 150 -> clamp to 100
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
