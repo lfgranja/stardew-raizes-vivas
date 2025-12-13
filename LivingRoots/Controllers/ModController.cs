@@ -263,6 +263,13 @@ namespace LivingRoots.Controllers
 
         private void RegisterConsoleCommand()
         {
+            // Early disposal check: prevent registration if controller is already disposed
+            if (IsDisposed())
+            {
+                _monitor.Log("Controller is disposed, skipping console command registration.", LogLevel.Trace);
+                return;
+            }
+
             // Use a lock to ensure thread safety when registering the command
             lock (_commandLock)
             {
@@ -270,6 +277,13 @@ namespace LivingRoots.Controllers
                 if ((Volatile.Read(ref _state) & CommandRegisteredFlag) != 0)
                 {
                     return; // Already registered
+                }
+
+                // Double-check disposed state inside the lock to prevent race condition
+                if (IsDisposed())
+                {
+                    _monitor.Log("Controller disposed during command registration. Skipping command registration.", LogLevel.Trace);
+                    return;
                 }
 
                 try

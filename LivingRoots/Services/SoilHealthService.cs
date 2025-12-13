@@ -429,10 +429,16 @@ namespace LivingRoots.Services
                 
                 return $"{ModConstants.KeyPrefix}{sanitized}";
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                // Log the error and return null to indicate failure instead of falling back to a default key
-                _monitor.Log($"SaveId sanitization failed: {ex.Message}", LogLevel.Error);
+                // Log the error without exposing raw exception message for security
+                _monitor.Log("SaveId sanitization failed due to invalid characters.", LogLevel.Error);
+                return null; // Fail-fast approach: return null instead of a default key
+            }
+            catch (Exception)
+            {
+                // Catch any other unexpected exceptions during sanitization
+                _monitor.Log("SaveId sanitization failed due to an unexpected error.", LogLevel.Error);
                 return null; // Fail-fast approach: return null instead of a default key
             }
         }
