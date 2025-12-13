@@ -811,7 +811,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void LoadData_WithSanitizationFailure_UsesDefaultKeyAndClearsCache()
+        public void LoadData_WithSanitizationFailure_DoesNotLoadAndClearsCache()
         {
             // Arrange
             _mockFileNameSanitizationService
@@ -853,7 +853,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void LoadData_WithSanitizationToEmptyResult_UsesDefaultKeyAndClearsCache()
+        public void LoadData_WithSanitizationToEmptyResult_DoesNotLoadAndClearsCache()
         {
             // Arrange
             _mockFileNameSanitizationService

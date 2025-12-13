@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using LivingRoots.Domain;
+using LivingRoots;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 
@@ -18,10 +19,6 @@ namespace LivingRoots.Services
         // Runtime cache using Point directly as key for better performance and precision
         // Dictionary<LocationName, Dictionary<TileCoordinates, HealthValue>>
         private readonly Dictionary<string, Dictionary<Point, float>> _runtimeCache = new();
-        private const string KeyPrefix = "soil_health_data_";
-        private const float MinSoilHealth = 0f;
-        private const float MaxSoilHealth = 100f;
-        private const string DefaultSaveKey = "soil_health_data_default";
 
         // Lock object for thread safety
         private readonly object _lock = new object();
@@ -50,9 +47,9 @@ namespace LivingRoots.Services
             string dataKey = GetSaveKey(saveId);
             
             // If sanitization failed and we got a default key, log and return early
-            if (dataKey == DefaultSaveKey)
+            if (dataKey == null)
             {
-                _monitor.Log("LoadData aborted: saveId sanitization failed, using default key.", LogLevel.Error);
+                _monitor.Log("LoadData aborted: saveId sanitization failed.", LogLevel.Error);
                 lock (_lock)
                 {
                     _runtimeCache.Clear();
@@ -128,7 +125,7 @@ namespace LivingRoots.Services
                                 // Skip this entry entirely instead of converting to 0
                                 continue;
                             }
-                            else if (validatedValue < 0 || validatedValue > 100)
+                            else if (validatedValue < ModConstants.MinSoilHealth || validatedValue > ModConstants.MaxSoilHealth)
                             {
                                 // Only warn once per location for out-of-range values to prevent log spam
                                 if (!warnedForInvalidValue)
@@ -187,9 +184,9 @@ namespace LivingRoots.Services
             string dataKey = GetSaveKey(saveId);
             
             // If sanitization failed and we got a default key, log and return early
-            if (dataKey == DefaultSaveKey)
+            if (dataKey == null)
             {
-                _monitor.Log("SaveData aborted: saveId sanitization failed, using default key.", LogLevel.Error);
+                _monitor.Log("SaveData aborted: saveId sanitization failed.", LogLevel.Error);
                 return;
             }
 
@@ -409,7 +406,7 @@ namespace LivingRoots.Services
         
         private float ClampHealthValue(float value)
         {
-            return Math.Clamp(value, MinSoilHealth, MaxSoilHealth);
+            return Math.Clamp(value, ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth);
         }
 
         private string GetSaveKey(string saveId)
@@ -418,7 +415,7 @@ namespace LivingRoots.Services
             if (string.IsNullOrEmpty(saveId))
             {
                 _monitor.Log("SaveId cannot be null or empty.", LogLevel.Error);
-                return DefaultSaveKey;
+                return null;
             }
 
             try
@@ -427,16 +424,16 @@ namespace LivingRoots.Services
                 if (string.IsNullOrEmpty(sanitized))
                 {
                     _monitor.Log("SaveId sanitizes to an empty string after processing.", LogLevel.Error);
-                    return DefaultSaveKey;
+                    return null;
                 }
                 
-                return $"{KeyPrefix}{sanitized}";
+                return $"{ModConstants.KeyPrefix}{sanitized}";
             }
             catch (ArgumentException ex)
             {
-                // Log the error and return a safe default key instead of throwing an exception
+                // Log the error and return null to indicate failure instead of falling back to a default key
                 _monitor.Log($"SaveId sanitization failed: {ex.Message}", LogLevel.Error);
-                return DefaultSaveKey; // Return a safe default key instead of throwing an exception
+                return null; // Fail-fast approach: return null instead of a default key
             }
         }
     }

@@ -67,6 +67,13 @@ namespace LivingRoots.Controllers
 
         public void RegisterEvents()
         {
+            // Early disposal check: prevent registration if controller is already disposed
+            if (IsDisposed())
+            {
+                _monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
+                return;
+            }
+
             // Use TrySetStateFlag to atomically attempt to set the EventsRegisteredFlag
             // This implements the "claim-then-act" pattern to prevent race conditions
             if (!TrySetStateFlag(EventsRegisteredFlag))

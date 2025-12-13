@@ -75,13 +75,22 @@ namespace LivingRoots.Services
             catch (System.Reflection.ReflectionTypeLoadException ex)
             {
                 // Log detailed reflection errors for debugging at Trace level
-                var loaderExceptions = ex.LoaderExceptions;
-                var loaderExceptionMessages = new string[loaderExceptions.Length];
-                for (int i = 0; i < loaderExceptions.Length; i++)
+                // Check for null LoaderExceptions to avoid null reference exception
+                string loaderExceptionMessages = "No loader exceptions";
+                if (ex.LoaderExceptions != null)
                 {
-                    loaderExceptionMessages[i] = loaderExceptions[i]?.Message ?? "Unknown loader exception";
+                    var loaderExceptionMessagesArray = new string[ex.LoaderExceptions.Length];
+                    for (int i = 0; i < ex.LoaderExceptions.Length; i++)
+                    {
+                        // Also check each individual exception for null to avoid null reference
+                        loaderExceptionMessagesArray[i] = ex.LoaderExceptions[i]?.Message ?? 
+                                                        ex.LoaderExceptions[i]?.ToString() ?? 
+                                                        "Unknown loader exception";
+                    }
+                    loaderExceptionMessages = string.Join("; ", loaderExceptionMessagesArray);
                 }
-                effectiveMonitor?.Log($"GetSaveId: ReflectionTypeLoadException occurred: {ex.Message}. Loader exceptions: {string.Join("; ", loaderExceptionMessages)}", LogLevel.Trace);
+                
+                effectiveMonitor?.Log($"GetSaveId: ReflectionTypeLoadException occurred: {ex.Message}. Loader exceptions: {loaderExceptionMessages}", LogLevel.Trace);
                 return null;
             }
             catch (Exception ex)
