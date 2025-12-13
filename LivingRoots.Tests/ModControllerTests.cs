@@ -21,6 +21,7 @@ namespace LivingRoots.Tests
         private readonly Mock<IManifest> _mockManifest;
         private readonly Mock<IModDataService> _mockModDataService;
         private readonly Mock<ISoilHealthService> _mockSoilHealthService;
+        private readonly Mock<ISaveIdProvider> _mockSaveIdProvider;
 
         public ModControllerTests()
         {
@@ -29,36 +30,43 @@ namespace LivingRoots.Tests
             _mockManifest = new Mock<IManifest>();
             _mockModDataService = new Mock<IModDataService>();
             _mockSoilHealthService = new Mock<ISoilHealthService>();
+            _mockSaveIdProvider = new Mock<ISaveIdProvider>();
         }
 
         [Fact]
         public void Constructor_WithNullHelper_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(null, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(null, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullMonitor_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, null, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, null, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullManifest_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, null, _mockModDataService.Object, _mockSoilHealthService.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, null, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullModDataService_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, null, _mockSoilHealthService.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, null, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullSoilHealthService_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, null));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, null, _mockSaveIdProvider.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullSaveIdProvider_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, null));
         }
 
         [Fact]
@@ -73,7 +81,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act & Assert
             var ex = Record.Exception(() => controller.RegisterEvents());
@@ -92,7 +100,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act
             controller.RegisterEvents();
@@ -115,7 +123,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act - Register events twice
             controller.RegisterEvents();
@@ -140,7 +148,7 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Create a single ModController instance to be shared across all tasks
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act - Simulate concurrent registration attempts on the same instance
             var tasks = new System.Threading.Tasks.Task[10];
@@ -179,7 +187,7 @@ namespace LivingRoots.Tests
                 .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Throws(new Exception("Test exception"));
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act & Assert
             var ex = Record.Exception(() => controller.RegisterEvents());
@@ -198,7 +206,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // First register events to set up the controller
             controller.RegisterEvents();
@@ -224,7 +232,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act
             controller.UnregisterEvents();
@@ -246,7 +254,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // First register events to set up the controller
             controller.RegisterEvents();
@@ -278,7 +286,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // First register events to set up the controller
             controller.RegisterEvents();
@@ -305,7 +313,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // First register events to set up the controller
             controller.RegisterEvents();
@@ -337,7 +345,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act - Register events first to initialize the command registration
             controller.RegisterEvents();
@@ -362,7 +370,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act & Assert - Should not throw any exceptions
             var ex = Record.Exception(() => controller.GetType()
@@ -383,7 +391,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act & Assert - Should not throw with help arguments
             var ex = Record.Exception(() => controller.GetType()
@@ -403,8 +411,11 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+            
+            // Mock the save ID provider to return a valid save ID
+            _mockSaveIdProvider.Setup(x => x.GetSaveId(It.IsAny<IMonitor>())).Returns("test_save_id");
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act
             controller.GetType().GetMethod("OnSaveLoaded", 
@@ -412,7 +423,7 @@ namespace LivingRoots.Tests
                 .Invoke(controller, new object[] { null, new SaveLoadedEventArgs() });
 
             // Assert - Soil health service should have been called to load data
-            _mockSoilHealthService.Verify(x => x.LoadData(It.IsAny<string>()), Times.Once);
+            _mockSoilHealthService.Verify(x => x.LoadData("test_save_id"), Times.Once);
         }
 
         [Fact]
@@ -426,8 +437,11 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+            
+            // Mock the save ID provider to return a valid save ID
+            _mockSaveIdProvider.Setup(x => x.GetSaveId(It.IsAny<IMonitor>())).Returns("test_save_id");
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act
             controller.GetType().GetMethod("OnSaving", 
@@ -435,7 +449,7 @@ namespace LivingRoots.Tests
                 .Invoke(controller, new object[] { null, new SavingEventArgs() });
 
             // Assert - Soil health service should have been called to save data
-            _mockSoilHealthService.Verify(x => x.SaveData(It.IsAny<string>()), Times.Once);
+            _mockSoilHealthService.Verify(x => x.SaveData("test_save_id"), Times.Once);
         }
     }
 }

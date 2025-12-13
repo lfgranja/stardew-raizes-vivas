@@ -24,6 +24,7 @@ namespace LivingRoots.Controllers
         private readonly IManifest _manifest;
         private readonly IModDataService _modDataService;
         private readonly ISoilHealthService _soilHealthService;
+        private readonly ISaveIdProvider _saveIdProvider;
 
         // Event handlers - stored as fields to enable proper unsubscription
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
@@ -53,13 +54,15 @@ namespace LivingRoots.Controllers
             IMonitor monitor, 
             IManifest manifest, 
             IModDataService modDataService,
-            ISoilHealthService soilHealthService)
+            ISoilHealthService soilHealthService,
+            ISaveIdProvider saveIdProvider)
         {
             _helper = helper ?? throw new ArgumentNullException(nameof(helper));
             _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
             _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
             _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
             _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
+            _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
         }
 
         public void RegisterEvents()
@@ -175,6 +178,14 @@ namespace LivingRoots.Controllers
             if (gameLoop == null)
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
+                // Reset the events registered flag and nullify the event handler fields
+                // even when gameLoop is null to prevent the controller from getting stuck in a registered state
+                _onGameLaunchedHandler = null;
+                _onSaveLoadedHandler = null;
+                _onSavingHandler = null;
+
+                // Reset the events registered flag to allow for potential re-registration
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
             }
 
@@ -211,6 +222,14 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 monitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
+                
+                // Ensure the state is still reset even if an exception occurs during unsubscription
+                _onGameLaunchedHandler = null;
+                _onSaveLoadedHandler = null;
+                _onSavingHandler = null;
+
+                // Reset the events registered flag to allow for potential re-registration
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
             }
         }
 
@@ -278,10 +297,10 @@ namespace LivingRoots.Controllers
                 args = args ?? Array.Empty<string>();
 
                 // Filter out whitespace-only arguments to normalize the input
-                var normalizedArgs = args.Where(arg => !string.IsNullOrWhiteSpace(arg)).ToArray();
+                var normalizedArgs = Array.FindAll(args, arg => !string.IsNullOrWhiteSpace(arg));
 
                 // Check if any argument matches a help flag
-                if (normalizedArgs.Any(arg => HelpFlags.Contains(arg)))
+                if (Array.Exists(normalizedArgs, arg => HelpFlags.Contains(arg)))
                 {
                     monitor?.Log("Usage: lr_version", LogLevel.Info);
                     monitor?.Log("Shows the Living Roots mod version and UniqueID.", LogLevel.Info);
@@ -307,9 +326,8 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
 
-            // In SMAPI, the save folder name is available via the game state
-            // For testing purposes and reliability, we'll use a fallback approach
-            string? saveId = GetSaveIdForDataPersistence();
+            // Get the save ID using the abstraction (monitor is already available in the provider)
+            string? saveId = _saveIdProvider.GetSaveId();
 
             if (string.IsNullOrWhiteSpace(saveId))
             {
@@ -336,9 +354,8 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
 
-            // In SMAPI, the save folder name is available via the game state
-            // For testing purposes and reliability, we'll use a fallback approach
-            string? saveId = GetSaveIdForDataPersistence();
+            // Get the save ID using the abstraction (monitor is already available in the provider)
+            string? saveId = _saveIdProvider.GetSaveId();
 
             if (string.IsNullOrWhiteSpace(saveId))
             {
@@ -356,56 +373,6 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log($"Error occurred while saving soil health data for save.", LogLevel.Error);
-            }
-        }
-
-        /// <summary>
-        /// Gets the save ID for data persistence. This method tries to get the save folder name
-        /// from SMAPI context, with fallbacks for test environments.
-        /// 
-        /// Note: We use reflection to access StardewValley.Game1 fields because SMAPI does not 
-        /// provide a direct API to access the save folder name at all times. The uniqueIDForThisGame 
-        /// and SaveFolderName fields in Game1 are the standard way to identify saves in Stardew Valley.
-        /// This approach is commonly used in SMAPI mods when direct access to save identifiers is needed.
-        /// </summary>
-        /// <returns>The save ID or null if unavailable</returns>
-        private string? GetSaveIdForDataPersistence()
-        {
-            try
-            {
-                // Try to get the save folder name from SMAPI context
-                // In SMAPI, this is available through the game state
-                var game1Type = Type.GetType("StardewValley.Game1, Stardew Valley");
-                if (game1Type != null)
-                {
-                    var saveFolderField = game1Type.GetField("uniqueIDForThisGame", 
-                        System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-                    if (saveFolderField != null)
-                    {
-                        var value = saveFolderField.GetValue(null);
-                        if (value != null)
-                            return value.ToString();
-                    }
-                    
-                    // Alternative: try to get save folder name if it exists
-                    var saveFolderNameField = game1Type.GetField("SaveFolderName", 
-                        System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-                    if (saveFolderNameField != null)
-                    {
-                        var value = saveFolderNameField.GetValue(null);
-                        if (value != null)
-                            return value.ToString();
-                    }
-                }
-                
-                // If we're in a test environment or SMAPI context isn't available yet,
-                // return null which will be handled by the calling code
-                return null;
-            }
-            catch
-            {
-                // If anything fails, return null which will be handled by the calling code
-                return null;
             }
         }
 

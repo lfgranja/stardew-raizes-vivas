@@ -34,11 +34,14 @@ namespace LivingRoots
             // Create application services
             var modDataService = new ModDataService(helper, this.Monitor, modLogic);
             
-            // Create the soil health service
-            var soilHealthService = new SoilHealthService(modDataService, this.Monitor);
+            // Create the soil health service with the required dependencies
+            var soilHealthService = new SoilHealthService(modDataService, this.Monitor, fileNameSanitizationService);
+            
+            // Create the save ID provider with monitor for logging
+            var saveIdProvider = new SaveIdProvider(this.Monitor);
             
             // Create controller with dependency injection
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, modDataService, soilHealthService);
+            _controller = new ModController(helper, this.Monitor, this.ModManifest, modDataService, soilHealthService, saveIdProvider);
             
             // Register events through the Controller
             _controller.RegisterEvents();

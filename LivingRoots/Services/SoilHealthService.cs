@@ -13,6 +13,7 @@ namespace LivingRoots.Services
     {
         private readonly IModDataService _modDataService;
         private readonly IMonitor _monitor;
+        private readonly IFileNameSanitizationService _fileNameSanitizationService;
 
         // Runtime cache using Point directly as key for better performance and precision
         // Dictionary<LocationName, Dictionary<TileCoordinates, HealthValue>>
@@ -22,10 +23,11 @@ namespace LivingRoots.Services
         // Lock object for thread safety
         private readonly object _lock = new object();
 
-        public SoilHealthService(IModDataService modDataService, IMonitor monitor)
+        public SoilHealthService(IModDataService modDataService, IMonitor monitor, IFileNameSanitizationService fileNameSanitizationService)
         {
             _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
             _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+            _fileNameSanitizationService = fileNameSanitizationService ?? throw new ArgumentNullException(nameof(fileNameSanitizationService));
         }
 
         public void LoadData(string saveId)
@@ -385,9 +387,25 @@ namespace LivingRoots.Services
 
         private string GetSaveKey(string saveId)
         {
-            // Simplified key generation - ModDataService handles sanitization
-            if (string.IsNullOrEmpty(saveId)) saveId = "unknown";
-            return $"{KeyPrefix}{saveId}";
+            // Sanitize the saveId to remove invalid filename characters
+            string sanitizedSaveId = "unknown";
+            if (!string.IsNullOrEmpty(saveId))
+            {
+                try
+                {
+                    string? sanitized = _fileNameSanitizationService.Sanitize(saveId);
+                    if (!string.IsNullOrEmpty(sanitized))
+                    {
+                        sanitizedSaveId = sanitized;
+                    }
+                }
+                catch (ArgumentException)
+                {
+                    // If sanitization fails, use a default value to maintain security
+                    sanitizedSaveId = "unknown";
+                }
+            }
+            return $"{KeyPrefix}{sanitizedSaveId}";
         }
     }
 }
