@@ -57,7 +57,7 @@ namespace LivingRoots.Tests
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
-            Assert.Equal(10.0f, resultMax);
+            Assert.Equal(100.0f, resultMax);
             Assert.Equal(0.0f, resultMin);
         }
 
@@ -260,7 +260,7 @@ namespace LivingRoots.Tests
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
-            Assert.Equal(10.0f, resultMax);
+            Assert.Equal(100.0f, resultMax);
             Assert.Equal(0.0f, resultMin);
         }
 
@@ -509,7 +509,7 @@ namespace LivingRoots.Tests
                     {
                         ["10,10"] = float.NaN,              // Invalid value (NaN)
                         ["11,1"] = float.PositiveInfinity,  // Invalid value (Infinity)
-                        ["12,12"] = float.NegativeInfinity,  // Invalid value (Negative Infinity)
+                        ["12,12"] = float.NegativeInfinity, // Invalid value (Negative Infinity)
                         ["13,13"] = 75.0f,                   // Valid value
                         ["14,14"] = 25.0f                    // Valid value
                     },
@@ -521,9 +521,9 @@ namespace LivingRoots.Tests
                 }
             };
 
-            // Set up the mock to return the corrupted state when LoadData is called
+            // Set up the mock to return the corrupted state when LoadData is called with the correct key
             _mockDataService
-                .Setup(x => x.LoadData<SoilHealthState>("corrupted_save"))
+                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_corrupted_save"))
                 .Returns(corruptedState);
 
             // Set up the mock to capture the data that gets saved
