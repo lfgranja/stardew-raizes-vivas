@@ -196,6 +196,12 @@ namespace LivingRoots.Controllers
                     gameLoop.Saving -= _onSavingHandler;
                 }
 
+                // Nullify the event handler fields after unsubscribing to ensure clean state for potential re-registration
+                // and prevent potential issues with duplicate subscriptions
+                _onGameLaunchedHandler = null;
+                _onSaveLoadedHandler = null;
+                _onSavingHandler = null;
+
                 // Reset the events registered flag to allow for potential re-registration
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
 
@@ -356,6 +362,11 @@ namespace LivingRoots.Controllers
         /// <summary>
         /// Gets the save ID for data persistence. This method tries to get the save folder name
         /// from SMAPI context, with fallbacks for test environments.
+        /// 
+        /// Note: We use reflection to access StardewValley.Game1 fields because SMAPI does not 
+        /// provide a direct API to access the save folder name at all times. The uniqueIDForThisGame 
+        /// and SaveFolderName fields in Game1 are the standard way to identify saves in Stardew Valley.
+        /// This approach is commonly used in SMAPI mods when direct access to save identifiers is needed.
         /// </summary>
         /// <returns>The save ID or null if unavailable</returns>
         private string? GetSaveIdForDataPersistence()
