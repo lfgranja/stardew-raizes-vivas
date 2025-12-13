@@ -412,8 +412,8 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
             
-            // Mock the save ID provider to return a valid save ID
-            _mockSaveIdProvider.Setup(x => x.GetSaveId(It.IsAny<IMonitor>())).Returns("test_save_id");
+            // Mock the save ID provider to return a valid save ID when called with null
+            _mockSaveIdProvider.Setup(x => x.GetSaveId(null)).Returns("test_save_id");
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
@@ -438,8 +438,8 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
             
-            // Mock the save ID provider to return a valid save ID
-            _mockSaveIdProvider.Setup(x => x.GetSaveId(It.IsAny<IMonitor>())).Returns("test_save_id");
+            // Mock the save ID provider to return a valid save ID when called with null
+            _mockSaveIdProvider.Setup(x => x.GetSaveId(null)).Returns("test_save_id");
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 

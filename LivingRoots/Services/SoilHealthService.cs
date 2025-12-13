@@ -21,6 +21,7 @@ namespace LivingRoots.Services
         private const string KeyPrefix = "soil_health_data_";
         private const float MinSoilHealth = 0f;
         private const float MaxSoilHealth = 100f;
+        private const string DefaultSaveKey = "soil_health_data_default";
 
         // Lock object for thread safety
         private readonly object _lock = new object();
@@ -47,6 +48,17 @@ namespace LivingRoots.Services
             }
 
             string dataKey = GetSaveKey(saveId);
+            
+            // If sanitization failed and we got a default key, log and return early
+            if (dataKey == DefaultSaveKey)
+            {
+                _monitor.Log("LoadData aborted: saveId sanitization failed, using default key.", LogLevel.Error);
+                lock (_lock)
+                {
+                    _runtimeCache.Clear();
+                }
+                return; // Return early without modifying the cache
+            }
 
             // Use temporary cache to prevent data loss if parsing fails partway through
             var tempCache = new Dictionary<string, Dictionary<Point, float>>();
@@ -172,6 +184,15 @@ namespace LivingRoots.Services
                 return;
             }
 
+            string dataKey = GetSaveKey(saveId);
+            
+            // If sanitization failed and we got a default key, log and return early
+            if (dataKey == DefaultSaveKey)
+            {
+                _monitor.Log("SaveData aborted: saveId sanitization failed, using default key.", LogLevel.Error);
+                return;
+            }
+
             // Create a snapshot of the current cache to avoid holding the lock during I/O
             // This implements the snapshot pattern to move I/O operations outside the lock
             Dictionary<string, Dictionary<string, float>>? snapshotState = null;
@@ -218,8 +239,6 @@ namespace LivingRoots.Services
             // This moves the I/O operation completely outside the lock for better performance
             if (hasDataToSave && snapshotState != null && snapshotState.Count > 0)
             {
-                string dataKey = GetSaveKey(saveId);
-                
                 try
                 {
                     var stateToSave = new SoilHealthState { LocationHealthData = snapshotState };
@@ -396,24 +415,29 @@ namespace LivingRoots.Services
         private string GetSaveKey(string saveId)
         {
             // Sanitize the saveId to remove invalid filename characters
-            string sanitizedSaveId = saveId; // Use the original saveId as default instead of "unknown"
-            if (!string.IsNullOrEmpty(saveId))
+            if (string.IsNullOrEmpty(saveId))
             {
-                try
-                {
-                    string? sanitized = _fileNameSanitizationService.Sanitize(saveId);
-                    if (!string.IsNullOrEmpty(sanitized))
-                    {
-                        sanitizedSaveId = sanitized;
-                    }
-                }
-                catch (ArgumentException)
-                {
-                    // If sanitization fails, use the original saveId to maintain test compatibility
-                    sanitizedSaveId = saveId;
-                }
+                _monitor.Log("SaveId cannot be null or empty.", LogLevel.Error);
+                return DefaultSaveKey;
             }
-            return $"{KeyPrefix}{sanitizedSaveId}";
+
+            try
+            {
+                string? sanitized = _fileNameSanitizationService.Sanitize(saveId);
+                if (string.IsNullOrEmpty(sanitized))
+                {
+                    _monitor.Log("SaveId sanitizes to an empty string after processing.", LogLevel.Error);
+                    return DefaultSaveKey;
+                }
+                
+                return $"{KeyPrefix}{sanitized}";
+            }
+            catch (ArgumentException ex)
+            {
+                // Log the error and return a safe default key instead of throwing an exception
+                _monitor.Log($"SaveId sanitization failed: {ex.Message}", LogLevel.Error);
+                return DefaultSaveKey; // Return a safe default key instead of throwing an exception
+            }
         }
     }
 }

@@ -252,11 +252,11 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.UpdateHealth(location, tile, 100.0f); // Should result in 150 -> clamp to 100
+            service.UpdateHealth(location, tile, 100.0f); // Should result in 50+100=150 -> clamp to 100
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
-            service.UpdateHealth(location, tile, -100.0f); // Should result in -50 -> clamp to 0
+            service.UpdateHealth(location, tile, -100.0f); // Should result in 50-100=-50 -> clamp to 0
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
@@ -298,8 +298,13 @@ namespace LivingRoots.Tests
                 }
             };
 
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("test_save"))
+                .Returns("test_save");
+
             _mockDataService
-                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -321,8 +326,13 @@ namespace LivingRoots.Tests
                 LocationHealthData = null // This could happen during deserialization
             };
 
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("test_save"))
+                .Returns("test_save");
+
             _mockDataService
-                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -352,8 +362,13 @@ namespace LivingRoots.Tests
                 }
             };
 
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("test_save"))
+                .Returns("test_save");
+
             _mockDataService
-                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -385,8 +400,13 @@ namespace LivingRoots.Tests
                 }
             };
 
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("test_save"))
+                .Returns("test_save");
+
             _mockDataService
-                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -416,8 +436,13 @@ namespace LivingRoots.Tests
                 }
             };
 
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("test_save"))
+                .Returns("test_save");
+
             _mockDataService
-                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -440,8 +465,13 @@ namespace LivingRoots.Tests
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("test_save"))
+                .Returns("test_save");
+
             _mockDataService
-                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Throws(new Exception("Data load failed"));
 
             // Act
@@ -477,6 +507,11 @@ namespace LivingRoots.Tests
             var tile2 = new Vector2(15, 20);
             service.SetSoilHealth("Farm", tile1, 75.0f);
             service.SetSoilHealth("Farm", tile2, 25.0f);
+
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("test_save"))
+                .Returns("test_save");
 
             // Act
             service.SaveData("test_save");
@@ -520,6 +555,11 @@ namespace LivingRoots.Tests
                     }
                 }
             };
+
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("corrupted_save"))
+                .Returns("corrupted_save");
 
             // Set up the mock to return the corrupted state when LoadData is called with the correct key
             _mockDataService
@@ -610,8 +650,13 @@ namespace LivingRoots.Tests
                 }
             };
 
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("test_save"))
+                .Returns("test_save");
+
             _mockDataService
-                .Setup(x => x.LoadData<SoilHealthState>(It.IsAny<string>()))
+                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(corruptedState);
 
             // Act - Load the corrupted data and then save it
@@ -633,6 +678,11 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, 50.0f);
+
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("test_save"))
+                .Returns("test_save");
 
             _mockDataService
                 .Setup(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()))
@@ -758,6 +808,90 @@ namespace LivingRoots.Tests
 
             // Assert - No exceptions should have occurred due to race conditions
             Assert.Empty(exceptions);
+        }
+
+        [Fact]
+        public void LoadData_WithSanitizationFailure_UsesDefaultKeyAndClearsCache()
+        {
+            // Arrange
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("invalid_save"))
+                .Throws(new ArgumentException("Invalid characters"));
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
+
+            // Act
+            service.LoadData("invalid_save");
+
+            // Assert - Cache should be cleared when sanitization fails
+            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            // Verify that the monitor was called to log the error
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public void SaveData_WithSanitizationFailure_DoesNotSave()
+        {
+            // Arrange
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("invalid_save"))
+                .Throws(new ArgumentException("Invalid characters"));
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth("Farm", tile, 50.0f);
+
+            // Act
+            service.SaveData("invalid_save");
+
+            // Assert - Data should not be saved when sanitization fails
+            _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
+            // Verify that the monitor was called to log the error
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public void LoadData_WithSanitizationToEmptyResult_UsesDefaultKeyAndClearsCache()
+        {
+            // Arrange
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("empty_result"))
+                .Returns("");
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
+
+            // Act
+            service.LoadData("empty_result");
+
+            // Assert - Cache should be cleared when sanitization results in empty string
+            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            // Verify that the monitor was called to log the error
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public void SaveData_WithSanitizationToEmptyResult_DoesNotSave()
+        {
+            // Arrange
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("empty_result"))
+                .Returns("");
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var tile = new Vector2(10, 10);
+            service.SetSoilHealth("Farm", tile, 50.0f);
+
+            // Act
+            service.SaveData("empty_result");
+
+            // Assert - Data should not be saved when sanitization results in empty string
+            _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
+            // Verify that the monitor was called to log the error
+            _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
         }
     }
 }
