@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using LivingRoots.Domain;
 using LivingRoots.Services;
@@ -175,25 +176,33 @@ namespace LivingRoots.Controllers
         {
             // Use Interlocked.Exchange to implement an atomic 'clear-and-claim' pattern
             // This ensures that only one thread can successfully claim the unregistration operation
-            // and atomically clear the event handlers to prevent race conditions
-            int currentState = Volatile.Read(ref _state);
-            if ((currentState & EventsRegisteredFlag) == 0)
+            // The approach: atomically claim the operation by setting a special state, then properly handle
+            
+            // First, we'll implement the clear-and-claim pattern by using a strategy that leverages
+            // Interlocked.Exchange to atomically read and potentially modify state.
+            // Since we need to preserve other flags while clearing EventsRegisteredFlag,
+            // we'll use CompareExchange in a loop as this is the most appropriate approach.
+            
+            int currentState, newState;
+            do
             {
-                // Events were not registered, so nothing to unregister
-                _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
-                return;
+                currentState = Volatile.Read(ref _state);
+                
+                // Check if events were registered before proceeding with the clear operation
+                if ((currentState & EventsRegisteredFlag) == 0)
+                {
+                    // Events were not registered, so nothing to unregister
+                    _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
+                    return;
+                }
+                
+                // Calculate new state with EventsRegisteredFlag cleared while preserving other flags
+                newState = currentState & ~EventsRegisteredFlag;
             }
-
-            // Attempt to atomically clear the EventsRegisteredFlag using CompareExchange
-            // This implements the "claim-then-act" pattern to prevent race conditions
-            int newState = currentState & ~EventsRegisteredFlag;
-            int originalState = Interlocked.CompareExchange(ref _state, newState, currentState);
-            if (originalState != currentState)
-            {
-                // Another thread already claimed unregistration rights, so exit gracefully
-                _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
-                return;
-            }
+            // Use CompareExchange in a loop to atomically update the state
+            // This implements the 'clear-and-claim' pattern by ensuring only one thread
+            // can successfully clear the EventsRegisteredFlag
+            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             // At this point, we have successfully claimed the unregistration operation
             // and cleared the EventsRegisteredFlag. Now we need to atomically clear the event handlers
@@ -310,13 +319,18 @@ namespace LivingRoots.Controllers
                     _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
                     _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
 
-                    // Set the command registered flag
+                    // Set the command registered flag atomically - only after successful registration
                     Interlocked.Or(ref _state, CommandRegisteredFlag);
                 }
                 catch (Exception ex)
                 {
                     // Log error but don't expose raw exception message for security
                     _monitor.Log("Error occurred while registering console command 'lr_version'.", LogLevel.Error);
+                    
+                    // Ensure the CommandRegisteredFlag is not set if registration failed
+                    // This is important to maintain atomic state - if an exception occurs during registration,
+                    // we don't want the flag to indicate success when it actually failed
+                    Interlocked.And(ref _state, ~CommandRegisteredFlag);
                 }
             }
         }
@@ -336,11 +350,8 @@ namespace LivingRoots.Controllers
                 // Add null check for args parameter and use case-insensitive comparison
                 args = args ?? Array.Empty<string>();
 
-                // Filter out whitespace-only arguments to normalize the input
-                var normalizedArgs = Array.FindAll(args, arg => !string.IsNullOrWhiteSpace(arg));
-
-                // Check if any argument matches a help flag
-                if (Array.Exists(normalizedArgs, arg => HelpFlags.Contains(arg)))
+                // Check if any non-whitespace argument matches a help flag using LINQ Any()
+                if (args.Any(arg => !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg)))
                 {
                     monitor?.Log("Usage: lr_version", LogLevel.Info);
                     monitor?.Log("Shows the Living Roots mod version and UniqueID.", LogLevel.Info);
@@ -362,10 +373,6 @@ namespace LivingRoots.Controllers
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
         {
-            // Skip if controller has been disposed
-            if (IsDisposed())
-                return;
-
             // Use Interlocked.CompareExchange to implement a thread-safe re-entrancy guard
             // This ensures only one execution of OnSaveLoaded can happen at a time
             int currentState, newState;
@@ -387,6 +394,13 @@ namespace LivingRoots.Controllers
 
             try
             {
+                // Double-check locking pattern: check if controller is disposed after acquiring execution flag
+                if (IsDisposed())
+                {
+                    _monitor.Log("Controller disposed after acquiring OnSaveLoaded execution flag, skipping execution.", LogLevel.Trace);
+                    return;
+                }
+
                 // Get the save ID using the abstraction (monitor is already available in the provider)
                 string? saveId = _saveIdProvider.GetSaveId();
 
@@ -414,10 +428,6 @@ namespace LivingRoots.Controllers
 
         private void OnSaving(object? sender, SavingEventArgs e)
         {
-            // Skip if controller has been disposed
-            if (IsDisposed())
-                return;
-
             // Use Interlocked.CompareExchange to implement a thread-safe re-entrancy guard
             // This ensures only one execution of OnSaving can happen at a time
             int currentState, newState;
@@ -439,6 +449,13 @@ namespace LivingRoots.Controllers
 
             try
             {
+                // Double-check locking pattern: check if controller is disposed after acquiring execution flag
+                if (IsDisposed())
+                {
+                    _monitor.Log("Controller disposed after acquiring OnSaving execution flag, skipping execution.", LogLevel.Trace);
+                    return;
+                }
+
                 // Get the save ID using the abstraction (monitor is already available in the provider)
                 string? saveId = _saveIdProvider.GetSaveId();
 
@@ -524,35 +541,6 @@ namespace LivingRoots.Controllers
             } while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             return true; // Successfully set the flag
-        }
-
-        /// <summary>
-        /// Attempts to clear a state flag atomically, ensuring thread safety.
-        /// This method uses CompareExchange to prevent race conditions when
-        /// clearing flags like EventsRegisteredFlag. It implements a "claim-then-act"
-        /// pattern where only one thread can successfully clear the flag and
-        /// perform the associated action (unregistering events).
-        /// </summary>
-        /// <param name="flag">The flag to clear</param>
-        /// <returns>True if the flag was cleared, false if it was already cleared</returns>
-        private bool TryClearStateFlag(int flag)
-        {
-            int currentState;
-            int newState;
-            do
-            {
-                currentState = Volatile.Read(ref _state);
-                
-                // If the flag is already cleared, return false
-                if ((currentState & flag) == 0)
-                    return false;
-
-                // Calculate new state with the flag cleared
-                newState = currentState & ~flag;
-
-            } while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
-
-            return true; // Successfully cleared the flag
         }
     }
 }
