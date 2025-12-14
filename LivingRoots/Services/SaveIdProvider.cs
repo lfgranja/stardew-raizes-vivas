@@ -19,11 +19,8 @@ namespace LivingRoots.Services
             _monitor = monitor;
         }
 
-        public string? GetSaveId(IMonitor? monitor = null)
+        public string? GetSaveId()
         {
-            // Use the passed monitor if provided, otherwise use the one from constructor
-            var effectiveMonitor = monitor ?? _monitor;
-
             try
             {
                 // Try to get the save folder name from SMAPI context
@@ -49,7 +46,7 @@ namespace LivingRoots.Services
                     else
                     {
                         // Log minimal information about reflection failure at Trace level for debugging
-                        effectiveMonitor?.Log("GetSaveId: Field 'uniqueIDForThisGame' not found in Game1 type", LogLevel.Trace);
+                        _monitor?.Log("GetSaveId: Field 'uniqueIDForThisGame' not found in Game1 type", LogLevel.Trace);
                     }
                     
                     // Alternative: try to get save folder name if it exists
@@ -70,13 +67,13 @@ namespace LivingRoots.Services
                     else
                     {
                         // Log minimal information about reflection failure at Trace level for debugging
-                        effectiveMonitor?.Log("GetSaveId: Field 'SaveFolderName' not found in Game1 type", LogLevel.Trace);
+                        _monitor?.Log("GetSaveId: Field 'SaveFolderName' not found in Game1 type", LogLevel.Trace);
                     }
                 }
                 else
                 {
                     // Log minimal information about type lookup failure at Trace level for debugging
-                    effectiveMonitor?.Log("GetSaveId: Type 'StardewValley.Game1' not found", LogLevel.Trace);
+                    _monitor?.Log("GetSaveId: Type 'StardewValley.Game1' not found", LogLevel.Trace);
                 }
                 
                 // If we're in a test environment or SMAPI context isn't available yet,
@@ -87,15 +84,15 @@ namespace LivingRoots.Services
             {
                 // Log minimal reflection errors for debugging at Trace level
                 // Using a static message to avoid exposing sensitive system information
-                effectiveMonitor?.Log("GetSaveId: ReflectionTypeLoadException occurred during type loading", LogLevel.Trace);
+                _monitor?.Log("GetSaveId: ReflectionTypeLoadException occurred during type loading", LogLevel.Trace);
                 // Optionally log the count of loader exceptions for debugging purposes without exposing details
-                effectiveMonitor?.Log($"GetSaveId: Number of loader exceptions: {ex.LoaderExceptions?.Length ?? 0}", LogLevel.Trace);
+                _monitor?.Log($"GetSaveId: Number of loader exceptions: {ex.LoaderExceptions?.Length ?? 0}", LogLevel.Trace);
                 return null;
             }
             catch (Exception ex)
             {
                 // Log minimal information about any other reflection errors at Trace level for debugging
-                effectiveMonitor?.Log($"GetSaveId: Exception occurred during reflection: {ex.GetType().Name}", LogLevel.Trace);
+                _monitor?.Log($"GetSaveId: Exception occurred during reflection: {ex.GetType().Name}", LogLevel.Trace);
                 return null;
             }
         }

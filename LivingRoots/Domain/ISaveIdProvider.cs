@@ -1,5 +1,4 @@
 using System;
-using StardewModdingAPI;
 
 namespace LivingRoots.Domain
 {
@@ -12,8 +11,7 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Gets the save ID for data persistence.
         /// </summary>
-        /// <param name="monitor">The monitor for logging purposes</param>
         /// <returns>The save ID or null if unavailable</returns>
-        string? GetSaveId(IMonitor? monitor = null);
+        string? GetSaveId();
     }
 }
