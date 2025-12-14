@@ -107,8 +107,8 @@ namespace LivingRoots.Services
                         ReadOnlySpan<char> keySpan = tileEntry.Key;
                         int commaIndex = keySpan.IndexOf(',');
                         if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
-                            int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int x) &&
-                            int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out int y))
+                            int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
+                            int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
                         {
                             // Validate health value range
                             float validatedValue = tileEntry.Value;

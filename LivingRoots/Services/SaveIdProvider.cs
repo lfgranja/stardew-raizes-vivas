@@ -37,7 +37,12 @@ namespace LivingRoots.Services
                     {
                         var value = uniqueIDField.GetValue(null);
                         if (value != null)
-                            return value.ToString();
+                        {
+                            string saveId = value.ToString();
+                            // Validate that the save ID is not null, empty, or whitespace before returning
+                            if (IsValidSaveId(saveId))
+                                return saveId;
+                        }
                     }
                     else
                     {
@@ -52,14 +57,19 @@ namespace LivingRoots.Services
                     {
                         var value = saveFolderNameField.GetValue(null);
                         if (value != null)
-                            return value.ToString();
+                        {
+                            string saveId = value.ToString();
+                            // Validate that the save ID is not null, empty, or whitespace before returning
+                            if (IsValidSaveId(saveId))
+                                return saveId;
+                        }
                     }
                     else
                     {
                         // Log minimal information about reflection failure at Trace level for debugging
                         effectiveMonitor?.Log("GetSaveId: Field 'SaveFolderName' not found in Game1 type", LogLevel.Trace);
                     }
-                }
+                } // Added missing closing brace
                 else
                 {
                     // Log minimal information about type lookup failure at Trace level for debugging
@@ -73,7 +83,10 @@ namespace LivingRoots.Services
             catch (System.Reflection.ReflectionTypeLoadException ex)
             {
                 // Log minimal reflection errors for debugging at Trace level
-                effectiveMonitor?.Log($"GetSaveId: ReflectionTypeLoadException occurred: {ex.Message}", LogLevel.Trace);
+                // Using a static message to avoid exposing sensitive system information
+                effectiveMonitor?.Log("GetSaveId: ReflectionTypeLoadException occurred during type loading", LogLevel.Trace);
+                // Optionally log the count of loader exceptions for debugging purposes without exposing details
+                effectiveMonitor?.Log($"GetSaveId: Number of loader exceptions: {ex.LoaderExceptions?.Length ?? 0}", LogLevel.Trace);
                 return null;
             }
             catch (Exception ex)
@@ -82,6 +95,16 @@ namespace LivingRoots.Services
                 effectiveMonitor?.Log($"GetSaveId: Exception occurred during reflection: {ex.GetType().Name}", LogLevel.Trace);
                 return null;
             }
+        }
+        
+        /// <summary>
+        /// Validates that the save ID is not null, empty, or whitespace
+        /// </summary>
+        /// <param name="saveId">The save ID to validate</param>
+        /// <returns>True if the save ID is valid, false otherwise</returns>
+        private static bool IsValidSaveId(string? saveId)
+        {
+            return !string.IsNullOrWhiteSpace(saveId);
         }
         
         /// <summary>
@@ -100,7 +123,7 @@ namespace LivingRoots.Services
                 var assemblies = AppDomain.CurrentDomain.GetAssemblies();
                 foreach (var assembly in assemblies)
                 {
-                    if (assembly.FullName.StartsWith("Stardew Valley"))
+                    if (assembly?.FullName?.StartsWith("Stardew Valley") == true)
                     {
                         game1Type = assembly.GetType("StardewValley.Game1");
                         if (game1Type != null)
@@ -116,7 +139,7 @@ namespace LivingRoots.Services
                     if (game1Type != null)
                         return game1Type;
                 }
-                catch
+                catch (Exception)
                 {
                     // If we can't load the assembly, continue to next approach
                 }
@@ -133,7 +156,7 @@ namespace LivingRoots.Services
                                 return type;
                         }
                     }
-                    catch
+                    catch (Exception)
                     {
                         // Skip assemblies that can't be loaded or accessed
                         continue;
@@ -142,7 +165,7 @@ namespace LivingRoots.Services
 
                 return null;
             }
-            catch
+            catch (Exception)
             {
                 return null;
             }

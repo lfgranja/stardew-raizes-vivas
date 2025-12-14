@@ -18,6 +18,10 @@ namespace LivingRoots.Controllers
         private const int DisposedFlag = 1 << 2;
         private int _state = 0; // Combine flags in single volatile field
 
+        // Re-entrancy guard flags for event handlers
+        private const int OnSaveLoadedExecutingFlag = 1 << 3;
+        private const int OnSavingExecutingFlag = 1 << 4;
+        
         // Dependencies
         private readonly IModHelper _helper;
         private readonly IMonitor _monitor;
@@ -169,12 +173,31 @@ namespace LivingRoots.Controllers
 
         public void UnregisterEvents()
         {
-            // Fast path: skip if events were never registered
-            if ((Volatile.Read(ref _state) & EventsRegisteredFlag) == 0)
+            // Use Interlocked.Exchange to implement an atomic 'clear-and-claim' pattern
+            // This ensures that only one thread can successfully claim the unregistration operation
+            // and atomically clear the event handlers to prevent race conditions
+            int currentState = Volatile.Read(ref _state);
+            if ((currentState & EventsRegisteredFlag) == 0)
             {
-                _monitor.Log("Events were not registered, skipping unregistration.", LogLevel.Trace);
+                // Events were not registered, so nothing to unregister
+                _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
                 return;
             }
+
+            // Attempt to atomically clear the EventsRegisteredFlag using CompareExchange
+            // This implements the "claim-then-act" pattern to prevent race conditions
+            int newState = currentState & ~EventsRegisteredFlag;
+            int originalState = Interlocked.CompareExchange(ref _state, newState, currentState);
+            if (originalState != currentState)
+            {
+                // Another thread already claimed unregistration rights, so exit gracefully
+                _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
+                return;
+            }
+
+            // At this point, we have successfully claimed the unregistration operation
+            // and cleared the EventsRegisteredFlag. Now we need to atomically clear the event handlers
+            // using Interlocked.Exchange to ensure thread safety
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
@@ -185,58 +208,47 @@ namespace LivingRoots.Controllers
             if (gameLoop == null)
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
-                // Reset the events registered flag and nullify the event handler fields
-                // even when gameLoop is null to prevent the controller from getting stuck in a registered state
+                // Even when gameLoop is null, we've already cleared the flag,
+                // so just nullify the event handler fields to ensure clean state
                 _onGameLaunchedHandler = null;
                 _onSaveLoadedHandler = null;
                 _onSavingHandler = null;
-
-                // Reset the events registered flag to allow for potential re-registration
-                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
             }
 
             try
             {
+                // Atomically clear each event handler using Interlocked.Exchange to prevent
+                // race conditions where multiple threads might try to access these handlers
+                var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null);
+
                 // Safely unsubscribe from events with null checks and individual exception handling
-                if (_onGameLaunchedHandler != null)
+                if (gameLaunchedHandler != null)
                 {
-                    gameLoop.GameLaunched -= _onGameLaunchedHandler;
+                    gameLoop.GameLaunched -= gameLaunchedHandler;
                 }
                 
-                if (_onSaveLoadedHandler != null)
+                if (saveLoadedHandler != null)
                 {
-                    gameLoop.SaveLoaded -= _onSaveLoadedHandler;
+                    gameLoop.SaveLoaded -= saveLoadedHandler;
                 }
                 
-                if (_onSavingHandler != null)
+                if (savingHandler != null)
                 {
-                    gameLoop.Saving -= _onSavingHandler;
+                    gameLoop.Saving -= savingHandler;
                 }
-
-                // Nullify the event handler fields after unsubscribing to ensure clean state for potential re-registration
-                // and prevent potential issues with duplicate subscriptions
-                _onGameLaunchedHandler = null;
-                _onSaveLoadedHandler = null;
-                _onSavingHandler = null;
-
-                // Reset the events registered flag to allow for potential re-registration
-                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
-
-                monitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
             catch (Exception ex)
             {
                 // Log error but don't expose raw exception message for security
                 monitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
-                
-                // Ensure the state is still reset even if an exception occurs during unsubscription
-                _onGameLaunchedHandler = null;
-                _onSaveLoadedHandler = null;
-                _onSavingHandler = null;
-
-                // Reset the events registered flag to allow for potential re-registration
-                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+            }
+            finally
+            {
+                // The event handler fields have already been set to null via Interlocked.Exchange
+                monitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
         }
 
@@ -288,6 +300,13 @@ namespace LivingRoots.Controllers
 
                 try
                 {
+                    // Add null check for _helper and _helper.ConsoleCommands to prevent NullReferenceException
+                    if (_helper?.ConsoleCommands == null)
+                    {
+                        _monitor.Log("ConsoleCommands is null, cannot register console command 'lr_version'.", LogLevel.Error);
+                        return;
+                    }
+                    
                     _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
                     _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
 
@@ -347,17 +366,36 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
 
-            // Get the save ID using the abstraction (monitor is already available in the provider)
-            string? saveId = _saveIdProvider.GetSaveId();
-
-            if (string.IsNullOrWhiteSpace(saveId))
+            // Use Interlocked.CompareExchange to implement a thread-safe re-entrancy guard
+            // This ensures only one execution of OnSaveLoaded can happen at a time
+            int currentState, newState;
+            do
             {
-                _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; skipping soil health load.", LogLevel.Warn);
-                return;
-            }
+                currentState = Volatile.Read(ref _state);
+                
+                // If the OnSaveLoadedExecutingFlag is already set, this method is already running, so return
+                if ((currentState & OnSaveLoadedExecutingFlag) != 0)
+                {
+                    _monitor.Log("OnSaveLoaded is already executing, skipping concurrent execution.", LogLevel.Trace);
+                    return;
+                }
+                
+                // Calculate new state with the OnSaveLoadedExecutingFlag set
+                newState = currentState | OnSaveLoadedExecutingFlag;
+            } 
+            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             try
             {
+                // Get the save ID using the abstraction (monitor is already available in the provider)
+                string? saveId = _saveIdProvider.GetSaveId();
+
+                if (string.IsNullOrWhiteSpace(saveId))
+                {
+                    _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; skipping soil health load.", LogLevel.Warn);
+                    return;
+                }
+
                 // Load data using the save folder name as unique ID
                 _soilHealthService.LoadData(saveId);
                 _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
@@ -367,6 +405,11 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 _monitor.Log($"Error occurred while loading soil health data for save.", LogLevel.Error);
             }
+            finally
+            {
+                // Clear the executing flag when done to allow future executions
+                Interlocked.And(ref _state, ~OnSaveLoadedExecutingFlag);
+            }
         }
 
         private void OnSaving(object? sender, SavingEventArgs e)
@@ -375,17 +418,36 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
                 return;
 
-            // Get the save ID using the abstraction (monitor is already available in the provider)
-            string? saveId = _saveIdProvider.GetSaveId();
-
-            if (string.IsNullOrWhiteSpace(saveId))
+            // Use Interlocked.CompareExchange to implement a thread-safe re-entrancy guard
+            // This ensures only one execution of OnSaving can happen at a time
+            int currentState, newState;
+            do
             {
-                _monitor.Log("OnSaving: SaveFolderName unavailable; skipping soil health save.", LogLevel.Warn);
-                return;
-            }
+                currentState = Volatile.Read(ref _state);
+                
+                // If the OnSavingExecutingFlag is already set, this method is already running, so return
+                if ((currentState & OnSavingExecutingFlag) != 0)
+                {
+                    _monitor.Log("OnSaving is already executing, skipping concurrent execution.", LogLevel.Trace);
+                    return;
+                }
+                
+                // Calculate new state with the OnSavingExecutingFlag set
+                newState = currentState | OnSavingExecutingFlag;
+            } 
+            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             try
             {
+                // Get the save ID using the abstraction (monitor is already available in the provider)
+                string? saveId = _saveIdProvider.GetSaveId();
+
+                if (string.IsNullOrWhiteSpace(saveId))
+                {
+                    _monitor.Log("OnSaving: SaveFolderName unavailable; skipping soil health save.", LogLevel.Warn);
+                    return;
+                }
+
                 // Save data before the game saves/exits (using the saving event)
                 _soilHealthService.SaveData(saveId);
                 _monitor.Log("Soil health data saved successfully.", LogLevel.Trace);
@@ -394,6 +456,11 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log($"Error occurred while saving soil health data for save.", LogLevel.Error);
+            }
+            finally
+            {
+                // Clear the executing flag when done to allow future executions
+                Interlocked.And(ref _state, ~OnSavingExecutingFlag);
             }
         }
 
@@ -457,6 +524,35 @@ namespace LivingRoots.Controllers
             } while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             return true; // Successfully set the flag
+        }
+
+        /// <summary>
+        /// Attempts to clear a state flag atomically, ensuring thread safety.
+        /// This method uses CompareExchange to prevent race conditions when
+        /// clearing flags like EventsRegisteredFlag. It implements a "claim-then-act"
+        /// pattern where only one thread can successfully clear the flag and
+        /// perform the associated action (unregistering events).
+        /// </summary>
+        /// <param name="flag">The flag to clear</param>
+        /// <returns>True if the flag was cleared, false if it was already cleared</returns>
+        private bool TryClearStateFlag(int flag)
+        {
+            int currentState;
+            int newState;
+            do
+            {
+                currentState = Volatile.Read(ref _state);
+                
+                // If the flag is already cleared, return false
+                if ((currentState & flag) == 0)
+                    return false;
+
+                // Calculate new state with the flag cleared
+                newState = currentState & ~flag;
+
+            } while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+
+            return true; // Successfully cleared the flag
         }
     }
 }

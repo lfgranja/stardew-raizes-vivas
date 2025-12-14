@@ -239,7 +239,7 @@ namespace LivingRoots.Tests
 
             // Assert - Events should not be unsubscribed if they were never registered
             // Should log message indicating events were not registered
-            _mockMonitor.Verify(m => m.Log("Events were not registered, skipping unregistration.", LogLevel.Trace), Times.Once);
+            _mockMonitor.Verify(m => m.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace), Times.Once);
         }
 
         [Fact]
@@ -272,6 +272,10 @@ namespace LivingRoots.Tests
             await System.Threading.Tasks.Task.WhenAll(tasks);
 
             // Assert - No exceptions should be thrown due to race conditions
+            // Additionally, verify that all events were properly removed (only once due to thread safety)
+            mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once);
         }
 
         [Fact]
@@ -377,9 +381,10 @@ namespace LivingRoots.Tests
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act & Assert - Should not throw any exceptions
-            var ex = Record.Exception(() => controller.GetType()
-                .GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
-                .Invoke(controller, new object[] { "lr_version", new string[] { } }));
+            var ex = Record.Exception(() => 
+                controller.GetType()
+                    .GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                    .Invoke(controller, new object[] { "lr_version", new string[] { } }));
             Assert.Null(ex);
         }
 
@@ -398,9 +403,10 @@ namespace LivingRoots.Tests
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act & Assert - Should not throw with help arguments
-            var ex = Record.Exception(() => controller.GetType()
-                .GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
-                .Invoke(controller, new object[] { "lr_version", new string[] { "/?", "-help", "--h" } }));
+            var ex = Record.Exception(() => 
+                controller.GetType()
+                    .GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                    .Invoke(controller, new object[] { "lr_version", new string[] { "/?", "-help", "--h" } }));
             Assert.Null(ex);
         }
 
