@@ -72,7 +72,7 @@ namespace LivingRoots.Services
                         // Log minimal information about reflection failure at Trace level for debugging
                         effectiveMonitor?.Log("GetSaveId: Field 'SaveFolderName' not found in Game1 type", LogLevel.Trace);
                     }
-                } // Added missing closing brace
+                }
                 else
                 {
                     // Log minimal information about type lookup failure at Trace level for debugging

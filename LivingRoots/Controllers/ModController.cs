@@ -497,10 +497,9 @@ namespace LivingRoots.Controllers
             // Unregister events to prevent memory leaks
             UnregisterEvents();
 
-            // Clean up handlers
-            _onGameLaunchedHandler = null;
-            _onSaveLoadedHandler = null;
-            _onSavingHandler = null;
+            // The UnregisterEvents() method already handles setting the event handlers to null
+            // in a thread-safe manner using Interlocked.Exchange, so these redundant assignments
+            // are not needed and have been removed to follow DRY principle
         }
 
         /// <summary>
