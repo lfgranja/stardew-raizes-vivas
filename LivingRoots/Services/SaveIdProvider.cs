@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Reflection;
 using StardewModdingAPI;
 using LivingRoots.Domain;
@@ -38,7 +39,8 @@ namespace LivingRoots.Services
                         var value = uniqueIDField.GetValue(null);
                         if (value != null)
                         {
-                            string saveId = value.ToString();
+                            // Perform explicit type checking and use invariant culture for conversion
+                            string saveId = ConvertValueToString(value);
                             // Validate that the save ID is not null, empty, or whitespace before returning
                             if (IsValidSaveId(saveId))
                                 return saveId;
@@ -58,7 +60,8 @@ namespace LivingRoots.Services
                         var value = saveFolderNameField.GetValue(null);
                         if (value != null)
                         {
-                            string saveId = value.ToString();
+                            // Perform explicit type checking and use invariant culture for conversion
+                            string saveId = ConvertValueToString(value);
                             // Validate that the save ID is not null, empty, or whitespace before returning
                             if (IsValidSaveId(saveId))
                                 return saveId;
@@ -95,6 +98,30 @@ namespace LivingRoots.Services
                 effectiveMonitor?.Log($"GetSaveId: Exception occurred during reflection: {ex.GetType().Name}", LogLevel.Trace);
                 return null;
             }
+        }
+        
+        /// <summary>
+        /// Converts a value to string with explicit type checking and invariant culture formatting
+        /// </summary>
+        /// <param name="value">The value to convert</param>
+        /// <returns>String representation of the value</returns>
+        private static string ConvertValueToString(object value)
+        {
+            // Explicit type checking and conversion using invariant culture
+            return value switch
+            {
+                string stringValue => stringValue,
+                int intValue => intValue.ToString(CultureInfo.InvariantCulture),
+                long longValue => longValue.ToString(CultureInfo.InvariantCulture),
+                double doubleValue => doubleValue.ToString(CultureInfo.InvariantCulture),
+                float floatValue => floatValue.ToString(CultureInfo.InvariantCulture),
+                decimal decimalValue => decimalValue.ToString(CultureInfo.InvariantCulture),
+                bool boolValue => boolValue.ToString(CultureInfo.InvariantCulture),
+                DateTime dateTimeValue => dateTimeValue.ToString(CultureInfo.InvariantCulture),
+                Guid guidValue => guidValue.ToString(),
+                IFormattable formattableValue => formattableValue.ToString(null, CultureInfo.InvariantCulture),
+                _ => value.ToString() ?? string.Empty
+            };
         }
         
         /// <summary>

@@ -3,7 +3,6 @@
 **Objetivo:** Implementar um sistema robusto para armazenar, carregar e gerenciar o valor de "Saúde do Solo" (0-100%) para cada tile arável (tillable) do jogo, garantindo persistência entre sessões.
 
 ## 1. Análise Arquitetural e Design
-
 Seguindo o `ARCHITECTURE.md` e o princípio de Inversão de Dependência (DIP) já implementado no projeto:
 
 ### Camada de Domínio (`LivingRoots/Domain`):
@@ -32,7 +31,7 @@ Para evitar problemas de serialização com chaves complexas em JSON (como `Vect
     "12,16": 90.0
   },
   "Greenhouse": {
-    "5,5": 100.0
+    "5,5": 10.0
   }
 }
 ```
@@ -99,6 +98,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using LivingRoots.Domain;
+using LivingRoots;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 
@@ -140,10 +140,10 @@ namespace LivingRoots.Services
 
             string dataKey = GetSaveKey(saveId);
             
-            // If sanitization failed and we got a default key, log and return early
-            if (dataKey == ModConstants.DefaultSaveKey)
+            // If sanitization failed and we got a null key, log and return early
+            if (dataKey == null)
             {
-                _monitor.Log("LoadData aborted: saveId sanitization failed, using default key.", LogLevel.Error);
+                _monitor.Log("LoadData aborted: saveId sanitization failed.", LogLevel.Error);
                 lock (_lock)
                 {
                     _runtimeCache.Clear();
@@ -277,10 +277,10 @@ namespace LivingRoots.Services
 
             string dataKey = GetSaveKey(saveId);
             
-            // If sanitization failed and we got a default key, log and return early
-            if (dataKey == ModConstants.DefaultSaveKey)
+            // If sanitization failed and we got a null key, log and return early
+            if (dataKey == null)
             {
-                _monitor.Log("SaveData aborted: saveId sanitization failed, using default key.", LogLevel.Error);
+                _monitor.Log("SaveData aborted: saveId sanitization failed.", LogLevel.Error);
                 return;
             }
 
@@ -509,7 +509,7 @@ namespace LivingRoots.Services
             if (string.IsNullOrEmpty(saveId))
             {
                 _monitor.Log("SaveId cannot be null or empty.", LogLevel.Error);
-                return ModConstants.DefaultSaveKey;
+                return null;
             }
 
             try
@@ -518,16 +518,22 @@ namespace LivingRoots.Services
                 if (string.IsNullOrEmpty(sanitized))
                 {
                     _monitor.Log("SaveId sanitizes to an empty string after processing.", LogLevel.Error);
-                    return ModConstants.DefaultSaveKey;
+                    return null;
                 }
                 
                 return $"{ModConstants.KeyPrefix}{sanitized}";
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
-                // Log the error and return a safe default key instead of throwing an exception
-                _monitor.Log($"SaveId sanitization failed: {ex.Message}", LogLevel.Error);
-                return ModConstants.DefaultSaveKey; // Return a safe default key instead of throwing an exception
+                // Log the error without exposing raw exception message for security
+                _monitor.Log("SaveId sanitization failed due to invalid characters.", LogLevel.Error);
+                return null; // Fail-fast approach: return null instead of a default key
+            }
+            catch (Exception)
+            {
+                // Catch any other unexpected exceptions during sanitization
+                _monitor.Log("SaveId sanitization failed due to an unexpected error.", LogLevel.Error);
+                return null; // Fail-fast approach: return null instead of a default key
             }
         }
     }
@@ -692,7 +698,6 @@ Após a implementação, executamos as seguintes verificações manuais e automa
 ### Segurança de Thread
 - Uso de locks para garantir operações thread-safe
 - Prevenção de condições de corrida durante acesso concorrente
-
 ### Serialização Segura
 - Validação de dados durante carregamento e salvamento
 - Tratamento de valores inválidos (NaN, Infinity) na serialização

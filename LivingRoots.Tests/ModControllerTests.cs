@@ -238,8 +238,10 @@ namespace LivingRoots.Tests
             controller.UnregisterEvents();
 
             // Assert - Events should not be unsubscribed if they were never registered
-            // Should log message indicating events were not registered
-            _mockMonitor.Verify(m => m.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace), Times.Once);
+            // Verify that no unsubscription methods were called since events were never registered
+            mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Never);
+            mockGameLoopEvents.VerifyRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Never);
+            mockGameLoopEvents.VerifyRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>(), Times.Never);
         }
 
         [Fact]
