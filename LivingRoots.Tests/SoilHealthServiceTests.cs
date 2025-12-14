@@ -204,7 +204,7 @@ namespace LivingRoots.Tests
 
             // Act
             service.UpdateHealth("Farm", new Vector2(float.MaxValue, 10), 10.0f);
-            service.UpdateHealth("Farm", new Vector2(float.MinValue, 10), 100.0f);
+            service.UpdateHealth("Farm", new Vector2(float.MinValue, 10), 10.0f);
 
             // Assert - Value should remain unchanged
             Assert.Equal(50.0f, service.GetSoilHealth("Farm", tile));
@@ -252,7 +252,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.UpdateHealth(location, tile, 100.0f); // Should result in 50+100=150 -> clamp to 100
+            service.UpdateHealth(location, tile, 100.0f); // Should result in 50+100=150 -> clamp to 10
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset

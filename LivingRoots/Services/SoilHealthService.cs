@@ -44,7 +44,7 @@ namespace LivingRoots.Services
                 return; // Return early without modifying the cache
             }
 
-            string dataKey = GetSaveKey(saveId);
+            string? dataKey = GetSaveKey(saveId);
             
             // If sanitization failed and we got a default key, log and return early
             if (dataKey == null)
@@ -181,7 +181,7 @@ namespace LivingRoots.Services
                 return;
             }
 
-            string dataKey = GetSaveKey(saveId);
+            string? dataKey = GetSaveKey(saveId);
             
             // If sanitization failed and we got a default key, log and return early
             if (dataKey == null)
@@ -409,7 +409,7 @@ namespace LivingRoots.Services
             return Math.Clamp(value, ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth);
         }
 
-        private string GetSaveKey(string saveId)
+        private string? GetSaveKey(string saveId)
         {
             // Sanitize the saveId to remove invalid filename characters
             if (string.IsNullOrEmpty(saveId))
