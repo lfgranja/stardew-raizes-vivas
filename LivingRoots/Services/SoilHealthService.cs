@@ -67,16 +67,20 @@ namespace LivingRoots.Services
             {
                 savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log("Error loading soil health data.", LogLevel.Error);
                 loadErrorOccurred = true;
             }
 
-            // If there was an error loading the data, return early without modifying runtime cache to preserve existing data
+            // If there was an error loading the data, clear the cache to prevent cross-save data leakage
             if (loadErrorOccurred)
             {
+                lock (_lock)
+                {
+                    _runtimeCache.Clear();
+                }
                 return;
             }
 
@@ -113,17 +117,16 @@ namespace LivingRoots.Services
                             // Validate health value range
                             float validatedValue = tileEntry.Value;
                             
-                            // Check for NaN or Infinity values and skip entirely
+                            // Check for NaN or Infinity values and convert to 0 instead of skipping
                             if (float.IsNaN(validatedValue) || float.IsInfinity(validatedValue))
                             {
                                 // Only warn once per location for invalid values to prevent log spam
                                 if (!warnedForInvalidValue)
                                 {
-                                    _monitor.Log($"Invalid health value (NaN/Infinity) found in save data for location '{locationEntry.Key}'; skipping entry.", LogLevel.Warn);
+                                    _monitor.Log($"Invalid health value (NaN/Infinity) found in save data for location '{locationEntry.Key}'; converting to 0.", LogLevel.Warn);
                                     warnedForInvalidValue = true;
                                 }
-                                // Skip this entry entirely instead of converting to 0
-                                continue;
+                                validatedValue = 0f; // Convert to 0 instead of skipping
                             }
                             else if (validatedValue < ModConstants.MinSoilHealth || validatedValue > ModConstants.MaxSoilHealth)
                             {
@@ -242,7 +245,7 @@ namespace LivingRoots.Services
                     _modDataService.SaveData(stateToSave, dataKey);
                     _monitor.Log($"Soil health data saved for {saveId}", LogLevel.Trace);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // Log error but don't expose raw exception message for security
                     _monitor.Log("Error saving soil health data.", LogLevel.Error);
@@ -409,6 +412,12 @@ namespace LivingRoots.Services
         
         private float ClampHealthValue(float value)
         {
+            // Handle NaN and Infinity values before clamping
+            if (float.IsNaN(value) || float.IsInfinity(value))
+            {
+                return 0f; // Convert invalid values to 0
+            }
+            
             return Math.Clamp(value, ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth);
         }
 
@@ -431,7 +440,8 @@ namespace LivingRoots.Services
                 }
                 
                 // Normalize to lowercase to ensure canonical save key casing
-                return $"{ModConstants.KeyPrefix}{sanitized}".ToLowerInvariant();
+                // Apply ToLowerInvariant only to the sanitized portion, not the entire key including prefix
+                return $"{ModConstants.KeyPrefix}{sanitized.ToLowerInvariant()}";
             }
             catch (ArgumentException)
             {

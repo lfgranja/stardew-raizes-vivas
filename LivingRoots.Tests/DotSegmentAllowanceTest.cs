@@ -36,7 +36,7 @@ namespace LivingRoots.Tests
                     return "with_invalid_chars";
                 if (input == "file....name")
                     return "file.name";
-                if (input == "  test_key " || input == "test_key " || input == " test_key")
+                if (input == " test_key " || input == "test_key " || input == " test_key")
                     return "test_key";
                 if (input == "<>:\"|?*" || input == "........." || input == "___" || input == "   ")
                     throw new ArgumentException("Filename sanitizes to an empty string.", nameof(input)); // This should throw like real implementation
@@ -193,12 +193,15 @@ namespace LivingRoots.Tests
             var method = service.GetType()
                 .GetMethod("IsPathTraversalSegment", BindingFlags.NonPublic | BindingFlags.Static);
             
+            // Check if the method exists before invoking it
+            Assert.NotNull(method);
+            
             // Act - Test IsPathTraversalSegment with a dot segment
             var result = method?.Invoke(null, new object[] { "." });
             
             // Assert - After removing the redundant check, this should return false
             // because dot segments are handled in the calling method by skipping them
-            Assert.False((bool)result);
+            Assert.False(result is bool b && b);
         }
         
         [Fact]
@@ -211,11 +214,14 @@ namespace LivingRoots.Tests
             var method = service.GetType()
                 .GetMethod("IsPathTraversalSegment", BindingFlags.NonPublic | BindingFlags.Static);
             
+            // Check if the method exists before invoking it
+            Assert.NotNull(method);
+            
             // Act - Test IsPathTraversalSegment with a dot-dot segment
             var result = method?.Invoke(null, new object[] { ".." });
             
             // Assert - This should still return true as it's a legitimate path traversal attempt
-            Assert.True((bool)result);
+            Assert.True(result is bool b && b);
         }
     }
 }
