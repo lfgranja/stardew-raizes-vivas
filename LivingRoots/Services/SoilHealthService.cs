@@ -399,15 +399,13 @@ namespace LivingRoots.Services
 
         private Dictionary<Point, float> GetOrAddLocationCache(string locationName)
         {
-            lock (_lock)
+            // Remove the lock from this method since calling methods already hold the lock
+            if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
             {
-                if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
-                {
-                    locationCache = new Dictionary<Point, float>();
-                    _runtimeCache[locationName] = locationCache;
-                }
-                return locationCache;
+                locationCache = new Dictionary<Point, float>();
+                _runtimeCache[locationName] = locationCache;
             }
+            return locationCache;
         }
         
         private float ClampHealthValue(float value)
@@ -439,9 +437,9 @@ namespace LivingRoots.Services
                     return null;
                 }
                 
-                // Normalize to lowercase to ensure canonical save key casing
-                // Apply ToLowerInvariant only to the sanitized portion, not the entire key including prefix
-                return $"{ModConstants.KeyPrefix}{sanitized.ToLowerInvariant()}";
+                // Remove ToLowerInvariant to prevent data corruption on case-sensitive file systems
+                // where MyFarm and myfarm would be treated as different saves but mapped to the same file
+                return $"{ModConstants.KeyPrefix}{sanitized}";
             }
             catch (ArgumentException)
             {

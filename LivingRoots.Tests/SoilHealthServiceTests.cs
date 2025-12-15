@@ -252,7 +252,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.UpdateHealth(location, tile, 100.0f); // Should result in 50+100=150 -> clamp to 10
+            service.UpdateHealth(location, tile, 100.0f); // Should result in 50+100=150 -> clamp to 100
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
@@ -383,7 +383,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void LoadData_WithInvalidValues_ConvertsNaNInfinityToZero()
+        public void LoadData_WithInvalidValues_ConvertsNaNInfinityToZeroDuringLoad()
         {
             // Arrange
             var saveData = new SoilHealthState
@@ -530,10 +530,10 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void SaveData_WithNaNInfinityValues_DoesNotSaveInvalidEntries()
+        public void SaveData_WithNaNInfinityValues_SavesInvalidEntriesAsZero()
         {
-            // This test validates that SaveData properly filters out NaN and Infinity values during save
-            // (not values that were converted during load)
+            // This test validates that NaN and Infinity values are converted to 0 during SetSoilHealth
+            // and are saved as 0 (not filtered out during save)
             
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             var tile = new Vector2(10, 10);
