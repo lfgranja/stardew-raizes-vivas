@@ -356,10 +356,10 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
-
-            // Act - Register events first to initialize the command registration
-            controller.RegisterEvents();
             
+            // Register events first to initialize the command registration
+            controller.RegisterEvents();
+
             // Verify that the OnGameLaunched method exists before invoking it
             var onGameLaunchedMethod = typeof(ModController).GetMethod("OnGameLaunched", 
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -436,6 +436,9 @@ namespace LivingRoots.Tests
             _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns("test_save_id");
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            
+            // Register events to ensure proper setup before calling OnSaveLoaded
+            controller.RegisterEvents();
 
             // Verify that the OnSaveLoaded method exists before invoking it
             var onSaveLoadedMethod = typeof(ModController).GetMethod("OnSaveLoaded", 
@@ -465,6 +468,9 @@ namespace LivingRoots.Tests
             _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns("test_save_id");
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            
+            // Register events to ensure proper setup before calling OnSaving
+            controller.RegisterEvents();
 
             // Verify that the OnSaving method exists before invoking it
             var onSavingMethod = typeof(ModController).GetMethod("OnSaving", 
