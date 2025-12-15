@@ -396,12 +396,15 @@ namespace LivingRoots.Services
 
         private Dictionary<Point, float> GetOrAddLocationCache(string locationName)
         {
-            if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
+            lock (_lock)
             {
-                locationCache = new Dictionary<Point, float>();
-                _runtimeCache[locationName] = locationCache;
+                if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
+                {
+                    locationCache = new Dictionary<Point, float>();
+                    _runtimeCache[locationName] = locationCache;
+                }
+                return locationCache;
             }
-            return locationCache;
         }
         
         private float ClampHealthValue(float value)
