@@ -1,29 +1,29 @@
-# Guia de Implementação: US-01-01 - Persistência da Saúde do Solo
+# Implementation Guide: US-01-01 - Soil Health Persistence
 
-**Objetivo:** Implementar um sistema robusto para armazenar, carregar e gerenciar o valor de "Saúde do Solo" (0-100%) para cada tile arável (tillable) do jogo, garantindo persistência entre sessões.
+**Objective:** Implement a robust system to store, load, and manage "Soil Health" values (0-100%) for each tillable tile in the game, ensuring persistence between sessions.
 
-## 1. Análise Arquitetural e Design
-Seguindo o `ARCHITECTURE.md` e o princípio de Inversão de Dependência (DIP) já implementado no projeto:
+## 1. Architectural Analysis and Design
+Following the `ARCHITECTURE.md` and the already implemented Dependency Inversion Principle (DIP) in the project:
 
-### Camada de Domínio (`LivingRoots/Domain`):
-- Definir a regra de negócio fundamental: A saúde do solo é um valor entre 0 e 100.
-- Criar um modelo de dados (DTO) para serialização.
-- Definir a interface do serviço de domínio.
+### Domain Layer (`LivingRoots/Domain`):
+- Define the core business rule: Soil health is a value between 0 and 100.
+- Create a data model (DTO) for serialization.
+- Define the service interface.
 
-### Camada de Aplicação/Serviços (`LivingRoots/Services`):
-- Implementar a lógica de orquestração usando o `ModDataService` existente.
-- Gerenciar o mapeamento entre o mundo do jogo (SMAPI `GameLocation`) e os dados persistidos.
-- Implementar validação e sanitização de dados.
+### Application/Services Layer (`LivingRoots/Services`):
+- Implement orchestration logic using the existing `ModDataService`.
+- Manage mapping between the game world (SMAPI `GameLocation`) and persisted data.
+- Implement validation and sanitization of data.
 
-### Camada de Controle (`LivingRoots/Controllers`):
-- Registrar os eventos `SaveLoaded` e `Saving` (ou `DayEnding`).
-- Coordenar entre eventos do jogo e serviços de aplicação.
+### Controller Layer (`LivingRoots/Controllers`):
+- Register `SaveLoaded` and `Saving` events (or `DayEnding`).
+- Coordinate between game events and application services.
 
-### Estrutura de Dados Proposta
+### Proposed Data Structure
 
-Para evitar problemas de serialização com chaves complexas em JSON (como `Vector2`) e manter a performance, utilizamos uma estrutura de dicionário aninhado com chaves compostas.
+To avoid serialization problems with complex keys in JSON (like `Vector2`) and maintain performance, we use a nested dictionary structure with composite keys.
 
-**Modelo de Persistência (JSON):**
+**Persistence Model (JSON):**
 ```json
 {
   "Farm": {
@@ -36,22 +36,22 @@ Para evitar problemas de serialização com chaves complexas em JSON (como `Vect
 }
 ```
 
-## 2. Ciclo TDD (Red-Green-Refactor)
+## 2. TDD Cycle (Red-Green-Refactor)
 
-### Passo 1: Criar Testes de Unidade (Fase Red)
+### Step 1: Create Unit Tests (Red Phase)
 
-Criamos testes para verificar:
-1. Se o valor de saúde é limitado entre 0 e 100 (Regra de Domínio).
-2. Se o serviço salva os dados usando uma chave única por Save (para evitar conflitos entre saves diferentes).
-3. Se o serviço recupera o valor correto para uma coordenada específica.
-4. Se o serviço lida corretamente com entradas inválidas e exceções.
-5. Se o serviço é thread-safe.
+Create tests to verify:
+1. That the health value is limited between 0 and 100 (Domain Rule).
+2. That the service saves data using a unique key per Save (to avoid conflicts between different saves).
+3. That the service retrieves the correct value for a specific coordinate.
+4. That the service handles invalid inputs and exceptions properly.
+5. That the service is thread-safe.
 
-### Passo 2: Implementação (Fase Green & Refactor)
+### Step 2: Implementation (Green & Refactor Phase)
 
-#### 2.1. Camada de Domínio
+#### 2.1. Domain Layer
 
-**Arquivo:** `LivingRoots/Domain/SoilHealthState.cs` (Modelo de Dados)
+**File:** `LivingRoots/Domain/SoilHealthState.cs` (Data Model)
 ```csharp
 using System.Collections.Generic;
 
@@ -69,7 +69,7 @@ namespace LivingRoots.Domain
 }
 ```
 
-**Arquivo:** `LivingRoots/Domain/ISoilHealthService.cs` (Interface)
+**File:** `LivingRoots/Domain/ISoilHealthService.cs` (Interface)
 ```csharp
 using Microsoft.Xna.Framework;
 
@@ -86,11 +86,11 @@ namespace LivingRoots.Domain
 }
 ```
 
-#### 2.2. Camada de Serviços
+#### 2.2. Services Layer
 
-Implementamos a lógica concreta com validações rigorosas e segurança contra falhas.
+Implement the concrete logic with rigorous validations and failure safety.
 
-**Arquivo:** `LivingRoots/Services/SoilHealthService.cs`
+**File:** `LivingRoots/Services/SoilHealthService.cs`
 ```csharp
 using System;
 using System.Collections.Generic;
@@ -490,12 +490,15 @@ namespace LivingRoots.Services
 
         private Dictionary<Point, float> GetOrAddLocationCache(string locationName)
         {
-            if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
+            lock (_lock)
             {
-                locationCache = new Dictionary<Point, float>();
-                _runtimeCache[locationName] = locationCache;
+                if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
+                {
+                    locationCache = new Dictionary<Point, float>();
+                    _runtimeCache[locationName] = locationCache;
+                }
+                return locationCache;
             }
-            return locationCache;
         }
         
         private float ClampHealthValue(float value)
@@ -506,7 +509,7 @@ namespace LivingRoots.Services
         private string GetSaveKey(string saveId)
         {
             // Sanitize the saveId to remove invalid filename characters
-            if (string.IsNullOrEmpty(saveId))
+            if (string.IsNullOrWhiteSpace(saveId))
             {
                 _monitor.Log("SaveId cannot be null or empty.", LogLevel.Error);
                 return null;
@@ -515,13 +518,13 @@ namespace LivingRoots.Services
             try
             {
                 string? sanitized = _fileNameSanitizationService.Sanitize(saveId);
-                if (string.IsNullOrEmpty(sanitized))
+                if (string.IsNullOrWhiteSpace(sanitized))
                 {
                     _monitor.Log("SaveId sanitizes to an empty string after processing.", LogLevel.Error);
                     return null;
                 }
                 
-                return $"{ModConstants.KeyPrefix}{sanitized}";
+                return $"{ModConstants.KeyPrefix}{sanitized.ToLowerInvariant()}";
             }
             catch (ArgumentException)
             {
@@ -540,24 +543,24 @@ namespace LivingRoots.Services
 }
 ```
 
-#### 2.3. Camada de Controle e Injeção de Dependência
+#### 2.3. Controller Layer and Dependency Injection
 
-Atualizamos o `ModEntry.cs` para registrar o novo serviço e atualizar o controller.
+Update `ModEntry.cs` to register the new service and update the controller.
 
-**Arquivo:** `LivingRoots/ModEntry.cs` (Trecho)
+**File:** `LivingRoots/ModEntry.cs` (Snippet)
 ```csharp
 // ... imports
 
 public override void Entry(IModHelper helper)
 {
-    // ... (serviços de domínio existentes) ...
+    // ... (existing domain services) ...
     
     // Create application services
     var modDataService = new ModDataService(helper, this.Monitor, modLogic);
     
     // NEW: Soil Health Service
     var fileNameSanitizationService = new FileNameSanitizationService(this.Monitor);
-    var saveIdProvider = new SaveIdProvider(helper, this.Monitor);
+    var saveIdProvider = new SaveIdProvider(this.Monitor);
     var soilHealthService = new SoilHealthService(modDataService, this.Monitor, fileNameSanitizationService);
     
     // Update ModController constructor (see step 2.4)
@@ -567,10 +570,10 @@ public override void Entry(IModHelper helper)
 }
 ```
 
-**Arquivo:** `LivingRoots/Controllers/ModController.cs`
+**File:** `LivingRoots/Controllers/ModController.cs`
 
-1. Adicione a dependência `ISoilHealthService` e `ISaveIdProvider`.
-2. Registre os eventos `SaveLoaded` e `Saving`.
+1. Add the `ISoilHealthService` and `ISaveIdProvider` dependencies.
+2. Register the `SaveLoaded` and `Saving` events.
 
 ```csharp
 // ... imports
@@ -579,7 +582,7 @@ using LivingRoots.Services; // Add this import
 
 public sealed class ModController : IDisposable
 {
-    // ... campos existentes
+    // ... existing fields
     private readonly ISoilHealthService _soilHealthService;
     private readonly ISaveIdProvider _saveIdProvider;
 
@@ -669,46 +672,46 @@ public sealed class ModController : IDisposable
 }
 ```
 
-## 3. Verificação e Critérios de Aceite
+## 3. Verification and Acceptance Criteria
 
-Após a implementação, executamos as seguintes verificações manuais e automatizadas:
+After implementation, we perform the following manual and automated checks:
 
-1. **Testes Automatizados:**
-   - Rode `dotnet test`. Todos os testes (incluindo os novos `SoilHealthServiceTests`) devem passar.
-2. **Teste em Jogo (Manual):**
-   - Inicie o jogo e carregue um save.
-   - Verifique no console do SMAPI (Trace logs) se aparece: `Soil health data loaded successfully.`.
-   - Jogue um dia, faça algo que altere a saúde (futura feature, por enquanto o valor é estático ou alterado via console debug se você criar um comando).
-   - Durma para salvar. Verifique o log: `Soil health data saved successfully.`.
-   - Feche o jogo e verifique a pasta do mod: `LivingRoots/data/soil_health_data_[SaveName].json`. O arquivo deve existir e conter JSON válido.
-   - Abra o jogo novamente. Os dados devem ser carregados sem erro.
+1. **Automated Tests:**
+   - Run `dotnet test`. All tests (including the new `SoilHealthServiceTests`) should pass.
+2. **In-Game Testing (Manual):**
+   - Start the game and load a save.
+   - Check the SMAPI console (Trace logs) for: `Soil health data loaded successfully.`.
+   - Play a day, do something that changes health (future feature, for now the value is static or changed via debug console if you create a command).
+   - Sleep to save. Check the log: `Soil health data saved successfully.`.
+   - Close the game and check the mod folder: `LivingRoots/data/soil_health_data_[SaveName].json`. The file should exist and contain valid JSON.
+   - Open the game again. Data should load without error.
 
-## 4. Melhorias de Segurança e Robustez
+## 4. Security and Robustness Improvements
 
-### Validação de Entrada
-- Verificação de coordenadas inválidas (NaN, Infinity)
-- Verificação de nomes de localização inválidos
-- Verificação de valores de saúde fora do intervalo [0, 100]
+### Input Validation
+- Invalid coordinate verification (NaN, Infinity)
+- Invalid location name verification
+- Health value range verification [0, 100]
 
-### Tratamento de Exceções
-- Uso de cache temporário para prevenir perda de dados durante falhas de carregamento
-- Tratamento de exceções durante operações de leitura e gravação
-- Preservação do cache existente em caso de falhas
+### Exception Handling
+- Temporary cache usage to prevent data loss during loading failures
+- Exception handling during read and write operations
+- Preservation of existing cache in case of failures
 
-### Segurança de Thread
-- Uso de locks para garantir operações thread-safe
-- Prevenção de condições de corrida durante acesso concorrente
-### Serialização Segura
-- Validação de dados durante carregamento e salvamento
-- Tratamento de valores inválidos (NaN, Infinity) na serialização
-- Prevenção de injeção de dados maliciosos
+### Thread Safety
+- Use of locks to ensure thread-safe operations
+- Prevention of race conditions during concurrent access
+### Secure Serialization
+- Data validation during loading and saving
+- Handling of invalid values (NaN, Infinity) during serialization
+- Prevention of malicious data injection
 
-## 5. Resumo das Alterações Necessárias
+## 5. Summary of Required Changes
 
-1. **Criar Testes:** `LivingRoots.Tests/SoilHealthServiceTests.cs`.
-2. **Criar Interfaces/Modelos:** `ISoilHealthService.cs`, `SoilHealthState.cs`.
-3. **Implementar Serviço:** `SoilHealthService.cs` (usando `IModDataService`).
-4. **Atualizar ModEntry:** Injeção de dependência do novo serviço.
-5. **Atualizar ModController:** Hook nos eventos `SaveLoaded` e `Saving`.
+1. **Create Tests:** `LivingRoots.Tests/SoilHealthServiceTests.cs`.
+2. **Create Interfaces/Models:** `ISoilHealthService.cs`, `SoilHealthState.cs`.
+3. **Implement Service:** `SoilHealthService.cs` (using `IModDataService`).
+4. **Update ModEntry:** Dependency injection of the new service.
+5. **Update ModController:** Hook into `SaveLoaded` and `Saving` events.
 
-Esta abordagem segue estritamente os princípios SOLID (SRP no serviço, DIP nas interfaces) e DDD (Linguagem Ubíqua "SoilHealth"), garantindo uma base sólida para as próximas features do roadmap.
+This approach strictly follows SOLID principles (SRP in the service, DIP in interfaces) and DDD (Ubiquitous Language "SoilHealth"), ensuring a solid foundation for the next roadmap features.
