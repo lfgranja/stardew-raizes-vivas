@@ -359,10 +359,14 @@ namespace LivingRoots.Tests
 
             // Act - Register events first to initialize the command registration
             controller.RegisterEvents();
+            
+            // Verify that the OnGameLaunched method exists before invoking it
+            var onGameLaunchedMethod = typeof(ModController).GetMethod("OnGameLaunched", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(onGameLaunchedMethod);
+            
             // Then simulate the game launch event to trigger command registration
-            controller.GetType().GetMethod("OnGameLaunched", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
-                .Invoke(controller, new object[] { null, new GameLaunchedEventArgs() });
+            onGameLaunchedMethod.Invoke(controller, new object[] { null, new GameLaunchedEventArgs() });
 
             // Assert - Command should have been added to the console commands
             mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
@@ -382,11 +386,13 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
+            // Verify that the PrintVersion method exists before invoking it
+            var printVersionMethod = typeof(ModController).GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(printVersionMethod);
+            
             // Act & Assert - Should not throw any exceptions
             var ex = Record.Exception(() => 
-                controller.GetType()
-                    .GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
-                    .Invoke(controller, new object[] { "lr_version", new string[] { } }));
+                printVersionMethod.Invoke(controller, new object[] { "lr_version", new string[] { } }));
             Assert.Null(ex);
         }
 
@@ -404,11 +410,13 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
+            // Verify that the PrintVersion method exists before invoking it
+            var printVersionMethod = typeof(ModController).GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(printVersionMethod);
+            
             // Act & Assert - Should not throw with help arguments
             var ex = Record.Exception(() => 
-                controller.GetType()
-                    .GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
-                    .Invoke(controller, new object[] { "lr_version", new string[] { "/?", "-help", "--h" } }));
+                printVersionMethod.Invoke(controller, new object[] { "lr_version", new string[] { "/?", "-help", "--h" } }));
             Assert.Null(ex);
         }
 
@@ -429,10 +437,13 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
+            // Verify that the OnSaveLoaded method exists before invoking it
+            var onSaveLoadedMethod = typeof(ModController).GetMethod("OnSaveLoaded", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(onSaveLoadedMethod);
+
             // Act
-            controller.GetType().GetMethod("OnSaveLoaded", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
-                .Invoke(controller, new object[] { null, new SaveLoadedEventArgs() });
+            onSaveLoadedMethod.Invoke(controller, new object[] { null, new SaveLoadedEventArgs() });
 
             // Assert - Soil health service should have been called to load data
             _mockSoilHealthService.Verify(x => x.LoadData("test_save_id"), Times.Once);
@@ -455,10 +466,13 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
+            // Verify that the OnSaving method exists before invoking it
+            var onSavingMethod = typeof(ModController).GetMethod("OnSaving", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(onSavingMethod);
+
             // Act
-            controller.GetType().GetMethod("OnSaving", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
-                .Invoke(controller, new object[] { null, new SavingEventArgs() });
+            onSavingMethod.Invoke(controller, new object[] { null, new SavingEventArgs() });
 
             // Assert - Soil health service should have been called to save data
             _mockSoilHealthService.Verify(x => x.SaveData("test_save_id"), Times.Once);

@@ -427,7 +427,8 @@ namespace LivingRoots.Services
                     return null;
                 }
                 
-                return $"{ModConstants.KeyPrefix}{sanitized}";
+                // Normalize to lowercase to ensure canonical save key casing
+                return $"{ModConstants.KeyPrefix}{sanitized}".ToLowerInvariant();
             }
             catch (ArgumentException)
             {

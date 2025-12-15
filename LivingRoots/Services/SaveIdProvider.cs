@@ -24,7 +24,7 @@ namespace LivingRoots.Services
             {
                 // Use SMAPI's Constants to get the save folder name directly
                 // This is more reliable than using reflection
-                string? saveId = StardewModdingAPI.Constants.SaveFolderName;
+                string? saveId = Constants.SaveFolderName;
                 
                 // Validate that the save ID is not null, empty, or whitespace before returning
                 if (IsValidSaveId(saveId))

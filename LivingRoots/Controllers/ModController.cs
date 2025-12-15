@@ -54,6 +54,9 @@ namespace LivingRoots.Controllers
             "-help-"
         };
 
+        // Flag to prevent repeated warning log spam
+        private bool _saveIdUnavailableWarningShown = false;
+
         public ModController(
             IModHelper helper, 
             IMonitor monitor, 
@@ -107,12 +110,17 @@ namespace LivingRoots.Controllers
             bool saveLoadedAdded = false;
             bool savingAdded = false;
 
+            // Create local references to handlers for safe access during rollback
+            EventHandler<GameLaunchedEventArgs>? localGameLaunchedHandler = null;
+            EventHandler<SaveLoadedEventArgs>? localSaveLoadedHandler = null;
+            EventHandler<SavingEventArgs>? localSavingHandler = null;
+
             try
             {
-                // Initialize the handlers once
-                _onGameLaunchedHandler ??= OnGameLaunched;
-                _onSaveLoadedHandler ??= OnSaveLoaded;
-                _onSavingHandler ??= OnSaving;
+                // Initialize the handlers once and assign to local references
+                localGameLaunchedHandler = _onGameLaunchedHandler ??= OnGameLaunched;
+                localSaveLoadedHandler = _onSaveLoadedHandler ??= OnSaveLoaded;
+                localSavingHandler = _onSavingHandler ??= OnSaving;
 
                 // Double-check disposed state before subscribing to prevent race condition
                 if (IsDisposed())
@@ -124,13 +132,13 @@ namespace LivingRoots.Controllers
                 }
 
                 // Subscribe to events
-                gameLoop.GameLaunched += _onGameLaunchedHandler;
+                gameLoop.GameLaunched += localGameLaunchedHandler;
                 gameLaunchedAdded = true;
 
                 // NEW EVENTS - Loading and saving soil health data
-                gameLoop.SaveLoaded += _onSaveLoadedHandler;
+                gameLoop.SaveLoaded += localSaveLoadedHandler;
                 saveLoadedAdded = true;
-                gameLoop.Saving += _onSavingHandler;
+                gameLoop.Saving += localSavingHandler;
                 savingAdded = true;
 
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
@@ -145,12 +153,13 @@ namespace LivingRoots.Controllers
                 {
                     if (gameLoop != null) // Guard against null gameLoop in rollback
                     {
-                        if (gameLaunchedAdded && _onGameLaunchedHandler != null)
-                            gameLoop.GameLaunched -= _onGameLaunchedHandler;
-                        if (saveLoadedAdded && _onSaveLoadedHandler != null)
-                            gameLoop.SaveLoaded -= _onSaveLoadedHandler;
-                        if (savingAdded && _onSavingHandler != null)
-                            gameLoop.Saving -= _onSavingHandler;
+                        // Use local handler references to prevent race conditions during rollback
+                        if (gameLaunchedAdded && localGameLaunchedHandler != null)
+                            gameLoop.GameLaunched -= localGameLaunchedHandler;
+                        if (saveLoadedAdded && localSaveLoadedHandler != null)
+                            gameLoop.SaveLoaded -= localSaveLoadedHandler;
+                        if (savingAdded && localSavingHandler != null)
+                            gameLoop.Saving -= localSavingHandler;
                     }
                 }
                 catch
@@ -192,7 +201,7 @@ namespace LivingRoots.Controllers
                 // Check if events were registered before proceeding with the clear operation
                 if ((currentState & EventsRegisteredFlag) == 0)
                 {
-                    // Events were not registered, so nothing to unregister
+                    // Events were not registered or already unregistered, so nothing to unregister
                     _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
                     return;
                 }
@@ -412,6 +421,12 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
+                // Reset the warning flag when a valid save ID is found
+                if (_saveIdUnavailableWarningShown)
+                {
+                    _saveIdUnavailableWarningShown = false;
+                }
+
                 // Load data using the save folder name as unique ID
                 _soilHealthService.LoadData(saveId);
                 _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
@@ -463,8 +478,19 @@ namespace LivingRoots.Controllers
 
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
-                    _monitor.Log("OnSaving: SaveFolderName unavailable; skipping soil health save.", LogLevel.Warn);
+                    // Only show warning once to prevent log spam
+                    if (!_saveIdUnavailableWarningShown)
+                    {
+                        _monitor.Log("OnSaving: SaveFolderName unavailable; skipping soil health save.", LogLevel.Warn);
+                        _saveIdUnavailableWarningShown = true;
+                    }
                     return;
+                }
+
+                // Reset the warning flag when a valid save ID is found
+                if (_saveIdUnavailableWarningShown)
+                {
+                    _saveIdUnavailableWarningShown = false;
                 }
 
                 // Save data before the game saves/exits (using the saving event)
