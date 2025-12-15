@@ -159,9 +159,10 @@ namespace LivingRoots.Controllers
                     /* avoid masking original failure */ 
                 }
 
-                _onGameLaunchedHandler = null;
-                _onSaveLoadedHandler = null;
-                _onSavingHandler = null;
+                // Use Interlocked.Exchange for thread-safe nullification of event handlers
+                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                Interlocked.Exchange(ref _onSavingHandler, null);
 
                 // Clear the flag since registration failed
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
@@ -219,9 +220,10 @@ namespace LivingRoots.Controllers
                 monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
                 // Even when gameLoop is null, we've already cleared the flag,
                 // so just nullify the event handler fields to ensure clean state
-                _onGameLaunchedHandler = null;
-                _onSaveLoadedHandler = null;
-                _onSavingHandler = null;
+                // Use Interlocked.Exchange for thread-safe nullification of event handlers
+                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                Interlocked.Exchange(ref _onSavingHandler, null);
                 return;
             }
 

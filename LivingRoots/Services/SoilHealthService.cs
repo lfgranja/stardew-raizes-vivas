@@ -412,7 +412,7 @@ namespace LivingRoots.Services
         private string? GetSaveKey(string saveId)
         {
             // Sanitize the saveId to remove invalid filename characters
-            if (string.IsNullOrEmpty(saveId))
+            if (string.IsNullOrWhiteSpace(saveId))
             {
                 _monitor.Log("SaveId cannot be null or empty.", LogLevel.Error);
                 return null;
@@ -421,7 +421,7 @@ namespace LivingRoots.Services
             try
             {
                 string? sanitized = _fileNameSanitizationService.Sanitize(saveId);
-                if (string.IsNullOrEmpty(sanitized))
+                if (string.IsNullOrWhiteSpace(sanitized))
                 {
                     _monitor.Log("SaveId sanitizes to an empty string after processing.", LogLevel.Error);
                     return null;
