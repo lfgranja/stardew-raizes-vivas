@@ -354,8 +354,8 @@ namespace LivingRoots.Services
                 // Domain Rule: Clamp between 0 and 100 (not 10 as previously)
                 float clampedValue = ClampHealthValue(value);
 
-                // Use GetOrAddLocationCache to avoid code duplication
-                var tiles = GetOrAddLocationCache(locationName);
+                // Use GetOrAddLocationCacheUnsafe to avoid code duplication
+                var tiles = GetOrAddLocationCacheUnsafe(locationName);
 
                 var key = new Point(ix, iy);
                 tiles[key] = clampedValue;
@@ -393,8 +393,8 @@ namespace LivingRoots.Services
 
             lock (_lock)
             {
-                // Use GetOrAddLocationCache to avoid code duplication
-                var tiles = GetOrAddLocationCache(locationName);
+                // Use GetOrAddLocationCacheUnsafe to avoid code duplication
+                var tiles = GetOrAddLocationCacheUnsafe(locationName);
 
                 var key = new Point(ix, iy);
                 if (tiles.TryGetValue(key, out float current))
@@ -410,19 +410,18 @@ namespace LivingRoots.Services
                 }
             }
         }
-
-        private Dictionary<Point, float> GetOrAddLocationCache(string locationName)
+        
+        // Renamed from GetOrAddLocationCache to GetOrAddLocationCacheUnsafe to indicate it should only be called within a lock
+        private Dictionary<Point, float> GetOrAddLocationCacheUnsafe(string locationName)
         {
-            // Add the lock back to make this method internally thread-safe
-            lock (_lock)
+            // Remove the internal lock since this method is now called within an external lock
+            // This addresses the nested locking issue mentioned in the code review
+            if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
             {
-                if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
-                {
-                    locationCache = new Dictionary<Point, float>();
-                    _runtimeCache[locationName] = locationCache;
-                }
-                return locationCache;
+                locationCache = new Dictionary<Point, float>();
+                _runtimeCache[locationName] = locationCache;
             }
+            return locationCache;
         }
         
         private float ClampHealthValue(float value)

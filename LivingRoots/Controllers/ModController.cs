@@ -218,9 +218,9 @@ namespace LivingRoots.Controllers
             // and cleared the EventsRegisteredFlag. Now we need to atomically clear the event handlers
             // using Interlocked.Exchange to ensure thread safety
             
-            // Also clear the command registered flag to ensure consistent state management
-            // This ensures that if events are unregistered, the command registration state is also reset
-            Interlocked.And(ref _state, ~CommandRegisteredFlag);
+            // According to code review feedback, do NOT clear the CommandRegisteredFlag
+            // since SMAPI doesn't support command removal - the command remains registered
+            // throughout the mod's lifecycle
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
@@ -263,16 +263,14 @@ namespace LivingRoots.Controllers
                 {
                     gameLoop.Saving -= savingHandler;
                 }
+                
+                // Move the success log message from the finally block to the try block
+                monitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
             catch (Exception ex)
             {
                 // Log error but don't expose raw exception message for security
                 monitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
-            }
-            finally
-            {
-                // The event handler fields have already been set to null via Interlocked.Exchange
-                monitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
         }
 
@@ -421,7 +419,12 @@ namespace LivingRoots.Controllers
 
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
-                    _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; skipping soil health load.", LogLevel.Warn);
+                    // Only show warning once to prevent log spam using Interlocked operations
+                    if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShown, 1, 0) == 0)
+                    {
+                        // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
+                        _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; skipping soil health load.", LogLevel.Warn);
+                    }
                     return;
                 }
 
