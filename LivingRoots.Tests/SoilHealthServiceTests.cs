@@ -424,13 +424,13 @@ namespace LivingRoots.Tests
             // Strengthen the test by verifying the internal state more thoroughly
             // Check that all expected keys are present in the internal cache with correct values
             var tile1010 = new Vector2(10, 10);
-            var tile1111 = new Vector2(11, 11);
+            var tile111 = new Vector2(11, 11);
             var tile1212 = new Vector2(12, 12);
             var tile1313 = new Vector2(13, 13);
 
             // Verify that all entries were processed and stored with correct conversions
             float result1010 = service.GetSoilHealth("Farm", tile1010);
-            float result1111 = service.GetSoilHealth("Farm", tile1111);
+            float result1111 = service.GetSoilHealth("Farm", tile111);
             float result1212 = service.GetSoilHealth("Farm", tile1212);
             float result1313 = service.GetSoilHealth("Farm", tile1313);
             
@@ -479,7 +479,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void LoadData_WithException_ClearsCacheToPreventCrossSaveLeakage()
+        public void LoadData_WithException_PropagatesException()
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -495,11 +495,8 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Throws(new Exception("Data load failed"));
 
-            // Act
-            service.LoadData("test_save");
-
-            // Assert - Cache should be cleared to prevent cross-save data leakage
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            // Act & Assert - Exception should now propagate to calling method
+            Assert.Throws<Exception>(() => service.LoadData("test_save"));
         }
 
         [Fact]
@@ -551,10 +548,10 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void SaveData_WithNaNInfinityValues_SavesInvalidEntriesAsZero()
+        public void SaveData_WithNaNInfinityValues_DoesNotSaveZeroValuesDueToSparseCache()
         {
             // This test validates that NaN and Infinity values are converted to 0 during SetSoilHealth
-            // and are saved as 0 (not filtered out during save)
+            // and are NOT saved due to the sparse cache functionality (values that are 0 are not stored)
             
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             var tile = new Vector2(10, 10);
@@ -584,7 +581,8 @@ namespace LivingRoots.Tests
             // Act: Save the data
             service.SaveData("test_save");
 
-            // Assert: Verify that the NaN/Infinity values were converted to 0 during SetSoilHealth and are now saved as 0
+            // Assert: Verify that the NaN/Infinity values were converted to 0 during SetSoilHealth
+            // and are NOT saved due to sparse cache (0 values are not stored)
             Assert.NotNull(capturedSaveState);
             Assert.Equal("soil_health_data_test_save", capturedSaveKey);
             
@@ -592,15 +590,13 @@ namespace LivingRoots.Tests
             Assert.Contains("Farm", capturedSaveState.LocationHealthData.Keys);
             
             var farmData = capturedSaveState.LocationHealthData["Farm"];
-            // All entries should be present since NaN/Infinity are converted to 0 by ClampHealthValue
+            // Only entries with non-zero values should be present due to sparse cache
             Assert.Contains("10,10", farmData.Keys);
-            Assert.Contains("11,11", farmData.Keys);
-            Assert.Contains("12,12", farmData.Keys);
+            Assert.DoesNotContain("11,11", farmData.Keys); // NaN converted to 0, so not saved due to sparse cache
+            Assert.DoesNotContain("12,12", farmData.Keys); // Infinity converted to 0, so not saved due to sparse cache
             Assert.Contains("13,13", farmData.Keys);
             
             Assert.Equal(75.0f, farmData["10,10"]);
-            Assert.Equal(0.0f, farmData["11,11"]); // NaN converted to 0
-            Assert.Equal(0.0f, farmData["12,12"]); // Infinity converted to 0
             Assert.Equal(25.0f, farmData["13,13"]);
             
             // Verify that SaveData was called exactly once
@@ -654,7 +650,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void SaveData_WithException_DoesNotThrow()
+        public void SaveData_WithException_PropagatesException()
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -670,9 +666,8 @@ namespace LivingRoots.Tests
                 .Setup(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()))
                 .Throws(new Exception("Data save failed"));
 
-            // Act & Assert - Should not throw
-            var ex = Record.Exception(() => service.SaveData("test_save"));
-            Assert.Null(ex);
+            // Act & Assert - Exception should now propagate to calling method
+            Assert.Throws<Exception>(() => service.SaveData("test_save"));
         }
 
         [Fact]
