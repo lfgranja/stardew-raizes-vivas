@@ -18,6 +18,9 @@ namespace LivingRoots.Controllers
         private const int CommandRegisteredFlag = 1 << 1;
         private const int DisposedFlag = 1 << 2;
         private int _state = 0; // Combine flags in single volatile field
+        
+        // Warning flag for preventing repeated log spam - using Interlocked operations for thread safety
+        private int _saveIdUnavailableWarningShown = 0; // 0 = false, 1 = true
 
         // Re-entrancy guard flags for event handlers
         private const int OnSaveLoadedExecutingFlag = 1 << 3;
@@ -53,9 +56,6 @@ namespace LivingRoots.Controllers
             "/help-",
             "-help-"
         };
-
-        // Flag to prevent repeated warning log spam
-        private bool _saveIdUnavailableWarningShown = false;
 
         public ModController(
             IModHelper helper, 
@@ -217,6 +217,10 @@ namespace LivingRoots.Controllers
             // At this point, we have successfully claimed the unregistration operation
             // and cleared the EventsRegisteredFlag. Now we need to atomically clear the event handlers
             // using Interlocked.Exchange to ensure thread safety
+            
+            // Also clear the command registered flag to ensure consistent state management
+            // This ensures that if events are unregistered, the command registration state is also reset
+            Interlocked.And(ref _state, ~CommandRegisteredFlag);
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
@@ -422,9 +426,10 @@ namespace LivingRoots.Controllers
                 }
 
                 // Reset the warning flag when a valid save ID is found
-                if (_saveIdUnavailableWarningShown)
+                if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShown, 0, 1) == 1)
                 {
-                    _saveIdUnavailableWarningShown = false;
+                    // The flag was previously set to 1 (true), so we reset it to 0 (false)
+                    // This means the warning was previously shown and is now being reset
                 }
 
                 // Load data using the save folder name as unique ID
@@ -478,19 +483,20 @@ namespace LivingRoots.Controllers
 
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
-                    // Only show warning once to prevent log spam
-                    if (!_saveIdUnavailableWarningShown)
+                    // Only show warning once to prevent log spam using Interlocked operations
+                    if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShown, 1, 0) == 0)
                     {
+                        // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
                         _monitor.Log("OnSaving: SaveFolderName unavailable; skipping soil health save.", LogLevel.Warn);
-                        _saveIdUnavailableWarningShown = true;
                     }
                     return;
                 }
 
                 // Reset the warning flag when a valid save ID is found
-                if (_saveIdUnavailableWarningShown)
+                if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShown, 0, 1) == 1)
                 {
-                    _saveIdUnavailableWarningShown = false;
+                    // The flag was previously set to 1 (true), so we reset it to 0 (false)
+                    // This means the warning was previously shown and is now being reset
                 }
 
                 // Save data before the game saves/exits (using the saving event)

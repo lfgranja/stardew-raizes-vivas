@@ -15,7 +15,7 @@ namespace LivingRoots.Tests
         private readonly Mock<IDataHelper> _mockDataHelper;
         private readonly Mock<IModLogic> _mockModLogic;
         private readonly Mock<IMonitor> _mockMonitor;
-
+        
         public DotSegmentAllowanceTest()
         {
             _mockHelper = new Mock<IModHelper>();
@@ -201,7 +201,9 @@ namespace LivingRoots.Tests
             
             // Assert - After removing the redundant check, this should return false
             // because dot segments are handled in the calling method by skipping them
-            Assert.False(result is bool b && b);
+            Assert.NotNull(result); // Ensure result is not null
+            Assert.IsType<bool>(result); // Ensure result is a boolean
+            Assert.False((bool)result);
         }
         
         [Fact]
@@ -221,7 +223,9 @@ namespace LivingRoots.Tests
             var result = method?.Invoke(null, new object[] { ".." });
             
             // Assert - This should still return true as it's a legitimate path traversal attempt
-            Assert.True(result is bool b && b);
+            Assert.NotNull(result); // Ensure result is not null
+            Assert.IsType<bool>(result); // Ensure result is a boolean
+            Assert.True((bool)result);
         }
     }
 }

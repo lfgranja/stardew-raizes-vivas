@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using LivingRoots.Domain;
 using LivingRoots;
 using Microsoft.Xna.Framework;
@@ -106,6 +107,18 @@ namespace LivingRoots.Services
                     bool warnedForMalformedKey = false; // Only warn once per location for malformed keys
                     foreach (var tileEntry in locationEntry.Value)
                     {
+                        // Add null/whitespace check for tile keys to prevent crashes with corrupted save files
+                        if (string.IsNullOrWhiteSpace(tileEntry.Key))
+                        {
+                            // Only warn once per location for null/whitespace keys to prevent log spam
+                            if (!warnedForMalformedKey)
+                            {
+                                _monitor.Log($"Null or whitespace tile key found in save data for location '{locationEntry.Key}'; skipping entry.", LogLevel.Warn);
+                                warnedForMalformedKey = true;
+                            }
+                            continue; // Skip this entry
+                        }
+
                         // Parse "X,Y" string back to Point (using integers for tile coordinates)
                         // Use ReadOnlySpan<char> to avoid string.Split allocation for better performance
                         ReadOnlySpan<char> keySpan = tileEntry.Key;
@@ -216,14 +229,15 @@ namespace LivingRoots.Services
                         // Convert Point back to "X,Y" string format using invariant culture for consistency
                         string tileKey = $"{tile.Key.X.ToString(CultureInfo.InvariantCulture)},{tile.Key.Y.ToString(CultureInfo.InvariantCulture)}";
                         
-                        // Skip invalid values (NaN, Infinity) when saving
-                        if (float.IsNaN(tile.Value) || float.IsInfinity(tile.Value))
+                        // Normalize invalid values (NaN, Infinity) to 0 instead of skipping them to prevent silent data loss
+                        float processedValue = tile.Value;
+                        if (float.IsNaN(processedValue) || float.IsInfinity(processedValue))
                         {
-                            continue; // Skip invalid values
+                            processedValue = 0f; // Convert invalid values to 0
                         }
                         
                         // Clamp value to valid range [0, 100] before saving
-                        float clampedValue = ClampHealthValue(tile.Value);
+                        float clampedValue = ClampHealthValue(processedValue);
                         tileDict[tileKey] = clampedValue;
                     }
                     
@@ -399,13 +413,16 @@ namespace LivingRoots.Services
 
         private Dictionary<Point, float> GetOrAddLocationCache(string locationName)
         {
-            // Remove the lock from this method since calling methods already hold the lock
-            if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
+            // Add the lock back to make this method internally thread-safe
+            lock (_lock)
             {
-                locationCache = new Dictionary<Point, float>();
-                _runtimeCache[locationName] = locationCache;
+                if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
+                {
+                    locationCache = new Dictionary<Point, float>();
+                    _runtimeCache[locationName] = locationCache;
+                }
+                return locationCache;
             }
-            return locationCache;
         }
         
         private float ClampHealthValue(float value)
@@ -430,7 +447,10 @@ namespace LivingRoots.Services
 
             try
             {
-                string? sanitized = _fileNameSanitizationService.Sanitize(saveId);
+                // Apply Unicode normalization using FormC (Canonical Decomposition followed by Canonical Composition)
+                string normalizedSaveId = saveId.Normalize(NormalizationForm.FormC);
+                
+                string? sanitized = _fileNameSanitizationService.Sanitize(normalizedSaveId);
                 if (string.IsNullOrWhiteSpace(sanitized))
                 {
                     _monitor.Log("SaveId sanitizes to an empty string after processing.", LogLevel.Error);

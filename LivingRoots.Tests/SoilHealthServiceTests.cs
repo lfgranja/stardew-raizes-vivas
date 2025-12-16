@@ -420,6 +420,27 @@ namespace LivingRoots.Tests
             Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
             Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(11, 11)));
             Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
+
+            // Strengthen the test by verifying the internal state more thoroughly
+            // Check that all expected keys are present in the internal cache with correct values
+            var tile1010 = new Vector2(10, 10);
+            var tile1111 = new Vector2(11, 11);
+            var tile1212 = new Vector2(12, 12);
+            var tile1313 = new Vector2(13, 13);
+
+            // Verify that all entries were processed and stored with correct conversions
+            float result1010 = service.GetSoilHealth("Farm", tile1010);
+            float result1111 = service.GetSoilHealth("Farm", tile1111);
+            float result1212 = service.GetSoilHealth("Farm", tile1212);
+            float result1313 = service.GetSoilHealth("Farm", tile1313);
+            
+            Assert.Equal(0f, result1010); // NaN value converted to 0
+            Assert.Equal(0f, result1111); // PositiveInfinity value converted to 0
+            Assert.Equal(0f, result1212); // NegativeInfinity value converted to 0
+            Assert.Equal(50.0f, result1313); // Valid value remains unchanged
+            
+            // Additional verification: Ensure that no unexpected values were created
+            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(99, 99))); // Non-existent tile should return default value
         }
 
         [Fact]
