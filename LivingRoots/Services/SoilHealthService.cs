@@ -89,8 +89,12 @@ namespace LivingRoots.Services
                     
                     foreach (var tileEntry in locationEntry.Value)
                     {
+                        // ENHANCEMENT: Move tile count increment BEFORE validation to prevent DoS attacks
+                        // Increment the tile counter for ALL entries (even if they end up being invalid/skipped)
+                        tileCount++;
+                        
                         // Check if we've exceeded the tile limit for this location
-                        if (tileCount >= ModConstants.MaxTilesPerLocation)
+                        if (tileCount > ModConstants.MaxTilesPerLocation)
                         {
                             // Only log once per location when the limit is reached
                             if (!limitExceededLogged)
@@ -150,7 +154,6 @@ namespace LivingRoots.Services
                             if (validatedValue != 0f)
                             {
                                 tileDict[new Point(x, y)] = validatedValue;
-                                tileCount++; // Increment the tile counter
                             }
                         }
                         else
@@ -257,9 +260,20 @@ namespace LivingRoots.Services
             // This moves the I/O operation completely outside the lock for better performance
             if (hasDataToSave && snapshotState != null && snapshotState.Count > 0)
             {
-                var stateToSave = new SoilHealthState { LocationHealthData = snapshotState };
-                _modDataService.SaveData(stateToSave, dataKey);
-                _monitor.Log($"Soil health data saved for {saveId}", LogLevel.Trace);
+                try
+                {
+                    var stateToSave = new SoilHealthState { LocationHealthData = snapshotState };
+                    _modDataService.SaveData(stateToSave, dataKey);
+                    _monitor.Log($"Soil health data saved for {saveId}", LogLevel.Trace);
+                }
+                catch (Exception ex)
+                {
+                    // Log error but don't expose raw exception message for security
+                    _monitor.Log("Error saving soil health data.", LogLevel.Error);
+                    
+                    // Add trace-level exception details for debugging without leaking message content
+                    _monitor.Log($"SaveData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                }
             }
         }
 
@@ -400,35 +414,49 @@ namespace LivingRoots.Services
 
             lock (_lock)
             {
-                // Use GetOrAddLocationCacheUnsafe to avoid code duplication
-                var tiles = GetOrAddLocationCacheUnsafe(locationName);
-
-                var key = new Point(ix, iy);
-                if (tiles.TryGetValue(key, out float current))
+                // OPTIMIZATION: Only create location cache if it already exists OR we're going to store a non-zero value
+                // This prevents creating empty dictionaries when delta results in 0
+                if (_runtimeCache.TryGetValue(locationName, out var tiles))
                 {
-                    float newValue = ClampHealthValue(current + delta);
-                    
-                    // Don't store default values; keep the cache sparse to prevent unbounded growth.
-                    if (newValue == 0f)
+                    var key = new Point(ix, iy);
+                    if (tiles.TryGetValue(key, out float current))
                     {
-                        tiles.Remove(key);
-                        if (tiles.Count == 0)
-                            _runtimeCache.Remove(locationName);
+                        float newValue = ClampHealthValue(current + delta);
+                        
+                        // Don't store default values; keep the cache sparse to prevent unbounded growth.
+                        if (newValue == 0f)
+                        {
+                            tiles.Remove(key);
+                            if (tiles.Count == 0)
+                                _runtimeCache.Remove(locationName);
+                        }
+                        else
+                        {
+                            tiles[key] = newValue;
+                        }
                     }
                     else
                     {
-                        tiles[key] = newValue;
+                        // If the key doesn't exist, initialize with the delta value (starting from 0)
+                        float newValue = ClampHealthValue(delta);
+                        
+                        // Don't store default values; keep the cache sparse to prevent unbounded growth.
+                        if (newValue != 0f)
+                        {
+                            tiles[key] = newValue;
+                        }
                     }
                 }
                 else
                 {
-                    // If the key doesn't exist, initialize with the delta value (starting from 0)
+                    // Location doesn't exist yet - only create it if we'll store a non-zero value
                     float newValue = ClampHealthValue(delta);
                     
-                    // Don't store default values; keep the cache sparse to prevent unbounded growth.
                     if (newValue != 0f)
                     {
-                        tiles[key] = newValue;
+                        var newTiles = GetOrAddLocationCacheUnsafe(locationName);
+                        var key = new Point(ix, iy);
+                        newTiles[key] = newValue;
                     }
                 }
             }
