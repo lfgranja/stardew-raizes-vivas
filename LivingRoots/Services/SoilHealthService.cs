@@ -47,7 +47,7 @@ namespace LivingRoots.Services
 
             string? dataKey = GetSaveKey(saveId);
             
-            // If sanitization failed and we got a default key, log and return early
+            // If sanitization failed and we got a null key, log and return early
             if (dataKey == null)
             {
                 _monitor.Log("LoadData aborted: saveId sanitization failed.", LogLevel.Error);
@@ -127,7 +127,7 @@ namespace LivingRoots.Services
                             int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
                             int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
                         {
-                            // Validate health value range
+                            // Simplified validation logic: check for NaN/Infinity first, then range
                             float validatedValue = tileEntry.Value;
                             
                             // Check for NaN or Infinity values and convert to 0 instead of skipping
@@ -199,7 +199,7 @@ namespace LivingRoots.Services
 
             string? dataKey = GetSaveKey(saveId);
             
-            // If sanitization failed and we got a default key, log and return early
+            // If sanitization failed and we got a null key, log and return early
             if (dataKey == null)
             {
                 _monitor.Log("SaveData aborted: saveId sanitization failed.", LogLevel.Error);
@@ -441,6 +441,13 @@ namespace LivingRoots.Services
             if (string.IsNullOrWhiteSpace(saveId))
             {
                 _monitor.Log("SaveId cannot be null or empty.", LogLevel.Error);
+                return null;
+            }
+            
+            // Add length validation to prevent overlong filenames
+            if (saveId.Length > 200) // Reasonable limit for filename
+            {
+                _monitor.Log("SaveId exceeds maximum length of 200 characters.", LogLevel.Error);
                 return null;
             }
 

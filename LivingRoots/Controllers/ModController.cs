@@ -147,6 +147,9 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 monitor.Log("Error occurred while registering game events.", LogLevel.Error);
+                
+                // Add trace-level exception details for debugging
+                monitor.Log($"RegisterEvents exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
 
                 // Attempt to rollback any partial subscriptions with individual exception handling
                 try
@@ -271,6 +274,9 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 monitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
+                
+                // Add trace-level exception details for debugging
+                monitor.Log($"UnregisterEvents exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
             }
         }
 
@@ -292,6 +298,9 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log("Error occurred in game launched event handler.", LogLevel.Error);
+                
+                // Add trace-level exception details for debugging
+                _monitor.Log($"OnGameLaunched exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
             }
         }
 
@@ -340,6 +349,9 @@ namespace LivingRoots.Controllers
                     // Log error but don't expose raw exception message for security
                     _monitor.Log("Error occurred while registering console command 'lr_version'.", LogLevel.Error);
                     
+                    // Add trace-level exception details for debugging
+                    _monitor.Log($"RegisterConsoleCommand exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
+                    
                     // Ensure the CommandRegisteredFlag is not set if registration failed
                     // This is important to maintain atomic state - if an exception occurs during registration,
                     // we don't want the flag to indicate success when it actually failed
@@ -381,6 +393,9 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 _monitor?.Log("Error occurred while executing version command.", LogLevel.Error);
+                
+                // Add trace-level exception details for debugging
+                _monitor?.Log($"PrintVersion exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
             }
         }
 
@@ -443,6 +458,9 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log($"Error occurred while loading soil health data for save.", LogLevel.Error);
+                
+                // Add trace-level exception details for debugging
+                _monitor.Log($"OnSaveLoaded exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
             }
             finally
             {
@@ -510,6 +528,9 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log($"Error occurred while saving soil health data for save.", LogLevel.Error);
+                
+                // Add trace-level exception details for debugging
+                _monitor.Log($"OnSaving exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
             }
             finally
             {
