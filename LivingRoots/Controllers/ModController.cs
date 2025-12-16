@@ -275,8 +275,8 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 monitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
                 
-                // Add trace-level exception details for debugging without leaking message content
-                monitor.Log($"UnregisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                // Add trace-level exception details for debugging
+                monitor.Log($"UnregisterEvents exception type: {ex.GetType().FullName}: {ex.Message}", LogLevel.Trace);
             }
         }
 
@@ -299,8 +299,8 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 _monitor.Log("Error occurred in game launched event handler.", LogLevel.Error);
                 
-                // Add trace-level exception details for debugging without leaking message content
-                _monitor.Log($"OnGameLaunched exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                // Add trace-level exception details for debugging
+                _monitor.Log($"OnGameLaunched exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
             }
         }
 
@@ -349,8 +349,8 @@ namespace LivingRoots.Controllers
                     // Log error but don't expose raw exception message for security
                     _monitor.Log("Error occurred while registering console command 'lr_version'.", LogLevel.Error);
                     
-                    // Add trace-level exception details for debugging without leaking message content
-                    _monitor.Log($"RegisterConsoleCommand exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    // Add trace-level exception details for debugging
+                    _monitor.Log($"RegisterConsoleCommand exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
                     
                     // Ensure the CommandRegisteredFlag is not set if registration failed
                     // This is important to maintain atomic state - if an exception occurs during registration,
@@ -379,7 +379,7 @@ namespace LivingRoots.Controllers
                 if (args.Any(arg => !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg)))
                 {
                     monitor?.Log("Usage: lr_version", LogLevel.Info);
-                    monitor?.Log("Shows the Living Roots mod version and UniqueID.", LogLevel.Info);
+                    monitor?.Log("Shows the Living Roots version and UniqueID.", LogLevel.Info);
                     return;
                 }
 
@@ -394,8 +394,8 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 _monitor?.Log("Error occurred while executing version command.", LogLevel.Error);
                 
-                // Add trace-level exception details for debugging without leaking message content
-                _monitor?.Log($"PrintVersion exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                // Add trace-level exception details for debugging
+                _monitor?.Log($"PrintVersion exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
             }
         }
 
@@ -459,8 +459,8 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 _monitor.Log($"Error occurred while loading soil health data for save.", LogLevel.Error);
                 
-                // Add trace-level exception details for debugging without leaking message content
-                _monitor.Log($"OnSaveLoaded exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                // Add trace-level exception details for debugging
+                _monitor.Log($"OnSaveLoaded exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
             }
             finally
             {
@@ -529,8 +529,8 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 _monitor.Log($"Error occurred while saving soil health data for save.", LogLevel.Error);
                 
-                // Add trace-level exception details for debugging without leaking message content
-                _monitor.Log($"OnSaving exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                // Add trace-level exception details for debugging
+                _monitor.Log($"OnSaving exception details: {ex.GetType().Name}: {ex.Message}", LogLevel.Trace);
             }
             finally
             {
