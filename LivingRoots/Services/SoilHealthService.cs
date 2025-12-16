@@ -61,29 +61,8 @@ namespace LivingRoots.Services
             // Use temporary cache to prevent data loss if parsing fails partway through
             var tempCache = new Dictionary<string, Dictionary<Point, float>>();
 
-            SoilHealthState? savedData = null;
-            bool loadErrorOccurred = false;
-            
-            try
-            {
-                savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
-            }
-            catch (Exception)
-            {
-                // Log error but don't expose raw exception message for security
-                _monitor.Log("Error loading soil health data.", LogLevel.Error);
-                loadErrorOccurred = true;
-            }
-
-            // If there was an error loading the data, clear the cache to prevent cross-save data leakage
-            if (loadErrorOccurred)
-            {
-                lock (_lock)
-                {
-                    _runtimeCache.Clear();
-                }
-                return;
-            }
+            // LoadData implementation is designed to handle exceptions internally and return null on failure
+            SoilHealthState? savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
 
             if (savedData != null)
             {
@@ -103,10 +82,25 @@ namespace LivingRoots.Services
                     if (locationEntry.Value == null) continue;
 
                     var tileDict = new Dictionary<Point, float>();
+                    int tileCount = 0; // Track the number of tiles loaded for this location
                     bool warnedForInvalidValue = false; // Only warn once per location for invalid values
                     bool warnedForMalformedKey = false; // Only warn once per location for malformed keys
+                    bool limitExceededLogged = false; // Only log the limit exceeded warning once per location
+                    
                     foreach (var tileEntry in locationEntry.Value)
                     {
+                        // Check if we've exceeded the tile limit for this location
+                        if (tileCount >= ModConstants.MaxTilesPerLocation)
+                        {
+                            // Only log once per location when the limit is reached
+                            if (!limitExceededLogged)
+                            {
+                                _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{locationEntry.Key}'; stopping tile processing for this location.", LogLevel.Warn);
+                                limitExceededLogged = true;
+                            }
+                            break; // Stop processing tiles for this location
+                        }
+                        
                         // Add null/whitespace check for tile keys to prevent crashes with corrupted save files
                         if (string.IsNullOrWhiteSpace(tileEntry.Key))
                         {
@@ -152,7 +146,12 @@ namespace LivingRoots.Services
                                 validatedValue = ClampHealthValue(validatedValue);
                             }
 
-                            tileDict[new Point(x, y)] = validatedValue;
+                            // Only add non-zero values to prevent bloating the cache with default values
+                            if (validatedValue != 0f)
+                            {
+                                tileDict[new Point(x, y)] = validatedValue;
+                                tileCount++; // Increment the tile counter
+                            }
                         }
                         else
                         {
@@ -238,7 +237,12 @@ namespace LivingRoots.Services
                         
                         // Clamp value to valid range [0, 100] before saving
                         float clampedValue = ClampHealthValue(processedValue);
-                        tileDict[tileKey] = clampedValue;
+                        
+                        // Only save non-zero values to prevent bloating the save file with default values
+                        if (clampedValue != 0f)
+                        {
+                            tileDict[tileKey] = clampedValue;
+                        }
                     }
                     
                     // Only add location if it has valid tiles
@@ -253,17 +257,9 @@ namespace LivingRoots.Services
             // This moves the I/O operation completely outside the lock for better performance
             if (hasDataToSave && snapshotState != null && snapshotState.Count > 0)
             {
-                try
-                {
-                    var stateToSave = new SoilHealthState { LocationHealthData = snapshotState };
-                    _modDataService.SaveData(stateToSave, dataKey);
-                    _monitor.Log($"Soil health data saved for {saveId}", LogLevel.Trace);
-                }
-                catch (Exception)
-                {
-                    // Log error but don't expose raw exception message for security
-                    _monitor.Log("Error saving soil health data.", LogLevel.Error);
-                }
+                var stateToSave = new SoilHealthState { LocationHealthData = snapshotState };
+                _modDataService.SaveData(stateToSave, dataKey);
+                _monitor.Log($"Soil health data saved for {saveId}", LogLevel.Trace);
             }
         }
 
@@ -354,10 +350,21 @@ namespace LivingRoots.Services
                 // Domain Rule: Clamp between 0 and 100 (not 10 as previously)
                 float clampedValue = ClampHealthValue(value);
 
-                // Use GetOrAddLocationCacheUnsafe to avoid code duplication
-                var tiles = GetOrAddLocationCacheUnsafe(locationName);
-
                 var key = new Point(ix, iy);
+
+                // Don't store default values; keep the cache sparse to prevent unbounded growth.
+                if (clampedValue == 0f)
+                {
+                    if (_runtimeCache.TryGetValue(locationName, out var existingTiles) && existingTiles.Remove(key))
+                    {
+                        if (existingTiles.Count == 0)
+                            _runtimeCache.Remove(locationName);
+                    }
+                    return;
+                }
+
+                // Only allocate location storage if we actually need to store a non-default value.
+                var tiles = GetOrAddLocationCacheUnsafe(locationName);
                 tiles[key] = clampedValue;
             }
         }
@@ -400,13 +407,29 @@ namespace LivingRoots.Services
                 if (tiles.TryGetValue(key, out float current))
                 {
                     float newValue = ClampHealthValue(current + delta);
-                    tiles[key] = newValue;
+                    
+                    // Don't store default values; keep the cache sparse to prevent unbounded growth.
+                    if (newValue == 0f)
+                    {
+                        tiles.Remove(key);
+                        if (tiles.Count == 0)
+                            _runtimeCache.Remove(locationName);
+                    }
+                    else
+                    {
+                        tiles[key] = newValue;
+                    }
                 }
                 else
                 {
                     // If the key doesn't exist, initialize with the delta value (starting from 0)
                     float newValue = ClampHealthValue(delta);
-                    tiles[key] = newValue;
+                    
+                    // Don't store default values; keep the cache sparse to prevent unbounded growth.
+                    if (newValue != 0f)
+                    {
+                        tiles[key] = newValue;
+                    }
                 }
             }
         }
