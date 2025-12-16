@@ -62,15 +62,53 @@ namespace LivingRoots.Services
             var tempCache = new Dictionary<string, Dictionary<Point, float>>();
 
             // LoadData implementation is designed to handle exceptions internally and return null on failure
-            SoilHealthState? savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
+            SoilHealthState? savedData = null;
+            
+            // Wrap LoadData parsing logic in try-catch for graceful error handling - FIXED
+            try
+            {
+                savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't expose raw exception message for security
+                _monitor.Log("Error occurred while loading soil health data from storage.", LogLevel.Error);
+                
+                // Add trace-level exception details for debugging without leaking message content
+                _monitor.Log($"LoadData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                
+                // Clear the cache when there's a parsing error to prevent data leakage
+                lock (_lock)
+                {
+                    _runtimeCache.Clear();
+                }
+                return; // Return early without modifying the cache
+            }
 
             if (savedData != null)
             {
                 // Guard against null LocationHealthData to prevent NullReferenceException during deserialization
                 var locations = savedData.LocationHealthData ?? new Dictionary<string, Dictionary<string, float>>();
 
+                // Track the number of locations loaded to prevent DoS attacks
+                int locationCount = 0;
+                bool locationLimitExceededLogged = false;
+
                 foreach (var locationEntry in locations)
                 {
+                    // Check if we've exceeded the location limit for this save
+                    locationCount++;
+                    if (locationCount > ModConstants.MaxLocationsPerSave)
+                    {
+                        // Only log once when the limit is reached
+                        if (!locationLimitExceededLogged)
+                        {
+                            _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded; stopping location processing.", LogLevel.Warn);
+                            locationLimitExceededLogged = true;
+                        }
+                        break; // Stop processing locations for this save
+                    }
+
                     // Skip if the location name is null or empty to prevent invalid entries in the cache
                     if (string.IsNullOrWhiteSpace(locationEntry.Key))
                     {
@@ -423,6 +461,12 @@ namespace LivingRoots.Services
                     {
                         float newValue = ClampHealthValue(current + delta);
                         
+                        // Add NaN/Infinity check after calculation - FIXED: Check for invalid values after calculation
+                        if (float.IsNaN(newValue) || float.IsInfinity(newValue))
+                        {
+                            newValue = ClampHealthValue(0.0f); // Convert invalid result to valid range
+                        }
+                        
                         // Don't store default values; keep the cache sparse to prevent unbounded growth.
                         if (newValue == 0f)
                         {
@@ -440,6 +484,12 @@ namespace LivingRoots.Services
                         // If the key doesn't exist, initialize with the delta value (starting from 0)
                         float newValue = ClampHealthValue(delta);
                         
+                        // Add NaN/Infinity check after calculation - FIXED: Check for invalid values after calculation
+                        if (float.IsNaN(newValue) || float.IsInfinity(newValue))
+                        {
+                            newValue = ClampHealthValue(0.0f); // Convert invalid result to valid range
+                        }
+                        
                         // Don't store default values; keep the cache sparse to prevent unbounded growth.
                         if (newValue != 0f)
                         {
@@ -451,6 +501,12 @@ namespace LivingRoots.Services
                 {
                     // Location doesn't exist yet - only create it if we'll store a non-zero value
                     float newValue = ClampHealthValue(delta);
+                    
+                    // Add NaN/Infinity check after calculation - FIXED: Check for invalid values after calculation
+                    if (float.IsNaN(newValue) || float.IsInfinity(newValue))
+                    {
+                        newValue = ClampHealthValue(0.0f); // Convert invalid result to valid range
+                    }
                     
                     if (newValue != 0f)
                     {
