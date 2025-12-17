@@ -387,7 +387,7 @@ namespace LivingRoots.Services
                 // Validate raw key first to catch path traversal attempts
                 _modLogic.ValidatePath(key);
             }
-            catch (ArgumentException ex)
+            catch (ArgumentException)
             {
                 // Security improvement: Don't log the original exception message to prevent information disclosure
                 // The original message could contain details about why validation failed

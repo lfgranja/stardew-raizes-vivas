@@ -211,7 +211,6 @@ namespace LivingRoots.Services
             // Create a snapshot of the current cache to avoid holding the lock during I/O
             // This implements the snapshot pattern to move I/O operations outside the lock
             Dictionary<string, Dictionary<string, float>>? snapshotState = null;
-            bool hasDataToSave = false;
             
             lock (_lock)
             {
@@ -221,7 +220,6 @@ namespace LivingRoots.Services
                     return;
                 }
 
-                hasDataToSave = true;
                 snapshotState = new Dictionary<string, Dictionary<string, float>>();
                 foreach (var location in _runtimeCache)
                 {
