@@ -150,6 +150,9 @@ namespace LivingRoots.Controllers
                 
                 // Add trace-level exception details for debugging without leaking message content
                 monitor.Log($"RegisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                
+                // Add stack trace logging for better diagnostics without exposing sensitive information
+                monitor.Log(ex.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
 
                 // Attempt to rollback any partial subscriptions with individual exception handling
                 try
@@ -275,8 +278,11 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 monitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
                 
-                // Add trace-level exception details for debugging - FIXED: Use exception type and HResult instead of message
+                // Add trace-level exception details for debugging
                 monitor.Log($"UnregisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                
+                // Add stack trace logging for better diagnostics without exposing sensitive information
+                monitor.Log(ex.StackTrace ?? "UnregisterEvents stack trace unavailable.", LogLevel.Trace);
             }
         }
 
@@ -299,8 +305,11 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 _monitor.Log("Error occurred in game launched event handler.", LogLevel.Error);
                 
-                // Add trace-level exception details for debugging - FIXED: Use exception type and HResult instead of message
+                // Add trace-level exception details for debugging
                 _monitor.Log($"OnGameLaunched exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                
+                // Add stack trace logging for better diagnostics without exposing sensitive information
+                _monitor.Log(ex.StackTrace ?? "OnGameLaunched stack trace unavailable.", LogLevel.Trace);
             }
         }
 
@@ -349,8 +358,11 @@ namespace LivingRoots.Controllers
                     // Log error but don't expose raw exception message for security
                     _monitor.Log("Error occurred while registering console command 'lr_version'.", LogLevel.Error);
                     
-                    // Add trace-level exception details for debugging - FIXED: Use exception type and HResult instead of message
+                    // Add trace-level exception details for debugging
                     _monitor.Log($"RegisterConsoleCommand exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    
+                    // Add stack trace logging for better diagnostics without exposing sensitive information
+                    _monitor.Log(ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.", LogLevel.Trace);
                     
                     // Ensure the CommandRegisteredFlag is not set if registration failed
                     // This is important to maintain atomic state - if an exception occurs during registration,
@@ -394,8 +406,11 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 _monitor?.Log("Error occurred while executing version command.", LogLevel.Error);
                 
-                // Add trace-level exception details for debugging - FIXED: Use exception type and HResult instead of message
+                // Add trace-level exception details for debugging
                 _monitor?.Log($"PrintVersion exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                
+                // Add stack trace logging for better diagnostics without exposing sensitive information
+                _monitor?.Log(ex.StackTrace ?? "PrintVersion stack trace unavailable.", LogLevel.Trace);
             }
         }
 
@@ -459,8 +474,11 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 _monitor.Log($"Error occurred while loading soil health data for save.", LogLevel.Error);
                 
-                // Add trace-level exception details for debugging - FIXED: Use exception type and HResult instead of message
+                // Add trace-level exception details for debugging
                 _monitor.Log($"OnSaveLoaded exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                
+                // Add stack trace logging for better diagnostics without exposing sensitive information
+                _monitor.Log(ex.StackTrace ?? "OnSaveLoaded stack trace unavailable.", LogLevel.Trace);
             }
             finally
             {
@@ -529,8 +547,11 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 _monitor.Log($"Error occurred while saving soil health data for save.", LogLevel.Error);
                 
-                // Add trace-level exception details for debugging - FIXED: Use exception type and HResult instead of message
+                // Add trace-level exception details for debugging
                 _monitor.Log($"OnSaving exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                
+                // Add stack trace logging for better diagnostics without exposing sensitive information
+                _monitor.Log(ex.StackTrace ?? "OnSaving stack trace unavailable.", LogLevel.Trace);
             }
             finally
             {
@@ -544,8 +565,7 @@ namespace LivingRoots.Controllers
             // Use TrySetStateFlag to ensure disposal flag is only set once
             if (!TrySetStateFlag(DisposedFlag))
             {
-                // If already disposed, check if we need to log the disposal message
-                // Only log once if another thread disposed first and we're calling Dispose again
+                // If already disposed, return to prevent duplicate disposal processing
                 return; // Already disposed
             }
 
