@@ -283,7 +283,7 @@ namespace LivingRoots.Services
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                _monitor.Log(ex.StackTrace ?? "SaveData stack trace unavailable.", LogLevel.Trace);
+                _monitor.Log(ex.ToString(), LogLevel.Trace);
                 #endif
             }
         }
@@ -425,50 +425,31 @@ namespace LivingRoots.Services
 
             lock (_lock)
             {
-                // OPTIMIZATION: Only create location cache if it already exists OR we're going to store a non-zero value
-                // This prevents creating empty dictionaries when delta results in 0
-                if (_runtimeCache.TryGetValue(locationName, out var tiles))
+                var key = new Point(ix, iy);
+                float currentHealth = 0f;
+                if (_runtimeCache.TryGetValue(locationName, out var tiles) && tiles.TryGetValue(key, out var health))
                 {
-                    var key = new Point(ix, iy);
-                    if (tiles.TryGetValue(key, out float current))
+                    currentHealth = health;
+                }
+
+                float newHealth = ClampHealthValue(currentHealth + delta);
+
+                if (newHealth == 0f)
+                {
+                    // If the new value is the default, remove the entry to keep the cache sparse.
+                    if (_runtimeCache.TryGetValue(locationName, out tiles))
                     {
-                        float newValue = ClampHealthValue(current + delta);
-                        
-                        // Don't store default values; keep the cache sparse to prevent unbounded growth.
-                        if (newValue == 0f)
+                        if (tiles.Remove(key) && tiles.Count == 0)
                         {
-                            tiles.Remove(key);
-                            if (tiles.Count == 0)
-                                _runtimeCache.Remove(locationName);
-                        }
-                        else
-                        {
-                            tiles[key] = newValue;
-                        }
-                    }
-                    else
-                    {
-                        // If the key doesn't exist, initialize with the delta value (starting from 0)
-                        float newValue = ClampHealthValue(delta);
-                        
-                        // Don't store default values; keep the cache sparse to prevent unbounded growth.
-                        if (newValue != 0f)
-                        {
-                            tiles[key] = newValue;
+                            _runtimeCache.Remove(locationName);
                         }
                     }
                 }
                 else
                 {
-                    // Location doesn't exist yet - only create it if we'll store a non-zero value
-                    float newValue = ClampHealthValue(delta);
-                    
-                    if (newValue != 0f)
-                    {
-                        var newTiles = GetOrAddLocationCacheUnsafe(locationName);
-                        var key = new Point(ix, iy);
-                        newTiles[key] = newValue;
-                    }
+                    // Otherwise, add or update the entry.
+                    var tilesToUpdate = GetOrAddLocationCacheUnsafe(locationName);
+                    tilesToUpdate[key] = newHealth;
                 }
             }
         }

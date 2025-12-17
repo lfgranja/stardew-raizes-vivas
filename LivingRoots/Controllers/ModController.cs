@@ -17,6 +17,7 @@ namespace LivingRoots.Controllers
         private const int EventsRegisteredFlag = 1 << 0;
         private const int CommandRegisteredFlag = 1 << 1;
         private const int DisposedFlag = 1 << 2;
+        private const int UnregisteringFlag = 1 << 5;
         private int _state = 0; // Combine flags in single volatile field
         
         // Warning flag for preventing repeated log spam - using Interlocked operations for thread safety
@@ -79,6 +80,13 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
             {
                 _monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
+                return;
+            }
+
+            // Don't register while another thread is actively unregistering.
+            if ((Volatile.Read(ref _state) & UnregisteringFlag) != 0)
+            {
+                _monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
                 return;
             }
 
@@ -153,7 +161,7 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                monitor.Log(ex.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
+                monitor.Log(ex.ToString(), LogLevel.Trace);
                 #endif
 
                 // Attempt to rollback any partial subscriptions with individual exception handling
@@ -192,15 +200,6 @@ namespace LivingRoots.Controllers
 
         public void UnregisterEvents()
         {
-            // Use Interlocked.Exchange to implement an atomic 'clear-and-claim' pattern
-            // This ensures that only one thread can successfully claim the unregistration operation
-            // The approach: atomically claim the operation by setting a special state, then properly handle
-            
-            // First, we'll implement the clear-and-claim pattern by using a strategy that leverages
-            // Interlocked.Exchange to atomically read and potentially modify state.
-            // Since we need to preserve other flags while clearing EventsRegisteredFlag,
-            // we'll use CompareExchange in a loop as this is the most appropriate approach.
-            
             int currentState, newState;
             do
             {
@@ -214,21 +213,13 @@ namespace LivingRoots.Controllers
                     return;
                 }
                 
-                // Calculate new state with EventsRegisteredFlag cleared while preserving other flags
-                newState = currentState & ~EventsRegisteredFlag;
+                // Claim unregistration and prevent concurrent registrations.
+                newState = (currentState & ~EventsRegisteredFlag) | UnregisteringFlag;
             }
             // Use CompareExchange in a loop to atomically update the state
             // This implements the 'clear-and-claim' pattern by ensuring only one thread
             // can successfully clear the EventsRegisteredFlag
             while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
-
-            // At this point, we have successfully claimed the unregistration operation
-            // and cleared the EventsRegisteredFlag. Now we need to atomically clear the event handlers
-            // using Interlocked.Exchange to ensure thread safety
-            
-            // According to code review feedback, do NOT clear the CommandRegisteredFlag
-            // since SMAPI doesn't support command removal - the command remains registered
-            // throughout the mod's lifecycle
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
@@ -239,12 +230,14 @@ namespace LivingRoots.Controllers
             if (gameLoop == null)
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
-                // Even when gameLoop is null, we've already cleared the flag,
+                // Even when gameLoop is null, we've already claimed unregistration,
                 // so just nullify the event handler fields to ensure clean state
                 // Use Interlocked.Exchange for thread-safe nullification of event handlers
                 Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                 Interlocked.Exchange(ref _onSaveLoadedHandler, null);
                 Interlocked.Exchange(ref _onSavingHandler, null);
+                // Clear the UnregisteringFlag when done
+                Interlocked.And(ref _state, ~UnregisteringFlag);
                 return;
             }
 
@@ -285,8 +278,13 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                monitor.Log(ex.StackTrace ?? "UnregisterEvents stack trace unavailable.", LogLevel.Trace);
+                monitor.Log(ex.ToString(), LogLevel.Trace);
                 #endif
+            }
+            finally
+            {
+                // Clear the UnregisteringFlag when done
+                Interlocked.And(ref _state, ~UnregisteringFlag);
             }
         }
 
@@ -314,7 +312,7 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                _monitor.Log(ex.StackTrace ?? "OnGameLaunched stack trace unavailable.", LogLevel.Trace);
+                _monitor.Log(ex.ToString(), LogLevel.Trace);
                 #endif
             }
         }
@@ -369,7 +367,7 @@ namespace LivingRoots.Controllers
                     
                     // Add stack trace logging for better diagnostics without exposing sensitive information
                     #if DEBUG
-                    _monitor.Log(ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.", LogLevel.Trace);
+                    _monitor.Log(ex.ToString(), LogLevel.Trace);
                     #endif
                     
                     // Ensure the CommandRegisteredFlag is not set if registration failed
@@ -419,7 +417,7 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                _monitor?.Log(ex.StackTrace ?? "PrintVersion stack trace unavailable.", LogLevel.Trace);
+                _monitor?.Log(ex.ToString(), LogLevel.Trace);
                 #endif
             }
         }
@@ -489,7 +487,7 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                _monitor.Log(ex.StackTrace ?? "OnSaveLoaded stack trace unavailable.", LogLevel.Trace);
+                _monitor.Log(ex.ToString(), LogLevel.Trace);
                 #endif
             }
             finally
@@ -564,7 +562,7 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                _monitor.Log(ex.StackTrace ?? "OnSaving stack trace unavailable.", LogLevel.Trace);
+                _monitor.Log(ex.ToString(), LogLevel.Trace);
                 #endif
             }
             finally
