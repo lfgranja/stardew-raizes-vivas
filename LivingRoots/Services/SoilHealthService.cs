@@ -69,8 +69,22 @@ namespace LivingRoots.Services
                 // Guard against null LocationHealthData to prevent NullReferenceException during deserialization
                 var locations = savedData.LocationHealthData ?? new Dictionary<string, Dictionary<string, float>>();
 
+                int locationCount = 0;
+                bool locationsLimitLogged = false;
+
                 foreach (var locationEntry in locations)
                 {
+                    locationCount++;
+                    if (locationCount > ModConstants.MaxLocationsPerSave)
+                    {
+                        if (!locationsLimitLogged)
+                        {
+                            _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded; stopping location processing to prevent DoS.", LogLevel.Warn);
+                            locationsLimitLogged = true;
+                        }
+                        break;
+                    }
+
                     // Skip if the location name is null or empty to prevent invalid entries in the cache
                     if (string.IsNullOrWhiteSpace(locationEntry.Key))
                     {
@@ -214,12 +228,6 @@ namespace LivingRoots.Services
             
             lock (_lock)
             {
-                if (_runtimeCache.Count == 0)
-                {
-                    // If no data to save, return early without performing I/O
-                    return;
-                }
-
                 snapshotState = new Dictionary<string, Dictionary<string, float>>();
                 foreach (var location in _runtimeCache)
                 {
@@ -274,7 +282,9 @@ namespace LivingRoots.Services
                 _monitor.Log($"SaveData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
+                #if DEBUG
                 _monitor.Log(ex.StackTrace ?? "SaveData stack trace unavailable.", LogLevel.Trace);
+                #endif
             }
         }
 

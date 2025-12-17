@@ -152,7 +152,9 @@ namespace LivingRoots.Controllers
                 monitor.Log($"RegisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
+                #if DEBUG
                 monitor.Log(ex.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
+                #endif
 
                 // Attempt to rollback any partial subscriptions with individual exception handling
                 try
@@ -282,7 +284,9 @@ namespace LivingRoots.Controllers
                 monitor.Log($"UnregisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
+                #if DEBUG
                 monitor.Log(ex.StackTrace ?? "UnregisterEvents stack trace unavailable.", LogLevel.Trace);
+                #endif
             }
         }
 
@@ -309,7 +313,9 @@ namespace LivingRoots.Controllers
                 _monitor.Log($"OnGameLaunched exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
+                #if DEBUG
                 _monitor.Log(ex.StackTrace ?? "OnGameLaunched stack trace unavailable.", LogLevel.Trace);
+                #endif
             }
         }
 
@@ -362,7 +368,9 @@ namespace LivingRoots.Controllers
                     _monitor.Log($"RegisterConsoleCommand exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                     
                     // Add stack trace logging for better diagnostics without exposing sensitive information
+                    #if DEBUG
                     _monitor.Log(ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.", LogLevel.Trace);
+                    #endif
                     
                     // Ensure the CommandRegisteredFlag is not set if registration failed
                     // This is important to maintain atomic state - if an exception occurs during registration,
@@ -410,7 +418,9 @@ namespace LivingRoots.Controllers
                 _monitor?.Log($"PrintVersion exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
+                #if DEBUG
                 _monitor?.Log(ex.StackTrace ?? "PrintVersion stack trace unavailable.", LogLevel.Trace);
+                #endif
             }
         }
 
@@ -478,7 +488,9 @@ namespace LivingRoots.Controllers
                 _monitor.Log($"OnSaveLoaded exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
+                #if DEBUG
                 _monitor.Log(ex.StackTrace ?? "OnSaveLoaded stack trace unavailable.", LogLevel.Trace);
+                #endif
             }
             finally
             {
@@ -551,7 +563,9 @@ namespace LivingRoots.Controllers
                 _monitor.Log($"OnSaving exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
+                #if DEBUG
                 _monitor.Log(ex.StackTrace ?? "OnSaving stack trace unavailable.", LogLevel.Trace);
+                #endif
             }
             finally
             {
@@ -574,10 +588,6 @@ namespace LivingRoots.Controllers
 
             // Unregister events to prevent memory leaks
             UnregisterEvents();
-
-            // The UnregisterEvents() method already handles setting the event handlers to null
-            // in a thread-safe manner using Interlocked.Exchange, so these redundant assignments
-            // are not needed and have been removed to follow DRY principle
         }
 
         /// <summary>
