@@ -494,13 +494,12 @@ namespace LivingRoots.Tests
 
             _mockDataService
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
-                .Returns((SoilHealthState)null); // Return null instead of throwing an exception
+                .Throws(new Exception("Load failed")); // Actually throw an exception to test the exception handling
 
-            // Act - This should not throw since ModDataService.LoadData returns null on failure
+            // Act & Assert - Should handle exception gracefully and not propagate
             var ex = Record.Exception(() => service.LoadData("test_save"));
-
-            // Assert - Should not throw an exception, and cache should be cleared
-            Assert.Null(ex);
+            Assert.Null(ex); // Should not throw
+            // Cache should be cleared when exception occurs during loading
             Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
         }
 

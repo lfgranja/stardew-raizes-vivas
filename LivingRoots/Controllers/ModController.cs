@@ -212,8 +212,8 @@ namespace LivingRoots.Controllers
                     return;
                 }
                 
-                // Claim unregistration and prevent concurrent registrations.
-                newState = (currentState & ~EventsRegisteredFlag) | UnregisteringFlag;
+                // Claim unregistration; keep EventsRegisteredFlag set until we successfully unsubscribe.
+                newState = currentState | UnregisteringFlag;
             }
             // Use CompareExchange in a loop to atomically update the state
             // This implements the 'clear-and-claim' pattern by ensuring only one thread
@@ -240,6 +240,7 @@ namespace LivingRoots.Controllers
                 return;
             }
 
+            bool unsubscribedAll = false;
             try
             {
                 // Capture the current handler values to unsubscribe with
@@ -263,6 +264,16 @@ namespace LivingRoots.Controllers
                     gameLoop.Saving -= savingHandler;
                 }
                 
+                unsubscribedAll = true;
+
+                // Now that we actually unsubscribed, clear the registered flag.
+                Interlocked.And(ref _state, ~EventsRegisteredFlag);
+
+                // Clear handlers only after successful unsubscription.
+                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                Interlocked.Exchange(ref _onSavingHandler, null);
+                
                 // Move the success log message from the finally block to the try block
                 monitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
@@ -278,16 +289,15 @@ namespace LivingRoots.Controllers
                 #if DEBUG
                 monitor.Log(ex.StackTrace ?? "UnregisterEvents stack trace unavailable.", LogLevel.Trace);
                 #endif
+                
+                // If we didn't fully unsubscribe, keep EventsRegisteredFlag set so a later attempt can retry.
+                if (!unsubscribedAll)
+                    Interlocked.Or(ref _state, EventsRegisteredFlag);
             }
             finally
             {
                 // Clear the UnregisteringFlag when done
                 Interlocked.And(ref _state, ~UnregisteringFlag);
-                
-                // Clear the handler references AFTER successful unsubscription to prevent race conditions
-                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                Interlocked.Exchange(ref _onSavingHandler, null);
             }
         }
 

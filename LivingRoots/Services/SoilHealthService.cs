@@ -75,7 +75,6 @@ namespace LivingRoots.Services
                 // Add trace-level exception details for debugging without leaking message content
                 _monitor.Log($"LoadData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
-                // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
                 _monitor.Log(ex.StackTrace ?? "LoadData stack trace unavailable.", LogLevel.Trace);
                 #endif
@@ -95,6 +94,10 @@ namespace LivingRoots.Services
 
                 int locationCount = 0;
                 bool locationsLimitLogged = false;
+
+                // Track total tile entries processed across all locations to prevent DoS attacks
+                int totalTileEntriesProcessed = 0;
+                bool totalTilesLimitLogged = false;
 
                 foreach (var locationEntry in locations)
                 {
@@ -141,6 +144,18 @@ namespace LivingRoots.Services
                                 limitExceededLogged = true;
                             }
                             break; // Stop processing tiles for this location
+                        }
+                        
+                        // GLOBAL DOS PROTECTION: Increment total tile entries across all locations
+                        totalTileEntriesProcessed++;
+                        if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
+                        {
+                            if (!totalTilesLimitLogged)
+                            {
+                                _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) exceeded; stopping load to prevent DoS.", LogLevel.Warn);
+                                totalTilesLimitLogged = true;
+                            }
+                            break; // Stop processing completely
                         }
                         
                         // Add null/whitespace check for tile keys to prevent crashes with corrupted save files
@@ -221,6 +236,10 @@ namespace LivingRoots.Services
                     {
                         tempCache[locationEntry.Key] = tileDict;
                     }
+                    
+                    // GLOBAL DOS PROTECTION: Check if total tile limit has been exceeded after processing this location
+                    if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
+                        break;
                 }
             }
 
@@ -471,6 +490,7 @@ namespace LivingRoots.Services
                 float newHealth = ClampHealthValue(currentHealth + delta);
 
                 // Use the already available 'tiles' variable instead of doing another TryGetValue
+                // This addresses the redundant dictionary lookup mentioned in the code review
                 if (newHealth == 0f)
                 {
                     // If the new value is the default, remove the entry to keep the cache sparse.
@@ -536,7 +556,7 @@ namespace LivingRoots.Services
                 // Apply Unicode normalization using FormC (Canonical Decomposition followed by Canonical Composition)
                 string normalizedSaveId = saveId.Normalize(NormalizationForm.FormC);
                 
-                // ADDITION: Re-check length after normalization in case normalization expands the string
+                // Re-check length after normalization in case normalization expands the string
                 if (normalizedSaveId.Length > ModConstants.MaxSaveIdLength)
                 {
                     _monitor.Log($"SaveId exceeds maximum length of {ModConstants.MaxSaveIdLength} characters after normalization.", LogLevel.Error);
@@ -550,10 +570,13 @@ namespace LivingRoots.Services
                     return null;
                 }
                 
-                // ADDITION: Ensure final key (prefix + sanitized) stays within the configured bound
-                if (ModConstants.KeyPrefix.Length + sanitized.Length > ModConstants.MaxSaveIdLength)
+                // Calculate maximum allowed length for sanitized part (after accounting for prefix)
+                int maxSanitizedLength = Math.Max(0, ModConstants.MaxDataKeyLength - ModConstants.KeyPrefix.Length);
+                
+                // Ensure final key (prefix + sanitized) stays within the configured bound
+                if (sanitized.Length > maxSanitizedLength)
                 {
-                    _monitor.Log($"SaveId exceeds maximum length of {ModConstants.MaxSaveIdLength} characters after sanitization.", LogLevel.Error);
+                    _monitor.Log($"SaveId exceeds maximum length of {ModConstants.MaxDataKeyLength} characters after sanitization.", LogLevel.Error);
                     return null;
                 }
                 

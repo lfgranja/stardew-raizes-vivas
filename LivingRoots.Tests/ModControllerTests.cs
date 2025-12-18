@@ -465,7 +465,7 @@ namespace LivingRoots.Tests
             Assert.NotNull(onSavingMethod);
 
             // Act
-            onSavingMethod.Invoke(controller, new object[] { null, null! }); // Changed from new SavingEventArgs() to null!
+            onSavingMethod.Invoke(controller, new object[] { null, new SavingEventArgs() }); // Changed from null! to new SavingEventArgs()
 
             // Assert - Soil health service should have been called to save data
             _mockSoilHealthService.Verify(x => x.SaveData("test_save_id"), Times.Once);
@@ -550,19 +550,25 @@ namespace LivingRoots.Tests
         public static bool IsDisposed(object controller)
         {
             var method = controller.GetType().GetMethod("IsDisposed", Flags);
-            return (bool)(method?.Invoke(controller, Array.Empty<object>()) ?? false);
+            if (method == null)
+                throw new InvalidOperationException("Expected private method 'IsDisposed' was not found.");
+            return (bool)method.Invoke(controller, Array.Empty<object>());
         }
 
         public static bool TrySetStateFlag(object controller, int flag)
         {
             var method = controller.GetType().GetMethod("TrySetStateFlag", Flags);
-            return (bool)(method?.Invoke(controller, new object[] { flag }) ?? false);
+            if (method == null)
+                throw new InvalidOperationException("Expected private method 'TrySetStateFlag' was not found.");
+            return (bool)method.Invoke(controller, new object[] { flag });
         }
 
         public static void SetStateFlag(object controller, int flag)
         {
             // Use reflection to access the _state field directly to set the flag
             var stateField = controller.GetType().GetField("_state", Flags);
+            if (stateField == null)
+                throw new InvalidOperationException("Expected private field '_state' was not found.");
             var currentValue = (int)stateField.GetValue(controller);
             stateField.SetValue(controller, currentValue | flag);
         }
@@ -571,6 +577,8 @@ namespace LivingRoots.Tests
         {
             // Use reflection to access the _state field directly to check the flag
             var stateField = controller.GetType().GetField("_state", Flags);
+            if (stateField == null)
+                throw new InvalidOperationException("Expected private field '_state' was not found.");
             var currentValue = (int)stateField.GetValue(controller);
             return (currentValue & flag) != 0;
         }
@@ -579,6 +587,8 @@ namespace LivingRoots.Tests
         {
             // Access the private field _saveIdUnavailableWarningShown
             var field = controller.GetType().GetField("_saveIdUnavailableWarningShown", Flags);
+            if (field == null)
+                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShown' was not found.");
             return (int)field.GetValue(controller);
         }
 
@@ -586,6 +596,8 @@ namespace LivingRoots.Tests
         {
             // Set the private field _saveIdUnavailableWarningShown
             var field = controller.GetType().GetField("_saveIdUnavailableWarningShown", Flags);
+            if (field == null)
+                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShown' was not found.");
             field.SetValue(controller, value);
         }
     }
