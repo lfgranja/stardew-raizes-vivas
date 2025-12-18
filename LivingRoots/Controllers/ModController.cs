@@ -158,7 +158,6 @@ namespace LivingRoots.Controllers
                 // Add trace-level exception details for debugging without leaking message content
                 monitor.Log($"RegisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
-                // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
                 monitor.Log(ex.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
                 #endif
@@ -212,8 +211,8 @@ namespace LivingRoots.Controllers
                     return;
                 }
                 
-                // Claim unregistration; keep EventsRegisteredFlag set until we successfully unsubscribe.
-                newState = currentState | UnregisteringFlag;
+                // Claim unregistration and prevent concurrent registrations.
+                newState = (currentState & ~EventsRegisteredFlag) | UnregisteringFlag;
             }
             // Use CompareExchange in a loop to atomically update the state
             // This implements the 'clear-and-claim' pattern by ensuring only one thread
@@ -240,13 +239,13 @@ namespace LivingRoots.Controllers
                 return;
             }
 
-            bool unsubscribedAll = false;
             try
             {
-                // Capture the current handler values to unsubscribe with
-                var gameLaunchedHandler = _onGameLaunchedHandler;
-                var saveLoadedHandler = _onSaveLoadedHandler;
-                var savingHandler = _onSavingHandler;
+                // Atomically clear each event handler using Interlocked.Exchange to prevent
+                // race conditions where multiple threads might try to access these handlers
+                var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null);
 
                 // Safely unsubscribe from events with null checks and individual exception handling
                 if (gameLaunchedHandler != null)
@@ -264,16 +263,6 @@ namespace LivingRoots.Controllers
                     gameLoop.Saving -= savingHandler;
                 }
                 
-                unsubscribedAll = true;
-
-                // Now that we actually unsubscribed, clear the registered flag.
-                Interlocked.And(ref _state, ~EventsRegisteredFlag);
-
-                // Clear handlers only after successful unsubscription.
-                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                Interlocked.Exchange(ref _onSavingHandler, null);
-                
                 // Move the success log message from the finally block to the try block
                 monitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
@@ -289,10 +278,6 @@ namespace LivingRoots.Controllers
                 #if DEBUG
                 monitor.Log(ex.StackTrace ?? "UnregisterEvents stack trace unavailable.", LogLevel.Trace);
                 #endif
-                
-                // If we didn't fully unsubscribe, keep EventsRegisteredFlag set so a later attempt can retry.
-                if (!unsubscribedAll)
-                    Interlocked.Or(ref _state, EventsRegisteredFlag);
             }
             finally
             {
