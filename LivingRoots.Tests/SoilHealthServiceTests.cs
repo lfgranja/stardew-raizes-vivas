@@ -676,16 +676,23 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void SaveData_WithEmptyCache_DoesNotSave()
+        public void SaveData_WithEmptyCache_SavesEmptyStateToClearStaleData()
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            _mockFileNameSanitizationService.Setup(s => s.Sanitize("test_save")).Returns("test_save");
 
             // Act
             service.SaveData("test_save");
 
-            // Assert - Should not attempt to save empty data
-            _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
+            // Assert - Should save an empty state to clear any potentially stale data on disk.
+            _mockDataService.Verify(
+                x => x.SaveData(
+                    It.Is<SoilHealthState>(s => s.LocationHealthData != null && s.LocationHealthData.Count == 0),
+                    "soil_health_data_test_save"
+                ),
+                Times.Once
+            );
         }
 
         [Fact]
