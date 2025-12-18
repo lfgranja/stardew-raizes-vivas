@@ -61,7 +61,7 @@ namespace LivingRoots.Services
             // Use temporary cache to prevent data loss if parsing fails partway through
             var tempCache = new Dictionary<string, Dictionary<Point, float>>();
 
-            // Guard load against unexpected exceptions to prevent potential mod crashes
+            // LoadData implementation is designed to handle exceptions internally and return null on failure
             SoilHealthState? savedData = null;
             try
             {
@@ -75,6 +75,7 @@ namespace LivingRoots.Services
                 // Add trace-level exception details for debugging without leaking message content
                 _monitor.Log($"LoadData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
+                // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
                 _monitor.Log(ex.StackTrace ?? "LoadData stack trace unavailable.", LogLevel.Trace);
                 #endif
@@ -260,11 +261,10 @@ namespace LivingRoots.Services
 
             // Create a snapshot of the current cache to avoid holding the lock during I/O
             // This implements the snapshot pattern to move I/O operations outside the lock
-            Dictionary<string, Dictionary<string, float>>? snapshotState = null;
+            var snapshotState = new Dictionary<string, Dictionary<string, float>>();
             
             lock (_lock)
             {
-                snapshotState = new Dictionary<string, Dictionary<string, float>>();
                 foreach (var location in _runtimeCache)
                 {
                     var tileDict = new Dictionary<string, float>();
@@ -470,10 +470,11 @@ namespace LivingRoots.Services
 
                 float newHealth = ClampHealthValue(currentHealth + delta);
 
+                // Use the already available 'tiles' variable instead of doing another TryGetValue
                 if (newHealth == 0f)
                 {
                     // If the new value is the default, remove the entry to keep the cache sparse.
-                    if (_runtimeCache.TryGetValue(locationName, out tiles))
+                    if (tiles != null)
                     {
                         if (tiles.Remove(key) && tiles.Count == 0)
                         {
@@ -526,7 +527,7 @@ namespace LivingRoots.Services
             // Add length validation to prevent overlong filenames using the constant
             if (saveId.Length > ModConstants.MaxSaveIdLength) // Reasonable limit for filename
             {
-                _monitor.Log("SaveId exceeds maximum length of 200 characters.", LogLevel.Error);
+                _monitor.Log($"SaveId exceeds maximum length of {ModConstants.MaxSaveIdLength} characters.", LogLevel.Error);
                 return null;
             }
 
@@ -535,10 +536,24 @@ namespace LivingRoots.Services
                 // Apply Unicode normalization using FormC (Canonical Decomposition followed by Canonical Composition)
                 string normalizedSaveId = saveId.Normalize(NormalizationForm.FormC);
                 
+                // ADDITION: Re-check length after normalization in case normalization expands the string
+                if (normalizedSaveId.Length > ModConstants.MaxSaveIdLength)
+                {
+                    _monitor.Log($"SaveId exceeds maximum length of {ModConstants.MaxSaveIdLength} characters after normalization.", LogLevel.Error);
+                    return null;
+                }
+
                 string? sanitized = _fileNameSanitizationService.Sanitize(normalizedSaveId);
                 if (string.IsNullOrWhiteSpace(sanitized))
                 {
                     _monitor.Log("SaveId sanitizes to an empty string after processing.", LogLevel.Error);
+                    return null;
+                }
+                
+                // ADDITION: Ensure final key (prefix + sanitized) stays within the configured bound
+                if (ModConstants.KeyPrefix.Length + sanitized.Length > ModConstants.MaxSaveIdLength)
+                {
+                    _monitor.Log($"SaveId exceeds maximum length of {ModConstants.MaxSaveIdLength} characters after sanitization.", LogLevel.Error);
                     return null;
                 }
                 

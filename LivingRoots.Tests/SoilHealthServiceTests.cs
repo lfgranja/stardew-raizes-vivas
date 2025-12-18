@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Threading.Tasks;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
@@ -497,10 +496,12 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns((SoilHealthState)null); // Return null instead of throwing an exception
 
-            // Act & Assert - Should not throw since ModDataService.LoadData returns null on failure
+            // Act - This should not throw since ModDataService.LoadData returns null on failure
             var ex = Record.Exception(() => service.LoadData("test_save"));
-            Assert.Null(ex); // Should not throw
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile)); // Cache should be cleared
+
+            // Assert - Should not throw an exception, and cache should be cleared
+            Assert.Null(ex);
+            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
         }
 
         [Fact]
@@ -554,7 +555,7 @@ namespace LivingRoots.Tests
         [Fact]
         public void SaveData_WithEmptyCache_SavesEmptyStateToClearStaleData()
         {
-            // This test verifies the correct behavior: when the cache is empty, 
+            // This test verifies the correct behavior: when the cache is empty,
             // SaveData should still save an empty state to clear any stale data on disk.
             // This is important for data integrity to ensure that if the cache becomes empty,
             // the on-disk data is also cleared.
