@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
@@ -496,12 +497,10 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns((SoilHealthState)null); // Return null instead of throwing an exception
 
-            // Act - This should not throw since ModDataService.LoadData returns null on failure
+            // Act & Assert - Should not throw since ModDataService.LoadData returns null on failure
             var ex = Record.Exception(() => service.LoadData("test_save"));
-
-            // Assert - Should not throw an exception, and cache should be cleared
-            Assert.Null(ex);
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            Assert.Null(ex); // Should not throw
+            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile)); // Cache should be cleared
         }
 
         [Fact]

@@ -61,8 +61,31 @@ namespace LivingRoots.Services
             // Use temporary cache to prevent data loss if parsing fails partway through
             var tempCache = new Dictionary<string, Dictionary<Point, float>>();
 
-            // LoadData implementation is designed to handle exceptions internally and return null on failure
-            SoilHealthState? savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
+            // Guard load against unexpected exceptions to prevent potential mod crashes
+            SoilHealthState? savedData = null;
+            try
+            {
+                savedData = _modDataService.LoadData<SoilHealthState>(dataKey);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't expose raw exception message for security
+                _monitor.Log("Error occurred while loading soil health data from storage.", LogLevel.Error);
+                
+                // Add trace-level exception details for debugging without leaking message content
+                _monitor.Log($"LoadData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                
+                #if DEBUG
+                _monitor.Log(ex.StackTrace ?? "LoadData stack trace unavailable.", LogLevel.Trace);
+                #endif
+                
+                // Ensure we don't leak/serve stale state after a failed load.
+                lock (_lock)
+                {
+                    _runtimeCache.Clear();
+                }
+                return;
+            }
 
             if (savedData != null)
             {
@@ -140,8 +163,9 @@ namespace LivingRoots.Services
                             int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
                         {
                             // ADDITION: Check for extreme coordinates to prevent potential issues with malicious save files
-                            const int MaxAbsTileCoord = 10000;
-                            if (Math.Abs(x) > MaxAbsTileCoord || Math.Abs(y) > MaxAbsTileCoord)
+                            // Using direct boundary checks instead of Math.Abs to prevent overflow when dealing with int.MinValue
+                            if (x < -ModConstants.MaxAbsoluteTileCoordinate || x > ModConstants.MaxAbsoluteTileCoordinate || 
+                                y < -ModConstants.MaxAbsoluteTileCoordinate || y > ModConstants.MaxAbsoluteTileCoordinate)
                             {
                                 if (!warnedForMalformedKey)
                                 {
@@ -499,8 +523,8 @@ namespace LivingRoots.Services
                 return null;
             }
             
-            // Add length validation to prevent overlong filenames
-            if (saveId.Length > 200) // Reasonable limit for filename
+            // Add length validation to prevent overlong filenames using the constant
+            if (saveId.Length > ModConstants.MaxSaveIdLength) // Reasonable limit for filename
             {
                 _monitor.Log("SaveId exceeds maximum length of 200 characters.", LogLevel.Error);
                 return null;
