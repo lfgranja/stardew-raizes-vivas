@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
@@ -552,6 +553,36 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
+        public void SaveData_WithEmptyCache_SavesEmptyStateToClearStaleData()
+        {
+            // This test verifies the correct behavior: when the cache is empty, 
+            // SaveData should still save an empty state to clear any stale data on disk.
+            // This is important for data integrity to ensure that if the cache becomes empty,
+            // the on-disk data is also cleared.
+            
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            // Don't add any data to the cache, so it remains empty
+            
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("test_save"))
+                .Returns("test_save");
+
+            // Act
+            service.SaveData("test_save");
+
+            // Assert - Should save an empty state to clear any previously saved data on disk
+            _mockDataService.Verify(
+                x => x.SaveData(
+                    It.Is<SoilHealthState>(s => s.LocationHealthData != null && s.LocationHealthData.Count == 0),
+                    "soil_health_data_test_save"
+                ),
+                Times.Once
+            );
+        }
+
+        [Fact]
         public void SaveData_WithNaNInfinityValues_DoesNotSaveZeroValuesDueToSparseCache()
         {
             // This test validates that NaN and Infinity values are converted to 0 during SetSoilHealth
@@ -673,26 +704,6 @@ namespace LivingRoots.Tests
             // Act & Assert - Should handle exception gracefully and not propagate
             var ex = Record.Exception(() => service.SaveData("test_save"));
             Assert.Null(ex); // Should not throw
-        }
-
-        [Fact]
-        public void SaveData_WithEmptyCache_SavesEmptyStateToClearStaleData()
-        {
-            // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            _mockFileNameSanitizationService.Setup(s => s.Sanitize("test_save")).Returns("test_save");
-
-            // Act
-            service.SaveData("test_save");
-
-            // Assert - Should save an empty state to clear any potentially stale data on disk.
-            _mockDataService.Verify(
-                x => x.SaveData(
-                    It.Is<SoilHealthState>(s => s.LocationHealthData != null && s.LocationHealthData.Count == 0),
-                    "soil_health_data_test_save"
-                ),
-                Times.Once
-            );
         }
 
         [Fact]

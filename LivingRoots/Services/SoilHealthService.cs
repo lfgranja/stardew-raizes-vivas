@@ -139,6 +139,18 @@ namespace LivingRoots.Services
                             int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
                             int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
                         {
+                            // ADDITION: Check for extreme coordinates to prevent potential issues with malicious save files
+                            const int MaxAbsTileCoord = 10000;
+                            if (Math.Abs(x) > MaxAbsTileCoord || Math.Abs(y) > MaxAbsTileCoord)
+                            {
+                                if (!warnedForMalformedKey)
+                                {
+                                    _monitor.Log($"Extreme tile coordinates found in save data for location '{locationEntry.Key}'; skipping entry.", LogLevel.Warn);
+                                    warnedForMalformedKey = true;
+                                }
+                                continue; // Skip this entry
+                            }
+
                             // Simplified validation logic: check for NaN/Infinity first, then range
                             float validatedValue = tileEntry.Value;
                             
@@ -283,7 +295,7 @@ namespace LivingRoots.Services
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                _monitor.Log(ex.ToString(), LogLevel.Trace);
+                _monitor.Log(ex.StackTrace ?? "SaveData stack trace unavailable.", LogLevel.Trace);
                 #endif
             }
         }

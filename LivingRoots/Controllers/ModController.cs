@@ -51,7 +51,6 @@ namespace LivingRoots.Controllers
             "/help",
             "--help",
             "-h",
-            "--h",
             "/help:?",
             "-help:?",
             "/help-",
@@ -161,7 +160,7 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                monitor.Log(ex.ToString(), LogLevel.Trace);
+                monitor.Log(ex.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
                 #endif
 
                 // Attempt to rollback any partial subscriptions with individual exception handling
@@ -278,7 +277,7 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                monitor.Log(ex.ToString(), LogLevel.Trace);
+                monitor.Log(ex.StackTrace ?? "UnregisterEvents stack trace unavailable.", LogLevel.Trace);
                 #endif
             }
             finally
@@ -312,7 +311,7 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                _monitor.Log(ex.ToString(), LogLevel.Trace);
+                _monitor.Log(ex.StackTrace ?? "OnGameLaunched stack trace unavailable.", LogLevel.Trace);
                 #endif
             }
         }
@@ -367,7 +366,7 @@ namespace LivingRoots.Controllers
                     
                     // Add stack trace logging for better diagnostics without exposing sensitive information
                     #if DEBUG
-                    _monitor.Log(ex.ToString(), LogLevel.Trace);
+                    _monitor.Log(ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.", LogLevel.Trace);
                     #endif
                     
                     // Ensure the CommandRegisteredFlag is not set if registration failed
@@ -417,7 +416,7 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                _monitor?.Log(ex.ToString(), LogLevel.Trace);
+                _monitor?.Log(ex.StackTrace ?? "PrintVersion stack trace unavailable.", LogLevel.Trace);
                 #endif
             }
         }
@@ -487,7 +486,7 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                _monitor.Log(ex.ToString(), LogLevel.Trace);
+                _monitor.Log(ex.StackTrace ?? "OnSaveLoaded stack trace unavailable.", LogLevel.Trace);
                 #endif
             }
             finally
@@ -562,7 +561,7 @@ namespace LivingRoots.Controllers
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                _monitor.Log(ex.ToString(), LogLevel.Trace);
+                _monitor.Log(ex.StackTrace ?? "OnSaving stack trace unavailable.", LogLevel.Trace);
                 #endif
             }
             finally
