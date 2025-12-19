@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
 using LivingRoots.Services;
@@ -464,8 +465,8 @@ namespace LivingRoots.Tests
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.NotNull(onSavingMethod);
 
-            // Act - Create a real SavingEventArgs instance using Activator.CreateInstance to match SMAPI runtime behavior
-            var savingEventArgs = Activator.CreateInstance(typeof(SavingEventArgs), nonPublic: true)!;
+            // Act - Create a real SavingEventArgs instance using FormatterServices.GetUninitializedObject to match SMAPI runtime behavior
+            var savingEventArgs = (SavingEventArgs)FormatterServices.GetUninitializedObject(typeof(SavingEventArgs));
             onSavingMethod.Invoke(controller, new object[] { null, savingEventArgs });
 
             // Assert - Soil health service should have been called to save data

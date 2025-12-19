@@ -112,6 +112,13 @@ namespace LivingRoots.Services
                         break;
                     }
 
+                    // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
+                    if (locationEntry.Key.Length > ModConstants.MaxLocationNameLength)
+                    {
+                        _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; skipping location '{locationEntry.Key}'.", LogLevel.Warn);
+                        continue;
+                    }
+
                     // Skip if the location name is null or empty to prevent invalid entries in the cache
                     if (string.IsNullOrWhiteSpace(locationEntry.Key))
                     {
@@ -451,6 +458,13 @@ namespace LivingRoots.Services
                 return; // Skip if location is invalid
             }
 
+            // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
+            if (locationName.Length > ModConstants.MaxLocationNameLength)
+            {
+                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+                return; // Refuse to add location if name is too long
+            }
+
             // Guard against invalid coordinates to prevent data corruption
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
             {
@@ -491,6 +505,22 @@ namespace LivingRoots.Services
 
                 // Only allocate location storage if we actually need to store a non-default value.
                 var tiles = GetOrAddLocationCacheUnsafe(locationName);
+                
+                // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
+                // Check location count limit
+                if (_runtimeCache.Count > ModConstants.MaxLocationsPerSave)
+                {
+                    _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+                    return; // Refuse to add new locations if we're over the limit
+                }
+                
+                // Check tile count for this location
+                if (tiles.Count >= ModConstants.MaxTilesPerLocation)
+                {
+                    _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{locationName}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
+                    return; // Refuse to add new tiles if we're over the limit for this location
+                }
+                
                 tiles[key] = clampedValue;
             }
         }
@@ -502,6 +532,13 @@ namespace LivingRoots.Services
             {
                 // Skip logging for invalid location name to reduce noise in frequently called methods
                 return; // Skip if location is invalid
+            }
+
+            // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
+            if (locationName.Length > ModConstants.MaxLocationNameLength)
+            {
+                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to update health.", LogLevel.Warn);
+                return; // Refuse to update if location name is too long
             }
 
             // Guard against invalid coordinates to prevent data corruption
@@ -555,6 +592,22 @@ namespace LivingRoots.Services
                         tiles = new Dictionary<Point, float>();
                         _runtimeCache[locationName] = tiles;
                     }
+                    
+                    // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
+                    // Check location count limit
+                    if (_runtimeCache.Count > ModConstants.MaxLocationsPerSave)
+                    {
+                        _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+                        return; // Refuse to add new locations if we're over the limit
+                    }
+                    
+                    // Check tile count for this location
+                    if (tiles.Count >= ModConstants.MaxTilesPerLocation)
+                    {
+                        _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{locationName}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
+                        return; // Refuse to add new tiles if we're over the limit for this location
+                    }
+                    
                     tiles[key] = newHealth;
                 }
             }
@@ -563,10 +616,24 @@ namespace LivingRoots.Services
         // Renamed from GetOrAddLocationCache to GetOrAddLocationCacheUnsafe to indicate it should only be called within a lock
         private Dictionary<Point, float> GetOrAddLocationCacheUnsafe(string locationName)
         {
+            // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
+            if (locationName.Length > ModConstants.MaxLocationNameLength)
+            {
+                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+                return null; // Return null to indicate failure to add new location
+            }
+            
             // Remove the internal lock since this method is now called within an external lock
             // This addresses the nested locking issue mentioned in the code review
             if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
             {
+                // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
+                if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
+                {
+                    _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+                    return null; // Return null to indicate failure to add new location
+                }
+                
                 locationCache = new Dictionary<Point, float>();
                 _runtimeCache[locationName] = locationCache;
             }

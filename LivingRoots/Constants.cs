@@ -14,6 +14,7 @@ namespace LivingRoots
         public const int MaxLocationsPerSave = 50; // Maximum number of locations allowed per save to prevent DoS attacks
         public const int MaxAbsoluteTileCoordinate = 10000; // Maximum absolute value for tile coordinates to prevent malicious save files
         public const int MaxSaveIdLength = 200; // Maximum length for save IDs to prevent overlong filenames
+        public const int MaxLocationNameLength = 100; // Maximum length for location names to prevent overlong strings
         
         // New constants from code review feedback
         public const int MaxDataKeyLength = 200; // Maximum length for generated data keys (prefix + sanitized saveId)
