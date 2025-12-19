@@ -241,11 +241,10 @@ namespace LivingRoots.Controllers
 
             try
             {
-                // Atomically clear each event handler using Interlocked.Exchange to prevent
-                // race conditions where multiple threads might try to access these handlers
-                var gameLaunchedHandler = Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                var saveLoadedHandler = Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                var savingHandler = Interlocked.Exchange(ref _onSavingHandler, null);
+                // Capture the current handler values to unsubscribe with
+                var gameLaunchedHandler = _onGameLaunchedHandler;
+                var saveLoadedHandler = _onSaveLoadedHandler;
+                var savingHandler = _onSavingHandler;
 
                 // Safely unsubscribe from events with null checks and individual exception handling
                 if (gameLaunchedHandler != null)
@@ -262,6 +261,11 @@ namespace LivingRoots.Controllers
                 {
                     gameLoop.Saving -= savingHandler;
                 }
+                
+                // Clear handler references AFTER successful unsubscription to prevent race conditions
+                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                Interlocked.Exchange(ref _onSavingHandler, null);
                 
                 // Move the success log message from the finally block to the try block
                 monitor.Log("Events unregistered successfully.", LogLevel.Trace);

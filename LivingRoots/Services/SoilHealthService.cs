@@ -284,11 +284,35 @@ namespace LivingRoots.Services
             
             lock (_lock)
             {
+                // GLOBAL DOS PROTECTION: Add a global tile limit during save to prevent creating excessively large save files
+                int totalTilesSaved = 0;
+                bool totalTilesLimitLogged = false;
+
                 foreach (var location in _runtimeCache)
                 {
+                    if (totalTilesSaved >= ModConstants.MaxTilesPerSave)
+                    {
+                        if (!totalTilesLimitLogged)
+                        {
+                            _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) reached during save; truncating output to prevent excessive save payload.", LogLevel.Warn);
+                            totalTilesLimitLogged = true;
+                        }
+                        break;
+                    }
+
                     var tileDict = new Dictionary<string, float>();
                     foreach (var tile in location.Value)
                     {
+                        if (totalTilesSaved >= ModConstants.MaxTilesPerSave)
+                        {
+                            if (!totalTilesLimitLogged)
+                            {
+                                _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) reached during save; truncating output to prevent excessive save payload.", LogLevel.Warn);
+                                totalTilesLimitLogged = true;
+                            }
+                            break;
+                        }
+
                         // Convert Point back to "X,Y" string format using invariant culture for consistency
                         string tileKey = $"{tile.Key.X.ToString(CultureInfo.InvariantCulture)},{tile.Key.Y.ToString(CultureInfo.InvariantCulture)}";
                         
@@ -306,6 +330,7 @@ namespace LivingRoots.Services
                         if (clampedValue != 0f)
                         {
                             tileDict[tileKey] = clampedValue;
+                            totalTilesSaved++; // Increment only for values that are actually saved
                         }
                     }
                     
@@ -481,32 +506,35 @@ namespace LivingRoots.Services
             lock (_lock)
             {
                 var key = new Point(ix, iy);
+                
+                // OPTIMIZATION: Get the tiles dictionary once and reuse it to avoid redundant lookups
+                _runtimeCache.TryGetValue(locationName, out var tiles);
+
                 float currentHealth = 0f;
-                if (_runtimeCache.TryGetValue(locationName, out var tiles) && tiles.TryGetValue(key, out var health))
+                if (tiles != null)
                 {
-                    currentHealth = health;
+                    tiles.TryGetValue(key, out currentHealth);
                 }
 
                 float newHealth = ClampHealthValue(currentHealth + delta);
 
-                // Use the already available 'tiles' variable instead of doing another TryGetValue
-                // This addresses the redundant dictionary lookup mentioned in the code review
                 if (newHealth == 0f)
                 {
                     // If the new value is the default, remove the entry to keep the cache sparse.
-                    if (tiles != null)
+                    if (tiles?.Remove(key) == true && tiles.Count == 0)
                     {
-                        if (tiles.Remove(key) && tiles.Count == 0)
-                        {
-                            _runtimeCache.Remove(locationName);
-                        }
+                        _runtimeCache.Remove(locationName);
                     }
                 }
                 else
                 {
                     // Otherwise, add or update the entry.
-                    var tilesToUpdate = GetOrAddLocationCacheUnsafe(locationName);
-                    tilesToUpdate[key] = newHealth;
+                    if (tiles == null)
+                    {
+                        tiles = new Dictionary<Point, float>();
+                        _runtimeCache[locationName] = tiles;
+                    }
+                    tiles[key] = newHealth;
                 }
             }
         }

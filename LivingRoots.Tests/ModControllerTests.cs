@@ -464,9 +464,8 @@ namespace LivingRoots.Tests
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.NotNull(onSavingMethod);
 
-            // Act - Use Activator.CreateInstance to accommodate potentially non-public constructors
-            var savingEventArgs = (SavingEventArgs)Activator.CreateInstance(typeof(SavingEventArgs), nonPublic: true)!;
-            onSavingMethod.Invoke(controller, new object[] { null, savingEventArgs });
+            // Act - Changed from using Activator.CreateInstance to passing null for the event args
+            onSavingMethod.Invoke(controller, new object[] { null, null! });
 
             // Assert - Soil health service should have been called to save data
             _mockSoilHealthService.Verify(x => x.SaveData("test_save_id"), Times.Once);
