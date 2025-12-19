@@ -83,136 +83,49 @@ public void UpdateHealth(string locationName, Vector2 tile, float delta)
 
     lock (_lock)
     {
-        // OPTIMIZATION: Only create location cache if it already exists OR we're going to store a non-zero value
-        // This prevents creating empty dictionaries when delta results in 0
-        if (_runtimeCache.TryGetValue(locationName, out var tiles))
+        var key = new Point(ix, iy);
+        
+        // OPTIMIZATION: Get the tiles dictionary once and reuse it to avoid redundant lookups
+        _runtimeCache.TryGetValue(locationName, out var tiles);
+
+        float currentHealth = 0f;
+        if (tiles != null)
         {
-            var key = new Point(ix, iy);
-            if (tiles.TryGetValue(key, out float current))
+            tiles.TryGetValue(key, out currentHealth);
+        }
+
+        float newHealth = ClampHealthValue(currentHealth + delta);
+
+        if (newHealth == 0f)
+        {
+            // If the new value is the default, remove the entry to keep the cache sparse.
+            if (tiles?.Remove(key) == true && tiles.Count == 0)
             {
-                float newValue = ClampHealthValue(current + delta);
-                
-                // Add NaN/Infinity check after calculation - FIXED: Check for invalid values after calculation
-                if (float.IsNaN(newValue) || float.IsInfinity(newValue))
-                {
-                    newValue = ClampHealthValue(0.0f); // Convert invalid result to valid range
-                }
-                
-                // Don't store default values; keep the cache sparse to prevent unbounded growth.
-                if (newValue == 0f)
-                {
-                    tiles.Remove(key);
-                    if (tiles.Count == 0)
-                        _runtimeCache.Remove(locationName);
-                }
-                else
-                {
-                    tiles[key] = newValue;
-                }
-            }
-            else
-            {
-                // If the key doesn't exist, initialize with the delta value (starting from 0)
-                float newValue = ClampHealthValue(delta);
-                
-                // Add NaN/Infinity check after calculation - FIXED: Check for invalid values after calculation
-                if (float.IsNaN(newValue) || float.IsInfinity(newValue))
-                {
-                    newValue = ClampHealthValue(0.0f); // Convert invalid result to valid range
-                }
-                
-                // Don't store default values; keep the cache sparse to prevent unbounded growth.
-                if (newValue != 0f)
-                {
-                    tiles[key] = newValue;
-                }
+                _runtimeCache.Remove(locationName);
             }
         }
         else
         {
-            // Location doesn't exist yet - only create it if we'll store a non-zero value
-            float newValue = ClampHealthValue(delta);
-            
-            // Add NaN/Infinity check after calculation - FIXED: Check for invalid values after calculation
-            if (float.IsNaN(newValue) || float.IsInfinity(newValue))
+            // Otherwise, add or update the entry.
+            if (tiles == null)
             {
-                newValue = ClampHealthValue(0.0f); // Convert invalid result to valid range
+                tiles = new Dictionary<Point, float>();
+                _runtimeCache[locationName] = tiles;
             }
-            
-            if (newValue != 0f)
-            {
-                var newTiles = GetOrAddLocationCacheUnsafe(locationName);
-                var key = new Point(ix, iy);
-                newTiles[key] = newValue;
-            }
+            tiles[key] = newHealth;
         }
     }
 }
 ```
 
 ### Solution
-The `ClampHealthValue` method already handles NaN/Infinity values, so the redundant checks in `UpdateHealth` should be removed. Additionally, we can refactor the method to reduce code duplication by extracting the common logic.
-
-### Refactored Implementation
-```csharp
-public void UpdateHealth(string locationName, Vector2 tile, float delta)
-{
-    // Validate input to prevent adding entries with invalid keys
-    if (string.IsNullOrWhiteSpace(locationName))
-    {
-        // Skip logging for invalid location name to reduce noise in frequently called methods
-        return; // Skip if location is invalid
-    }
-
-    // Guard against invalid coordinates to prevent data corruption
-    if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
-    {
-        // Skip logging for invalid coordinates to reduce noise in frequently called methods
-        return;
-    }
-
-    // Check for potential integer overflow before converting coordinates
-    float fx = MathF.Floor(tile.X);
-    float fy = MathF.Floor(tile.Y);
-    if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
-    {
-        // Skip logging for coordinate range issues to reduce noise in frequently called methods
-        return;
-    }
-
-    // Map to tile indices consistently (using MathF.Floor to handle negatives and fractions correctly)
-    int ix = (int)fx;
-    int iy = (int)fy;
-
-    lock (_lock)
-    {
-        // Get or create the location cache
-        var tiles = GetOrAddLocationCacheUnsafe(locationName);
-        var key = new Point(ix, iy);
-        
-        // Get the current value (0 if not found) and calculate the new value
-        float current = tiles.TryGetValue(key, out float existingValue) ? existingValue : 0f;
-        float newValue = ClampHealthValue(current + delta);
-        
-        // Don't store default values; keep the cache sparse to prevent unbounded growth.
-        if (newValue == 0f)
-        {
-            tiles.Remove(key);
-            if (tiles.Count == 0)
-                _runtimeCache.Remove(locationName);
-        }
-        else
-        {
-            tiles[key] = newValue;
-        }
-    }
-}
-```
+The refactored implementation optimizes the UpdateHealth method by avoiding unnecessary creation of location cache dictionaries when the new health value is zero. Instead of always calling GetOrAddLocationCacheUnsafe (which creates a dictionary regardless of whether it's needed), the method now only creates the dictionary when a non-zero value needs to be stored.
 
 ### Architecture Decision
 - Remove redundant NaN/Infinity checks since `ClampHealthValue` already handles them
-- Consolidate the three branches into a single, cleaner implementation
+- Optimize the method to only create location cache dictionaries when actually needed
 - Maintain thread safety with the existing locking mechanism
+- Keep the cache sparse by removing entries with zero values
 
 ## Issue 3: Improve Error Diagnostics with Stack Trace Logging
 
@@ -228,6 +141,10 @@ catch (Exception ex)
     
     // Add trace-level exception details for debugging without leaking message content
     _monitor.Log($"LoadData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+    
+    #if DEBUG
+    _monitor.Log(ex.StackTrace ?? "LoadData stack trace unavailable.", LogLevel.Trace);
+    #endif
     
     // Clear the cache when there's a parsing error to prevent data leakage
     lock (_lock)

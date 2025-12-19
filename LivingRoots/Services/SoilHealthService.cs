@@ -285,12 +285,27 @@ namespace LivingRoots.Services
             lock (_lock)
             {
                 // GLOBAL DOS PROTECTION: Add a global tile limit during save to prevent creating excessively large save files
-                int totalTilesSaved = 0;
+                int totalTilesProcessed = 0; // Count all tiles processed, not just saved
                 bool totalTilesLimitLogged = false;
+                
+                // Location count limit to prevent excessive memory allocation and long save times
+                int locationCount = 0;
+                bool locationsLimitLogged = false;
 
                 foreach (var location in _runtimeCache)
                 {
-                    if (totalTilesSaved >= ModConstants.MaxTilesPerSave)
+                    locationCount++;
+                    if (locationCount > ModConstants.MaxLocationsPerSave)
+                    {
+                        if (!locationsLimitLogged)
+                        {
+                            _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded during save; stopping location processing to prevent DoS.", LogLevel.Warn);
+                            locationsLimitLogged = true;
+                        }
+                        break;
+                    }
+
+                    if (totalTilesProcessed >= ModConstants.MaxTilesPerSave)
                     {
                         if (!totalTilesLimitLogged)
                         {
@@ -303,7 +318,10 @@ namespace LivingRoots.Services
                     var tileDict = new Dictionary<string, float>();
                     foreach (var tile in location.Value)
                     {
-                        if (totalTilesSaved >= ModConstants.MaxTilesPerSave)
+                        // Increment the counter for ALL tiles processed (not just saved)
+                        totalTilesProcessed++;
+                        
+                        if (totalTilesProcessed > ModConstants.MaxTilesPerSave)
                         {
                             if (!totalTilesLimitLogged)
                             {
@@ -330,7 +348,6 @@ namespace LivingRoots.Services
                         if (clampedValue != 0f)
                         {
                             tileDict[tileKey] = clampedValue;
-                            totalTilesSaved++; // Increment only for values that are actually saved
                         }
                     }
                     
@@ -339,6 +356,10 @@ namespace LivingRoots.Services
                     {
                         snapshotState[location.Key] = tileDict;
                     }
+                    
+                    // Check again after processing this location in case we exceeded the limit
+                    if (totalTilesProcessed > ModConstants.MaxTilesPerSave)
+                        break;
                 }
             }
 

@@ -262,11 +262,6 @@ namespace LivingRoots.Controllers
                     gameLoop.Saving -= savingHandler;
                 }
                 
-                // Clear handler references AFTER successful unsubscription to prevent race conditions
-                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                Interlocked.Exchange(ref _onSavingHandler, null);
-                
                 // Move the success log message from the finally block to the try block
                 monitor.Log("Events unregistered successfully.", LogLevel.Trace);
             }
@@ -285,6 +280,12 @@ namespace LivingRoots.Controllers
             }
             finally
             {
+                // Clear handler references AFTER successful unsubscription to prevent race conditions
+                // This ensures that even if exceptions occur during unsubscription, the references are cleaned up
+                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                Interlocked.Exchange(ref _onSavingHandler, null);
+                
                 // Clear the UnregisteringFlag when done
                 Interlocked.And(ref _state, ~UnregisteringFlag);
             }

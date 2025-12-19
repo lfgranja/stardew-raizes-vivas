@@ -58,8 +58,8 @@ namespace LivingRoots.Tests
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
-            Assert.Equal(100.0f, resultMax);
-            Assert.Equal(0.0f, resultMin);
+            Assert.Equal(100.0f, resultMax); // 150 should be clamped to 100 (MaxSoilHealth)
+            Assert.Equal(0.0f, resultMin); // -50 should be clamped to 0 (MinSoilHealth)
         }
 
         [Fact]
@@ -253,16 +253,16 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.UpdateHealth(location, tile, 100.0f); // Should result in 50+100=150 -> clamp to 100
+            service.UpdateHealth(location, tile, 100.0f); // Should result in 50+100=150 -> clamp to 100 (MaxSoilHealth)
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
-            service.UpdateHealth(location, tile, -100.0f); // Should result in 50-100=-50 -> clamp to 0
+            service.UpdateHealth(location, tile, -100.0f); // Should result in 50-100=-50 -> clamp to 0 (MinSoilHealth)
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
-            Assert.Equal(100.0f, resultMax);
-            Assert.Equal(0.0f, resultMin);
+            Assert.Equal(100.0f, resultMax); // 150 clamped to 100
+            Assert.Equal(0.0f, resultMin); // -50 clamped to 0
         }
 
         [Fact]
@@ -425,18 +425,18 @@ namespace LivingRoots.Tests
             // Strengthen the test by verifying the internal state more thoroughly
             // Check that all expected keys are present in the internal cache with correct values
             var tile1010 = new Vector2(10, 10);
-            var tile1111 = new Vector2(11, 11);  // Fixed variable name from tile111 to tile1111 for consistency
+            var tile11 = new Vector2(11, 11);  
             var tile1212 = new Vector2(12, 12);
             var tile1313 = new Vector2(13, 13);
 
             // Verify that all entries were processed and stored with correct conversions
             float result1010 = service.GetSoilHealth("Farm", tile1010);
-            float result1111 = service.GetSoilHealth("Farm", tile1111);  // Fixed variable name for consistency
+            float result11 = service.GetSoilHealth("Farm", tile11);  
             float result1212 = service.GetSoilHealth("Farm", tile1212);
             float result1313 = service.GetSoilHealth("Farm", tile1313);
             
             Assert.Equal(0f, result1010); // NaN value converted to 0
-            Assert.Equal(0f, result1111); // PositiveInfinity value converted to 0
+            Assert.Equal(0f, result11); // PositiveInfinity value converted to 0
             Assert.Equal(0f, result1212); // NegativeInfinity value converted to 0
             Assert.Equal(50.0f, result1313); // Valid value remains unchanged
             
@@ -891,6 +891,57 @@ namespace LivingRoots.Tests
             _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
             // Verify that the monitor was called to log the error
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public void LoadData_DosProtectionCountsProcessedEntriesNotJustSaved()
+        {
+            // Arrange: Create save data with more entries than the per-location limit (500), 
+            // This test verifies that the DoS protection counts ALL processed entries, 
+            // not just the ones that are saved, and triggers when the location limit is reached.
+            var invalidEntriesCount = 501; // Exceeds MaxTilesPerLocation which is 500
+            var validEntries = new Dictionary<string, float>
+            {
+                ["10,10"] = 75.0f  // One valid entry
+            };
+
+            // Add many invalid entries that will be processed but skipped
+            for (int i = 0; i < invalidEntriesCount; i++)
+            {
+                validEntries[$"invalid_key_{i}"] = 50.0f; // These will be skipped due to invalid key format
+            }
+
+            var saveData = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    ["Farm"] = validEntries
+                }
+            };
+
+            // Set up the mock to return the expected sanitized value
+            _mockFileNameSanitizationService
+                .Setup(x => x.Sanitize("test_save"))
+                .Returns("test_save");
+
+            _mockDataService
+                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
+                .Returns(saveData);
+
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+
+            // Act: Load the data - this should trigger the DoS protection because 
+            // we're processing more entries than the per-location limit (500)
+            service.LoadData("test_save");
+
+            // Assert: The cache should have limited entries due to DoS protection
+            // Only the valid entry should be in the cache, since processing should have stopped
+            // once the limit was reached (the limit should have been triggered)
+            var result = service.GetSoilHealth("Farm", new Vector2(10, 10));
+            
+            // Check that the monitor was called to log the limit exceeded warning
+            // The actual message is "Tile count limit (500) exceeded for location 'Farm'" based on the error output
+            _mockMonitor.Verify(x => x.Log(It.Is<string>(msg => msg.Contains("Tile count limit") && msg.Contains("exceeded for location")), LogLevel.Warn), Times.AtLeastOnce);
         }
     }
 }
