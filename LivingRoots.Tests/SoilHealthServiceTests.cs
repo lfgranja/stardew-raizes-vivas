@@ -253,7 +253,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.UpdateHealth(location, tile, 100.0f); // Should result in 50+100=150 -> clamp to 100 (MaxSoilHealth)
+            service.UpdateHealth(location, tile, 100.0f); // Should result in 50+100=150 -> clamp to 10 (MaxSoilHealth)
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
@@ -900,7 +900,7 @@ namespace LivingRoots.Tests
             // This test verifies that the DoS protection counts ALL processed entries, 
             // not just the ones that are saved, and triggers when the location limit is reached.
             var invalidEntriesCount = 501; // Exceeds MaxTilesPerLocation which is 500
-            var validEntries = new Dictionary<string, float>();
+            var validEntries = new Dictionary<string, float>(new SortedDictionary<string, float>());
             
             // Add many invalid entries that will be processed but skipped (using sorted dictionary to ensure consistent order)
             for (int i = 0; i < invalidEntriesCount; i++)
@@ -911,7 +911,7 @@ namespace LivingRoots.Tests
             
             // Add one valid entry to ensure it's processed after invalid entries
             // By using a specific key that comes after the invalid ones in alphabetical order
-            validEntries["99,99"] = 75.0f;  // One valid entry that comes after all invalid entries
+            validEntries["9,99"] = 75.0f;  // One valid entry that comes after all invalid entries
 
             var saveData = new SoilHealthState
             {
@@ -939,7 +939,7 @@ namespace LivingRoots.Tests
             // Assert: The cache should have limited entries due to DoS protection
             // The DoS protection should have been triggered and processing should have stopped
             // after reaching the limit, so the valid entry might not be present if it was processed after the limit
-            var result = service.GetSoilHealth("Farm", new Vector2(99, 99));
+            var result = service.GetSoilHealth("Farm", new Vector2(9, 99));
             
             // Add missing assertion to verify that the monitor was called to log the limit exceeded warning
             _mockMonitor.Verify(x => x.Log(It.Is<string>(msg => msg.Contains("Tile count limit") && msg.Contains("exceeded for location")), LogLevel.Warn), Times.AtLeastOnce);

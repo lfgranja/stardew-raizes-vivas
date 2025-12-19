@@ -515,18 +515,12 @@ namespace LivingRoots.Services
                 }
                 
                 // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
-                // Check location count limit
-                if (_runtimeCache.Count > ModConstants.MaxLocationsPerSave)
-                {
-                    _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
-                    return; // Refuse to add new locations if we're over the limit
-                }
-                
-                // Check tile count for this location
-                if (tiles.Count >= ModConstants.MaxTilesPerLocation)
+                // Check if this is a new tile (not an update) and apply tile limit only to new tiles
+                bool isExistingTile = tiles.ContainsKey(key);
+                if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                 {
                     _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{locationName}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
-                    return; // Refuse to add new tiles if we're over the limit for this location
+                    return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
                 }
                 
                 tiles[key] = clampedValue;
@@ -597,23 +591,24 @@ namespace LivingRoots.Services
                     // Otherwise, add or update the entry.
                     if (tiles == null)
                     {
+                        // Check location count limit before creating a new location
+                        if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
+                        {
+                            _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+                            return; // Refuse to add new locations if we're over the limit
+                        }
+                        
                         tiles = new Dictionary<Point, float>();
                         _runtimeCache[locationName] = tiles;
                     }
                     
                     // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
-                    // Check location count limit
-                    if (_runtimeCache.Count > ModConstants.MaxLocationsPerSave)
-                    {
-                        _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
-                        return; // Refuse to add new locations if we're over the limit
-                    }
-                    
-                    // Check tile count for this location
-                    if (tiles.Count >= ModConstants.MaxTilesPerLocation)
+                    // Check if this is a new tile (not an update) and apply tile limit only to new tiles
+                    bool isExistingTile = tiles.ContainsKey(key);
+                    if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                     {
                         _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{locationName}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
-                        return; // Refuse to add new tiles if we're over the limit for this location
+                        return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
                     }
                     
                     tiles[key] = newHealth;
@@ -622,7 +617,7 @@ namespace LivingRoots.Services
         }
         
         // Renamed from GetOrAddLocationCache to GetOrAddLocationCacheUnsafe to indicate it should only be called within a lock
-        private Dictionary<Point, float> GetOrAddLocationCacheUnsafe(string locationName)
+        private Dictionary<Point, float>? GetOrAddLocationCacheUnsafe(string locationName)
         {
             // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
             if (locationName.Length > ModConstants.MaxLocationNameLength)

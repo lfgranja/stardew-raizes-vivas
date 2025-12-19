@@ -124,7 +124,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void RegisterEvents_IsThreadSafe()
+        public async System.Threading.Tasks.Task RegisterEvents_IsThreadSafe()
         {
             // Arrange
             var mockEvents = new Mock<IModEvents>();
@@ -149,7 +149,7 @@ namespace LivingRoots.Tests
                 });
             }
 
-            System.Threading.Tasks.Task.WaitAll(tasks);
+            await System.Threading.Tasks.Task.WhenAll(tasks);
 
             // Assert - No exceptions should be thrown due to race conditions
             // Verify that events were registered only once despite multiple concurrent calls
