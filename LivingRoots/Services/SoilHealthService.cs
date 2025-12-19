@@ -506,6 +506,14 @@ namespace LivingRoots.Services
                 // Only allocate location storage if we actually need to store a non-default value.
                 var tiles = GetOrAddLocationCacheUnsafe(locationName);
                 
+                // Check if tiles is null (which can happen if GetOrAddLocationCacheUnsafe returns null due to limits)
+                if (tiles == null)
+                {
+                    // If tiles is null, it means we couldn't create a cache for this location due to limits
+                    _monitor.Log($"Could not create cache for location '{locationName}' due to memory limits.", LogLevel.Warn);
+                    return;
+                }
+                
                 // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
                 // Check location count limit
                 if (_runtimeCache.Count > ModConstants.MaxLocationsPerSave)
