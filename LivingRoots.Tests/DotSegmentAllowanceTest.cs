@@ -31,30 +31,33 @@ namespace LivingRoots.Tests
             // Configure mod logic to return expected sanitized values for testing
             _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(input => 
             {
+                // Apply whitespace trimming to make the mock sanitization whitespace-safe
+                string trimmedInput = input?.Trim();
+                
                 // Simulate real sanitization behavior for individual segments
-                if (input == "with:invalid|chars")
+                if (trimmedInput == "with:invalid|chars")
                     return "with_invalid_chars";
-                if (input == "file....name")
+                if (trimmedInput == "file....name")
                     return "file.name";
-                if (input == " test_key " || input == "test_key " || input == " test_key")
+                if (trimmedInput == "test_key")
                     return "test_key";
-                if (input == "<>:\"|?*" || input == "........." || input == "___" || input == "   ")
+                if (trimmedInput == "<>:\"|?*" || trimmedInput == "........." || trimmedInput == "___" || trimmedInput == "")
                     throw new ArgumentException("Filename sanitizes to an empty string.", nameof(input)); // This should throw like real implementation
                 // Special handling for ".." which should be blocked at path segment level
-                if (input == "..")
-                    throw new ArgumentException($"Filename sanitizes to invalid path component '{input}'.", nameof(input));
+                if (trimmedInput == "..")
+                    throw new ArgumentException($"Filename sanitizes to invalid path component '{trimmedInput}'.", nameof(input));
                 // For individual segments with invalid characters, replace them with underscores
-                if (input.Contains(':') || input.Contains('|') || input.Contains('?') || input.Contains('*') || input.Contains('<') || input.Contains('>') || input.Contains('"'))
+                if (trimmedInput.Contains(':') || trimmedInput.Contains('|') || trimmedInput.Contains('?') || trimmedInput.Contains('*') || trimmedInput.Contains('<') || trimmedInput.Contains('>') || trimmedInput.Contains('"'))
                 {
-                    return input.Replace(':', '_').Replace('|', '_').Replace('?', '_').Replace('*', '_')
+                    return trimmedInput.Replace(':', '_').Replace('|', '_').Replace('?', '_').Replace('*', '_')
                                    .Replace('<', '_').Replace('>', '_').Replace('"', '_');
                 }
                 // For segments with multiple dots, process them appropriately
-                if (input.Contains("...."))
+                if (trimmedInput.Contains("...."))
                 {
-                    return input.Replace("....", ".").Replace("...", "."); // Simplified processing for test
+                    return trimmedInput.Replace("....", ".").Replace("...", "."); // Simplified processing for test
                 }
-                return input;
+                return trimmedInput;
             });
             
             // Configure path validation to not throw for valid paths in most tests

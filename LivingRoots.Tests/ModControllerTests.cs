@@ -69,7 +69,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void RegisterEvents_WithNullHelper_DoesNotThrow()
+        public void RegisterEvents_WithValidController_DoesNotThrow()
         {
             // Arrange
             var mockEvents = new Mock<IModEvents>();
@@ -82,7 +82,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Act & Assert - Should not throw when helper is null
+            // Act & Assert - Should not throw when controller is properly constructed
             var ex = Record.Exception(() => controller.RegisterEvents());
             Assert.Null(ex);
         }
@@ -464,8 +464,9 @@ namespace LivingRoots.Tests
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.NotNull(onSavingMethod);
 
-            // Act - Changed from using Activator.CreateInstance to passing null for the event args
-            onSavingMethod.Invoke(controller, new object[] { null, null! });
+            // Act - Create a real SavingEventArgs instance using Activator.CreateInstance to match SMAPI runtime behavior
+            var savingEventArgs = Activator.CreateInstance(typeof(SavingEventArgs), nonPublic: true)!;
+            onSavingMethod.Invoke(controller, new object[] { null, savingEventArgs });
 
             // Assert - Soil health service should have been called to save data
             _mockSoilHealthService.Verify(x => x.SaveData("test_save_id"), Times.Once);
