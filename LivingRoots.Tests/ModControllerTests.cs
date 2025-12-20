@@ -110,6 +110,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
             _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
@@ -465,8 +466,8 @@ namespace LivingRoots.Tests
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.NotNull(onSavingMethod);
 
-            // Act - Create a real SavingEventArgs instance using Activator.CreateInstance to match SMAPI runtime behavior
-            var savingEventArgs = (SavingEventArgs)Activator.CreateInstance(typeof(SavingEventArgs));
+            // Act - Create a real SavingEventArgs instance using FormatterServices.GetUninitializedObject to match SMAPI runtime behavior
+            var savingEventArgs = (SavingEventArgs)FormatterServices.GetUninitializedObject(typeof(SavingEventArgs));
             onSavingMethod.Invoke(controller, new object[] { null, savingEventArgs });
 
             // Assert - Soil health service should have been called to save data
@@ -533,13 +534,16 @@ namespace LivingRoots.Tests
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act & Assert - Initially should be false (0)
-            Assert.Equal(0, PrivateMethodHelper.GetSaveIdUnavailableWarningShown(controller));
+            Assert.Equal(0, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaveLoaded(controller));
+            Assert.Equal(0, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaving(controller));
 
-            // Act - Change the property to true (1)
-            PrivateMethodHelper.SetSaveIdUnavailableWarningShown(controller, 1);
+            // Act - Change the properties to true (1)
+            PrivateMethodHelper.SetSaveIdUnavailableWarningShownOnSaveLoaded(controller, 1);
+            PrivateMethodHelper.SetSaveIdUnavailableWarningShownOnSaving(controller, 1);
 
             // Assert - Should now be true (1)
-            Assert.Equal(1, PrivateMethodHelper.GetSaveIdUnavailableWarningShown(controller));
+            Assert.Equal(1, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaveLoaded(controller));
+            Assert.Equal(1, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaving(controller));
         }
     }
 
@@ -585,21 +589,39 @@ namespace LivingRoots.Tests
             return (currentValue & flag) != 0;
         }
 
-        public static int GetSaveIdUnavailableWarningShown(object controller)
+        public static int GetSaveIdUnavailableWarningShownOnSaveLoaded(object controller)
         {
-            // Access the private field _saveIdUnavailableWarningShown
-            var field = controller.GetType().GetField("_saveIdUnavailableWarningShown", Flags);
+            // Access the private field _saveIdUnavailableWarningShownOnSaveLoaded
+            var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaveLoaded", Flags);
             if (field == null)
-                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShown' was not found.");
+                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' was not found.");
             return (int)field.GetValue(controller);
         }
 
-        public static void SetSaveIdUnavailableWarningShown(object controller, int value)
+        public static int GetSaveIdUnavailableWarningShownOnSaving(object controller)
         {
-            // Set the private field _saveIdUnavailableWarningShown
-            var field = controller.GetType().GetField("_saveIdUnavailableWarningShown", Flags);
+            // Access the private field _saveIdUnavailableWarningShownOnSaving
+            var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaving", Flags);
             if (field == null)
-                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShown' was not found.");
+                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' was not found.");
+            return (int)field.GetValue(controller);
+        }
+
+        public static void SetSaveIdUnavailableWarningShownOnSaveLoaded(object controller, int value)
+        {
+            // Set the private field _saveIdUnavailableWarningShownOnSaveLoaded
+            var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaveLoaded", Flags);
+            if (field == null)
+                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' was not found.");
+            field.SetValue(controller, value);
+        }
+
+        public static void SetSaveIdUnavailableWarningShownOnSaving(object controller, int value)
+        {
+            // Set the private field _saveIdUnavailableWarningShownOnSaving
+            var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaving", Flags);
+            if (field == null)
+                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' was not found.");
             field.SetValue(controller, value);
         }
     }

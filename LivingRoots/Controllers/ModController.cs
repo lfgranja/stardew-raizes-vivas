@@ -17,16 +17,15 @@ namespace LivingRoots.Controllers
         private const int EventsRegisteredFlag = 1 << 0;
         private const int CommandRegisteredFlag = 1 << 1;
         private const int DisposedFlag = 1 << 2;
+        private const int OnSaveLoadedExecutingFlag = 1 << 3;
+        private const int OnSavingExecutingFlag = 1 << 4;
         private const int UnregisteringFlag = 1 << 5;
         private int _state = 0; // Combine flags in single volatile field
         
-        // Warning flag for preventing repeated log spam - using Interlocked operations for thread safety
-        private int _saveIdUnavailableWarningShown = 0; // 0 = false, 1 = true
+        // Warning flags for preventing repeated log spam - using Interlocked operations for thread safety
+        private int _saveIdUnavailableWarningShownOnSaveLoaded = 0; // 0 = false, 1 = true
+        private int _saveIdUnavailableWarningShownOnSaving = 0; // 0 = false, 1 = true
 
-        // Re-entrancy guard flags for event handlers
-        private const int OnSaveLoadedExecutingFlag = 1 << 3;
-        private const int OnSavingExecutingFlag = 1 << 4;
-        
         // Dependencies
         private readonly IModHelper _helper;
         private readonly IMonitor _monitor;
@@ -182,11 +181,6 @@ namespace LivingRoots.Controllers
                     /* avoid masking original failure */ 
                 }
 
-                // Use Interlocked.Exchange for thread-safe nullification of event handlers
-                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                Interlocked.Exchange(ref _onSavingHandler, null);
-
                 // Clear the flag since registration failed
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
 
@@ -268,14 +262,14 @@ namespace LivingRoots.Controllers
             catch (Exception ex)
             {
                 // Log error but don't expose raw exception message for security
-                monitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
+                _monitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
                 
                 // Add trace-level exception details for debugging
-                monitor.Log($"UnregisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log($"UnregisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                monitor.Log(ex.StackTrace ?? "UnregisterEvents stack trace unavailable.", LogLevel.Trace);
+                _monitor.Log(ex.StackTrace ?? "UnregisterEvents stack trace unavailable.", LogLevel.Trace);
                 #endif
             }
             finally
@@ -290,7 +284,7 @@ namespace LivingRoots.Controllers
                 Interlocked.And(ref _state, ~UnregisteringFlag);
             }
         }
-
+        
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
             // Skip if controller has been disposed
@@ -461,7 +455,7 @@ namespace LivingRoots.Controllers
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
                     // Only show warning once to prevent log spam using Interlocked operations
-                    if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShown, 1, 0) == 0)
+                    if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 1, 0) == 0)
                     {
                         // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
                         _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; skipping soil health load.", LogLevel.Warn);
@@ -470,7 +464,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Reset the warning flag when a valid save ID is found
-                if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShown, 0, 1) == 1)
+                if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 0, 1) == 1)
                 {
                     // The flag was previously set to 1 (true), so we reset it to 0 (false)
                     // This means the warning was previously shown and is now being reset
@@ -483,7 +477,7 @@ namespace LivingRoots.Controllers
             catch (Exception ex)
             {
                 // Log error but don't expose raw exception message for security
-                _monitor.Log($"Error occurred while loading soil health data for save.", LogLevel.Error);
+                _monitor.Log("Error occurred while loading soil health data for save.", LogLevel.Error);
                 
                 // Add trace-level exception details for debugging
                 _monitor.Log($"OnSaveLoaded exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
@@ -536,7 +530,7 @@ namespace LivingRoots.Controllers
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
                     // Only show warning once to prevent log spam using Interlocked operations
-                    if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShown, 1, 0) == 0)
+                    if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 1, 0) == 0)
                     {
                         // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
                         _monitor.Log("OnSaving: SaveFolderName unavailable; skipping soil health save.", LogLevel.Warn);
@@ -545,7 +539,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Reset the warning flag when a valid save ID is found
-                if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShown, 0, 1) == 1)
+                if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 0, 1) == 1)
                 {
                     // The flag was previously set to 1 (true), so we reset it to 0 (false)
                     // This means the warning was previously shown and is now being reset
@@ -558,7 +552,7 @@ namespace LivingRoots.Controllers
             catch (Exception ex)
             {
                 // Log error but don't expose raw exception message for security
-                _monitor.Log($"Error occurred while saving soil health data for save.", LogLevel.Error);
+                _monitor.Log("Error occurred while saving soil health data for save.", LogLevel.Error);
                 
                 // Add trace-level exception details for debugging
                 _monitor.Log($"OnSaving exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);

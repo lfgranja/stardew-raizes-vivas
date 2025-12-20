@@ -122,7 +122,11 @@ namespace LivingRoots.Services
                     // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
                     if (locationEntry.Key.Length > ModConstants.MaxLocationNameLength)
                     {
-                        _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; skipping location '{locationEntry.Key}'.", LogLevel.Warn);
+                        // Truncate the location name to prevent logging potentially malicious long names
+                        string truncatedLocationName = locationEntry.Key.Length > 50 
+                            ? locationEntry.Key.Substring(0, 50) + "..." 
+                            : locationEntry.Key;
+                        _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; skipping location '{truncatedLocationName}'.", LogLevel.Warn);
                         continue;
                     }
 
@@ -147,7 +151,11 @@ namespace LivingRoots.Services
                             // Only log once per location when the limit is reached
                             if (!limitExceededLogged)
                             {
-                                _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{locationEntry.Key}'; stopping tile processing for this location.", LogLevel.Warn);
+                                // Truncate the location name to prevent logging potentially malicious long names
+                                string truncatedLocationName = locationEntry.Key.Length > 50 
+                                    ? locationEntry.Key.Substring(0, 50) + "..." 
+                                    : locationEntry.Key;
+                                _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationName}'; stopping tile processing for this location.", LogLevel.Warn);
                                 limitExceededLogged = true;
                             }
                             break; // Stop processing tiles for this location
@@ -171,7 +179,11 @@ namespace LivingRoots.Services
                             // Only warn once per location for null/whitespace keys to prevent log spam
                             if (!warnedForMalformedKey)
                             {
-                                _monitor.Log($"Null or whitespace tile key found in save data for location '{locationEntry.Key}'; skipping entry.", LogLevel.Warn);
+                                // Truncate the location name to prevent logging potentially malicious long names
+                                string truncatedLocationName = locationEntry.Key.Length > 50 
+                                    ? locationEntry.Key.Substring(0, 50) + "..." 
+                                    : locationEntry.Key;
+                                _monitor.Log($"Null or whitespace tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                                 warnedForMalformedKey = true;
                             }
                             continue; // Skip this entry
@@ -192,7 +204,11 @@ namespace LivingRoots.Services
                             {
                                 if (!warnedForMalformedKey)
                                 {
-                                    _monitor.Log($"Extreme tile coordinates found in save data for location '{locationEntry.Key}'; skipping entry.", LogLevel.Warn);
+                                    // Truncate the location name to prevent logging potentially malicious long names
+                                    string truncatedLocationName = locationEntry.Key.Length > 50 
+                                        ? locationEntry.Key.Substring(0, 50) + "..." 
+                                        : locationEntry.Key;
+                                    _monitor.Log($"Extreme tile coordinates found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                                     warnedForMalformedKey = true;
                                 }
                                 continue; // Skip this entry
@@ -207,7 +223,11 @@ namespace LivingRoots.Services
                                 // Only warn once per location for invalid values to prevent log spam
                                 if (!warnedForInvalidValue)
                                 {
-                                    _monitor.Log($"Invalid health value (NaN/Infinity) found in save data for location '{locationEntry.Key}'; converting to 0.", LogLevel.Warn);
+                                    // Truncate the location name to prevent logging potentially malicious long names
+                                    string truncatedLocationName = locationEntry.Key.Length > 50 
+                                        ? locationEntry.Key.Substring(0, 50) + "..." 
+                                        : locationEntry.Key;
+                                    _monitor.Log($"Invalid health value (NaN/Infinity) found in save data for location '{truncatedLocationName}'; converting to 0.", LogLevel.Warn);
                                     warnedForInvalidValue = true;
                                 }
                                 validatedValue = 0f; // Convert to 0 instead of skipping
@@ -217,7 +237,11 @@ namespace LivingRoots.Services
                                 // Only warn once per location for out-of-range values to prevent log spam
                                 if (!warnedForInvalidValue)
                                 {
-                                    _monitor.Log($"Invalid health value found in save data for location '{locationEntry.Key}'; clamping to valid range [0, 100].", LogLevel.Warn);
+                                    // Truncate the location name to prevent logging potentially malicious long names
+                                    string truncatedLocationName = locationEntry.Key.Length > 50 
+                                        ? locationEntry.Key.Substring(0, 50) + "..." 
+                                        : locationEntry.Key;
+                                    _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [0, 10].", LogLevel.Warn);
                                     warnedForInvalidValue = true;
                                 }
                                 validatedValue = ClampHealthValue(validatedValue);
@@ -234,7 +258,11 @@ namespace LivingRoots.Services
                             // Only warn once per location for malformed keys to prevent log spam
                             if (!warnedForMalformedKey)
                             {
-                                _monitor.Log($"Malformed tile key found in save data for location '{locationEntry.Key}'; skipping entry.", LogLevel.Warn);
+                                // Truncate the location name to prevent logging potentially malicious long names
+                                string truncatedLocationName = locationEntry.Key.Length > 50 
+                                    ? locationEntry.Key.Substring(0, 50) + "..." 
+                                    : locationEntry.Key;
+                                _monitor.Log($"Malformed tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                                 warnedForMalformedKey = true;
                             }
                         }
@@ -348,7 +376,7 @@ namespace LivingRoots.Services
                             processedValue = 0f; // Convert invalid values to 0
                         }
                         
-                        // Clamp value to valid range [0, 100] before saving
+                        // Clamp value to valid range [0, 10] before saving
                         float clampedValue = ClampHealthValue(processedValue);
                         
                         // Only save non-zero values to prevent bloating the save file with default values
@@ -461,6 +489,10 @@ namespace LivingRoots.Services
             // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
             if (locationName.Length > ModConstants.MaxLocationNameLength)
             {
+                // Truncate the location name to prevent logging potentially malicious long names
+                string truncatedLocationName = locationName.Length > 50 
+                    ? locationName.Substring(0, 50) + "..." 
+                    : locationName;
                 _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to add new location to prevent memory growth.", LogLevel.Warn);
                 return; // Refuse to add location if name is too long
             }
@@ -487,7 +519,7 @@ namespace LivingRoots.Services
 
             lock (_lock)
             {
-                // Domain Rule: Clamp between 0 and 100 (not 10 as previously)
+                // Domain Rule: Clamp between 0 and 10 (not 100 as previously)
                 float clampedValue = ClampHealthValue(value);
 
                 var key = new Point(ix, iy);
@@ -504,14 +536,21 @@ namespace LivingRoots.Services
                 }
 
                 // Only allocate location storage if we actually need to store a non-default value.
-                var tiles = GetOrAddLocationCacheUnsafe(locationName);
-                
-                // Check if tiles is null (which can happen if GetOrAddLocationCacheUnsafe returns null due to limits)
-                if (tiles == null)
+                if (!_runtimeCache.TryGetValue(locationName, out var tiles))
                 {
-                    // If tiles is null, it means we couldn't create a cache for this location due to limits
-                    _monitor.Log($"Could not create cache for location '{locationName}' due to memory limits.", LogLevel.Warn);
-                    return;
+                    // Check location count limit before creating a new location
+                    if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
+                    {
+                        // Truncate the location name to prevent logging potentially malicious long names
+                        string truncatedLocationName = locationName.Length > 50 
+                            ? locationName.Substring(0, 50) + "..." 
+                            : locationName;
+                        _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+                        return; // Refuse to add new location if we're over the limit
+                    }
+                    
+                    tiles = new Dictionary<Point, float>();
+                    _runtimeCache[locationName] = tiles;
                 }
                 
                 // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
@@ -519,7 +558,11 @@ namespace LivingRoots.Services
                 bool isExistingTile = tiles.ContainsKey(key);
                 if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                 {
-                    _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{locationName}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
+                    // Truncate the location name to prevent logging potentially malicious long names
+                    string truncatedLocationName = locationName.Length > 50 
+                        ? locationName.Substring(0, 50) + "..." 
+                        : locationName;
+                    _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationName}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
                     return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
                 }
                 
@@ -539,6 +582,10 @@ namespace LivingRoots.Services
             // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
             if (locationName.Length > ModConstants.MaxLocationNameLength)
             {
+                // Truncate the location name to prevent logging potentially malicious long names
+                string truncatedLocationName = locationName.Length > 50 
+                    ? locationName.Substring(0, 50) + "..." 
+                    : locationName;
                 _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to update health.", LogLevel.Warn);
                 return; // Refuse to update if location name is too long
             }
@@ -594,6 +641,10 @@ namespace LivingRoots.Services
                         // Check location count limit before creating a new location
                         if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
                         {
+                            // Truncate the location name to prevent logging potentially malicious long names
+                            string truncatedLocationName = locationName.Length > 50 
+                                ? locationName.Substring(0, 50) + "..." 
+                                : locationName;
                             _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
                             return; // Refuse to add new locations if we're over the limit
                         }
@@ -607,40 +658,17 @@ namespace LivingRoots.Services
                     bool isExistingTile = tiles.ContainsKey(key);
                     if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                     {
-                        _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{locationName}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
+                        // Truncate the location name to prevent logging potentially malicious long names
+                        string truncatedLocationName = locationName.Length > 50 
+                            ? locationName.Substring(0, 50) + "..." 
+                            : locationName;
+                        _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationName}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
                         return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
                     }
                     
                     tiles[key] = newHealth;
                 }
             }
-        }
-        
-        // Renamed from GetOrAddLocationCache to GetOrAddLocationCacheUnsafe to indicate it should only be called within a lock
-        private Dictionary<Point, float>? GetOrAddLocationCacheUnsafe(string locationName)
-        {
-            // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
-            if (locationName.Length > ModConstants.MaxLocationNameLength)
-            {
-                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to add new location to prevent memory growth.", LogLevel.Warn);
-                return null; // Return null to indicate failure to add new location
-            }
-            
-            // Remove the internal lock since this method is now called within an external lock
-            // This addresses the nested locking issue mentioned in the code review
-            if (!_runtimeCache.TryGetValue(locationName, out var locationCache))
-            {
-                // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
-                if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
-                {
-                    _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
-                    return null; // Return null to indicate failure to add new location
-                }
-                
-                locationCache = new Dictionary<Point, float>();
-                _runtimeCache[locationName] = locationCache;
-            }
-            return locationCache;
         }
         
         private float ClampHealthValue(float value)
