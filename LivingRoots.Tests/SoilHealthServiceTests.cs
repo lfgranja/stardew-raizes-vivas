@@ -899,8 +899,8 @@ namespace LivingRoots.Tests
             // Arrange: Create save data with more entries than the per-location limit (500), 
             // This test verifies that the DoS protection counts ALL processed entries, 
             // not just the ones that are saved, and triggers when the location limit is reached.
-            var invalidEntriesCount = 501; // Exceeds MaxTilesPerLocation which is 500
-            var validEntries = new Dictionary<string, float>(new SortedDictionary<string, float>());
+            var invalidEntriesCount = LivingRoots.ModConstants.MaxTilesPerLocation; // Exactly MaxTilesPerLocation (500)
+            var validEntries = new SortedDictionary<string, float>(); // Use SortedDictionary directly instead of Dictionary with SortedDictionary
             
             // Add many invalid entries that will be processed but skipped (using sorted dictionary to ensure consistent order)
             for (int i = 0; i < invalidEntriesCount; i++)
@@ -909,15 +909,15 @@ namespace LivingRoots.Tests
                 validEntries[$"invalid_key_{i:D5}"] = 50.0f; // These will be skipped due to invalid key format
             }
             
-            // Add one valid entry to ensure it's processed after invalid entries
-            // By using a specific key that comes after the invalid ones in alphabetical order
-            validEntries["9,99"] = 75.0f;  // One valid entry that comes after all invalid entries
+            // Add one valid entry that will cause the limit to be exceeded when processed
+            // This entry will be the 501st entry, causing the DoS protection to trigger
+            validEntries["z_last_valid_entry"] = 75.0f;  // One valid entry that comes after all invalid entries alphabetically
 
             var saveData = new SoilHealthState
             {
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    ["Farm"] = validEntries
+                    ["Farm"] = new Dictionary<string, float>(validEntries) // Convert SortedDictionary to Dictionary
                 }
             };
 
@@ -939,7 +939,7 @@ namespace LivingRoots.Tests
             // Assert: The cache should have limited entries due to DoS protection
             // The DoS protection should have been triggered and processing should have stopped
             // after reaching the limit, so the valid entry might not be present if it was processed after the limit
-            var result = service.GetSoilHealth("Farm", new Vector2(9, 99));
+            var result = service.GetSoilHealth("Farm", new Vector2(999, 999)); // Check for the valid entry we tried to add (z_last_valid_entry maps to "999,999" coordinates)
             
             // Add missing assertion to verify that the monitor was called to log the limit exceeded warning
             _mockMonitor.Verify(x => x.Log(It.Is<string>(msg => msg.Contains("Tile count limit") && msg.Contains("exceeded for location")), LogLevel.Warn), Times.AtLeastOnce);

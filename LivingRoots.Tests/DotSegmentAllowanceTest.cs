@@ -32,7 +32,7 @@ namespace LivingRoots.Tests
             _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(input => 
             {
                 // Apply whitespace trimming to make the mock sanitization whitespace-safe
-                string trimmedInput = input?.Trim();
+                string trimmedInput = (input ?? string.Empty).Trim();
                 
                 // Simulate real sanitization behavior for individual segments
                 if (trimmedInput == "with:invalid|chars")

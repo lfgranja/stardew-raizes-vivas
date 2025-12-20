@@ -112,17 +112,17 @@ namespace LivingRoots.Services
                         break;
                     }
 
+                    // Skip if the location name is null or empty to prevent NullReferenceException during length check
+                    if (string.IsNullOrWhiteSpace(locationEntry.Key))
+                    {
+                        _monitor.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn);
+                        continue;
+                    }
+
                     // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
                     if (locationEntry.Key.Length > ModConstants.MaxLocationNameLength)
                     {
                         _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; skipping location '{locationEntry.Key}'.", LogLevel.Warn);
-                        continue;
-                    }
-
-                    // Skip if the location name is null or empty to prevent invalid entries in the cache
-                    if (string.IsNullOrWhiteSpace(locationEntry.Key))
-                    {
-                        _monitor.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn);
                         continue;
                     }
 

@@ -465,8 +465,8 @@ namespace LivingRoots.Tests
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.NotNull(onSavingMethod);
 
-            // Act - Create a real SavingEventArgs instance using RuntimeHelpers.GetUninitializedObject to match SMAPI runtime behavior
-            var savingEventArgs = (SavingEventArgs)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(SavingEventArgs));
+            // Act - Create a real SavingEventArgs instance using Activator.CreateInstance to match SMAPI runtime behavior
+            var savingEventArgs = (SavingEventArgs)Activator.CreateInstance(typeof(SavingEventArgs));
             onSavingMethod.Invoke(controller, new object[] { null, savingEventArgs });
 
             // Assert - Soil health service should have been called to save data
