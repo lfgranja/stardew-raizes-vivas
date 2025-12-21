@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Threading;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
@@ -22,7 +21,7 @@ namespace LivingRoots.Controllers
         private const int UnregisteringFlag = 1 << 5;
         private int _state = 0; // Combine flags in single volatile field
         
-        // Warning flags for preventing repeated log spam - using Interlocked operations for thread safety
+        // Warning flag for preventing repeated log spam - using Interlocked operations for thread safety
         private int _saveIdUnavailableWarningShownOnSaveLoaded = 0; // 0 = false, 1 = true
         private int _saveIdUnavailableWarningShownOnSaving = 0; // 0 = false, 1 = true
 
@@ -181,6 +180,11 @@ namespace LivingRoots.Controllers
                     /* avoid masking original failure */ 
                 }
 
+                // Use Interlocked.Exchange for thread-safe nullification of event handlers
+                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                Interlocked.Exchange(ref _onSavingHandler, null);
+
                 // Clear the flag since registration failed
                 Interlocked.And(ref _state, ~(EventsRegisteredFlag));
 
@@ -233,58 +237,88 @@ namespace LivingRoots.Controllers
                 return;
             }
 
-            try
-            {
-                // Capture the current handler values to unsubscribe with
-                var gameLaunchedHandler = _onGameLaunchedHandler;
-                var saveLoadedHandler = _onSaveLoadedHandler;
-                var savingHandler = _onSavingHandler;
+            // Safely unsubscribe from events with individual exception handling
+            // Capture the current handler values to unsubscribe with
+            var gameLaunchedHandler = _onGameLaunchedHandler;
+            var saveLoadedHandler = _onSaveLoadedHandler;
+            var savingHandler = _onSavingHandler;
 
-                // Safely unsubscribe from events with null checks and individual exception handling
-                if (gameLaunchedHandler != null)
+            // Wrap each unsubscription in individual try-catch blocks to prevent one failure from affecting others
+            if (gameLaunchedHandler != null)
+            {
+                try
                 {
                     gameLoop.GameLaunched -= gameLaunchedHandler;
                 }
-                
-                if (saveLoadedHandler != null)
+                catch (Exception ex)
+                {
+                    // Log error but don't expose raw exception message for security
+                    monitor.Log("Error occurred while unsubscribing from GameLaunched event.", LogLevel.Error);
+                    
+                    // Add trace-level exception details for debugging
+                    monitor.Log($"GameLaunched unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    
+                    // Add stack trace logging for better diagnostics without exposing sensitive information
+                    #if DEBUG
+                    monitor.Log(ex.StackTrace ?? "GameLaunched unsubscription stack trace unavailable.", LogLevel.Trace);
+                    #endif
+                }
+            }
+            
+            if (saveLoadedHandler != null)
+            {
+                try
                 {
                     gameLoop.SaveLoaded -= saveLoadedHandler;
                 }
-                
-                if (savingHandler != null)
+                catch (Exception ex)
+                {
+                    // Log error but don't expose raw exception message for security
+                    monitor.Log("Error occurred while unsubscribing from SaveLoaded event.", LogLevel.Error);
+                    
+                    // Add trace-level exception details for debugging
+                    monitor.Log($"SaveLoaded unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    
+                    // Add stack trace logging for better diagnostics without exposing sensitive information
+                    #if DEBUG
+                    monitor.Log(ex.StackTrace ?? "SaveLoaded unsubscription stack trace unavailable.", LogLevel.Trace);
+                    #endif
+                }
+            }
+            
+            if (savingHandler != null)
+            {
+                try
                 {
                     gameLoop.Saving -= savingHandler;
                 }
-                
-                // Move the success log message from the finally block to the try block
-                monitor.Log("Events unregistered successfully.", LogLevel.Trace);
+                catch (Exception ex)
+                {
+                    // Log error but don't expose raw exception message for security
+                    monitor.Log("Error occurred while unsubscribing from Saving event.", LogLevel.Error);
+                    
+                    // Add trace-level exception details for debugging
+                    monitor.Log($"Saving unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    
+                    // Add stack trace logging for better diagnostics without exposing sensitive information
+                    #if DEBUG
+                    monitor.Log(ex.StackTrace ?? "Saving unsubscription stack trace unavailable.", LogLevel.Trace);
+                    #endif
+                }
             }
-            catch (Exception ex)
-            {
-                // Log error but don't expose raw exception message for security
-                _monitor.Log("Error occurred while unregistering game events.", LogLevel.Error);
-                
-                // Add trace-level exception details for debugging
-                _monitor.Log($"UnregisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                
-                // Add stack trace logging for better diagnostics without exposing sensitive information
-                #if DEBUG
-                _monitor.Log(ex.StackTrace ?? "UnregisterEvents stack trace unavailable.", LogLevel.Trace);
-                #endif
-            }
-            finally
-            {
-                // Clear handler references AFTER successful unsubscription to prevent race conditions
-                // This ensures that even if exceptions occur during unsubscription, the references are cleaned up
-                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                Interlocked.Exchange(ref _onSavingHandler, null);
-                
-                // Clear the UnregisteringFlag when done
-                Interlocked.And(ref _state, ~UnregisteringFlag);
-            }
+
+            monitor.Log("Events unregistered successfully.", LogLevel.Trace);
+
+            // Clear handler references AFTER successful unsubscription to prevent race conditions
+            // This ensures that even if exceptions occur during unsubscription, the references are cleaned up
+            Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+            Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+            Interlocked.Exchange(ref _onSavingHandler, null);
+            
+            // Clear the UnregisteringFlag when done
+            Interlocked.And(ref _state, ~UnregisteringFlag);
         }
-        
+
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
         {
             // Skip if controller has been disposed

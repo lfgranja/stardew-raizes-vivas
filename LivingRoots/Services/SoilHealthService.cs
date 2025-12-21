@@ -8,6 +8,7 @@ using LivingRoots.Domain;
 using LivingRoots;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
+using StardewModdingAPI.Events;
 
 namespace LivingRoots.Services
 {
@@ -241,7 +242,7 @@ namespace LivingRoots.Services
                                     string truncatedLocationName = locationEntry.Key.Length > 50 
                                         ? locationEntry.Key.Substring(0, 50) + "..." 
                                         : locationEntry.Key;
-                                    _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [0, 10].", LogLevel.Warn);
+                                    _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [0, 100].", LogLevel.Warn);
                                     warnedForInvalidValue = true;
                                 }
                                 validatedValue = ClampHealthValue(validatedValue);
@@ -376,7 +377,7 @@ namespace LivingRoots.Services
                             processedValue = 0f; // Convert invalid values to 0
                         }
                         
-                        // Clamp value to valid range [0, 10] before saving
+                        // Clamp value to valid range [0, 100] before saving
                         float clampedValue = ClampHealthValue(processedValue);
                         
                         // Only save non-zero values to prevent bloating the save file with default values
@@ -519,7 +520,7 @@ namespace LivingRoots.Services
 
             lock (_lock)
             {
-                // Domain Rule: Clamp between 0 and 10 (not 100 as previously)
+                // Domain Rule: Clamp between 0 and 100 (aligning with documentation and MaxSoilHealth constant)
                 float clampedValue = ClampHealthValue(value);
 
                 var key = new Point(ix, iy);
