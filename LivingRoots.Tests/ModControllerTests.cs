@@ -37,37 +37,37 @@ namespace LivingRoots.Tests
         [Fact]
         public void Constructor_WithNullHelper_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(null as IModHelper, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController((IModHelper)null!, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullMonitor_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, null as IMonitor, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, (IMonitor)null!, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullManifest_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, null as IManifest, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, (IManifest)null!, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullModDataService_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, null as IModDataService, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, (IModDataService)null!, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullSoilHealthService_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, null as ISoilHealthService, _mockSaveIdProvider.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, (ISoilHealthService)null!, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullSaveIdProvider_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, null as ISaveIdProvider));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, (ISaveIdProvider)null!));
         }
 
         [Fact]
@@ -470,7 +470,7 @@ namespace LivingRoots.Tests
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.NotNull(onSavingMethod);
 
-            // Act - Create a real SavingEventArgs instance using Activator.CreateInstance with nonPublic: true as a preferred method, with fallback to FormatterServices.GetUninitializedObject
+            // Act - Create a real SavingEventArgs instance using Activator.CreateInstance with nonPublic: true as a preferred method
             var savingEventArgs = CreateInstanceWithFallback<SavingEventArgs>();
             onSavingMethod.Invoke(controller, new object[] { null, savingEventArgs });
 
@@ -551,67 +551,25 @@ namespace LivingRoots.Tests
         }
         
         /// <summary>
-        /// Creates an instance of the specified type using Activator.CreateInstance with nonPublic: true as a preferred method,
-        /// with fallback to FormatterServices.GetUninitializedObject if the constructor is not available.
+        /// Creates an instance of the specified type using Activator.CreateInstance with nonPublic: true as a preferred method.
         /// </summary>
         /// <typeparam name="T">The type to create an instance of</typeparam>
         /// <returns>An instance of the specified type</returns>
         private static T CreateInstanceWithFallback<T>() where T : class
         {
-            T instance = null;
-            Exception caughtException = null;
-            
             try
             {
                 // Try to create instance using Activator.CreateInstance with nonPublic: true (preferred method)
-                instance = (T)Activator.CreateInstance(typeof(T), nonPublic: true);
+                return (T)Activator.CreateInstance(typeof(T), nonPublic: true);
             }
             catch (Exception ex)
             {
-                caughtException = ex;
+                // If creation fails, throw an informative exception
+                throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} using Activator.CreateInstance: {ex.Message}", ex);
             }
-
-            // If the first method failed, try the fallback
-            if (instance == null)
-            {
-                try
-                {
-                    // Fallback to FormatterServices.GetUninitializedObject if the constructor is not available
-                    instance = (T)FormatterServices.GetUninitializedObject(typeof(T));
-                }
-                catch (Exception ex)
-                {
-                    if (caughtException != null)
-                    {
-                        // If both methods failed, throw an aggregate exception with both errors
-                        throw new AggregateException($"Failed to create instance of type {typeof(T)}. " +
-                            $"Activator.CreateInstance failed with: {caughtException.Message}. " +
-                            $"FormatterServices.GetUninitializedObject failed with: {ex.Message}", 
-                            caughtException, ex);
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"Both creation methods failed for type {typeof(T)}: {ex.Message}", ex);
-                    }
-                }
-            }
-
-            // Validate that we actually got a valid instance
-            if (instance == null)
-            {
-                throw new InvalidOperationException($"Failed to create a valid instance of type {typeof(T)} using either Activator.CreateInstance or FormatterServices.GetUninitializedObject");
-            }
-
-            // Additional validation: ensure the created instance is of the expected type
-            if (!(instance is T))
-            {
-                throw new InvalidOperationException($"Created instance is not of expected type {typeof(T)}. Actual type: {instance?.GetType()}");
-            }
-
-            return instance;
         }
     }
-
+    
     // Helper class to access private methods and properties for testing
     internal static class PrivateMethodHelper
     {
