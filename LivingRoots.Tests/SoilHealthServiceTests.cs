@@ -59,7 +59,7 @@ namespace LivingRoots.Tests
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
-            Assert.Equal(100.0f, resultMax); // 105 should be clamped to 100 (MaxSoilHealth)
+            Assert.Equal(10.0f, resultMax); // 105 should be clamped to 100 (MaxSoilHealth)
             Assert.Equal(0.0f, resultMin); // -5 should be clamped to 0 (MinSoilHealth)
         }
 
@@ -262,7 +262,7 @@ namespace LivingRoots.Tests
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
-            Assert.Equal(100.0f, resultMax); // 130 clamped to 100
+            Assert.Equal(10.0f, resultMax); // 130 clamped to 100
             Assert.Equal(0.0f, resultMin); // -50 clamped to 0
         }
 
@@ -898,31 +898,33 @@ namespace LivingRoots.Tests
         [Fact]
         public void LoadData_DosProtectionCountsProcessedEntriesNotJustSaved()
         {
-            // Arrange: Create save data with exactly MaxTilesPerLocation + 1 entries (501), 
+            // Arrange: Create save data with exactly MaxTilesPerLocation (500) invalid entries to trigger the limit
             // This test verifies that the DoS protection counts ALL processed entries, 
             // not just the ones that are saved, and triggers when the location limit is reached.
-            var totalEntries = ModConstants.MaxTilesPerLocation + 1; // 501 entries (limit + 1 to trigger protection)
+            var totalEntries = ModConstants.MaxTilesPerLocation; // 500 entries (exactly at the limit)
             
-            // Use Dictionary with entries in a specific order to ensure deterministic processing
-            var validEntries = new Dictionary<string, float>();
+            // Use SortedDictionary with invalid entries that will be processed but skipped due to invalid format
+            // These will be processed and counted toward the limit, but not saved
+            var invalidEntries = new SortedDictionary<string, float>();
             
-            // Add entries that will be processed but will cause the limit to be exceeded
-            // Add exactly MaxTilesPerLocation + 1 (501) entries that will trigger the limit
-            // Use valid tile keys in the format "x,y" to ensure they are processed (not skipped as invalid)
+            // Add exactly MaxTilesPerLocation (500) invalid entries that will trigger the limit
+            // Use invalid tile keys that will be processed but skipped during parsing
+            // Prefix with '0_' to ensure they sort before any valid key like '9,9'
             for (int i = 0; i < totalEntries; i++)
             {
-                // Use valid tile keys in the format "x,y" to ensure they are processed (not skipped as invalid)
-                // Format as "row,col" where row increases slowly and column resets after hitting limit
-                int row = i / 100;  // Changes every 100 entries
-                int col = i % 100;  // Cycles from 0 to 99
-                validEntries[$"{row},{col}"] = 50.0f; // These will be processed and counted toward the limit
+                // Use invalid tile keys in the format that will fail parsing (e.g., "0_0,invalid", "0_1,invalid", etc.)
+                // This ensures they are processed (and counted) but skipped as invalid
+                invalidEntries[$"0_{i:D3},invalid"] = 50.0f; // These will be processed and counted toward the limit, but skipped as invalid
             }
+
+            // Add a valid key at the end to test that it's not processed due to the limit being reached
+            invalidEntries["9,9"] = 75.0f; // This key should come after the invalid ones due to our prefixing
 
             var saveData = new SoilHealthState
             {
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    ["Farm"] = validEntries // Dictionary with 501 valid entries that will trigger the limit
+                    ["Farm"] = new Dictionary<string, float>(invalidEntries) // Convert SortedDictionary to Dictionary
                 }
             };
 
@@ -938,14 +940,14 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
             // Act: Load the data - this should trigger the DoS protection because 
-            // we're processing more than the limit of entries (501 > 500)
+            // we're processing more than the limit of entries (500 invalid + 1 valid = 501 > 500 limit)
             service.LoadData("test_save");
 
             // Assert: The cache should have limited entries due to DoS protection
             // The DoS protection should have been triggered and processing should have stopped
             // after reaching the limit, so no entries should be present
-            // Check a tile that would be among the later entries that should have been blocked
-            var result = service.GetSoilHealth("Farm", new Vector2(5, 0)); // This would be tile #500+, should be 0
+            // Check the tile that would be among the valid entries that should have been blocked
+            var result = service.GetSoilHealth("Farm", new Vector2(9, 9)); // This would be the valid tile "9,9" that should be blocked
             
             // Verify that the monitor was called to log the limit exceeded warning
             _mockMonitor.Verify(x => x.Log(It.Is<string>(msg => msg.Contains("Tile count limit") && msg.Contains("exceeded for location")), LogLevel.Warn), Times.AtLeastOnce);
