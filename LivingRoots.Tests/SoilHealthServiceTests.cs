@@ -7,6 +7,7 @@ using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
+using StardewModdingAPI.Events;
 using Xunit;
 
 namespace LivingRoots.Tests
@@ -293,7 +294,7 @@ namespace LivingRoots.Tests
                 {
                     ["Farm"] = new Dictionary<string, float>
                     {
-                        ["10,10"] = 75.5f, // Within domain range [0,100], clamped to 75.5
+                        ["10,10"] = 75.5f, // Within domain range [0,100], stays 75.5
                         ["11,15"] = 25.5f   // Within domain range [0,100], stays 25.5
                     }
                 }
@@ -897,14 +898,16 @@ namespace LivingRoots.Tests
         [Fact]
         public void LoadData_DosProtectionCountsProcessedEntriesNotJustSaved()
         {
-            // Arrange: Create save data with more entries than the per-location limit (500), 
+            // Arrange: Create save data with exactly MaxTilesPerLocation + 1 entries (501), 
             // This test verifies that the DoS protection counts ALL processed entries, 
             // not just the ones that are saved, and triggers when the location limit is reached.
-            var totalEntries = ModConstants.MaxTilesPerLocation + 1; // 501 entries (500 limit + 1 extra)
-            var validEntries = new Dictionary<string, float>(); // Use regular dictionary
+            var totalEntries = ModConstants.MaxTilesPerLocation + 1; // 501 entries (limit + 1 to trigger protection)
+            
+            // Use Dictionary with entries in a specific order to ensure deterministic processing
+            var validEntries = new Dictionary<string, float>();
             
             // Add entries that will be processed but will cause the limit to be exceeded
-            // Add exactly MaxTilesPerLocation (500) entries first, then one more that should trigger the limit
+            // Add exactly MaxTilesPerLocation + 1 (501) entries that will trigger the limit
             // Use valid tile keys in the format "x,y" to ensure they are processed (not skipped as invalid)
             for (int i = 0; i < totalEntries; i++)
             {
@@ -935,7 +938,7 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
             // Act: Load the data - this should trigger the DoS protection because 
-            // we're processing more entries than the per-location limit (500)
+            // we're processing more than the limit of entries (501 > 500)
             service.LoadData("test_save");
 
             // Assert: The cache should have limited entries due to DoS protection

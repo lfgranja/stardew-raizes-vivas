@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -140,14 +141,15 @@ namespace LivingRoots.Tests
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act - Simulate concurrent registration attempts on the same instance
-            var tasks = new System.Threading.Tasks.Task[10];
+            var tasks = new List<System.Threading.Tasks.Task>();
             for (int i = 0; i < 10; i++)
             {
-                tasks[i] = System.Threading.Tasks.Task.Run(() =>
+                var task = System.Threading.Tasks.Task.Run(() =>
                 {
                     // All tasks call RegisterEvents on the same controller instance
                     controller.RegisterEvents();
                 });
+                tasks.Add(task);
             }
 
             await System.Threading.Tasks.Task.WhenAll(tasks);
@@ -251,13 +253,14 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Simulate concurrent unregistration attempts
-            var tasks = new System.Threading.Tasks.Task[10];
+            var tasks = new List<System.Threading.Tasks.Task>();
             for (int i = 0; i < 10; i++)
             {
-                tasks[i] = System.Threading.Tasks.Task.Run(() =>
+                var task = System.Threading.Tasks.Task.Run(() =>
                 {
                     controller.UnregisterEvents();
                 });
+                tasks.Add(task);
             }
 
             await System.Threading.Tasks.Task.WhenAll(tasks);
@@ -316,10 +319,11 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Simulate concurrent disposal from multiple threads
-            var tasks = new System.Threading.Tasks.Task[10];
+            var tasks = new List<System.Threading.Tasks.Task>();
             for (int i = 0; i < 10; i++)
             {
-                tasks[i] = System.Threading.Tasks.Task.Run(() => controller.Dispose());
+                var task = System.Threading.Tasks.Task.Run(() => controller.Dispose());
+                tasks.Add(task);
             }
 
             await System.Threading.Tasks.Task.WhenAll(tasks);
@@ -480,7 +484,7 @@ namespace LivingRoots.Tests
             // Arrange
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Act & Assert - Initially should not be disposed
+            // Act & Assert - Initially should return false
             Assert.False(PrivateMethodHelper.IsDisposed(controller));
 
             // Act & Assert - After disposal should return true
@@ -528,7 +532,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void GetSaveIdUnavailableWarningShownProperty_WorksCorrectly()
+        public void GetSaveIdUnavailableWarningShownOnSaveLoadedProperty_WorksCorrectly()
         {
             // Arrange
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
@@ -554,16 +558,57 @@ namespace LivingRoots.Tests
         /// <returns>An instance of the specified type</returns>
         private static T CreateInstanceWithFallback<T>() where T : class
         {
+            T instance = null;
+            Exception caughtException = null;
+            
             try
             {
                 // Try to create instance using Activator.CreateInstance with nonPublic: true (preferred method)
-                return (T)Activator.CreateInstance(typeof(T), nonPublic: true);
+                instance = (T)Activator.CreateInstance(typeof(T), nonPublic: true);
             }
-            catch
+            catch (Exception ex)
             {
-                // Fallback to FormatterServices.GetUninitializedObject if the constructor is not available
-                return (T)FormatterServices.GetUninitializedObject(typeof(T));
+                caughtException = ex;
             }
+
+            // If the first method failed, try the fallback
+            if (instance == null)
+            {
+                try
+                {
+                    // Fallback to FormatterServices.GetUninitializedObject if the constructor is not available
+                    instance = (T)FormatterServices.GetUninitializedObject(typeof(T));
+                }
+                catch (Exception ex)
+                {
+                    if (caughtException != null)
+                    {
+                        // If both methods failed, throw an aggregate exception with both errors
+                        throw new AggregateException($"Failed to create instance of type {typeof(T)}. " +
+                            $"Activator.CreateInstance failed with: {caughtException.Message}. " +
+                            $"FormatterServices.GetUninitializedObject failed with: {ex.Message}", 
+                            caughtException, ex);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Both creation methods failed for type {typeof(T)}: {ex.Message}", ex);
+                    }
+                }
+            }
+
+            // Validate that we actually got a valid instance
+            if (instance == null)
+            {
+                throw new InvalidOperationException($"Failed to create a valid instance of type {typeof(T)} using either Activator.CreateInstance or FormatterServices.GetUninitializedObject");
+            }
+
+            // Additional validation: ensure the created instance is of the expected type
+            if (!(instance is T))
+            {
+                throw new InvalidOperationException($"Created instance is not of expected type {typeof(T)}. Actual type: {instance?.GetType()}");
+            }
+
+            return instance;
         }
     }
 
