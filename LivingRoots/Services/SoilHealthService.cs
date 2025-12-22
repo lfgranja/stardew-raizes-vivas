@@ -318,6 +318,12 @@ namespace LivingRoots.Services
             // This implements the snapshot pattern to move I/O operations outside the lock
             var snapshotState = new Dictionary<string, Dictionary<string, float>>();
             
+            // Variables to track if limits were exceeded (for logging outside the lock)
+            bool locationsLimitExceeded = false;
+            bool tilesLimitExceeded = false;
+            int processedLocations = 0;
+            int processedTiles = 0;
+            
             lock (_lock)
             {
                 // GLOBAL DOS PROTECTION: Add a global tile limit during save to prevent creating excessively large save files
@@ -335,7 +341,7 @@ namespace LivingRoots.Services
                     {
                         if (!locationsLimitLogged)
                         {
-                            _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded during save; stopping location processing to prevent DoS.", LogLevel.Warn);
+                            locationsLimitExceeded = true;
                             locationsLimitLogged = true;
                         }
                         break;
@@ -345,7 +351,7 @@ namespace LivingRoots.Services
                     {
                         if (!totalTilesLimitLogged)
                         {
-                            _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) reached during save; truncating output to prevent excessive save payload.", LogLevel.Warn);
+                            tilesLimitExceeded = true;
                             totalTilesLimitLogged = true;
                         }
                         break;
@@ -361,7 +367,7 @@ namespace LivingRoots.Services
                         {
                             if (!totalTilesLimitLogged)
                             {
-                                _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) reached during save; truncating output to prevent excessive save payload.", LogLevel.Warn);
+                                tilesLimitExceeded = true;
                                 totalTilesLimitLogged = true;
                             }
                             break;
@@ -370,15 +376,8 @@ namespace LivingRoots.Services
                         // Convert Point back to "X,Y" string format using invariant culture for consistency
                         string tileKey = $"{tile.Key.X.ToString(CultureInfo.InvariantCulture)},{tile.Key.Y.ToString(CultureInfo.InvariantCulture)}";
                         
-                        // Normalize invalid values (NaN, Infinity) to 0 instead of skipping them to prevent silent data loss
-                        float processedValue = tile.Value;
-                        if (float.IsNaN(processedValue) || float.IsInfinity(processedValue))
-                        {
-                            processedValue = 0f; // Convert invalid values to 0
-                        }
-                        
-                        // Clamp value to valid range [0, 100] before saving
-                        float clampedValue = ClampHealthValue(processedValue);
+                        // Clamp value to valid range [0, 100] before saving - ClampHealthValue handles NaN/Infinity
+                        float clampedValue = ClampHealthValue(tile.Value);
                         
                         // Only save non-zero values to prevent bloating the save file with default values
                         if (clampedValue != 0f)
@@ -391,12 +390,25 @@ namespace LivingRoots.Services
                     if (tileDict.Count > 0)
                     {
                         snapshotState[location.Key] = tileDict;
+                        processedLocations++; // Track how many locations we processed
                     }
                     
                     // Check again after processing this location in case we exceeded the limit
                     if (totalTilesProcessed > ModConstants.MaxTilesPerSave)
                         break;
+                        
+                    processedTiles = totalTilesProcessed; // Track how many tiles we processed
                 }
+            }
+            
+            // Log warnings after releasing the lock
+            if (locationsLimitExceeded)
+            {
+                _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded during save; stopping location processing to prevent DoS.", LogLevel.Warn);
+            }
+            if (tilesLimitExceeded)
+            {
+                _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) reached during save; truncating output to prevent excessive save payload.", LogLevel.Warn);
             }
 
             // Always save the current state (even if empty) to clear any previously saved data
@@ -487,16 +499,11 @@ namespace LivingRoots.Services
                 return; // Skip if location is invalid
             }
 
-            // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
-            if (locationName.Length > ModConstants.MaxLocationNameLength)
-            {
-                // Truncate the location name to prevent logging potentially malicious long names
-                string truncatedLocationName = locationName.Length > 50 
-                    ? locationName.Substring(0, 50) + "..." 
-                    : locationName;
-                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to add new location to prevent memory growth.", LogLevel.Warn);
-                return; // Refuse to add location if name is too long
-            }
+            // Pre-check for location name length violation to enable logging outside the lock
+            bool logLocationNameTooLong = locationName.Length > ModConstants.MaxLocationNameLength;
+            string truncatedLocationName = locationName.Length > 50 
+                ? locationName.Substring(0, 50) + "..." 
+                : locationName;
 
             // Guard against invalid coordinates to prevent data corruption
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
@@ -518,8 +525,20 @@ namespace LivingRoots.Services
             int ix = (int)fx;
             int iy = (int)fy;
 
+            // Variables to track if we need to log warnings (set inside the lock, used outside)
+            bool logLocationLimitExceeded = false;
+            bool logTileLimitExceeded = false;
+            string truncatedLocationNameForTileLog = "";
+
             lock (_lock)
             {
+                // If location name is too long, exit early without modifying anything
+                if (logLocationNameTooLong)
+                {
+                    // We already captured the info needed for logging outside the lock
+                    return; // Refuse to add location if name is too long
+                }
+
                 // Domain Rule: Clamp between 0 and 100 (aligning with documentation and MaxSoilHealth constant)
                 float clampedValue = ClampHealthValue(value);
 
@@ -543,10 +562,10 @@ namespace LivingRoots.Services
                     if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
                     {
                         // Truncate the location name to prevent logging potentially malicious long names
-                        string truncatedLocationName = locationName.Length > 50 
+                        truncatedLocationName = locationName.Length > 50 
                             ? locationName.Substring(0, 50) + "..." 
                             : locationName;
-                        _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+                        logLocationLimitExceeded = true;
                         return; // Refuse to add new location if we're over the limit
                     }
                     
@@ -560,14 +579,28 @@ namespace LivingRoots.Services
                 if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                 {
                     // Truncate the location name to prevent logging potentially malicious long names
-                    string truncatedLocationName = locationName.Length > 50 
+                    truncatedLocationNameForTileLog = locationName.Length > 50 
                         ? locationName.Substring(0, 50) + "..." 
                         : locationName;
-                    _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationName}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
+                    logTileLimitExceeded = true;
                     return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
                 }
                 
                 tiles[key] = clampedValue;
+            }
+            
+            // Log messages outside the lock to avoid blocking other threads
+            if (logLocationNameTooLong)
+            {
+                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+            }
+            else if (logLocationLimitExceeded)
+            {
+                _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+            }
+            else if (logTileLimitExceeded)
+            {
+                _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationNameForTileLog}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
             }
         }
 
@@ -580,16 +613,11 @@ namespace LivingRoots.Services
                 return; // Skip if location is invalid
             }
 
-            // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
-            if (locationName.Length > ModConstants.MaxLocationNameLength)
-            {
-                // Truncate the location name to prevent logging potentially malicious long names
-                string truncatedLocationName = locationName.Length > 50 
-                    ? locationName.Substring(0, 50) + "..." 
-                    : locationName;
-                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to update health.", LogLevel.Warn);
-                return; // Refuse to update if location name is too long
-            }
+            // Pre-check for location name length violation to enable logging outside the lock
+            bool logLocationNameTooLong = locationName.Length > ModConstants.MaxLocationNameLength;
+            string truncatedLocationName = locationName.Length > 50 
+                ? locationName.Substring(0, 50) + "..." 
+                : locationName;
 
             // Guard against invalid coordinates to prevent data corruption
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
@@ -611,8 +639,20 @@ namespace LivingRoots.Services
             int ix = (int)fx;
             int iy = (int)fy;
 
+            // Variables to track if we need to log warnings (set inside the lock, used outside)
+            bool logLocationLimitExceeded = false;
+            bool logTileLimitExceeded = false;
+            string truncatedLocationNameForTileLog = "";
+
             lock (_lock)
             {
+                // If location name is too long, exit early without modifying anything
+                if (logLocationNameTooLong)
+                {
+                    // We already captured the info needed for logging outside the lock
+                    return; // Refuse to update if location name is too long
+                }
+
                 var key = new Point(ix, iy);
                 
                 // OPTIMIZATION: Get the tiles dictionary once and reuse it to avoid redundant lookups
@@ -643,10 +683,10 @@ namespace LivingRoots.Services
                         if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
                         {
                             // Truncate the location name to prevent logging potentially malicious long names
-                            string truncatedLocationName = locationName.Length > 50 
+                            truncatedLocationName = locationName.Length > 50 
                                 ? locationName.Substring(0, 50) + "..." 
                                 : locationName;
-                            _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+                            logLocationLimitExceeded = true;
                             return; // Refuse to add new locations if we're over the limit
                         }
                         
@@ -660,15 +700,29 @@ namespace LivingRoots.Services
                     if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                     {
                         // Truncate the location name to prevent logging potentially malicious long names
-                        string truncatedLocationName = locationName.Length > 50 
+                        truncatedLocationNameForTileLog = locationName.Length > 50 
                             ? locationName.Substring(0, 50) + "..." 
                             : locationName;
-                        _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationName}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
+                        logTileLimitExceeded = true;
                         return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
                     }
                     
                     tiles[key] = newHealth;
                 }
+            }
+            
+            // Log messages outside the lock to avoid blocking other threads
+            if (logLocationNameTooLong)
+            {
+                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to update health.", LogLevel.Warn);
+            }
+            else if (logLocationLimitExceeded)
+            {
+                _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
+            }
+            else if (logTileLimitExceeded)
+            {
+                _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationNameForTileLog}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
             }
         }
         
