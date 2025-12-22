@@ -466,8 +466,8 @@ namespace LivingRoots.Tests
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.NotNull(onSavingMethod);
 
-            // Act - Create a real SavingEventArgs instance using FormatterServices.GetUninitializedObject to match SMAPI runtime behavior
-            var savingEventArgs = (SavingEventArgs)FormatterServices.GetUninitializedObject(typeof(SavingEventArgs));
+            // Act - Create a real SavingEventArgs instance using Activator.CreateInstance with nonPublic: true as a preferred method, with fallback to FormatterServices.GetUninitializedObject
+            var savingEventArgs = CreateInstanceWithFallback<SavingEventArgs>();
             onSavingMethod.Invoke(controller, new object[] { null, savingEventArgs });
 
             // Assert - Soil health service should have been called to save data
@@ -544,6 +544,26 @@ namespace LivingRoots.Tests
             // Assert - Should now be true (1)
             Assert.Equal(1, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaveLoaded(controller));
             Assert.Equal(1, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaving(controller));
+        }
+        
+        /// <summary>
+        /// Creates an instance of the specified type using Activator.CreateInstance with nonPublic: true as a preferred method,
+        /// with fallback to FormatterServices.GetUninitializedObject if the constructor is not available.
+        /// </summary>
+        /// <typeparam name="T">The type to create an instance of</typeparam>
+        /// <returns>An instance of the specified type</returns>
+        private static T CreateInstanceWithFallback<T>() where T : class
+        {
+            try
+            {
+                // Try to create instance using Activator.CreateInstance with nonPublic: true (preferred method)
+                return (T)Activator.CreateInstance(typeof(T), nonPublic: true);
+            }
+            catch
+            {
+                // Fallback to FormatterServices.GetUninitializedObject if the constructor is not available
+                return (T)FormatterServices.GetUninitializedObject(typeof(T));
+            }
         }
     }
 

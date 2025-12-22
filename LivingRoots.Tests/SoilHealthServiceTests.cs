@@ -293,8 +293,8 @@ namespace LivingRoots.Tests
                 {
                     ["Farm"] = new Dictionary<string, float>
                     {
-                        ["10,10"] = 75.5f,  // Within domain range [0,100], clamped to 75.5
-                        ["11,15"] = 25.5f   // Within domain range [0,10], stays 25.5
+                        ["10,10"] = 75.5f, // Within domain range [0,100], clamped to 75.5
+                        ["11,15"] = 25.5f   // Within domain range [0,100], stays 25.5
                     }
                 }
             };
@@ -788,7 +788,7 @@ namespace LivingRoots.Tests
                         for (int j = 0; j < 100; j++)
                         {
                             var tile = new Vector2(j % 10, j / 10);
-                            service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,10] range
+                            service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,100] range
                             service.GetSoilHealth("Farm", tile);
                             service.UpdateHealth("Farm", tile, 1.0f);
                         }
@@ -944,7 +944,7 @@ namespace LivingRoots.Tests
             // Check a tile that would be among the later entries that should have been blocked
             var result = service.GetSoilHealth("Farm", new Vector2(5, 0)); // This would be tile #500+, should be 0
             
-            // Add missing assertion to verify that the monitor was called to log the limit exceeded warning
+            // Verify that the monitor was called to log the limit exceeded warning
             _mockMonitor.Verify(x => x.Log(It.Is<string>(msg => msg.Contains("Tile count limit") && msg.Contains("exceeded for location")), LogLevel.Warn), Times.AtLeastOnce);
             
             // The result should be 0.0f since the DoS protection limit would be reached and no entries beyond the limit should be processed
