@@ -254,7 +254,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.UpdateHealth(location, tile, 80.0f); // Should result in 50+80=130 -> clamp to 100 (MaxSoilHealth)
+            service.UpdateHealth(location, tile, 80.0f); // Should result in 50+80=130 -> clamp to 10 (MaxSoilHealth)
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
@@ -425,18 +425,18 @@ namespace LivingRoots.Tests
 
             // Strengthen the test by verifying the internal state more thoroughly
             // Check that all expected keys are present in the internal cache with correct values
-            var tile1010 = new Vector2(10, 10);
+            var tile10 = new Vector2(10, 10);
             var tile11 = new Vector2(11, 11);  
             var tile1212 = new Vector2(12, 12);
             var tile1313 = new Vector2(13, 13);
 
             // Verify that all entries were processed and stored with correct conversions
-            float result1010 = service.GetSoilHealth("Farm", tile1010);
+            float result10 = service.GetSoilHealth("Farm", tile10);
             float result11 = service.GetSoilHealth("Farm", tile11);  
             float result1212 = service.GetSoilHealth("Farm", tile1212);
             float result1313 = service.GetSoilHealth("Farm", tile1313);
             
-            Assert.Equal(0f, result1010); // NaN value converted to 0
+            Assert.Equal(0f, result10); // NaN value converted to 0
             Assert.Equal(0f, result11); // PositiveInfinity value converted to 0
             Assert.Equal(0f, result1212); // NegativeInfinity value converted to 0
             Assert.Equal(50.0f, result1313); // Valid value remains unchanged
@@ -909,13 +909,13 @@ namespace LivingRoots.Tests
             // Use invalid tile keys that will be processed (and counted) but skipped during parsing
             for (int i = 0; i < totalEntries; i++)
             {
-                // Use invalid tile keys in the format that will be processed but skipped (e.g., "x99,invalid", "x98,invalid", etc.)
-                // This ensures they are processed (and counted toward the limit) but skipped as invalid
-                validEntries[$"x{i:D2},invalid"] = 50.0f; // These will be processed and counted toward the limit, but skipped as invalid
+                // Use invalid tile keys in the format that will be processed but skipped
+                // Using numeric values to ensure proper ordering, but invalid formats like "0,invalid", "1,invalid", etc.
+                validEntries[$"{i:D3},invalid"] = 50.0f; // These will be processed and counted toward the limit, but skipped as invalid
             }
 
             // Add a valid key at the end to test that it's not processed due to the limit being reached
-            validEntries["x99,999"] = 75.0f; // This key should come after the invalid ones in alphabetical order
+            validEntries["9999,999"] = 75.0f; // This key should come after the invalid ones in alphabetical order
 
             var saveData = new SoilHealthState
             {
@@ -943,7 +943,10 @@ namespace LivingRoots.Tests
             // Assert: The cache should have limited entries due to DoS protection
             // The DoS protection should have been triggered and processing should have stopped
             // after reaching the limit, so the valid entry might not be present if it was processed after the limit
-            var result = service.GetSoilHealth("Farm", new Vector2(999, 999)); // Check for the valid entry we tried to add (x999,999 coordinates)
+            var result = service.GetSoilHealth("Farm", new Vector2(9999, 9999)); // Check for the valid entry we tried to add (999,999 coordinates)
+            
+            // The result should be 0.0f because the limit was reached and the valid entry was not processed
+            Assert.Equal(0.0f, result);
             
             // Verify that the monitor was called to log the limit exceeded warning
             _mockMonitor.Verify(x => x.Log(It.Is<string>(msg => msg.Contains("Tile count limit") && msg.Contains("exceeded for location")), LogLevel.Warn), Times.AtLeastOnce);

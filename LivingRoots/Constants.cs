@@ -16,7 +16,6 @@ namespace LivingRoots
         public const int MaxSaveIdLength = 200; // Maximum length for save IDs to prevent overlong filenames
         public const int MaxLocationNameLength = 100; // Maximum length for location names to prevent overlong strings
         
-        // New constants from code review feedback
         public const int MaxDataKeyLength = 200; // Maximum length for generated data keys (prefix + sanitized saveId)
         public const int MaxTilesPerSave = 100000; // Global limit for tile processing across all locations to prevent DoS attacks
     }

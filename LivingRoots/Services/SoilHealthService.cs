@@ -9,6 +9,7 @@ using LivingRoots;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
+using System.Runtime.InteropServices;
 
 namespace LivingRoots.Services
 {
@@ -124,9 +125,7 @@ namespace LivingRoots.Services
                     if (locationEntry.Key.Length > ModConstants.MaxLocationNameLength)
                     {
                         // Truncate the location name to prevent logging potentially malicious long names
-                        string truncatedLocationName = locationEntry.Key.Length > 50 
-                            ? locationEntry.Key.Substring(0, 50) + "..." 
-                            : locationEntry.Key;
+                        string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                         _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; skipping location '{truncatedLocationName}'.", LogLevel.Warn);
                         continue;
                     }
@@ -153,9 +152,7 @@ namespace LivingRoots.Services
                             if (!limitExceededLogged)
                             {
                                 // Truncate the location name to prevent logging potentially malicious long names
-                                string truncatedLocationName = locationEntry.Key.Length > 50 
-                                    ? locationEntry.Key.Substring(0, 50) + "..." 
-                                    : locationEntry.Key;
+                                string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                 _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationName}'; stopping tile processing for this location.", LogLevel.Warn);
                                 limitExceededLogged = true;
                             }
@@ -181,9 +178,7 @@ namespace LivingRoots.Services
                             if (!warnedForMalformedKey)
                             {
                                 // Truncate the location name to prevent logging potentially malicious long names
-                                string truncatedLocationName = locationEntry.Key.Length > 50 
-                                    ? locationEntry.Key.Substring(0, 50) + "..." 
-                                    : locationEntry.Key;
+                                string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                 _monitor.Log($"Null or whitespace tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                                 warnedForMalformedKey = true;
                             }
@@ -206,9 +201,7 @@ namespace LivingRoots.Services
                                 if (!warnedForMalformedKey)
                                 {
                                     // Truncate the location name to prevent logging potentially malicious long names
-                                    string truncatedLocationName = locationEntry.Key.Length > 50 
-                                        ? locationEntry.Key.Substring(0, 50) + "..." 
-                                        : locationEntry.Key;
+                                    string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                     _monitor.Log($"Extreme tile coordinates found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                                     warnedForMalformedKey = true;
                                 }
@@ -225,9 +218,7 @@ namespace LivingRoots.Services
                                 if (!warnedForInvalidValue)
                                 {
                                     // Truncate the location name to prevent logging potentially malicious long names
-                                    string truncatedLocationName = locationEntry.Key.Length > 50 
-                                        ? locationEntry.Key.Substring(0, 50) + "..." 
-                                        : locationEntry.Key;
+                                    string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                     _monitor.Log($"Invalid health value (NaN/Infinity) found in save data for location '{truncatedLocationName}'; converting to 0.", LogLevel.Warn);
                                     warnedForInvalidValue = true;
                                 }
@@ -239,10 +230,8 @@ namespace LivingRoots.Services
                                 if (!warnedForInvalidValue)
                                 {
                                     // Truncate the location name to prevent logging potentially malicious long names
-                                    string truncatedLocationName = locationEntry.Key.Length > 50 
-                                        ? locationEntry.Key.Substring(0, 50) + "..." 
-                                        : locationEntry.Key;
-                                    _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [0, 100].", LogLevel.Warn);
+                                    string truncatedLocationName = TruncateForLogging(locationEntry.Key);
+                                    _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [{ModConstants.MinSoilHealth}, {ModConstants.MaxSoilHealth}].", LogLevel.Warn);
                                     warnedForInvalidValue = true;
                                 }
                                 validatedValue = ClampHealthValue(validatedValue);
@@ -260,9 +249,7 @@ namespace LivingRoots.Services
                             if (!warnedForMalformedKey)
                             {
                                 // Truncate the location name to prevent logging potentially malicious long names
-                                string truncatedLocationName = locationEntry.Key.Length > 50 
-                                    ? locationEntry.Key.Substring(0, 50) + "..." 
-                                    : locationEntry.Key;
+                                string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                 _monitor.Log($"Malformed tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                                 warnedForMalformedKey = true;
                             }
@@ -501,9 +488,7 @@ namespace LivingRoots.Services
 
             // Pre-check for location name length violation to enable logging outside the lock
             bool logLocationNameTooLong = locationName.Length > ModConstants.MaxLocationNameLength;
-            string truncatedLocationName = locationName.Length > 50 
-                ? locationName.Substring(0, 50) + "..." 
-                : locationName;
+            string truncatedLocationName = TruncateForLogging(locationName);
 
             // Guard against invalid coordinates to prevent data corruption
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
@@ -562,9 +547,7 @@ namespace LivingRoots.Services
                     if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
                     {
                         // Truncate the location name to prevent logging potentially malicious long names
-                        truncatedLocationName = locationName.Length > 50 
-                            ? locationName.Substring(0, 50) + "..." 
-                            : locationName;
+                        truncatedLocationName = TruncateForLogging(locationName);
                         logLocationLimitExceeded = true;
                         return; // Refuse to add new location if we're over the limit
                     }
@@ -579,9 +562,7 @@ namespace LivingRoots.Services
                 if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                 {
                     // Truncate the location name to prevent logging potentially malicious long names
-                    truncatedLocationNameForTileLog = locationName.Length > 50 
-                        ? locationName.Substring(0, 50) + "..." 
-                        : locationName;
+                    truncatedLocationNameForTileLog = TruncateForLogging(locationName);
                     logTileLimitExceeded = true;
                     return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
                 }
@@ -615,9 +596,7 @@ namespace LivingRoots.Services
 
             // Pre-check for location name length violation to enable logging outside the lock
             bool logLocationNameTooLong = locationName.Length > ModConstants.MaxLocationNameLength;
-            string truncatedLocationName = locationName.Length > 50 
-                ? locationName.Substring(0, 50) + "..." 
-                : locationName;
+            string truncatedLocationName = TruncateForLogging(locationName);
 
             // Guard against invalid coordinates to prevent data corruption
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
@@ -683,9 +662,7 @@ namespace LivingRoots.Services
                         if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
                         {
                             // Truncate the location name to prevent logging potentially malicious long names
-                            truncatedLocationName = locationName.Length > 50 
-                                ? locationName.Substring(0, 50) + "..." 
-                                : locationName;
+                            truncatedLocationName = TruncateForLogging(locationName);
                             logLocationLimitExceeded = true;
                             return; // Refuse to add new locations if we're over the limit
                         }
@@ -700,9 +677,7 @@ namespace LivingRoots.Services
                     if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                     {
                         // Truncate the location name to prevent logging potentially malicious long names
-                        truncatedLocationNameForTileLog = locationName.Length > 50 
-                            ? locationName.Substring(0, 50) + "..." 
-                            : locationName;
+                        truncatedLocationNameForTileLog = TruncateForLogging(locationName);
                         logTileLimitExceeded = true;
                         return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
                     }
@@ -798,6 +773,19 @@ namespace LivingRoots.Services
                 _monitor.Log("SaveId sanitization failed due to an unexpected error.", LogLevel.Error);
                 return null; // Fail-fast approach: return null instead of a default key
             }
+        }
+        
+        /// <summary>
+        /// Truncates a string for safe logging to prevent potentially malicious long names from being logged.
+        /// </summary>
+        /// <param name="value">The string value to truncate</param>
+        /// <param name="maxLength">The maximum length before truncation (default 50)</param>
+        /// <returns>The original string if within length, otherwise a truncated version with "..." appended</returns>
+        private static string TruncateForLogging(string value, int maxLength = 50)
+        {
+            if (value.Length <= maxLength)
+                return value;
+            return string.Concat(value.AsSpan(0, maxLength), "...");
         }
     }
 }
