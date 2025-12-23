@@ -359,7 +359,8 @@ namespace LivingRoots.Tests
             Assert.NotNull(onGameLaunchedMethod);
 
             // Then simulate the game launch event to trigger command registration
-            onGameLaunchedMethod.Invoke(controller, new object[] { null, new GameLaunchedEventArgs() });
+            var gameLaunchedEventArgs = CreateInstanceWithFallback<GameLaunchedEventArgs>();
+            onGameLaunchedMethod.Invoke(controller, new object[] { null, gameLaunchedEventArgs });
 
             // Assert - Command should have been added to the console commands
             mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
@@ -439,7 +440,8 @@ namespace LivingRoots.Tests
             Assert.NotNull(onSaveLoadedMethod);
 
             // Act
-            onSaveLoadedMethod.Invoke(controller, new object[] { null, new SaveLoadedEventArgs() });
+            var saveLoadedEventArgs = CreateInstanceWithFallback<SaveLoadedEventArgs>();
+            onSaveLoadedMethod.Invoke(controller, new object[] { null, saveLoadedEventArgs });
 
             // Assert - Soil health service should have been called to load data
             _mockSoilHealthService.Verify(x => x.LoadData("test_save_id"), Times.Once);

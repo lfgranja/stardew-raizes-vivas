@@ -254,7 +254,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.UpdateHealth(location, tile, 80.0f); // Should result in 50+80=130 -> clamp to 10 (MaxSoilHealth)
+            service.UpdateHealth(location, tile, 80.0f); // Should result in 50+80=130 -> clamp to 100 (MaxSoilHealth)
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
@@ -770,7 +770,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public async Task ThreadSafety_MultipleThreadsAccessingService_DoesNotThrow()
+        public async System.Threading.Tasks.Task ThreadSafety_MultipleThreadsAccessingService_DoesNotThrow()
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -778,10 +778,10 @@ namespace LivingRoots.Tests
             var lockObj = new object();
 
             // Act - Multiple threads accessing the service simultaneously
-            var tasks = new List<Task>();
+            var tasks = new List<System.Threading.Tasks.Task>();
             for (int i = 0; i < 10; i++)
             {
-                var task = Task.Run(() =>
+                var task = System.Threading.Tasks.Task.Run(() =>
                 {
                     try
                     {
@@ -804,7 +804,7 @@ namespace LivingRoots.Tests
                 tasks.Add(task);
             }
 
-            await Task.WhenAll(tasks);
+            await System.Threading.Tasks.Task.WhenAll(tasks);
 
             // Assert - No exceptions should have occurred due to race conditions
             Assert.Empty(exceptions);
@@ -902,26 +902,24 @@ namespace LivingRoots.Tests
             // not just the ones that are saved, and triggers when the location limit is reached.
             var totalEntries = ModConstants.MaxTilesPerLocation; // 500 entries (exactly at the limit)
             
-            // Use SortedDictionary to ensure deterministic processing order
-            var validEntries = new SortedDictionary<string, float>();
-            
+            // Build the dictionary in insertion order: invalid entries first, then the single valid entry last.
+            var locationEntries = new Dictionary<string, float>(totalEntries + 1);
+
             // Add exactly MaxTilesPerLocation (500) invalid entries that will be processed but skipped
             // Use invalid tile keys that will be processed (and counted) but skipped during parsing
             for (int i = 0; i < totalEntries; i++)
             {
-                // Use invalid tile keys in the format that will be processed but skipped
-                // Using numeric values to ensure proper ordering, but invalid formats like "0,invalid", "1,invalid", etc.
-                validEntries[$"{i:D3},invalid"] = 50.0f; // These will be processed and counted toward the limit, but skipped as invalid
+                locationEntries.Add($"{i:D3},invalid", 50.0f);
             }
 
             // Add a valid key at the end to test that it's not processed due to the limit being reached
-            validEntries["9999,999"] = 75.0f; // This key should come after the invalid ones in alphabetical order
+            locationEntries.Add("9999,999", 75.0f);
 
             var saveData = new SoilHealthState
             {
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    ["Farm"] = new Dictionary<string, float>(validEntries) // Convert SortedDictionary to Dictionary
+                    ["Farm"] = locationEntries
                 }
             };
 
@@ -943,7 +941,7 @@ namespace LivingRoots.Tests
             // Assert: The cache should have limited entries due to DoS protection
             // The DoS protection should have been triggered and processing should have stopped
             // after reaching the limit, so the valid entry might not be present if it was processed after the limit
-            var result = service.GetSoilHealth("Farm", new Vector2(9999, 9999)); // Check for the valid entry we tried to add (999,999 coordinates)
+            var result = service.GetSoilHealth("Farm", new Vector2(9999, 999)); // Check for the valid entry we tried to add (9999,999 coordinates)
             
             // The result should be 0.0f because the limit was reached and the valid entry was not processed
             Assert.Equal(0.0f, result);
