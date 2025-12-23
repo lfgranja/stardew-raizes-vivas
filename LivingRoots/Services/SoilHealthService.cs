@@ -348,6 +348,10 @@ namespace LivingRoots.Services
                     if (string.IsNullOrWhiteSpace(location.Key) || location.Value == null)
                         continue;
 
+                    // ADD LOCATION NAME LENGTH CHECK: Check location name length during save to ensure consistency with load logic
+                    if (location.Key.Length > ModConstants.MaxLocationNameLength)
+                        continue;
+
                     var tileDict = new Dictionary<string, float>();
                     foreach (var tile in location.Value)
                     {
@@ -430,41 +434,18 @@ namespace LivingRoots.Services
 
         public float GetSoilHealth(string locationName, Vector2 tile)
         {
-            // Validate input to prevent potential exceptions
-            if (string.IsNullOrWhiteSpace(locationName))
+            // Use the validation helper to check for valid tile
+            if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
-                // Skip logging for invalid location name to reduce noise in frequently called methods
-                return 0f; // Return default (Poor Soil) if location is invalid
-            }
-
-            // Guard against invalid coordinates to prevent misleading lookups
-            if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
-            {
-                // Skip logging for invalid coordinates to reduce noise in frequently called methods
                 return 0f;
             }
-
-            // Check for potential integer overflow before converting coordinates
-            float fx = MathF.Floor(tile.X);
-            float fy = MathF.Floor(tile.Y);
-            if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
-            {
-                // Skip logging for coordinate range issues to reduce noise in frequently called methods
-                return 0f;
-            }
-
-            // Map to tile indices consistently (using MathF.Floor to handle negatives and fractions correctly)
-            int ix = (int)fx;
-            int iy = (int)fy;
 
             float result;
             lock (_lock)
             {
                 if (_runtimeCache.TryGetValue(locationName, out var tiles))
                 {
-                    var key = new Point(ix, iy);
-
-                    if (tiles.TryGetValue(key, out float health))
+                    if (tiles.TryGetValue(tilePoint, out float health))
                     {
                         result = health;
                     }
@@ -483,36 +464,15 @@ namespace LivingRoots.Services
 
         public void SetSoilHealth(string locationName, Vector2 tile, float value)
         {
-            // Validate input to prevent adding entries with invalid keys
-            if (string.IsNullOrWhiteSpace(locationName))
+            // Use the validation helper to check for valid tile
+            if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
-                // Skip logging for invalid location name to reduce noise in frequently called methods
                 return; // Skip if location is invalid
             }
 
             // Pre-check for location name length violation to enable logging outside the lock
             bool logLocationNameTooLong = locationName.Length > ModConstants.MaxLocationNameLength;
             string truncatedLocationName = TruncateForLogging(locationName);
-
-            // Guard against invalid coordinates to prevent data corruption
-            if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
-            {
-                // Skip logging for invalid coordinates to reduce noise in frequently called methods
-                return;
-            }
-
-            // Check for potential integer overflow before converting coordinates
-            float fx = MathF.Floor(tile.X);
-            float fy = MathF.Floor(tile.Y);
-            if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
-            {
-                // Skip logging for coordinate range issues to reduce noise in frequently called methods
-                return;
-            }
-
-            // Map to tile indices consistently (using MathF.Floor to handle negatives and fractions correctly)
-            int ix = (int)fx;
-            int iy = (int)fy;
 
             // Variables to track if we need to log warnings (set inside the lock, used outside)
             bool logLocationLimitExceeded = false;
@@ -531,12 +491,10 @@ namespace LivingRoots.Services
                 // Domain Rule: Clamp between 0 and 100 (aligning with documentation and MaxSoilHealth constant)
                 float clampedValue = ClampHealthValue(value);
 
-                var key = new Point(ix, iy);
-
                 // Don't store default values; keep the cache sparse to prevent unbounded growth.
                 if (clampedValue == 0f)
                 {
-                    if (_runtimeCache.TryGetValue(locationName, out var existingTiles) && existingTiles.Remove(key))
+                    if (_runtimeCache.TryGetValue(locationName, out var existingTiles) && existingTiles.Remove(tilePoint))
                     {
                         if (existingTiles.Count == 0)
                             _runtimeCache.Remove(locationName);
@@ -562,7 +520,7 @@ namespace LivingRoots.Services
                 
                 // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
                 // Check if this is a new tile (not an update) and apply tile limit only to new tiles
-                bool isExistingTile = tiles.ContainsKey(key);
+                bool isExistingTile = tiles.ContainsKey(tilePoint);
                 if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                 {
                     // Use the helper method to truncate the location name for logging
@@ -571,7 +529,7 @@ namespace LivingRoots.Services
                     return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
                 }
                 
-                tiles[key] = clampedValue;
+                tiles[tilePoint] = clampedValue;
             }
             
             // Log messages outside the lock to avoid blocking other threads
@@ -591,36 +549,15 @@ namespace LivingRoots.Services
 
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
         {
-            // Validate input to prevent adding entries with invalid keys
-            if (string.IsNullOrWhiteSpace(locationName))
+            // Use the validation helper to check for valid tile
+            if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
-                // Skip logging for invalid location name to reduce noise in frequently called methods
                 return; // Skip if location is invalid
             }
 
             // Pre-check for location name length violation to enable logging outside the lock
             bool logLocationNameTooLong = locationName.Length > ModConstants.MaxLocationNameLength;
             string truncatedLocationName = TruncateForLogging(locationName);
-
-            // Guard against invalid coordinates to prevent data corruption
-            if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
-            {
-                // Skip logging for invalid coordinates to reduce noise in frequently called methods
-                return;
-            }
-
-            // Check for potential integer overflow before converting coordinates
-            float fx = MathF.Floor(tile.X);
-            float fy = MathF.Floor(tile.Y);
-            if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
-            {
-                // Skip logging for coordinate range issues to reduce noise in frequently called methods
-                return;
-            }
-
-            // Map to tile indices consistently (using MathF.Floor to handle negatives and fractions correctly)
-            int ix = (int)fx;
-            int iy = (int)fy;
 
             // Variables to track if we need to log warnings (set inside the lock, used outside)
             bool logLocationLimitExceeded = false;
@@ -636,15 +573,13 @@ namespace LivingRoots.Services
                     return; // Refuse to update if location name is too long
                 }
 
-                var key = new Point(ix, iy);
-                
                 // OPTIMIZATION: Get the tiles dictionary once and reuse it to avoid redundant lookups
                 _runtimeCache.TryGetValue(locationName, out var tiles);
 
                 float currentHealth = 0f;
                 if (tiles != null)
                 {
-                    tiles.TryGetValue(key, out currentHealth);
+                    tiles.TryGetValue(tilePoint, out currentHealth);
                 }
 
                 float newHealth = ClampHealthValue(currentHealth + delta);
@@ -652,7 +587,7 @@ namespace LivingRoots.Services
                 if (newHealth == 0f)
                 {
                     // If the new value is the default, remove the entry to keep the cache sparse.
-                    if (tiles?.Remove(key) == true && tiles.Count == 0)
+                    if (tiles?.Remove(tilePoint) == true && tiles.Count == 0)
                     {
                         _runtimeCache.Remove(locationName);
                     }
@@ -677,7 +612,7 @@ namespace LivingRoots.Services
                     
                     // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
                     // Check if this is a new tile (not an update) and apply tile limit only to new tiles
-                    bool isExistingTile = tiles.ContainsKey(key);
+                    bool isExistingTile = tiles.ContainsKey(tilePoint);
                     if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                     {
                         // Use the helper method to truncate the location name for logging
@@ -686,7 +621,7 @@ namespace LivingRoots.Services
                         return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
                     }
                     
-                    tiles[key] = newHealth;
+                    tiles[tilePoint] = newHealth;
                 }
             }
             
@@ -790,6 +725,38 @@ namespace LivingRoots.Services
             if (value.Length <= maxLength)
                 return value;
             return string.Concat(value.AsSpan(0, maxLength), "...");
+        }
+        
+        /// <summary>
+        /// Validates the location name and tile coordinates, and returns the floored tile point if valid.
+        /// </summary>
+        /// <param name="locationName">The location name to validate</param>
+        /// <param name="tile">The tile coordinates to validate</param>
+        /// <param name="tilePoint">The floored tile point if validation passes</param>
+        /// <returns>True if both location name and tile coordinates are valid, otherwise false</returns>
+        private bool IsValidTile(string locationName, Vector2 tile, out Point tilePoint)
+        {
+            tilePoint = default;
+
+            if (string.IsNullOrWhiteSpace(locationName) || locationName.Length > ModConstants.MaxLocationNameLength)
+            {
+                return false;
+            }
+
+            if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
+            {
+                return false;
+            }
+
+            float fx = MathF.Floor(tile.X);
+            float fy = MathF.Floor(tile.Y);
+            if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
+            {
+                return false;
+            }
+
+            tilePoint = new Point((int)fx, (int)fy);
+            return true;
         }
     }
 }

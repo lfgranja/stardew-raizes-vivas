@@ -386,7 +386,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert - Should not throw any exceptions
             var ex = Record.Exception(() =>
-                printVersionMethod.Invoke(controller, new object[] { controller, new string[] { } })); // Pass controller as sender instead of null
+                printVersionMethod.Invoke(controller, new object[] { "lr_version", Array.Empty<string>() })); // Pass correct arguments for Action<string, string[]>
             Assert.Null(ex);
         }
 
@@ -410,7 +410,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert - Should not throw with help arguments
             var ex = Record.Exception(() =>
-                printVersionMethod.Invoke(controller, new object[] { controller, new string[] { "/?", "-help", "--h" } })); // Pass controller as sender instead of null
+                printVersionMethod.Invoke(controller, new object[] { "lr_version", new string[] { "/?", "-help", "--help" } })); // Pass correct arguments for Action<string, string[]>
             Assert.Null(ex);
         }
 
@@ -600,7 +600,12 @@ namespace LivingRoots.Tests
             var stateField = controller.GetType().GetField("_state", Flags);
             if (stateField == null)
                 throw new InvalidOperationException("Expected private field '_state' was not found.");
-            var currentValue = (int)stateField.GetValue(controller);
+            if (stateField.FieldType != typeof(int))
+                throw new InvalidOperationException("Expected private field '_state' to be of type int.");
+            
+            var raw = stateField.GetValue(controller);
+            if (raw is not int currentValue)
+                throw new InvalidOperationException("Private field '_state' returned an unexpected value.");
             stateField.SetValue(controller, currentValue | flag);
         }
 
@@ -610,7 +615,12 @@ namespace LivingRoots.Tests
             var stateField = controller.GetType().GetField("_state", Flags);
             if (stateField == null)
                 throw new InvalidOperationException("Expected private field '_state' was not found.");
-            var currentValue = (int)stateField.GetValue(controller);
+            if (stateField.FieldType != typeof(int))
+                throw new InvalidOperationException("Expected private field '_state' to be of type int.");
+            
+            var raw = stateField.GetValue(controller);
+            if (raw is not int currentValue)
+                throw new InvalidOperationException("Private field '_state' returned an unexpected value.");
             return (currentValue & flag) != 0;
         }
 
@@ -620,7 +630,13 @@ namespace LivingRoots.Tests
             var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaveLoaded", Flags);
             if (field == null)
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' was not found.");
-            return (int)field.GetValue(controller);
+            if (field.FieldType != typeof(int))
+                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' to be of type int.");
+            
+            var raw = field.GetValue(controller);
+            if (raw is not int value)
+                throw new InvalidOperationException("Private field '_saveIdUnavailableWarningShownOnSaveLoaded' returned an unexpected value.");
+            return value;
         }
 
         public static int GetSaveIdUnavailableWarningShownOnSaving(object controller)
@@ -629,7 +645,13 @@ namespace LivingRoots.Tests
             var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaving", Flags);
             if (field == null)
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' was not found.");
-            return (int)field.GetValue(controller);
+            if (field.FieldType != typeof(int))
+                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' to be of type int.");
+            
+            var raw = field.GetValue(controller);
+            if (raw is not int value)
+                throw new InvalidOperationException("Private field '_saveIdUnavailableWarningShownOnSaving' returned an unexpected value.");
+            return value;
         }
 
         public static void SetSaveIdUnavailableWarningShownOnSaveLoaded(object controller, int value)
@@ -638,6 +660,9 @@ namespace LivingRoots.Tests
             var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaveLoaded", Flags);
             if (field == null)
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' was not found.");
+            if (field.FieldType != typeof(int))
+                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' to be of type int.");
+            
             field.SetValue(controller, value);
         }
 
@@ -647,6 +672,9 @@ namespace LivingRoots.Tests
             var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaving", Flags);
             if (field == null)
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' was not found.");
+            if (field.FieldType != typeof(int))
+                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' to be of type int.");
+            
             field.SetValue(controller, value);
         }
     }
