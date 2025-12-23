@@ -37,13 +37,13 @@ namespace LivingRoots.Tests
         [Fact]
         public void Constructor_WithNullHelper_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController((IModHelper)null!, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(null as IModHelper, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullMonitor_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, (IMonitor)null!, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, null as IMonitor, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
@@ -286,7 +286,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // First register events to set up the controller
+            // First register events to initialize the controller
             controller.RegisterEvents();
 
             // Act - Dispose multiple times
@@ -315,7 +315,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // First register events to set up the controller
+            // First register events to initialize the controller
             controller.RegisterEvents();
 
             // Act - Simulate concurrent disposal from multiple threads
@@ -350,7 +350,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Register events first to initialize the command registration
+            // First register events to initialize the command registration
             controller.RegisterEvents();
 
             // Verify that the OnGameLaunched method exists before invoking it
@@ -360,7 +360,7 @@ namespace LivingRoots.Tests
 
             // Then simulate the game launch event to trigger command registration
             var gameLaunchedEventArgs = CreateInstanceWithFallback<GameLaunchedEventArgs>();
-            onGameLaunchedMethod.Invoke(controller, new object[] { null, gameLaunchedEventArgs });
+            onGameLaunchedMethod.Invoke(controller, new object[] { controller, gameLaunchedEventArgs }); // Pass controller as sender instead of null
 
             // Assert - Command should have been added to the console commands
             mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
@@ -386,7 +386,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert - Should not throw any exceptions
             var ex = Record.Exception(() =>
-                printVersionMethod.Invoke(controller, new object[] { "lr_version", new string[] { } }));
+                printVersionMethod.Invoke(controller, new object[] { "lr_version", new string[] { } })); // Pass correct parameters: command string and args array
             Assert.Null(ex);
         }
 
@@ -410,7 +410,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert - Should not throw with help arguments
             var ex = Record.Exception(() =>
-                printVersionMethod.Invoke(controller, new object[] { "lr_version", new string[] { "/?", "-help", "--h" } }));
+                printVersionMethod.Invoke(controller, new object[] { "lr_version", new string[] { "/?", "-help", "--h" } })); // Pass correct parameters: command string and args array
             Assert.Null(ex);
         }
 
@@ -431,7 +431,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Register events to ensure proper setup before calling OnSaveLoaded
+            // Register events first to set up the controller
             controller.RegisterEvents();
 
             // Verify that the OnSaveLoaded method exists before invoking it
@@ -441,7 +441,7 @@ namespace LivingRoots.Tests
 
             // Act
             var saveLoadedEventArgs = CreateInstanceWithFallback<SaveLoadedEventArgs>();
-            onSaveLoadedMethod.Invoke(controller, new object[] { null, saveLoadedEventArgs });
+            onSaveLoadedMethod.Invoke(controller, new object[] { controller, saveLoadedEventArgs }); // Pass controller as sender instead of null
 
             // Assert - Soil health service should have been called to load data
             _mockSoilHealthService.Verify(x => x.LoadData("test_save_id"), Times.Once);
@@ -464,7 +464,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Register events to ensure proper setup before calling OnSaving
+            // Register events first to ensure proper setup before calling OnSaving
             controller.RegisterEvents();
 
             // Verify that the OnSaving method exists before invoking it
@@ -474,7 +474,7 @@ namespace LivingRoots.Tests
 
             // Act - Create a real SavingEventArgs instance using Activator.CreateInstance with nonPublic: true as a preferred method
             var savingEventArgs = CreateInstanceWithFallback<SavingEventArgs>();
-            onSavingMethod.Invoke(controller, new object[] { null, savingEventArgs });
+            onSavingMethod.Invoke(controller, new object[] { controller, savingEventArgs }); // Pass controller as sender instead of null
 
             // Assert - Soil health service should have been called to save data
             _mockSoilHealthService.Verify(x => x.SaveData("test_save_id"), Times.Once);
