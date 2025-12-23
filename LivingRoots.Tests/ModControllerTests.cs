@@ -350,7 +350,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // First register events to initialize the command registration
+            // Register events first to initialize the command registration
             controller.RegisterEvents();
 
             // Verify that the OnGameLaunched method exists before invoking it
@@ -386,7 +386,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert - Should not throw any exceptions
             var ex = Record.Exception(() =>
-                printVersionMethod.Invoke(controller, new object[] { "lr_version", new string[] { } })); // Pass correct parameters: command string and args array
+                printVersionMethod.Invoke(controller, new object[] { controller, new string[] { } })); // Pass controller as sender instead of null
             Assert.Null(ex);
         }
 
@@ -410,7 +410,7 @@ namespace LivingRoots.Tests
 
             // Act & Assert - Should not throw with help arguments
             var ex = Record.Exception(() =>
-                printVersionMethod.Invoke(controller, new object[] { "lr_version", new string[] { "/?", "-help", "--h" } })); // Pass correct parameters: command string and args array
+                printVersionMethod.Invoke(controller, new object[] { controller, new string[] { "/?", "-help", "--h" } })); // Pass controller as sender instead of null
             Assert.Null(ex);
         }
 
@@ -431,7 +431,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Register events first to set up the controller
+            // Register events to ensure proper setup before calling OnSaveLoaded
             controller.RegisterEvents();
 
             // Verify that the OnSaveLoaded method exists before invoking it
@@ -464,7 +464,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Register events first to ensure proper setup before calling OnSaving
+            // Register events to ensure proper setup before calling OnSaving
             controller.RegisterEvents();
 
             // Verify that the OnSaving method exists before invoking it

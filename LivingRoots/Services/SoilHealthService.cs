@@ -344,6 +344,10 @@ namespace LivingRoots.Services
                         break;
                     }
 
+                    // ADD NULL CHECK FOR LOCATION KEY AND VALUE: Check for null/whitespace location name to prevent potential NullReferenceException during save
+                    if (string.IsNullOrWhiteSpace(location.Key) || location.Value == null)
+                        continue;
+
                     var tileDict = new Dictionary<string, float>();
                     foreach (var tile in location.Value)
                     {

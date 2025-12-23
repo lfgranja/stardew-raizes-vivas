@@ -320,7 +320,12 @@ namespace LivingRoots.Controllers
             {
                 // Clear the UnregisteringFlag AND CommandRegisteredFlag when done to guarantee proper reset of state
                 // This prevents potential issues where command registration might be blocked after unregistration
-                Interlocked.And(ref _state, ~(UnregisteringFlag | CommandRegisteredFlag));
+                // Only clear CommandRegisteredFlag if the controller is disposed to prevent issues where
+                // command registration might be blocked after unregistration
+                if (IsDisposed())
+                    Interlocked.And(ref _state, ~(UnregisteringFlag | CommandRegisteredFlag));
+                else
+                    Interlocked.And(ref _state, ~UnregisteringFlag);
             }
         }
 
