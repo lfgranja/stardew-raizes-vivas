@@ -7,6 +7,7 @@ using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
+using System.Threading;
 
 namespace LivingRoots.Controllers
 {
@@ -81,7 +82,7 @@ namespace LivingRoots.Controllers
             }
 
             // Don't register while another thread is actively unregistering.
-            if ((System.Threading.Volatile.Read(ref _state) & UnregisteringFlag) != 0)
+            if ((Volatile.Read(ref _state) & UnregisteringFlag) != 0)
             {
                 _monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
                 return;
@@ -106,7 +107,7 @@ namespace LivingRoots.Controllers
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                 // Clear the flag since we couldn't actually register anything
-                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
             }
 
@@ -132,7 +133,7 @@ namespace LivingRoots.Controllers
                 {
                     monitor.Log("Controller disposed during registration. Skipping event subscription.", LogLevel.Trace);
                     // Clear the flag since we didn't actually register anything
-                    System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                    Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                     return;
                 }
 
@@ -181,12 +182,12 @@ namespace LivingRoots.Controllers
                 }
 
                 // Use Interlocked.Exchange for thread-safe nullification of event handlers
-                System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
+                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                Interlocked.Exchange(ref _onSavingHandler, null);
 
                 // Clear the flag since registration failed
-                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
 
                 // According to code review feedback, we should NOT re-throw the exception to maintain consistency with tests
                 // The method should handle failures gracefully without propagating exceptions
@@ -199,7 +200,7 @@ namespace LivingRoots.Controllers
             int currentState, newState;
             do
             {
-                currentState = System.Threading.Volatile.Read(ref _state);
+                currentState = Volatile.Read(ref _state);
                 
                 // Check if events were registered before proceeding with the clear operation
                 if ((currentState & EventsRegisteredFlag) == 0)
@@ -215,7 +216,7 @@ namespace LivingRoots.Controllers
             // Use CompareExchange in a loop to atomically update the state
             // This implements the 'clear-and-claim' pattern by ensuring only one thread
             // can successfully clear the EventsRegisteredFlag
-            while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
@@ -231,9 +232,9 @@ namespace LivingRoots.Controllers
                     // Even when gameLoop is null, we've already claimed unregistration,
                     // so just nullify the event handler fields to ensure clean state
                     // Use Interlocked.Exchange for thread-safe nullification of event handlers
-                    System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                    System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                    System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
+                    Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                    Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                    Interlocked.Exchange(ref _onSavingHandler, null);
                     return;
                 }
 
@@ -311,14 +312,15 @@ namespace LivingRoots.Controllers
 
                 // Clear handler references AFTER successful unsubscription to prevent race conditions
                 // This ensures that even if exceptions occur during unsubscription, the references are cleaned up
-                System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
+                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                Interlocked.Exchange(ref _onSavingHandler, null);
             }
             finally
             {
-                // Clear the UnregisteringFlag when done to guarantee it's always cleared
-                System.Threading.Interlocked.And(ref _state, ~UnregisteringFlag);
+                // Clear the UnregisteringFlag AND CommandRegisteredFlag when done to guarantee proper reset of state
+                // This prevents potential issues where command registration might be blocked after unregistration
+                Interlocked.And(ref _state, ~(UnregisteringFlag | CommandRegisteredFlag));
             }
         }
 
@@ -364,7 +366,7 @@ namespace LivingRoots.Controllers
             lock (_commandLock)
             {
                 // Check if command is already registered using the state flag
-                if ((System.Threading.Volatile.Read(ref _state) & CommandRegisteredFlag) != 0)
+                if ((Volatile.Read(ref _state) & CommandRegisteredFlag) != 0)
                 {
                     return; // Already registered
                 }
@@ -389,7 +391,7 @@ namespace LivingRoots.Controllers
                     _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
 
                     // Set the command registered flag atomically - only after successful registration
-                    System.Threading.Interlocked.Or(ref _state, CommandRegisteredFlag);
+                    Interlocked.Or(ref _state, CommandRegisteredFlag);
                 }
                 catch (Exception ex)
                 {
@@ -407,7 +409,7 @@ namespace LivingRoots.Controllers
                     // Ensure the CommandRegisteredFlag is not set if registration failed
                     // This is important to maintain atomic state - if an exception occurs during registration,
                     // we don't want the flag to indicate success when it actually failed
-                    System.Threading.Interlocked.And(ref _state, ~CommandRegisteredFlag);
+                    Interlocked.And(ref _state, ~CommandRegisteredFlag);
                 }
             }
         }
@@ -463,7 +465,7 @@ namespace LivingRoots.Controllers
             int currentState, newState;
             do
             {
-                currentState = System.Threading.Volatile.Read(ref _state);
+                currentState = Volatile.Read(ref _state);
                 
                 // If the OnSaveLoadedExecutingFlag is already set, this method is already running, so return
                 if ((currentState & OnSaveLoadedExecutingFlag) != 0)
@@ -475,7 +477,7 @@ namespace LivingRoots.Controllers
                 // Calculate new state with the OnSaveLoadedExecutingFlag set
                 newState = currentState | OnSaveLoadedExecutingFlag;
             } 
-            while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             try
             {
@@ -492,7 +494,7 @@ namespace LivingRoots.Controllers
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
                     // Only show warning once to prevent log spam using Interlocked operations
-                    if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 1, 0) == 0)
+                    if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 1, 0) == 0)
                     {
                         // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
                         _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; skipping soil health load.", LogLevel.Warn);
@@ -501,7 +503,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Reset the warning flag when a valid save ID is found
-                if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 0, 1) == 1)
+                if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 0, 1) == 1)
                 {
                     // The flag was previously set to 1 (true), so we reset it to 0 (false)
                     // This means the warning was previously shown and is now being reset
@@ -527,7 +529,7 @@ namespace LivingRoots.Controllers
             finally
             {
                 // Clear the executing flag when done to allow future executions
-                System.Threading.Interlocked.And(ref _state, ~OnSaveLoadedExecutingFlag);
+                Interlocked.And(ref _state, ~OnSaveLoadedExecutingFlag);
             }
         }
 
@@ -538,7 +540,7 @@ namespace LivingRoots.Controllers
             int currentState, newState;
             do
             {
-                currentState = System.Threading.Volatile.Read(ref _state);
+                currentState = Volatile.Read(ref _state);
                 
                 // If the OnSavingExecutingFlag is already set, this method is already running, so return
                 if ((currentState & OnSavingExecutingFlag) != 0)
@@ -550,7 +552,7 @@ namespace LivingRoots.Controllers
                 // Calculate new state with the OnSavingExecutingFlag set
                 newState = currentState | OnSavingExecutingFlag;
             } 
-            while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             try
             {
@@ -567,7 +569,7 @@ namespace LivingRoots.Controllers
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
                     // Only show warning once to prevent log spam using Interlocked operations
-                    if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 1, 0) == 0)
+                    if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 1, 0) == 0)
                     {
                         // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
                         _monitor.Log("OnSaving: SaveFolderName unavailable; skipping soil health save.", LogLevel.Warn);
@@ -576,7 +578,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Reset the warning flag when a valid save ID is found
-                if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 0, 1) == 1)
+                if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 0, 1) == 1)
                 {
                     // The flag was previously set to 1 (true), so we reset it to 0 (false)
                     // This means the warning was previously shown and is now being reset
@@ -602,7 +604,7 @@ namespace LivingRoots.Controllers
             finally
             {
                 // Clear the executing flag when done to allow future executions
-                System.Threading.Interlocked.And(ref _state, ~OnSavingExecutingFlag);
+                Interlocked.And(ref _state, ~OnSavingExecutingFlag);
             }
         }
 
@@ -628,7 +630,7 @@ namespace LivingRoots.Controllers
         /// <returns>True if the controller is disposed, false otherwise</returns>
         private bool IsDisposed()
         {
-            return (System.Threading.Volatile.Read(ref _state) & DisposedFlag) != 0;
+            return (Volatile.Read(ref _state) & DisposedFlag) != 0;
         }
 
         /// <summary>
@@ -644,7 +646,7 @@ namespace LivingRoots.Controllers
             int newState;
             do
             {
-                currentState = System.Threading.Volatile.Read(ref _state);
+                currentState = Volatile.Read(ref _state);
                 
                 // Check if already disposed when trying to set other flags
                 if ((flag & ~DisposedFlag) != 0 && (currentState & DisposedFlag) != 0)
@@ -657,7 +659,7 @@ namespace LivingRoots.Controllers
                 // Calculate new state with the flag set
                 newState = currentState | flag;
 
-            } while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            } while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             return true; // Successfully set the flag
         }

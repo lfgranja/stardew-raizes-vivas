@@ -124,7 +124,7 @@ namespace LivingRoots.Services
                     // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
                     if (locationEntry.Key.Length > ModConstants.MaxLocationNameLength)
                     {
-                        // Truncate the location name to prevent logging potentially malicious long names
+                        // Use the new helper method to truncate the location name for logging
                         string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                         _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; skipping location '{truncatedLocationName}'.", LogLevel.Warn);
                         continue;
@@ -151,7 +151,7 @@ namespace LivingRoots.Services
                             // Only log once per location when the limit is reached
                             if (!limitExceededLogged)
                             {
-                                // Truncate the location name to prevent logging potentially malicious long names
+                                // Use the helper method to truncate the location name for logging
                                 string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                 _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationName}'; stopping tile processing for this location.", LogLevel.Warn);
                                 limitExceededLogged = true;
@@ -177,7 +177,7 @@ namespace LivingRoots.Services
                             // Only warn once per location for null/whitespace keys to prevent log spam
                             if (!warnedForMalformedKey)
                             {
-                                // Truncate the location name to prevent logging potentially malicious long names
+                                // Use the helper method to truncate the location name for logging
                                 string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                 _monitor.Log($"Null or whitespace tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                                 warnedForMalformedKey = true;
@@ -200,7 +200,7 @@ namespace LivingRoots.Services
                             {
                                 if (!warnedForMalformedKey)
                                 {
-                                    // Truncate the location name to prevent logging potentially malicious long names
+                                    // Use the helper method to truncate the location name for logging
                                     string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                     _monitor.Log($"Extreme tile coordinates found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                                     warnedForMalformedKey = true;
@@ -217,7 +217,7 @@ namespace LivingRoots.Services
                                 // Only warn once per location for invalid values to prevent log spam
                                 if (!warnedForInvalidValue)
                                 {
-                                    // Truncate the location name to prevent logging potentially malicious long names
+                                    // Use the helper method to truncate the location name for logging
                                     string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                     _monitor.Log($"Invalid health value (NaN/Infinity) found in save data for location '{truncatedLocationName}'; converting to 0.", LogLevel.Warn);
                                     warnedForInvalidValue = true;
@@ -229,7 +229,7 @@ namespace LivingRoots.Services
                                 // Only warn once per location for out-of-range values to prevent log spam
                                 if (!warnedForInvalidValue)
                                 {
-                                    // Truncate the location name to prevent logging potentially malicious long names
+                                    // Use the helper method to truncate the location name for logging
                                     string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                     _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [{ModConstants.MinSoilHealth}, {ModConstants.MaxSoilHealth}].", LogLevel.Warn);
                                     warnedForInvalidValue = true;
@@ -248,7 +248,7 @@ namespace LivingRoots.Services
                             // Only warn once per location for malformed keys to prevent log spam
                             if (!warnedForMalformedKey)
                             {
-                                // Truncate the location name to prevent logging potentially malicious long names
+                                // Use the helper method to truncate the location name for logging
                                 string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                 _monitor.Log($"Malformed tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                                 warnedForMalformedKey = true;
@@ -546,7 +546,7 @@ namespace LivingRoots.Services
                     // Check location count limit before creating a new location
                     if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
                     {
-                        // Truncate the location name to prevent logging potentially malicious long names
+                        // Use the helper method to truncate the location name for logging
                         truncatedLocationName = TruncateForLogging(locationName);
                         logLocationLimitExceeded = true;
                         return; // Refuse to add new location if we're over the limit
@@ -561,7 +561,7 @@ namespace LivingRoots.Services
                 bool isExistingTile = tiles.ContainsKey(key);
                 if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                 {
-                    // Truncate the location name to prevent logging potentially malicious long names
+                    // Use the helper method to truncate the location name for logging
                     truncatedLocationNameForTileLog = TruncateForLogging(locationName);
                     logTileLimitExceeded = true;
                     return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
@@ -661,7 +661,7 @@ namespace LivingRoots.Services
                         // Check location count limit before creating a new location
                         if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
                         {
-                            // Truncate the location name to prevent logging potentially malicious long names
+                            // Use the helper method to truncate the location name for logging
                             truncatedLocationName = TruncateForLogging(locationName);
                             logLocationLimitExceeded = true;
                             return; // Refuse to add new locations if we're over the limit
@@ -676,7 +676,7 @@ namespace LivingRoots.Services
                     bool isExistingTile = tiles.ContainsKey(key);
                     if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                     {
-                        // Truncate the location name to prevent logging potentially malicious long names
+                        // Use the helper method to truncate the location name for logging
                         truncatedLocationNameForTileLog = TruncateForLogging(locationName);
                         logTileLimitExceeded = true;
                         return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
