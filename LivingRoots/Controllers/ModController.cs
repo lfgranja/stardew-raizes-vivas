@@ -223,6 +223,7 @@ namespace LivingRoots.Controllers
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
             var helper = _helper;
+            bool allUnsubscribed = true;
 
             try
             {
@@ -231,12 +232,7 @@ namespace LivingRoots.Controllers
                 if (gameLoop == null)
                 {
                     monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
-                    // Even when gameLoop is null, we've already claimed unregistration and cleared EventsRegisteredFlag,
-                    // so just nullify the event handler fields to ensure clean state
-                    // Use Interlocked.Exchange for thread-safe nullification of event handlers
-                    System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                    System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                    System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
+                    allUnsubscribed = false;
                     return;
                 }
 
@@ -250,6 +246,8 @@ namespace LivingRoots.Controllers
                 bool gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(h => gameLoop.GameLaunched -= h, gameLaunchedHandler, "GameLaunched");
                 bool saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(h => gameLoop.SaveLoaded -= h, saveLoadedHandler, "SaveLoaded");
                 bool savingRemoved = SafeUnsubscribe<SavingEventArgs>(h => gameLoop.Saving -= h, savingHandler, "Saving");
+
+                allUnsubscribed = gameLaunchedRemoved && saveLoadedRemoved && savingRemoved;
 
                 monitor.Log("Events unregistered successfully.", LogLevel.Trace);
 
@@ -265,10 +263,10 @@ namespace LivingRoots.Controllers
             }
             finally
             {
-                // IMPLEMENT PROPER STATE UPDATE ORDERING: Clear the EventsRegisteredFlag AND UnregisteringFlag when done to guarantee proper reset of state
-                // This ensures that other threads can register events after unregistration completes
-                // Only clear CommandRegisteredFlag if the controller is disposed to prevent issues where
-                // command registration might be blocked after unregistration
+                // If any unsubscribe failed, allow a future retry (unless disposed).
+                if (!allUnsubscribed && !IsDisposed())
+                    System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
+
                 if (IsDisposed())
                     System.Threading.Interlocked.And(ref _state, ~(UnregisteringFlag | EventsRegisteredFlag | CommandRegisteredFlag));
                 else
