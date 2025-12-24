@@ -32,6 +32,10 @@ namespace LivingRoots.Tests
             _mockModDataService = new Mock<IModDataService>();
             _mockSoilHealthService = new Mock<ISoilHealthService>();
             _mockSaveIdProvider = new Mock<ISaveIdProvider>();
+
+            // Add default setup for _mockManifest properties to prevent NullReferenceException
+            _mockManifest.Setup(x => x.UniqueID).Returns("test.mod.id");
+            _mockManifest.Setup(x => x.Version).Returns(new Version(1, 0));
         }
 
         [Fact]
