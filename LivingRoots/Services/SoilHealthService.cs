@@ -407,95 +407,9 @@ namespace LivingRoots.Services
 
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
         {
-            // Use the validation helper to check for a valid tile
-            if (!IsValidTile(locationName, tile, out Point tilePoint))
-            {
-                return; // Skip if location is invalid
-            }
-
-            // Pre-check for location name length violation to enable logging outside the lock
-            bool logLocationNameTooLong = locationName.Length > ModConstants.MaxLocationNameLength;
-            string truncatedLocationName = TruncateForLogging(locationName);
-
-            // Variables to track if we need to log warnings (set inside the lock, used outside)
-            bool logLocationLimitExceeded = false;
-            bool logTileLimitExceeded = false;
-            string truncatedLocationNameForTileLog = "";
-
-            lock (_lock)
-            {
-                // If location name is too long, exit early without modifying anything
-                if (logLocationNameTooLong)
-                {
-                    // We already captured the info needed for logging outside the lock
-                    return; // Refuse to update if location name is too long
-                }
-
-                // OPTIMIZATION: Get the tiles dictionary once and reuse it to avoid redundant lookups
-                _runtimeCache.TryGetValue(locationName, out var tiles);
-
-                float currentHealth = 0f;
-                if (tiles != null)
-                {
-                    tiles.TryGetValue(tilePoint, out currentHealth);
-                }
-
-                float newHealth = ClampHealthValue(currentHealth + delta);
-
-                if (newHealth == 0f)
-                {
-                    // If the new value is the default, remove the entry to keep the cache sparse.
-                    if (tiles?.Remove(tilePoint) == true && tiles.Count == 0)
-                    {
-                        _runtimeCache.Remove(locationName);
-                    }
-                }
-                else
-                {
-                    // Otherwise, add or update the entry.
-                    if (tiles == null)
-                    {
-                        // Check location count limit before creating a new location
-                        if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
-                        {
-                            // Use the helper method to truncate the location name for logging
-                            truncatedLocationName = TruncateForLogging(locationName);
-                            logLocationLimitExceeded = true;
-                            return; // Refuse to add new location if we're over the limit
-                        }
-                        
-                        tiles = new Dictionary<Point, float>();
-                        _runtimeCache[locationName] = tiles;
-                    }
-                    
-                    // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
-                    // Check if this is a new tile (not an update) and apply the tile limit only to new tiles
-                    bool isExistingTile = tiles.ContainsKey(tilePoint);
-                    if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
-                    {
-                        // Use the helper method to truncate the location name for logging
-                        truncatedLocationNameForTileLog = TruncateForLogging(locationName);
-                        logTileLimitExceeded = true;
-                        return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
-                    }
-                    
-                    tiles[tilePoint] = newHealth;
-                }
-            }
-            
-            // Log messages outside the lock to avoid blocking other threads
-            if (logLocationNameTooLong)
-            {
-                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to update health.", LogLevel.Warn);
-            }
-            else if (logLocationLimitExceeded)
-            {
-                _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
-            }
-            else if (logTileLimitExceeded)
-            {
-                _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationNameForTileLog}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
-            }
+            // Reuse existing methods to ensure validation, thread-safety, and cache logic are applied consistently.
+            float currentHealth = GetSoilHealth(locationName, tile);
+            SetSoilHealth(locationName, tile, currentHealth + delta);
         }
         
         private float ClampHealthValue(float value)
