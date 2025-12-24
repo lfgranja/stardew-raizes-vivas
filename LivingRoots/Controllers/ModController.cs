@@ -20,11 +20,11 @@ namespace LivingRoots.Controllers
         private const int OnSaveLoadedExecutingFlag = 1 << 3;
         private const int OnSavingExecutingFlag = 1 << 4;
         private const int UnregisteringFlag = 1 << 5;
-        private int _state = 0; // Combine flags in single volatile field
+        internal int _state = 0; // Combine flags in single volatile field
         
         // Warning flag for preventing repeated log spam - using Interlocked operations for thread safety
-        private int _saveIdUnavailableWarningShownOnSaveLoaded = 0; // 0 = false, 1 = true
-        private int _saveIdUnavailableWarningShownOnSaving = 0; // 0 = false, 1 = true
+        internal int _saveIdUnavailableWarningShownOnSaveLoaded = 0; // 0 = false, 1 = true
+        internal int _saveIdUnavailableWarningShownOnSaving = 0; // 0 = false, 1 = true
 
         // Dependencies
         private readonly IModHelper _helper;
@@ -614,7 +614,7 @@ namespace LivingRoots.Controllers
         /// Checks if the controller has been disposed of.
         /// </summary>
         /// <returns>True if the controller is disposed, false otherwise</returns>
-        private bool IsDisposed()
+        internal bool IsDisposed()
         {
             return (System.Threading.Volatile.Read(ref _state) & DisposedFlag) != 0;
         }
@@ -626,7 +626,7 @@ namespace LivingRoots.Controllers
         /// </summary>
         /// <param name="flag">The flag to set</param>
         /// <returns>True if the flag was set, false if it was already set</returns>
-        private bool TrySetStateFlag(int flag)
+        internal bool TrySetStateFlag(int flag)
         {
             int currentState;
             int newState;

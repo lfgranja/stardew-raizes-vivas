@@ -366,7 +366,7 @@ namespace LivingRoots.Tests
                 onGameLaunchedMethod.Invoke(controller, new object[] { controller, gameLaunchedEventArgs })); // Pass controller as sender instead of null
             Assert.Null(invokeEx);
 
-            // Assert - Command should have been added to the console commands
+            // Assert - Command should have been added to console commands
             mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
         }
 
@@ -529,16 +529,16 @@ namespace LivingRoots.Tests
             const int testFlag = 1 << 0; // Use EventsRegisteredFlag for testing
 
             // Act
-            bool result = PrivateMethodHelper.TrySetStateFlag(controller, testFlag);
+            bool result = controller.TrySetStateFlag(testFlag);
 
             // Assert - Should successfully set the flag
             Assert.True(result);
-            Assert.True(PrivateMethodHelper.HasStateFlag(controller, testFlag));
+            Assert.True((controller._state & testFlag) != 0);
 
             // Act - Try to set the same flag again
-            bool result2 = PrivateMethodHelper.TrySetStateFlag(controller, testFlag);
+            bool result2 = controller.TrySetStateFlag(testFlag);
 
-            // Assert - Should return false since flag is already set
+            // Assert - Should return false since the flag is already set
             Assert.False(result2);
         }
 
@@ -551,10 +551,10 @@ namespace LivingRoots.Tests
             const int eventsRegisteredFlag = 1 << 0; // Use EventsRegisteredFlag
 
             // First set the disposed flag
-            PrivateMethodHelper.SetStateFlag(controller, disposedFlag);
+            controller._state = disposedFlag;
 
             // Act - Try to set another flag when disposed
-            bool result = PrivateMethodHelper.TrySetStateFlag(controller, eventsRegisteredFlag);
+            bool result = controller.TrySetStateFlag(eventsRegisteredFlag);
 
             // Assert - Should return false when trying to set other flags when disposed
             Assert.False(result);
@@ -567,16 +567,16 @@ namespace LivingRoots.Tests
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act & Assert - Initially should be false (0)
-            Assert.Equal(0, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaveLoaded(controller));
-            Assert.Equal(0, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaving(controller));
+            Assert.Equal(0, controller._saveIdUnavailableWarningShownOnSaveLoaded);
+            Assert.Equal(0, controller._saveIdUnavailableWarningShownOnSaving);
 
             // Act - Change properties to true (1)
-            PrivateMethodHelper.SetSaveIdUnavailableWarningShownOnSaveLoaded(controller, 1);
-            PrivateMethodHelper.SetSaveIdUnavailableWarningShownOnSaving(controller, 1);
+            controller._saveIdUnavailableWarningShownOnSaveLoaded = 1;
+            controller._saveIdUnavailableWarningShownOnSaving = 1;
 
             // Assert - Should now be true (1)
-            Assert.Equal(1, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaveLoaded(controller));
-            Assert.Equal(1, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaving(controller));
+            Assert.Equal(1, controller._saveIdUnavailableWarningShownOnSaveLoaded);
+            Assert.Equal(1, controller._saveIdUnavailableWarningShownOnSaving);
         }
 
         /// <summary>
@@ -606,113 +606,6 @@ namespace LivingRoots.Tests
                 // If creation fails, throw an informative exception
                 throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} for tests.", ex);
             }
-        }
-    }
-
-    // Helper class to access private methods and properties for testing
-    internal static class PrivateMethodHelper
-    {
-        private static readonly BindingFlags Flags = BindingFlags.NonPublic | BindingFlags.Instance;
-
-        // Helper methods for accessing private methods/fields/properties
-        public static bool IsDisposed(object controller)
-        {
-            var method = controller.GetType().GetMethod("IsDisposed", Flags);
-            if (method == null)
-                throw new InvalidOperationException("Expected private method 'IsDisposed' was not found.");
-            return (bool)method.Invoke(controller, Array.Empty<object>());
-        }
-
-        public static bool TrySetStateFlag(object controller, int flag)
-        {
-            var method = controller.GetType().GetMethod("TrySetStateFlag", Flags);
-            if (method == null)
-                throw new InvalidOperationException("Expected private method 'TrySetStateFlag' was not found.");
-            return (bool)method.Invoke(controller, new object[] { flag });
-        }
-
-        public static void SetStateFlag(object controller, int flag)
-        {
-            // Use reflection to access the _state field directly to set the flag
-            var stateField = controller.GetType().GetField("_state", Flags);
-            if (stateField == null)
-                throw new InvalidOperationException("Expected private field '_state' was not found.");
-            if (stateField.FieldType != typeof(int))
-                throw new InvalidOperationException("Expected private field '_state' to be of type int.");
-
-            var raw = stateField.GetValue(controller);
-            if (raw is not int currentValue)
-                throw new InvalidOperationException("Private field '_state' returned an unexpected value.");
-            stateField.SetValue(controller, currentValue | flag);
-        }
-
-        public static bool HasStateFlag(object controller, int flag)
-        {
-            // Use reflection to access the _state field directly to check the flag
-            var stateField = controller.GetType().GetField("_state", Flags);
-            if (stateField == null)
-                throw new InvalidOperationException("Expected private field '_state' was not found.");
-            if (stateField.FieldType != typeof(int))
-                throw new InvalidOperationException("Expected private field '_state' to be of type int.");
-
-            var raw = stateField.GetValue(controller);
-            if (raw is not int currentValue)
-                throw new InvalidOperationException("Private field '_state' returned an unexpected value.");
-            return (currentValue & flag) != 0;
-        }
-
-        public static int GetSaveIdUnavailableWarningShownOnSaveLoaded(object controller)
-        {
-            // Access the private field _saveIdUnavailableWarningShownOnSaveLoaded
-            var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaveLoaded", Flags);
-            if (field == null)
-                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' was not found.");
-            if (field.FieldType != typeof(int))
-                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' to be of type int.");
-
-            var raw = field.GetValue(controller);
-            if (raw is not int value)
-                throw new InvalidOperationException("Private field '_saveIdUnavailableWarningShownOnSaveLoaded' returned an unexpected value.");
-            return value;
-        }
-
-        public static int GetSaveIdUnavailableWarningShownOnSaving(object controller)
-        {
-            // Access the private field _saveIdUnavailableWarningShownOnSaving
-            var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaving", Flags);
-            if (field == null)
-                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' was not found.");
-            if (field.FieldType != typeof(int))
-                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' to be of type int.");
-
-            var raw = field.GetValue(controller);
-            if (raw is not int value)
-                throw new InvalidOperationException("Private field '_saveIdUnavailableWarningShownOnSaving' returned an unexpected value.");
-            return value;
-        }
-
-        public static void SetSaveIdUnavailableWarningShownOnSaveLoaded(object controller, int value)
-        {
-            // Set the private field _saveIdUnavailableWarningShownOnSaveLoaded
-            var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaveLoaded", Flags);
-            if (field == null)
-                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' was not found.");
-            if (field.FieldType != typeof(int))
-                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' to be of type int.");
-
-            field.SetValue(controller, value);
-        }
-
-        public static void SetSaveIdUnavailableWarningShownOnSaving(object controller, int value)
-        {
-            // Set the private field _saveIdUnavailableWarningShownOnSaving
-            var field = controller.GetType().GetField("_saveIdUnavailableWarningShownOnSaving", Flags);
-            if (field == null)
-                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' was not found.");
-            if (field.FieldType != typeof(int))
-                throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' to be of type int.");
-
-            field.SetValue(controller, value);
         }
     }
 }
