@@ -302,6 +302,15 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
+            // Add explicit SetupAdd and SetupRemove for all events to ensure Moq reliably tracks event subscriptions and unsubscriptions
+            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents.SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>());
+            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>());
+
+            mockGameLoopEvents.SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents.SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>());
+            mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>());
+
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // First register events to initialize the controller
@@ -525,6 +534,10 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             
+            // Add explicit SetupAdd and SetupRemove for GameLaunched event to ensure Moq reliably tracks event subscriptions
+            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents.SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            
             // Register events to verify controller is functional before disposal
             controller.RegisterEvents();
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
@@ -654,10 +667,10 @@ namespace LivingRoots.Tests
                     
                     return instance;
                 }
-                catch
+                catch (Exception innerEx)
                 {
-                    // If both methods fail, throw an informative exception
-                    throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} for tests. Both Activator.CreateInstance and FormatterServices.GetUninitializedObject failed.", ex);
+                    // If both methods fail, throw an informative exception that includes both failures.
+                    throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} for tests. Both Activator.CreateInstance and FormatterServices.GetUninitializedObject failed.", new AggregateException(ex, innerEx));
                 }
             }
         }
