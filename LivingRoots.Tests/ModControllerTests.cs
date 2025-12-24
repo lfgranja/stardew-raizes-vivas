@@ -35,7 +35,7 @@ namespace LivingRoots.Tests
 
             // Add default setup for _mockManifest properties to prevent NullReferenceException
             _mockManifest.Setup(x => x.UniqueID).Returns("test.mod.id");
-            _mockManifest.Setup(x => x.Version).Returns(new Version(1, 0));
+            _mockManifest.Setup(x => x.Version).Returns(new StardewModdingAPI.SemanticVersion(1, 0, 0));
         }
 
         [Fact]
