@@ -82,7 +82,7 @@ namespace LivingRoots.Controllers
             }
 
             // Don't register while another thread is actively unregistering.
-            if ((System.Threading.Volatile.Read(ref _state) & UnregisteringFlag) != 0)
+            if ((Volatile.Read(ref _state) & UnregisteringFlag) != 0)
             {
                 _monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
                 return;
@@ -107,7 +107,7 @@ namespace LivingRoots.Controllers
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                 // Clear the flag since we couldn't actually register anything
-                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
             }
 
@@ -133,7 +133,7 @@ namespace LivingRoots.Controllers
                 {
                     monitor.Log("Controller disposed during registration. Skipping event subscription.", LogLevel.Trace);
                     // Clear the flag since we didn't actually register anything
-                    System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                    Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                     return;
                 }
 
@@ -182,12 +182,12 @@ namespace LivingRoots.Controllers
                 }
 
                 // Use Interlocked.Exchange for thread-safe nullification of event handlers
-                System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
+                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                Interlocked.Exchange(ref _onSavingHandler, null);
 
                 // Clear the flag since registration failed
-                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
 
                 // According to code review feedback, we should NOT re-throw the exception to maintain consistency with tests
                 // The method should handle failures gracefully without propagating exceptions
@@ -200,7 +200,7 @@ namespace LivingRoots.Controllers
             int currentState, newState;
             do
             {
-                currentState = System.Threading.Volatile.Read(ref _state);
+                currentState = Volatile.Read(ref _state);
                 
                 // Check if events were registered before proceeding with the clear operation
                 if ((currentState & EventsRegisteredFlag) == 0)
@@ -210,12 +210,14 @@ namespace LivingRoots.Controllers
                     return;
                 }
                 
-                // Claim unregistration and prevent concurrent registrations.
-                newState = currentState | UnregisteringFlag;
+                // IMPLEMENT PROPER STATE UPDATE ORDERING: Claim unregistration AND clear the EventsRegisteredFlag atomically
+                // This ensures that no new registrations can happen while unregistration is in progress
+                // and that other threads attempting to unregister will see EventsRegisteredFlag is clear and return early
+                newState = (currentState | UnregisteringFlag) & ~EventsRegisteredFlag;
             }
             // Use CompareExchange in a loop to atomically update the state
             // This implements the 'clear-and-claim' pattern by ensuring only one thread
-            // can successfully clear the EventsRegisteredFlag
+            // can successfully claim unregistration and clear the EventsRegisteredFlag
             while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
@@ -229,7 +231,7 @@ namespace LivingRoots.Controllers
                 if (gameLoop == null)
                 {
                     monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
-                    // Even when gameLoop is null, we've already claimed unregistration,
+                    // Even when gameLoop is null, we've already claimed unregistration and cleared EventsRegisteredFlag,
                     // so just nullify the event handler fields to ensure clean state
                     // Use Interlocked.Exchange for thread-safe nullification of event handlers
                     System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
@@ -245,15 +247,15 @@ namespace LivingRoots.Controllers
                 var savingHandler = _onSavingHandler;
 
                 // IMPLEMENT DRY PRINCIPLE: Use SafeUnsubscribe helper method to reduce code duplication
-                bool gameLaunchedRemoved = SafeUnsubscribe(handler => gameLoop.GameLaunched -= handler, gameLaunchedHandler, "GameLaunched");
-                bool saveLoadedRemoved = SafeUnsubscribe(handler => gameLoop.SaveLoaded -= handler, saveLoadedHandler, "SaveLoaded");
-                bool savingRemoved = SafeUnsubscribe(handler => gameLoop.Saving -= handler, savingHandler, "Saving");
+                bool gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(h => gameLoop.GameLaunched -= h, gameLaunchedHandler, "GameLaunched");
+                bool saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(h => gameLoop.SaveLoaded -= h, saveLoadedHandler, "SaveLoaded");
+                bool savingRemoved = SafeUnsubscribe<SavingEventArgs>(h => gameLoop.Saving -= h, savingHandler, "Saving");
 
                 monitor.Log("Events unregistered successfully.", LogLevel.Trace);
 
                 // Clear handler references AFTER successful unsubscription to prevent race conditions
                 // This ensures that even if exceptions occur during unsubscription, the references are cleaned up
-                // Only clear handler references after successful unsubscription
+                // Only clear references if the unsubscription was successful
                 if (gameLaunchedRemoved)
                     System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                 if (saveLoadedRemoved)
@@ -263,14 +265,14 @@ namespace LivingRoots.Controllers
             }
             finally
             {
-                // IMPLEMENT PROPER STATE UPDATE ORDERING: Clear the EventsRegisteredFlag AND UnregisteringFlag when done
+                // IMPLEMENT PROPER STATE UPDATE ORDERING: Clear the EventsRegisteredFlag AND UnregisteringFlag when done to guarantee proper reset of state
                 // This ensures that other threads can register events after unregistration completes
                 // Only clear CommandRegisteredFlag if the controller is disposed to prevent issues where
                 // command registration might be blocked after unregistration
                 if (IsDisposed())
-                    System.Threading.Interlocked.And(ref _state, ~(UnregisteringFlag | CommandRegisteredFlag));
+                    System.Threading.Interlocked.And(ref _state, ~(UnregisteringFlag | EventsRegisteredFlag | CommandRegisteredFlag));
                 else
-                    System.Threading.Interlocked.And(ref _state, ~UnregisteringFlag);
+                    System.Threading.Interlocked.And(ref _state, ~(UnregisteringFlag | EventsRegisteredFlag));
             }
         }
 
@@ -281,7 +283,7 @@ namespace LivingRoots.Controllers
         /// <param name="unsubscribeAction">The action to perform the unsubscription</param>
         /// <param name="handler">The event handler to unsubscribe</param>
         /// <param name="eventName">The name of the event for logging purposes</param>
-        /// <returns>True if unsubscription was attempted (regardless of success), false if handler was null</returns>
+        /// <returns>True if unsubscription was attempted and succeeded, false if handler was null or unsubscription failed</returns>
         private bool SafeUnsubscribe<T>(Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
         {
             if (handler == null) return false;
@@ -303,7 +305,7 @@ namespace LivingRoots.Controllers
                 #if DEBUG
                 _monitor.Log(ex.StackTrace ?? $"{eventName} unsubscription stack trace unavailable.", LogLevel.Trace);
                 #endif
-                return true; // Indicate that we attempted unsubscription even if it failed
+                return false; // Indicate that unsubscription failed
             }
         }
 
@@ -332,111 +334,6 @@ namespace LivingRoots.Controllers
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
                 _monitor.Log(ex.StackTrace ?? "OnGameLaunched stack trace unavailable.", LogLevel.Trace);
-                #endif
-            }
-        }
-
-        private void RegisterConsoleCommand()
-        {
-            // Early disposal check: prevent registration if controller is already disposed
-            if (IsDisposed())
-            {
-                _monitor.Log("Controller is disposed, skipping console command registration.", LogLevel.Trace);
-                return;
-            }
-
-            // Use a lock to ensure thread safety when registering the command
-            lock (_commandLock)
-            {
-                // Check if command is already registered using the state flag
-                if ((System.Threading.Volatile.Read(ref _state) & CommandRegisteredFlag) != 0)
-                {
-                    return; // Already registered
-                }
-
-                // Double-check disposed state inside the lock to prevent race condition
-                if (IsDisposed())
-                {
-                    _monitor.Log("Controller disposed during command registration. Skipping command registration.", LogLevel.Trace);
-                    return;
-                }
-
-                try
-                {
-                    // Add null check for _helper and _helper.ConsoleCommands to prevent NullReferenceException
-                    if (_helper?.ConsoleCommands == null)
-                    {
-                        _monitor.Log("ConsoleCommands is null, cannot register console command 'lr_version'.", LogLevel.Error);
-                        return;
-                    }
-                    
-                    _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
-                    _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
-
-                    // Set the command registered flag atomically - only after successful registration
-                    System.Threading.Interlocked.Or(ref _state, CommandRegisteredFlag);
-                }
-                catch (Exception ex)
-                {
-                    // Log error but don't expose raw exception message for security
-                    _monitor.Log("Error occurred while registering console command 'lr_version'.", LogLevel.Error);
-                    
-                    // Add trace-level exception details for debugging
-                    _monitor.Log($"RegisterConsoleCommand exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                    
-                    // Add stack trace logging for better diagnostics without exposing sensitive information
-                    #if DEBUG
-                    _monitor.Log(ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.", LogLevel.Trace);
-                    #endif
-                    
-                    // Ensure the CommandRegisteredFlag is not set if registration failed
-                    // This is important to maintain atomic state - if an exception occurs during registration,
-                    // we don't want the flag to indicate success when it actually failed
-                    System.Threading.Interlocked.And(ref _state, ~CommandRegisteredFlag);
-                }
-            }
-        }
-
-        private void PrintVersion(string command, string[] args)
-        {
-            // Skip if controller has been disposed
-            if (IsDisposed())
-                return;
-
-            // Snapshot dependencies to local variables to avoid NullReferenceExceptions
-            var monitor = _monitor;
-            var manifest = _manifest;
-
-            try
-            {
-                // Add null check for args parameter and use case-insensitive comparison
-                args = args ?? Array.Empty<string>();
-
-                // Check if any non-whitespace argument matches a help flag using LINQ Any()
-                if (args.Any(arg => !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg)))
-                {
-                    monitor?.Log("Usage: lr_version", LogLevel.Info);
-                    monitor?.Log("Shows the Living Roots version and UniqueID.", LogLevel.Info);
-                    return;
-                }
-
-                // Use the standard version.ToString() method which provides consistent output
-                var version = manifest?.Version;
-                string versionString = version?.ToString() ?? "unknown";
-
-                monitor?.Log($"Living Roots Mod Version: {versionString} (UniqueID: {manifest?.UniqueID ?? "unknown"})", LogLevel.Info);
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't expose raw exception message for security
-                _monitor?.Log("Error occurred while executing version command.", LogLevel.Error);
-                
-                // Add trace-level exception details for debugging
-                _monitor?.Log($"PrintVersion exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                
-                // Add stack trace logging for better diagnostics without exposing sensitive information
-                #if DEBUG
-                _monitor?.Log(ex.StackTrace ?? "PrintVersion stack trace unavailable.", LogLevel.Trace);
                 #endif
             }
         }
@@ -588,6 +485,111 @@ namespace LivingRoots.Controllers
             {
                 // Clear the executing flag when done to allow future executions
                 System.Threading.Interlocked.And(ref _state, ~OnSavingExecutingFlag);
+            }
+        }
+
+        private void RegisterConsoleCommand()
+        {
+            // Early disposal check: prevent registration if controller is already disposed
+            if (IsDisposed())
+            {
+                _monitor.Log("Controller is disposed, skipping console command registration.", LogLevel.Trace);
+                return;
+            }
+
+            // Use a lock to ensure thread safety when registering the command
+            lock (_commandLock)
+            {
+                // Check if command is already registered using the state flag
+                if ((System.Threading.Volatile.Read(ref _state) & CommandRegisteredFlag) != 0)
+                {
+                    return; // Already registered
+                }
+
+                // Double-check disposed state inside the lock to prevent race condition
+                if (IsDisposed())
+                {
+                    _monitor.Log("Controller disposed during command registration. Skipping command registration.", LogLevel.Trace);
+                    return;
+                }
+
+                try
+                {
+                    // Add null check for _helper and _helper.ConsoleCommands to prevent NullReferenceException
+                    if (_helper?.ConsoleCommands == null)
+                    {
+                        _monitor.Log("ConsoleCommands is null, cannot register console command 'lr_version'.", LogLevel.Error);
+                        return;
+                    }
+                    
+                    _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
+                    _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+
+                    // Set the command registered flag atomically - only after successful registration
+                    System.Threading.Interlocked.Or(ref _state, CommandRegisteredFlag);
+                }
+                catch (Exception ex)
+                {
+                    // Log error but don't expose raw exception message for security
+                    _monitor.Log("Error occurred while registering console command 'lr_version'.", LogLevel.Error);
+                    
+                    // Add trace-level exception details for debugging
+                    _monitor.Log($"RegisterConsoleCommand exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    
+                    // Add stack trace logging for better diagnostics without exposing sensitive information
+                    #if DEBUG
+                    _monitor.Log(ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.", LogLevel.Trace);
+                    #endif
+                    
+                    // Ensure the CommandRegisteredFlag is not set if registration failed
+                    // This is important to maintain atomic state - if an exception occurs during registration,
+                    // we don't want the flag to indicate success when it actually failed
+                    System.Threading.Interlocked.And(ref _state, ~CommandRegisteredFlag);
+                }
+            }
+        }
+
+        private void PrintVersion(string command, string[] args)
+        {
+            // Skip if controller has been disposed
+            if (IsDisposed())
+                return;
+
+            // Snapshot dependencies to local variables to avoid NullReferenceExceptions
+            var monitor = _monitor;
+            var manifest = _manifest;
+
+            try
+            {
+                // Add null check for args parameter and use case-insensitive comparison
+                args = args ?? Array.Empty<string>();
+
+                // Check if any non-whitespace argument matches a help flag using LINQ Any()
+                if (args.Any(arg => !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg)))
+                {
+                    monitor?.Log("Usage: lr_version", LogLevel.Info);
+                    monitor?.Log("Shows the Living Roots version and UniqueID.", LogLevel.Info);
+                    return;
+                }
+
+                // Use the standard version.ToString() method which provides consistent output
+                var version = manifest?.Version;
+                string versionString = version?.ToString() ?? "unknown";
+
+                monitor?.Log($"Living Roots Mod Version: {versionString} (UniqueID: {manifest?.UniqueID ?? "unknown"})", LogLevel.Info);
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't expose raw exception message for security
+                _monitor?.Log("Error occurred while executing version command.", LogLevel.Error);
+                
+                // Add trace-level exception details for debugging
+                _monitor?.Log($"PrintVersion exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                
+                // Add stack trace logging for better diagnostics without exposing sensitive information
+                #if DEBUG
+                _monitor?.Log(ex.StackTrace ?? "PrintVersion stack trace unavailable.", LogLevel.Trace);
+                #endif
             }
         }
 

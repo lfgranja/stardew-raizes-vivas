@@ -360,7 +360,11 @@ namespace LivingRoots.Tests
 
             // Then simulate the game launch event to trigger command registration
             var gameLaunchedEventArgs = CreateInstanceWithFallback<GameLaunchedEventArgs>();
-            onGameLaunchedMethod.Invoke(controller, new object[] { controller, gameLaunchedEventArgs }); // Pass controller as sender instead of null
+            
+            // WRAP REFLECTION INVOKE CALL WITH RECORD.EXCEPTION TO IMPROVE TEST RELIABILITY
+            var invokeEx = Record.Exception(() =>
+                onGameLaunchedMethod.Invoke(controller, new object[] { controller, gameLaunchedEventArgs })); // Pass controller as sender instead of null
+            Assert.Null(invokeEx);
 
             // Assert - Command should have been added to the console commands
             mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
@@ -441,7 +445,11 @@ namespace LivingRoots.Tests
 
             // Act
             var saveLoadedEventArgs = CreateInstanceWithFallback<SaveLoadedEventArgs>();
-            onSaveLoadedMethod.Invoke(controller, new object[] { controller, saveLoadedEventArgs }); // Pass controller as sender instead of null
+            
+            // WRAP REFLECTION INVOKE CALL WITH RECORD.EXCEPTION TO IMPROVE TEST RELIABILITY
+            var invokeEx = Record.Exception(() =>
+                onSaveLoadedMethod.Invoke(controller, new object[] { controller, saveLoadedEventArgs })); // Pass controller as sender instead of null
+            Assert.Null(invokeEx);
 
             // Assert - Soil health service should have been called to load data
             _mockSoilHealthService.Verify(x => x.LoadData("test_save_id"), Times.Once);
@@ -474,7 +482,11 @@ namespace LivingRoots.Tests
 
             // Act - Create a real SavingEventArgs instance using Activator.CreateInstance with nonPublic: true as a preferred method
             var savingEventArgs = CreateInstanceWithFallback<SavingEventArgs>();
-            onSavingMethod.Invoke(controller, new object[] { controller, savingEventArgs }); // Pass controller as sender instead of null
+            
+            // WRAP REFLECTION INVOKE CALL WITH RECORD.EXCEPTION TO IMPROVE TEST RELIABILITY
+            var invokeEx = Record.Exception(() =>
+                onSavingMethod.Invoke(controller, new object[] { controller, savingEventArgs })); // Pass controller as sender instead of null
+            Assert.Null(invokeEx);
 
             // Assert - Soil health service should have been called to save data
             _mockSoilHealthService.Verify(x => x.SaveData("test_save_id"), Times.Once);
@@ -562,12 +574,18 @@ namespace LivingRoots.Tests
             try
             {
                 // Try to create instance using Activator.CreateInstance with nonPublic: true (preferred method)
-                return (T)Activator.CreateInstance(typeof(T), nonPublic: true);
+                var instance = Activator.CreateInstance(typeof(T), nonPublic: true) as T;
+                if (instance != null)
+                    return instance;
+
+                // Fallback: some SMAPI args may not be constructible; uninitialized object is enough for tests
+                // that only need a non-null instance.
+                return (T)FormatterServices.GetUninitializedObject(typeof(T));
             }
             catch (Exception ex)
             {
                 // If creation fails, throw an informative exception
-                throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} using Activator.CreateInstance: {ex.Message}", ex);
+                throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} for tests.", ex);
             }
         }
     }
@@ -602,7 +620,7 @@ namespace LivingRoots.Tests
                 throw new InvalidOperationException("Expected private field '_state' was not found.");
             if (stateField.FieldType != typeof(int))
                 throw new InvalidOperationException("Expected private field '_state' to be of type int.");
-            
+
             var raw = stateField.GetValue(controller);
             if (raw is not int currentValue)
                 throw new InvalidOperationException("Private field '_state' returned an unexpected value.");
@@ -617,7 +635,7 @@ namespace LivingRoots.Tests
                 throw new InvalidOperationException("Expected private field '_state' was not found.");
             if (stateField.FieldType != typeof(int))
                 throw new InvalidOperationException("Expected private field '_state' to be of type int.");
-            
+
             var raw = stateField.GetValue(controller);
             if (raw is not int currentValue)
                 throw new InvalidOperationException("Private field '_state' returned an unexpected value.");
@@ -632,7 +650,7 @@ namespace LivingRoots.Tests
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' was not found.");
             if (field.FieldType != typeof(int))
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' to be of type int.");
-            
+
             var raw = field.GetValue(controller);
             if (raw is not int value)
                 throw new InvalidOperationException("Private field '_saveIdUnavailableWarningShownOnSaveLoaded' returned an unexpected value.");
@@ -647,7 +665,7 @@ namespace LivingRoots.Tests
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' was not found.");
             if (field.FieldType != typeof(int))
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' to be of type int.");
-            
+
             var raw = field.GetValue(controller);
             if (raw is not int value)
                 throw new InvalidOperationException("Private field '_saveIdUnavailableWarningShownOnSaving' returned an unexpected value.");
@@ -662,7 +680,7 @@ namespace LivingRoots.Tests
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' was not found.");
             if (field.FieldType != typeof(int))
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaveLoaded' to be of type int.");
-            
+
             field.SetValue(controller, value);
         }
 
@@ -674,7 +692,7 @@ namespace LivingRoots.Tests
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' was not found.");
             if (field.FieldType != typeof(int))
                 throw new InvalidOperationException("Expected private field '_saveIdUnavailableWarningShownOnSaving' to be of type int.");
-            
+
             field.SetValue(controller, value);
         }
     }
