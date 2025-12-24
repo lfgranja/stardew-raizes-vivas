@@ -232,11 +232,6 @@ namespace LivingRoots.Services
             
             lock (_lock)
             {
-                // If no data to save, return early without performing I/O
-                // Always save empty state to clear any previously saved data that might be stale
-                if (_runtimeCache.Count == 0)
-                    return;
-
                 foreach (var location in _runtimeCache)
                 {
                     // ADD LOCATION NAME LENGTH CHECK: Check location name length during save to ensure consistency with load logic
