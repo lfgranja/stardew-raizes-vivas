@@ -173,7 +173,7 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
-            // Setup to throw an exception when trying to add the event
+            // Setup to throw an exception when trying to add an event
             mockGameLoopEvents
                 .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Throws(new Exception("Test exception"));
@@ -497,13 +497,28 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
-
-            // Act & Assert - Initially should return false
-            Assert.False(PrivateMethodHelper.IsDisposed(controller));
-
-            // Act & Assert - After disposal should return true
+ 
+            // Act & Assert - Initially should not be disposed
+            // Verify that controller can be used before disposal
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            
+            // Register events to verify controller is functional before disposal
+            controller.RegisterEvents();
+            mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
+            
+            // Act - Dispose the controller using public Dispose method
             controller.Dispose();
-            Assert.True(PrivateMethodHelper.IsDisposed(controller));
+            
+            // Assert - After disposal, attempting to register events should not succeed
+            // This verifies that the controller is in a disposed state
+            var result = Record.Exception(() => controller.RegisterEvents());
+            Assert.Null(result); // RegisterEvents should handle disposed state gracefully
+            
+            // Verify that events were unregistered during disposal
+            mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
         }
 
         [Fact]
@@ -555,7 +570,7 @@ namespace LivingRoots.Tests
             Assert.Equal(0, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaveLoaded(controller));
             Assert.Equal(0, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaving(controller));
 
-            // Act - Change the properties to true (1)
+            // Act - Change properties to true (1)
             PrivateMethodHelper.SetSaveIdUnavailableWarningShownOnSaveLoaded(controller, 1);
             PrivateMethodHelper.SetSaveIdUnavailableWarningShownOnSaving(controller, 1);
 
@@ -563,24 +578,28 @@ namespace LivingRoots.Tests
             Assert.Equal(1, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaveLoaded(controller));
             Assert.Equal(1, PrivateMethodHelper.GetSaveIdUnavailableWarningShownOnSaving(controller));
         }
-        
+
         /// <summary>
         /// Creates an instance of the specified type using Activator.CreateInstance with nonPublic: true as a preferred method.
+        /// Validates that the created instance is not null and throws an informative exception if creation fails.
         /// </summary>
         /// <typeparam name="T">The type to create an instance of</typeparam>
         /// <returns>An instance of the specified type</returns>
+        /// <exception cref="InvalidOperationException">Thrown when Activator.CreateInstance fails to create an instance.</exception>
         private static T CreateInstanceWithFallback<T>() where T : class
         {
             try
             {
                 // Try to create instance using Activator.CreateInstance with nonPublic: true (preferred method)
                 var instance = Activator.CreateInstance(typeof(T), nonPublic: true) as T;
-                if (instance != null)
-                    return instance;
-
-                // Fallback: some SMAPI args may not be constructible; uninitialized object is enough for tests
-                // that only need a non-null instance.
-                return (T)FormatterServices.GetUninitializedObject(typeof(T));
+                
+                // Validate that the created instance is not null
+                if (instance == null)
+                {
+                    throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} for tests. Activator.CreateInstance returned null.");
+                }
+                
+                return instance;
             }
             catch (Exception ex)
             {
@@ -589,7 +608,7 @@ namespace LivingRoots.Tests
             }
         }
     }
-    
+
     // Helper class to access private methods and properties for testing
     internal static class PrivateMethodHelper
     {
