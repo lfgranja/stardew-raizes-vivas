@@ -236,11 +236,12 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                // Safely unsubscribe from events with individual exception handling
-                // Capture the current handler values to unsubscribe with
-                var gameLaunchedHandler = _onGameLaunchedHandler;
-                var saveLoadedHandler = _onSaveLoadedHandler;
-                var savingHandler = _onSavingHandler;
+                // Atomically take ownership of handler references to avoid races.
+                // Using Interlocked.Exchange ensures atomic read-and-nullify operation,
+                // preventing race conditions where handler fields could be modified during unsubscription.
+                var gameLaunchedHandler = System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                var saveLoadedHandler = System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                var savingHandler = System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
 
                 // IMPLEMENT DRY PRINCIPLE: Use SafeUnsubscribe helper method to reduce code duplication
                 bool gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(h => gameLoop.GameLaunched -= h, gameLaunchedHandler, "GameLaunched");
@@ -250,25 +251,14 @@ namespace LivingRoots.Controllers
                 allUnsubscribed = gameLaunchedRemoved && saveLoadedRemoved && savingRemoved;
 
                 monitor.Log("Events unregistered successfully.", LogLevel.Trace);
-
-                // Clear handler references AFTER successful unsubscription to prevent race conditions
-                // This ensures that even if exceptions occur during unsubscription, the references are cleaned up
-                // Only clear references if the unsubscription was successful
-                if (gameLaunchedRemoved)
-                    System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                if (saveLoadedRemoved)
-                    System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                if (savingRemoved)
-                    System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
             }
             finally
             {
-                // Clear the "unregistering" claim first to allow other operations
-                System.Threading.Interlocked.And(ref _state, ~UnregisteringFlag);
-
+                // Update event-registration flags first to avoid a window where another thread can re-register
+                // while unregistration is still completing.
                 if (IsDisposed())
                 {
-                    // During disposal, force-clear all lifecycle flags
+                    // During disposal, force-clear all lifecycle flags.
                     System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
                 }
                 else
@@ -279,6 +269,9 @@ namespace LivingRoots.Controllers
                     else
                         System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
                 }
+
+                // Clear "unregistering" claim last, once state is consistent.
+                System.Threading.Interlocked.And(ref _state, ~UnregisteringFlag);
             }
         }
 
