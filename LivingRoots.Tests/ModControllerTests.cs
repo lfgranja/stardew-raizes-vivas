@@ -497,6 +497,8 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var mockCommandHelper = new Mock<ICommandHelper>();
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
  
             // Act & Assert - Initially should not be disposed
             // Verify that controller can be used before disposal
