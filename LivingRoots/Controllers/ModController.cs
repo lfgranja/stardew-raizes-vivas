@@ -289,10 +289,11 @@ namespace LivingRoots.Controllers
         /// <param name="unsubscribeAction">The action to perform the unsubscription</param>
         /// <param name="handler">The event handler to unsubscribe</param>
         /// <param name="eventName">The name of the event for logging purposes</param>
-        /// <returns>True if unsubscription was attempted and succeeded, false if handler was null or unsubscription failed</returns>
+        /// <returns>True if unsubscription was attempted and succeeded, false if unsubscription failed</returns>
         private bool SafeUnsubscribe<T>(Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
         {
-            if (handler == null) return false;
+            // Nothing to unsubscribe; treat as success to avoid false failure signals.
+            if (handler == null) return true;
             
             try
             {
