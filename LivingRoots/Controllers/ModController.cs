@@ -565,7 +565,8 @@ namespace LivingRoots.Controllers
                 args = args ?? Array.Empty<string>();
 
                 // Check if any non-whitespace argument matches a help flag using LINQ Any()
-                if (args.Any(arg => !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg)))
+                // Trim arguments before matching to handle cases like " /help " or "-help "
+                if (args.Any(arg => !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg.Trim())))
                 {
                     monitor?.Log("Usage: lr_version", LogLevel.Info);
                     monitor?.Log("Shows the Living Roots version and UniqueID.", LogLevel.Info);
