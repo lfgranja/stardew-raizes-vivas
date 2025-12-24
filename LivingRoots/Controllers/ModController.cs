@@ -82,7 +82,7 @@ namespace LivingRoots.Controllers
             }
 
             // Don't register while another thread is actively unregistering.
-            if ((Volatile.Read(ref _state) & UnregisteringFlag) != 0)
+            if ((System.Threading.Volatile.Read(ref _state) & UnregisteringFlag) != 0)
             {
                 _monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
                 return;
@@ -107,7 +107,7 @@ namespace LivingRoots.Controllers
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                 // Clear the flag since we couldn't actually register anything
-                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
             }
 
@@ -133,7 +133,7 @@ namespace LivingRoots.Controllers
                 {
                     monitor.Log("Controller disposed during registration. Skipping event subscription.", LogLevel.Trace);
                     // Clear the flag since we didn't actually register anything
-                    Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                    System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                     return;
                 }
 
@@ -182,12 +182,12 @@ namespace LivingRoots.Controllers
                 }
 
                 // Use Interlocked.Exchange for thread-safe nullification of event handlers
-                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                Interlocked.Exchange(ref _onSavingHandler, null);
+                System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
 
                 // Clear the flag since registration failed
-                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
 
                 // According to code review feedback, we should NOT re-throw the exception to maintain consistency with tests
                 // The method should handle failures gracefully without propagating exceptions
@@ -200,7 +200,7 @@ namespace LivingRoots.Controllers
             int currentState, newState;
             do
             {
-                currentState = Volatile.Read(ref _state);
+                currentState = System.Threading.Volatile.Read(ref _state);
                 
                 // Check if events were registered before proceeding with the clear operation
                 if ((currentState & EventsRegisteredFlag) == 0)
@@ -210,15 +210,13 @@ namespace LivingRoots.Controllers
                     return;
                 }
                 
-                // IMPLEMENT PROPER STATE UPDATE ORDERING: Claim unregistration AND clear the EventsRegisteredFlag atomically
-                // This ensures that no new registrations can happen while unregistration is in progress
-                // and that other threads attempting to unregister will see EventsRegisteredFlag is clear and return early
-                newState = (currentState | UnregisteringFlag) & ~EventsRegisteredFlag;
+                // Claim unregistration and prevent concurrent registrations.
+                newState = currentState | UnregisteringFlag;
             }
             // Use CompareExchange in a loop to atomically update the state
             // This implements the 'clear-and-claim' pattern by ensuring only one thread
-            // can successfully claim unregistration and clear the EventsRegisteredFlag
-            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            // can successfully clear the EventsRegisteredFlag
+            while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
@@ -231,12 +229,12 @@ namespace LivingRoots.Controllers
                 if (gameLoop == null)
                 {
                     monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
-                    // Even when gameLoop is null, we've already claimed unregistration and cleared EventsRegisteredFlag,
+                    // Even when gameLoop is null, we've already claimed unregistration,
                     // so just nullify the event handler fields to ensure clean state
                     // Use Interlocked.Exchange for thread-safe nullification of event handlers
-                    Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                    Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                    Interlocked.Exchange(ref _onSavingHandler, null);
+                    System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                    System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                    System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
                     return;
                 }
 
@@ -246,88 +244,66 @@ namespace LivingRoots.Controllers
                 var saveLoadedHandler = _onSaveLoadedHandler;
                 var savingHandler = _onSavingHandler;
 
-                // Wrap each unsubscription in individual try-catch blocks to prevent one failure from affecting others
-                if (gameLaunchedHandler != null)
-                {
-                    try
-                    {
-                        gameLoop.GameLaunched -= gameLaunchedHandler;
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log error but don't expose raw exception message for security
-                        monitor.Log("Error occurred while unsubscribing from GameLaunched event.", LogLevel.Error);
-                        
-                        // Add trace-level exception details for debugging
-                        monitor.Log($"GameLaunched unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                        
-                        // Add stack trace logging for better diagnostics without exposing sensitive information
-                        #if DEBUG
-                        monitor.Log(ex.StackTrace ?? "GameLaunched unsubscription stack trace unavailable.", LogLevel.Trace);
-                        #endif
-                    }
-                }
-                
-                if (saveLoadedHandler != null)
-                {
-                    try
-                    {
-                        gameLoop.SaveLoaded -= saveLoadedHandler;
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log error but don't expose raw exception message for security
-                        monitor.Log("Error occurred while unsubscribing from SaveLoaded event.", LogLevel.Error);
-                        
-                        // Add trace-level exception details for debugging
-                        monitor.Log($"SaveLoaded unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                        
-                        // Add stack trace logging for better diagnostics without exposing sensitive information
-                        #if DEBUG
-                        monitor.Log(ex.StackTrace ?? "SaveLoaded unsubscription stack trace unavailable.", LogLevel.Trace);
-                        #endif
-                    }
-                }
-                
-                if (savingHandler != null)
-                {
-                    try
-                    {
-                        gameLoop.Saving -= savingHandler;
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log error but don't expose raw exception message for security
-                        monitor.Log("Error occurred while unsubscribing from Saving event.", LogLevel.Error);
-                        
-                        // Add trace-level exception details for debugging
-                        monitor.Log($"Saving unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                        
-                        // Add stack trace logging for better diagnostics without exposing sensitive information
-                        #if DEBUG
-                        monitor.Log(ex.StackTrace ?? "Saving unsubscription stack trace unavailable.", LogLevel.Trace);
-                        #endif
-                    }
-                }
+                // IMPLEMENT DRY PRINCIPLE: Use SafeUnsubscribe helper method to reduce code duplication
+                bool gameLaunchedRemoved = SafeUnsubscribe(handler => gameLoop.GameLaunched -= handler, gameLaunchedHandler, "GameLaunched");
+                bool saveLoadedRemoved = SafeUnsubscribe(handler => gameLoop.SaveLoaded -= handler, saveLoadedHandler, "SaveLoaded");
+                bool savingRemoved = SafeUnsubscribe(handler => gameLoop.Saving -= handler, savingHandler, "Saving");
 
                 monitor.Log("Events unregistered successfully.", LogLevel.Trace);
 
                 // Clear handler references AFTER successful unsubscription to prevent race conditions
                 // This ensures that even if exceptions occur during unsubscription, the references are cleaned up
-                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                Interlocked.Exchange(ref _onSavingHandler, null);
+                // Only clear handler references after successful unsubscription
+                if (gameLaunchedRemoved)
+                    System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                if (saveLoadedRemoved)
+                    System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                if (savingRemoved)
+                    System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
             }
             finally
             {
-                // IMPLEMENT PROPER STATE UPDATE ORDERING: Clear the UnregisteringFlag when done to guarantee proper reset of state
-                // This prevents potential issues where other operations might be blocked after unregistration completes
+                // IMPLEMENT PROPER STATE UPDATE ORDERING: Clear the EventsRegisteredFlag AND UnregisteringFlag when done
+                // This ensures that other threads can register events after unregistration completes
                 // Only clear CommandRegisteredFlag if the controller is disposed to prevent issues where
                 // command registration might be blocked after unregistration
-                int finalStateMask = ~UnregisteringFlag; // Always clear the UnregisteringFlag
                 if (IsDisposed())
-                    finalStateMask &= ~CommandRegisteredFlag; // Also clear CommandRegisteredFlag if disposed
-                Interlocked.And(ref _state, finalStateMask);
+                    System.Threading.Interlocked.And(ref _state, ~(UnregisteringFlag | CommandRegisteredFlag));
+                else
+                    System.Threading.Interlocked.And(ref _state, ~UnregisteringFlag);
+            }
+        }
+
+        /// <summary>
+        /// Safely unsubscribes from an event with individual exception handling to prevent one failure from affecting others.
+        /// </summary>
+        /// <typeparam name="T">The event args type</typeparam>
+        /// <param name="unsubscribeAction">The action to perform the unsubscription</param>
+        /// <param name="handler">The event handler to unsubscribe</param>
+        /// <param name="eventName">The name of the event for logging purposes</param>
+        /// <returns>True if unsubscription was attempted (regardless of success), false if handler was null</returns>
+        private bool SafeUnsubscribe<T>(Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
+        {
+            if (handler == null) return false;
+            
+            try
+            {
+                unsubscribeAction(handler);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't expose raw exception message for security
+                _monitor.Log($"Error occurred while unsubscribing from {eventName} event.", LogLevel.Error);
+                
+                // Add trace-level exception details for debugging
+                _monitor.Log($"{eventName} unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                
+                // Add stack trace logging for better diagnostics without exposing sensitive information
+                #if DEBUG
+                _monitor.Log(ex.StackTrace ?? $"{eventName} unsubscription stack trace unavailable.", LogLevel.Trace);
+                #endif
+                return true; // Indicate that we attempted unsubscription even if it failed
             }
         }
 
@@ -373,7 +349,7 @@ namespace LivingRoots.Controllers
             lock (_commandLock)
             {
                 // Check if command is already registered using the state flag
-                if ((Volatile.Read(ref _state) & CommandRegisteredFlag) != 0)
+                if ((System.Threading.Volatile.Read(ref _state) & CommandRegisteredFlag) != 0)
                 {
                     return; // Already registered
                 }
@@ -398,7 +374,7 @@ namespace LivingRoots.Controllers
                     _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
 
                     // Set the command registered flag atomically - only after successful registration
-                    Interlocked.Or(ref _state, CommandRegisteredFlag);
+                    System.Threading.Interlocked.Or(ref _state, CommandRegisteredFlag);
                 }
                 catch (Exception ex)
                 {
@@ -416,7 +392,7 @@ namespace LivingRoots.Controllers
                     // Ensure the CommandRegisteredFlag is not set if registration failed
                     // This is important to maintain atomic state - if an exception occurs during registration,
                     // we don't want the flag to indicate success when it actually failed
-                    Interlocked.And(ref _state, ~CommandRegisteredFlag);
+                    System.Threading.Interlocked.And(ref _state, ~CommandRegisteredFlag);
                 }
             }
         }
@@ -472,7 +448,7 @@ namespace LivingRoots.Controllers
             int currentState, newState;
             do
             {
-                currentState = Volatile.Read(ref _state);
+                currentState = System.Threading.Volatile.Read(ref _state);
                 
                 // If the OnSaveLoadedExecutingFlag is already set, this method is already running, so return
                 if ((currentState & OnSaveLoadedExecutingFlag) != 0)
@@ -484,7 +460,7 @@ namespace LivingRoots.Controllers
                 // Calculate new state with the OnSaveLoadedExecutingFlag set
                 newState = currentState | OnSaveLoadedExecutingFlag;
             } 
-            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             try
             {
@@ -501,7 +477,7 @@ namespace LivingRoots.Controllers
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
                     // Only show warning once to prevent log spam using Interlocked operations
-                    if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 1, 0) == 0)
+                    if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 1, 0) == 0)
                     {
                         // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
                         _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; skipping soil health load.", LogLevel.Warn);
@@ -510,7 +486,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Reset the warning flag when a valid save ID is found
-                if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 0, 1) == 1)
+                if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 0, 1) == 1)
                 {
                     // The flag was previously set to 1 (true), so we reset it to 0 (false)
                     // This means the warning was previously shown and is now being reset
@@ -536,7 +512,7 @@ namespace LivingRoots.Controllers
             finally
             {
                 // Clear the executing flag when done to allow future executions
-                Interlocked.And(ref _state, ~OnSaveLoadedExecutingFlag);
+                System.Threading.Interlocked.And(ref _state, ~OnSaveLoadedExecutingFlag);
             }
         }
 
@@ -547,7 +523,7 @@ namespace LivingRoots.Controllers
             int currentState, newState;
             do
             {
-                currentState = Volatile.Read(ref _state);
+                currentState = System.Threading.Volatile.Read(ref _state);
                 
                 // If the OnSavingExecutingFlag is already set, this method is already running, so return
                 if ((currentState & OnSavingExecutingFlag) != 0)
@@ -559,7 +535,7 @@ namespace LivingRoots.Controllers
                 // Calculate new state with the OnSavingExecutingFlag set
                 newState = currentState | OnSavingExecutingFlag;
             } 
-            while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             try
             {
@@ -576,7 +552,7 @@ namespace LivingRoots.Controllers
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
                     // Only show warning once to prevent log spam using Interlocked operations
-                    if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 1, 0) == 0)
+                    if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 1, 0) == 0)
                     {
                         // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
                         _monitor.Log("OnSaving: SaveFolderName unavailable; skipping soil health save.", LogLevel.Warn);
@@ -585,7 +561,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Reset the warning flag when a valid save ID is found
-                if (Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 0, 1) == 1)
+                if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 0, 1) == 1)
                 {
                     // The flag was previously set to 1 (true), so we reset it to 0 (false)
                     // This means the warning was previously shown and is now being reset
@@ -611,7 +587,7 @@ namespace LivingRoots.Controllers
             finally
             {
                 // Clear the executing flag when done to allow future executions
-                Interlocked.And(ref _state, ~OnSavingExecutingFlag);
+                System.Threading.Interlocked.And(ref _state, ~OnSavingExecutingFlag);
             }
         }
 
@@ -637,7 +613,7 @@ namespace LivingRoots.Controllers
         /// <returns>True if the controller is disposed, false otherwise</returns>
         private bool IsDisposed()
         {
-            return (Volatile.Read(ref _state) & DisposedFlag) != 0;
+            return (System.Threading.Volatile.Read(ref _state) & DisposedFlag) != 0;
         }
 
         /// <summary>
@@ -653,7 +629,7 @@ namespace LivingRoots.Controllers
             int newState;
             do
             {
-                currentState = Volatile.Read(ref _state);
+                currentState = System.Threading.Volatile.Read(ref _state);
                 
                 // Check if already disposed when trying to set other flags
                 if ((flag & ~DisposedFlag) != 0 && (currentState & DisposedFlag) != 0)
@@ -666,7 +642,7 @@ namespace LivingRoots.Controllers
                 // Calculate new state with the flag set
                 newState = currentState | flag;
 
-            } while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            } while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             return true; // Successfully set the flag
         }

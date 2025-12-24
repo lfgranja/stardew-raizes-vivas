@@ -1,15 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Text;
 using LivingRoots.Domain;
 using LivingRoots;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
-using StardewModdingAPI.Events;
-using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace LivingRoots.Services
 {
@@ -124,7 +122,7 @@ namespace LivingRoots.Services
                     // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
                     if (locationEntry.Key.Length > ModConstants.MaxLocationNameLength)
                     {
-                        // Use the new helper method to truncate the location name for logging
+                        // Use the helper method to truncate the location name for logging
                         string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                         _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; skipping location '{truncatedLocationName}'.", LogLevel.Warn);
                         continue;
@@ -171,87 +169,13 @@ namespace LivingRoots.Services
                             break; // Stop processing completely
                         }
                         
-                        // Add null/whitespace check for tile keys to prevent crashes with corrupted save files
-                        if (string.IsNullOrWhiteSpace(tileEntry.Key))
+                        // Process the tile entry using the helper method
+                        if (ProcessTileEntry(tileEntry, locationEntry.Key, ref warnedForMalformedKey, ref warnedForInvalidValue, out Point? processedTilePoint, out float? processedValue))
                         {
-                            // Only warn once per location for null/whitespace keys to prevent log spam
-                            if (!warnedForMalformedKey)
-                            {
-                                // Use the helper method to truncate the location name for logging
-                                string truncatedLocationName = TruncateForLogging(locationEntry.Key);
-                                _monitor.Log($"Null or whitespace tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
-                                warnedForMalformedKey = true;
-                            }
-                            continue; // Skip this entry
-                        }
-
-                        // Parse "X,Y" string back to Point (using integers for tile coordinates)
-                        // Use ReadOnlySpan<char> to avoid string.Split allocation for better performance
-                        ReadOnlySpan<char> keySpan = tileEntry.Key;
-                        int commaIndex = keySpan.IndexOf(',');
-                        if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
-                            int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
-                            int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
-                        {
-                            // ADDITION: Check for extreme coordinates to prevent potential issues with malicious save files
-                            // Using direct boundary checks instead of Math.Abs to prevent overflow when dealing with int.MinValue
-                            if (x < -ModConstants.MaxAbsoluteTileCoordinate || x > ModConstants.MaxAbsoluteTileCoordinate || 
-                                y < -ModConstants.MaxAbsoluteTileCoordinate || y > ModConstants.MaxAbsoluteTileCoordinate)
-                            {
-                                if (!warnedForMalformedKey)
-                                {
-                                    // Use the helper method to truncate the location name for logging
-                                    string truncatedLocationName = TruncateForLogging(locationEntry.Key);
-                                    _monitor.Log($"Extreme tile coordinates found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
-                                    warnedForMalformedKey = true;
-                                }
-                                continue; // Skip this entry
-                            }
-
-                            // Simplified validation logic: check for NaN/Infinity first, then range
-                            float validatedValue = tileEntry.Value;
-                            
-                            // Check for NaN or Infinity values and convert to 0 instead of skipping
-                            if (float.IsNaN(validatedValue) || float.IsInfinity(validatedValue))
-                            {
-                                // Only warn once per location for invalid values to prevent log spam
-                                if (!warnedForInvalidValue)
-                                {
-                                    // Use the helper method to truncate the location name for logging
-                                    string truncatedLocationName = TruncateForLogging(locationEntry.Key);
-                                    _monitor.Log($"Invalid health value (NaN/Infinity) found in save data for location '{truncatedLocationName}'; converting to 0.", LogLevel.Warn);
-                                    warnedForInvalidValue = true;
-                                }
-                                validatedValue = 0f; // Convert to 0 instead of skipping
-                            }
-                            else if (validatedValue < ModConstants.MinSoilHealth || validatedValue > ModConstants.MaxSoilHealth)
-                            {
-                                // Only warn once per location for out-of-range values to prevent log spam
-                                if (!warnedForInvalidValue)
-                                {
-                                    // Use the helper method to truncate the location name for logging
-                                    string truncatedLocationName = TruncateForLogging(locationEntry.Key);
-                                    _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [{ModConstants.MinSoilHealth}, {ModConstants.MaxSoilHealth}].", LogLevel.Warn);
-                                    warnedForInvalidValue = true;
-                                }
-                                validatedValue = ClampHealthValue(validatedValue);
-                            }
-
                             // Only add non-zero values to prevent bloating the cache with default values
-                            if (validatedValue != 0f)
+                            if (processedValue != 0f && processedTilePoint.HasValue)
                             {
-                                tileDict[new Point(x, y)] = validatedValue;
-                            }
-                        }
-                        else
-                        {
-                            // Only warn once per location for malformed keys to prevent log spam
-                            if (!warnedForMalformedKey)
-                            {
-                                // Use the helper method to truncate the location name for logging
-                                string truncatedLocationName = TruncateForLogging(locationEntry.Key);
-                                _monitor.Log($"Malformed tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
-                                warnedForMalformedKey = true;
+                                tileDict[processedTilePoint.Value] = processedValue.Value;
                             }
                         }
                     }
@@ -303,22 +227,18 @@ namespace LivingRoots.Services
 
             // Create a snapshot of the current cache to avoid holding the lock during I/O
             // This implements the snapshot pattern to move I/O operations outside the lock
-            Dictionary<string, Dictionary<string, float>>? snapshotState = null;
-            bool hasDataToSave = false;
-
+            // PREVENT NULLABLE STATE SERIALIZATION: Initialize as non-nullable dictionary
+            var snapshotState = new Dictionary<string, Dictionary<string, float>>();
+            
             lock (_lock)
             {
                 if (_runtimeCache.Count == 0)
                 {
                     // If no data to save, return early without performing I/O
                     // Always save empty state to clear any previously saved data that might be stale
-                    snapshotState = new Dictionary<string, Dictionary<string, float>>();
-                    hasDataToSave = true;
                 }
                 else
                 {
-                    hasDataToSave = true;
-                    snapshotState = new Dictionary<string, Dictionary<string, float>>();
                     foreach (var location in _runtimeCache)
                     {
                         // ADD LOCATION NAME LENGTH CHECK: Check location name length during save to ensure consistency with load logic
@@ -549,7 +469,7 @@ namespace LivingRoots.Services
                             // Use the helper method to truncate the location name for logging
                             truncatedLocationName = TruncateForLogging(locationName);
                             logLocationLimitExceeded = true;
-                            return; // Refuse to add new locations if we're over the limit
+                            return; // Refuse to add new location if we're over the limit
                         }
                         
                         tiles = new Dictionary<Point, float>();
@@ -674,6 +594,107 @@ namespace LivingRoots.Services
         }
         
         /// <summary>
+        /// Processes a single tile entry from the save data, handling validation and conversion.
+        /// </summary>
+        /// <param name="tileEntry">The tile entry from the saved data</param>
+        /// <param name="locationName">The name of the location being processed</param>
+        /// <param name="warnedForMalformedKey">Reference to a flag that tracks if a warning has already been logged for malformed keys in this location</param>
+        /// <param name="warnedForInvalidValue">Reference to a flag that tracks if a warning has already been logged for invalid values in this location</param>
+        /// <param name="tilePoint">Output parameter for the parsed tile coordinates, if successful</param>
+        /// <param name="value">Output parameter for the validated health value, if successful</param>
+        /// <returns>True if the tile entry was processed successfully, false if it should be skipped</returns>
+        private bool ProcessTileEntry(KeyValuePair<string, float> tileEntry, string locationName, 
+            ref bool warnedForMalformedKey, ref bool warnedForInvalidValue, 
+            out Point? tilePoint, out float? value)
+        {
+            tilePoint = null;
+            value = null;
+
+            // Add null/whitespace check for tile keys to prevent crashes with corrupted save files
+            if (string.IsNullOrWhiteSpace(tileEntry.Key))
+            {
+                // Only warn once per location for null/whitespace keys to prevent log spam
+                if (!warnedForMalformedKey)
+                {
+                    // Use the helper method to truncate the location name for logging
+                    string truncatedLocationName = TruncateForLogging(locationName);
+                    _monitor.Log($"Null or whitespace tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
+                    warnedForMalformedKey = true;
+                }
+                return false; // Skip this entry
+            }
+
+            // Parse "X,Y" string back to Point (using integers for tile coordinates)
+            // Use ReadOnlySpan<char> to avoid string.Split allocation for better performance
+            ReadOnlySpan<char> keySpan = tileEntry.Key;
+            int commaIndex = keySpan.IndexOf(',');
+            if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
+                int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
+                int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
+            {
+                // ADDITION: Check for extreme coordinates to prevent potential issues with malicious save files
+                // Using direct boundary checks instead of Math.Abs to prevent overflow when dealing with int.MinValue
+                if (x < -ModConstants.MaxAbsoluteTileCoordinate || x > ModConstants.MaxAbsoluteTileCoordinate || 
+                    y < -ModConstants.MaxAbsoluteTileCoordinate || y > ModConstants.MaxAbsoluteTileCoordinate)
+                {
+                    if (!warnedForMalformedKey)
+                    {
+                        // Use the helper method to truncate the location name for logging
+                        string truncatedLocationName = TruncateForLogging(locationName);
+                        _monitor.Log($"Extreme tile coordinates found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
+                        warnedForMalformedKey = true;
+                    }
+                    return false; // Skip this entry
+                }
+
+                // Simplified validation logic: check for NaN/Infinity first, then range
+                float validatedValue = tileEntry.Value;
+                
+                // Check for NaN or Infinity values and convert to 0 instead of skipping
+                if (float.IsNaN(validatedValue) || float.IsInfinity(validatedValue))
+                {
+                    // Only warn once per location for invalid values to prevent log spam
+                    if (!warnedForInvalidValue)
+                    {
+                        // Use the helper method to truncate the location name for logging
+                        string truncatedLocationName = TruncateForLogging(locationName);
+                        _monitor.Log($"Invalid health value (NaN/Infinity) found in save data for location '{truncatedLocationName}'; converting to 0.", LogLevel.Warn);
+                        warnedForInvalidValue = true;
+                    }
+                    validatedValue = 0f; // Convert to 0 instead of skipping
+                }
+                else if (validatedValue < ModConstants.MinSoilHealth || validatedValue > ModConstants.MaxSoilHealth)
+                {
+                    // Only warn once per location for out-of-range values to prevent log spam
+                    if (!warnedForInvalidValue)
+                    {
+                        // Use the helper method to truncate the location name for logging
+                        string truncatedLocationName = TruncateForLogging(locationName);
+                        _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [{ModConstants.MinSoilHealth}, {ModConstants.MaxSoilHealth}].", LogLevel.Warn);
+                        warnedForInvalidValue = true;
+                    }
+                    validatedValue = ClampHealthValue(validatedValue);
+                }
+
+                tilePoint = new Point(x, y);
+                value = validatedValue;
+                return true; // Successfully processed
+            }
+            else
+            {
+                // Only warn once per location for malformed keys to prevent log spam
+                if (!warnedForMalformedKey)
+                {
+                    // Use the helper method to truncate the location name for logging
+                    string truncatedLocationName = TruncateForLogging(locationName);
+                    _monitor.Log($"Malformed tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
+                    warnedForMalformedKey = true;
+                }
+                return false; // Skip this entry
+            }
+        }
+        
+        /// <summary>
         /// Validates the location name and tile coordinates, and returns the floored tile point if valid.
         /// </summary>
         /// <param name="locationName">The location name to validate</param>
@@ -684,19 +705,16 @@ namespace LivingRoots.Services
         {
             tilePoint = default;
 
-            // Check location name validity
             if (string.IsNullOrWhiteSpace(locationName) || locationName.Length > ModConstants.MaxLocationNameLength)
             {
                 return false;
             }
 
-            // Check tile coordinate validity
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
             {
                 return false;
             }
 
-            // Check coordinate range to prevent potential overflow issues
             float fx = MathF.Floor(tile.X);
             float fy = MathF.Floor(tile.Y);
             if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
@@ -704,7 +722,7 @@ namespace LivingRoots.Services
                 return false;
             }
 
-            // Check coordinate bounds to prevent potential issues with extreme tile coordinates
+            // ADD COORDINATE BOUNDS CHECK: Check coordinate bounds to prevent potential issues with extreme tile coordinates
             int ix = (int)fx;
             int iy = (int)fy;
             if (ix < -ModConstants.MaxAbsoluteTileCoordinate || ix > ModConstants.MaxAbsoluteTileCoordinate || 
