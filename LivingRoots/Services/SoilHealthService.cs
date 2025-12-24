@@ -33,7 +33,7 @@ namespace LivingRoots.Services
 
         public void LoadData(string saveId)
         {
-            // If saveId is invalid, clear the cache to prevent data leakage between saves
+            // If saveId is invalid, clear cache to prevent data leakage between saves
             // IMPORTANT: Clearing the cache when saveId is invalid maintains data integrity
             if (string.IsNullOrWhiteSpace(saveId))
             {
@@ -112,7 +112,7 @@ namespace LivingRoots.Services
                         break;
                     }
 
-                    // Skip if the location name is null or empty to prevent NullReferenceException during length check
+                    // Skip if location name is null or empty to prevent NullReferenceException during length check
                     if (string.IsNullOrWhiteSpace(locationEntry.Key))
                     {
                         _monitor.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn);
@@ -122,25 +122,25 @@ namespace LivingRoots.Services
                     // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
                     if (locationEntry.Key.Length > ModConstants.MaxLocationNameLength)
                     {
-                        // Use the helper method to truncate the location name for logging
+                        // Use helper method to truncate location name for logging
                         string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                         _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; skipping location '{truncatedLocationName}'.", LogLevel.Warn);
                         continue;
                     }
 
-                    // Skip if the value is null to prevent NullReferenceException
+                    // Skip if value is null to prevent NullReferenceException
                     if (locationEntry.Value == null) continue;
 
                     var tileDict = new Dictionary<Point, float>();
-                    int tileCount = 0; // Track the number of tiles loaded for this location
+                    int tileCount = 0; // Track number of tiles loaded for this location
                     bool warnedForInvalidValue = false; // Only warn once per location for invalid values
                     bool warnedForMalformedKey = false; // Only warn once per location for malformed keys
-                    bool limitExceededLogged = false; // Only log the limit exceeded warning once per location
+                    bool limitExceededLogged = false; // Only log limit exceeded warning once per location
                     
                     foreach (var tileEntry in locationEntry.Value)
                     {
                         // ENHANCEMENT: Move tile count increment BEFORE validation to prevent DoS attacks
-                        // Increment the tile counter for ALL entries (even if they end up being invalid/skipped)
+                        // Increment tile counter for ALL entries (even if they end up being invalid/skipped)
                         tileCount++;
                         
                         // Check if we've exceeded the tile limit for this location
@@ -149,7 +149,7 @@ namespace LivingRoots.Services
                             // Only log once per location when the limit is reached
                             if (!limitExceededLogged)
                             {
-                                // Use the helper method to truncate the location name for logging
+                                // Use helper method to truncate the location name for logging
                                 string truncatedLocationName = TruncateForLogging(locationEntry.Key);
                                 _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationName}'; stopping tile processing for this location.", LogLevel.Warn);
                                 limitExceededLogged = true;
@@ -169,7 +169,7 @@ namespace LivingRoots.Services
                             break; // Stop processing completely
                         }
                         
-                        // Process the tile entry using the helper method
+                        // Process tile entry using the helper method
                         if (ProcessTileEntry(tileEntry, locationEntry.Key, ref warnedForMalformedKey, ref warnedForInvalidValue, out Point? processedTilePoint, out float? processedValue))
                         {
                             // Only add non-zero values to prevent bloating the cache with default values
@@ -232,42 +232,39 @@ namespace LivingRoots.Services
             
             lock (_lock)
             {
+                // If no data to save, return early without performing I/O
+                // Always save empty state to clear any previously saved data that might be stale
                 if (_runtimeCache.Count == 0)
-                {
-                    // If no data to save, return early without performing I/O
-                    // Always save empty state to clear any previously saved data that might be stale
-                }
-                else
-                {
-                    foreach (var location in _runtimeCache)
-                    {
-                        // ADD LOCATION NAME LENGTH CHECK: Check location name length during save to ensure consistency with load logic
-                        if (location.Key.Length > ModConstants.MaxLocationNameLength)
-                        {
-                            continue; // Skip locations with names that are too long
-                        }
-                        
-                        var tileDict = new Dictionary<string, float>();
-                        foreach (var tile in location.Value)
-                        {
-                            // Convert Point back to "X,Y" string format using invariant culture for consistency
-                            string tileKey = $"{tile.Key.X.ToString(CultureInfo.InvariantCulture)},{tile.Key.Y.ToString(CultureInfo.InvariantCulture)}";
-                            
-                            // Clamp value to valid range [0, 100] before saving - ClampHealthValue handles NaN/Infinity
-                            float clampedValue = ClampHealthValue(tile.Value);
-                            
-                            // Only save non-zero values to prevent bloating the save file with default values
-                            if (clampedValue != 0f)
-                            {
-                                tileDict[tileKey] = clampedValue;
-                            }
-                        }
+                    return;
 
-                        // Only add location if it has valid tiles
-                        if (tileDict.Count > 0)
+                foreach (var location in _runtimeCache)
+                {
+                    // ADD LOCATION NAME LENGTH CHECK: Check location name length during save to ensure consistency with load logic
+                    if (location.Key.Length > ModConstants.MaxLocationNameLength)
+                    {
+                        continue; // Skip locations with names that are too long
+                    }
+                    
+                    var tileDict = new Dictionary<string, float>();
+                    foreach (var tile in location.Value)
+                    {
+                        // Convert Point back to "X,Y" string format using invariant culture for consistency
+                        string tileKey = $"{tile.Key.X.ToString(CultureInfo.InvariantCulture)},{tile.Key.Y.ToString(CultureInfo.InvariantCulture)}";
+                        
+                        // Clamp value to valid range [0, 100] before saving - ClampHealthValue handles NaN/Infinity
+                        float clampedValue = ClampHealthValue(tile.Value);
+                        
+                        // Only save non-zero values to prevent bloating the save file with default values
+                        if (clampedValue != 0f)
                         {
-                            snapshotState[location.Key] = tileDict;
+                            tileDict[tileKey] = clampedValue;
                         }
+                    }
+
+                    // Only add location if it has valid tiles
+                    if (tileDict.Count > 0)
+                    {
+                        snapshotState[location.Key] = tileDict;
                     }
                 }
             }
@@ -300,7 +297,7 @@ namespace LivingRoots.Services
 
         public float GetSoilHealth(string locationName, Vector2 tile)
         {
-            // Use the validation helper to check for valid tile
+            // Use the validation helper to check for a valid tile
             if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
                 return 0f;
@@ -330,7 +327,7 @@ namespace LivingRoots.Services
 
         public void SetSoilHealth(string locationName, Vector2 tile, float value)
         {
-            // Use the validation helper to check for valid tile
+            // Use the validation helper to check for a valid tile
             if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
                 return; // Skip if location is invalid
@@ -385,7 +382,7 @@ namespace LivingRoots.Services
                 }
                 
                 // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
-                // Check if this is a new tile (not an update) and apply tile limit only to new tiles
+                // Check if this is a new tile (not an update) and apply the tile limit only to new tiles
                 bool isExistingTile = tiles.ContainsKey(tilePoint);
                 if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                 {
@@ -415,7 +412,7 @@ namespace LivingRoots.Services
 
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
         {
-            // Use the validation helper to check for valid tile
+            // Use the validation helper to check for a valid tile
             if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
                 return; // Skip if location is invalid
@@ -477,7 +474,7 @@ namespace LivingRoots.Services
                     }
                     
                     // ADD RUNTIME CACHE BOUNDS ENFORCEMENT: Check if we're approaching memory limits
-                    // Check if this is a new tile (not an update) and apply tile limit only to new tiles
+                    // Check if this is a new tile (not an update) and apply the tile limit only to new tiles
                     bool isExistingTile = tiles.ContainsKey(tilePoint);
                     if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
                     {
@@ -552,10 +549,10 @@ namespace LivingRoots.Services
                     return null;
                 }
                 
-                // Calculate maximum allowed length for sanitized part (after accounting for prefix)
+                // Calculate the maximum allowed length for the sanitized part (after accounting for prefix)
                 int maxSanitizedLength = Math.Max(0, ModConstants.MaxDataKeyLength - ModConstants.KeyPrefix.Length);
                 
-                // Ensure final key (prefix + sanitized) stays within the configured bound
+                // Ensure the final key (prefix + sanitized) stays within the configured bound
                 if (sanitized.Length > maxSanitizedLength)
                 {
                     _monitor.Log($"SaveId exceeds maximum length of {ModConstants.MaxDataKeyLength} characters after sanitization.", LogLevel.Error);
@@ -568,7 +565,7 @@ namespace LivingRoots.Services
             }
             catch (ArgumentException)
             {
-                // Log the error without exposing raw exception message for security
+                // Log error without exposing raw exception message for security
                 _monitor.Log("SaveId sanitization failed due to invalid characters.", LogLevel.Error);
                 return null; // Fail-fast approach: return null instead of a default key
             }
@@ -609,7 +606,7 @@ namespace LivingRoots.Services
         {
             tilePoint = null;
             value = null;
-
+ 
             // Add null/whitespace check for tile keys to prevent crashes with corrupted save files
             if (string.IsNullOrWhiteSpace(tileEntry.Key))
             {
@@ -695,7 +692,7 @@ namespace LivingRoots.Services
         }
         
         /// <summary>
-        /// Validates the location name and tile coordinates, and returns the floored tile point if valid.
+        /// Validates location name and tile coordinates, and returns the floored tile point if valid.
         /// </summary>
         /// <param name="locationName">The location name to validate</param>
         /// <param name="tile">The tile coordinates to validate</param>
@@ -704,7 +701,7 @@ namespace LivingRoots.Services
         private bool IsValidTile(string locationName, Vector2 tile, out Point tilePoint)
         {
             tilePoint = default;
-
+ 
             if (string.IsNullOrWhiteSpace(locationName) || locationName.Length > ModConstants.MaxLocationNameLength)
             {
                 return false;
