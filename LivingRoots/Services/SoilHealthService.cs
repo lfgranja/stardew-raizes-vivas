@@ -61,6 +61,10 @@ namespace LivingRoots.Services
             // Use temporary cache to prevent data loss if parsing fails partway through
             var tempCache = new Dictionary<string, Dictionary<Point, float>>();
 
+            // Track total tile entries processed across all locations to prevent DoS attacks
+            // Declared outside the if block to be accessible for the final limit check
+            int totalTileEntriesProcessed = 0;
+
             // LoadData implementation is designed to handle exceptions internally and return null on failure
             SoilHealthState? savedData = null;
             try
@@ -94,9 +98,6 @@ namespace LivingRoots.Services
 
                 int locationCount = 0;
                 bool locationsLimitLogged = false;
-
-                // Track total tile entries processed across all locations to prevent DoS attacks
-                int totalTileEntriesProcessed = 0;
                 bool totalTilesLimitLogged = false;
 
                 foreach (var locationEntry in locations)
@@ -188,6 +189,17 @@ namespace LivingRoots.Services
                     if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
                         break;
                 }
+            }
+
+            // If we hit the global limit, treat it as a load failure to avoid silently committing partial/truncated state.
+            if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
+            {
+                _monitor.Log($"LoadData failed: Total tile entry limit ({ModConstants.MaxTilesPerSave}) exceeded. Cache cleared to prevent silent data loss.", LogLevel.Error);
+                lock (_lock)
+                {
+                    _runtimeCache.Clear();
+                }
+                return;
             }
 
             // Replace the runtime cache for this save regardless of whether we loaded valid data
