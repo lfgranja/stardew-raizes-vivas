@@ -263,14 +263,22 @@ namespace LivingRoots.Controllers
             }
             finally
             {
-                // If any unsubscribe failed, allow a future retry (unless disposed).
-                if (!allUnsubscribed && !IsDisposed())
-                    System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
+                // Clear the "unregistering" claim first to allow other operations
+                System.Threading.Interlocked.And(ref _state, ~UnregisteringFlag);
 
                 if (IsDisposed())
-                    System.Threading.Interlocked.And(ref _state, ~(UnregisteringFlag | EventsRegisteredFlag | CommandRegisteredFlag));
+                {
+                    // During disposal, force-clear all lifecycle flags
+                    System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
+                }
                 else
-                    System.Threading.Interlocked.And(ref _state, ~(UnregisteringFlag | EventsRegisteredFlag));
+                {
+                    // Only clear EventsRegisteredFlag if we successfully removed all handlers
+                    if (allUnsubscribed)
+                        System.Threading.Interlocked.And(ref _state, ~EventsRegisteredFlag);
+                    else
+                        System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
+                }
             }
         }
 
