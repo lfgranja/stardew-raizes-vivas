@@ -548,12 +548,19 @@ namespace LivingRoots.Tests
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
             const int testFlag = 1 << 0; // Use EventsRegisteredFlag for testing
 
+            // Get the private _state field using reflection
+            var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(stateField);
+
             // Act
             bool result = controller.TrySetStateFlag(testFlag);
 
+            // Get the current state value using reflection
+            var state = (int)stateField.GetValue(controller)!;
+
             // Assert - Should successfully set the flag
             Assert.True(result);
-            Assert.True((controller._state & testFlag) != 0);
+            Assert.True((state & testFlag) != 0);
 
             // Act - Try to set the same flag again
             bool result2 = controller.TrySetStateFlag(testFlag);
@@ -570,8 +577,12 @@ namespace LivingRoots.Tests
             const int disposedFlag = 1 << 2; // Use DisposedFlag
             const int eventsRegisteredFlag = 1 << 0; // Use EventsRegisteredFlag
 
-            // First set the disposed flag
-            controller._state = disposedFlag;
+            // Get the private _state field using reflection
+            var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(stateField);
+
+            // First set the disposed flag using reflection
+            stateField.SetValue(controller, disposedFlag);
 
             // Act - Try to set another flag when disposed
             bool result = controller.TrySetStateFlag(eventsRegisteredFlag);
@@ -586,17 +597,23 @@ namespace LivingRoots.Tests
             // Arrange
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Act & Assert - Initially should be false (0)
-            Assert.Equal(0, controller._saveIdUnavailableWarningShownOnSaveLoaded);
-            Assert.Equal(0, controller._saveIdUnavailableWarningShownOnSaving);
+            // Get the private fields using reflection
+            var saveIdUnavailableWarningShownOnSaveLoadedField = typeof(ModController).GetField("_saveIdUnavailableWarningShownOnSaveLoaded", BindingFlags.NonPublic | BindingFlags.Instance);
+            var saveIdUnavailableWarningShownOnSavingField = typeof(ModController).GetField("_saveIdUnavailableWarningShownOnSaving", BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.NotNull(saveIdUnavailableWarningShownOnSaveLoadedField);
+            Assert.NotNull(saveIdUnavailableWarningShownOnSavingField);
 
-            // Act - Change properties to true (1)
-            controller._saveIdUnavailableWarningShownOnSaveLoaded = 1;
-            controller._saveIdUnavailableWarningShownOnSaving = 1;
+            // Act & Assert - Initially should be false (0)
+            Assert.Equal(0, (int)saveIdUnavailableWarningShownOnSaveLoadedField.GetValue(controller)!);
+            Assert.Equal(0, (int)saveIdUnavailableWarningShownOnSavingField.GetValue(controller)!);
+
+            // Act - Change properties to true (1) using reflection
+            saveIdUnavailableWarningShownOnSaveLoadedField.SetValue(controller, 1);
+            saveIdUnavailableWarningShownOnSavingField.SetValue(controller, 1);
 
             // Assert - Should now be true (1)
-            Assert.Equal(1, controller._saveIdUnavailableWarningShownOnSaveLoaded);
-            Assert.Equal(1, controller._saveIdUnavailableWarningShownOnSaving);
+            Assert.Equal(1, (int)saveIdUnavailableWarningShownOnSaveLoadedField.GetValue(controller)!);
+            Assert.Equal(1, (int)saveIdUnavailableWarningShownOnSavingField.GetValue(controller)!);
         }
 
         /// <summary>
