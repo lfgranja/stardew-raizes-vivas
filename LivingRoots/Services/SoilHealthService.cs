@@ -303,107 +303,53 @@ namespace LivingRoots.Services
 
             // Create a snapshot of the current cache to avoid holding the lock during I/O
             // This implements the snapshot pattern to move I/O operations outside the lock
-            var snapshotState = new Dictionary<string, Dictionary<string, float>>();
-            
-            // Variables to track if limits were exceeded (for logging outside the lock)
-            bool locationsLimitExceeded = false;
-            bool tilesLimitExceeded = false;
-            int processedLocations = 0;
-            int processedTiles = 0;
-            
+            Dictionary<string, Dictionary<string, float>>? snapshotState = null;
+            bool hasDataToSave = false;
+
             lock (_lock)
             {
-                // GLOBAL DOS PROTECTION: Add a global tile limit during save to prevent creating excessively large save files
-                int totalTilesProcessed = 0; // Count all tiles processed, not just saved
-                bool totalTilesLimitLogged = false;
-                
-                // Location count limit to prevent excessive memory allocation and long save times
-                int locationCount = 0;
-                bool locationsLimitLogged = false;
-
-                foreach (var location in _runtimeCache)
+                if (_runtimeCache.Count == 0)
                 {
-                    locationCount++;
-                    if (locationCount > ModConstants.MaxLocationsPerSave)
-                    {
-                        if (!locationsLimitLogged)
-                        {
-                            locationsLimitExceeded = true;
-                            locationsLimitLogged = true;
-                        }
-                        break;
-                    }
-
-                    if (totalTilesProcessed >= ModConstants.MaxTilesPerSave)
-                    {
-                        if (!totalTilesLimitLogged)
-                        {
-                            tilesLimitExceeded = true;
-                            totalTilesLimitLogged = true;
-                        }
-                        break;
-                    }
-
-                    // ADD NULL CHECK FOR LOCATION KEY AND VALUE: Check for null/whitespace location name to prevent potential NullReferenceException during save
-                    if (string.IsNullOrWhiteSpace(location.Key) || location.Value == null)
-                        continue;
-
-                    // ADD LOCATION NAME LENGTH CHECK: Check location name length during save to ensure consistency with load logic
-                    if (location.Key.Length > ModConstants.MaxLocationNameLength)
-                        continue;
-
-                    var tileDict = new Dictionary<string, float>();
-                    foreach (var tile in location.Value)
-                    {
-                        // Increment the counter for ALL tiles processed (not just saved)
-                        totalTilesProcessed++;
-                        
-                        if (totalTilesProcessed > ModConstants.MaxTilesPerSave)
-                        {
-                            if (!totalTilesLimitLogged)
-                            {
-                                tilesLimitExceeded = true;
-                                totalTilesLimitLogged = true;
-                            }
-                            break;
-                        }
-
-                        // Convert Point back to "X,Y" string format using invariant culture for consistency
-                        string tileKey = $"{tile.Key.X.ToString(CultureInfo.InvariantCulture)},{tile.Key.Y.ToString(CultureInfo.InvariantCulture)}";
-                        
-                        // Clamp value to valid range [0, 100] before saving - ClampHealthValue handles NaN/Infinity
-                        float clampedValue = ClampHealthValue(tile.Value);
-                        
-                        // Only save non-zero values to prevent bloating the save file with default values
-                        if (clampedValue != 0f)
-                        {
-                            tileDict[tileKey] = clampedValue;
-                        }
-                    }
-                    
-                    // Only add location if it has valid tiles
-                    if (tileDict.Count > 0)
-                    {
-                        snapshotState[location.Key] = tileDict;
-                        processedLocations++; // Track how many locations we processed
-                    }
-                    
-                    // Check again after processing this location in case we exceeded the limit
-                    if (totalTilesProcessed > ModConstants.MaxTilesPerSave)
-                        break;
-                        
-                    processedTiles = totalTilesProcessed; // Track how many tiles we processed
+                    // If no data to save, return early without performing I/O
+                    // Always save empty state to clear any previously saved data that might be stale
+                    snapshotState = new Dictionary<string, Dictionary<string, float>>();
+                    hasDataToSave = true;
                 }
-            }
-            
-            // Log warnings after releasing the lock
-            if (locationsLimitExceeded)
-            {
-                _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded during save; stopping location processing to prevent DoS.", LogLevel.Warn);
-            }
-            if (tilesLimitExceeded)
-            {
-                _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) reached during save; truncating output to prevent excessive save payload.", LogLevel.Warn);
+                else
+                {
+                    hasDataToSave = true;
+                    snapshotState = new Dictionary<string, Dictionary<string, float>>();
+                    foreach (var location in _runtimeCache)
+                    {
+                        // ADD LOCATION NAME LENGTH CHECK: Check location name length during save to ensure consistency with load logic
+                        if (location.Key.Length > ModConstants.MaxLocationNameLength)
+                        {
+                            continue; // Skip locations with names that are too long
+                        }
+                        
+                        var tileDict = new Dictionary<string, float>();
+                        foreach (var tile in location.Value)
+                        {
+                            // Convert Point back to "X,Y" string format using invariant culture for consistency
+                            string tileKey = $"{tile.Key.X.ToString(CultureInfo.InvariantCulture)},{tile.Key.Y.ToString(CultureInfo.InvariantCulture)}";
+                            
+                            // Clamp value to valid range [0, 100] before saving - ClampHealthValue handles NaN/Infinity
+                            float clampedValue = ClampHealthValue(tile.Value);
+                            
+                            // Only save non-zero values to prevent bloating the save file with default values
+                            if (clampedValue != 0f)
+                            {
+                                tileDict[tileKey] = clampedValue;
+                            }
+                        }
+
+                        // Only add location if it has valid tiles
+                        if (tileDict.Count > 0)
+                        {
+                            snapshotState[location.Key] = tileDict;
+                        }
+                    }
+                }
             }
 
             // Always save the current state (even if empty) to clear any previously saved data
@@ -738,16 +684,19 @@ namespace LivingRoots.Services
         {
             tilePoint = default;
 
+            // Check location name validity
             if (string.IsNullOrWhiteSpace(locationName) || locationName.Length > ModConstants.MaxLocationNameLength)
             {
                 return false;
             }
 
+            // Check tile coordinate validity
             if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) || float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
             {
                 return false;
             }
 
+            // Check coordinate range to prevent potential overflow issues
             float fx = MathF.Floor(tile.X);
             float fy = MathF.Floor(tile.Y);
             if (fx > int.MaxValue || fx < int.MinValue || fy > int.MaxValue || fy < int.MinValue)
@@ -755,7 +704,16 @@ namespace LivingRoots.Services
                 return false;
             }
 
-            tilePoint = new Point((int)fx, (int)fy);
+            // Check coordinate bounds to prevent potential issues with extreme tile coordinates
+            int ix = (int)fx;
+            int iy = (int)fy;
+            if (ix < -ModConstants.MaxAbsoluteTileCoordinate || ix > ModConstants.MaxAbsoluteTileCoordinate || 
+                iy < -ModConstants.MaxAbsoluteTileCoordinate || iy > ModConstants.MaxAbsoluteTileCoordinate)
+            {
+                return false;
+            }
+
+            tilePoint = new Point(ix, iy);
             return true;
         }
     }

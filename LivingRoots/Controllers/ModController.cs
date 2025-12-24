@@ -210,12 +210,14 @@ namespace LivingRoots.Controllers
                     return;
                 }
                 
-                // Claim unregistration and prevent concurrent registrations.
-                newState = (currentState & ~EventsRegisteredFlag) | UnregisteringFlag;
+                // IMPLEMENT PROPER STATE UPDATE ORDERING: Claim unregistration AND clear the EventsRegisteredFlag atomically
+                // This ensures that no new registrations can happen while unregistration is in progress
+                // and that other threads attempting to unregister will see EventsRegisteredFlag is clear and return early
+                newState = (currentState | UnregisteringFlag) & ~EventsRegisteredFlag;
             }
             // Use CompareExchange in a loop to atomically update the state
             // This implements the 'clear-and-claim' pattern by ensuring only one thread
-            // can successfully clear the EventsRegisteredFlag
+            // can successfully claim unregistration and clear the EventsRegisteredFlag
             while (Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
@@ -229,7 +231,7 @@ namespace LivingRoots.Controllers
                 if (gameLoop == null)
                 {
                     monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
-                    // Even when gameLoop is null, we've already claimed unregistration,
+                    // Even when gameLoop is null, we've already claimed unregistration and cleared EventsRegisteredFlag,
                     // so just nullify the event handler fields to ensure clean state
                     // Use Interlocked.Exchange for thread-safe nullification of event handlers
                     Interlocked.Exchange(ref _onGameLaunchedHandler, null);
@@ -318,14 +320,14 @@ namespace LivingRoots.Controllers
             }
             finally
             {
-                // Clear the UnregisteringFlag AND CommandRegisteredFlag when done to guarantee proper reset of state
-                // This prevents potential issues where command registration might be blocked after unregistration
+                // IMPLEMENT PROPER STATE UPDATE ORDERING: Clear the UnregisteringFlag when done to guarantee proper reset of state
+                // This prevents potential issues where other operations might be blocked after unregistration completes
                 // Only clear CommandRegisteredFlag if the controller is disposed to prevent issues where
                 // command registration might be blocked after unregistration
+                int finalStateMask = ~UnregisteringFlag; // Always clear the UnregisteringFlag
                 if (IsDisposed())
-                    Interlocked.And(ref _state, ~(UnregisteringFlag | CommandRegisteredFlag));
-                else
-                    Interlocked.And(ref _state, ~UnregisteringFlag);
+                    finalStateMask &= ~CommandRegisteredFlag; // Also clear CommandRegisteredFlag if disposed
+                Interlocked.And(ref _state, finalStateMask);
             }
         }
 
