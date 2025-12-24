@@ -581,11 +581,12 @@ namespace LivingRoots.Tests
 
         /// <summary>
         /// Creates an instance of the specified type using Activator.CreateInstance with nonPublic: true as a preferred method.
+        /// Adds FormatterServices.GetUninitializedObject as a fallback when Activator.CreateInstance fails.
         /// Validates that the created instance is not null and throws an informative exception if creation fails.
         /// </summary>
         /// <typeparam name="T">The type to create an instance of</typeparam>
         /// <returns>An instance of the specified type</returns>
-        /// <exception cref="InvalidOperationException">Thrown when Activator.CreateInstance fails to create an instance.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when both Activator.CreateInstance and FormatterServices.GetUninitializedObject fail.</exception>
         private static T CreateInstanceWithFallback<T>() where T : class
         {
             try
@@ -603,8 +604,24 @@ namespace LivingRoots.Tests
             }
             catch (Exception ex)
             {
-                // If creation fails, throw an informative exception
-                throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} for tests.", ex);
+                // If Activator.CreateInstance fails, try FormatterServices.GetUninitializedObject as fallback
+                try
+                {
+                    var instance = FormatterServices.GetUninitializedObject(typeof(T)) as T;
+                    
+                    // Validate that the created instance is not null
+                    if (instance == null)
+                    {
+                        throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} for tests. FormatterServices.GetUninitializedObject returned null.");
+                    }
+                    
+                    return instance;
+                }
+                catch
+                {
+                    // If both methods fail, throw an informative exception
+                    throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} for tests. Both Activator.CreateInstance and FormatterServices.GetUninitializedObject failed.", ex);
+                }
             }
         }
     }
