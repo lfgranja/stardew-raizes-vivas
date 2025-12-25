@@ -236,12 +236,12 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                // Atomically take ownership of handler references to avoid races.
-                // Using Interlocked.Exchange ensures atomic read-and-nullify operation,
-                // preventing race conditions where handler fields could be modified during unsubscription.
-                var gameLaunchedHandler = System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                var saveLoadedHandler = System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                var savingHandler = System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
+                // Capture handler references without nullifying them using Volatile.Read.
+                // This prevents inconsistent state if unsubscription partially fails.
+                // Handlers will only be nullified after successful unsubscription.
+                var gameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
+                var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
+                var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
 
                 // IMPLEMENT DRY PRINCIPLE: Use SafeUnsubscribe helper method to reduce code duplication
                 bool gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(h => gameLoop.GameLaunched -= h, gameLaunchedHandler, "GameLaunched");
@@ -250,25 +250,44 @@ namespace LivingRoots.Controllers
 
                 allUnsubscribed = gameLaunchedRemoved && saveLoadedRemoved && savingRemoved;
 
-                monitor.Log("Events unregistered successfully.", LogLevel.Trace);
+                // Only nullify handler fields after successful unsubscription to prevent memory leaks
+                // and inconsistent state. Use CompareExchange to ensure we only nullify if the
+                // handler hasn't changed since we captured it.
+                if (gameLaunchedRemoved)
+                    System.Threading.Interlocked.CompareExchange(ref _onGameLaunchedHandler, null, gameLaunchedHandler);
+                if (saveLoadedRemoved)
+                    System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, null, saveLoadedHandler);
+                if (savingRemoved)
+                    System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, null, savingHandler);
+
+                if (allUnsubscribed)
+                {
+                    monitor.Log("Events unregistered successfully.", LogLevel.Trace);
+                }
+                else
+                {
+                    monitor.Log("Event unregistration partially failed. Some handlers may remain subscribed.", LogLevel.Warn);
+                }
             }
             finally
             {
-                // Update event-registration flags first to avoid a window where another thread can re-register
-                // while unregistration is still completing.
+                // Update event-registration flags to maintain consistent state.
+                // The EventsRegisteredFlag was cleared at the start of unregistration.
+                // If unregistration was incomplete, we leave it cleared to prevent
+                // re-registration while handlers may still be subscribed.
                 if (IsDisposed())
                 {
                     // During disposal, force-clear all lifecycle flags.
                     System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
                 }
-                else
+                else if (!allUnsubscribed)
                 {
-                    // Only clear EventsRegisteredFlag if we successfully removed all handlers
-                    if (allUnsubscribed)
-                        System.Threading.Interlocked.And(ref _state, ~EventsRegisteredFlag);
-                    else
-                        System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
+                    // If unregistration was incomplete, leave EventsRegisteredFlag cleared.
+                    // This prevents re-registration while some handlers may still be subscribed,
+                    // avoiding potential memory leaks and inconsistent state.
+                    monitor.Log("EventsRegisteredFlag left cleared due to incomplete unregistration.", LogLevel.Trace);
                 }
+                // If allUnsubscribed is true, EventsRegisteredFlag remains cleared (as set at start)
 
                 // Clear "unregistering" claim last, once state is consistent.
                 System.Threading.Interlocked.And(ref _state, ~UnregisteringFlag);
