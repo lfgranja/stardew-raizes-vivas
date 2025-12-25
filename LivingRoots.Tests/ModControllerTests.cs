@@ -741,6 +741,8 @@ namespace LivingRoots.Tests
         /// <exception cref="InvalidOperationException">Thrown when all attempts to create an instance fail.</exception>
         private static T CreateInstanceWithFallback<T>() where T : class
         {
+            Exception? lastError = null;
+
             // First attempt: Try Activator.CreateInstance with nonPublic: true
             try
             {
@@ -750,8 +752,9 @@ namespace LivingRoots.Tests
                     return instance;
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                lastError = ex;
                 // Fall through to reflection-based approach
             }
 
@@ -788,18 +791,20 @@ namespace LivingRoots.Tests
                         return instance;
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    lastError = ex;
                     // Try the next constructor
                     continue;
                 }
             }
 
-            // If all attempts fail, throw an informative exception
+            // If all attempts fail, throw an informative exception with the last error as InnerException
             throw new InvalidOperationException(
                 $"Failed to create instance of type {typeof(T)} for tests. " +
                 $"Tried Activator.CreateInstance and all constructors with default/optional parameters via reflection. " +
-                $"Ensure the type has an accessible constructor with default/optional parameters or provide a test-specific factory method.");
+                $"Ensure the type has an accessible constructor with default/optional parameters or provide a test-specific factory method.",
+                lastError);
         }
     }
 }
