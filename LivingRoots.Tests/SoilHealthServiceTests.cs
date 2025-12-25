@@ -262,7 +262,7 @@ namespace LivingRoots.Tests
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
-            Assert.Equal(100.0f, resultMax); // 130 clamped to 10
+            Assert.Equal(100.0f, resultMax); // 130 clamped to 100
             Assert.Equal(0.0f, resultMin); // -50 clamped to 0
         }
 
