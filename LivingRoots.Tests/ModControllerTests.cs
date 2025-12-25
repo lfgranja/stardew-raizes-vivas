@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
@@ -254,11 +253,11 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var mockEvents = new Mock<IModEvents>();
-            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var threadSafeGameLoopEvents = new ThreadSafeGameLoopEventsStub();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
             _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(threadSafeGameLoopEvents);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
@@ -281,9 +280,9 @@ namespace LivingRoots.Tests
 
             // Assert - No exceptions should be thrown due to race conditions
             // Additionally, verify that all events were properly removed (only once due to thread safety)
-            mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
-            mockGameLoopEvents.VerifyRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
-            mockGameLoopEvents.VerifyRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once);
+            Assert.Equal(1, threadSafeGameLoopEvents.GameLaunchedRemoveCount);
+            Assert.Equal(1, threadSafeGameLoopEvents.SaveLoadedRemoveCount);
+            Assert.Equal(1, threadSafeGameLoopEvents.SavingRemoveCount);
         }
 
         [Fact]
@@ -557,15 +556,11 @@ namespace LivingRoots.Tests
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
             const int testFlag = 1 << 0; // Use EventsRegisteredFlag for testing
 
-            // Get the private _state field using reflection
-            var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.NotNull(stateField);
-
             // Act
             bool result = controller.TrySetStateFlag(testFlag);
 
-            // Get the current state value using reflection
-            var state = (int)stateField.GetValue(controller)!;
+            // Get the current state value directly (internal member accessible via InternalsVisibleTo)
+            var state = controller._state;
 
             // Assert - Should successfully set the flag
             Assert.True(result);
@@ -586,12 +581,8 @@ namespace LivingRoots.Tests
             const int disposedFlag = 1 << 2; // Use DisposedFlag
             const int eventsRegisteredFlag = 1 << 0; // Use EventsRegisteredFlag
 
-            // Get the private _state field using reflection
-            var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.NotNull(stateField);
-
-            // First set the disposed flag using reflection
-            stateField.SetValue(controller, disposedFlag);
+            // First set the disposed flag directly (internal member accessible via InternalsVisibleTo)
+            controller._state = disposedFlag;
 
             // Act - Try to set another flag when disposed
             bool result = controller.TrySetStateFlag(eventsRegisteredFlag);
@@ -606,23 +597,17 @@ namespace LivingRoots.Tests
             // Arrange
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Get the private fields using reflection
-            var saveIdUnavailableWarningShownOnSaveLoadedField = typeof(ModController).GetField("_saveIdUnavailableWarningShownOnSaveLoaded", BindingFlags.NonPublic | BindingFlags.Instance);
-            var saveIdUnavailableWarningShownOnSavingField = typeof(ModController).GetField("_saveIdUnavailableWarningShownOnSaving", BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.NotNull(saveIdUnavailableWarningShownOnSaveLoadedField);
-            Assert.NotNull(saveIdUnavailableWarningShownOnSavingField);
-
             // Act & Assert - Initially should be false (0)
-            Assert.Equal(0, (int)saveIdUnavailableWarningShownOnSaveLoadedField.GetValue(controller)!);
-            Assert.Equal(0, (int)saveIdUnavailableWarningShownOnSavingField.GetValue(controller)!);
+            Assert.Equal(0, controller._saveIdUnavailableWarningShownOnSaveLoaded);
+            Assert.Equal(0, controller._saveIdUnavailableWarningShownOnSaving);
 
-            // Act - Change properties to true (1) using reflection
-            saveIdUnavailableWarningShownOnSaveLoadedField.SetValue(controller, 1);
-            saveIdUnavailableWarningShownOnSavingField.SetValue(controller, 1);
+            // Act - Change properties to true (1) directly (internal members accessible via InternalsVisibleTo)
+            controller._saveIdUnavailableWarningShownOnSaveLoaded = 1;
+            controller._saveIdUnavailableWarningShownOnSaving = 1;
 
             // Assert - Should now be true (1)
-            Assert.Equal(1, (int)saveIdUnavailableWarningShownOnSaveLoadedField.GetValue(controller)!);
-            Assert.Equal(1, (int)saveIdUnavailableWarningShownOnSavingField.GetValue(controller)!);
+            Assert.Equal(1, controller._saveIdUnavailableWarningShownOnSaveLoaded);
+            Assert.Equal(1, controller._saveIdUnavailableWarningShownOnSaving);
         }
 
         /// <summary>
@@ -774,29 +759,27 @@ namespace LivingRoots.Tests
             var constructors = typeof(T).GetConstructors(
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
-            foreach (var constructor in constructors)
+            // Sort constructors by parameter length to prioritize simpler constructors
+            foreach (var constructor in constructors.OrderBy(c => c.GetParameters().Length))
             {
                 try
                 {
                     var parameters = constructor.GetParameters();
-                    var args = new object[parameters.Length];
 
-                    // Create default values for each parameter
-                    for (int i = 0; i < parameters.Length; i++)
+                    // Skip constructors that have parameters without default values, optional markers, or value types
+                    // This ensures we only use constructors that can be safely satisfied by defaults
+                    if (parameters.Any(p => !p.HasDefaultValue && !p.IsOptional && !p.ParameterType.IsValueType))
+                        continue;
+
+                    // Create arguments using LINQ with proper default values
+                    var args = parameters.Select(p =>
                     {
-                        var paramType = parameters[i].ParameterType;
-                        
-                        if (paramType.IsValueType)
-                        {
-                            // For value types, use the default value (e.g., 0 for int, false for bool)
-                            args[i] = Activator.CreateInstance(paramType)!;
-                        }
-                        else
-                        {
-                            // For reference types, use null
-                            args[i] = null!;
-                        }
-                    }
+                        if (p.HasDefaultValue)
+                            return p.DefaultValue;
+                        if (p.ParameterType.IsValueType)
+                            return Activator.CreateInstance(p.ParameterType);
+                        return Type.Missing;
+                    }).ToArray();
 
                     // Try to invoke the constructor with the default arguments
                     var instance = constructor.Invoke(args) as T;
@@ -815,8 +798,8 @@ namespace LivingRoots.Tests
             // If all attempts fail, throw an informative exception
             throw new InvalidOperationException(
                 $"Failed to create instance of type {typeof(T)} for tests. " +
-                $"Tried Activator.CreateInstance and all available constructors via reflection. " +
-                $"Ensure the type has an accessible constructor or provide a test-specific factory method.");
+                $"Tried Activator.CreateInstance and all constructors with default/optional parameters via reflection. " +
+                $"Ensure the type has an accessible constructor with default/optional parameters or provide a test-specific factory method.");
         }
     }
 }
