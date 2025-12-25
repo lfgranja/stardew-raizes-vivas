@@ -411,11 +411,14 @@ namespace LivingRoots.Controllers
 
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
+                    // Clear the soil health cache to prevent cross-save data leakage
+                    _soilHealthService.LoadData(string.Empty);
+                    
                     // Only show warning once to prevent log spam using Interlocked operations
                     if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 1, 0) == 0)
                     {
                         // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
-                        _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; skipping soil health load.", LogLevel.Warn);
+                        _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; cache cleared to prevent cross-save data leakage.", LogLevel.Warn);
                     }
                     return;
                 }
