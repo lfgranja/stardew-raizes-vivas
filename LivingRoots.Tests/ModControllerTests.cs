@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
+using System.Threading;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
 using LivingRoots.Services;
@@ -134,17 +136,12 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var mockEvents = new Mock<IModEvents>();
-            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var threadSafeGameLoopEvents = new ThreadSafeGameLoopEventsStub();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
             _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(threadSafeGameLoopEvents);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
-
-            // Add explicit SetupAdd for events to ensure Moq reliably tracks invocations
-            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
-            mockGameLoopEvents.SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>());
-            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>());
 
             // Create a single ModController instance to be shared across all tasks
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
@@ -165,9 +162,9 @@ namespace LivingRoots.Tests
 
             // Assert - No exceptions should be thrown due to race conditions
             // Verify that events were registered only once despite multiple concurrent calls
-            mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
-            mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
-            mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once);
+            Assert.Equal(1, threadSafeGameLoopEvents.GameLaunchedAddCount);
+            Assert.Equal(1, threadSafeGameLoopEvents.SaveLoadedAddCount);
+            Assert.Equal(1, threadSafeGameLoopEvents.SavingAddCount);
         }
 
         [Fact]
@@ -627,6 +624,90 @@ namespace LivingRoots.Tests
             // Assert - Should now be true (1)
             Assert.Equal(1, (int)saveIdUnavailableWarningShownOnSaveLoadedField.GetValue(controller)!);
             Assert.Equal(1, (int)saveIdUnavailableWarningShownOnSavingField.GetValue(controller)!);
+        }
+
+        /// <summary>
+        /// Thread-safe stub implementation of IGameLoopEvents for concurrency testing.
+        /// Uses Interlocked operations to track event additions and removals in a thread-safe manner.
+        /// This ensures tests reliably validate application code's thread safety without
+        /// relying on Moq's internal state which is not thread-safe.
+        /// </summary>
+        private sealed class ThreadSafeGameLoopEventsStub : IGameLoopEvents
+        {
+            private EventHandler<GameLaunchedEventArgs>? _gameLaunched;
+            private EventHandler<SaveLoadedEventArgs>? _saveLoaded;
+            private EventHandler<SavingEventArgs>? _saving;
+
+            // Thread-safe counters using Interlocked operations
+            private int _gameLaunchedAddCount = 0;
+            private int _saveLoadedAddCount = 0;
+            private int _savingAddCount = 0;
+            private int _gameLaunchedRemoveCount = 0;
+            private int _saveLoadedRemoveCount = 0;
+            private int _savingRemoveCount = 0;
+
+            public int GameLaunchedAddCount => Volatile.Read(ref _gameLaunchedAddCount);
+            public int SaveLoadedAddCount => Volatile.Read(ref _saveLoadedAddCount);
+            public int SavingAddCount => Volatile.Read(ref _savingAddCount);
+            public int GameLaunchedRemoveCount => Volatile.Read(ref _gameLaunchedRemoveCount);
+            public int SaveLoadedRemoveCount => Volatile.Read(ref _saveLoadedRemoveCount);
+            public int SavingRemoveCount => Volatile.Read(ref _savingRemoveCount);
+
+            public event EventHandler<GameLaunchedEventArgs>? GameLaunched
+            {
+                add
+                {
+                    Interlocked.Increment(ref _gameLaunchedAddCount);
+                    _gameLaunched += value;
+                }
+                remove
+                {
+                    Interlocked.Increment(ref _gameLaunchedRemoveCount);
+                    _gameLaunched -= value;
+                }
+            }
+
+            public event EventHandler<SaveLoadedEventArgs>? SaveLoaded
+            {
+                add
+                {
+                    Interlocked.Increment(ref _saveLoadedAddCount);
+                    _saveLoaded += value;
+                }
+                remove
+                {
+                    Interlocked.Increment(ref _saveLoadedRemoveCount);
+                    _saveLoaded -= value;
+                }
+            }
+
+            public event EventHandler<SavingEventArgs>? Saving
+            {
+                add
+                {
+                    Interlocked.Increment(ref _savingAddCount);
+                    _saving += value;
+                }
+                remove
+                {
+                    Interlocked.Increment(ref _savingRemoveCount);
+                    _saving -= value;
+                }
+            }
+
+            // Other IGameLoopEvents members not used in tests - implemented as no-ops
+            public event EventHandler<UpdateTickedEventArgs>? UpdateTicked { add { } remove { } }
+            public event EventHandler<UpdateTickingEventArgs>? UpdateTicking { add { } remove { } }
+            public event EventHandler<OneSecondUpdateTickedEventArgs>? OneSecondUpdateTicked { add { } remove { } }
+            public event EventHandler<OneSecondUpdateTickingEventArgs>? OneSecondUpdateTicking { add { } remove { } }
+            public event EventHandler<DayStartedEventArgs>? DayStarted { add { } remove { } }
+            public event EventHandler<DayEndingEventArgs>? DayEnding { add { } remove { } }
+            public event EventHandler<TimeChangedEventArgs>? TimeChanged { add { } remove { } }
+            public event EventHandler<ReturnedToTitleEventArgs>? ReturnedToTitle { add { } remove { } }
+            public event EventHandler<SaveCreatingEventArgs>? SaveCreating { add { } remove { } }
+            public event EventHandler<SaveCreatedEventArgs>? SaveCreated { add { } remove { } }
+            public event EventHandler<SavedEventArgs>? Saved { add { } remove { } }
+            public event EventHandler<LoadStageChangedEventArgs>? LoadStageChanged { add { } remove { } }
         }
 
         /// <summary>
