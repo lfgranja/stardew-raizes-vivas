@@ -4,7 +4,6 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.Serialization;
 using System.Threading;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
@@ -658,12 +657,24 @@ namespace LivingRoots.Tests
                 add
                 {
                     Interlocked.Increment(ref _gameLaunchedAddCount);
-                    _gameLaunched += value;
+                    EventHandler<GameLaunchedEventArgs>? current, updated;
+                    do
+                    {
+                        current = Volatile.Read(ref _gameLaunched);
+                        updated = (EventHandler<GameLaunchedEventArgs>?)Delegate.Combine(current, value);
+                    }
+                    while (Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
                 }
                 remove
                 {
                     Interlocked.Increment(ref _gameLaunchedRemoveCount);
-                    _gameLaunched -= value;
+                    EventHandler<GameLaunchedEventArgs>? current, updated;
+                    do
+                    {
+                        current = Volatile.Read(ref _gameLaunched);
+                        updated = (EventHandler<GameLaunchedEventArgs>?)Delegate.Remove(current, value);
+                    }
+                    while (Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
                 }
             }
 
@@ -672,12 +683,24 @@ namespace LivingRoots.Tests
                 add
                 {
                     Interlocked.Increment(ref _saveLoadedAddCount);
-                    _saveLoaded += value;
+                    EventHandler<SaveLoadedEventArgs>? current, updated;
+                    do
+                    {
+                        current = Volatile.Read(ref _saveLoaded);
+                        updated = (EventHandler<SaveLoadedEventArgs>?)Delegate.Combine(current, value);
+                    }
+                    while (Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
                 }
                 remove
                 {
                     Interlocked.Increment(ref _saveLoadedRemoveCount);
-                    _saveLoaded -= value;
+                    EventHandler<SaveLoadedEventArgs>? current, updated;
+                    do
+                    {
+                        current = Volatile.Read(ref _saveLoaded);
+                        updated = (EventHandler<SaveLoadedEventArgs>?)Delegate.Remove(current, value);
+                    }
+                    while (Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
                 }
             }
 
@@ -686,12 +709,24 @@ namespace LivingRoots.Tests
                 add
                 {
                     Interlocked.Increment(ref _savingAddCount);
-                    _saving += value;
+                    EventHandler<SavingEventArgs>? current, updated;
+                    do
+                    {
+                        current = Volatile.Read(ref _saving);
+                        updated = (EventHandler<SavingEventArgs>?)Delegate.Combine(current, value);
+                    }
+                    while (Interlocked.CompareExchange(ref _saving, updated, current) != current);
                 }
                 remove
                 {
                     Interlocked.Increment(ref _savingRemoveCount);
-                    _saving -= value;
+                    EventHandler<SavingEventArgs>? current, updated;
+                    do
+                    {
+                        current = Volatile.Read(ref _saving);
+                        updated = (EventHandler<SavingEventArgs>?)Delegate.Remove(current, value);
+                    }
+                    while (Interlocked.CompareExchange(ref _saving, updated, current) != current);
                 }
             }
 
