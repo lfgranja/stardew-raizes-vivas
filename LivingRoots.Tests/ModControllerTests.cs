@@ -746,49 +746,77 @@ namespace LivingRoots.Tests
         }
 
         /// <summary>
-        /// Creates an instance of the specified type using Activator.CreateInstance with nonPublic: true as a preferred method.
-        /// Adds FormatterServices.GetUninitializedObject as a fallback when Activator.CreateInstance fails.
-        /// Validates that the created instance is not null and throws an informative exception if creation fails.
+        /// Creates an instance of the specified type using a reflection-based approach.
+        /// First attempts to use Activator.CreateInstance with nonPublic: true.
+        /// If that fails, uses reflection to find and invoke available constructors with default parameter values.
+        /// This ensures objects are properly initialized through their constructors, avoiding undefined behavior.
         /// </summary>
         /// <typeparam name="T">The type to create an instance of</typeparam>
         /// <returns>An instance of the specified type</returns>
-        /// <exception cref="InvalidOperationException">Thrown when both Activator.CreateInstance and FormatterServices.GetUninitializedObject fail.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when all attempts to create an instance fail.</exception>
         private static T CreateInstanceWithFallback<T>() where T : class
         {
+            // First attempt: Try Activator.CreateInstance with nonPublic: true
             try
             {
-                // Try to create instance using Activator.CreateInstance with nonPublic: true (preferred method)
                 var instance = Activator.CreateInstance(typeof(T), nonPublic: true) as T;
-                
-                // Validate that the created instance is not null
-                if (instance == null)
+                if (instance != null)
                 {
-                    throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} for tests. Activator.CreateInstance returned null.");
-                }
-                
-                return instance;
-            }
-            catch (Exception ex)
-            {
-                // If Activator.CreateInstance fails, try FormatterServices.GetUninitializedObject as fallback
-                try
-                {
-                    var instance = FormatterServices.GetUninitializedObject(typeof(T)) as T;
-                    
-                    // Validate that the created instance is not null
-                    if (instance == null)
-                    {
-                        throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} for tests. FormatterServices.GetUninitializedObject returned null.");
-                    }
-                    
                     return instance;
                 }
-                catch (Exception innerEx)
+            }
+            catch
+            {
+                // Fall through to reflection-based approach
+            }
+
+            // Second attempt: Use reflection to find and invoke constructors with default parameter values
+            var constructors = typeof(T).GetConstructors(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+            foreach (var constructor in constructors)
+            {
+                try
                 {
-                    // If both methods fail, throw an informative exception that includes both failures.
-                    throw new InvalidOperationException($"Failed to create instance of type {typeof(T)} for tests. Both Activator.CreateInstance and FormatterServices.GetUninitializedObject failed.", new AggregateException(ex, innerEx));
+                    var parameters = constructor.GetParameters();
+                    var args = new object[parameters.Length];
+
+                    // Create default values for each parameter
+                    for (int i = 0; i < parameters.Length; i++)
+                    {
+                        var paramType = parameters[i].ParameterType;
+                        
+                        if (paramType.IsValueType)
+                        {
+                            // For value types, use the default value (e.g., 0 for int, false for bool)
+                            args[i] = Activator.CreateInstance(paramType)!;
+                        }
+                        else
+                        {
+                            // For reference types, use null
+                            args[i] = null!;
+                        }
+                    }
+
+                    // Try to invoke the constructor with the default arguments
+                    var instance = constructor.Invoke(args) as T;
+                    if (instance != null)
+                    {
+                        return instance;
+                    }
+                }
+                catch
+                {
+                    // Try the next constructor
+                    continue;
                 }
             }
+
+            // If all attempts fail, throw an informative exception
+            throw new InvalidOperationException(
+                $"Failed to create instance of type {typeof(T)} for tests. " +
+                $"Tried Activator.CreateInstance and all available constructors via reflection. " +
+                $"Ensure the type has an accessible constructor or provide a test-specific factory method.");
         }
     }
 }
