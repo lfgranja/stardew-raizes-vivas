@@ -210,6 +210,13 @@ namespace LivingRoots.Controllers
             {
                 currentState = Volatile.Read(ref _state);
                 
+                // Check if another thread is already unregistering to prevent concurrent unregistration
+                if ((currentState & UnregisteringFlag) != 0)
+                {
+                    _monitor.Log("Event unregistration already in progress, skipping.", LogLevel.Trace);
+                    return;
+                }
+                
                 // Check if events were registered before proceeding with the clear operation
                 if ((currentState & EventsRegisteredFlag) == 0)
                 {
@@ -218,7 +225,8 @@ namespace LivingRoots.Controllers
                     if (hasHandlers)
                     {
                         _monitor.Log("EventsRegisteredFlag not set, but handlers exist. Performing best-effort cleanup.", LogLevel.Warn);
-                        // Proceed with cleanup despite flag not being set
+                        // CRITICAL FIX: Always set UnregisteringFlag before cleanup to prevent concurrent registration
+                        newState = currentState | UnregisteringFlag;
                         break;
                     }
                     else
