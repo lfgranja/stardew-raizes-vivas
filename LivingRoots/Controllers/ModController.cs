@@ -197,6 +197,14 @@ namespace LivingRoots.Controllers
 
         public void UnregisterEvents()
         {
+            // Capture handler references early for best-effort cleanup check
+            var gameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
+            var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
+            var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
+            
+            // Check if any handlers are non-null for best-effort cleanup
+            bool hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
+            
             int currentState, newState;
             do
             {
@@ -205,9 +213,19 @@ namespace LivingRoots.Controllers
                 // Check if events were registered before proceeding with the clear operation
                 if ((currentState & EventsRegisteredFlag) == 0)
                 {
-                    // Events were not registered or already unregistered, so nothing to unregister
-                    _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
-                    return;
+                    // Events were not registered or already unregistered
+                    // However, if handlers exist, perform best-effort cleanup to prevent memory leaks
+                    if (hasHandlers)
+                    {
+                        _monitor.Log("EventsRegisteredFlag not set, but handlers exist. Performing best-effort cleanup.", LogLevel.Warn);
+                        // Proceed with cleanup despite flag not being set
+                        break;
+                    }
+                    else
+                    {
+                        _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
+                        return;
+                    }
                 }
                 
                 // IMPLEMENT PROPER STATE UPDATE ORDERING: Claim unregistration AND clear the EventsRegisteredFlag atomically
@@ -235,13 +253,6 @@ namespace LivingRoots.Controllers
                     allUnsubscribed = false;
                     return;
                 }
-
-                // Capture handler references without nullifying them using Volatile.Read.
-                // This prevents inconsistent state if unsubscription partially fails.
-                // Handlers will only be nullified after successful unsubscription.
-                var gameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
-                var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
-                var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
 
                 // IMPLEMENT DRY PRINCIPLE: Use SafeUnsubscribe helper method to reduce code duplication
                 bool gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(h => gameLoop.GameLaunched -= h, gameLaunchedHandler, "GameLaunched");
