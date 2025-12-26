@@ -330,10 +330,6 @@ namespace LivingRoots.Services
                 return; // Skip if location is invalid
             }
 
-            // Pre-check for location name length violation to enable logging outside the lock
-            bool logLocationNameTooLong = locationName.Length > ModConstants.MaxLocationNameLength;
-            string truncatedLocationName = TruncateForLogging(locationName);
-
             // Variables to track if we need to log warnings (set inside the lock, used outside)
             bool logLocationLimitExceeded = false;
             bool logTileLimitExceeded = false;
@@ -341,24 +337,13 @@ namespace LivingRoots.Services
 
             lock (_lock)
             {
-                // If location name is too long, exit early without modifying anything
-                if (logLocationNameTooLong)
-                {
-                    // We already captured the info needed for logging outside the lock
-                    return; // Refuse to add location if name is too long
-                }
-
                 // Use the internal helper method to set the health value
                 SetHealthInternal(locationName, tilePoint, value, ref logLocationLimitExceeded,
                     ref logTileLimitExceeded, ref truncatedLocationNameForTileLog);
             }
             
             // Log messages outside the lock to avoid blocking other threads
-            if (logLocationNameTooLong)
-            {
-                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to add new location to prevent memory growth.", LogLevel.Warn);
-            }
-            else if (logLocationLimitExceeded)
+            if (logLocationLimitExceeded)
             {
                 _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
             }
@@ -376,10 +361,6 @@ namespace LivingRoots.Services
                 return; // Skip if location or tile is invalid
             }
 
-            // Pre-check for location name length violation to enable logging outside the lock
-            bool logLocationNameTooLong = locationName.Length > ModConstants.MaxLocationNameLength;
-            string truncatedLocationName = TruncateForLogging(locationName);
-
             // Variables to track if we need to log warnings (set inside the lock, used outside)
             bool logLocationLimitExceeded = false;
             bool logTileLimitExceeded = false;
@@ -387,13 +368,6 @@ namespace LivingRoots.Services
 
             lock (_lock)
             {
-                // If location name is too long, exit early without modifying anything
-                if (logLocationNameTooLong)
-                {
-                    // We already captured the info needed for logging outside the lock
-                    return; // Refuse to add location if name is too long
-                }
-
                 // Read the current health value from the cache
                 float currentHealth = 0f;
                 if (_runtimeCache.TryGetValue(locationName, out var tiles))
@@ -413,11 +387,7 @@ namespace LivingRoots.Services
             }
             
             // Log messages outside the lock to avoid blocking other threads
-            if (logLocationNameTooLong)
-            {
-                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; refusing to add new location to prevent memory growth.", LogLevel.Warn);
-            }
-            else if (logLocationLimitExceeded)
+            if (logLocationLimitExceeded)
             {
                 _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) reached in runtime cache; refusing to add new location to prevent memory growth.", LogLevel.Warn);
             }
