@@ -204,9 +204,17 @@ namespace LivingRoots.Controllers
             
             // Check if any handlers are non-null for best-effort cleanup
             bool hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
-            
+
+            // Early exit: if nothing registered and nothing to cleanup, return immediately
+            if (!hasHandlers && (Volatile.Read(ref _state) & EventsRegisteredFlag) == 0)
+            {
+                _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
+                return;
+            }
+
+            // State-claiming loop: always atomically set UnregisteringFlag before proceeding
             int currentState, newState;
-            do
+            while (true)
             {
                 currentState = Volatile.Read(ref _state);
                 
@@ -217,34 +225,17 @@ namespace LivingRoots.Controllers
                     return;
                 }
                 
-                // Check if events were registered before proceeding with the clear operation
-                if ((currentState & EventsRegisteredFlag) == 0)
-                {
-                    // Events were not registered or already unregistered
-                    // However, if handlers exist, perform best-effort cleanup to prevent memory leaks
-                    if (hasHandlers)
-                    {
-                        _monitor.Log("EventsRegisteredFlag not set, but handlers exist. Performing best-effort cleanup.", LogLevel.Warn);
-                        // CRITICAL FIX: Always set UnregisteringFlag before cleanup to prevent concurrent registration
-                        newState = currentState | UnregisteringFlag;
-                        break;
-                    }
-                    else
-                    {
-                        _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
-                        return;
-                    }
-                }
-                
-                // IMPLEMENT PROPER STATE UPDATE ORDERING: Claim unregistration AND clear the EventsRegisteredFlag atomically
-                // This ensures that no new registrations can happen while unregistration is in progress
-                // and that other threads attempting to unregister will see EventsRegisteredFlag is clear and return early
+                // Always set UnregisteringFlag to prevent concurrent registration
+                // Clear EventsRegisteredFlag if it was set (normal unregistration path)
                 newState = (currentState | UnregisteringFlag) & ~EventsRegisteredFlag;
+
+                // Atomically claim unregistration rights
+                if (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) == currentState)
+                {
+                    break; // Successfully claimed unregistration
+                }
+                // CAS failed: another thread modified state, retry
             }
-            // Use CompareExchange in a loop to atomically update the state
-            // This implements the 'clear-and-claim' pattern by ensuring only one thread
-            // can successfully claim unregistration and clear the EventsRegisteredFlag
-            while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
