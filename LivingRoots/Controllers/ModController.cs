@@ -283,8 +283,8 @@ namespace LivingRoots.Controllers
             {
                 // Update event-registration flags to maintain consistent state.
                 // The EventsRegisteredFlag was cleared at the start of unregistration.
-                // If unregistration was incomplete, we leave it cleared to prevent
-                // re-registration while handlers may still be subscribed.
+                // If unregistration was incomplete, restore flag to indicate handlers
+                // are still subscribed, preventing duplicate subscriptions.
                 if (IsDisposed())
                 {
                     // During disposal, force-clear all lifecycle flags.
@@ -292,10 +292,11 @@ namespace LivingRoots.Controllers
                 }
                 else if (!allUnsubscribed)
                 {
-                    // If unregistration was incomplete, leave EventsRegisteredFlag cleared.
-                    // This prevents re-registration while some handlers may still be subscribed,
-                    // avoiding potential memory leaks and inconsistent state.
-                    monitor.Log("EventsRegisteredFlag left cleared due to incomplete unregistration.", LogLevel.Trace);
+                    // If unregistration was incomplete, restore EventsRegisteredFlag.
+                    // This indicates that handlers are still subscribed and prevents
+                    // duplicate subscriptions if RegisterEvents is called again.
+                    System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
+                    monitor.Log("EventsRegisteredFlag restored due to incomplete unregistration.", LogLevel.Trace);
                 }
                 // If allUnsubscribed is true, EventsRegisteredFlag remains cleared (as set at start)
 
