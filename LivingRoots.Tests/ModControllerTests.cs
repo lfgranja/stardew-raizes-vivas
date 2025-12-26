@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Threading;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
@@ -811,10 +812,27 @@ namespace LivingRoots.Tests
                 }
             }
 
+            // Third attempt: Try FormatterServices.GetUninitializedObject as a fallback
+            // This creates an uninitialized object without calling the constructor
+            try
+            {
+                var instance = FormatterServices.GetUninitializedObject(typeof(T)) as T;
+                if (instance != null)
+                {
+                    return instance;
+                }
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                // Fall through to final exception
+            }
+
             // If all attempts fail, throw an informative exception with the last error as InnerException
             throw new InvalidOperationException(
                 $"Failed to create instance of type {typeof(T)} for tests. " +
-                $"Tried Activator.CreateInstance and all constructors with default/optional parameters via reflection. " +
+                $"Tried Activator.CreateInstance, all constructors with default/optional parameters via reflection, " +
+                $"and FormatterServices.GetUninitializedObject as fallback. " +
                 $"Ensure the type has an accessible constructor with default/optional parameters or provide a test-specific factory method.",
                 lastError);
         }
