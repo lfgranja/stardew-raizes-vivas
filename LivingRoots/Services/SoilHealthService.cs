@@ -236,6 +236,10 @@ namespace LivingRoots.Services
             {
                 foreach (var location in _runtimeCache)
                 {
+                    // Defensive: skip invalid location names to avoid crashing during Saving.
+                    if (string.IsNullOrWhiteSpace(location.Key))
+                        continue;
+                    
                     // ADD LOCATION NAME LENGTH CHECK: Check location name length during save to ensure consistency with load logic
                     if (location.Key.Length > ModConstants.MaxLocationNameLength)
                     {
@@ -359,6 +363,12 @@ namespace LivingRoots.Services
             if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
                 return; // Skip if location or tile is invalid
+            }
+
+            // Add validation for the delta value to prevent invalid updates.
+            if (float.IsNaN(delta) || float.IsInfinity(delta))
+            {
+                return; // Ignore invalid delta values.
             }
 
             // Variables to track if we need to log warnings (set inside the lock, used outside)
@@ -570,11 +580,11 @@ namespace LivingRoots.Services
 
             // Parse "X,Y" string back to Point (using integers for tile coordinates)
             // Use ReadOnlySpan<char> to avoid string.Split allocation for better performance
-            ReadOnlySpan<char> keySpan = tileEntry.Key;
+            ReadOnlySpan<char> keySpan = tileEntry.Key.AsSpan().Trim();
             int commaIndex = keySpan.IndexOf(',');
             if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
-                int.TryParse(keySpan.Slice(0, commaIndex), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
-                int.TryParse(keySpan.Slice(commaIndex + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
+                int.TryParse(keySpan.Slice(0, commaIndex).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
+                int.TryParse(keySpan.Slice(commaIndex + 1).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
             {
                 // ADDITION: Check for extreme coordinates to prevent potential issues with malicious save files
                 // Using direct boundary checks instead of Math.Abs to prevent overflow when dealing with int.MinValue
