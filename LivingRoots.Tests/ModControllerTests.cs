@@ -335,6 +335,15 @@ namespace LivingRoots.Tests
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
+            // Add explicit SetupAdd and SetupRemove for all events to ensure Moq reliably tracks event subscriptions and unsubscriptions
+            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents.SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>());
+            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>());
+
+            mockGameLoopEvents.SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
+            mockGameLoopEvents.SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>());
+            mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>());
+
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // First register events to initialize the controller
@@ -777,6 +786,9 @@ namespace LivingRoots.Tests
                     // Create arguments using LINQ with proper default values
                     var args = parameters.Select(p =>
                     {
+                        // Check for optional parameters first to ensure constructor's actual default values are used
+                        if (p.IsOptional)
+                            return Type.Missing;
                         if (p.HasDefaultValue)
                             return p.DefaultValue;
                         if (p.ParameterType.IsValueType)
