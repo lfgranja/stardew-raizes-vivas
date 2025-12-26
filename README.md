@@ -24,7 +24,7 @@ A Stardew Valley mod that introduces sustainable farming practices through soil 
 ## Installation
 
 1. Install [SMAPI](https://smapi.io/)
-2. Download the latest version of LivingRoots
+2. Download the latest version of LivingRoots from [GitHub Releases](https://github.com/lfgranja/stardew-raizes-vivas/releases) page
 3. Extract to your Stardew Valley `Mods` folder
 4. Start playing!
 
