@@ -556,9 +556,6 @@ namespace LivingRoots.Controllers
                     
                     _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
                     _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
-
-                    // Set the command registered flag atomically - only after successful registration
-                    System.Threading.Interlocked.Or(ref _state, CommandRegisteredFlag);
                 }
                 catch (Exception ex)
                 {
@@ -572,11 +569,12 @@ namespace LivingRoots.Controllers
                     #if DEBUG
                     _monitor.Log(ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.", LogLevel.Trace);
                     #endif
-                    
-                    // Ensure the CommandRegisteredFlag is not set if registration failed
-                    // This is important to maintain atomic state - if an exception occurs during registration,
-                    // we don't want the flag to indicate success when it actually failed
-                    System.Threading.Interlocked.And(ref _state, ~CommandRegisteredFlag);
+                }
+                finally
+                {
+                    // Set the command registered flag atomically - even if an exception occurs
+                    // This prevents repeated registration attempts and log spam, assuming the command may already exist
+                    System.Threading.Interlocked.Or(ref _state, CommandRegisteredFlag);
                 }
             }
         }
