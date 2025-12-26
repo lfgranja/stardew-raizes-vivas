@@ -283,7 +283,7 @@ namespace LivingRoots.Controllers
             {
                 // Update event-registration flags to maintain consistent state.
                 // The EventsRegisteredFlag was cleared at the start of unregistration.
-                // If unregistration was incomplete, restore flag to indicate handlers
+                // If unregistration was incomplete, restore the flag to indicate handlers
                 // are still subscribed, preventing duplicate subscriptions.
                 if (IsDisposed())
                 {
@@ -557,6 +557,10 @@ namespace LivingRoots.Controllers
                     
                     _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
                     _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+                    
+                    // Set the command registered flag atomically only on successful registration
+                    // This prevents repeated registration attempts and ensures the flag reflects actual registration state
+                    System.Threading.Interlocked.Or(ref _state, CommandRegisteredFlag);
                 }
                 catch (Exception ex)
                 {
@@ -570,12 +574,6 @@ namespace LivingRoots.Controllers
                     #if DEBUG
                     _monitor.Log(ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.", LogLevel.Trace);
                     #endif
-                }
-                finally
-                {
-                    // Set the command registered flag atomically - even if an exception occurs
-                    // This prevents repeated registration attempts and log spam, assuming the command may already exist
-                    System.Threading.Interlocked.Or(ref _state, CommandRegisteredFlag);
                 }
             }
         }
