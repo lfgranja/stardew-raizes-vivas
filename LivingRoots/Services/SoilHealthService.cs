@@ -97,19 +97,13 @@ namespace LivingRoots.Services
                 var locations = savedData.LocationHealthData ?? new Dictionary<string, Dictionary<string, float>>();
 
                 int locationCount = 0;
-                bool locationsLimitLogged = false;
-                bool totalTilesLimitLogged = false;
 
                 foreach (var locationEntry in locations)
                 {
                     locationCount++;
                     if (locationCount > ModConstants.MaxLocationsPerSave)
                     {
-                        if (!locationsLimitLogged)
-                        {
-                            _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded; stopping location processing to prevent DoS.", LogLevel.Warn);
-                            locationsLimitLogged = true;
-                        }
+                        _monitor.Log($"Location count limit ({ModConstants.MaxLocationsPerSave}) exceeded; stopping location processing to prevent DoS.", LogLevel.Warn);
                         break;
                     }
 
@@ -162,11 +156,7 @@ namespace LivingRoots.Services
                         totalTileEntriesProcessed++;
                         if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
                         {
-                            if (!totalTilesLimitLogged)
-                            {
-                                _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) exceeded; stopping load to prevent DoS.", LogLevel.Warn);
-                                totalTilesLimitLogged = true;
-                            }
+                            _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) exceeded; stopping load to prevent DoS.", LogLevel.Warn);
                             break; // Stop processing completely
                         }
                         
