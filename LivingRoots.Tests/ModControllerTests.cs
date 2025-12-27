@@ -38,6 +38,83 @@ namespace LivingRoots.Tests
             _mockManifest.Setup(x => x.Version).Returns(new StardewModdingAPI.SemanticVersion(1, 0, 0));
         }
 
+        /// <summary>
+        /// Creates an instance of type T using reflection with fallback strategies.
+        /// First tries Activator.CreateInstance with nonPublic: true.
+        /// If that fails, tries to find a constructor with optional/default parameters.
+        /// </summary>
+        /// <typeparam name="T">The type to instantiate.</typeparam>
+        /// <returns>An instance of type T.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when no valid constructor is found.</exception>
+        private static T CreateInstanceWithFallback<T>() where T : class
+        {
+            Exception? lastError = null;
+
+            // First try: Activator.CreateInstance with nonPublic: true
+            try
+            {
+                var instance = Activator.CreateInstance(typeof(T), nonPublic: true) as T;
+                if (instance != null)
+                {
+                    return instance;
+                }
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+            }
+
+            // Second try: Find a constructor with optional/default parameters
+            var constructors = typeof(T).GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            foreach (var constructor in constructors)
+            {
+                var parameters = constructor.GetParameters();
+                
+                // Skip constructors with any required reference-type parameter (can't safely provide a value)
+                if (parameters.Any(p =>
+                        !p.IsOptional &&
+                        !p.HasDefaultValue &&
+                        !p.ParameterType.IsValueType))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var args = constructor.GetParameters().Select(p =>
+                    {
+                        if (p.IsOptional)
+                            return Type.Missing;
+                        if (p.HasDefaultValue)
+                            return p.DefaultValue;
+                        if (p.ParameterType.IsValueType)
+                            return Activator.CreateInstance(p.ParameterType);
+                        return Type.Missing;
+                    }).ToArray();
+
+                    // Try to invoke the constructor with the default arguments
+                    var instance = constructor.Invoke(args) as T;
+                    if (instance != null)
+                    {
+                        return instance;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    // Try to next constructor
+                    continue;
+                }
+            }
+
+            // If all attempts fail, throw an informative exception with the last error as InnerException
+            throw new InvalidOperationException(
+                $"Failed to create instance of type {typeof(T)} for tests. " +
+                $"Tried Activator.CreateInstance and all constructors with default/optional parameters via reflection. " +
+                $"Ensure that type has an accessible constructor with default/optional parameters or provide a test-specific factory method.",
+                lastError);
+        }
+
         [Fact]
         public void Constructor_WithNullHelper_ThrowsArgumentNullException()
         {
@@ -665,6 +742,114 @@ namespace LivingRoots.Tests
         }
 
         /// <summary>
+        /// Test class with a constructor that has required reference-type parameters.
+        /// This type should be skipped by the improved CreateInstanceWithFallback method.
+        /// </summary>
+        private class TypeWithRequiredReferenceParameter
+        {
+            private readonly string _requiredParam;
+            private readonly object _anotherRequiredParam;
+
+            public TypeWithRequiredReferenceParameter(string requiredParam, object anotherRequiredParam)
+            {
+                _requiredParam = requiredParam;
+                _anotherRequiredParam = anotherRequiredParam;
+            }
+        }
+
+        /// <summary>
+        /// Test class with a constructor that has optional parameters.
+        /// This type should work with CreateInstanceWithFallback after the fix.
+        /// </summary>
+        private class TypeWithOptionalParameters
+        {
+            private readonly string _optionalParam;
+            private readonly int _optionalIntParam;
+
+            public TypeWithOptionalParameters(string optionalParam = "default", int optionalIntParam = 42)
+            {
+                _optionalParam = optionalParam;
+                _optionalIntParam = optionalIntParam;
+            }
+        }
+
+        [Fact]
+        public void CreateInstanceWithFallback_WhenTypeHasRequiredReferenceParameters_ThrowsInvalidOperationException()
+        {
+            // Act & Assert - Should throw InvalidOperationException when trying to instantiate a type with required reference parameters
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                CreateInstanceWithFallback<TypeWithRequiredReferenceParameter>());
+            
+            // Verify the exception message is informative and includes the type name
+            Assert.Contains("TypeWithRequiredReferenceParameter", ex.Message);
+            Assert.Contains("Failed to create instance", ex.Message);
+        }
+
+        [Fact]
+        public void CreateInstanceWithFallback_WhenTypeHasOptionalParameters_CreatesInstanceSuccessfully()
+        {
+            // Act
+            var instance = CreateInstanceWithFallback<TypeWithOptionalParameters>();
+
+            // Assert - Should create instance successfully with default values
+            Assert.NotNull(instance);
+        }
+
+        [Fact]
+        public void CreateInstanceWithFallback_WhenNoValidConstructor_ThrowsInvalidOperationException()
+        {
+            // Act & Assert - Should throw InvalidOperationException with informative message
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                CreateInstanceWithFallback<TypeWithRequiredConstructorParameter>());
+            
+            // Verify the exception message is informative and includes the type name
+            Assert.Contains("TypeWithRequiredConstructorParameter", ex.Message);
+            Assert.Contains("Failed to create instance", ex.Message);
+        }
+
+
+        [Fact]
+        public void ReflectionInvoke_WhenMethodThrowsException_RethrowsActualExceptionNotTargetInvocationException()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+
+            // Setup monitor to throw an exception when Log is called
+            _mockMonitor.Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()))
+                .Throws(new InvalidOperationException("Test exception from monitor"));
+
+            // Verify that the PrintVersion method exists before invoking it
+            var printVersionMethod = typeof(ModController).GetMethod("PrintVersion",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(printVersionMethod);
+
+            // Act & Assert - Should throw actual InvalidOperationException, not TargetInvocationException
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                try
+                {
+                    printVersionMethod.Invoke(controller, new object[] { "lr_version", Array.Empty<string>() });
+                }
+                catch (TargetInvocationException tie) when (tie.InnerException != null)
+                {
+                    throw tie.InnerException;
+                }
+            });
+
+            // Verify the exception is actual InvalidOperationException, not wrapped
+            Assert.Equal("Test exception from monitor", ex.Message);
+            Assert.IsType<InvalidOperationException>(ex);
+        }
+
+        /// <summary>
         /// Thread-safe stub implementation of IGameLoopEvents for concurrency testing.
         /// Uses Interlocked operations to track event additions and removals in a thread-safe manner.
         /// This ensures tests reliably validate application code's thread safety without
@@ -796,126 +981,6 @@ namespace LivingRoots.Tests
             {
                 _requiredParam = requiredParam;
             }
-        }
-
-        [Fact]
-        public void CreateInstanceWithFallback_WhenNoValidConstructor_ThrowsInvalidOperationException()
-        {
-            // Act & Assert - Should throw InvalidOperationException with informative message
-            var ex = Assert.Throws<InvalidOperationException>(() =>
-                CreateInstanceWithFallback<TypeWithRequiredConstructorParameter>());
-            
-            // Verify the exception message is informative and includes the type name
-            Assert.Contains("TypeWithRequiredConstructorParameter", ex.Message);
-            Assert.Contains("Failed to create instance", ex.Message);
-        }
-
-
-        [Fact]
-        public void ReflectionInvoke_WhenMethodThrowsException_RethrowsActualExceptionNotTargetInvocationException()
-        {
-            // Arrange
-            var mockEvents = new Mock<IModEvents>();
-            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
-            var mockCommandHelper = new Mock<ICommandHelper>();
-
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
-            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
-
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
-
-            // Setup monitor to throw an exception when Log is called
-            _mockMonitor.Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()))
-                .Throws(new InvalidOperationException("Test exception from monitor"));
-
-            // Verify that the PrintVersion method exists before invoking it
-            var printVersionMethod = typeof(ModController).GetMethod("PrintVersion",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(printVersionMethod);
-
-            // Act & Assert - Should throw actual InvalidOperationException, not TargetInvocationException
-            var ex = Assert.Throws<InvalidOperationException>(() =>
-            {
-                try
-                {
-                    printVersionMethod.Invoke(controller, new object[] { "lr_version", Array.Empty<string>() });
-                }
-                catch (TargetInvocationException tie) when (tie.InnerException != null)
-                {
-                    throw tie.InnerException;
-                }
-            });
-
-            // Verify the exception is actual InvalidOperationException, not wrapped
-            Assert.Equal("Test exception from monitor", ex.Message);
-            Assert.IsType<InvalidOperationException>(ex);
-        }
-
-        /// <summary>
-        /// Creates an instance of type T using reflection with fallback strategies.
-        /// First tries Activator.CreateInstance with nonPublic: true.
-        /// If that fails, tries to find a constructor with optional/default parameters.
-        /// </summary>
-        /// <typeparam name="T">The type to instantiate.</typeparam>
-        /// <returns>An instance of type T.</returns>
-        /// <exception cref="InvalidOperationException">Thrown when no valid constructor is found.</exception>
-        private static T CreateInstanceWithFallback<T>() where T : class
-        {
-            Exception? lastError = null;
-
-            // First try: Activator.CreateInstance with nonPublic: true
-            try
-            {
-                var instance = Activator.CreateInstance(typeof(T), nonPublic: true) as T;
-                if (instance != null)
-                {
-                    return instance;
-                }
-            }
-            catch (Exception ex)
-            {
-                lastError = ex;
-            }
-
-            // Second try: Find a constructor with optional/default parameters
-            var constructors = typeof(T).GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            foreach (var constructor in constructors)
-            {
-                try
-                {
-                    var args = constructor.GetParameters().Select(p =>
-                    {
-                        if (p.IsOptional)
-                            return Type.Missing;
-                        if (p.HasDefaultValue)
-                            return p.DefaultValue;
-                        if (p.ParameterType.IsValueType)
-                            return Activator.CreateInstance(p.ParameterType);
-                        return Type.Missing;
-                    }).ToArray();
-
-                    // Try to invoke the constructor with the default arguments
-                    var instance = constructor.Invoke(args) as T;
-                    if (instance != null)
-                    {
-                        return instance;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    lastError = ex;
-                    // Try to next constructor
-                    continue;
-                }
-            }
-
-            // If all attempts fail, throw an informative exception with the last error as InnerException
-            throw new InvalidOperationException(
-                $"Failed to create instance of type {typeof(T)} for tests. " +
-                $"Tried Activator.CreateInstance and all constructors with default/optional parameters via reflection. " +
-                $"Ensure that type has an accessible constructor with default/optional parameters or provide a test-specific factory method.",
-                lastError);
         }
     }
 }
