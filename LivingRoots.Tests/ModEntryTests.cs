@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Reflection;
 using StardewModdingAPI;
 using Xunit;
@@ -297,6 +298,20 @@ namespace LivingRoots.Tests
             var disposedField = typeof(ModEntry).GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance);
             var finalDisposedState = (bool)(disposedField?.GetValue(modEntry) ?? false);
             Assert.True(finalDisposedState);
+        }
+
+        [Fact]
+        public void Readme_ContainsCorrectGitHubReleasesLink()
+        {
+            // Arrange
+            var readmePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "README.md");
+            var expectedLink = "https://github.com/lfgranja/stardew-raizes-vivas/releases";
+            
+            // Act
+            var readmeContent = File.ReadAllText(readmePath);
+            
+            // Assert - This should fail initially since the link is incorrect
+            Assert.Contains(expectedLink, readmeContent);
         }
     }
 }
