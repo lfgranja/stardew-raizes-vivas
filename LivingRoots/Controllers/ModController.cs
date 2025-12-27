@@ -197,19 +197,21 @@ namespace LivingRoots.Controllers
 
         public void UnregisterEvents()
         {
-            // Capture handler references early for best-effort cleanup check
-            var gameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
-            var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
-            var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
-            
-            // Check if any handlers are non-null for best-effort cleanup
-            bool hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
-
             // Early exit: if nothing registered and nothing to cleanup, return immediately
-            if (!hasHandlers && (Volatile.Read(ref _state) & EventsRegisteredFlag) == 0)
+            if ((Volatile.Read(ref _state) & (EventsRegisteredFlag | UnregisteringFlag)) == 0)
             {
-                _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
-                return;
+                // Check if any handlers are non-null for best-effort cleanup
+                var earlyGameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
+                var earlySaveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
+                var earlySavingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
+                
+                bool earlyHasHandlers = earlyGameLaunchedHandler != null || earlySaveLoadedHandler != null || earlySavingHandler != null;
+                
+                if (!earlyHasHandlers)
+                {
+                    _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
+                    return;
+                }
             }
 
             // State-claiming loop: always atomically set UnregisteringFlag before proceeding
@@ -236,6 +238,15 @@ namespace LivingRoots.Controllers
                 }
                 // CAS failed: another thread modified state, retry
             }
+
+            // Capture handler references AFTER UnregisteringFlag has been atomically set
+            // This prevents race condition where newly registered events could be leaked
+            var gameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
+            var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
+            var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
+
+            // Check if any handlers are non-null for best-effort cleanup
+            bool hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
@@ -403,14 +414,13 @@ namespace LivingRoots.Controllers
 
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
-                    // Clear the soil health cache to prevent cross-save data leakage
-                    _soilHealthService.LoadData(string.Empty);
-                    
-                    // Only show warning once to prevent log spam using Interlocked operations
+                    // Don't call LoadData with an invalid/empty ID (could load/save under a bogus key).
+                    // Prefer an explicit reset/clear API in the soil-health service to prevent cross-save leakage.
+                    _soilHealthService.Reset();
+
                     if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 1, 0) == 0)
                     {
-                        // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
-                        _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; cache cleared to prevent cross-save data leakage.", LogLevel.Warn);
+                        _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; soil health state reset to prevent cross-save data leakage.", LogLevel.Warn);
                     }
                     return;
                 }
