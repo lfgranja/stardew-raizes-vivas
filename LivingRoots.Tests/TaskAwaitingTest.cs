@@ -21,32 +21,29 @@ namespace LivingRoots.Tests
             // Create a worker task that will throw an exception
             var task = Task.Run(() =>
             {
-                try
-                {
-                    // Simulate some work that causes an exception
-                    throw new InvalidOperationException("Worker task exception occurred!");
-                }
-                catch (Exception ex)
-                {
-                    lock (lockObj)
-                    {
-                        exceptions.Add(ex);
-                    }
-                }
+                // Simulate some work that causes an exception
+                throw new InvalidOperationException("Worker task exception occurred!");
             });
 
             // The problematic pattern: only adding the continuation task to be awaited
             // The original worker task is not awaited, so unobserved exceptions can occur
-            tasks.Add(task.ContinueWith(_ => {
-                // Some continuation work
+            tasks.Add(task.ContinueWith(continuationTask => {
+                // Handle the exception from the original task to prevent unobserved exception
+                if (continuationTask.IsFaulted && continuationTask.Exception != null)
+                {
+                    lock (lockObj)
+                    {
+                        exceptions.AddRange(continuationTask.Exception.InnerExceptions);
+                    }
+                }
             }));
 
             // This should await all tasks, but the original task is not properly awaited
             await Task.WhenAll(tasks);
 
-            // The test should fail if there were exceptions, but due to improper awaiting
-            // the exception in the original task might not be observed
-            Assert.Empty(exceptions);
+            // The test should detect the exception in the continuation handling
+            Assert.NotEmpty(exceptions);
+            Assert.Contains(exceptions, ex => ex.Message.Contains("Worker task exception occurred!"));
         }
 
         [Fact]
@@ -62,33 +59,32 @@ namespace LivingRoots.Tests
             // Create a worker task that will throw an exception
             var task = Task.Run(() =>
             {
-                try
-                {
-                    // Simulate some work that causes an exception
-                    throw new InvalidOperationException("Worker task exception occurred!");
-                }
-                catch (Exception ex)
+                // Simulate some work that causes an exception
+                throw new InvalidOperationException("Worker task exception occurred!");
+            });
+
+            // The correct pattern: both the original task and its continuation are awaited
+            var recordTask = task.ContinueWith(continuationTask => {
+                // Handle the exception from the original task to capture it properly
+                if (continuationTask.IsFaulted && continuationTask.Exception != null)
                 {
                     lock (lockObj)
                     {
-                        exceptions.Add(ex);
+                        exceptions.AddRange(continuationTask.Exception.InnerExceptions);
                     }
                 }
             });
 
-            // The correct pattern: both the original task and its continuation are awaited
-            var recordTask = task.ContinueWith(_ => {
-                // Some continuation work
-            });
-
-            tasks.Add(task);
+            tasks.Add(task); // Add the original task to be awaited (this will throw)
             tasks.Add(recordTask);
 
             // This will properly await all tasks, ensuring exceptions are observed
-            await Task.WhenAll(tasks);
+            // We need to catch the exception that will be thrown when awaiting the faulted task
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Task.WhenAll(tasks));
 
-            // The test should detect the exception in the worker task
-            Assert.Empty(exceptions);
+            // The test should detect the exception in the worker task through proper exception handling
+            // We also check that the continuation captured the exception
+            Assert.Contains(exceptions, ex => ex.Message.Contains("Worker task exception occurred!"));
         }
     }
 }
