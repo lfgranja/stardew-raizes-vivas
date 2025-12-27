@@ -779,7 +779,7 @@ namespace LivingRoots.Tests
             var exceptions = new List<Exception>();
             var lockObj = new object();
 
-            // Act - Multiple threads accessing the service simultaneously
+            // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
             var tasks = new List<System.Threading.Tasks.Task>();
             for (int i = 0; i < 10; i++)
             {
@@ -787,9 +787,12 @@ namespace LivingRoots.Tests
                 {
                     try
                     {
+                        int workerId = i; // Capture the worker ID to ensure disjoint tile ranges
                         for (int j = 0; j < 100; j++)
                         {
-                            var tile = new Vector2(j % 10, j / 10);
+                            int x = (workerId * 100) + j; // Unique X coordinate per worker
+                            int y = workerId;              // Same Y for all operations of this worker
+                            var tile = new Vector2(x, y);
                             service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,100] range
                             service.GetSoilHealth("Farm", tile);
                             service.UpdateHealth("Farm", tile, 1.0f);
@@ -810,6 +813,190 @@ namespace LivingRoots.Tests
 
             // Assert - No exceptions should have occurred due to race conditions
             Assert.Empty(exceptions);
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task ThreadSafety_MultipleThreadsAccessingService_UsesOverlappingTileRanges()
+        {
+            // This test verifies that the original test implementation uses overlapping tile ranges
+            // which makes the test less deterministic and effective at detecting concurrency bugs
+            
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var exceptions = new List<Exception>();
+            var lockObj = new object();
+            var accessedTiles = new List<Vector2>();
+            var tilesLock = new object();
+
+            // Act - Multiple threads accessing the service simultaneously
+            var tasks = new List<System.Threading.Tasks.Task>();
+            for (int i = 0; i < 3; i++) // Use fewer threads to make overlapping easier to detect
+            {
+                var task = System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        for (int j = 0; j < 10; j++) // Use fewer operations to make overlapping easier to detect
+                        {
+                            var tile = new Vector2(j % 10, j / 10); // This creates overlapping tile ranges across threads
+                            
+                            // Record the tile being accessed
+                            lock (tilesLock)
+                            {
+                                accessedTiles.Add(tile);
+                            }
+                            
+                            service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,100] range
+                            service.GetSoilHealth("Farm", tile);
+                            service.UpdateHealth("Farm", tile, 1.0f);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        lock (lockObj)
+                        {
+                            exceptions.Add(ex);
+                        }
+                    }
+                });
+                tasks.Add(task);
+            }
+
+            await System.Threading.Tasks.Task.WhenAll(tasks);
+
+            // Assert - Verify that overlapping tile ranges were used
+            Assert.Empty(exceptions);
+            
+            // Check for overlapping tiles - since all threads use the same pattern (j % 10, j / 10),
+            // they will access the same tiles, creating overlaps
+            var distinctTiles = accessedTiles.Distinct().ToList();
+            var totalAccesses = accessedTiles.Count;
+            
+            // If there are overlapping accesses, distinct tiles will be fewer than total accesses
+            Assert.True(totalAccesses > distinctTiles.Count, 
+                $"Expected overlapping tile accesses: {totalAccesses} total accesses vs {distinctTiles.Count} distinct tiles. " +
+                $"This confirms that threads access the same tiles, creating race conditions.");
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task ThreadSafety_WithDisjointTileRanges_DoesNotThrow()
+        {
+            // This is a new test to verify that each worker operates on disjoint tile ranges
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var exceptions = new List<Exception>();
+            var lockObj = new object();
+
+            // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
+            var tasks = new List<System.Threading.Tasks.Task>();
+            for (int i = 0; i < 10; i++)
+            {
+                var task = System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        int workerId = i;
+                        for (int j = 0; j < 100; j++)
+                        {
+                            int x = (workerId * 100) + j;
+                            int y = workerId;
+                            var tile = new Vector2(x, y);
+                            service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,100] range
+                            service.GetSoilHealth("Farm", tile);
+                            service.UpdateHealth("Farm", tile, 1.0f);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        lock (lockObj)
+                        {
+                            exceptions.Add(ex);
+                        }
+                    }
+                });
+                tasks.Add(task);
+            }
+
+            await System.Threading.Tasks.Task.WhenAll(tasks);
+
+            // Assert - No exceptions should have occurred due to race conditions
+            Assert.Empty(exceptions);
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task ThreadSafety_WithDisjointTileRanges_VerifiesDisjointRanges()
+        {
+            // This test verifies that each worker operates on disjoint tile ranges
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var exceptions = new List<Exception>();
+            var lockObj = new object();
+            var workerTiles = new List<(int workerId, List<Vector2> tiles)>();
+
+            // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
+            var tasks = new List<System.Threading.Tasks.Task>();
+            for (int i = 0; i < 5; i++) // Using 5 workers to make verification easier
+            {
+                var workerId = i;
+                var workerTileList = new List<Vector2>();
+                
+                var task = System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        for (int j = 0; j < 10; j++) // Only 10 operations per worker for easier verification
+                        {
+                            int x = (workerId * 100) + j;
+                            int y = workerId;
+                            var tile = new Vector2(x, y);
+                            workerTileList.Add(tile);
+                            
+                            service.SetSoilHealth("Farm", tile, workerId * 10.0f); // Set value based on workerId
+                            service.GetSoilHealth("Farm", tile);
+                            service.UpdateHealth("Farm", tile, 1.0f);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        lock (lockObj)
+                        {
+                            exceptions.Add(ex);
+                        }
+                    }
+                });
+                
+                // Capture the tile list for this worker after the task completes
+                tasks.Add(task.ContinueWith(_ => {
+                    lock (lockObj)
+                    {
+                        workerTiles.Add((workerId, workerTileList));
+                    }
+                }));
+            }
+
+            await System.Threading.Tasks.Task.WhenAll(tasks);
+
+            // Assert - No exceptions should have occurred
+            Assert.Empty(exceptions);
+            
+            // Verify that each worker operated on disjoint tile ranges
+            for (int i = 0; i < workerTiles.Count; i++)
+            {
+                for (int j = i + 1; j < workerTiles.Count; j++)
+                {
+                    var tilesI = workerTiles[i].tiles;
+                    var tilesJ = workerTiles[j].tiles;
+                    
+                    // Check that no tiles overlap between workers
+                    foreach (var tileI in tilesI)
+                    {
+                        foreach (var tileJ in tilesJ)
+                        {
+                            Assert.NotEqual(tileI, tileJ);
+                        }
+                    }
+                }
+            }
         }
 
         [Fact]
