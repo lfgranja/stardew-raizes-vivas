@@ -304,7 +304,7 @@ namespace LivingRoots.Tests
         public void Readme_ContainsCorrectGitHubReleasesLink()
         {
             // Arrange
-            var readmePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "README.md");
+            var readmePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "README.md"));
             var expectedLink = "https://github.com/lfgranja/stardew-raizes-vivas/releases";
             
             // Act
