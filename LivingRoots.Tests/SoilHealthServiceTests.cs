@@ -256,7 +256,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.UpdateHealth(location, tile, 80.0f); // Should result in 50+80=130 -> clamp to 100 (MaxSoilHealth)
+            service.UpdateHealth(location, tile, 80.0f); // Should result in 50+80=130 -> clamp to 10 (MaxSoilHealth)
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
@@ -359,7 +359,7 @@ namespace LivingRoots.Tests
                     ["Farm"] = new Dictionary<string, float>
                     {
                         ["invalid_key"] = 75.5f,      // Invalid format
-                        ["10,not_a_number"] = 25.5f,  // Invalid Y
+                        ["10,not_a_number"] = 25.5f, // Invalid Y
                         ["not_a_number,10"] = 30.0f,  // Invalid X
                         ["10,10"] = 50.0f             // Valid
                     }
@@ -780,14 +780,15 @@ namespace LivingRoots.Tests
             var lockObj = new object();
 
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
+            // Fixed: Capture the loop variable in a local variable before creating the task
             var tasks = new List<System.Threading.Tasks.Task>();
             for (int i = 0; i < 10; i++)
             {
+                var workerId = i; // Capture per-iteration value to avoid closure issues
                 var task = System.Threading.Tasks.Task.Run(() =>
                 {
                     try
                     {
-                        int workerId = i; // Capture the worker ID to ensure disjoint tile ranges
                         for (int j = 0; j < 100; j++)
                         {
                             int x = (workerId * 100) + j; // Unique X coordinate per worker
@@ -891,11 +892,11 @@ namespace LivingRoots.Tests
             var tasks = new List<System.Threading.Tasks.Task>();
             for (int i = 0; i < 10; i++)
             {
+                var workerId = i; // Capture per-iteration value to avoid closure issues
                 var task = System.Threading.Tasks.Task.Run(() =>
                 {
                     try
                     {
-                        int workerId = i;
                         for (int j = 0; j < 100; j++)
                         {
                             int x = (workerId * 100) + j;
@@ -946,7 +947,7 @@ namespace LivingRoots.Tests
                     {
                         for (int j = 0; j < 10; j++) // Only 10 operations per worker for easier verification
                         {
-                            int x = (workerId * 100) + j;
+                            int x = (workerId * 10) + j;
                             int y = workerId;
                             var tile = new Vector2(x, y);
                             workerTileList.Add(tile);
@@ -966,12 +967,15 @@ namespace LivingRoots.Tests
                 });
                 
                 // Capture the tile list for this worker after the task completes
-                tasks.Add(task.ContinueWith(_ => {
+                var recordTask = task.ContinueWith(_ => {
                     lock (lockObj)
                     {
                         workerTiles.Add((workerId, workerTileList));
                     }
-                }));
+                });
+
+                tasks.Add(task);
+                tasks.Add(recordTask);
             }
 
             await System.Threading.Tasks.Task.WhenAll(tasks);
@@ -1090,7 +1094,7 @@ namespace LivingRoots.Tests
             // This test verifies that DoS protection counts ALL processed entries,
             // not just the ones that are saved, and triggers when the location limit is reached.
             // The test is order-independent - it doesn't depend on Dictionary enumeration order.
-            var totalEntries = ModConstants.MaxTilesPerLocation + 50; // 550 entries (exceeds the limit by 50)
+            var totalEntries = ModConstants.MaxTilesPerLocation + 50; // 50 entries (exceeds the limit by 50)
             
             // Build a dictionary with all valid entries
             var locationEntries = new Dictionary<string, float>(totalEntries);
@@ -1122,7 +1126,7 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
             // Act: Load the data - this should trigger DoS protection because
-            // we're processing more than the limit of entries (550 > 500 limit)
+            // we're processing more than the limit of entries (50 > 50 limit)
             service.LoadData("test_save");
 
             // Assert: Verify that the warning log appeared when exceeding the cap
@@ -1427,7 +1431,7 @@ namespace LivingRoots.Tests
                     ["Farm"] = new Dictionary<string, float>
                     {
                         [" 10,10 "] = 75.5f,   // Leading and trailing whitespace
-                        ["  11,15  "] = 25.5f,  // Multiple leading and trailing spaces
+                        ["  1,15 "] = 25.5f,  // Multiple leading and trailing spaces
                         ["12,12"] = 50.0f      // Valid entry for comparison
                     }
                 }
@@ -1490,6 +1494,120 @@ namespace LivingRoots.Tests
             Assert.Equal(25.5f, service.GetSoilHealth("Farm", new Vector2(11, 15)));
             Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(12, 15)));
             Assert.Equal(60.0f, service.GetSoilHealth("Farm", new Vector2(13, 13)));
+        }
+
+        [Fact]
+        public void Reset_ClearsAllCachedData()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var tile1 = new Vector2(10, 10);
+            var tile2 = new Vector2(15, 20);
+            
+            // Add data to multiple locations
+            service.SetSoilHealth("Farm", tile1, 75.5f);
+            service.SetSoilHealth("Farm", tile2, 25.5f);
+            service.SetSoilHealth("Town", tile1, 50.0f);
+            
+            // Verify data was added
+            Assert.Equal(75.5f, service.GetSoilHealth("Farm", tile1));
+            Assert.Equal(25.5f, service.GetSoilHealth("Farm", tile2));
+            Assert.Equal(50.0f, service.GetSoilHealth("Town", tile1));
+
+            // Act
+            service.Reset();
+
+            // Assert - All cached data should be cleared
+            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile1));
+            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile2));
+            Assert.Equal(0.0f, service.GetSoilHealth("Town", tile1));
+        }
+
+        [Fact]
+        public void Reset_WhenCacheIsEmpty_DoesNotThrow()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            
+            // Cache is initially empty, verify this
+            Assert.Equal(0.0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+
+            // Act & Assert
+            var ex = Record.Exception(() => service.Reset());
+            Assert.Null(ex); // Should not throw
+            
+            // Verify cache is still empty after reset
+            Assert.Equal(0.0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+        }
+
+        [Fact]
+        public void Reset_IsThreadSafe()
+        {
+            // Arrange
+            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            
+            // Add some data to the cache
+            for (int i = 0; i < 10; i++)
+            {
+                service.SetSoilHealth("Farm", new Vector2(i, 0), i * 10.0f);
+            }
+
+            var exceptions = new List<Exception>();
+            var lockObj = new object();
+
+            // Act - Multiple threads calling Reset() and other operations simultaneously
+            var tasks = new List<System.Threading.Tasks.Task>();
+            
+            // Task to call Reset() from multiple threads
+            for (int i = 0; i < 3; i++)
+            {
+                var task = System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        service.Reset();
+                    }
+                    catch (Exception ex)
+                    {
+                        lock (lockObj)
+                        {
+                            exceptions.Add(ex);
+                        }
+                    }
+                });
+                tasks.Add(task);
+            }
+            
+            // Task to call other operations from multiple threads
+            for (int i = 0; i < 3; i++)
+            {
+                var task = System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        for (int j = 0; j < 10; j++)
+                        {
+                            var tile = new Vector2(j, 0);
+                            service.SetSoilHealth("Farm", tile, j * 5.0f);
+                            service.GetSoilHealth("Farm", tile);
+                            service.UpdateHealth("Farm", tile, 1.0f);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        lock (lockObj)
+                        {
+                            exceptions.Add(ex);
+                        }
+                    }
+                });
+                tasks.Add(task);
+            }
+
+            System.Threading.Tasks.Task.WaitAll(tasks.ToArray());
+
+            // Assert - No exceptions should have occurred due to race conditions
+            Assert.Empty(exceptions);
         }
     }
 }
