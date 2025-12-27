@@ -7,9 +7,9 @@ A Stardew Valley mod that introduces sustainable farming practices through soil 
 ### Soil Health System
 - Each farm tile has a persistent soil health value (0-100%)
 - Health values are saved and loaded with the game
-- Visual indicators show soil health status
-- Health degrades over time when soil is left bare
-- Health improves with compost application
+- Visual indicators show soil health status (Planned)
+- Health degrades over time when soil is left bare (Planned)
+- Health improves with compost application (Planned)
 
 ### Composting
 - Create compost from organic materials
@@ -24,7 +24,7 @@ A Stardew Valley mod that introduces sustainable farming practices through soil 
 ## Installation
 
 1. Install [SMAPI](https://smapi.io/)
-2. Download the latest version of LivingRoots from [GitHub Releases](https://github.com/lfgranja/Stardew-LivingRoots/releases) page
+2. Download the latest version of LivingRoots from [GitHub Releases](https://github.com/lfgranja/stardew-raizes-vivas/releases) page
 3. Extract to your Stardew Valley `Mods` folder
 4. Start playing!
 
