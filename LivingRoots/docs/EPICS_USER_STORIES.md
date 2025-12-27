@@ -126,3 +126,4 @@ This document provides a detailed breakdown of all epics and their corresponding
 - **User Stories**:
   - US-19-01: Implement Food Sovereignty Metric and Criteria (Issue #63)
   - US-19-02: Implement Food Sovereignty Rewards (Issue #64)
+  
