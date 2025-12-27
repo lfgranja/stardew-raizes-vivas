@@ -407,6 +407,14 @@ namespace LivingRoots.Services
             }
         }
 
+        public void Reset()
+        {
+            lock (_lock)
+            {
+                _runtimeCache.Clear();
+            }
+        }
+
         /// <summary>
         /// Internal helper method to set soil health value in the cache.
         /// This method must be called within a lock to ensure thread safety.
