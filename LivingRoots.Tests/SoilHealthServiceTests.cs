@@ -899,7 +899,7 @@ namespace LivingRoots.Tests
                     {
                         for (int j = 0; j < 100; j++)
                         {
-                            int x = (workerId * 100) + j;
+                            int x = (workerId * 10) + j;
                             int y = workerId;
                             var tile = new Vector2(x, y);
                             service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,100] range
@@ -1431,7 +1431,7 @@ namespace LivingRoots.Tests
                     ["Farm"] = new Dictionary<string, float>
                     {
                         [" 10,10 "] = 75.5f,   // Leading and trailing whitespace
-                        ["  1,15 "] = 25.5f,  // Multiple leading and trailing spaces
+                        ["  11,15 "] = 25.5f,  // Multiple leading and trailing spaces
                         ["12,12"] = 50.0f      // Valid entry for comparison
                     }
                 }
