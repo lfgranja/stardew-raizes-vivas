@@ -83,13 +83,16 @@ namespace LivingRoots.Tests
                 {
                     var args = constructor.GetParameters().Select(p =>
                     {
-                        if (p.IsOptional)
-                            return Type.Missing;
-                        if (p.HasDefaultValue)
+                        // Optional parameters in C# always have a default value; prefer DefaultValue over Type.Missing.
+                        if (p.IsOptional || p.HasDefaultValue)
                             return p.DefaultValue;
+
                         if (p.ParameterType.IsValueType)
                             return Activator.CreateInstance(p.ParameterType);
-                        return Type.Missing;
+
+                        // Should be unreachable due to the "required reference-type parameter" skip above,
+                        // but keep a safe fallback.
+                        return null;
                     }).ToArray();
 
                     // Try to invoke the constructor with the default arguments
