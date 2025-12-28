@@ -251,7 +251,11 @@ namespace LivingRoots.Controllers
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
             var helper = _helper;
-            bool allUnsubscribed = true;
+            
+            // Track which events were successfully removed for rollback
+            bool gameLaunchedRemoved = false;
+            bool saveLoadedRemoved = false;
+            bool savingRemoved = false;
 
             try
             {
@@ -260,16 +264,15 @@ namespace LivingRoots.Controllers
                 if (gameLoop == null)
                 {
                     monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
-                    allUnsubscribed = false;
                     return;
                 }
 
                 // IMPLEMENT DRY PRINCIPLE: Use SafeUnsubscribe helper method to reduce code duplication
-                bool gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(h => gameLoop.GameLaunched -= h, gameLaunchedHandler, "GameLaunched");
-                bool saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(h => gameLoop.SaveLoaded -= h, saveLoadedHandler, "SaveLoaded");
-                bool savingRemoved = SafeUnsubscribe<SavingEventArgs>(h => gameLoop.Saving -= h, savingHandler, "Saving");
+                gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(h => gameLoop.GameLaunched -= h, gameLaunchedHandler, "GameLaunched");
+                saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(h => gameLoop.SaveLoaded -= h, saveLoadedHandler, "SaveLoaded");
+                savingRemoved = SafeUnsubscribe<SavingEventArgs>(h => gameLoop.Saving -= h, savingHandler, "Saving");
 
-                allUnsubscribed = gameLaunchedRemoved && saveLoadedRemoved && savingRemoved;
+                bool allUnsubscribed = gameLaunchedRemoved && saveLoadedRemoved && savingRemoved;
 
                 // Only nullify handler fields after successful unsubscription to prevent memory leaks
                 // and inconsistent state. Use CompareExchange to ensure we only nullify if the
@@ -288,6 +291,69 @@ namespace LivingRoots.Controllers
                 else
                 {
                     monitor.Log("Event unregistration partially failed. Some handlers may remain subscribed.", LogLevel.Warn);
+                    
+                    // IMPLEMENT ROLLBACK MECHANISM: If any unsubscription fails, re-subscribe the successfully removed handlers
+                    // This ensures an all-or-nothing operation to maintain state consistency
+                    bool rollbackSucceeded = true;
+                    
+                    if (gameLaunchedRemoved && gameLaunchedHandler != null)
+                    {
+                        try
+                        {
+                            gameLoop.GameLaunched += gameLaunchedHandler;
+                            System.Threading.Interlocked.CompareExchange(ref _onGameLaunchedHandler, gameLaunchedHandler, null);
+                            monitor.Log("GameLaunched handler re-subscribed during rollback.", LogLevel.Trace);
+                        }
+                        catch (Exception ex)
+                        {
+                            monitor.Log("Failed to re-subscribe GameLaunched handler during rollback.", LogLevel.Error);
+                            monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                            rollbackSucceeded = false;
+                        }
+                    }
+                    
+                    if (saveLoadedRemoved && saveLoadedHandler != null)
+                    {
+                        try
+                        {
+                            gameLoop.SaveLoaded += saveLoadedHandler;
+                            System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, saveLoadedHandler, null);
+                            monitor.Log("SaveLoaded handler re-subscribed during rollback.", LogLevel.Trace);
+                        }
+                        catch (Exception ex)
+                        {
+                            monitor.Log("Failed to re-subscribe SaveLoaded handler during rollback.", LogLevel.Error);
+                            monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                            rollbackSucceeded = false;
+                        }
+                    }
+                    
+                    if (savingRemoved && savingHandler != null)
+                    {
+                        try
+                        {
+                            gameLoop.Saving += savingHandler;
+                            System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, savingHandler, null);
+                            monitor.Log("Saving handler re-subscribed during rollback.", LogLevel.Trace);
+                        }
+                        catch (Exception ex)
+                        {
+                            monitor.Log("Failed to re-subscribe Saving handler during rollback.", LogLevel.Error);
+                            monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                            rollbackSucceeded = false;
+                        }
+                    }
+                    
+                    if (rollbackSucceeded)
+                    {
+                        // Restore the EventsRegisteredFlag since state is restored to the registered state
+                        System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
+                        monitor.Log("Rollback completed successfully. State restored to registered.", LogLevel.Warn);
+                    }
+                    else
+                    {
+                        monitor.Log("Rollback partially failed. State may be inconsistent.", LogLevel.Error);
+                    }
                 }
             }
             finally
@@ -301,15 +367,8 @@ namespace LivingRoots.Controllers
                     // During disposal, force-clear all lifecycle flags.
                     System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
                 }
-                else if (!allUnsubscribed)
-                {
-                    // If unregistration was incomplete, restore EventsRegisteredFlag.
-                    // This indicates that handlers are still subscribed and prevents
-                    // duplicate subscriptions if RegisterEvents is called again.
-                    System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
-                    monitor.Log("EventsRegisteredFlag restored due to incomplete unregistration.", LogLevel.Trace);
-                }
-                // If allUnsubscribed is true, EventsRegisteredFlag remains cleared (as set at start)
+                // If unregistration was incomplete and rollback was attempted, the flag is already restored above
+                // If unregistration was complete, the EventsRegisteredFlag remains cleared (as set at start)
 
                 // Clear "unregistering" claim last, once state is consistent.
                 System.Threading.Interlocked.And(ref _state, ~UnregisteringFlag);
