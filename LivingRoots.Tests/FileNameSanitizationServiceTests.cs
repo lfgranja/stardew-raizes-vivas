@@ -957,7 +957,7 @@ namespace LivingRoots.Tests
             Assert.NotNull(method);
             
             // Act
-            var result = method.Invoke(null, new object[] { null, 0, 5 }) as string;
+            var result = method.Invoke(null, new object?[] { null, 0, 5 }) as string;
 
             // Assert
             Assert.Equal(string.Empty, result);
