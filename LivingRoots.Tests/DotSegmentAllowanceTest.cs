@@ -28,37 +28,24 @@ namespace LivingRoots.Tests
             
             _mockHelper.Setup(x => x.Data).Returns(_mockDataHelper.Object);
             
-            // Configure mod logic to return expected sanitized values for testing
-            _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(input => 
-            {
-                // Apply whitespace trimming to make the mock sanitization whitespace-safe
-                string trimmedInput = (input ?? string.Empty).Trim();
-                
-                // Simulate real sanitization behavior for individual segments
-                if (trimmedInput == "with:invalid|chars")
-                    return "with_invalid_chars";
-                if (trimmedInput == "file....name")
-                    return "file.name";
-                if (trimmedInput == "test_key")
-                    return "test_key";
-                if (trimmedInput == "<>:\"|?*" || trimmedInput == "........." || trimmedInput == "___" || trimmedInput == "")
-                    throw new ArgumentException("Filename sanitizes to an empty string.", nameof(input)); // This should throw like real implementation
-                // Special handling for ".." which should be blocked at path segment level
-                if (trimmedInput == "..")
-                    throw new ArgumentException($"Filename sanitizes to invalid path component '{trimmedInput}'.", nameof(input));
-                // For individual segments with invalid characters, replace them with underscores
-                if (trimmedInput.Contains(':') || trimmedInput.Contains('|') || trimmedInput.Contains('?') || trimmedInput.Contains('*') || trimmedInput.Contains('<') || trimmedInput.Contains('>') || trimmedInput.Contains('"'))
-                {
-                    return trimmedInput.Replace(':', '_').Replace('|', '_').Replace('?', '_').Replace('*', '_')
-                                   .Replace('<', '_').Replace('>', '_').Replace('"', '_');
-                }
-                // For segments with multiple dots, process them appropriately
-                if (trimmedInput.Contains("...."))
-                {
-                    return trimmedInput.Replace("....", ".").Replace("...", "."); // Simplified processing for test
-                }
-                return trimmedInput;
-            });
+            // Configure mod logic with explicit input/output pairs for SanitizeFileName
+            // This replaces the complex lambda that re-implemented production logic
+            // Each specific input is mapped to its expected output to avoid re-implementing
+            // the sanitization logic in the test
+            _mockModLogic.Setup(x => x.SanitizeFileName("with:invalid|chars")).Returns("with_invalid_chars");
+            _mockModLogic.Setup(x => x.SanitizeFileName("file....name")).Returns("file.name");
+            _mockModLogic.Setup(x => x.SanitizeFileName("test_key")).Returns("test_key");
+            _mockModLogic.Setup(x => x.SanitizeFileName("segment1")).Returns("segment1");
+            _mockModLogic.Setup(x => x.SanitizeFileName("segment2")).Returns("segment2");
+            _mockModLogic.Setup(x => x.SanitizeFileName("segment3")).Returns("segment3");
+            _mockModLogic.Setup(x => x.SanitizeFileName("valid1")).Returns("valid1");
+            _mockModLogic.Setup(x => x.SanitizeFileName("valid2")).Returns("valid2");
+            _mockModLogic.Setup(x => x.SanitizeFileName("start")).Returns("start");
+            _mockModLogic.Setup(x => x.SanitizeFileName("end")).Returns("end");
+            
+            // Configure exceptions for inputs that should throw
+            _mockModLogic.Setup(x => x.SanitizeFileName(It.Is<string>(s => string.IsNullOrEmpty(s) || s == "<>:\"|?*" || s == "........." || s == "___"))).Throws(new ArgumentException("Filename sanitizes to an empty string.", "input"));
+            _mockModLogic.Setup(x => x.SanitizeFileName("..")).Throws(new ArgumentException($"Filename sanitizes to invalid path component '..'.", "input"));
             
             // Configure path validation to not throw for valid paths in most tests
             // but throw for path traversal attempts
@@ -88,11 +75,6 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
-            // Configure mock to return expected sanitized values
-            _mockModLogic.Setup(x => x.SanitizeFileName("segment1")).Returns("segment1");
-            _mockModLogic.Setup(x => x.SanitizeFileName("segment2")).Returns("segment2");
-            _mockModLogic.Setup(x => x.SanitizeFileName("segment3")).Returns("segment3");
             
             // Use reflection to access private SanitizePathSegments method
             var method = service.GetType()
@@ -129,10 +111,6 @@ namespace LivingRoots.Tests
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             
-            // Configure mock to return expected sanitized values
-            _mockModLogic.Setup(x => x.SanitizeFileName("valid1")).Returns("valid1");
-            _mockModLogic.Setup(x => x.SanitizeFileName("valid2")).Returns("valid2");
-            
             // Use reflection to access private SanitizePathSegments method
             var method = service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -150,10 +128,6 @@ namespace LivingRoots.Tests
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             
-            // Configure mock to return expected sanitized values
-            _mockModLogic.Setup(x => x.SanitizeFileName("start")).Returns("start");
-            _mockModLogic.Setup(x => x.SanitizeFileName("end")).Returns("end");
-            
             // Use reflection to access private SanitizePathSegments method
             var method = service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -170,10 +144,6 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
-            // Configure mock to return expected sanitized values
-            _mockModLogic.Setup(x => x.SanitizeFileName("start")).Returns("start");
-            _mockModLogic.Setup(x => x.SanitizeFileName("end")).Returns("end");
             
             // Use reflection to access private SanitizePathSegments method
             var method = service.GetType()
