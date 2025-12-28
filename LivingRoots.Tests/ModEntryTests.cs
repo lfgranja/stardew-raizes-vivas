@@ -304,14 +304,28 @@ namespace LivingRoots.Tests
         public void Readme_ContainsCorrectGitHubReleasesLink()
         {
             // Arrange
-            var readmePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "README.md"));
             var expectedLink = "https://github.com/lfgranja/stardew-raizes-vivas/releases";
             
-            // Add File.Exists assertion to fail fast with a clear message
-            Assert.True(File.Exists(readmePath), $"README.md file not found at path: {readmePath}");
+            // Start from AppContext.BaseDirectory and traverse up the directory tree to find README.md
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            FileInfo? readmeFile = null;
+            
+            // Traverse up to 10 levels to find README.md
+            for (int i = 0; i < 10 && dir != null; i++)
+            {
+                readmeFile = dir.GetFiles("README.md").FirstOrDefault();
+                if (readmeFile != null)
+                {
+                    break;
+                }
+                dir = dir.Parent;
+            }
+            
+            // Assert that README.md was found
+            Assert.NotNull(readmeFile);
             
             // Act
-            var readmeContent = File.ReadAllText(readmePath);
+            var readmeContent = File.ReadAllText(readmeFile.FullName);
             
             // Assert - This should fail initially since the link is incorrect
             Assert.Contains(expectedLink, readmeContent);
