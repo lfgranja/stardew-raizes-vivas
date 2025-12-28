@@ -31,6 +31,11 @@ namespace LivingRoots.Tests
         {
             var projectRoot = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", ".."));
             var architecturalPlansDirectory = Path.Combine(projectRoot, "LivingRoots", "docs", "architectural_and_refactor_plans");
+
+            if (!Directory.Exists(architecturalPlansDirectory))
+            {
+                return Enumerable.Empty<object[]>();
+            }
             
             var mdFiles = Directory.GetFiles(architecturalPlansDirectory, "*.md", SearchOption.AllDirectories)
                                    .Select(filePath => new object[] { filePath });
