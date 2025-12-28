@@ -304,8 +304,11 @@ namespace LivingRoots.Tests
         public void Readme_ContainsCorrectGitHubReleasesLink()
         {
             // Arrange
-            var readmePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "README.md"));
+            var readmePath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "README.md"));
             var expectedLink = "https://github.com/lfgranja/stardew-raizes-vivas/releases";
+            
+            // Add File.Exists assertion to fail fast with a clear message
+            Assert.True(File.Exists(readmePath), $"README.md file not found at path: {readmePath}");
             
             // Act
             var readmeContent = File.ReadAllText(readmePath);
