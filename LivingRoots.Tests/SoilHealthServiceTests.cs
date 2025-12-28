@@ -257,7 +257,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f);
 
             // Act
-            service.UpdateHealth(location, tile, 80.0f); // Should result in 50+80=130 -> clamp to 10 (MaxSoilHealth)
+            service.UpdateHealth(location, tile, 80.0f); // Should result in 50+80=130 -> clamp to 100 (MaxSoilHealth)
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
@@ -1206,9 +1206,9 @@ namespace LivingRoots.Tests
             
             // Use reflection to directly add whitespace location keys to the runtime cache
             var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var runtimeCache = runtimeCacheField?.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
-            
-            if (runtimeCache != null)
+            Assert.NotNull(runtimeCacheField);
+            var runtimeCache = runtimeCacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
+            Assert.NotNull(runtimeCache);
             {
                 // Add a valid location with data
                 runtimeCache["Farm"] = new Dictionary<Point, float> { [new Point(10, 10)] = 75.5f };
@@ -1253,9 +1253,9 @@ namespace LivingRoots.Tests
             
             // Use reflection to directly add an empty string location key to the runtime cache
             var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var runtimeCache = runtimeCacheField?.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
-            
-            if (runtimeCache != null)
+            Assert.NotNull(runtimeCacheField);
+            var runtimeCache = runtimeCacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
+            Assert.NotNull(runtimeCache);
             {
                 // Add a valid location with data
                 runtimeCache["Farm"] = new Dictionary<Point, float> { [new Point(10, 10)] = 75.5f };
@@ -1298,9 +1298,9 @@ namespace LivingRoots.Tests
             
             // Use reflection to directly add a mix of valid and invalid location keys to the runtime cache
             var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var runtimeCache = runtimeCacheField?.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
-            
-            if (runtimeCache != null)
+            Assert.NotNull(runtimeCacheField);
+            var runtimeCache = runtimeCacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
+            Assert.NotNull(runtimeCache);
             {
                 // Add valid locations with data
                 runtimeCache["Farm"] = new Dictionary<Point, float> { [new Point(10, 10)] = 75.5f };
