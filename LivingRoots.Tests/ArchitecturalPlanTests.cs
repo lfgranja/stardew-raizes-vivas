@@ -29,7 +29,7 @@ namespace LivingRoots.Tests
         
         public static IEnumerable<object[]> GetArchitecturalPlanFiles()
         {
-            var projectRoot = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", ".."));
+            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
             var architecturalPlansDirectory = Path.Combine(projectRoot, "LivingRoots", "docs", "architectural_and_refactor_plans");
 
             if (!Directory.Exists(architecturalPlansDirectory))
