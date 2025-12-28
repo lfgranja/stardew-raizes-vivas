@@ -10,6 +10,7 @@ using Moq;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using Xunit;
+using System.Reflection;
 
 namespace LivingRoots.Tests
 {
@@ -111,7 +112,11 @@ namespace LivingRoots.Tests
             Assert.Equal(1, threadSafeGameLoopEvents.SavingRemoveCount);
 
             // Verify that the controller state is consistent
-            var state = controller._state;
+            // Use reflection to access the private _state field since it's not publicly accessible
+            // This is necessary for testing internal state flags like UnregisteringFlag and EventsRegisteredFlag
+            var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+            var state = (int)(stateField?.GetValue(controller) ?? 0);
+            
             var isUnregistering = (state & (1 << 5)) != 0; // UnregisteringFlag
             var isEventsRegistered = (state & (1 << 0)) != 0; // EventsRegisteredFlag
             
