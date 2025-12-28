@@ -257,6 +257,9 @@ namespace LivingRoots.Controllers
             bool saveLoadedRemoved = false;
             bool savingRemoved = false;
 
+            // Declare the rollback tracking variable at method scope so it's accessible in finally block
+            bool mayStillBeSubscribed = false;
+
             try
             {
                 // Capture GameLoop once for consistent unsubscribe
@@ -273,6 +276,9 @@ namespace LivingRoots.Controllers
                 savingRemoved = SafeUnsubscribe<SavingEventArgs>(h => gameLoop.Saving -= h, savingHandler, "Saving");
 
                 bool allUnsubscribed = gameLaunchedRemoved && saveLoadedRemoved && savingRemoved;
+
+                // IMPLEMENT ROLLBACK TRACKING VARIABLE: Track subscription state to prevent future duplicate subscriptions
+                mayStillBeSubscribed = !allUnsubscribed; // Initialize based on allUnsubscribed result
 
                 // Only nullify handler fields after successful unsubscription to prevent memory leaks
                 // and inconsistent state. Use CompareExchange to ensure we only nullify if the
@@ -296,6 +302,8 @@ namespace LivingRoots.Controllers
                     // This ensures an all-or-nothing operation to maintain state consistency
                     bool rollbackSucceeded = true;
                     
+                    // Step 3: Implement rollback logic for GameLaunched handler
+                    // If gameLaunchedRemoved is true and handler exists, try to re-subscribe
                     if (gameLaunchedRemoved && gameLaunchedHandler != null)
                     {
                         try
@@ -312,6 +320,8 @@ namespace LivingRoots.Controllers
                         }
                     }
                     
+                    // Step 4: Implement rollback logic for SaveLoaded handler
+                    // If saveLoadedRemoved is true and handler exists, try to re-subscribe
                     if (saveLoadedRemoved && saveLoadedHandler != null)
                     {
                         try
@@ -328,6 +338,8 @@ namespace LivingRoots.Controllers
                         }
                     }
                     
+                    // Step 5: Implement rollback logic for Saving handler
+                    // If savingRemoved is true and handler exists, try to re-subscribe
                     if (savingRemoved && savingHandler != null)
                     {
                         try
@@ -358,6 +370,7 @@ namespace LivingRoots.Controllers
             }
             finally
             {
+                // Step 6: Implement state restoration in finally block
                 // Update event-registration flags to maintain consistent state.
                 // The EventsRegisteredFlag was cleared at the start of unregistration.
                 // If unregistration was incomplete, restore the flag to indicate handlers
@@ -367,8 +380,14 @@ namespace LivingRoots.Controllers
                     // During disposal, force-clear all lifecycle flags.
                     System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
                 }
-                // If unregistration was incomplete and rollback was attempted, the flag is already restored above
-                // If unregistration was complete, the EventsRegisteredFlag remains cleared (as set at start)
+                else if (mayStillBeSubscribed)
+                {
+                    // If mayStillBeSubscribed is true, restore EventsRegisteredFlag to indicate
+                    // that handlers are still subscribed and prevent duplicate subscriptions
+                    System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
+                }
+                // If unregistration was complete and successful, the EventsRegisteredFlag remains cleared 
+                // (as set at the start of the method)
 
                 // Clear "unregistering" claim last, once state is consistent.
                 System.Threading.Interlocked.And(ref _state, ~UnregisteringFlag);
@@ -682,7 +701,7 @@ namespace LivingRoots.Controllers
                 // Log error but don't expose raw exception message for security
                 _monitor?.Log("Error occurred while executing version command.", LogLevel.Error);
                 
-                // Add trace-level exception details for debugging
+                // Add trace level exception details for debugging
                 _monitor?.Log($"PrintVersion exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
