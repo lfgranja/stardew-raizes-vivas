@@ -149,7 +149,13 @@ namespace LivingRoots.Services
                                 _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationName}'; stopping tile processing for this location.", LogLevel.Warn);
                                 limitExceededLogged = true;
                             }
-                            break; // Stop processing tiles for this location
+                            // For high severity fix: abort the entire load operation if per-location limit is exceeded
+                            _monitor.Log($"LoadData aborted: Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{TruncateForLogging(locationEntry.Key)}'. Cache cleared to prevent data loss.", LogLevel.Alert);
+                            lock (_lock)
+                            {
+                                _runtimeCache.Clear();
+                            }
+                            return;
                         }
                         
                         // GLOBAL DOS PROTECTION: Increment total tile entries across all locations
@@ -164,7 +170,7 @@ namespace LivingRoots.Services
                         if (ProcessTileEntry(tileEntry, locationEntry.Key, ref warnedForMalformedKey, ref warnedForInvalidValue, out Point? processedTilePoint, out float? processedValue))
                         {
                             // Only add non-zero values to prevent bloating the cache with default values
-                            if (processedValue != 0f && processedTilePoint.HasValue)
+                            if (processedValue != 0f && processedTilePoint.HasValue && processedValue.HasValue)
                             {
                                 tileDict[processedTilePoint.Value] = processedValue.Value;
                             }
@@ -571,7 +577,7 @@ namespace LivingRoots.Services
         {
             tilePoint = null;
             value = null;
- 
+
             // Add null/whitespace check for tile keys to prevent crashes with corrupted save files
             if (string.IsNullOrWhiteSpace(tileEntry.Key))
             {
@@ -666,7 +672,7 @@ namespace LivingRoots.Services
         private bool IsValidTile(string locationName, Vector2 tile, out Point tilePoint)
         {
             tilePoint = default;
- 
+
             if (string.IsNullOrWhiteSpace(locationName) || locationName.Length > ModConstants.MaxLocationNameLength)
             {
                 return false;
