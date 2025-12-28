@@ -266,6 +266,9 @@ namespace LivingRoots.Controllers
                 var gameLoop = helper?.Events?.GameLoop;
                 if (gameLoop == null)
                 {
+                    // We can't unsubscribe, so assume handlers may still be subscribed and
+                    // keep the registered-state to prevent duplicate subscriptions later.
+                    mayStillBeSubscribed = hasHandlers;
                     monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
                     return;
                 }
@@ -412,7 +415,8 @@ namespace LivingRoots.Controllers
         /// <param name="handler">The event handler to unsubscribe</param>
         /// <param name="eventName">The name of the event for logging purposes</param>
         /// <returns>True if unsubscription was attempted and succeeded, false if unsubscription failed</returns>
-        private bool SafeUnsubscribe<T>(Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
+
+        private bool SafeUnsubscribe<T>(IMonitor monitor, Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
         {
             // Nothing to unsubscribe; treat as success to avoid false failure signals.
             if (handler == null) return true;
@@ -425,14 +429,14 @@ namespace LivingRoots.Controllers
             catch (Exception ex)
             {
                 // Log error but don't expose raw exception message for security
-                _monitor.Log($"Error occurred while unsubscribing from {eventName} event.", LogLevel.Error);
+                monitor.Log($"Error occurred while unsubscribing from {eventName} event.", LogLevel.Error);
                 
                 // Add trace-level exception details for debugging
-                _monitor.Log($"{eventName} unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                monitor.Log($"{eventName} unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
-                _monitor.Log(ex.StackTrace ?? $"{eventName} unsubscription stack trace unavailable.", LogLevel.Trace);
+                monitor.Log(ex.StackTrace ?? $"{eventName} unsubscription stack trace unavailable.", LogLevel.Trace);
                 #endif
                 return false; // Indicate that unsubscription failed
             }
