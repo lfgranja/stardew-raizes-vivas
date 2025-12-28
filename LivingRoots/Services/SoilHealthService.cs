@@ -170,7 +170,7 @@ namespace LivingRoots.Services
                         if (ProcessTileEntry(tileEntry, locationEntry.Key, ref warnedForMalformedKey, ref warnedForInvalidValue, out Point? processedTilePoint, out float? processedValue))
                         {
                             // Only add non-zero values to prevent bloating the cache with default values
-                            if (processedValue != 0f && processedTilePoint.HasValue && processedValue.HasValue)
+                            if (processedTilePoint.HasValue && processedValue.HasValue && processedValue.Value != 0f)
                             {
                                 tileDict[processedTilePoint.Value] = processedValue.Value;
                             }

@@ -129,7 +129,12 @@ namespace LivingRoots.Tests
             service.SetSoilHealth("   ", tile, 5.0f);
 
             // Assert - Should not have added any entries to the cache
-            Assert.Equal(0f, service.GetSoilHealth("Farm", tile));
+            var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(runtimeCacheField);
+            var runtimeCache = runtimeCacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
+            Assert.NotNull(runtimeCache);
+            Assert.False(runtimeCache.ContainsKey(""));
+            Assert.False(runtimeCache.ContainsKey("   "));
         }
 
         [Fact]
@@ -145,7 +150,11 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, new Vector2(10, float.NaN), 50.0f);
 
             // Assert - Should not have added any entries to the cache
-            Assert.Equal(0f, service.GetSoilHealth(location, new Vector2(10, 10)));
+            var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(runtimeCacheField);
+            var runtimeCache = runtimeCacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
+            Assert.NotNull(runtimeCache);
+            Assert.False(runtimeCache.ContainsKey(location));
         }
 
         [Fact]
