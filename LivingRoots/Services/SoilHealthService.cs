@@ -163,7 +163,11 @@ namespace LivingRoots.Services
                         if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
                         {
                             _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) exceeded; stopping load to prevent DoS.", LogLevel.Warn);
-                            break; // Stop processing completely
+                            lock (_lock)
+                            {
+                                _runtimeCache.Clear();
+                            }
+                            return;
                         }
                         
                         // Process tile entry using the helper method
@@ -526,7 +530,9 @@ namespace LivingRoots.Services
                 // Ensure the final key (prefix + sanitized) stays within the configured bound
                 if (sanitized.Length > maxSanitizedLength)
                 {
-                    _monitor.Log($"SaveId exceeds maximum length of {ModConstants.MaxDataKeyLength} characters after sanitization.", LogLevel.Error);
+                    _monitor.Log(
+                        $"SaveId exceeds maximum sanitized length of {maxSanitizedLength} characters (max key length {ModConstants.MaxDataKeyLength} incl. prefix).",
+                        LogLevel.Error);
                     return null;
                 }
                 
