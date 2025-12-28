@@ -270,13 +270,24 @@ namespace LivingRoots.Controllers
                     // keep the registered-state to prevent duplicate subscriptions later.
                     mayStillBeSubscribed = hasHandlers;
                     monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
+                    
+                    // If we're disposing, clear handler references to avoid leaks even if we
+                    // can't detach from SMAPI events.
+                    if (IsDisposed())
+                    {
+                        System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                        System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                        System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
+                        mayStillBeSubscribed = false;
+                    }
+                    
                     return;
                 }
 
                 // IMPLEMENT DRY PRINCIPLE: Use SafeUnsubscribe helper method to reduce code duplication
-                gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(h => gameLoop.GameLaunched -= h, gameLaunchedHandler, "GameLaunched");
-                saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(h => gameLoop.SaveLoaded -= h, saveLoadedHandler, "SaveLoaded");
-                savingRemoved = SafeUnsubscribe<SavingEventArgs>(h => gameLoop.Saving -= h, savingHandler, "Saving");
+                gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(monitor, h => gameLoop.GameLaunched -= h, gameLaunchedHandler, "GameLaunched");
+                saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, saveLoadedHandler, "SaveLoaded");
+                savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, savingHandler, "Saving");
 
                 bool allUnsubscribed = gameLaunchedRemoved && saveLoadedRemoved && savingRemoved;
 
@@ -506,13 +517,9 @@ namespace LivingRoots.Controllers
 
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
-                    // Don't call LoadData with an invalid/empty ID (could load/save under a bogus key).
-                    // Prefer an explicit reset/clear API in the soil-health service to prevent cross-save leakage.
-                    _soilHealthService.Reset();
-
                     if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 1, 0) == 0)
                     {
-                        _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; soil health state reset to prevent cross-save data leakage.", LogLevel.Warn);
+                        _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; skipping load to prevent cross-save data leakage.", LogLevel.Warn);
                     }
                     return;
                 }
