@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -86,8 +85,18 @@ namespace LivingRoots.Tests
                 tasks.Add(unregisterTask);
             }
 
-            // Wait for all tasks to complete
-            await Task.WhenAll(tasks);
+            // Add timeout to prevent hanging indefinitely
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
+            var whenAllTask = Task.WhenAll(tasks);
+            
+            var completedTask = await Task.WhenAny(whenAllTask, timeoutTask);
+            if (completedTask == timeoutTask)
+            {
+                Assert.Fail("UnregisterEvents_WhenConcurrentRegisterEventsOccurs_DoesNotLeakHandlers test timed out after 30 seconds");
+            }
+            
+            // Wait for the actual tasks to complete if they haven't already
+            await whenAllTask;
 
             // Assert: Check that handlers were properly managed despite concurrent operations
             // The thread-safe implementation should ensure that:
@@ -164,8 +173,18 @@ namespace LivingRoots.Tests
                 tasks.Add(registerTask);
             }
 
-            // Wait for all tasks to complete
-            await Task.WhenAll(tasks);
+            // Add timeout to prevent hanging indefinitely
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
+            var whenAllTask = Task.WhenAll(tasks);
+            
+            var completedTask = await Task.WhenAny(whenAllTask, timeoutTask);
+            if (completedTask == timeoutTask)
+            {
+                Assert.Fail("RegisterEvents_WhenConcurrentUnregisterEventsOccurs_DoesNotCauseRaceCondition test timed out after 30 seconds");
+            }
+            
+            // Wait for the actual tasks to complete if they haven't already
+            await whenAllTask;
 
             // Assert: Verify that the race condition fix works properly
             // The fix should ensure that handler references are captured AFTER UnregisteringFlag is set

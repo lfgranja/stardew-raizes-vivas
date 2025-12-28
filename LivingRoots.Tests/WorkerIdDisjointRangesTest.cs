@@ -6,6 +6,7 @@ using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
+using StardewModdingAPI.Events;
 using Xunit;
 
 namespace LivingRoots.Tests
@@ -61,7 +62,18 @@ namespace LivingRoots.Tests
                 tasks.Add(task);
             }
 
-            await Task.WhenAll(tasks);
+            // Add timeout to prevent hanging indefinitely
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
+            var whenAllTask = Task.WhenAll(tasks);
+            
+            var completedTask = await Task.WhenAny(whenAllTask, timeoutTask);
+            if (completedTask == timeoutTask)
+            {
+                Assert.Fail("ThreadSafety_WithDisjointTileRanges_VerifiesUniqueWorkerIds test timed out after 30 seconds");
+            }
+            
+            // Wait for the actual tasks to complete if they haven't already
+            await whenAllTask;
 
             // Assert - No exceptions should have occurred due to race conditions
             Assert.Empty(exceptions);
