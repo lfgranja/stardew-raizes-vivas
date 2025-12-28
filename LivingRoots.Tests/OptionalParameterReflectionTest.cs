@@ -78,7 +78,19 @@ namespace LivingRoots.Tests
                     {
                         // Optional parameters in C# always have a default value; prefer DefaultValue over Type.Missing.
                         if (p.IsOptional || p.HasDefaultValue)
-                            return p.DefaultValue;
+                        {
+                            var dv = p.DefaultValue;
+                            
+                            // Normalize reflection sentinel defaults to an invokable argument
+                            if (dv == Type.Missing || dv == Missing.Value || dv == DBNull.Value)
+                            {
+                                return p.ParameterType.IsValueType
+                                    ? Activator.CreateInstance(p.ParameterType)
+                                    : null;
+                            }
+                            
+                            return dv;
+                        }
 
                         if (p.ParameterType.IsValueType)
                             return Activator.CreateInstance(p.ParameterType);
