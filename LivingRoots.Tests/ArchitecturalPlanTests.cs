@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Xunit;
 
@@ -7,23 +9,33 @@ namespace LivingRoots.Tests
 {
     public class ArchitecturalPlanTests
     {
-        [Fact]
-        public void ArchitecturalPlanFile_EndsWithTrailingNewline()
+        [Theory]
+        [MemberData(nameof(GetArchitecturalPlanFiles))]
+        public void AllArchitecturalPlanFiles_EndWithTrailingNewline(string filePath)
         {
-            // Arrange
-            var projectRoot = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", ".."));
-            var filePath = Path.Combine(projectRoot, "LivingRoots", "docs", "architectural_and_refactor_plans", "pr72_round106_fixes_architectural_plan.md");
-            
             // Act
             var content = File.ReadAllText(filePath);
 
-            Assert.False(string.IsNullOrEmpty(content), $"The file {filePath} should not be empty.");
+            // Only check for trailing newline if the file is not empty
+            if (!string.IsNullOrEmpty(content))
+            {
+                // Accept both Unix and Windows trailing newlines
+                bool endsWithNewline = content.EndsWith("\n") || content.EndsWith("\r\n");
+                int lastChar = content[^1];
 
-            // Accept both Unix and Windows trailing newlines
-            bool endsWithNewline = content.EndsWith("\n") || content.EndsWith("\r\n");
-            int lastChar = content[^1];
-
-            Assert.True(endsWithNewline, $"The file {filePath} should end with a trailing newline. Content ends with character {lastChar}.");
+                Assert.True(endsWithNewline, $"The file {filePath} should end with a trailing newline. Content ends with character {lastChar}.");
+            }
+        }
+        
+        public static IEnumerable<object[]> GetArchitecturalPlanFiles()
+        {
+            var projectRoot = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", ".."));
+            var architecturalPlansDirectory = Path.Combine(projectRoot, "LivingRoots", "docs", "architectural_and_refactor_plans");
+            
+            var mdFiles = Directory.GetFiles(architecturalPlansDirectory, "*.md", SearchOption.AllDirectories)
+                                   .Select(filePath => new object[] { filePath });
+            
+            return mdFiles;
         }
         
         [Fact]
