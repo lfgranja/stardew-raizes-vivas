@@ -121,13 +121,13 @@ namespace LivingRoots.Tests
         [Fact]
         public void Constructor_WithNullHelper_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(null as IModHelper, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(null!, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullMonitor_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, null as IMonitor, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, null!, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
@@ -180,7 +180,7 @@ namespace LivingRoots.Tests
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns((IModEvents)null); // Return null for Events
+            _mockHelper.Setup(x => x.Events).Returns((IModEvents)null!); // Return null for Events
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
@@ -199,7 +199,7 @@ namespace LivingRoots.Tests
             var mockCommandHelper = new Mock<ICommandHelper>();
 
             _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns((IGameLoopEvents)null); // Return null for GameLoop
+            mockEvents.Setup(x => x.GameLoop).Returns((IGameLoopEvents)null!); // Return null for GameLoop
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
@@ -228,6 +228,7 @@ namespace LivingRoots.Tests
             var tasks = new List<System.Threading.Tasks.Task>();
             for (int i = 0; i < 10; i++)
             {
+                var workerId = i; // Capture per-iteration value to avoid closure issues
                 var task = System.Threading.Tasks.Task.Run(() =>
                 {
                     // All tasks call RegisterEvents on the same controller instance
@@ -648,6 +649,7 @@ namespace LivingRoots.Tests
             _mockSoilHealthService.Verify(x => x.SaveData("test_save_id"), Times.Once);
         }
 
+
         [Fact]
         public void IsDisposed_ReturnsCorrectState()
         {
@@ -677,9 +679,14 @@ namespace LivingRoots.Tests
             // Assert - After disposal, attempting to register events should not succeed
             // This verifies that the controller is in a disposed state
             var result = Record.Exception(() => controller.RegisterEvents());
-            Assert.Null(result); // RegisterEvents should handle disposed state gracefully
+            Assert.Null(result); // Should not throw
             
-            // Verify that events were unregistered during disposal
+            // Verify that events were unregistered during disposal using reflection to access internal state
+            var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+            var stateValue = (int)(stateField?.GetValue(controller) ?? 0); // Using null-coalescing to handle potential null
+            var disposedFlag = 1 << 2; // DisposedFlag constant value
+            Assert.True((stateValue & disposedFlag) != 0, "Controller should be marked as disposed after calling Dispose()");
+
             mockGameLoopEvents.VerifyRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
         }
 
