@@ -285,7 +285,7 @@ namespace LivingRoots.Services
             try
             {
                 _modDataService.SaveData(stateToSave, dataKey);
-                _monitor.Log($"Soil health data saved for {saveId}", LogLevel.Trace);
+                _monitor.Log($"Soil health data saved for '{TruncateForLogging(saveId)}'", LogLevel.Trace);
             }
             catch (Exception ex)
             {
