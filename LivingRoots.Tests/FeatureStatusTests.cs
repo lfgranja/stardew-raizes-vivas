@@ -14,7 +14,25 @@ namespace LivingRoots.Tests
         public void Readme_FeaturesMarkedAsPlanned_ContainsPlannedPrefix()
         {
             // Arrange
-            var readmePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "..", "..", "..", "README.md");
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            FileInfo? readmeFile = null;
+            
+            for (int i = 0; i < 10 && dir != null; i++)
+            {
+                var files = dir.GetFiles("README.md");
+                if (files.Length > 0)
+                {
+                    readmeFile = files[0];
+                    break;
+                }
+                dir = dir.Parent;
+            }
+            
+            Assert.True(readmeFile != null && readmeFile.Exists, $"README.md could not be found. Started search from {AppContext.BaseDirectory}");
+            var readmePath = readmeFile.FullName;
+
+
+
             var expectedPlannedFeatures = new[]
             {
                 "Visual indicators show soil health status (Planned)",
