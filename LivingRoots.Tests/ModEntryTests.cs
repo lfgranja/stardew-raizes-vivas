@@ -313,7 +313,9 @@ namespace LivingRoots.Tests
             // Traverse up to 10 levels to find README.md
             for (int i = 0; i < 10 && dir != null; i++)
             {
-                readmeFile = dir.GetFiles("README.md").FirstOrDefault();
+                var files = dir.GetFiles("README.md");
+                readmeFile = files.Length > 0 ? files[0] : null;
+
                 if (readmeFile != null)
                 {
                     break;
