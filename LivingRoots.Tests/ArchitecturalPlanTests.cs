@@ -80,5 +80,30 @@ namespace LivingRoots.Tests
                 }
             }
         }
+
+        [Fact]
+        public void AllArchitecturalPlanFiles_EndWithTrailingNewline_EmptyFileDoesNotCrash()
+        {
+            // Arrange
+            var tempFilePath = Path.GetTempFileName();
+            File.WriteAllText(tempFilePath, ""); // Write empty content
+
+            try
+            {
+                // Act
+                var ex = Record.Exception(() => AllArchitecturalPlanFiles_EndWithTrailingNewline(tempFilePath));
+
+                // Assert
+                Assert.Null(ex);
+            }
+            finally
+            {
+                // Cleanup
+                if (File.Exists(tempFilePath))
+                {
+                    File.Delete(tempFilePath);
+                }
+            }
+        }
     }
 }
