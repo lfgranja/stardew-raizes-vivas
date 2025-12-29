@@ -155,7 +155,7 @@ namespace LivingRoots.Services
                             
                             // CRITICAL: Abort the entire load operation and clear cache to prevent data loss
                             // This prevents partial loading that could result in inconsistent state
-                            _monitor.Log($"LoadData aborted: Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{TruncateForLogging(locationEntry.Key)}'. Cache cleared to prevent data loss.", LogLevel.Alert);
+                                                        _monitor.Log($"LoadData aborted: Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{TruncateForLogging(locationEntry.Key)}'. Cache cleared to prevent inconsistent state.", LogLevel.Alert);
                             lock (_lock)
                             {
                                 _runtimeCache.Clear();
@@ -486,10 +486,9 @@ namespace LivingRoots.Services
         private float ClampHealthValue(float value)
         {
             // Handle NaN and Infinity values before clamping
-            if (float.IsNaN(value) || float.IsInfinity(value))
-            {
-                return 0f; // Convert invalid values to 0
-            }
+            if (float.IsPositiveInfinity(value)) return ModConstants.MaxSoilHealth;
+            if (float.IsNegativeInfinity(value)) return ModConstants.MinSoilHealth;
+            if (float.IsNaN(value)) return 0f;
             
             return Math.Clamp(value, ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth);
         }
