@@ -40,6 +40,8 @@ namespace LivingRoots.Tests
 
             // This should await all tasks, but the original task is not properly awaited
             await Task.WhenAll(tasks);
+            // Ensure the worker exception is observed to prevent flaky UnobservedTaskException later.
+            _ = task.Exception;
 
             // The test should detect the exception in the continuation handling
             Assert.NotEmpty(exceptions);
