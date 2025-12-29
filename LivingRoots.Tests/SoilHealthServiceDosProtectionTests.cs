@@ -64,7 +64,7 @@ namespace LivingRoots.Tests
             _mockMonitor.Verify(x => x.Log(
                 It.Is<string>(msg => msg.Contains("Tile count limit") && 
                                    msg.Contains("exceeded for location") && 
-                                   msg.Contains("Cache cleared to prevent data loss")),
+                                   msg.Contains("Cache cleared to prevent inconsistent state.")),
                 LogLevel.Alert), 
                 Times.Once);
 
@@ -123,8 +123,7 @@ namespace LivingRoots.Tests
             _mockMonitor.Verify(x => x.Log(
                 It.Is<string>(msg => msg.Contains("Tile count limit") && 
                                    msg.Contains("exceeded for location") && 
-                                   msg.Contains("Cache cleared to prevent data loss")),
-                LogLevel.Alert), 
+                                   msg.Contains("Cache cleared to prevent inconsistent state.")),                LogLevel.Alert), 
                 Times.Once);
 
             // Verify that the cache was cleared - the existing data should be gone
@@ -189,7 +188,7 @@ namespace LivingRoots.Tests
             _mockMonitor.Verify(x => x.Log(
                 It.Is<string>(msg => msg.Contains("Tile count limit") && 
                                    msg.Contains("exceeded for location") && 
-                                   msg.Contains("Cache cleared to prevent data loss")),
+                                   msg.Contains("Cache cleared to prevent inconsistent state.")),
                 LogLevel.Alert), 
                 Times.Once);
         }

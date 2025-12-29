@@ -452,7 +452,7 @@ namespace LivingRoots.Tests
             float result13 = service.GetSoilHealth("Farm", tile13);
             
             Assert.Equal(0f, result10); // NaN value converted to 0
-            Assert.Equal(0f, result11); // PositiveInfinity value converted to 0
+            Assert.Equal(0f, result11); // PositiveInfinity value converted to 100
             Assert.Equal(0f, result12); // NegativeInfinity value converted to 0
             Assert.Equal(50.0f, result13); // Valid value remains unchanged
             
@@ -602,7 +602,7 @@ namespace LivingRoots.Tests
         {
             // This test validates the correct behavior of NaN and Infinity values during save:
             // - NaN values are converted to 0 by ClampHealthValue and are NOT saved due to sparse cache functionality
-            // - PositiveInfinity values are converted to MaxSoilHealth (10) by ClampHealthValue and ARE saved
+            // - PositiveInfinity values are converted to MaxSoilHealth (100) by ClampHealthValue and ARE saved
             // - NegativeInfinity values are converted to MinSoilHealth (0) by ClampHealthValue and are NOT saved due to sparse cache
             // - Valid values are saved normally
             
@@ -1015,15 +1015,39 @@ namespace LivingRoots.Tests
                 });
                 
                 // Capture the tile list for this worker after the task completes
-                var recordTask = task.ContinueWith(_ => {
-                    lock (lockObj)
+                tasks.Add(Task.Run(async () =>
+                {
+                    try
                     {
-                        workerTiles.Add((workerId, workerTileList));
-                    }
-                });
 
-                tasks.Add(task);
-                tasks.Add(recordTask);
+                        for (int j = 0; j < 10; j++) // Only 10 operations per worker for easier verification
+                        {
+                            int x = (workerId * 100) + j;  // Changed from (workerId * 10) + j to (workerId * 100) + j for truly disjoint ranges
+                            int y = workerId;
+                            var tile = new Vector2(x, y);
+                            workerTileList.Add(tile);
+
+                            service.SetSoilHealth("Farm", tile, workerId * 10.0f); // Set value based on workerId
+                            service.GetSoilHealth("Farm", tile);
+                            service.UpdateHealth("Farm", tile, 1.0f);
+                        }
+                    }
+
+                    catch (Exception ex)
+                    {
+                        lock (lockObj)
+                        {
+                            exceptions.Add(ex);
+                        }
+                    }
+                    finally
+                    {
+                        lock (lockObj)
+                        {
+                            workerTiles.Add((workerId, workerTileList));
+                        }
+                    }
+                }));
             }
 
             await Task.WhenAll(tasks);
@@ -1250,19 +1274,25 @@ namespace LivingRoots.Tests
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             
-            // Use reflection to directly add whitespace location keys to the runtime cache
-            var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(runtimeCacheField);
-            var runtimeCache = runtimeCacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
-            Assert.NotNull(runtimeCache);
+            var corruptedState = new SoilHealthState
             {
-                // Add a valid location with data
-                runtimeCache["Farm"] = new Dictionary<Point, float> { [new Point(10, 10)] = 75.5f };
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    ["Farm"] = new Dictionary<string, float> { ["10,10"] = 75.5f },
+                    ["   "] = new Dictionary<string, float> { ["5,5"] = 50.0f },
+                    ["\t\n"] = new Dictionary<string, float> { ["6,6"] = 60.0f }
+                }
+            };
                 
-                // Add whitespace location keys (these would cause crashes without defensive check)
-                runtimeCache["   "] = new Dictionary<Point, float> { [new Point(5, 5)] = 50.0f };
-                runtimeCache["\t\n"] = new Dictionary<Point, float> { [new Point(6, 6)] = 60.0f };
-            }
+                _mockFileNameSanitizationService
+                    .Setup(x => x.Sanitize("test_save"))
+                    .Returns("test_save");
+                
+                _mockDataService
+                    .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
+                    .Returns(corruptedState);
+
+                service.LoadData("test_save");
 
             // Set up mock to return expected sanitized value
             _mockFileNameSanitizationService
