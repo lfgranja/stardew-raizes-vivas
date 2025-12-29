@@ -52,26 +52,42 @@ namespace LivingRoots.Tests
             EventHandler<SaveLoadedEventArgs> saveLoadedHandler = null!;
             EventHandler<SavingEventArgs> savingHandler = null!;
 
+            // Track subscription counts for verification
+            var gameLaunchedAddCount = 0;
+            var saveLoadedAddCount = 0;
+            var savingAddCount = 0;
+
             // Setup successful subscriptions during registration
             mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
-                .Callback<EventHandler<GameLaunchedEventArgs>>(h => gameLaunchedHandler = h);
-            mockGameLoopEvents.SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
-                .Callback<EventHandler<SaveLoadedEventArgs>>(h => saveLoadedHandler = h);
-            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
-                .Callback<EventHandler<SavingEventArgs>>(h => savingHandler = h);
+                .Callback<EventHandler<GameLaunchedEventArgs>>(h =>
+                {
+                    gameLaunchedAddCount++;
+                    if (gameLaunchedAddCount == 1)
+                        gameLaunchedHandler = h;
+                });
 
-            // Setup successful GameLaunched and Saving unsubscriptions, but fail SaveLoaded
+            mockGameLoopEvents.SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+                .Callback<EventHandler<SaveLoadedEventArgs>>(h =>
+                {
+                    saveLoadedAddCount++;
+                    if (saveLoadedAddCount == 1)
+                        saveLoadedHandler = h;
+                });
+
+            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
+                .Callback<EventHandler<SavingEventArgs>>(h =>
+                {
+                    savingAddCount++;
+                    if (savingAddCount == 1)
+                        savingHandler = h;
+                });
+
+            // Setup failing unsubscription for SaveLoaded, successful for others
             mockGameLoopEvents.SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Callback<EventHandler<GameLaunchedEventArgs>>(h => { });
             mockGameLoopEvents.SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>())
                 .Throws(new InvalidOperationException("SaveLoaded unsubscribe failed"));
             mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
-                .Callback<EventHandler<SavingEventArgs>>(h => { });
-
-            // Setup re-subscription for rollback - this should happen for the successfully unsubscribed handlers
-            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
-                .Callback<EventHandler<GameLaunchedEventArgs>>(h => { });
-            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
@@ -83,10 +99,12 @@ namespace LivingRoots.Tests
             controller.UnregisterEvents();
 
             // Assert - Verify that rollback was attempted for the successfully unsubscribed handlers
-            // Total invocations: 1 from original registration + 1 from rollback = 2
+            // During registration: 1 add for each event
+            // During rollback: 1 additional add for GameLaunched and Saving (the ones that were successfully unsubscribed)
+            // Total expected: 2 for GameLaunched and Saving, 1 for SaveLoaded (no rollback since unsubscription failed)
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Exactly(2));
-            // Total invocations: 1 from original registration + 1 from rollback = 2
             mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Exactly(2));
+            mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
             
             // Check that EventsRegisteredFlag is restored in the state after rollback
             var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -179,12 +197,6 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>())
                 .Throws(new InvalidOperationException("SaveLoaded unsubscribe failed"));
             mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
-                .Callback<EventHandler<SavingEventArgs>>(h => { });
-
-            // Setup re-subscription for rollback
-            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
-                .Callback<EventHandler<GameLaunchedEventArgs>>(h => { });
-            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
