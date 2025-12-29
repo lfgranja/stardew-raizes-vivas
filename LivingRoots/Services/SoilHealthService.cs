@@ -138,7 +138,10 @@ namespace LivingRoots.Services
                         // Increment tile counter for ALL entries (even if they end up being invalid/skipped)
                         tileCount++;
                         
-                        // Check if we've exceeded the tile limit for this location
+                        // CRITICAL DOS PROTECTION: Check if we've exceeded the tile limit for this location
+                        // When per-location tile limit is exceeded, we must abort the entire load operation
+                        // to prevent data loss and maintain cache consistency. This prevents partial loading
+                        // which could result in inconsistent state where some data is loaded while other data is lost.
                         if (tileCount > ModConstants.MaxTilesPerLocation)
                         {
                             // Only log once per location when the limit is reached
@@ -149,13 +152,15 @@ namespace LivingRoots.Services
                                 _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationName}'; stopping tile processing for this location.", LogLevel.Warn);
                                 limitExceededLogged = true;
                             }
-                            // For high severity fix: abort the entire load operation if per-location limit is exceeded
+                            
+                            // CRITICAL: Abort the entire load operation and clear cache to prevent data loss
+                            // This prevents partial loading that could result in inconsistent state
                             _monitor.Log($"LoadData aborted: Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{TruncateForLogging(locationEntry.Key)}'. Cache cleared to prevent data loss.", LogLevel.Alert);
                             lock (_lock)
                             {
                                 _runtimeCache.Clear();
                             }
-                            return;
+                            return; // Abort entire operation to maintain data consistency
                         }
                         
                         // GLOBAL DOS PROTECTION: Increment total tile entries across all locations
