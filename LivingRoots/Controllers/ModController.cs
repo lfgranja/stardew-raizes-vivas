@@ -74,29 +74,45 @@ namespace LivingRoots.Controllers
 
         public void RegisterEvents()
         {
-            // Early disposal check: prevent registration if controller is already disposed
-            if (IsDisposed())
+            // Use atomic Compare-And-Swap (CAS) loop to make all checks and state changes atomically
+            // This prevents race conditions between checking UnregisteringFlag and setting EventsRegisteredFlag
+            // The CAS loop ensures that checking for disposed, unregistering, and already-registered states
+            // happens atomically with setting the EventsRegisteredFlag, eliminating the race condition
+            int currentState, newState;
+            do
             {
-                _monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
-                return;
-            }
-
-            // Don't register while another thread is actively unregistering.
-            if ((Volatile.Read(ref _state) & UnregisteringFlag) != 0)
-            {
-                _monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
-                return;
-            }
-
-            // Use TrySetStateFlag to atomically attempt to set the EventsRegisteredFlag
-            // This implements the "claim-then-act" pattern to prevent race conditions
-            if (!TrySetStateFlag(EventsRegisteredFlag))
-            {
-                // Another thread already claimed registration rights, so exit gracefully
-                _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
-                return;
-            }
-
+                currentState = Volatile.Read(ref _state);
+                
+                // Check if controller is disposed - if so, exit immediately
+                if ((currentState & DisposedFlag) != 0)
+                {
+                    _monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
+                    return;
+                }
+                
+                // Check if another thread is unregistering - if so, exit to avoid race condition
+                if ((currentState & UnregisteringFlag) != 0)
+                {
+                    _monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
+                    return;
+                }
+                
+                // Check if events are already registered - if so, exit to avoid duplicate registration
+                if ((currentState & EventsRegisteredFlag) != 0)
+                {
+                    _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
+                    return;
+                }
+                
+                // Calculate new state with EventsRegisteredFlag set
+                newState = currentState | EventsRegisteredFlag;
+                
+            } while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            
+            // At this point, we have atomically claimed registration rights and set EventsRegisteredFlag
+            // This ensures no race condition exists between checking state and setting the flag
+            // If we reach this point, we successfully set the EventsRegisteredFlag in an atomic operation
+            
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
             var helper = _helper;
@@ -107,7 +123,8 @@ namespace LivingRoots.Controllers
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                 // Clear the flag since we couldn't actually register anything
-                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                // Use atomic operation to clear EventsRegisteredFlag
+                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
             }
 
@@ -128,12 +145,12 @@ namespace LivingRoots.Controllers
                 localSaveLoadedHandler = _onSaveLoadedHandler ??= OnSaveLoaded;
                 localSavingHandler = _onSavingHandler ??= OnSaving;
 
-                // Double-check disposed state before subscribing to prevent race condition
+                // Double-check disposed state after setting the flag but before subscribing to prevent race condition
                 if (IsDisposed())
                 {
                     monitor.Log("Controller disposed during registration. Skipping event subscription.", LogLevel.Trace);
                     // Clear the flag since we didn't actually register anything
-                    Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                    System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                     return;
                 }
 
@@ -187,7 +204,7 @@ namespace LivingRoots.Controllers
                 Interlocked.Exchange(ref _onSavingHandler, null);
 
                 // Clear the flag since registration failed
-                Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
 
                 // According to code review feedback, we should NOT re-throw the exception to maintain consistency with tests
                 // The method should handle failures gracefully without propagating exceptions
@@ -626,7 +643,7 @@ namespace LivingRoots.Controllers
             finally
             {
                 // Clear the executing flag when done to allow future executions
-                System.Threading.Interlocked.And(ref _state, ~OnSavingExecutingFlag);
+                System.Threading.Interlocked.And(ref _state, unchecked(~OnSavingExecutingFlag));
             }
         }
 
