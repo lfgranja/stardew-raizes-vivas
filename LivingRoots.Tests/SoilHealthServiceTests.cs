@@ -59,7 +59,7 @@ namespace LivingRoots.Tests
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
-            Assert.Equal(10.0f, resultMax); // 105 should be clamped to 100 (MaxSoilHealth)
+            Assert.Equal(100.0f, resultMax); // 105 should be clamped to 100 (MaxSoilHealth)
             Assert.Equal(0.0f, resultMin); // -5 should be clamped to 0 (MinSoilHealth)
         }
 
@@ -805,7 +805,7 @@ namespace LivingRoots.Tests
                     {
                         for (int j = 0; j < 100; j++)
                         {
-                            int x = (workerId * 10) + j; // Unique X coordinate per worker
+                            int x = (workerId * 100) + j; // Unique X coordinate per worker
                             int y = workerId;              // Same Y for all operations of this worker
                             var tile = new Vector2(x, y);
                             service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,100] range
