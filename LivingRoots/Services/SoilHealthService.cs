@@ -130,7 +130,6 @@ namespace LivingRoots.Services
                     int tileCount = 0; // Track number of tiles loaded for this location
                     bool warnedForInvalidValue = false; // Only warn once per location for invalid values
                     bool warnedForMalformedKey = false; // Only warn once per location for malformed keys
-                    bool limitExceededLogged = false; // Only log limit exceeded warning once per location
                     
                     foreach (var tileEntry in locationEntry.Value)
                     {
@@ -144,18 +143,10 @@ namespace LivingRoots.Services
                         // which could result in inconsistent state where some data is loaded while other data is lost.
                         if (tileCount > ModConstants.MaxTilesPerLocation)
                         {
-                            // Only log once per location when the limit is reached
-                            if (!limitExceededLogged)
-                            {
-                                // Use helper method to truncate the location name for logging
-                                string truncatedLocationName = TruncateForLogging(locationEntry.Key);
-                                _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{truncatedLocationName}'; stopping tile processing for this location.", LogLevel.Warn);
-                                limitExceededLogged = true;
-                            }
+                            _monitor.Log(
+                                $"LoadData aborted: Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{TruncateForLogging(locationEntry.Key)}'. Cache cleared to prevent inconsistent state.",
+                                LogLevel.Alert);
                             
-                            // CRITICAL: Abort the entire load operation and clear cache to prevent data loss
-                            // This prevents partial loading that could result in inconsistent state
-                                                        _monitor.Log($"LoadData aborted: Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{TruncateForLogging(locationEntry.Key)}'. Cache cleared to prevent inconsistent state.", LogLevel.Alert);
                             lock (_lock)
                             {
                                 _runtimeCache.Clear();
@@ -192,7 +183,14 @@ namespace LivingRoots.Services
                     
                     // GLOBAL DOS PROTECTION: Check if total tile limit has been exceeded after processing this location
                     if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
-                        break;
+                        {
+                            _monitor.Log($"LoadData failed: Total tile entry limit ({ModConstants.MaxTilesPerSave}) exceeded. Cache cleared to prevent silent data loss.", LogLevel.Error);
+                            lock (_lock)
+                            {
+                                _runtimeCache.Clear();
+                            }
+                            return;
+                        }
                 }
             }
 
@@ -374,6 +372,12 @@ namespace LivingRoots.Services
 
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
         {
+            // Validation for the delta value to prevent invalid updates.
+            if (float.IsNaN(delta) || float.IsInfinity(delta))
+            {
+                return; // Ignore invalid delta values.
+            }
+
             // Validate the tile using the validation helper
             if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
