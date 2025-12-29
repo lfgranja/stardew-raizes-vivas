@@ -108,14 +108,21 @@ namespace LivingRoots.Tests
             var isEventsRegistered = (finalState & (1 << 0)) != 0; // EventsRegisteredFlag
             var isUnregistering = (finalState & (1 << 5)) != 0; // UnregisteringFlag
 
-            // This test is expected to fail with the current implementation
-            // because the race condition can lead to inconsistent state
-            // where EventsRegisteredFlag and UnregisteringFlag might be in an inconsistent state
-            // or handlers might be leaked
+            // Invariants: unregistration must not be left "in-progress"
+            Assert.False(isUnregistering, "UnregisteringFlag should be cleared after operations complete");
             
-            // The test demonstrates that the current implementation has race conditions
-            // between checking UnregisteringFlag and setting EventsRegisteredFlag
-            Assert.True(true, "This test demonstrates the race condition that needs to be fixed");
+            // Handler leak invariant: we should never end up with removals exceeding adds
+            Assert.True(threadSafeGameLoopEvents.GameLaunchedRemoveCount <= threadSafeGameLoopEvents.GameLaunchedAddCount);
+            Assert.True(threadSafeGameLoopEvents.SaveLoadedRemoveCount <= threadSafeGameLoopEvents.SaveLoadedAddCount);
+            Assert.True(threadSafeGameLoopEvents.SavingRemoveCount <= threadSafeGameLoopEvents.SavingAddCount);
+            
+            // If events are marked registered, each handler should only be registered once in the end-state contract.
+            if (isEventsRegistered)
+            {
+                Assert.Equal(1, threadSafeGameLoopEvents.GameLaunchedAddCount - threadSafeGameLoopEvents.GameLaunchedRemoveCount);
+                Assert.Equal(1, threadSafeGameLoopEvents.SaveLoadedAddCount - threadSafeGameLoopEvents.SaveLoadedRemoveCount);
+                Assert.Equal(1, threadSafeGameLoopEvents.SavingAddCount - threadSafeGameLoopEvents.SavingRemoveCount);
+            }
         }
 
         [Fact]
