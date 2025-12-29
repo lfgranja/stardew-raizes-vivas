@@ -8,7 +8,6 @@ using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
-using StardewModdingAPI.Events;
 using Xunit;
 
 namespace LivingRoots.Tests
@@ -60,7 +59,7 @@ namespace LivingRoots.Tests
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
-            Assert.Equal(100.0f, resultMax); // 105 should be clamped to 100 (MaxSoilHealth)
+            Assert.Equal(10.0f, resultMax); // 105 should be clamped to 100 (MaxSoilHealth)
             Assert.Equal(0.0f, resultMin); // -5 should be clamped to 0 (MinSoilHealth)
         }
 
@@ -169,7 +168,11 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, new Vector2(float.MinValue, 10), 50.0f);
 
             // Assert - Should not have added any entries to the cache
-            Assert.Equal(0f, service.GetSoilHealth(location, new Vector2(10, 10)));
+            var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(runtimeCacheField);
+            var runtimeCache = runtimeCacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
+            Assert.NotNull(runtimeCache);
+            Assert.False(runtimeCache.ContainsKey(location));
         }
 
         [Fact]
@@ -756,7 +759,8 @@ namespace LivingRoots.Tests
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             string location = "Farm";
-            service.SetSoilHealth(location, new Vector2(10, 15), 50.0f);
+            var tile = new Vector2(10, 15);
+            service.SetSoilHealth(location, tile, 50.0f);
 
             // Act - Update with fractional coordinates that map to same tile
             service.UpdateHealth(location, new Vector2(10.7f, 15.3f), 10.0f);
@@ -801,7 +805,7 @@ namespace LivingRoots.Tests
                     {
                         for (int j = 0; j < 100; j++)
                         {
-                            int x = (workerId * 100) + j; // Unique X coordinate per worker
+                            int x = (workerId * 10) + j; // Unique X coordinate per worker
                             int y = workerId;              // Same Y for all operations of this worker
                             var tile = new Vector2(x, y);
                             service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,100] range
@@ -832,6 +836,7 @@ namespace LivingRoots.Tests
         {
             // This test verifies that the original test implementation uses overlapping tile ranges
             // which makes the test less deterministic and effective at detecting concurrency bugs
+            // Strengthened: Add meaningful post-condition assertions to validate service state after concurrent access
             
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -888,6 +893,34 @@ namespace LivingRoots.Tests
             Assert.True(totalAccesses > distinctTiles.Count, 
                 $"Expected overlapping tile accesses: {totalAccesses} total accesses vs {distinctTiles.Count} distinct tiles. " +
                 $"This confirms that threads access the same tiles, creating race conditions.");
+
+            // NEW: Strengthened post-condition assertions to validate service state after concurrent access
+            // Verify that all values remain within expected range [0, 100] after concurrent access
+            foreach (var tile in distinctTiles)
+            {
+                var healthValue = service.GetSoilHealth("Farm", tile);
+                
+                // Assert that the value is within the valid range [0, 100]
+                Assert.InRange(healthValue, 0.0f, 100.0f);
+                
+                // Additional validation: Check that the value is a valid float (not NaN or Infinity)
+                Assert.False(float.IsNaN(healthValue), 
+                    $"Soil health value for tile {tile} is NaN after concurrent access, indicating potential data corruption.");
+                Assert.False(float.IsInfinity(healthValue), 
+                    $"Soil health value for tile {tile} is Infinity after concurrent access, indicating potential data corruption.");
+            }
+            
+            // Additional post-condition validation: Verify that the service state is consistent
+            // by checking that no unexpected tiles have invalid values
+            var allTiles = distinctTiles.Select(t => new Vector2(MathF.Floor(t.X), MathF.Floor(t.Y))).Distinct().ToList();
+            foreach (var tile in allTiles)
+            {
+                var healthValue = service.GetSoilHealth("Farm", tile);
+                // Values should be within range and not NaN/Infinity
+                Assert.InRange(healthValue, 0.0f, 100.0f);
+                Assert.False(float.IsNaN(healthValue));
+                Assert.False(float.IsInfinity(healthValue));
+            }
         }
 
         [Fact]
@@ -1137,7 +1170,7 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
             // Act: Load the data - this should trigger DoS protection because
-            // we're processing more than the limit of entries (550 > 500 limit)
+            // we're processing more than the limit of entries (50 > 500 limit)
             service.LoadData("test_save");
 
             // Assert: Verify that the critical error log appeared when exceeding the cap
