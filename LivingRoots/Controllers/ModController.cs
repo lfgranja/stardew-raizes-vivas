@@ -166,24 +166,21 @@ namespace LivingRoots.Controllers
 
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
-            catch (Exception ex)
-            {
-                // Log error but don't expose raw exception message for security
+             catch (Exception ex)
+             {
                 monitor.Log("Error occurred while registering game events.", LogLevel.Error);
-                
-                // Add trace-level exception details for debugging without leaking message content
                 monitor.Log($"RegisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
                 #if DEBUG
                 monitor.Log(ex.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
                 #endif
-
-                // Attempt to rollback any partial subscriptions with individual exception handling
+                
+                var rollbackSucceeded = true;
+                
                 try
                 {
-                    if (gameLoop != null) // Guard against null gameLoop in rollback
+                    if (gameLoop != null)
                     {
-                        // Use local handler references to prevent race conditions during rollback
                         if (gameLaunchedAdded && localGameLaunchedHandler != null)
                             gameLoop.GameLaunched -= localGameLaunchedHandler;
                         if (saveLoadedAdded && localSaveLoadedHandler != null)
@@ -193,22 +190,22 @@ namespace LivingRoots.Controllers
                     }
                 }
                 catch
-                { 
-                    monitor.Log("Error during event subscription rollback.", LogLevel.Trace); 
-                    /* avoid masking original failure */ 
+                {
+                    rollbackSucceeded = false;
+                    monitor.Log("Error during event subscription rollback.", LogLevel.Trace);
                 }
 
-                // Use Interlocked.Exchange for thread-safe nullification of event handlers
-                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                Interlocked.Exchange(ref _onSavingHandler, null);
-
-                // Clear the flag since registration failed
+                // Only clear handler fields if we're sure we detached everything; otherwise keep
+                // references for best-effort cleanup during UnregisterEvents/Dispose.
+                if (rollbackSucceeded)
+                {
+                    Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                    Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                    Interlocked.Exchange(ref _onSavingHandler, null);
+                }
+            
                 System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
-
-                // According to code review feedback, we should NOT re-throw the exception to maintain consistency with tests
-                // The method should handle failures gracefully without propagating exceptions
-                return; // Exit gracefully without re-throwing
+                return;
             }
         }
 
@@ -309,7 +306,7 @@ namespace LivingRoots.Controllers
                 bool allUnsubscribed = gameLaunchedRemoved && saveLoadedRemoved && savingRemoved;
 
                 // IMPLEMENT ROLLBACK TRACKING VARIABLE: Track subscription state to prevent future duplicate subscriptions
-                mayStillBeSubscribed = !allUnsubscribed; // Initialize based on allUnsubscribed result
+                mayStillBeSubscribed = hasHandlers && !allUnsubscribed; // Initialize based on hasHandlers and allUnsubscribed result
 
                 // Only nullify handler fields after successful unsubscription to prevent memory leaks
                 // and inconsistent state. Use CompareExchange to ensure we only nullify if the
@@ -446,8 +443,9 @@ namespace LivingRoots.Controllers
 
         private bool SafeUnsubscribe<T>(IMonitor monitor, Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
         {
-            // Nothing to unsubscribe; treat as success to avoid false failure signals.
-            if (handler == null) return true;
+            // If we don't have the delegate reference, we can't reliably detach.
+            // Treat as failure so callers can conservatively assume it may still be subscribed.
+            if (handler == null) return false;
             
             try
             {
@@ -456,17 +454,14 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                // Log error but don't expose raw exception message for security
                 monitor.Log($"Error occurred while unsubscribing from {eventName} event.", LogLevel.Error);
-                
-                // Add trace-level exception details for debugging
                 monitor.Log($"{eventName} unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 
-                // Add stack trace logging for better diagnostics without exposing sensitive information
                 #if DEBUG
                 monitor.Log(ex.StackTrace ?? $"{eventName} unsubscription stack trace unavailable.", LogLevel.Trace);
                 #endif
-                return false; // Indicate that unsubscription failed
+                
+                return false;
             }
         }
 
