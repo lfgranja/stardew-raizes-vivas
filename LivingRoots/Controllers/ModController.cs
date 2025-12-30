@@ -78,55 +78,38 @@ namespace LivingRoots.Controllers
             // This prevents race conditions between checking UnregisteringFlag and setting EventsRegisteredFlag
             // The CAS loop ensures that checking for disposed, unregistering, and already-registered states
             // happens atomically with setting the EventsRegisteredFlag, eliminating the race condition
-            int currentState, newState;
-            do
-            {
-                currentState = Volatile.Read(ref _state);
-                
-                // Check if controller is disposed - if so, exit immediately
-                if ((currentState & DisposedFlag) != 0)
-                {
-                    _monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
-                    return;
-                }
-                
-                // Check if another thread is unregistering - if so, exit to avoid race condition
-                if ((currentState & UnregisteringFlag) != 0)
-                {
-                    _monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
-                    return;
-                }
-                
-                // Check if events are already registered - if so, exit to avoid duplicate registration
-                if ((currentState & EventsRegisteredFlag) != 0)
-                {
-                    _monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
-                    return;
-                }
-                
-                // Calculate new state with EventsRegisteredFlag set
-                newState = currentState | EventsRegisteredFlag;
-                
-            } while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
-            
-            // At this point, we have atomically claimed registration rights and set EventsRegisteredFlag
-            // This ensures no race condition exists between checking state and setting the flag
-            // If we reach this point, we successfully set the EventsRegisteredFlag in an atomic operation
-            
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
             var helper = _helper;
-
             // Capture GameLoop once for consistent subscribe/rollback
             var gameLoop = helper?.Events?.GameLoop;
             if (gameLoop == null)
             {
                 monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
-                // Clear the flag since we couldn't actually register anything
-                // Use atomic operation to clear EventsRegisteredFlag
-                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
             }
+            // Atomically claim registration rights only after we know we can subscribe.
+            int currentState, newState;
+            do
+            {
+                currentState = Volatile.Read(ref _state);
+                if ((currentState & DisposedFlag) != 0)
+                {
+                    monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
+                    return;
+                }
+                if ((currentState & UnregisteringFlag) != 0)
+                {
+                    monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
+                    return;
+                }
+                if ((currentState & EventsRegisteredFlag) != 0)
+                {
+                    monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
+                    return;
+                }
+                newState = currentState | EventsRegisteredFlag;
+            } while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             // Track which events were successfully added for proper rollback
             bool gameLaunchedAdded = false;
