@@ -22,7 +22,7 @@ namespace LivingRoots.Controllers
         private const int UnregisteringFlag = 1 << 5;
         private const int RegisteringFlag = 1 << 6;
         internal int _state = 0; // Combine flags in single volatile field
-        
+
         // Warning flag for preventing repeated log spam - using Interlocked operations for thread safety
         internal int _saveIdUnavailableWarningShownOnSaveLoaded = 0; // 0 = false, 1 = true
         internal int _saveIdUnavailableWarningShownOnSaving = 0; // 0 = false, 1 = true
@@ -58,9 +58,9 @@ namespace LivingRoots.Controllers
         };
 
         public ModController(
-            IModHelper helper, 
-            IMonitor monitor, 
-            IManifest manifest, 
+            IModHelper helper,
+            IMonitor monitor,
+            IManifest manifest,
             IModDataService modDataService,
             ISoilHealthService soilHealthService,
             ISaveIdProvider saveIdProvider)
@@ -150,17 +150,17 @@ namespace LivingRoots.Controllers
                 System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
-             catch (Exception ex)
-             {
+            catch (Exception ex)
+            {
                 monitor.Log("Error occurred while registering game events.", LogLevel.Error);
                 monitor.Log($"RegisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                
-                #if DEBUG
+
+#if DEBUG
                 monitor.Log(ex.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
-                #endif
-                
+#endif
+
                 var rollbackSucceeded = true;
-                
+
                 try
                 {
                     if (gameLoop != null)
@@ -187,7 +187,7 @@ namespace LivingRoots.Controllers
                     Interlocked.Exchange(ref _onSaveLoadedHandler, null);
                     Interlocked.Exchange(ref _onSavingHandler, null);
                 }
-            
+
                 System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
             }
@@ -207,9 +207,9 @@ namespace LivingRoots.Controllers
                 var earlyGameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
                 var earlySaveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
                 var earlySavingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
-                
+
                 bool earlyHasHandlers = earlyGameLaunchedHandler != null || earlySaveLoadedHandler != null || earlySavingHandler != null;
-                
+
                 if (!earlyHasHandlers)
                 {
                     _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
@@ -217,27 +217,25 @@ namespace LivingRoots.Controllers
                 }
             }
 
-            // State-claiming loop: always atomically set UnregisteringFlag before proceeding
+            // State-claiming loop: atomically claim UnregisteringFlag before proceeding
             int currentState, newState;
             while (true)
             {
                 currentState = Volatile.Read(ref _state);
-                
-                // Check if another thread is already unregistering to prevent concurrent unregistration
+
+                // Avoid racing a registration in progress; otherwise state can become inconsistent.
                 if ((currentState & UnregisteringFlag) != 0)
                 {
                     _monitor.Log("Event unregistration already in progress, skipping.", LogLevel.Trace);
                     return;
                 }
-                
-                // Always set UnregisteringFlag to prevent concurrent registration
-                // Clear EventsRegisteredFlag if it was set (normal unregistration path)
+
+                // Claim unregistration rights; also clear EventsRegisteredFlag to indicate unregistration is in progress
                 newState = (currentState | UnregisteringFlag) & ~EventsRegisteredFlag;
 
-                // Atomically claim unregistration rights
                 if (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) == currentState)
                 {
-                    break; // Successfully claimed unregistration
+                    break; // Successfully claimed unregistration and cleared EventsRegisteredFlag
                 }
                 // CAS failed: another thread modified state, retry
             }
@@ -255,7 +253,7 @@ namespace LivingRoots.Controllers
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
             var helper = _helper;
-            
+
             // Track which events were successfully removed for rollback
             bool gameLaunchedRemoved = false;
             bool saveLoadedRemoved = false;
@@ -274,7 +272,7 @@ namespace LivingRoots.Controllers
                     // OR if we still have handler references.
                     mayStillBeSubscribed = wasRegistered || hasHandlers;
                     monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
-                    
+
                     // If we're disposing, clear handler references to avoid leaks even if we
                     // can't detach from SMAPI events.
                     if (IsDisposed())
@@ -284,7 +282,7 @@ namespace LivingRoots.Controllers
                         System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
                         mayStillBeSubscribed = false;
                     }
-                    
+
                     return;
                 }
 
@@ -293,13 +291,13 @@ namespace LivingRoots.Controllers
                 saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, saveLoadedHandler, "SaveLoaded");
                 savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, savingHandler, "Saving");
 
-                bool allUnsubscribed =
+                var allUnsubscribed =
                     (gameLaunchedHandler == null || gameLaunchedRemoved) &&
                     (saveLoadedHandler == null || saveLoadedRemoved) &&
                     (savingHandler == null || savingRemoved);
-                
-                // Track subscription state to prevent future duplicate subscriptions
-                mayStillBeSubscribed = hasHandlers && !allUnsubscribed;
+
+                // Subscription state should be derived from unsubscribe results, not "had handlers".
+                mayStillBeSubscribed = !allUnsubscribed;
 
                 // Only nullify handler fields after successful unsubscription to prevent memory leaks
                 // and inconsistent state. Use CompareExchange to ensure we only nullify if the
@@ -318,7 +316,7 @@ namespace LivingRoots.Controllers
                 else
                 {
                     monitor.Log("Event unregistration partially failed. Some handlers may remain subscribed.", LogLevel.Warn);
-                    
+
                     // Check if the controller is disposed - if so, skip rollback to prevent resource leaks
                     if (IsDisposed())
                     {
@@ -331,7 +329,7 @@ namespace LivingRoots.Controllers
                         // IMPLEMENT ROLLBACK MECHANISM: If any unsubscription fails, re-subscribe the successfully removed handlers
                         // This ensures an all-or-nothing operation to maintain state consistency
                         bool rollbackSucceeded = true;
-                        
+
                         // Step 3: Implement rollback logic for GameLaunched handler
                         // If gameLaunchedRemoved is true and handler exists, try to re-subscribe
                         if (gameLaunchedRemoved && gameLaunchedHandler != null)
@@ -349,7 +347,7 @@ namespace LivingRoots.Controllers
                                 rollbackSucceeded = false;
                             }
                         }
-                        
+
                         // Step 4: Implement rollback logic for SaveLoaded handler
                         // If saveLoadedRemoved is true and handler exists, try to re-subscribe
                         if (saveLoadedRemoved && saveLoadedHandler != null)
@@ -367,7 +365,7 @@ namespace LivingRoots.Controllers
                                 rollbackSucceeded = false;
                             }
                         }
-                        
+
                         // Step 5: Implement rollback logic for Saving handler
                         // If savingRemoved is true and handler exists, try to re-subscribe
                         if (savingRemoved && savingHandler != null)
@@ -385,7 +383,7 @@ namespace LivingRoots.Controllers
                                 rollbackSucceeded = false;
                             }
                         }
-                        
+
                         if (rollbackSucceeded)
                         {
                             // Restore the EventsRegisteredFlag since state is restored to the registered state
@@ -417,7 +415,7 @@ namespace LivingRoots.Controllers
                     // that handlers are still subscribed and prevent duplicate subscriptions
                     System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
                 }
-                // If unregistration was complete and successful, the EventsRegisteredFlag remains cleared 
+                // If unregistration was complete and successful, the EventsRegisteredFlag remains cleared
                 // (as set at the start of the method)
 
                 // Clear "unregistering" claim last, once state is consistent.
@@ -434,8 +432,8 @@ namespace LivingRoots.Controllers
         /// <param name="eventName">The name of the event for logging purposes</param>
         /// <returns>True if unsubscription was attempted and succeeded, false if unsubscription failed</returns>
 
-         private bool SafeUnsubscribe<T>(IMonitor monitor, Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
-         {
+        private bool SafeUnsubscribe<T>(IMonitor monitor, Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
+        {
             // No handler reference means there's nothing to detach from our perspective.
             // // Treat as success to avoid incorrectly restoring "registered" state.
             if (handler == null)
@@ -443,22 +441,22 @@ namespace LivingRoots.Controllers
                 return true;
             }
 
-                try
-                {
-                    unsubscribeAction(handler);
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    monitor.Log($"Error occurred while unsubscribing from {eventName} event.", LogLevel.Error);
-                    monitor.Log($"{eventName} unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            try
+            {
+                unsubscribeAction(handler);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                monitor.Log($"Error occurred while unsubscribing from {eventName} event.", LogLevel.Error);
+                monitor.Log($"{eventName} unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
 
-                    #if DEBUG
-                    monitor.Log(ex.StackTrace ?? $"{eventName} unsubscription stack trace unavailable.", LogLevel.Trace);
-                    #endif
+#if DEBUG
+                monitor.Log(ex.StackTrace ?? $"{eventName} unsubscription stack trace unavailable.", LogLevel.Trace);
+#endif
 
-                    return false;
-                }
+                return false;
+            }
         }
 
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
@@ -479,14 +477,14 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log("Error occurred in game launched event handler.", LogLevel.Error);
-                
+
                 // Add trace-level exception details for debugging
                 _monitor.Log($"OnGameLaunched exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                
+
                 // Add stack trace logging for better diagnostics without exposing sensitive information
-                #if DEBUG
+#if DEBUG
                 _monitor.Log(ex.StackTrace ?? "OnGameLaunched stack trace unavailable.", LogLevel.Trace);
-                #endif
+#endif
             }
         }
 
@@ -498,17 +496,17 @@ namespace LivingRoots.Controllers
             do
             {
                 currentState = System.Threading.Volatile.Read(ref _state);
-                
+
                 // If the OnSaveLoadedExecutingFlag is already set, this method is already running, so return
                 if ((currentState & OnSaveLoadedExecutingFlag) != 0)
                 {
                     _monitor.Log("OnSaveLoaded is already executing, skipping concurrent execution.", LogLevel.Trace);
                     return;
                 }
-                
+
                 // Calculate new state with the OnSaveLoadedExecutingFlag set
                 newState = currentState | OnSaveLoadedExecutingFlag;
-            } 
+            }
             while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             try
@@ -547,14 +545,14 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log("Error occurred while loading soil health data for save.", LogLevel.Error);
-                
+
                 // Add trace-level exception details for debugging
                 _monitor.Log($"OnSaveLoaded exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                
+
                 // Add stack trace logging for better diagnostics without exposing sensitive information
-                #if DEBUG
+#if DEBUG
                 _monitor.Log(ex.StackTrace ?? "OnSaveLoaded stack trace unavailable.", LogLevel.Trace);
-                #endif
+#endif
             }
             finally
             {
@@ -571,17 +569,17 @@ namespace LivingRoots.Controllers
             do
             {
                 currentState = System.Threading.Volatile.Read(ref _state);
-                
+
                 // If the OnSavingExecutingFlag is already set, this method is already running, so return
                 if ((currentState & OnSavingExecutingFlag) != 0)
                 {
                     _monitor.Log("OnSaving is already executing, skipping concurrent execution.", LogLevel.Trace);
                     return;
                 }
-                
+
                 // Calculate new state with the OnSavingExecutingFlag set
                 newState = currentState | OnSavingExecutingFlag;
-            } 
+            }
             while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
 
             try
@@ -598,7 +596,6 @@ namespace LivingRoots.Controllers
 
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
-                    // Only show warning once to prevent log spam using Interlocked operations
                     if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 1, 0) == 0)
                     {
                         // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
@@ -622,14 +619,14 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log("Error occurred while saving soil health data for save.", LogLevel.Error);
-                
+
                 // Add trace-level exception details for debugging
                 _monitor.Log($"OnSaving exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                
+
                 // Add stack trace logging for better diagnostics without exposing sensitive information
-                #if DEBUG
+#if DEBUG
                 _monitor.Log(ex.StackTrace ?? "OnSaving stack trace unavailable.", LogLevel.Trace);
-                #endif
+#endif
             }
             finally
             {
@@ -671,10 +668,10 @@ namespace LivingRoots.Controllers
                         _monitor.Log("ConsoleCommands is null, cannot register console command 'lr_version'.", LogLevel.Error);
                         return;
                     }
-                    
+
                     _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
                     _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
-                    
+
                     // Set the command registered flag atomically only on successful registration
                     // This prevents repeated registration attempts and ensures the flag reflects actual registration state
                     System.Threading.Interlocked.Or(ref _state, CommandRegisteredFlag);
@@ -683,14 +680,14 @@ namespace LivingRoots.Controllers
                 {
                     // Log error but don't expose raw exception message for security
                     _monitor.Log("Error occurred while registering console command 'lr_version'.", LogLevel.Error);
-                    
+
                     // Add trace-level exception details for debugging
                     _monitor.Log($"RegisterConsoleCommand exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                    
+
                     // Add stack trace logging for better diagnostics without exposing sensitive information
-                    #if DEBUG
+#if DEBUG
                     _monitor.Log(ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.", LogLevel.Trace);
-                    #endif
+#endif
                 }
             }
         }
@@ -729,14 +726,14 @@ namespace LivingRoots.Controllers
             {
                 // Log error but don't expose raw exception message for security
                 _monitor?.Log("Error occurred while executing version command.", LogLevel.Error);
-                
+
                 // Add trace level exception details for debugging
                 _monitor?.Log($"PrintVersion exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                
+
                 // Add stack trace logging for better diagnostics without exposing sensitive information
-                #if DEBUG
+#if DEBUG
                 _monitor?.Log(ex.StackTrace ?? "PrintVersion stack trace unavailable.", LogLevel.Trace);
-                #endif
+#endif
             }
         }
 
@@ -779,7 +776,7 @@ namespace LivingRoots.Controllers
             do
             {
                 currentState = System.Threading.Volatile.Read(ref _state);
-                
+
                 // Check if already disposed when trying to set other flags
                 if ((flag & ~DisposedFlag) != 0 && (currentState & DisposedFlag) != 0)
                     return false; // Don't set other flags if disposed
