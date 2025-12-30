@@ -847,7 +847,7 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             var exceptions = new List<Exception>();
             var lockObj = new object();
-            var accessedTiles = new List<Vector2>();
+            var accessedTiles = new List<Point>();
             var tilesLock = new object();
 
             // Act - Multiple threads accessing the service simultaneously
@@ -865,7 +865,7 @@ namespace LivingRoots.Tests
                             // Record the tile being accessed
                             lock (tilesLock)
                             {
-                                accessedTiles.Add(tile);
+                                accessedTiles.Add(new Point((int)tile.X, (int)tile.Y));
                             }
                             
                             service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,100] range
@@ -903,7 +903,7 @@ namespace LivingRoots.Tests
             // Verify that all values remain within expected range [0, 100] after concurrent access
             foreach (var tile in distinctTiles)
             {
-                var healthValue = service.GetSoilHealth("Farm", tile);
+                var healthValue = service.GetSoilHealth("Farm", new Vector2(tile.X, tile.Y));
                 
                 // Assert that the value is within the valid range [0, 100]
                 Assert.InRange(healthValue, 0.0f, 100.0f);
@@ -1034,12 +1034,13 @@ namespace LivingRoots.Tests
             // Verify that each worker operated on disjoint tile ranges
             Assert.Empty(exceptions);
             Assert.Equal(5, workerTiles.Count);
-            var seen = new HashSet<Vector2>();
+            var seen = new HashSet<Point>();
             foreach (var (_, tiles) in workerTiles)
             {
                 foreach (var tile in tiles)
                 {
-                    Assert.True(seen.Add(tile), $"Tile overlap detected: {tile}");
+                    var p = new Point((int)tile.X, (int)tile.Y);
+                    Assert.True(seen.Add(p), $"Tile overlap detected: {p}");
                 }
             }
 
