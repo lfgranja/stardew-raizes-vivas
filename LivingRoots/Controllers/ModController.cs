@@ -20,6 +20,7 @@ namespace LivingRoots.Controllers
         private const int OnSaveLoadedExecutingFlag = 1 << 3;
         private const int OnSavingExecutingFlag = 1 << 4;
         private const int UnregisteringFlag = 1 << 5;
+        private const int RegisteringFlag = 1 << 6;
         internal int _state = 0; // Combine flags in single volatile field
         
         // Warning flag for preventing repeated log spam - using Interlocked operations for thread safety
@@ -88,7 +89,6 @@ namespace LivingRoots.Controllers
                 monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                 return;
             }
-            // Atomically claim registration rights only after we know we can subscribe.
             int currentState, newState;
             do
             {
@@ -103,15 +103,14 @@ namespace LivingRoots.Controllers
                     monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
                     return;
                 }
-                if ((currentState & EventsRegisteredFlag) != 0)
+                if ((currentState & (EventsRegisteredFlag | RegisteringFlag)) != 0)
                 {
-                    monitor.Log("Events are already registered, skipping registration.", LogLevel.Trace);
+                    monitor.Log("Events are already registered or registering, skipping registration.", LogLevel.Trace);
                     return;
                 }
-                newState = currentState | EventsRegisteredFlag;
+                // claim "registering" to block concurrent attempts without lying about success
+                newState = currentState | RegisteringFlag;
             } while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
-
-            // Track which events were successfully added for proper rollback
             bool gameLaunchedAdded = false;
             bool saveLoadedAdded = false;
             bool savingAdded = false;
