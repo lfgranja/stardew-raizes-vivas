@@ -105,7 +105,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Exactly(2));
             mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Exactly(2));
             mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
-            
+
             // Check that EventsRegisteredFlag is restored in the state after rollback
             var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
             var stateValue = (int)(stateField?.GetValue(controller) ?? 0);
@@ -158,7 +158,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once);
-            
+
             // Check that EventsRegisteredFlag remains in the appropriate state
             var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
             var stateValue = (int)(stateField?.GetValue(controller) ?? 0);
@@ -211,7 +211,7 @@ namespace LivingRoots.Tests
             // Total invocations: 1 from original registration + 1 from rollback = 2
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Exactly(2));
             mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Exactly(2));
-            
+
             // Check that EventsRegisteredFlag is restored in the state after rollback
             var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
             var stateValue = (int)(stateField?.GetValue(controller) ?? 0);
@@ -264,7 +264,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once);
-            
+
             // Check that EventsRegisteredFlag is cleared after successful unregistration
             var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
             var stateValue = (int)(stateField?.GetValue(controller) ?? 0);
