@@ -378,16 +378,6 @@ namespace LivingRoots.Services
                 return; // Ignore invalid delta values.
             }
 
-            /* if (float.IsNegativeInfinity(delta))
-            {
-                delta = ModConstants.MinSoilHealth;
-            }
-            if (float.IsPositiveInfinity(delta))
-            {
-                delta = ModConstants.MaxSoilHealth;
-            }
-            */
-
             // Validate the tile using the validation helper
             if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
