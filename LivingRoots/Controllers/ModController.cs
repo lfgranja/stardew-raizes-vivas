@@ -146,6 +146,8 @@ namespace LivingRoots.Controllers
                 gameLoop.Saving += localSavingHandler;
                 savingAdded = true;
 
+                // now that everything succeeded, publish the "registered" state
+                System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
                 monitor.Log("Events registered successfully.", LogLevel.Trace);
             }
              catch (Exception ex)
@@ -188,6 +190,11 @@ namespace LivingRoots.Controllers
             
                 System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                 return;
+            }
+            finally
+            {
+                // always clear "registering" claim
+                System.Threading.Interlocked.And(ref _state, ~RegisteringFlag);
             }
         }
 
@@ -240,6 +247,7 @@ namespace LivingRoots.Controllers
             var gameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
             var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
             var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
+            var wasRegistered = (currentState & EventsRegisteredFlag) != 0;
 
             // Check if any handlers are non-null for best-effort cleanup
             bool hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
@@ -262,9 +270,9 @@ namespace LivingRoots.Controllers
                 var gameLoop = helper?.Events?.GameLoop;
                 if (gameLoop == null)
                 {
-                    // We can't unsubscribe, so assume handlers may still be subscribed and
-                    // keep the registered-state to prevent duplicate subscriptions later.
-                    mayStillBeSubscribed = hasHandlers;
+                    // We can't unsubscribe; conservatively assume we may still be subscribed if we were registered
+                    // OR if we still have handler references.
+                    mayStillBeSubscribed = wasRegistered || hasHandlers;
                     monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
                     
                     // If we're disposing, clear handler references to avoid leaks even if we
