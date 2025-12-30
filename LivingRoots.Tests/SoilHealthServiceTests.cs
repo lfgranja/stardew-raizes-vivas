@@ -1032,6 +1032,17 @@ namespace LivingRoots.Tests
             Assert.Empty(exceptions);
             
             // Verify that each worker operated on disjoint tile ranges
+            Assert.Empty(exceptions);
+            Assert.Equal(5, workerTiles.Count);
+            var seen = new HashSet<Vector2>();
+            foreach (var (_, tiles) in workerTiles)
+            {
+                foreach (var tile in tiles)
+                {
+                    Assert.True(seen.Add(tile), $"Tile overlap detected: {tile}");
+                }
+            }
+
             for (int i = 0; i < workerTiles.Count; i++)
             {
                 for (int j = i + 1; j < workerTiles.Count; j++)
