@@ -68,7 +68,7 @@ namespace LivingRoots.Tests
             // This test demonstrates the race condition that can occur between checking UnregisteringFlag
             // and setting EventsRegisteredFlag in RegisterEvents
             var tasks = new List<Task>();
-            
+
             // Create a scenario where multiple RegisterEvents calls happen concurrently
             // This can expose the race condition between the non-atomic checks
             for (int i = 0; i < 5; i++)
@@ -93,13 +93,13 @@ namespace LivingRoots.Tests
             // Add timeout to prevent hanging indefinitely
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
             var whenAllTask = Task.WhenAll(tasks);
-            
+
             var completedTask = await Task.WhenAny(whenAllTask, timeoutTask);
             if (completedTask == timeoutTask)
             {
                 Assert.Fail("RegisterEvents_WhenConcurrentRegisterEventsAndUnregisterEventsRaceConditionExists_LeadsToInconsistentState test timed out after 30 seconds");
             }
-            
+
             // Wait for the actual tasks to complete if they haven't already
             await whenAllTask;
 
@@ -110,12 +110,12 @@ namespace LivingRoots.Tests
 
             // Invariants: unregistration must not be left "in-progress"
             Assert.False(isUnregistering, "UnregisteringFlag should be cleared after operations complete");
-            
+
             // Handler leak invariant: we should never end up with removals exceeding adds
             Assert.True(threadSafeGameLoopEvents.GameLaunchedRemoveCount <= threadSafeGameLoopEvents.GameLaunchedAddCount);
             Assert.True(threadSafeGameLoopEvents.SaveLoadedRemoveCount <= threadSafeGameLoopEvents.SaveLoadedAddCount);
             Assert.True(threadSafeGameLoopEvents.SavingRemoveCount <= threadSafeGameLoopEvents.SavingAddCount);
-            
+
             // If events are marked registered, each handler should only be registered once in the end-state contract.
             if (isEventsRegistered)
             {
@@ -142,7 +142,7 @@ namespace LivingRoots.Tests
                 _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act: Simulate multiple concurrent registration attempts
-            // This should reveal the race condition where multiple threads pass the 
+            // This should reveal the race condition where multiple threads pass the
             // UnregisteringFlag check but before the EventsRegisteredFlag is set
             var tasks = new List<Task>();
             for (int i = 0; i < 10; i++)
@@ -159,7 +159,7 @@ namespace LivingRoots.Tests
             // With the race condition, multiple registrations might occur
             // The current implementation should only register once due to TrySetStateFlag
             // but the race condition still exists in the pre-check logic
-            
+
             // The issue is that the check for UnregisteringFlag and the attempt to set
             // EventsRegisteredFlag are not atomic, creating a potential race condition
             Assert.Equal(1, threadSafeGameLoopEvents.GameLaunchedAddCount);
@@ -187,12 +187,12 @@ namespace LivingRoots.Tests
             private int _saveLoadedRemoveCount = 0;
             private int _savingRemoveCount = 0;
 
-            public int GameLaunchedAddCount => Volatile.Read(ref _gameLaunchedAddCount);
-            public int SaveLoadedAddCount => Volatile.Read(ref _saveLoadedAddCount);
-            public int SavingAddCount => Volatile.Read(ref _savingAddCount);
-            public int GameLaunchedRemoveCount => Volatile.Read(ref _gameLaunchedRemoveCount);
-            public int SaveLoadedRemoveCount => Volatile.Read(ref _saveLoadedRemoveCount);
-            public int SavingRemoveCount => Volatile.Read(ref _savingRemoveCount);
+            public int GameLaunchedAddCount => System.Threading.Volatile.Read(ref _gameLaunchedAddCount);
+            public int SaveLoadedAddCount => System.Threading.Volatile.Read(ref _saveLoadedAddCount);
+            public int SavingAddCount => System.Threading.Volatile.Read(ref _savingAddCount);
+            public int GameLaunchedRemoveCount => System.Threading.Volatile.Read(ref _gameLaunchedRemoveCount);
+            public int SaveLoadedRemoveCount => System.Threading.Volatile.Read(ref _saveLoadedRemoveCount);
+            public int SavingRemoveCount => System.Threading.Volatile.Read(ref _savingRemoveCount);
 
             public event EventHandler<GameLaunchedEventArgs>? GameLaunched
             {
