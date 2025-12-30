@@ -303,10 +303,13 @@ namespace LivingRoots.Controllers
                 saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, saveLoadedHandler, "SaveLoaded");
                 savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, savingHandler, "Saving");
 
-                bool allUnsubscribed = gameLaunchedRemoved && saveLoadedRemoved && savingRemoved;
-
-                // IMPLEMENT ROLLBACK TRACKING VARIABLE: Track subscription state to prevent future duplicate subscriptions
-                mayStillBeSubscribed = hasHandlers && !allUnsubscribed; // Initialize based on hasHandlers and allUnsubscribed result
+                bool allUnsubscribed =
+                    (gameLaunchedHandler == null || gameLaunchedRemoved) &&
+                    (saveLoadedHandler == null || saveLoadedRemoved) &&
+                    (savingHandler == null || savingRemoved);
+                
+                // Track subscription state to prevent future duplicate subscriptions
+                mayStillBeSubscribed = hasHandlers && !allUnsubscribed;
 
                 // Only nullify handler fields after successful unsubscription to prevent memory leaks
                 // and inconsistent state. Use CompareExchange to ensure we only nullify if the
@@ -441,28 +444,31 @@ namespace LivingRoots.Controllers
         /// <param name="eventName">The name of the event for logging purposes</param>
         /// <returns>True if unsubscription was attempted and succeeded, false if unsubscription failed</returns>
 
-        private bool SafeUnsubscribe<T>(IMonitor monitor, Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
-        {
-            // If we don't have the delegate reference, we can't reliably detach.
-            // Treat as failure so callers can conservatively assume it may still be subscribed.
-            if (handler == null) return false;
-            
-            try
+         private bool SafeUnsubscribe<T>(IMonitor monitor, Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
+         {
+            // No handler reference means there's nothing to detach from our perspective.
+            // // Treat as success to avoid incorrectly restoring "registered" state.
+            if (handler == null)
             {
-                unsubscribeAction(handler);
                 return true;
             }
-            catch (Exception ex)
-            {
-                monitor.Log($"Error occurred while unsubscribing from {eventName} event.", LogLevel.Error);
-                monitor.Log($"{eventName} unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                
-                #if DEBUG
-                monitor.Log(ex.StackTrace ?? $"{eventName} unsubscription stack trace unavailable.", LogLevel.Trace);
-                #endif
-                
-                return false;
-            }
+
+                try
+                {
+                    unsubscribeAction(handler);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    monitor.Log($"Error occurred while unsubscribing from {eventName} event.", LogLevel.Error);
+                    monitor.Log($"{eventName} unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+
+                    #if DEBUG
+                    monitor.Log(ex.StackTrace ?? $"{eventName} unsubscription stack trace unavailable.", LogLevel.Trace);
+                    #endif
+
+                    return false;
+                }
         }
 
         private void OnGameLaunched(object? sender, GameLaunchedEventArgs e)
