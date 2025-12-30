@@ -233,18 +233,18 @@ namespace LivingRoots.Tests
             private int _saveLoadedRemoveCount = 0;
             private int _savingRemoveCount = 0;
 
-            public int GameLaunchedAddCount => Volatile.Read(ref _gameLaunchedAddCount);
-            public int SaveLoadedAddCount => Volatile.Read(ref _saveLoadedAddCount);
-            public int SavingAddCount => Volatile.Read(ref _savingAddCount);
-            public int GameLaunchedRemoveCount => Volatile.Read(ref _gameLaunchedRemoveCount);
-            public int SaveLoadedRemoveCount => Volatile.Read(ref _saveLoadedRemoveCount);
-            public int SavingRemoveCount => Volatile.Read(ref _savingRemoveCount);
+            public int GameLaunchedAddCount => System.Threading.Volatile.Read(ref _gameLaunchedAddCount);
+            public int SaveLoadedAddCount => System.Threading.Volatile.Read(ref _saveLoadedAddCount);
+            public int SavingAddCount => System.Threading.Volatile.Read(ref _savingAddCount);
+            public int GameLaunchedRemoveCount => System.Threading.Volatile.Read(ref _gameLaunchedRemoveCount);
+            public int SaveLoadedRemoveCount => System.Threading.Volatile.Read(ref _saveLoadedRemoveCount);
+            public int SavingRemoveCount => System.Threading.Volatile.Read(ref _savingRemoveCount);
 
             public event EventHandler<GameLaunchedEventArgs>? GameLaunched
             {
                 add
                 {
-                    Interlocked.Increment(ref _gameLaunchedAddCount);
+                    System.Threading.Interlocked.Increment(ref _gameLaunchedAddCount);
                     EventHandler<GameLaunchedEventArgs>? current, updated;
                     do
                     {
