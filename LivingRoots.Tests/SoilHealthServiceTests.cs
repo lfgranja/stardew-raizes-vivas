@@ -400,7 +400,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void LoadData_WithInvalidValues_ConvertsNaNInfinityToZeroDuringLoad()
+        public void LoadData_WithInvalidValues_ConvertsNaNInfinityDuringLoad()
         {
             // Arrange
             var saveData = new SoilHealthState
@@ -410,8 +410,8 @@ namespace LivingRoots.Tests
                     ["Farm"] = new Dictionary<string, float>
                     {
                         ["10,10"] = float.NaN,        // Invalid value
-                        ["11,11"] = float.PositiveInfinity, // Invalid value
-                        ["12,12"] = float.NegativeInfinity, // Invalid value
+                        ["11,11"] = float.PositiveInfinity, // Invalid value, PositiveInfinity should be converted to 100f
+                        ["12,12"] = float.NegativeInfinity, // Invalid value, NegativeInfinity should be converted to 0f
                         ["13,13"] = 50.0f             // Valid
                     }
                 }
@@ -433,9 +433,10 @@ namespace LivingRoots.Tests
 
             // Assert - Invalid values should be converted to 0, valid entries should remain
             Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(13, 13)));
-            // Invalid entries should be converted to 0 (not skipped)
+            // NegativeInfinity should be converted to 0 (not skipped)
             Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
-            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(11, 11)));
+            // PositiveInfinity should be converted to 100.
+            Assert.Equal(100f, service.GetSoilHealth("Farm", new Vector2(11, 11)));
             Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
             
             // Strengthen the test by verifying the internal state more thoroughly
@@ -452,7 +453,7 @@ namespace LivingRoots.Tests
             float result13 = service.GetSoilHealth("Farm", tile13);
             
             Assert.Equal(0f, result10); // NaN value converted to 0
-            Assert.Equal(0f, result11); // PositiveInfinity value converted to 100
+            Assert.Equal(100f, result11); // PositiveInfinity value converted to 100
             Assert.Equal(0f, result12); // NegativeInfinity value converted to 0
             Assert.Equal(50.0f, result13); // Valid value remains unchanged
             
@@ -984,71 +985,46 @@ namespace LivingRoots.Tests
 
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
             var tasks = new List<Task>();
-            for (int i = 0; i < 5; i++) // Using 5 workers to make verification easier
-            {
-                var workerId = i;
-                var workerTileList = new List<Vector2>();
-                
-                var task = Task.Run(() =>
+             for (int i = 0; i < 5; i++) // Using 5 workers to make verification easier
                 {
-                    try
-                    {
-                        for (int j = 0; j < 10; j++) // Only 10 operations per worker for easier verification
-                        {
-                            int x = (workerId * 100) + j;  // Changed from (workerId * 10) + j to (workerId * 100) + j for truly disjoint ranges
-                            int y = workerId;
-                            var tile = new Vector2(x, y);
-                            workerTileList.Add(tile);
-                            
-                            service.SetSoilHealth("Farm", tile, workerId * 10.0f); // Set value based on workerId
-                            service.GetSoilHealth("Farm", tile);
-                            service.UpdateHealth("Farm", tile, 1.0f);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        lock (lockObj)
-                        {
-                            exceptions.Add(ex);
-                        }
-                    }
-                });
+                    var workerId = i;
                 
-                // Capture the tile list for this worker after the task completes
-                tasks.Add(Task.Run(async () =>
-                {
-                    try
+                
+                    tasks.Add(Task.Run(() =>
                     {
-
-                        for (int j = 0; j < 10; j++) // Only 10 operations per worker for easier verification
+                        var workerTileList = new List<Vector2>();
+                        
+                        try
                         {
-                            int x = (workerId * 100) + j;  // Changed from (workerId * 10) + j to (workerId * 100) + j for truly disjoint ranges
-                            int y = workerId;
-                            var tile = new Vector2(x, y);
-                            workerTileList.Add(tile);
-
-                            service.SetSoilHealth("Farm", tile, workerId * 10.0f); // Set value based on workerId
-                            service.GetSoilHealth("Farm", tile);
-                            service.UpdateHealth("Farm", tile, 1.0f);
+                            for (int j = 0; j < 10; j++) // Only 10 operations per worker for easier verification
+                            {
+                
+                                int x = (workerId * 100) + j;
+                                int y = workerId;
+                                var tile = new Vector2(x, y);
+                                workerTileList.Add(tile);
+                
+                                service.SetSoilHealth("Farm", tile, workerId * 10.0f); // Set value based on workerId
+                                service.GetSoilHealth("Farm", tile);
+                                service.UpdateHealth("Farm", tile, 1.0f);
+                            }
                         }
-                    }
-
-                    catch (Exception ex)
-                    {
-                        lock (lockObj)
+                        catch (Exception ex)
                         {
-                            exceptions.Add(ex);
+                            lock (lockObj)
+                            {
+                                exceptions.Add(ex);
+                            }
                         }
-                    }
-                    finally
-                    {
-                        lock (lockObj)
+                        finally
                         {
-                            workerTiles.Add((workerId, workerTileList));
+                            lock (lockObj)
+                            {
+                                workerTiles.Add((workerId, workerTileList));
+                            }
                         }
-                    }
-                }));
-            }
+                    }));
+                }
 
             await Task.WhenAll(tasks);
 
@@ -1237,7 +1213,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void UpdateHealth_WithPositiveInfinityDelta_DoesNotModifyExistingHealth()
+        public void UpdateHealth_WithPositiveInfinityDelta_ModifyExistingHealthtoMax()
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -1249,11 +1225,11 @@ namespace LivingRoots.Tests
             service.UpdateHealth(location, tile, float.PositiveInfinity); // Try to update with PositiveInfinity delta
 
             // Assert - Value should remain unchanged (not reset to 0)
-            Assert.Equal(50.0f, service.GetSoilHealth(location, tile));
+            Assert.Equal(100.0f, service.GetSoilHealth(location, tile));
         }
 
         [Fact]
-        public void UpdateHealth_WithNegativeInfinityDelta_DoesNotModifyExistingHealth()
+        public void UpdateHealth_WithNegativeInfinityDelta_ModifyExistingHealthtoMin()
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -1265,7 +1241,7 @@ namespace LivingRoots.Tests
             service.UpdateHealth(location, tile, float.NegativeInfinity); // Try to update with NegativeInfinity delta
 
             // Assert - Value should remain unchanged (not reset to 0)
-            Assert.Equal(50.0f, service.GetSoilHealth(location, tile));
+            Assert.Equal(0.0f, service.GetSoilHealth(location, tile));
         }
 
         [Fact]

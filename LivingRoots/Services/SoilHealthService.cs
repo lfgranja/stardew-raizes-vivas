@@ -373,21 +373,25 @@ namespace LivingRoots.Services
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
         {
             // Validation for the delta value to prevent invalid updates.
-            if (float.IsNaN(delta) || float.IsInfinity(delta))
+            if (float.IsNaN(delta))
             {
                 return; // Ignore invalid delta values.
             }
+
+            /* if (float.IsNegativeInfinity(delta))
+            {
+                delta = ModConstants.MinSoilHealth;
+            }
+            if (float.IsPositiveInfinity(delta))
+            {
+                delta = ModConstants.MaxSoilHealth;
+            }
+            */
 
             // Validate the tile using the validation helper
             if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
                 return; // Skip if location or tile is invalid
-            }
-
-            // Add validation for the delta value to prevent invalid updates.
-            if (float.IsNaN(delta) || float.IsInfinity(delta))
-            {
-                return; // Ignore invalid delta values.
             }
 
             // Variables to track if we need to log warnings (set inside the lock, used outside)
@@ -487,12 +491,23 @@ namespace LivingRoots.Services
             tiles[tilePoint] = clampedValue;
         }
         
-        private float ClampHealthValue(float value)
+        private static float ClampHealthValue(float value)
         {
             // Handle NaN and Infinity values before clamping
-            if (float.IsPositiveInfinity(value)) return ModConstants.MaxSoilHealth;
-            if (float.IsNegativeInfinity(value)) return ModConstants.MinSoilHealth;
-            if (float.IsNaN(value)) return 0f;
+            if (float.IsPositiveInfinity(value)) 
+            {
+                return ModConstants.MaxSoilHealth;
+            }
+
+            if (float.IsNegativeInfinity(value))
+            {
+                return ModConstants.MinSoilHealth;
+            }
+
+            if (float.IsNaN(value))
+            {
+                return 0f;
+            }
             
             return Math.Clamp(value, ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth);
         }
@@ -629,23 +644,9 @@ namespace LivingRoots.Services
                     return false; // Skip this entry
                 }
 
-                // Simplified validation logic: check for NaN/Infinity first, then range
                 float validatedValue = tileEntry.Value;
                 
-                // Check for NaN or Infinity values and convert to 0 instead of skipping
-                if (float.IsNaN(validatedValue) || float.IsInfinity(validatedValue))
-                {
-                    // Only warn once per location for invalid values to prevent log spam
-                    if (!warnedForInvalidValue)
-                    {
-                        // Use the helper method to truncate the location name for logging
-                        string truncatedLocationName = TruncateForLogging(locationName);
-                        _monitor.Log($"Invalid health value (NaN/Infinity) found in save data for location '{truncatedLocationName}'; converting to 0.", LogLevel.Warn);
-                        warnedForInvalidValue = true;
-                    }
-                    validatedValue = 0f; // Convert to 0 instead of skipping
-                }
-                else if (validatedValue < ModConstants.MinSoilHealth || validatedValue > ModConstants.MaxSoilHealth)
+                if (float.IsNaN(validatedValue) || validatedValue < ModConstants.MinSoilHealth || validatedValue > ModConstants.MaxSoilHealth)
                 {
                     // Only warn once per location for out-of-range values to prevent log spam
                     if (!warnedForInvalidValue)
