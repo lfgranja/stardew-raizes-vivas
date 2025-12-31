@@ -215,6 +215,7 @@ namespace LivingRoots.Controllers
 
             // Only clear handler fields if we're sure we detached everything; otherwise keep
             // references for best-effort cleanup during UnregisterEvents/Dispose.
+            // The condition is no longer gratuitous because rollbackSucceeded can now be false
             if (rollbackSucceeded)
             {
                 Interlocked.Exchange(ref _onGameLaunchedHandler, null);
@@ -328,61 +329,8 @@ namespace LivingRoots.Controllers
                     {
                         // IMPLEMENT ROLLBACK MECHANISM: If any unsubscription fails, re-subscribe the successfully removed handlers
                         // This ensures an all-or-nothing operation to maintain state consistency
-                        bool rollbackSucceeded = true;
-
-                        // Step 3: Implement rollback logic for GameLaunched handler
-                        // If gameLaunchedRemoved is true and handler exists, try to re-subscribe
-                        if (gameLaunchedRemoved && gameLaunchedHandler != null)
-                        {
-                            try
-                            {
-                                gameLoop.GameLaunched += gameLaunchedHandler;
-                                System.Threading.Interlocked.CompareExchange(ref _onGameLaunchedHandler, gameLaunchedHandler, null);
-                                monitor.Log("GameLaunched handler re-subscribed during rollback.", LogLevel.Trace);
-                            }
-                            catch (Exception ex)
-                            {
-                                monitor.Log("Failed to re-subscribe GameLaunched handler during rollback.", LogLevel.Error);
-                                monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                                rollbackSucceeded = false;
-                            }
-                        }
-
-                        // Step 4: Implement rollback logic for SaveLoaded handler
-                        // If saveLoadedRemoved is true and handler exists, try to re-subscribe
-                        if (saveLoadedRemoved && saveLoadedHandler != null)
-                        {
-                            try
-                            {
-                                gameLoop.SaveLoaded += saveLoadedHandler;
-                                System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, saveLoadedHandler, null);
-                                monitor.Log("SaveLoaded handler re-subscribed during rollback.", LogLevel.Trace);
-                            }
-                            catch (Exception ex)
-                            {
-                                monitor.Log("Failed to re-subscribe SaveLoaded handler during rollback.", LogLevel.Error);
-                                monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                                rollbackSucceeded = false;
-                            }
-                        }
-
-                        // Step 5: Implement rollback logic for Saving handler
-                        // If savingRemoved is true and handler exists, try to re-subscribe
-                        if (savingRemoved && savingHandler != null)
-                        {
-                            try
-                            {
-                                gameLoop.Saving += savingHandler;
-                                System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, savingHandler, null);
-                                monitor.Log("Saving handler re-subscribed during rollback.", LogLevel.Trace);
-                            }
-                            catch (Exception ex)
-                            {
-                                monitor.Log("Failed to re-subscribe Saving handler during rollback.", LogLevel.Error);
-                                monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                                rollbackSucceeded = false;
-                            }
-                        }
+                        ExecuteRollback(monitor, gameLoop, gameLaunchedRemoved, gameLaunchedHandler, saveLoadedRemoved, saveLoadedHandler,
+                            savingRemoved, savingHandler, out bool rollbackSucceeded);
 
                         if (rollbackSucceeded)
                         {
@@ -400,6 +348,69 @@ namespace LivingRoots.Controllers
             finally
             {
                 RestoreStateAfterUnregistration(mayStillBeSubscribed);
+            }
+        }
+
+        private void ExecuteRollback(IMonitor monitor, IGameLoopEvents gameLoop,
+            bool gameLaunchedRemoved, EventHandler<GameLaunchedEventArgs>? gameLaunchedHandler,
+            bool saveLoadedRemoved, EventHandler<SaveLoadedEventArgs>? saveLoadedHandler,
+            bool savingRemoved, EventHandler<SavingEventArgs>? savingHandler,
+            out bool rollbackSucceeded)
+        {
+            rollbackSucceeded = true;
+
+            // Step 3: Implement rollback logic for GameLaunched handler
+            // If gameLaunchedRemoved is true and handler exists, try to re-subscribe
+            if (gameLaunchedRemoved && gameLaunchedHandler != null)
+            {
+                try
+                {
+                    gameLoop.GameLaunched += gameLaunchedHandler;
+                    System.Threading.Interlocked.CompareExchange(ref _onGameLaunchedHandler, gameLaunchedHandler, null);
+                    monitor.Log("GameLaunched handler re-subscribed during rollback.", LogLevel.Trace);
+                }
+                catch (Exception ex)
+                {
+                    monitor.Log("Failed to re-subscribe GameLaunched handler during rollback.", LogLevel.Error);
+                    monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    rollbackSucceeded = false;
+                }
+            }
+
+            // Step 4: Implement rollback logic for SaveLoaded handler
+            // If saveLoadedRemoved is true and handler exists, try to re-subscribe
+            if (saveLoadedRemoved && saveLoadedHandler != null)
+            {
+                try
+                {
+                    gameLoop.SaveLoaded += saveLoadedHandler;
+                    System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, saveLoadedHandler, null);
+                    monitor.Log("SaveLoaded handler re-subscribed during rollback.", LogLevel.Trace);
+                }
+                catch (Exception ex)
+                {
+                    monitor.Log("Failed to re-subscribe SaveLoaded handler during rollback.", LogLevel.Error);
+                    monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    rollbackSucceeded = false;
+                }
+            }
+
+            // Step 5: Implement rollback logic for Saving handler
+            // If savingRemoved is true and handler exists, try to re-subscribe
+            if (savingRemoved && savingHandler != null)
+            {
+                try
+                {
+                    gameLoop.Saving += savingHandler;
+                    System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, savingHandler, null);
+                    monitor.Log("Saving handler re-subscribed during rollback.", LogLevel.Trace);
+                }
+                catch (Exception ex)
+                {
+                    monitor.Log("Failed to re-subscribe Saving handler during rollback.", LogLevel.Error);
+                    monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    rollbackSucceeded = false;
+                }
             }
         }
 

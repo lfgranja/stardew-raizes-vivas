@@ -458,8 +458,7 @@ namespace LivingRoots.Services
             float clampedValue = ClampHealthValue(value);
 
             // Don't store default values; keep the cache sparse to prevent unbounded growth.
-            // Use epsilon comparison for floating point
-            if (Math.Abs(clampedValue) < 0.0001f)
+            if (Math.Abs(clampedValue) < 0.0001f) // Using epsilon comparison for floating point
             {
                 if (_runtimeCache.TryGetValue(locationName, out var existingTiles) && existingTiles.Remove(tilePoint))
                 {
