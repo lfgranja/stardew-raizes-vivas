@@ -46,7 +46,7 @@ namespace LivingRoots.Services
             }
 
             string? dataKey = GetSaveKey(saveId);
-            
+
             // If sanitization failed and we got a null key, log and return early
             if (dataKey == null)
             {
@@ -75,14 +75,14 @@ namespace LivingRoots.Services
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log("Error occurred while loading soil health data from storage.", LogLevel.Error);
-                
+
                 // Add trace-level exception details for debugging without leaking message content
                 _monitor.Log($"LoadData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                
-                #if DEBUG
+
+#if DEBUG
                 _monitor.Log(ex.StackTrace ?? "LoadData stack trace unavailable.", LogLevel.Trace);
-                #endif
-                
+#endif
+
                 // Ensure we don't leak/serve stale state after a failed load.
                 lock (_lock)
                 {
@@ -130,13 +130,13 @@ namespace LivingRoots.Services
                     int tileCount = 0; // Track number of tiles loaded for this location
                     bool warnedForInvalidValue = false; // Only warn once per location for invalid values
                     bool warnedForMalformedKey = false; // Only warn once per location for malformed keys
-                    
+
                     foreach (var tileEntry in locationEntry.Value)
                     {
                         // ENHANCEMENT: Move tile count increment BEFORE validation to prevent DoS attacks
                         // Increment tile counter for ALL entries (even if they end up being invalid/skipped)
                         tileCount++;
-                        
+
                         // CRITICAL DOS PROTECTION: Check if we've exceeded the tile limit for this location
                         // When per-location tile limit is exceeded, we must abort the entire load operation
                         // to prevent data loss and maintain cache consistency. This prevents partial loading
@@ -146,14 +146,14 @@ namespace LivingRoots.Services
                             _monitor.Log(
                                 $"LoadData aborted: Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{TruncateForLogging(locationEntry.Key)}'. Cache cleared to prevent inconsistent state.",
                                 LogLevel.Alert);
-                            
+
                             lock (_lock)
                             {
                                 _runtimeCache.Clear();
                             }
                             return; // Abort entire operation to maintain data consistency
                         }
-                        
+
                         // GLOBAL DOS PROTECTION: Increment total tile entries across all locations
                         totalTileEntriesProcessed++;
                         if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
@@ -165,7 +165,7 @@ namespace LivingRoots.Services
                             }
                             return;
                         }
-                        
+
                         // Process tile entry using the helper method
                         if (ProcessTileEntry(tileEntry, locationEntry.Key, ref warnedForMalformedKey, ref warnedForInvalidValue, out Point? processedTilePoint, out float? processedValue))
                         {
@@ -180,29 +180,7 @@ namespace LivingRoots.Services
                     {
                         tempCache[locationEntry.Key] = tileDict;
                     }
-                    
-                    // GLOBAL DOS PROTECTION: Check if total tile limit has been exceeded after processing this location
-                    if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
-                        {
-                            _monitor.Log($"LoadData failed: Total tile entry limit ({ModConstants.MaxTilesPerSave}) exceeded. Cache cleared to prevent silent data loss.", LogLevel.Error);
-                            lock (_lock)
-                            {
-                                _runtimeCache.Clear();
-                            }
-                            return;
-                        }
                 }
-            }
-
-            // If we hit the global limit, treat it as a load failure to avoid silently committing partial/truncated state.
-            if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
-            {
-                _monitor.Log($"LoadData failed: Total tile entry limit ({ModConstants.MaxTilesPerSave}) exceeded. Cache cleared to prevent silent data loss.", LogLevel.Error);
-                lock (_lock)
-                {
-                    _runtimeCache.Clear();
-                }
-                return;
             }
 
             // Replace the runtime cache for this save regardless of whether we loaded valid data
@@ -215,7 +193,7 @@ namespace LivingRoots.Services
                     _runtimeCache[location.Key] = location.Value;
                 }
             }
-            
+
             if (tempCache.Count == 0)
             {
                 _monitor.Log("LoadData found no valid entries; cache has been cleared.", LogLevel.Trace);
@@ -232,7 +210,7 @@ namespace LivingRoots.Services
             }
 
             string? dataKey = GetSaveKey(saveId);
-            
+
             // If sanitization failed and we got a null key, log and return early
             if (dataKey == null)
             {
@@ -244,7 +222,10 @@ namespace LivingRoots.Services
             // This implements the snapshot pattern to move I/O operations outside the lock
             // PREVENT NULLABLE STATE SERIALIZATION: Initialize as non-nullable dictionary
             var snapshotState = new Dictionary<string, Dictionary<string, float>>();
-            
+            int totalTilesToSave = 0;
+            int locationsToSave = 0;
+            bool saveAbortedForLimits = false;
+
             lock (_lock)
             {
                 foreach (var location in _runtimeCache)
@@ -252,22 +233,42 @@ namespace LivingRoots.Services
                     // Defensive: skip invalid location names to avoid crashing during Saving.
                     if (string.IsNullOrWhiteSpace(location.Key))
                         continue;
-                    
+
                     // ADD LOCATION NAME LENGTH CHECK: Check location name length during save to ensure consistency with load logic
                     if (location.Key.Length > ModConstants.MaxLocationNameLength)
+                        continue;
+
+                    locationsToSave++;
+                    if (locationsToSave > ModConstants.MaxLocationsPerSave)
                     {
-                        continue; // Skip locations with names that are too long
+                        saveAbortedForLimits = true;
+                        break;
                     }
-                    
+
                     var tileDict = new Dictionary<string, float>();
+                    int tilesInLocation = 0;
+
                     foreach (var tile in location.Value)
                     {
-                        // Convert Point back to "X,Y" string format using invariant culture for consistency
+                        tilesInLocation++;
+                        if (tilesInLocation > ModConstants.MaxTilesPerLocation)
+                        {
+                            saveAbortedForLimits = true;
+                            break;
+                        }
+
+                        totalTilesToSave++;
+                        if (totalTilesToSave > ModConstants.MaxTilesPerSave)
+                        {
+                            saveAbortedForLimits = true;
+                            break;
+                        }
+
                         string tileKey = $"{tile.Key.X.ToString(CultureInfo.InvariantCulture)},{tile.Key.Y.ToString(CultureInfo.InvariantCulture)}";
-                        
+
                         // Clamp value to valid range [0, 100] before saving - ClampHealthValue handles NaN/Infinity
                         float clampedValue = ClampHealthValue(tile.Value);
-                        
+
                         // Only save non-zero values to prevent bloating the save file with default values
                         if (clampedValue != 0f)
                         {
@@ -275,7 +276,9 @@ namespace LivingRoots.Services
                         }
                     }
 
-                    // Only add location if it has valid tiles
+                    if (saveAbortedForLimits)
+                        break;
+
                     if (tileDict.Count > 0)
                     {
                         snapshotState[location.Key] = tileDict;
@@ -283,11 +286,17 @@ namespace LivingRoots.Services
                 }
             }
 
+            if (saveAbortedForLimits)
+            {
+                _monitor.Log("SaveData aborted: runtime cache exceeds configured limits; refusing to write potentially huge/partial state.", LogLevel.Error);
+                return;
+            }
+
             // Always save the current state (even if empty) to clear any previously saved data
             // This ensures that if the cache becomes empty, the on-disk data is also cleared
             // Move the I/O operation completely outside the lock for better performance
             var stateToSave = new SoilHealthState { LocationHealthData = snapshotState };
-            
+
             // According to code review feedback, wrap the SaveData call in try-catch to handle exceptions gracefully
             try
             {
@@ -298,14 +307,14 @@ namespace LivingRoots.Services
             {
                 // Log error but don't expose raw exception message for security
                 _monitor.Log("Error saving soil health data.", LogLevel.Error);
-                
+
                 // Add trace-level exception details for debugging without leaking message content
                 _monitor.Log($"SaveData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                
+
                 // Add stack trace logging for better diagnostics without exposing sensitive information
-                #if DEBUG
+#if DEBUG
                 _monitor.Log(ex.StackTrace ?? "SaveData stack trace unavailable.", LogLevel.Trace);
-                #endif
+#endif
             }
         }
 
@@ -358,7 +367,7 @@ namespace LivingRoots.Services
                 SetHealthInternal(locationName, tilePoint, value, ref logLocationLimitExceeded,
                     ref logTileLimitExceeded, ref truncatedLocationNameForTileLog);
             }
-            
+
             // Log messages outside the lock to avoid blocking other threads
             if (logLocationLimitExceeded)
             {
@@ -408,7 +417,7 @@ namespace LivingRoots.Services
                 SetHealthInternal(locationName, tilePoint, newHealth, ref logLocationLimitExceeded,
                     ref logTileLimitExceeded, ref truncatedLocationNameForTileLog);
             }
-            
+
             // Log messages outside the lock to avoid blocking other threads
             if (logLocationLimitExceeded)
             {
@@ -464,11 +473,11 @@ namespace LivingRoots.Services
                     logLocationLimitExceeded = true;
                     return; // Refuse to add new location if we're over the limit
                 }
-                
+
                 tiles = new Dictionary<Point, float>();
                 _runtimeCache[locationName] = tiles;
             }
-            
+
             // Check if this is a new tile (not an update) and apply the tile limit only to new tiles
             bool isExistingTile = tiles.ContainsKey(tilePoint);
             if (!isExistingTile && tiles.Count >= ModConstants.MaxTilesPerLocation)
@@ -477,14 +486,14 @@ namespace LivingRoots.Services
                 logTileLimitExceeded = true;
                 return; // Refuse to add new tiles if we're over the limit for this location, but allow updates
             }
-            
+
             tiles[tilePoint] = clampedValue;
         }
-        
+
         private static float ClampHealthValue(float value)
         {
             // Handle NaN and Infinity values before clamping
-            if (float.IsPositiveInfinity(value)) 
+            if (float.IsPositiveInfinity(value))
             {
                 return ModConstants.MaxSoilHealth;
             }
@@ -498,7 +507,7 @@ namespace LivingRoots.Services
             {
                 return 0f;
             }
-            
+
             return Math.Clamp(value, ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth);
         }
 
@@ -510,7 +519,7 @@ namespace LivingRoots.Services
                 _monitor.Log("SaveId cannot be null or empty.", LogLevel.Error);
                 return null;
             }
-            
+
             // Add length validation to prevent overlong filenames using the constant
             if (saveId.Length > ModConstants.MaxSaveIdLength) // Reasonable limit for filename
             {
@@ -522,7 +531,7 @@ namespace LivingRoots.Services
             {
                 // Apply Unicode normalization using FormC (Canonical Decomposition followed by Canonical Composition)
                 string normalizedSaveId = saveId.Normalize(NormalizationForm.FormC);
-                
+
                 // Re-check length after normalization in case normalization expands the string
                 if (normalizedSaveId.Length > ModConstants.MaxSaveIdLength)
                 {
@@ -536,10 +545,10 @@ namespace LivingRoots.Services
                     _monitor.Log("SaveId sanitizes to an empty string after processing.", LogLevel.Error);
                     return null;
                 }
-                
+
                 // Calculate the maximum allowed length for the sanitized part (after accounting for prefix)
                 int maxSanitizedLength = Math.Max(0, ModConstants.MaxDataKeyLength - ModConstants.KeyPrefix.Length);
-                
+
                 // Ensure the final key (prefix + sanitized) stays within the configured bound
                 if (sanitized.Length > maxSanitizedLength)
                 {
@@ -548,7 +557,7 @@ namespace LivingRoots.Services
                         LogLevel.Error);
                     return null;
                 }
-                
+
                 // Remove ToLowerInvariant to prevent data corruption on case-sensitive file systems
                 // where MyFarm and myfarm would be treated as different saves but mapped to the same file
                 return $"{ModConstants.KeyPrefix}{sanitized}";
@@ -566,7 +575,7 @@ namespace LivingRoots.Services
                 return null; // Fail-fast approach: return null instead of a default key
             }
         }
-        
+
         /// <summary>
         /// Truncates a string for safe logging to prevent potentially malicious long names from being logged.
         /// </summary>
@@ -579,7 +588,7 @@ namespace LivingRoots.Services
                 return value;
             return string.Concat(value.AsSpan(0, maxLength), "...");
         }
-        
+
         /// <summary>
         /// Processes a single tile entry from the save data, handling validation and conversion.
         /// </summary>
@@ -590,8 +599,8 @@ namespace LivingRoots.Services
         /// <param name="tilePoint">Output parameter for the parsed tile coordinates, if successful</param>
         /// <param name="value">Output parameter for the validated health value, if successful</param>
         /// <returns>True if the tile entry was processed successfully, false if it should be skipped</returns>
-        private bool ProcessTileEntry(KeyValuePair<string, float> tileEntry, string locationName, 
-            ref bool warnedForMalformedKey, ref bool warnedForInvalidValue, 
+        private bool ProcessTileEntry(KeyValuePair<string, float> tileEntry, string locationName,
+            ref bool warnedForMalformedKey, ref bool warnedForInvalidValue,
             out Point? tilePoint, out float? value)
         {
             tilePoint = null;
@@ -621,7 +630,7 @@ namespace LivingRoots.Services
             {
                 // ADDITION: Check for extreme coordinates to prevent potential issues with malicious save files
                 // Using direct boundary checks instead of Math.Abs to prevent overflow when dealing with int.MinValue
-                if (x < -ModConstants.MaxAbsoluteTileCoordinate || x > ModConstants.MaxAbsoluteTileCoordinate || 
+                if (x < -ModConstants.MaxAbsoluteTileCoordinate || x > ModConstants.MaxAbsoluteTileCoordinate ||
                     y < -ModConstants.MaxAbsoluteTileCoordinate || y > ModConstants.MaxAbsoluteTileCoordinate)
                 {
                     if (!warnedForMalformedKey)
@@ -635,7 +644,7 @@ namespace LivingRoots.Services
                 }
 
                 float validatedValue = tileEntry.Value;
-                
+
                 if (float.IsNaN(validatedValue) || validatedValue < ModConstants.MinSoilHealth || validatedValue > ModConstants.MaxSoilHealth)
                 {
                     // Only warn once per location for out-of-range values to prevent log spam
@@ -666,7 +675,7 @@ namespace LivingRoots.Services
                 return false; // Skip this entry
             }
         }
-        
+
         /// <summary>
         /// Validates location name and tile coordinates, and returns the floored tile point if valid.
         /// </summary>
@@ -698,7 +707,7 @@ namespace LivingRoots.Services
             // ADD COORDINATE BOUNDS CHECK: Check coordinate bounds to prevent potential issues with extreme tile coordinates
             int ix = (int)fx;
             int iy = (int)fy;
-            if (ix < -ModConstants.MaxAbsoluteTileCoordinate || ix > ModConstants.MaxAbsoluteTileCoordinate || 
+            if (ix < -ModConstants.MaxAbsoluteTileCoordinate || ix > ModConstants.MaxAbsoluteTileCoordinate ||
                 iy < -ModConstants.MaxAbsoluteTileCoordinate || iy > ModConstants.MaxAbsoluteTileCoordinate)
             {
                 return false;
