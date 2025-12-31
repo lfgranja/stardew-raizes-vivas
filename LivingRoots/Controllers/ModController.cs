@@ -139,8 +139,18 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                HandleRegistrationError(ex, gameLoop, localGameLaunchedHandler, localSaveLoadedHandler, localSavingHandler,
-                    gameLaunchedAdded, saveLoadedAdded, savingAdded, monitor);
+                HandleRegistrationError(new RegistrationErrorContext
+                {
+                    Exception = ex,
+                    GameLoop = gameLoop,
+                    LocalGameLaunchedHandler = localGameLaunchedHandler,
+                    LocalSaveLoadedHandler = localSaveLoadedHandler,
+                    LocalSavingHandler = localSavingHandler,
+                    GameLaunchedAdded = gameLaunchedAdded,
+                    SaveLoadedAdded = saveLoadedAdded,
+                    SavingAdded = savingAdded,
+                    Monitor = monitor
+                });
             }
             finally
             {
@@ -177,39 +187,30 @@ namespace LivingRoots.Controllers
             return true;
         }
 
-        private void HandleRegistrationError(
-            Exception ex,
-            IGameLoopEvents gameLoop,
-            EventHandler<GameLaunchedEventArgs>? localGameLaunchedHandler,
-            EventHandler<SaveLoadedEventArgs>? localSaveLoadedHandler,
-            EventHandler<SavingEventArgs>? localSavingHandler,
-            bool gameLaunchedAdded,
-            bool saveLoadedAdded,
-            bool savingAdded,
-            IMonitor monitor)
+        private void HandleRegistrationError(RegistrationErrorContext context)
         {
-            monitor.Log("Error occurred while registering game events.", LogLevel.Error);
-            monitor.Log($"RegisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            context.Monitor.Log("Error occurred while registering game events.", LogLevel.Error);
+            context.Monitor.Log($"RegisterEvents exception type: {context.Exception.GetType().FullName} (HResult: 0x{context.Exception.HResult:X8})", LogLevel.Trace);
 
 #if DEBUG
-            monitor.Log(ex.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
+            context.Monitor.Log(context.Exception.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
 #endif
 
             var rollbackSucceeded = true;
 
             try
             {
-                if (gameLaunchedAdded && localGameLaunchedHandler != null)
-                    gameLoop.GameLaunched -= localGameLaunchedHandler;
-                if (saveLoadedAdded && localSaveLoadedHandler != null)
-                    gameLoop.SaveLoaded -= localSaveLoadedHandler;
-                if (savingAdded && localSavingHandler != null)
-                    gameLoop.Saving -= localSavingHandler;
+                if (context.GameLaunchedAdded && context.LocalGameLaunchedHandler != null)
+                    context.GameLoop.GameLaunched -= context.LocalGameLaunchedHandler;
+                if (context.SaveLoadedAdded && context.LocalSaveLoadedHandler != null)
+                    context.GameLoop.SaveLoaded -= context.LocalSaveLoadedHandler;
+                if (context.SavingAdded && context.LocalSavingHandler != null)
+                    context.GameLoop.Saving -= context.LocalSavingHandler;
             }
             catch
             {
                 rollbackSucceeded = false;
-                monitor.Log("Error during event subscription rollback.", LogLevel.Trace);
+                context.Monitor.Log("Error during event subscription rollback.", LogLevel.Trace);
             }
 
             // Only clear handler fields if we're sure we detached everything; otherwise keep
@@ -433,6 +434,13 @@ namespace LivingRoots.Controllers
                 if ((currentState & UnregisteringFlag) != 0)
                 {
                     _monitor.Log("Event unregistration already in progress, skipping.", LogLevel.Trace);
+                    return false;
+                }
+
+                // Check for registration in progress to prevent unregistration during registration
+                if ((currentState & RegisteringFlag) != 0)
+                {
+                    _monitor.Log("Event registration in progress, skipping unregistration.", LogLevel.Trace);
                     return false;
                 }
 
@@ -841,5 +849,22 @@ namespace LivingRoots.Controllers
 
             return true; // Successfully set the flag
         }
+    }
+
+    /// <summary>
+    /// Context class to encapsulate parameters for HandleRegistrationError method
+    /// to reduce the number of parameters and improve maintainability
+    /// </summary>
+    internal class RegistrationErrorContext
+    {
+        public Exception Exception { get; set; } = null!;
+        public IGameLoopEvents GameLoop { get; set; } = null!;
+        public EventHandler<GameLaunchedEventArgs>? LocalGameLaunchedHandler { get; set; }
+        public EventHandler<SaveLoadedEventArgs>? LocalSaveLoadedHandler { get; set; }
+        public EventHandler<SavingEventArgs>? LocalSavingHandler { get; set; }
+        public bool GameLaunchedAdded { get; set; }
+        public bool SaveLoadedAdded { get; set; }
+        public bool SavingAdded { get; set; }
+        public IMonitor Monitor { get; set; } = null!;
     }
 }

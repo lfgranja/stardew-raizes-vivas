@@ -167,10 +167,11 @@ namespace LivingRoots.Services
                         }
 
                         // Process tile entry using the helper method
-                        if (ProcessTileEntry(tileEntry, locationEntry.Key, ref warnedForMalformedKey, ref warnedForInvalidValue, out Point? processedTilePoint, out float? processedValue))
+                        if (ProcessTileEntry(tileEntry, locationEntry.Key, _monitor, ref warnedForMalformedKey, ref warnedForInvalidValue, out Point? processedTilePoint, out float? processedValue))
                         {
                             // Only add non-zero values to prevent bloating the cache with default values
-                            if (processedTilePoint.HasValue && processedValue.HasValue && processedValue.Value != 0f)
+                            // Combine the null checks and floating point comparison in a single condition
+                            if (processedTilePoint.HasValue && processedValue.HasValue && Math.Abs(processedValue.Value) > 0.0001f) // Using epsilon comparison for floating point
                             {
                                 tileDict[processedTilePoint.Value] = processedValue.Value;
                             }
@@ -238,6 +239,9 @@ namespace LivingRoots.Services
                     if (location.Key.Length > ModConstants.MaxLocationNameLength)
                         continue;
 
+                    if (location.Value == null)
+                        continue;
+
                     locationsToSave++;
                     if (locationsToSave > ModConstants.MaxLocationsPerSave)
                     {
@@ -270,7 +274,7 @@ namespace LivingRoots.Services
                         float clampedValue = ClampHealthValue(tile.Value);
 
                         // Only save non-zero values to prevent bloating the save file with default values
-                        if (clampedValue != 0f)
+                        if (Math.Abs(clampedValue) > 0.0001f) // Using epsilon comparison for floating point
                         {
                             tileDict[tileKey] = clampedValue;
                         }
@@ -454,7 +458,8 @@ namespace LivingRoots.Services
             float clampedValue = ClampHealthValue(value);
 
             // Don't store default values; keep the cache sparse to prevent unbounded growth.
-            if (clampedValue == 0f)
+            // Use epsilon comparison for floating point
+            if (Math.Abs(clampedValue) < 0.0001f)
             {
                 if (_runtimeCache.TryGetValue(locationName, out var existingTiles) && existingTiles.Remove(tilePoint))
                 {
@@ -594,12 +599,13 @@ namespace LivingRoots.Services
         /// </summary>
         /// <param name="tileEntry">The tile entry from the saved data</param>
         /// <param name="locationName">The name of the location being processed</param>
+        /// <param name="monitor">The monitor for logging</param>
         /// <param name="warnedForMalformedKey">Reference to a flag that tracks if a warning has already been logged for malformed keys in this location</param>
         /// <param name="warnedForInvalidValue">Reference to a flag that tracks if a warning has already been logged for invalid values in this location</param>
         /// <param name="tilePoint">Output parameter for the parsed tile coordinates, if successful</param>
         /// <param name="value">Output parameter for the validated health value, if successful</param>
         /// <returns>True if the tile entry was processed successfully, false if it should be skipped</returns>
-        private bool ProcessTileEntry(KeyValuePair<string, float> tileEntry, string locationName,
+        private static bool ProcessTileEntry(KeyValuePair<string, float> tileEntry, string locationName, IMonitor monitor,
             ref bool warnedForMalformedKey, ref bool warnedForInvalidValue,
             out Point? tilePoint, out float? value)
         {
@@ -614,7 +620,7 @@ namespace LivingRoots.Services
                 {
                     // Use the helper method to truncate the location name for logging
                     string truncatedLocationName = TruncateForLogging(locationName);
-                    _monitor.Log($"Null or whitespace tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
+                    monitor.Log($"Null or whitespace tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                     warnedForMalformedKey = true;
                 }
                 return false; // Skip this entry
@@ -637,7 +643,7 @@ namespace LivingRoots.Services
                     {
                         // Use the helper method to truncate the location name for logging
                         string truncatedLocationName = TruncateForLogging(locationName);
-                        _monitor.Log($"Extreme tile coordinates found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
+                        monitor.Log($"Extreme tile coordinates found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                         warnedForMalformedKey = true;
                     }
                     return false; // Skip this entry
@@ -652,7 +658,7 @@ namespace LivingRoots.Services
                     {
                         // Use the helper method to truncate the location name for logging
                         string truncatedLocationName = TruncateForLogging(locationName);
-                        _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [{ModConstants.MinSoilHealth}, {ModConstants.MaxSoilHealth}].", LogLevel.Warn);
+                        monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [{ModConstants.MinSoilHealth}, {ModConstants.MaxSoilHealth}].", LogLevel.Warn);
                         warnedForInvalidValue = true;
                     }
                     validatedValue = ClampHealthValue(validatedValue);
@@ -669,7 +675,7 @@ namespace LivingRoots.Services
                 {
                     // Use the helper method to truncate the location name for logging
                     string truncatedLocationName = TruncateForLogging(locationName);
-                    _monitor.Log($"Malformed tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
+                    monitor.Log($"Malformed tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
                     warnedForMalformedKey = true;
                 }
                 return false; // Skip this entry
@@ -683,7 +689,7 @@ namespace LivingRoots.Services
         /// <param name="tile">The tile coordinates to validate</param>
         /// <param name="tilePoint">The floored tile point if validation passes</param>
         /// <returns>True if both location name and tile coordinates are valid, otherwise false</returns>
-        private bool IsValidTile(string locationName, Vector2 tile, out Point tilePoint)
+        private static bool IsValidTile(string locationName, Vector2 tile, out Point tilePoint)
         {
             tilePoint = default;
 
