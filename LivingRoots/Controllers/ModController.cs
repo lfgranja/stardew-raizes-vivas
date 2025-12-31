@@ -75,10 +75,13 @@ namespace LivingRoots.Controllers
 
         public void RegisterEvents()
         {
-            // Use atomic Compare-And-Swap (CAS) loop to make all checks and state changes atomically
-            // This prevents race conditions between checking UnregisteringFlag and setting EventsRegisteredFlag
-            // The CAS loop ensures that checking for disposed, unregistering, and already-registered states
-            // happens atomically with setting the EventsRegisteredFlag, eliminating the race condition
+            // Early disposal check: check if controller is disposed before accessing dependencies
+            if (IsDisposed())
+            {
+                _monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
+                return;
+            }
+
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
             var helper = _helper;
@@ -89,28 +92,12 @@ namespace LivingRoots.Controllers
                 monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                 return;
             }
-            int currentState, newState;
-            do
+
+            if (!TryEnterRegisteringState(monitor))
             {
-                currentState = Volatile.Read(ref _state);
-                if ((currentState & DisposedFlag) != 0)
-                {
-                    monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
-                    return;
-                }
-                if ((currentState & UnregisteringFlag) != 0)
-                {
-                    monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
-                    return;
-                }
-                if ((currentState & (EventsRegisteredFlag | RegisteringFlag)) != 0)
-                {
-                    monitor.Log("Events are already registered or registering, skipping registration.", LogLevel.Trace);
-                    return;
-                }
-                // claim "registering" to block concurrent attempts without lying about success
-                newState = currentState | RegisteringFlag;
-            } while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+                return;
+            }
+
             bool gameLaunchedAdded = false;
             bool saveLoadedAdded = false;
             bool savingAdded = false;
@@ -152,44 +139,8 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                monitor.Log("Error occurred while registering game events.", LogLevel.Error);
-                monitor.Log($"RegisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-
-#if DEBUG
-                monitor.Log(ex.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
-#endif
-
-                var rollbackSucceeded = true;
-
-                try
-                {
-                    if (gameLoop != null)
-                    {
-                        if (gameLaunchedAdded && localGameLaunchedHandler != null)
-                            gameLoop.GameLaunched -= localGameLaunchedHandler;
-                        if (saveLoadedAdded && localSaveLoadedHandler != null)
-                            gameLoop.SaveLoaded -= localSaveLoadedHandler;
-                        if (savingAdded && localSavingHandler != null)
-                            gameLoop.Saving -= localSavingHandler;
-                    }
-                }
-                catch
-                {
-                    rollbackSucceeded = false;
-                    monitor.Log("Error during event subscription rollback.", LogLevel.Trace);
-                }
-
-                // Only clear handler fields if we're sure we detached everything; otherwise keep
-                // references for best-effort cleanup during UnregisterEvents/Dispose.
-                if (rollbackSucceeded)
-                {
-                    Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                    Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                    Interlocked.Exchange(ref _onSavingHandler, null);
-                }
-
-                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
-                return;
+                HandleRegistrationError(ex, gameLoop, localGameLaunchedHandler, localSaveLoadedHandler, localSavingHandler,
+                    gameLaunchedAdded, saveLoadedAdded, savingAdded, monitor);
             }
             finally
             {
@@ -198,46 +149,93 @@ namespace LivingRoots.Controllers
             }
         }
 
+        private bool TryEnterRegisteringState(IMonitor monitor)
+        {
+            int currentState, newState;
+            do
+            {
+                currentState = Volatile.Read(ref _state);
+                if ((currentState & DisposedFlag) != 0)
+                {
+                    monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
+                    return false;
+                }
+                if ((currentState & UnregisteringFlag) != 0)
+                {
+                    monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
+                    return false;
+                }
+                if ((currentState & (EventsRegisteredFlag | RegisteringFlag)) != 0)
+                {
+                    monitor.Log("Events are already registered or registering, skipping registration.", LogLevel.Trace);
+                    return false;
+                }
+                // claim "registering" to block concurrent attempts without lying about success
+                newState = currentState | RegisteringFlag;
+            } while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+
+            return true;
+        }
+
+        private void HandleRegistrationError(
+            Exception ex,
+            IGameLoopEvents gameLoop,
+            EventHandler<GameLaunchedEventArgs>? localGameLaunchedHandler,
+            EventHandler<SaveLoadedEventArgs>? localSaveLoadedHandler,
+            EventHandler<SavingEventArgs>? localSavingHandler,
+            bool gameLaunchedAdded,
+            bool saveLoadedAdded,
+            bool savingAdded,
+            IMonitor monitor)
+        {
+            monitor.Log("Error occurred while registering game events.", LogLevel.Error);
+            monitor.Log($"RegisterEvents exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+
+#if DEBUG
+            monitor.Log(ex.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
+#endif
+
+            var rollbackSucceeded = true;
+
+            try
+            {
+                if (gameLaunchedAdded && localGameLaunchedHandler != null)
+                    gameLoop.GameLaunched -= localGameLaunchedHandler;
+                if (saveLoadedAdded && localSaveLoadedHandler != null)
+                    gameLoop.SaveLoaded -= localSaveLoadedHandler;
+                if (savingAdded && localSavingHandler != null)
+                    gameLoop.Saving -= localSavingHandler;
+            }
+            catch
+            {
+                rollbackSucceeded = false;
+                monitor.Log("Error during event subscription rollback.", LogLevel.Trace);
+            }
+
+            // Only clear handler fields if we're sure we detached everything; otherwise keep
+            // references for best-effort cleanup during UnregisterEvents/Dispose.
+            if (rollbackSucceeded)
+            {
+                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+                Interlocked.Exchange(ref _onSavingHandler, null);
+            }
+
+            System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
+        }
+
         public void UnregisterEvents()
         {
             // Early exit: if nothing registered and nothing to cleanup, return immediately
-            if ((Volatile.Read(ref _state) & (EventsRegisteredFlag | UnregisteringFlag)) == 0)
+            if (!ShouldAttemptUnregister())
             {
-                // Check if any handlers are non-null for best-effort cleanup
-                var earlyGameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
-                var earlySaveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
-                var earlySavingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
-
-                bool earlyHasHandlers = earlyGameLaunchedHandler != null || earlySaveLoadedHandler != null || earlySavingHandler != null;
-
-                if (!earlyHasHandlers)
-                {
-                    _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
-                    return;
-                }
+                return;
             }
 
             // State-claiming loop: atomically claim UnregisteringFlag before proceeding
-            int currentState, newState;
-            while (true)
+            if (!TryEnterUnregisteringState())
             {
-                currentState = Volatile.Read(ref _state);
-
-                // Avoid racing a registration in progress; otherwise state can become inconsistent.
-                if ((currentState & UnregisteringFlag) != 0)
-                {
-                    _monitor.Log("Event unregistration already in progress, skipping.", LogLevel.Trace);
-                    return;
-                }
-
-                // Claim unregistration rights; also clear EventsRegisteredFlag to indicate unregistration is in progress
-                newState = (currentState | UnregisteringFlag) & ~EventsRegisteredFlag;
-
-                if (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) == currentState)
-                {
-                    break; // Successfully claimed unregistration and cleared EventsRegisteredFlag
-                }
-                // CAS failed: another thread modified state, retry
+                return;
             }
 
             // Capture handler references AFTER UnregisteringFlag has been atomically set
@@ -245,6 +243,7 @@ namespace LivingRoots.Controllers
             var gameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
             var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
             var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
+            var currentState = Volatile.Read(ref _state);
             var wasRegistered = (currentState & EventsRegisteredFlag) != 0;
 
             // Check if any handlers are non-null for best-effort cleanup
@@ -399,28 +398,78 @@ namespace LivingRoots.Controllers
             }
             finally
             {
-                // Step 6: Implement state restoration in finally block
-                // Update event-registration flags to maintain consistent state.
-                // The EventsRegisteredFlag was cleared at the start of unregistration.
-                // If unregistration was incomplete, restore the flag to indicate handlers
-                // are still subscribed, preventing duplicate subscriptions.
-                if (IsDisposed())
-                {
-                    // During disposal, force-clear all lifecycle flags.
-                    System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
-                }
-                else if (mayStillBeSubscribed)
-                {
-                    // If mayStillBeSubscribed is true, restore EventsRegisteredFlag to indicate
-                    // that handlers are still subscribed and prevent duplicate subscriptions
-                    System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
-                }
-                // If unregistration was complete and successful, the EventsRegisteredFlag remains cleared
-                // (as set at the start of the method)
-
-                // Clear "unregistering" claim last, once state is consistent.
-                System.Threading.Interlocked.And(ref _state, ~UnregisteringFlag);
+                RestoreStateAfterUnregistration(mayStillBeSubscribed);
             }
+        }
+
+        private bool ShouldAttemptUnregister()
+        {
+            if ((Volatile.Read(ref _state) & (EventsRegisteredFlag | UnregisteringFlag)) == 0)
+            {
+                // Check if any handlers are non-null for best-effort cleanup
+                var earlyGameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
+                var earlySaveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
+                var earlySavingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
+
+                bool earlyHasHandlers = earlyGameLaunchedHandler != null || earlySaveLoadedHandler != null || earlySavingHandler != null;
+
+                if (!earlyHasHandlers)
+                {
+                    _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private bool TryEnterUnregisteringState()
+        {
+            int currentState, newState;
+            while (true)
+            {
+                currentState = Volatile.Read(ref _state);
+
+                // Avoid racing a registration in progress; otherwise state can become inconsistent.
+                if ((currentState & UnregisteringFlag) != 0)
+                {
+                    _monitor.Log("Event unregistration already in progress, skipping.", LogLevel.Trace);
+                    return false;
+                }
+
+                // Claim unregistration rights; also clear EventsRegisteredFlag to indicate unregistration is in progress
+                newState = (currentState | UnregisteringFlag) & ~EventsRegisteredFlag;
+
+                if (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) == currentState)
+                {
+                    return true; // Successfully claimed unregistration and cleared EventsRegisteredFlag
+                }
+                // CAS failed: another thread modified state, retry
+            }
+        }
+
+        private void RestoreStateAfterUnregistration(bool mayStillBeSubscribed)
+        {
+            // Step 6: Implement state restoration in finally block
+            // Update event-registration flags to maintain consistent state.
+            // The EventsRegisteredFlag was cleared at the start of unregistration.
+            // If unregistration was incomplete, restore the flag to indicate handlers
+            // are still subscribed, preventing duplicate subscriptions.
+            if (IsDisposed())
+            {
+                // During disposal, force-clear all lifecycle flags.
+                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
+            }
+            else if (mayStillBeSubscribed)
+            {
+                // If mayStillBeSubscribed is true, restore EventsRegisteredFlag to indicate
+                // that handlers are still subscribed and prevent duplicate subscriptions
+                System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
+            }
+            // If unregistration was complete and successful, the EventsRegisteredFlag remains cleared
+            // (as set at the start of the method)
+
+            // Clear "unregistering" claim last, once state is consistent.
+            System.Threading.Interlocked.And(ref _state, ~UnregisteringFlag);
         }
 
         /// <summary>
@@ -432,7 +481,7 @@ namespace LivingRoots.Controllers
         /// <param name="eventName">The name of the event for logging purposes</param>
         /// <returns>True if unsubscription was attempted and succeeded, false if unsubscription failed</returns>
 
-        private bool SafeUnsubscribe<T>(IMonitor monitor, Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
+        private static bool SafeUnsubscribe<T>(IMonitor monitor, Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
         {
             // No handler reference means there's nothing to detach from our perspective.
             // // Treat as success to avoid incorrectly restoring "registered" state.
