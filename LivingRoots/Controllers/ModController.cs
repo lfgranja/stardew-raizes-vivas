@@ -191,7 +191,6 @@ namespace LivingRoots.Controllers
         {
             context.Monitor.Log("Error occurred while registering game events.", LogLevel.Error);
             context.Monitor.Log($"RegisterEvents exception type: {context.Exception.GetType().FullName} (HResult: 0x{context.Exception.HResult:X8})", LogLevel.Trace);
-
 #if DEBUG
             context.Monitor.Log(context.Exception.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
 #endif
