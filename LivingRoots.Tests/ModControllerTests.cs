@@ -412,7 +412,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
 
             // Act - Execute the command with mock helper
-            Action<string, string[]> printVersionAction = null;
+            Action<string, string[]>? printVersionAction = null;
             mockCommandHelper.Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
                              .Callback<string, string, Action<string, string[]>>((name, desc, action) => printVersionAction = action);
 
@@ -447,7 +447,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
 
             // Act - Execute the command with help arguments
-            Action<string, string[]> printVersionAction = null;
+            Action<string, string[]>? printVersionAction = null;
             mockCommandHelper.Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
                              .Callback<string, string, Action<string, string[]>>((name, desc, action) => printVersionAction = action);
 
