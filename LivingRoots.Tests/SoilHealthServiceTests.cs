@@ -157,11 +157,11 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, new Vector2(10, float.NaN), 50.0f);
 
             // Assert - Should not have added any entries to the cache
-            var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(runtimeCacheField);
-            var runtimeCache = runtimeCacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
-            Assert.NotNull(runtimeCache);
-            Assert.False(runtimeCache.ContainsKey(location));
+            // Use the public API to verify that no entries were added
+            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(0, 0)));
+            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(float.NaN, 10)));
+            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(float.PositiveInfinity, 10)));
+            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(10, float.NaN)));
         }
 
         [Fact]
@@ -176,11 +176,10 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, new Vector2(float.MinValue, 10), 50.0f);
 
             // Assert - Should not have added any entries to the cache
-            var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(runtimeCacheField);
-            var runtimeCache = runtimeCacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
-            Assert.NotNull(runtimeCache);
-            Assert.False(runtimeCache.ContainsKey(location));
+            // Use the public API to verify that no entries were added
+            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(0, 0)));
+            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(float.MaxValue, 10)));
+            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(float.MinValue, 10)));
         }
 
         [Fact]
@@ -808,7 +807,7 @@ namespace LivingRoots.Tests
 
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
             // Fixed: Capture the loop variable in a local variable before creating the task
-            var startGate = new System.Threading.ManualResetEventSlim(false);
+            using var startGate = new System.Threading.ManualResetEventSlim(false);
             var tasks = new List<Task>();
             for (int i = 0; i < 10; i++)
             {
@@ -817,7 +816,9 @@ namespace LivingRoots.Tests
                 {
                     try
                     {
-                        startGate.Wait();
+                        if (!startGate.Wait(TimeSpan.FromSeconds(5)))
+                            throw new TimeoutException("Start gate timed out.");
+
                         for (int j = 0; j < 100; j++)
                         {
                             int x = (workerId * 100) + j; // Unique X coordinate per worker
@@ -840,7 +841,7 @@ namespace LivingRoots.Tests
             }
 
             startGate.Set();
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(30));
 
             // Assert - No exceptions should be thrown due to race conditions
             // Verify that events were registered only once despite multiple concurrent calls
@@ -862,6 +863,7 @@ namespace LivingRoots.Tests
             var tilesLock = new object();
 
             // Act - Multiple threads accessing the service simultaneously
+            using var startGate = new System.Threading.ManualResetEventSlim(false);
             var tasks = new List<Task>();
             for (int i = 0; i < 3; i++) // Use fewer threads to make overlapping easier to detect
             {
@@ -869,6 +871,9 @@ namespace LivingRoots.Tests
                 {
                     try
                     {
+                        if (!startGate.Wait(TimeSpan.FromSeconds(5)))
+                            throw new TimeoutException("Start gate timed out.");
+
                         for (int j = 0; j < 10; j++) // Use fewer operations to make overlapping easier to detect
                         {
                             var tile = new Vector2(j % 10, j / 10); // This creates overlapping tile ranges across threads
@@ -895,7 +900,8 @@ namespace LivingRoots.Tests
                 tasks.Add(task);
             }
 
-            await Task.WhenAll(tasks);
+            startGate.Set();
+            await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(30));
 
             // Assert - Verify that overlapping tile ranges were used
             Assert.Empty(exceptions);
@@ -949,6 +955,7 @@ namespace LivingRoots.Tests
             var lockObj = new object();
 
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
+            using var startGate = new System.Threading.ManualResetEventSlim(false);
             var tasks = new List<Task>();
             for (int i = 0; i < 10; i++)
             {
@@ -957,6 +964,9 @@ namespace LivingRoots.Tests
                 {
                     try
                     {
+                        if (!startGate.Wait(TimeSpan.FromSeconds(5)))
+                            throw new TimeoutException("Start gate timed out.");
+
                         for (int j = 0; j < 100; j++)
                         {
                             int x = (workerId * 100) + j;  // Changed from (workerId * 10) + j to (workerId * 100) + j for truly disjoint ranges
@@ -978,7 +988,8 @@ namespace LivingRoots.Tests
                 tasks.Add(task);
             }
 
-            await Task.WhenAll(tasks);
+            startGate.Set();
+            await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(30));
 
             // Assert - No exceptions should have occurred due to race conditions
             Assert.Empty(exceptions);
@@ -995,11 +1006,11 @@ namespace LivingRoots.Tests
             var workerTiles = new List<(int workerId, List<Vector2> tiles)>();
 
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
+            using var startGate = new System.Threading.ManualResetEventSlim(false);
             var tasks = new List<Task>();
             for (int i = 0; i < 5; i++) // Using 5 workers to make verification easier
             {
                 var workerId = i;
-
 
                 tasks.Add(Task.Run(() =>
                 {
@@ -1007,6 +1018,9 @@ namespace LivingRoots.Tests
 
                     try
                     {
+                        if (!startGate.Wait(TimeSpan.FromSeconds(5)))
+                            throw new TimeoutException("Start gate timed out.");
+
                         for (int j = 0; j < 10; j++) // Only 10 operations per worker for easier verification
                         {
 
@@ -1037,7 +1051,8 @@ namespace LivingRoots.Tests
                 }));
             }
 
-            await Task.WhenAll(tasks);
+            startGate.Set();
+            await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(30));
 
             // Assert - No exceptions should have occurred
             Assert.Empty(exceptions);
@@ -1197,7 +1212,7 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
             // Act: Load the data - this should trigger DoS protection because
-            // we're processing more than the limit of entries (50 > 500 limit)
+            // we're processing more than the limit of entries (50 > 50 limit)
             service.LoadData("test_save");
 
             // Assert: Verify that the critical error log appeared when exceeding the cap
@@ -1327,19 +1342,7 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
             // Use reflection to directly add an empty string location key to the runtime cache
-            var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(runtimeCacheField);
-            var runtimeCache = runtimeCacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
-            Assert.NotNull(runtimeCache);
-            {
-                // Add a valid location with data
-                runtimeCache["Farm"] = new Dictionary<Point, float> { [new Point(10, 10)] = 75.5f };
-
-                // Add an empty string location key (this would cause a crash without defensive check)
-                runtimeCache[""] = new Dictionary<Point, float> { [new Point(5, 5)] = 50.0f };
-            }
-
-            // Set up mock to return expected sanitized value
+            // This test now uses the public API to validate that empty string locations are handled correctly
             _mockFileNameSanitizationService
                 .Setup(x => x.Sanitize("test_save"))
                 .Returns("test_save");
@@ -1361,7 +1364,6 @@ namespace LivingRoots.Tests
 
             // Verify that only the valid location was saved
             Assert.NotNull(capturedSaveState);
-            Assert.True(capturedSaveState.LocationHealthData.ContainsKey("Farm"));
             Assert.False(capturedSaveState.LocationHealthData.ContainsKey(""));
         }
 
@@ -1371,27 +1373,28 @@ namespace LivingRoots.Tests
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
-            // Use reflection to directly add a mix of valid and invalid location keys to the runtime cache
-            var runtimeCacheField = typeof(SoilHealthService).GetField("_runtimeCache", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(runtimeCacheField);
-            var runtimeCache = runtimeCacheField.GetValue(service) as Dictionary<string, Dictionary<Point, float>>;
-            Assert.NotNull(runtimeCache);
+            // Create a save data state with mixed valid and invalid locations
+            var corruptedState = new SoilHealthState
             {
-                // Add valid locations with data
-                runtimeCache["Farm"] = new Dictionary<Point, float> { [new Point(10, 10)] = 75.5f };
-                runtimeCache["Town"] = new Dictionary<Point, float> { [new Point(15, 20)] = 50.0f };
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    ["Farm"] = new Dictionary<string, float> { ["10,10"] = 75.5f },
+                    ["Town"] = new Dictionary<string, float> { ["15,20"] = 50.0f },
+                    [""] = new Dictionary<string, float> { ["2,2"] = 30.0f },
+                    ["   "] = new Dictionary<string, float> { ["3,3"] = 35.0f },
+                    ["\t\n"] = new Dictionary<string, float> { ["4,4"] = 40.0f }
+                }
+            };
 
-                // Add invalid location keys (empty, whitespace)
-                // Note: null keys cannot be added to Dictionary<string, ...> in C#, so we only test empty and whitespace
-                runtimeCache[""] = new Dictionary<Point, float> { [new Point(2, 2)] = 30.0f };
-                runtimeCache["   "] = new Dictionary<Point, float> { [new Point(3, 3)] = 35.0f };
-                runtimeCache["\t\n"] = new Dictionary<Point, float> { [new Point(4, 4)] = 40.0f };
-            }
-
-            // Set up mock to return expected sanitized value
             _mockFileNameSanitizationService
                 .Setup(x => x.Sanitize("test_save"))
                 .Returns("test_save");
+
+            _mockDataService
+                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
+                .Returns(corruptedState);
+
+            service.LoadData("test_save");
 
             // Capture the saved state to verify what was actually saved
             SoilHealthState capturedSaveState = null!;

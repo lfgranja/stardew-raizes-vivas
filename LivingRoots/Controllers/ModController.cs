@@ -98,10 +98,6 @@ namespace LivingRoots.Controllers
                 return;
             }
 
-            bool gameLaunchedAdded = false;
-            bool saveLoadedAdded = false;
-            bool savingAdded = false;
-
             // Create local references to handlers for safe access during rollback
             EventHandler<GameLaunchedEventArgs>? localGameLaunchedHandler = null;
             EventHandler<SaveLoadedEventArgs>? localSaveLoadedHandler = null;
@@ -125,13 +121,8 @@ namespace LivingRoots.Controllers
 
                 // Subscribe to events
                 gameLoop.GameLaunched += localGameLaunchedHandler;
-                gameLaunchedAdded = true;
-
-                // NEW EVENTS - Loading and saving soil health data
                 gameLoop.SaveLoaded += localSaveLoadedHandler;
-                saveLoadedAdded = true;
                 gameLoop.Saving += localSavingHandler;
-                savingAdded = true;
 
                 // now that everything succeeded, publish the "registered" state
                 System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
@@ -139,16 +130,16 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                HandleRegistrationError(new RegistrationErrorContext
+                HandleRegistrationError(new RegistrationContext
                 {
                     Exception = ex,
                     GameLoop = gameLoop,
                     LocalGameLaunchedHandler = localGameLaunchedHandler,
                     LocalSaveLoadedHandler = localSaveLoadedHandler,
                     LocalSavingHandler = localSavingHandler,
-                    GameLaunchedAdded = gameLaunchedAdded,
-                    SaveLoadedAdded = saveLoadedAdded,
-                    SavingAdded = savingAdded,
+                    GameLaunchedAdded = true, // Indicate that we attempted to add this handler
+                    SaveLoadedAdded = true,   // Indicate that we attempted to add this handler
+                    SavingAdded = true,       // Indicate that we attempted to add this handler
                     Monitor = monitor
                 });
             }
@@ -187,34 +178,33 @@ namespace LivingRoots.Controllers
             return true;
         }
 
-        private void HandleRegistrationError(RegistrationErrorContext context)
+        private void HandleRegistrationError(RegistrationContext ctx)
         {
-            context.Monitor.Log("Error occurred while registering game events.", LogLevel.Error);
-            context.Monitor.Log($"RegisterEvents exception type: {context.Exception.GetType().FullName} (HResult: 0x{context.Exception.HResult:X8})", LogLevel.Trace);
+            ctx.Monitor.Log("Error occurred while registering game events.", LogLevel.Error);
+            ctx.Monitor.Log($"RegisterEvents exception type: {ctx.Exception.GetType().FullName} (HResult: 0x{ctx.Exception.HResult:X8})", LogLevel.Trace);
 #if DEBUG
-            context.Monitor.Log(context.Exception.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
+            ctx.Monitor.Log(ctx.Exception.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
 #endif
 
             var rollbackSucceeded = true;
 
             try
             {
-                if (context.GameLaunchedAdded && context.LocalGameLaunchedHandler != null)
-                    context.GameLoop.GameLaunched -= context.LocalGameLaunchedHandler;
-                if (context.SaveLoadedAdded && context.LocalSaveLoadedHandler != null)
-                    context.GameLoop.SaveLoaded -= context.LocalSaveLoadedHandler;
-                if (context.SavingAdded && context.LocalSavingHandler != null)
-                    context.GameLoop.Saving -= context.LocalSavingHandler;
+                if (ctx.GameLaunchedAdded && ctx.LocalGameLaunchedHandler != null)
+                    ctx.GameLoop.GameLaunched -= ctx.LocalGameLaunchedHandler;
+                if (ctx.SaveLoadedAdded && ctx.LocalSaveLoadedHandler != null)
+                    ctx.GameLoop.SaveLoaded -= ctx.LocalSaveLoadedHandler;
+                if (ctx.SavingAdded && ctx.LocalSavingHandler != null)
+                    ctx.GameLoop.Saving -= ctx.LocalSavingHandler;
             }
             catch
             {
                 rollbackSucceeded = false;
-                context.Monitor.Log("Error during event subscription rollback.", LogLevel.Trace);
+                ctx.Monitor.Log("Error during event subscription rollback.", LogLevel.Trace);
             }
 
             // Only clear handler fields if we're sure we detached everything; otherwise keep
             // references for best-effort cleanup during UnregisterEvents/Dispose.
-            // The condition is no longer gratuitous because rollbackSucceeded can now be false
             if (rollbackSucceeded)
             {
                 Interlocked.Exchange(ref _onGameLaunchedHandler, null);
@@ -241,23 +231,11 @@ namespace LivingRoots.Controllers
 
             // Capture handler references AFTER UnregisteringFlag has been atomically set
             // This prevents race condition where newly registered events could be leaked
-            var gameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
-            var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
-            var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
-            var currentState = Volatile.Read(ref _state);
-            var wasRegistered = (currentState & EventsRegisteredFlag) != 0;
-
-            // Check if any handlers are non-null for best-effort cleanup
-            bool hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
+            var eventUnregisterContext = CreateUnregisterContext();
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
             var monitor = _monitor;
             var helper = _helper;
-
-            // Track which events were successfully removed for rollback
-            bool gameLaunchedRemoved = false;
-            bool saveLoadedRemoved = false;
-            bool savingRemoved = false;
 
             // Declare the rollback tracking variable at method scope so it's accessible in finally block
             bool mayStillBeSubscribed = false;
@@ -268,9 +246,7 @@ namespace LivingRoots.Controllers
                 var gameLoop = helper?.Events?.GameLoop;
                 if (gameLoop == null)
                 {
-                    // We can't unsubscribe; conservatively assume we may still be subscribed if we were registered
-                    // OR if we still have handler references.
-                    mayStillBeSubscribed = wasRegistered || hasHandlers;
+                    mayStillBeSubscribed = eventUnregisterContext.WasRegistered || eventUnregisterContext.HasHandlers;
                     monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
 
                     // If we're disposing, clear handler references to avoid leaks even if we
@@ -286,15 +262,9 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                // IMPLEMENT DRY PRINCIPLE: Use SafeUnsubscribe helper method to reduce code duplication
-                gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(monitor, h => gameLoop.GameLaunched -= h, gameLaunchedHandler, "GameLaunched");
-                saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, saveLoadedHandler, "SaveLoaded");
-                savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, savingHandler, "Saving");
+                var unsubscribeResults = PerformUnsubscribes(monitor, gameLoop, eventUnregisterContext);
 
-                var allUnsubscribed =
-                    (gameLaunchedHandler == null || gameLaunchedRemoved) &&
-                    (saveLoadedHandler == null || saveLoadedRemoved) &&
-                    (savingHandler == null || savingRemoved);
+                var allUnsubscribed = unsubscribeResults.AllUnsubscribed;
 
                 // Subscription state should be derived from unsubscribe results, not "had handlers".
                 mayStillBeSubscribed = !allUnsubscribed;
@@ -302,12 +272,12 @@ namespace LivingRoots.Controllers
                 // Only nullify handler fields after successful unsubscription to prevent memory leaks
                 // and inconsistent state. Use CompareExchange to ensure we only nullify if the
                 // handler hasn't changed since we captured it.
-                if (gameLaunchedRemoved)
-                    System.Threading.Interlocked.CompareExchange(ref _onGameLaunchedHandler, null, gameLaunchedHandler);
-                if (saveLoadedRemoved)
-                    System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, null, saveLoadedHandler);
-                if (savingRemoved)
-                    System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, null, savingHandler);
+                if (unsubscribeResults.GameLaunchedRemoved)
+                    System.Threading.Interlocked.CompareExchange(ref _onGameLaunchedHandler, null, eventUnregisterContext.GameLaunchedHandler);
+                if (unsubscribeResults.SaveLoadedRemoved)
+                    System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, null, eventUnregisterContext.SaveLoadedHandler);
+                if (unsubscribeResults.SavingRemoved)
+                    System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, null, eventUnregisterContext.SavingHandler);
 
                 if (allUnsubscribed)
                 {
@@ -328,8 +298,7 @@ namespace LivingRoots.Controllers
                     {
                         // IMPLEMENT ROLLBACK MECHANISM: If any unsubscription fails, re-subscribe the successfully removed handlers
                         // This ensures an all-or-nothing operation to maintain state consistency
-                        ExecuteRollback(monitor, gameLoop, gameLaunchedRemoved, gameLaunchedHandler, saveLoadedRemoved, saveLoadedHandler,
-                            savingRemoved, savingHandler, out bool rollbackSucceeded);
+                        var rollbackSucceeded = ExecuteRollback(monitor, gameLoop, unsubscribeResults, eventUnregisterContext);
 
                         if (rollbackSucceeded)
                         {
@@ -350,67 +319,124 @@ namespace LivingRoots.Controllers
             }
         }
 
-        private void ExecuteRollback(IMonitor monitor, IGameLoopEvents gameLoop,
-            bool gameLaunchedRemoved, EventHandler<GameLaunchedEventArgs>? gameLaunchedHandler,
-            bool saveLoadedRemoved, EventHandler<SaveLoadedEventArgs>? saveLoadedHandler,
-            bool savingRemoved, EventHandler<SavingEventArgs>? savingHandler,
-            out bool rollbackSucceeded)
+        private EventUnregisterContext CreateUnregisterContext()
         {
-            rollbackSucceeded = true;
+            var gameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
+            var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
+            var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
+            var currentState = Volatile.Read(ref _state);
+            var wasRegistered = (currentState & EventsRegisteredFlag) != 0;
+
+            // Check if any handlers are non-null for best-effort cleanup
+            bool hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
+
+            return new EventUnregisterContext
+            {
+                GameLaunchedHandler = gameLaunchedHandler,
+                SaveLoadedHandler = saveLoadedHandler,
+                SavingHandler = savingHandler,
+                WasRegistered = wasRegistered,
+                HasHandlers = hasHandlers
+            };
+        }
+
+        private UnsubscribeResults PerformUnsubscribes(IMonitor monitor, IGameLoopEvents gameLoop, EventUnregisterContext context)
+        {
+            // Track which events were successfully removed for rollback
+            bool gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(monitor, h => gameLoop.GameLaunched -= h, context.GameLaunchedHandler, "GameLaunched");
+            bool saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, context.SaveLoadedHandler, "SaveLoaded");
+            bool savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, context.SavingHandler, "Saving");
+
+            var allUnsubscribed =
+                (context.GameLaunchedHandler == null || gameLaunchedRemoved) &&
+                (context.SaveLoadedHandler == null || saveLoadedRemoved) &&
+                (context.SavingHandler == null || savingRemoved);
+
+            return new UnsubscribeResults
+            {
+                GameLaunchedRemoved = gameLaunchedRemoved,
+                SaveLoadedRemoved = saveLoadedRemoved,
+                SavingRemoved = savingRemoved,
+                AllUnsubscribed = allUnsubscribed
+            };
+        }
+
+        private bool ExecuteRollback(IMonitor monitor, IGameLoopEvents gameLoop, UnsubscribeResults unsubscribeResults, EventUnregisterContext context)
+        {
+            var rollbackContext = new RollbackContext
+            {
+                Monitor = monitor,
+                GameLoop = gameLoop,
+                GameLaunchedRemoved = unsubscribeResults.GameLaunchedRemoved,
+                GameLaunchedHandler = context.GameLaunchedHandler,
+                SaveLoadedRemoved = unsubscribeResults.SaveLoadedRemoved,
+                SaveLoadedHandler = context.SaveLoadedHandler,
+                SavingRemoved = unsubscribeResults.SavingRemoved,
+                SavingHandler = context.SavingHandler
+            };
+
+            return ExecuteRollbackInternal(rollbackContext);
+        }
+
+        private bool ExecuteRollbackInternal(RollbackContext ctx)
+        {
+            bool rollbackSucceeded = true;
 
             // Step 3: Implement rollback logic for GameLaunched handler
             // If gameLaunchedRemoved is true and handler exists, try to re-subscribe
-            if (gameLaunchedRemoved && gameLaunchedHandler != null)
+            if (ctx.GameLaunchedRemoved && ctx.GameLaunchedHandler != null)
             {
                 try
                 {
-                    gameLoop.GameLaunched += gameLaunchedHandler;
-                    System.Threading.Interlocked.CompareExchange(ref _onGameLaunchedHandler, gameLaunchedHandler, null);
-                    monitor.Log("GameLaunched handler re-subscribed during rollback.", LogLevel.Trace);
+                    ctx.GameLoop.GameLaunched += ctx.GameLaunchedHandler;
+                    System.Threading.Interlocked.CompareExchange(ref _onGameLaunchedHandler, ctx.GameLaunchedHandler, null);
+                    ctx.Monitor.Log("GameLaunched handler re-subscribed during rollback.", LogLevel.Trace);
                 }
                 catch (Exception ex)
                 {
-                    monitor.Log("Failed to re-subscribe GameLaunched handler during rollback.", LogLevel.Error);
-                    monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    ctx.Monitor.Log("Failed to re-subscribe GameLaunched handler during rollback.", LogLevel.Error);
+                    ctx.Monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                     rollbackSucceeded = false;
                 }
             }
 
             // Step 4: Implement rollback logic for SaveLoaded handler
             // If saveLoadedRemoved is true and handler exists, try to re-subscribe
-            if (saveLoadedRemoved && saveLoadedHandler != null)
+            if (ctx.SaveLoadedRemoved && ctx.SaveLoadedHandler != null)
             {
                 try
                 {
-                    gameLoop.SaveLoaded += saveLoadedHandler;
-                    System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, saveLoadedHandler, null);
-                    monitor.Log("SaveLoaded handler re-subscribed during rollback.", LogLevel.Trace);
+                    ctx.GameLoop.SaveLoaded += ctx.SaveLoadedHandler;
+                    System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, ctx.SaveLoadedHandler, null);
+                    ctx.Monitor.Log("SaveLoaded handler re-subscribed during rollback.", LogLevel.Trace);
                 }
                 catch (Exception ex)
                 {
-                    monitor.Log("Failed to re-subscribe SaveLoaded handler during rollback.", LogLevel.Error);
-                    monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    ctx.Monitor.Log("Failed to re-subscribe SaveLoaded handler during rollback.", LogLevel.Error);
+                    ctx.Monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                     rollbackSucceeded = false;
                 }
             }
 
             // Step 5: Implement rollback logic for Saving handler
             // If savingRemoved is true and handler exists, try to re-subscribe
-            if (savingRemoved && savingHandler != null)
+            if (ctx.SavingRemoved && ctx.SavingHandler != null)
             {
                 try
                 {
-                    gameLoop.Saving += savingHandler;
-                    System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, savingHandler, null);
-                    monitor.Log("Saving handler re-subscribed during rollback.", LogLevel.Trace);
+                    ctx.GameLoop.Saving += ctx.SavingHandler;
+                    System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, ctx.SavingHandler, null);
+                    ctx.Monitor.Log("Saving handler re-subscribed during rollback.", LogLevel.Trace);
                 }
                 catch (Exception ex)
                 {
-                    monitor.Log("Failed to re-subscribe Saving handler during rollback.", LogLevel.Error);
-                    monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    ctx.Monitor.Log("Failed to re-subscribe Saving handler during rollback.", LogLevel.Error);
+                    ctx.Monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                     rollbackSucceeded = false;
                 }
             }
+
+            return rollbackSucceeded;
         }
 
         private bool ShouldAttemptUnregister()
@@ -447,21 +473,22 @@ namespace LivingRoots.Controllers
                     return false;
                 }
 
-                // Check for registration in progress to prevent unregistration during registration
-                if ((currentState & RegisteringFlag) != 0)
+                var isDisposing = (currentState & DisposedFlag) != 0;
+
+                // If disposing, prefer cleanup over avoiding the race with registration.
+                if (!isDisposing && (currentState & RegisteringFlag) != 0)
                 {
                     _monitor.Log("Event registration in progress, skipping unregistration.", LogLevel.Trace);
                     return false;
                 }
 
-                // Claim unregistration rights; also clear EventsRegisteredFlag to indicate unregistration is in progress
+                // Claim unregistration; when disposing, also clear RegisteringFlag to avoid deadlocks.
                 newState = (currentState | UnregisteringFlag) & ~EventsRegisteredFlag;
+                if (isDisposing)
+                    newState &= ~RegisteringFlag;
 
                 if (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) == currentState)
-                {
-                    return true; // Successfully claimed unregistration and cleared EventsRegisteredFlag
-                }
-                // CAS failed: another thread modified state, retry
+                    return true;
             }
         }
 
@@ -502,7 +529,7 @@ namespace LivingRoots.Controllers
         private static bool SafeUnsubscribe<T>(IMonitor monitor, Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
         {
             // No handler reference means there's nothing to detach from our perspective.
-            // // Treat as success to avoid incorrectly restoring "registered" state.
+            // Treat as success to avoid incorrectly restoring "registered" state.
             if (handler == null)
             {
                 return true;
@@ -557,34 +584,8 @@ namespace LivingRoots.Controllers
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
         {
-            // Use Interlocked.CompareExchange to implement a thread-safe re-entrancy guard
-            // This ensures only one execution of OnSaveLoaded can happen at a time
-            int currentState, newState;
-            do
+            ExecuteWithConcurrencyGuard(OnSaveLoadedExecutingFlag, "OnSaveLoaded", () =>
             {
-                currentState = System.Threading.Volatile.Read(ref _state);
-
-                // If the OnSaveLoadedExecutingFlag is already set, this method is already running, so return
-                if ((currentState & OnSaveLoadedExecutingFlag) != 0)
-                {
-                    _monitor.Log("OnSaveLoaded is already executing, skipping concurrent execution.", LogLevel.Trace);
-                    return;
-                }
-
-                // Calculate new state with the OnSaveLoadedExecutingFlag set
-                newState = currentState | OnSaveLoadedExecutingFlag;
-            }
-            while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
-
-            try
-            {
-                // Double-check locking pattern: check if controller is disposed after acquiring execution flag
-                if (IsDisposed())
-                {
-                    _monitor.Log("Controller disposed after acquiring OnSaveLoaded execution flag, skipping execution.", LogLevel.Trace);
-                    return;
-                }
-
                 // Get the save ID using the abstraction (monitor is already available in the provider)
                 string? saveId = _saveIdProvider.GetSaveId();
 
@@ -607,57 +608,13 @@ namespace LivingRoots.Controllers
                 // Load data using the save folder name as unique ID
                 _soilHealthService.LoadData(saveId);
                 _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't expose raw exception message for security
-                _monitor.Log("Error occurred while loading soil health data for save.", LogLevel.Error);
-
-                // Add trace-level exception details for debugging
-                _monitor.Log($"OnSaveLoaded exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-
-                // Add stack trace logging for better diagnostics without exposing sensitive information
-#if DEBUG
-                _monitor.Log(ex.StackTrace ?? "OnSaveLoaded stack trace unavailable.", LogLevel.Trace);
-#endif
-            }
-            finally
-            {
-                // Clear the executing flag when done to allow future executions
-                System.Threading.Interlocked.And(ref _state, unchecked(~OnSaveLoadedExecutingFlag));
-            }
+            });
         }
 
         private void OnSaving(object? sender, SavingEventArgs e)
         {
-            // Use Interlocked.CompareExchange to implement a thread-safe re-entrancy guard
-            // This ensures only one execution of OnSaving can happen at a time
-            int currentState, newState;
-            do
+            ExecuteWithConcurrencyGuard(OnSavingExecutingFlag, "OnSaving", () =>
             {
-                currentState = System.Threading.Volatile.Read(ref _state);
-
-                // If the OnSavingExecutingFlag is already set, this method is already running, so return
-                if ((currentState & OnSavingExecutingFlag) != 0)
-                {
-                    _monitor.Log("OnSaving is already executing, skipping concurrent execution.", LogLevel.Trace);
-                    return;
-                }
-
-                // Calculate new state with the OnSavingExecutingFlag set
-                newState = currentState | OnSavingExecutingFlag;
-            }
-            while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
-
-            try
-            {
-                // Double-check locking pattern: check if controller is disposed after acquiring execution flag
-                if (IsDisposed())
-                {
-                    _monitor.Log("Controller disposed after acquiring OnSaving execution flag, skipping execution.", LogLevel.Trace);
-                    return;
-                }
-
                 // Get the save ID using the abstraction (monitor is already available in the provider)
                 string? saveId = _saveIdProvider.GetSaveId();
 
@@ -681,24 +638,65 @@ namespace LivingRoots.Controllers
                 // Save data before the game saves/exits (using the saving event)
                 _soilHealthService.SaveData(saveId);
                 _monitor.Log("Soil health data saved successfully.", LogLevel.Trace);
+            });
+        }
+
+        /// <summary>
+        /// Executes the provided action with a concurrency guard using the specified flag
+        /// </summary>
+        /// <param name="flag">The flag to use for the concurrency guard</param>
+        /// <param name="eventName">The name of the event for logging purposes</param>
+        /// <param name="action">The action to execute</param>
+        private void ExecuteWithConcurrencyGuard(int flag, string eventName, Action action)
+        {
+            // Use Interlocked.CompareExchange to implement a thread-safe re-entrancy guard
+            // This ensures only one execution of the event handler can happen at a time
+            int currentState, newState;
+            do
+            {
+                currentState = System.Threading.Volatile.Read(ref _state);
+
+                // If the flag is already set, this method is already running, so return
+                if ((currentState & flag) != 0)
+                {
+                    _monitor.Log($"{eventName} is already executing, skipping concurrent execution.", LogLevel.Trace);
+                    return;
+                }
+
+                // Calculate new state with the flag set
+                newState = currentState | flag;
+            }
+            while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+
+            try
+            {
+                // Double-check locking pattern: check if controller is disposed after acquiring execution flag
+                if (IsDisposed())
+                {
+                    _monitor.Log($"Controller disposed after acquiring {eventName} execution flag, skipping execution.", LogLevel.Trace);
+                    return;
+                }
+
+                // Execute the provided action
+                action();
             }
             catch (Exception ex)
             {
                 // Log error but don't expose raw exception message for security
-                _monitor.Log("Error occurred while saving soil health data for save.", LogLevel.Error);
+                _monitor.Log($"Error occurred while executing {eventName} event handler.", LogLevel.Error);
 
                 // Add trace-level exception details for debugging
-                _monitor.Log($"OnSaving exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log($"{eventName} exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
 #if DEBUG
-                _monitor.Log(ex.StackTrace ?? "OnSaving stack trace unavailable.", LogLevel.Trace);
+                _monitor.Log(ex.StackTrace ?? $"{eventName} stack trace unavailable.", LogLevel.Trace);
 #endif
             }
             finally
             {
                 // Clear the executing flag when done to allow future executions
-                System.Threading.Interlocked.And(ref _state, unchecked(~OnSavingExecutingFlag));
+                System.Threading.Interlocked.And(ref _state, unchecked(~flag));
             }
         }
 
@@ -806,6 +804,9 @@ namespace LivingRoots.Controllers
 
         public void Dispose()
         {
+            // If a registration attempt was in-flight, clear its transient claim so cleanup isn't blocked.
+            System.Threading.Interlocked.And(ref _state, ~RegisteringFlag);
+
             // Use TrySetStateFlag to ensure disposal flag is only set once
             if (!TrySetStateFlag(DisposedFlag))
             {
@@ -865,16 +866,54 @@ namespace LivingRoots.Controllers
     /// Context class to encapsulate parameters for HandleRegistrationError method
     /// to reduce the number of parameters and improve maintainability
     /// </summary>
-    internal class RegistrationErrorContext
+    internal readonly struct RegistrationContext
     {
-        public Exception Exception { get; set; } = null!;
-        public IGameLoopEvents GameLoop { get; set; } = null!;
-        public EventHandler<GameLaunchedEventArgs>? LocalGameLaunchedHandler { get; set; }
-        public EventHandler<SaveLoadedEventArgs>? LocalSaveLoadedHandler { get; set; }
-        public EventHandler<SavingEventArgs>? LocalSavingHandler { get; set; }
-        public bool GameLaunchedAdded { get; set; }
-        public bool SaveLoadedAdded { get; set; }
-        public bool SavingAdded { get; set; }
-        public IMonitor Monitor { get; set; } = null!;
+        public Exception Exception { get; init; }
+        public IGameLoopEvents GameLoop { get; init; }
+        public EventHandler<GameLaunchedEventArgs>? LocalGameLaunchedHandler { get; init; }
+        public EventHandler<SaveLoadedEventArgs>? LocalSaveLoadedHandler { get; init; }
+        public EventHandler<SavingEventArgs>? LocalSavingHandler { get; init; }
+        public bool GameLaunchedAdded { get; init; }
+        public bool SaveLoadedAdded { get; init; }
+        public bool SavingAdded { get; init; }
+        public IMonitor Monitor { get; init; }
+    }
+
+    /// <summary>
+    /// Context class to encapsulate parameters for event unregistration
+    /// </summary>
+    internal readonly struct EventUnregisterContext
+    {
+        public EventHandler<GameLaunchedEventArgs>? GameLaunchedHandler { get; init; }
+        public EventHandler<SaveLoadedEventArgs>? SaveLoadedHandler { get; init; }
+        public EventHandler<SavingEventArgs>? SavingHandler { get; init; }
+        public bool WasRegistered { get; init; }
+        public bool HasHandlers { get; init; }
+    }
+
+    /// <summary>
+    /// Context class to encapsulate results of unsubscribe operations
+    /// </summary>
+    internal readonly struct UnsubscribeResults
+    {
+        public bool GameLaunchedRemoved { get; init; }
+        public bool SaveLoadedRemoved { get; init; }
+        public bool SavingRemoved { get; init; }
+        public bool AllUnsubscribed { get; init; }
+    }
+
+    /// <summary>
+    /// Context class to encapsulate parameters for rollback operations
+    /// </summary>
+    internal readonly struct RollbackContext
+    {
+        public IMonitor Monitor { get; init; }
+        public IGameLoopEvents GameLoop { get; init; }
+        public bool GameLaunchedRemoved { get; init; }
+        public EventHandler<GameLaunchedEventArgs>? GameLaunchedHandler { get; init; }
+        public bool SaveLoadedRemoved { get; init; }
+        public EventHandler<SaveLoadedEventArgs>? SaveLoadedHandler { get; init; }
+        public bool SavingRemoved { get; init; }
+        public EventHandler<SavingEventArgs>? SavingHandler { get; init; }
     }
 }

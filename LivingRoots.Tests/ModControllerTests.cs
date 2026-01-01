@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
@@ -36,97 +35,6 @@ namespace LivingRoots.Tests
             // Add default setup for _mockManifest properties to prevent NullReferenceException
             _mockManifest.Setup(x => x.UniqueID).Returns("test.mod.id");
             _mockManifest.Setup(x => x.Version).Returns(new StardewModdingAPI.SemanticVersion(1, 0, 0));
-        }
-
-        /// <summary>
-        /// Creates an instance of type T using reflection with fallback strategies.
-        /// First tries Activator.CreateInstance with nonPublic: true.
-        /// If that fails, tries to find a constructor with optional/default parameters.
-        /// </summary>
-        /// <typeparam name="T">The type to instantiate.</typeparam>
-        /// <returns>An instance of type T.</returns>
-        /// <exception cref="InvalidOperationException">Thrown when no valid constructor is found.</exception>
-        private static T CreateInstanceWithFallback<T>() where T : class
-        {
-            Exception? lastError = null;
-
-            // First try: Activator.CreateInstance with nonPublic: true
-            try
-            {
-                var instance = Activator.CreateInstance(typeof(T), nonPublic: true) as T;
-                if (instance != null)
-                {
-                    return instance;
-                }
-            }
-            catch (Exception ex)
-            {
-                lastError = ex;
-            }
-
-            // Second try: Find a constructor with optional/default parameters
-            var constructors = typeof(T).GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            foreach (var constructor in constructors)
-            {
-                var parameters = constructor.GetParameters();
-                
-                // Skip constructors with any required reference-type parameter (can't safely provide a value)
-                if (parameters.Any(p =>
-                        !p.IsOptional &&
-                        !p.HasDefaultValue &&
-                        !p.ParameterType.IsValueType))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    var args = constructor.GetParameters().Select(p =>
-                    {
-                        if (p.IsOptional || p.HasDefaultValue)
-                        {
-                            var dv = p.DefaultValue;
-                            
-                            // Normalize reflection sentinel defaults to an invokable argument
-                            if (dv == Type.Missing || dv == Missing.Value || dv == DBNull.Value)
-                            {
-                                return p.ParameterType.IsValueType
-                                    ? Activator.CreateInstance(p.ParameterType)
-                                    : null;
-                            }
-                            
-                            return dv;
-                        }
-
-                        if (p.ParameterType.IsValueType)
-                            return Activator.CreateInstance(p.ParameterType);
-
-                        // Should be unreachable due to the "required reference-type parameter" skip above,
-                        // but keep a safe fallback.
-                        return null;
-                    }).ToArray();
-
-                    // Try to invoke the constructor with the default arguments
-                    var instance = constructor.Invoke(args) as T;
-                    if (instance != null)
-                    {
-                        return instance;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    lastError = ex;
-                    // Try to next constructor
-                    continue;
-                }
-            }
-
-            // If all attempts fail, throw an informative exception with the last error as InnerException
-            throw new InvalidOperationException(
-                $"Failed to create instance of type {typeof(T)} for tests. " +
-                $"Tried Activator.CreateInstance and all constructors with default/optional parameters via reflection. " +
-                $"Ensure that type has an accessible constructor with default/optional parameters or provide a test-specific factory method.",
-                lastError);
         }
 
         [Fact]
@@ -297,7 +205,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             mockGameLoopEvents.SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>());
             mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>());
-            
+
             mockGameLoopEvents.SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             mockGameLoopEvents.SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>());
             mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>());
@@ -476,27 +384,8 @@ namespace LivingRoots.Tests
             // Register events first to initialize the command registration
             controller.RegisterEvents();
 
-            // Verify that the OnGameLaunched method exists before invoking it
-            var onGameLaunchedMethod = typeof(ModController).GetMethod("OnGameLaunched",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(onGameLaunchedMethod);
-
-            // Then simulate the game launch event to trigger command registration
-            var gameLaunchedEventArgs = CreateInstanceWithFallback<GameLaunchedEventArgs>();
-            
-            // WRAP REFLECTION INVOKE CALL WITH TARGETINVOCATIONEXCEPTION UNWRAPPING TO IMPROVE TEST FAILURE DIAGNOSTICS
-            var invokeEx = Record.Exception(() =>
-            {
-                try
-                {
-                    onGameLaunchedMethod.Invoke(controller, new object[] { controller, gameLaunchedEventArgs });
-                }
-                catch (TargetInvocationException tie) when (tie.InnerException != null)
-                {
-                    throw tie.InnerException;
-                }
-            });
-            Assert.Null(invokeEx);
+            // Act - Trigger the OnGameLaunched event by raising it on the mock
+            mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
 
             // Assert - Command should have been added to console commands
             mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
@@ -516,22 +405,24 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Verify that the PrintVersion method exists before invoking it
-            var printVersionMethod = typeof(ModController).GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(printVersionMethod);
+            // Register events first to initialize the command registration
+            controller.RegisterEvents();
 
-            // Act & Assert - Should not throw any exceptions
-            var ex = Record.Exception(() =>
-            {
-                try
-                {
-                    printVersionMethod.Invoke(controller, new object[] { "lr_version", Array.Empty<string>() });
-                }
-                catch (TargetInvocationException tie) when (tie.InnerException != null)
-                {
-                    throw tie.InnerException;
-                }
-            });
+            // Act - Trigger the OnGameLaunched event to register the command
+            mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
+
+            // Act - Execute the command with mock helper
+            Action<string, string[]> printVersionAction = null;
+            mockCommandHelper.Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
+                             .Callback<string, string, Action<string, string[]>>((name, desc, action) => printVersionAction = action);
+
+            // Register the command to capture the action
+            mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
+
+            // Now execute the captured action
+            var ex = Record.Exception(() => printVersionAction?.Invoke("lr_version", Array.Empty<string>()));
+
+            // Assert - Should not throw any exceptions
             Assert.Null(ex);
         }
 
@@ -549,22 +440,24 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Verify that the PrintVersion method exists before invoking it
-            var printVersionMethod = typeof(ModController).GetMethod("PrintVersion", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(printVersionMethod);
+            // Register events first to initialize the command registration
+            controller.RegisterEvents();
 
-            // Act & Assert - Should not throw with help arguments
-            var ex = Record.Exception(() =>
-            {
-                try
-                {
-                    printVersionMethod.Invoke(controller, new object[] { "lr_version", new string[] { "/?", "-help", "--help" } });
-                }
-                catch (TargetInvocationException tie) when (tie.InnerException != null)
-                {
-                    throw tie.InnerException;
-                }
-            });
+            // Act - Trigger the OnGameLaunched event to register the command
+            mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
+
+            // Act - Execute the command with help arguments
+            Action<string, string[]> printVersionAction = null;
+            mockCommandHelper.Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
+                             .Callback<string, string, Action<string, string[]>>((name, desc, action) => printVersionAction = action);
+
+            // Register the command to capture the action
+            mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
+
+            // Now execute the captured action with help arguments
+            var ex = Record.Exception(() => printVersionAction?.Invoke("lr_version", new string[] { "/?", "-help", "--help" }));
+
+            // Assert - Should not throw with help arguments
             Assert.Null(ex);
         }
 
@@ -588,27 +481,8 @@ namespace LivingRoots.Tests
             // Register events to ensure proper setup before calling OnSaveLoaded
             controller.RegisterEvents();
 
-            // Verify that the OnSaveLoaded method exists before invoking it
-            var onSaveLoadedMethod = typeof(ModController).GetMethod("OnSaveLoaded",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(onSaveLoadedMethod);
-
-            // Act
-            var saveLoadedEventArgs = CreateInstanceWithFallback<SaveLoadedEventArgs>();
-            
-            // WRAP REFLECTION INVOKE CALL WITH TARGETINVOCATIONEXCEPTION UNWRAPPING TO IMPROVE TEST FAILURE DIAGNOSTICS
-            var invokeEx = Record.Exception(() =>
-            {
-                try
-                {
-                    onSaveLoadedMethod.Invoke(controller, new object[] { controller, saveLoadedEventArgs });
-                }
-                catch (TargetInvocationException tie) when (tie.InnerException != null)
-                {
-                    throw tie.InnerException;
-                }
-            });
-            Assert.Null(invokeEx);
+            // Act - Raise the SaveLoaded event to trigger OnSaveLoaded
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
 
             // Assert - Soil health service should have been called to load data
             _mockSoilHealthService.Verify(x => x.LoadData("test_save_id"), Times.Once);
@@ -634,27 +508,8 @@ namespace LivingRoots.Tests
             // Register events to ensure proper setup before calling OnSaving
             controller.RegisterEvents();
 
-            // Verify that the OnSaving method exists before invoking it
-            var onSavingMethod = typeof(ModController).GetMethod("OnSaving",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(onSavingMethod);
-
-            // Act - Create a real SavingEventArgs instance using Activator.CreateInstance with nonPublic: true as a preferred method
-            var savingEventArgs = CreateInstanceWithFallback<SavingEventArgs>();
-            
-            // WRAP REFLECTION INVOKE CALL WITH TARGETINVOCATIONEXCEPTION UNWRAPPING TO IMPROVE TEST FAILURE DIAGNOSTICS
-            var invokeEx = Record.Exception(() =>
-            {
-                try
-                {
-                    onSavingMethod.Invoke(controller, new object[] { controller, savingEventArgs });
-                }
-                catch (TargetInvocationException tie) when (tie.InnerException != null)
-                {
-                    throw tie.InnerException;
-                }
-            });
-            Assert.Null(invokeEx);
+            // Act - Raise the Saving event to trigger OnSaving
+            mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
 
             // Assert - Soil health service should have been called to save data
             _mockSoilHealthService.Verify(x => x.SaveData("test_save_id"), Times.Once);
@@ -668,32 +523,32 @@ namespace LivingRoots.Tests
             var mockCommandHelper = new Mock<ICommandHelper>();
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
- 
+
             // Act & Assert - Initially should not be disposed
             // Verify that controller can be used before disposal
             var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
             mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
-            
+
             // Add explicit SetupAdd and SetupRemove for GameLaunched event to ensure Moq reliably tracks event subscriptions
             mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>());
             mockGameLoopEvents.SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>());
-            
+
             // Register events to verify controller is functional before disposal
             controller.RegisterEvents();
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
-            
+
             // Act - Dispose the controller using public Dispose method
             controller.Dispose();
-            
+
             // Assert - After disposal, attempting to register events should not succeed
             // This verifies that the controller is in a disposed state
             var result = Record.Exception(() => controller.RegisterEvents());
             Assert.Null(result); // Should not throw
-            
+
             // Verify that events were unregistered during disposal using reflection to access internal state
-            var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+            var stateField = typeof(ModController).GetField("_state", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var stateValue = (int)(stateField?.GetValue(controller) ?? 0); // Using null-coalescing to handle potential null
             var disposedFlag = 1 << 2; // DisposedFlag constant value
             Assert.True((stateValue & disposedFlag) != 0, "Controller should be marked as disposed after calling Dispose()");
@@ -794,80 +649,18 @@ namespace LivingRoots.Tests
             }
         }
 
-        [Fact]
-        public void CreateInstanceWithFallback_WhenTypeHasRequiredReferenceParameters_ThrowsInvalidOperationException()
+        /// <summary>
+        /// Test class with a constructor that has required parameters without defaults.
+        /// This type cannot be instantiated by CreateInstanceWithFallback without the FormatterServices fallback.
+        /// </summary>
+        private class TypeWithRequiredConstructorParameter
         {
-            // Act & Assert - Should throw InvalidOperationException when trying to instantiate a type with required reference parameters
-            var ex = Assert.Throws<InvalidOperationException>(() =>
-                CreateInstanceWithFallback<TypeWithRequiredReferenceParameter>());
-            
-            // Verify the exception message is informative and includes the type name
-            Assert.Contains("TypeWithRequiredReferenceParameter", ex.Message);
-            Assert.Contains("Failed to create instance", ex.Message);
-        }
+            private readonly string _requiredParam;
 
-        [Fact]
-        public void CreateInstanceWithFallback_WhenTypeHasOptionalParameters_CreatesInstanceSuccessfully()
-        {
-            // Act
-            var instance = CreateInstanceWithFallback<TypeWithOptionalParameters>();
-
-            // Assert - Should create instance successfully with default values
-            Assert.NotNull(instance);
-        }
-
-        [Fact]
-        public void CreateInstanceWithFallback_WhenNoValidConstructor_ThrowsInvalidOperationException()
-        {
-            // Act & Assert - Should throw InvalidOperationException with informative message
-            var ex = Assert.Throws<InvalidOperationException>(() =>
-                CreateInstanceWithFallback<TypeWithRequiredConstructorParameter>());
-            
-            // Verify the exception message is informative and includes the type name
-            Assert.Contains("TypeWithRequiredConstructorParameter", ex.Message);
-            Assert.Contains("Failed to create instance", ex.Message);
-        }
-
-
-        [Fact]
-        public void ReflectionInvoke_WhenMethodThrowsException_RethrowsActualExceptionNotTargetInvocationException()
-        {
-            // Arrange
-            var mockEvents = new Mock<IModEvents>();
-            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
-            var mockCommandHelper = new Mock<ICommandHelper>();
-
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
-            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
-
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
-
-            // Setup monitor to throw an exception when Log is called
-            _mockMonitor.Setup(x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()))
-                .Throws(new InvalidOperationException("Test exception from monitor"));
-
-            // Verify that the PrintVersion method exists before invoking it
-            var printVersionMethod = typeof(ModController).GetMethod("PrintVersion",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            Assert.NotNull(printVersionMethod);
-
-            // Act & Assert - Should throw actual InvalidOperationException, not TargetInvocationException
-            var ex = Assert.Throws<InvalidOperationException>(() =>
+            public TypeWithRequiredConstructorParameter(string requiredParam)
             {
-                try
-                {
-                    printVersionMethod.Invoke(controller, new object[] { "lr_version", Array.Empty<string>() });
-                }
-                catch (TargetInvocationException tie) when (tie.InnerException != null)
-                {
-                    throw tie.InnerException;
-                }
-            });
-
-            // Verify the exception is actual InvalidOperationException, not wrapped
-            Assert.Equal("Test exception from monitor", ex.Message);
-            Assert.IsType<InvalidOperationException>(ex);
+                _requiredParam = requiredParam;
+            }
         }
 
         /// <summary>
@@ -980,28 +773,26 @@ namespace LivingRoots.Tests
             public event EventHandler<UpdateTickingEventArgs>? UpdateTicking { add { } remove { } }
             public event EventHandler<OneSecondUpdateTickedEventArgs>? OneSecondUpdateTicked { add { } remove { } }
             public event EventHandler<OneSecondUpdateTickingEventArgs>? OneSecondUpdateTicking { add { } remove { } }
-            public event EventHandler<DayStartedEventArgs>? DayStarted { add { } remove { } }
+            public event EventHandler<DayStartedEventArgs>? DayStarted
+            {
+                add { }
+                remove { }
+            }
             public event EventHandler<DayEndingEventArgs>? DayEnding { add { } remove { } }
-            public event EventHandler<TimeChangedEventArgs>? TimeChanged { add { } remove { } }
-            public event EventHandler<ReturnedToTitleEventArgs>? ReturnedToTitle { add { } remove { } }
+            public event EventHandler<TimeChangedEventArgs>? TimeChanged
+            {
+                add { }
+                remove { }
+            }
+            public event EventHandler<ReturnedToTitleEventArgs>? ReturnedToTitle
+            {
+                add { }
+                remove { }
+            }
             public event EventHandler<SaveCreatingEventArgs>? SaveCreating { add { } remove { } }
             public event EventHandler<SaveCreatedEventArgs>? SaveCreated { add { } remove { } }
             public event EventHandler<SavedEventArgs>? Saved { add { } remove { } }
             public event EventHandler<LoadStageChangedEventArgs>? LoadStageChanged { add { } remove { } }
-        }
-
-        /// <summary>
-        /// Test class with a constructor that has required parameters without defaults.
-        /// This type cannot be instantiated by CreateInstanceWithFallback without the FormatterServices fallback.
-        /// </summary>
-        private class TypeWithRequiredConstructorParameter
-        {
-            private readonly string _requiredParam;
-
-            public TypeWithRequiredConstructorParameter(string requiredParam)
-            {
-                _requiredParam = requiredParam;
-            }
         }
     }
 }
