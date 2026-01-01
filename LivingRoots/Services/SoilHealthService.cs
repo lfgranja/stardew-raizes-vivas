@@ -32,7 +32,12 @@ namespace LivingRoots.Services
             SoilHealthState? savedData = LoadFromStorage(dataKey);
             if (savedData == null)
             {
-                return; // LoadFromStorage already logged and cleared cache for errors
+                // Treat "no data" as an empty state to avoid leaking stale runtime cache between saves.
+                lock (_lock)
+                {
+                    _runtimeCache.Clear();
+                }
+                return;
             }
 
             // Process and rebuild runtime cache

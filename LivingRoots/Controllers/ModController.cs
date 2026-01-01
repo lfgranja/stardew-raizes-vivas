@@ -1,13 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using LivingRoots.Domain;
 using LivingRoots.Services;
-using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
-using System.Threading;
 
 namespace LivingRoots.Controllers
 {
@@ -183,13 +177,24 @@ namespace LivingRoots.Controllers
             ctx.Monitor.Log(ctx.Exception.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
 #endif
 
-            // Execute the rollback by unsubscribing the handlers that were successfully added
-            if (ctx.LocalGameLaunchedHandler != null)
-                ctx.GameLoop.GameLaunched -= ctx.LocalGameLaunchedHandler;
-            if (ctx.LocalSaveLoadedHandler != null)
-                ctx.GameLoop.SaveLoaded -= ctx.LocalSaveLoadedHandler;
-            if (ctx.LocalSavingHandler != null)
-                ctx.GameLoop.Saving -= ctx.LocalSavingHandler;
+            // Execute rollback safely; don't let rollback failures mask original error.
+            SafeUnsubscribe<GameLaunchedEventArgs>(
+                ctx.Monitor,
+                h => ctx.GameLoop.GameLaunched -= h,
+                ctx.LocalGameLaunchedHandler,
+                "GameLaunched");
+
+            SafeUnsubscribe<SaveLoadedEventArgs>(
+                ctx.Monitor,
+                h => ctx.GameLoop.SaveLoaded -= h,
+                ctx.LocalSaveLoadedHandler,
+                "SaveLoaded");
+
+            SafeUnsubscribe<SavingEventArgs>(
+                ctx.Monitor,
+                h => ctx.GameLoop.Saving -= h,
+                ctx.LocalSavingHandler,
+                "Saving");
 
             // Clear handler references to prevent memory leaks
             System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
@@ -222,7 +227,7 @@ namespace LivingRoots.Controllers
             var helper = _helper;
 
             // Declare the rollback tracking variable at method scope so it's accessible in finally block
-            bool mayStillBeSubscribed = false;
+            var mayStillBeSubscribed = false;
 
             try
             {
@@ -334,7 +339,7 @@ namespace LivingRoots.Controllers
             var wasRegistered = (currentState & EventsRegisteredFlag) != 0;
 
             // Check if any handlers are non-null for best-effort cleanup
-            bool hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
+            var hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
 
             return new EventUnregisterContext
             {
@@ -349,9 +354,9 @@ namespace LivingRoots.Controllers
         private UnsubscribeResults PerformUnsubscribes(IMonitor monitor, IGameLoopEvents gameLoop, EventUnregisterContext context)
         {
             // Track which events were successfully removed for rollback
-            bool gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(monitor, h => gameLoop.GameLaunched -= h, context.GameLaunchedHandler, "GameLaunched");
-            bool saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, context.SaveLoadedHandler, "SaveLoaded");
-            bool savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, context.SavingHandler, "Saving");
+            var gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(monitor, h => gameLoop.GameLaunched -= h, context.GameLaunchedHandler, "GameLaunched");
+            var saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, context.SaveLoadedHandler, "SaveLoaded");
+            var savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, context.SavingHandler, "Saving");
 
             var allUnsubscribed =
                 (context.GameLaunchedHandler == null || gameLaunchedRemoved) &&
@@ -374,7 +379,7 @@ namespace LivingRoots.Controllers
 
         private bool ExecuteRollbackInternal(RollbackContext ctx)
         {
-            bool rollbackSucceeded = true;
+            var rollbackSucceeded = true;
 
             // Step 3: Implement rollback logic for GameLaunched handler
             // If gameLaunchedRemoved is true and handler exists, try to re-subscribe
@@ -442,7 +447,7 @@ namespace LivingRoots.Controllers
                 var earlySaveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
                 var earlySavingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
 
-                bool earlyHasHandlers = earlyGameLaunchedHandler != null || earlySaveLoadedHandler != null || earlySavingHandler != null;
+                var earlyHasHandlers = earlyGameLaunchedHandler != null || earlySaveLoadedHandler != null || earlySavingHandler != null;
 
                 if (!earlyHasHandlers)
                 {
@@ -581,7 +586,7 @@ namespace LivingRoots.Controllers
             ExecuteWithConcurrencyGuard(OnSaveLoadedExecutingFlag, "OnSaveLoaded", () =>
             {
                 // Get the save ID using the abstraction (monitor is already available in the provider)
-                string? saveId = _saveIdProvider.GetSaveId();
+                var saveId = _saveIdProvider.GetSaveId();
 
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
@@ -610,7 +615,7 @@ namespace LivingRoots.Controllers
             ExecuteWithConcurrencyGuard(OnSavingExecutingFlag, "OnSaving", () =>
             {
                 // Get the save ID using the abstraction (monitor is already available in the provider)
-                string? saveId = _saveIdProvider.GetSaveId();
+                var saveId = _saveIdProvider.GetSaveId();
 
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
@@ -777,7 +782,7 @@ namespace LivingRoots.Controllers
 
                 // Use the standard version.ToString() method which provides consistent output
                 var version = manifest?.Version;
-                string versionString = version?.ToString() ?? "unknown";
+                var versionString = version?.ToString() ?? "unknown";
 
                 monitor?.Log($"Living Roots Mod Version: {versionString} (UniqueID: {manifest?.UniqueID ?? "unknown"})", LogLevel.Info);
             }
