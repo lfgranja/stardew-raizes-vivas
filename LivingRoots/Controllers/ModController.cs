@@ -137,9 +137,6 @@ namespace LivingRoots.Controllers
                     LocalGameLaunchedHandler = localGameLaunchedHandler,
                     LocalSaveLoadedHandler = localSaveLoadedHandler,
                     LocalSavingHandler = localSavingHandler,
-                    GameLaunchedAdded = true, // Indicate that we attempted to add this handler
-                    SaveLoadedAdded = true,   // Indicate that we attempted to add this handler
-                    SavingAdded = true,       // Indicate that we attempted to add this handler
                     Monitor = monitor
                 });
             }
@@ -186,26 +183,26 @@ namespace LivingRoots.Controllers
             ctx.Monitor.Log(ctx.Exception.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
 #endif
 
-            var rollbackSucceeded = true;
+            bool rollbackFailed = false;
 
             try
             {
-                if (ctx.GameLaunchedAdded && ctx.LocalGameLaunchedHandler != null)
+                if (ctx.LocalGameLaunchedHandler != null)
                     ctx.GameLoop.GameLaunched -= ctx.LocalGameLaunchedHandler;
-                if (ctx.SaveLoadedAdded && ctx.LocalSaveLoadedHandler != null)
+                if (ctx.LocalSaveLoadedHandler != null)
                     ctx.GameLoop.SaveLoaded -= ctx.LocalSaveLoadedHandler;
-                if (ctx.SavingAdded && ctx.LocalSavingHandler != null)
+                if (ctx.LocalSavingHandler != null)
                     ctx.GameLoop.Saving -= ctx.LocalSavingHandler;
             }
             catch
             {
-                rollbackSucceeded = false;
+                rollbackFailed = true;
                 ctx.Monitor.Log("Error during event subscription rollback.", LogLevel.Trace);
             }
 
-            // Only clear handler fields if we're sure we detached everything; otherwise keep
+            // Only clear handler fields if we successfully completed the rollback; otherwise keep
             // references for best-effort cleanup during UnregisterEvents/Dispose.
-            if (rollbackSucceeded)
+            if (!rollbackFailed)
             {
                 Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                 Interlocked.Exchange(ref _onSaveLoadedHandler, null);
@@ -262,7 +259,7 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                var unsubscribeResults = PerformUnsubscribes(monitor, gameLoop, eventUnregisterContext);
+                var unsubscribeResults = AttemptUnregistration(monitor, gameLoop, eventUnregisterContext);
 
                 var allUnsubscribed = unsubscribeResults.AllUnsubscribed;
 
@@ -279,44 +276,66 @@ namespace LivingRoots.Controllers
                 if (unsubscribeResults.SavingRemoved)
                     System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, null, eventUnregisterContext.SavingHandler);
 
-                if (allUnsubscribed)
-                {
-                    monitor.Log("Events unregistered successfully.", LogLevel.Trace);
-                }
-                else
-                {
-                    monitor.Log("Event unregistration partially failed. Some handlers may remain subscribed.", LogLevel.Warn);
-
-                    // Check if the controller is disposed - if so, skip rollback to prevent resource leaks
-                    if (IsDisposed())
-                    {
-                        monitor.Log("Controller is disposed, skipping rollback of event handlers.", LogLevel.Trace);
-                        // When disposed, set mayStillBeSubscribed to false to indicate that cleanup is best-effort only
-                        mayStillBeSubscribed = false;
-                    }
-                    else
-                    {
-                        // IMPLEMENT ROLLBACK MECHANISM: If any unsubscription fails, re-subscribe the successfully removed handlers
-                        // This ensures an all-or-nothing operation to maintain state consistency
-                        var rollbackSucceeded = ExecuteRollback(monitor, gameLoop, unsubscribeResults, eventUnregisterContext);
-
-                        if (rollbackSucceeded)
-                        {
-                            // Restore the EventsRegisteredFlag since state is restored to the registered state
-                            System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
-                            monitor.Log("Rollback completed successfully. State restored to registered.", LogLevel.Warn);
-                        }
-                        else
-                        {
-                            monitor.Log("Rollback partially failed. State may be inconsistent.", LogLevel.Error);
-                        }
-                    }
-                }
+                HandleUnregistrationResult(monitor, gameLoop, unsubscribeResults, eventUnregisterContext, allUnsubscribed, ref mayStillBeSubscribed);
             }
             finally
             {
                 RestoreStateAfterUnregistration(mayStillBeSubscribed);
             }
+        }
+
+        private void HandleUnregistrationResult(IMonitor monitor, IGameLoopEvents gameLoop, UnsubscribeResults unsubscribeResults, EventUnregisterContext eventUnregisterContext, bool allUnsubscribed, ref bool mayStillBeSubscribed)
+        {
+            if (allUnsubscribed)
+            {
+                monitor.Log("Events unregistered successfully.", LogLevel.Trace);
+            }
+            else
+            {
+                monitor.Log("Event unregistration partially failed. Some handlers may remain subscribed.", LogLevel.Warn);
+
+                // Check if the controller is disposed - if so, skip rollback to prevent resource leaks
+                if (IsDisposed())
+                {
+                    monitor.Log("Controller is disposed, skipping rollback of event handlers.", LogLevel.Trace);
+                    // When disposed, set mayStillBeSubscribed to false to indicate that cleanup is best-effort only
+                    mayStillBeSubscribed = false;
+                }
+                else
+                {
+                    // IMPLEMENT ROLLBACK MECHANISM: If any unsubscription fails, re-subscribe the successfully removed handlers
+                    // This ensures an all-or-nothing operation to maintain state consistency
+                    var rollbackContext = new RollbackContext
+                    {
+                        Monitor = monitor,
+                        GameLoop = gameLoop,
+                        GameLaunchedRemoved = unsubscribeResults.GameLaunchedRemoved,
+                        GameLaunchedHandler = eventUnregisterContext.GameLaunchedHandler,
+                        SaveLoadedRemoved = unsubscribeResults.SaveLoadedRemoved,
+                        SaveLoadedHandler = eventUnregisterContext.SaveLoadedHandler,
+                        SavingRemoved = unsubscribeResults.SavingRemoved,
+                        SavingHandler = eventUnregisterContext.SavingHandler
+                    };
+                    var rollbackSucceeded = ExecuteRollback(rollbackContext);
+
+                    if (rollbackSucceeded)
+                    {
+                        // Restore the EventsRegisteredFlag since state is restored to the registered state
+                        System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
+                        monitor.Log("Rollback completed successfully. State restored to registered.", LogLevel.Warn);
+                    }
+                    else
+                    {
+                        monitor.Log("Rollback partially failed. State may be inconsistent.", LogLevel.Error);
+                    }
+                }
+            }
+        }
+
+        private UnsubscribeResults AttemptUnregistration(IMonitor monitor, IGameLoopEvents gameLoop, EventUnregisterContext eventUnregisterContext)
+        {
+            var unsubscribeResults = PerformUnsubscribes(monitor, gameLoop, eventUnregisterContext);
+            return unsubscribeResults;
         }
 
         private EventUnregisterContext CreateUnregisterContext()
@@ -361,21 +380,9 @@ namespace LivingRoots.Controllers
             };
         }
 
-        private bool ExecuteRollback(IMonitor monitor, IGameLoopEvents gameLoop, UnsubscribeResults unsubscribeResults, EventUnregisterContext context)
+        private bool ExecuteRollback(RollbackContext ctx)
         {
-            var rollbackContext = new RollbackContext
-            {
-                Monitor = monitor,
-                GameLoop = gameLoop,
-                GameLaunchedRemoved = unsubscribeResults.GameLaunchedRemoved,
-                GameLaunchedHandler = context.GameLaunchedHandler,
-                SaveLoadedRemoved = unsubscribeResults.SaveLoadedRemoved,
-                SaveLoadedHandler = context.SaveLoadedHandler,
-                SavingRemoved = unsubscribeResults.SavingRemoved,
-                SavingHandler = context.SavingHandler
-            };
-
-            return ExecuteRollbackInternal(rollbackContext);
+            return ExecuteRollbackInternal(ctx);
         }
 
         private bool ExecuteRollbackInternal(RollbackContext ctx)
@@ -873,9 +880,6 @@ namespace LivingRoots.Controllers
         public EventHandler<GameLaunchedEventArgs>? LocalGameLaunchedHandler { get; init; }
         public EventHandler<SaveLoadedEventArgs>? LocalSaveLoadedHandler { get; init; }
         public EventHandler<SavingEventArgs>? LocalSavingHandler { get; init; }
-        public bool GameLaunchedAdded { get; init; }
-        public bool SaveLoadedAdded { get; init; }
-        public bool SavingAdded { get; init; }
         public IMonitor Monitor { get; init; }
     }
 

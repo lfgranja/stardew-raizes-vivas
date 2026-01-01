@@ -170,19 +170,9 @@ namespace LivingRoots.Services
 
         private ProcessLocationResult ProcessLocationEntry(KeyValuePair<string, Dictionary<string, float>> locationEntry, ref int totalTileEntriesProcessed)
         {
-            // Skip if location name is null or empty to prevent NullReferenceException during length check
-            if (string.IsNullOrWhiteSpace(locationEntry.Key))
+            // Validate location name
+            if (!IsValidLocationName(locationEntry.Key))
             {
-                _monitor.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn);
-                return ProcessLocationResult.SuccessEmpty();
-            }
-
-            // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
-            if (locationEntry.Key.Length > ModConstants.MaxLocationNameLength)
-            {
-                // Use helper method to truncate location name for logging
-                string truncatedLocationName = TruncateForLogging(locationEntry.Key);
-                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; skipping location '{truncatedLocationName}'.", LogLevel.Warn);
                 return ProcessLocationResult.SuccessEmpty();
             }
 
@@ -233,7 +223,9 @@ namespace LivingRoots.Services
                 }
 
                 // Process tile entry using the helper method
-                var processingResult = ProcessTileEntry(tileEntry, locationEntry.Key);
+                var processingResult = ProcessTileEntry(tileEntry);
+
+                // Handle valid tile entries
                 if (processingResult.IsSuccess &&
                     processingResult.TilePoint.HasValue &&
                     processingResult.HealthValue.HasValue &&
@@ -241,6 +233,7 @@ namespace LivingRoots.Services
                 {
                     tileDict[processingResult.TilePoint.Value] = processingResult.HealthValue.Value;
                 }
+                // Handle invalid values with logging
                 else if (processingResult.Status == TileValidationStatus.InvalidValue && !warnedForInvalidValue)
                 {
                     // Only warn once per location for invalid values to prevent log spam
@@ -248,6 +241,7 @@ namespace LivingRoots.Services
                     _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [{ModConstants.MinSoilHealth}, {ModConstants.MaxSoilHealth}].", LogLevel.Warn);
                     warnedForInvalidValue = true;
                 }
+                // Handle malformed keys or extreme coordinates with logging
                 else if ((processingResult.Status == TileValidationStatus.MalformedKey ||
                           processingResult.Status == TileValidationStatus.ExtremeCoordinates) &&
                          !warnedForMalformedKey)
@@ -260,6 +254,32 @@ namespace LivingRoots.Services
             }
 
             return ProcessLocationResult.SuccessWithTiles(tileDict);
+        }
+
+        /// <summary>
+        /// Validates if the location name is valid according to business rules
+        /// </summary>
+        /// <param name="locationName">The location name to validate</param>
+        /// <returns>True if the location name is valid, false otherwise</returns>
+        private bool IsValidLocationName(string locationName)
+        {
+            // Skip if location name is null or empty to prevent NullReferenceException during length check
+            if (string.IsNullOrWhiteSpace(locationName))
+            {
+                _monitor.Log("Skipped soil health data with null or empty location name.", LogLevel.Warn);
+                return false;
+            }
+
+            // ADD LOCATION NAME LENGTH BOUNDING: Check location name length to prevent potential security issues
+            if (locationName.Length > ModConstants.MaxLocationNameLength)
+            {
+                // Use helper method to truncate location name for logging
+                string truncatedLocationName = TruncateForLogging(locationName);
+                _monitor.Log($"Location name exceeds maximum length of {ModConstants.MaxLocationNameLength} characters; skipping location '{truncatedLocationName}'.", LogLevel.Warn);
+                return false;
+            }
+
+            return true;
         }
 
         public void SaveData(string saveId)
@@ -323,7 +343,7 @@ namespace LivingRoots.Services
                 foreach (var location in _runtimeCache)
                 {
                     // Process location for saving with validation
-                    var processResult = ProcessLocationForSave(location, ref totalTilesToSave, ref locationsToSave, ref saveAbortedForLimits);
+                    var processResult = ProcessLocationForSave(location, ref totalTilesToSave, ref locationsToSave);
                     if (processResult.IsSuccess && processResult.TileDict.Count > 0)
                     {
                         snapshotState[location.Key] = processResult.TileDict;
@@ -339,8 +359,8 @@ namespace LivingRoots.Services
             return (snapshotState, saveAbortedForLimits);
         }
 
-        private ProcessSaveLocationResult ProcessLocationForSave(KeyValuePair<string, Dictionary<Point, float>> location,
-            ref int totalTilesToSave, ref int locationsToSave, ref bool saveAbortedForLimits)
+        private static ProcessSaveLocationResult ProcessLocationForSave(KeyValuePair<string, Dictionary<Point, float>> location,
+            ref int totalTilesToSave, ref int locationsToSave)
         {
             // Defensive: skip invalid location names to avoid crashing during Saving.
             if (string.IsNullOrWhiteSpace(location.Key))
@@ -671,9 +691,8 @@ namespace LivingRoots.Services
         /// Processes a single tile entry from the save data, handling validation and conversion.
         /// </summary>
         /// <param name="tileEntry">The tile entry from the saved data</param>
-        /// <param name="locationName">The name of the location being processed</param>
         /// <returns>Result containing the processed tile point, value, and validation status</returns>
-        private TileProcessingResult ProcessTileEntry(KeyValuePair<string, float> tileEntry, string locationName)
+        private static TileProcessingResult ProcessTileEntry(KeyValuePair<string, float> tileEntry)
         {
             // Add null/whitespace check for tile keys to prevent crashes with corrupted save files
             if (string.IsNullOrWhiteSpace(tileEntry.Key))
@@ -685,32 +704,40 @@ namespace LivingRoots.Services
             // Use ReadOnlySpan<char> to avoid string.Split allocation for better performance
             ReadOnlySpan<char> keySpan = tileEntry.Key.AsSpan().Trim();
             int commaIndex = keySpan.IndexOf(',');
-            if (commaIndex > 0 && commaIndex < keySpan.Length - 1 &&
-                int.TryParse(keySpan.Slice(0, commaIndex).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) &&
-                int.TryParse(keySpan.Slice(commaIndex + 1).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
-            {
-                // ADDITION: Check for extreme coordinates to prevent potential issues with malicious save files
-                // Using direct boundary checks instead of Math.Abs to prevent overflow when dealing with int.MinValue
-                if (x < -ModConstants.MaxAbsoluteTileCoordinate || x > ModConstants.MaxAbsoluteTileCoordinate ||
-                    y < -ModConstants.MaxAbsoluteTileCoordinate || y > ModConstants.MaxAbsoluteTileCoordinate)
-                {
-                    return new TileProcessingResult(false, null, null, TileValidationStatus.ExtremeCoordinates);
-                }
 
-                float validatedValue = tileEntry.Value;
-
-                if (float.IsNaN(validatedValue) || validatedValue < ModConstants.MinSoilHealth || validatedValue > ModConstants.MaxSoilHealth)
-                {
-                    validatedValue = ClampHealthValue(validatedValue);
-                    return new TileProcessingResult(true, new Point(x, y), validatedValue, TileValidationStatus.InvalidValue);
-                }
-
-                return new TileProcessingResult(true, new Point(x, y), validatedValue, TileValidationStatus.Valid);
-            }
-            else
+            // If no comma found or comma is at the start/end, return malformed
+            if (commaIndex <= 0 || commaIndex >= keySpan.Length - 1)
             {
                 return new TileProcessingResult(false, null, null, TileValidationStatus.MalformedKey);
             }
+
+            // Extract X and Y parts and parse them
+            var xPart = keySpan.Slice(0, commaIndex).Trim();
+            var yPart = keySpan.Slice(commaIndex + 1).Trim();
+
+            if (!int.TryParse(xPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) ||
+                !int.TryParse(yPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
+            {
+                return new TileProcessingResult(false, null, null, TileValidationStatus.MalformedKey);
+            }
+
+            // ADDITION: Check for extreme coordinates to prevent potential issues with malicious save files
+            // Using direct boundary checks instead of Math.Abs to prevent overflow when dealing with int.MinValue
+            if (x < -ModConstants.MaxAbsoluteTileCoordinate || x > ModConstants.MaxAbsoluteTileCoordinate ||
+                y < -ModConstants.MaxAbsoluteTileCoordinate || y > ModConstants.MaxAbsoluteTileCoordinate)
+            {
+                return new TileProcessingResult(false, null, null, TileValidationStatus.ExtremeCoordinates);
+            }
+
+            float validatedValue = tileEntry.Value;
+
+            if (float.IsNaN(validatedValue) || validatedValue < ModConstants.MinSoilHealth || validatedValue > ModConstants.MaxSoilHealth)
+            {
+                validatedValue = ClampHealthValue(validatedValue);
+                return new TileProcessingResult(true, new Point(x, y), validatedValue, TileValidationStatus.InvalidValue);
+            }
+
+            return new TileProcessingResult(true, new Point(x, y), validatedValue, TileValidationStatus.Valid);
         }
 
         /// <summary>
