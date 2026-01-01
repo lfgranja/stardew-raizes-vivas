@@ -1,15 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
 using LivingRoots.Services;
-using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
-using Xunit;
 using System.Reflection;
 
 namespace LivingRoots.Tests
@@ -50,7 +44,7 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Create a single ModController instance to be shared across all tasks
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, 
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object,
                 _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // First register events to set up the controller with handlers
@@ -63,7 +57,7 @@ namespace LivingRoots.Tests
 
             // Act: Simulate concurrent registration and unregistration attempts
             var tasks = new List<Task>();
-            
+
             // Multiple tasks trying to register events concurrently
             for (int i = 0; i < 5; i++)
             {
@@ -89,13 +83,13 @@ namespace LivingRoots.Tests
             // Add timeout to prevent hanging indefinitely
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
             var whenAllTask = Task.WhenAll(tasks);
-            
+
             var completedTask = await Task.WhenAny(whenAllTask, timeoutTask);
             if (completedTask == timeoutTask)
             {
                 Assert.Fail("UnregisterEvents_WhenConcurrentRegisterEventsOccurs_DoesNotLeakHandlers test timed out after 30 seconds");
             }
-            
+
             // Wait for the actual tasks to complete if they haven't already
             await whenAllTask;
 
@@ -104,7 +98,7 @@ namespace LivingRoots.Tests
             // 1. No handlers are leaked (unregister properly captures and removes handlers)
             // 2. The state flags are correctly managed
             // 3. No race condition allows new registrations during unregistration
-            
+
             // Verify invariants rather than schedule-dependent exact counts:
             // 1) removals must never exceed adds
             Assert.True(threadSafeGameLoopEvents.GameLaunchedRemoveCount <= threadSafeGameLoopEvents.GameLaunchedAddCount);
@@ -125,14 +119,14 @@ namespace LivingRoots.Tests
             // This is necessary for testing internal state flags like UnregisteringFlag and EventsRegisteredFlag
             var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
             var state = (int)(stateField?.GetValue(controller) ?? 0);
-            
+
             var isUnregistering = (state & (1 << 5)) != 0; // UnregisteringFlag
             var isEventsRegistered = (state & (1 << 0)) != 0; // EventsRegisteredFlag
-            
+
             // After unregistration, EventsRegisteredFlag should be cleared
             // UnregisteringFlag should also be cleared after completion
             Assert.False(isUnregistering, "UnregisteringFlag should be cleared after unregistration completes");
-            
+
             // The EventsRegisteredFlag might be set or cleared depending on the final state,
             // but the important thing is that handlers are properly managed
         }
@@ -150,7 +144,7 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Create a single ModController instance to be shared across all tasks
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, 
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object,
                 _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // First register events to set up the controller with handlers
@@ -165,7 +159,7 @@ namespace LivingRoots.Tests
             // This test specifically targets the race condition where handler references
             // are captured before UnregisteringFlag is set
             var tasks = new List<Task>();
-            
+
             // Start multiple unregistration tasks that will try to capture handler references
             for (int i = 0; i < 3; i++)
             {
@@ -190,35 +184,35 @@ namespace LivingRoots.Tests
             // Add timeout to prevent hanging indefinitely
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
             var whenAllTask = Task.WhenAll(tasks);
-            
+
             var completedTask = await Task.WhenAny(whenAllTask, timeoutTask);
             if (completedTask == timeoutTask)
             {
                 Assert.Fail("RegisterEvents_WhenConcurrentUnregisterEventsOccurs_DoesNotCauseRaceCondition test timed out after 30 seconds");
             }
-            
+
             // Wait for the actual tasks to complete if they haven't already
             await whenAllTask;
 
             // Assert: Verify that the race condition fix works properly
             // The fix should ensure that handler references are captured AFTER UnregisteringFlag is set
             // This prevents new registrations from leaking handlers during unregistration
-            
+
             // All tasks should complete without throwing exceptions
             // Event handlers should be properly managed
-            Assert.True(threadSafeGameLoopEvents.GameLaunchedAddCount >= 1, 
+            Assert.True(threadSafeGameLoopEvents.GameLaunchedAddCount >= 1,
                 "At least one GameLaunched registration should occur");
-            Assert.True(threadSafeGameLoopEvents.SaveLoadedAddCount >= 1, 
+            Assert.True(threadSafeGameLoopEvents.SaveLoadedAddCount >= 1,
                 "At least one SaveLoaded registration should occur");
-            Assert.True(threadSafeGameLoopEvents.SavingAddCount >= 1, 
+            Assert.True(threadSafeGameLoopEvents.SavingAddCount >= 1,
                 "At least one Saving registration should occur");
-                
+
             // The number of removals should match the number of successful unregistrations
-            Assert.True(threadSafeGameLoopEvents.GameLaunchedRemoveCount >= 0, 
+            Assert.True(threadSafeGameLoopEvents.GameLaunchedRemoveCount >= 0,
                 "GameLaunched should have been removed appropriately");
-            Assert.True(threadSafeGameLoopEvents.SaveLoadedRemoveCount >= 0, 
+            Assert.True(threadSafeGameLoopEvents.SaveLoadedRemoveCount >= 0,
                 "SaveLoaded should have been removed appropriately");
-            Assert.True(threadSafeGameLoopEvents.SavingRemoveCount >= 0, 
+            Assert.True(threadSafeGameLoopEvents.SavingRemoveCount >= 0,
                 "Saving should have been removed appropriately");
         }
 
@@ -257,21 +251,21 @@ namespace LivingRoots.Tests
                     EventHandler<GameLaunchedEventArgs>? current, updated;
                     do
                     {
-                        current = Volatile.Read(ref _gameLaunched);
+                        current = System.Threading.Volatile.Read(ref _gameLaunched);
                         updated = (EventHandler<GameLaunchedEventArgs>?)Delegate.Combine(current, value);
                     }
-                    while (Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
+                    while (System.Threading.Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
                 }
                 remove
                 {
-                    Interlocked.Increment(ref _gameLaunchedRemoveCount);
+                    System.Threading.Interlocked.Increment(ref _gameLaunchedRemoveCount);
                     EventHandler<GameLaunchedEventArgs>? current, updated;
                     do
                     {
-                        current = Volatile.Read(ref _gameLaunched);
+                        current = System.Threading.Volatile.Read(ref _gameLaunched);
                         updated = (EventHandler<GameLaunchedEventArgs>?)Delegate.Remove(current, value);
                     }
-                    while (Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
+                    while (System.Threading.Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
                 }
             }
 
@@ -279,25 +273,25 @@ namespace LivingRoots.Tests
             {
                 add
                 {
-                    Interlocked.Increment(ref _saveLoadedAddCount);
+                    System.Threading.Interlocked.Increment(ref _saveLoadedAddCount);
                     EventHandler<SaveLoadedEventArgs>? current, updated;
                     do
                     {
-                        current = Volatile.Read(ref _saveLoaded);
+                        current = System.Threading.Volatile.Read(ref _saveLoaded);
                         updated = (EventHandler<SaveLoadedEventArgs>?)Delegate.Combine(current, value);
                     }
-                    while (Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
+                    while (System.Threading.Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
                 }
                 remove
                 {
-                    Interlocked.Increment(ref _saveLoadedRemoveCount);
+                    System.Threading.Interlocked.Increment(ref _saveLoadedRemoveCount);
                     EventHandler<SaveLoadedEventArgs>? current, updated;
                     do
                     {
-                        current = Volatile.Read(ref _saveLoaded);
+                        current = System.Threading.Volatile.Read(ref _saveLoaded);
                         updated = (EventHandler<SaveLoadedEventArgs>?)Delegate.Remove(current, value);
                     }
-                    while (Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
+                    while (System.Threading.Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
                 }
             }
 
@@ -305,25 +299,25 @@ namespace LivingRoots.Tests
             {
                 add
                 {
-                    Interlocked.Increment(ref _savingAddCount);
+                    System.Threading.Interlocked.Increment(ref _savingAddCount);
                     EventHandler<SavingEventArgs>? current, updated;
                     do
                     {
-                        current = Volatile.Read(ref _saving);
+                        current = System.Threading.Volatile.Read(ref _saving);
                         updated = (EventHandler<SavingEventArgs>?)Delegate.Combine(current, value);
                     }
-                    while (Interlocked.CompareExchange(ref _saving, updated, current) != current);
+                    while (System.Threading.Interlocked.CompareExchange(ref _saving, updated, current) != current);
                 }
                 remove
                 {
-                    Interlocked.Increment(ref _savingRemoveCount);
+                    System.Threading.Interlocked.Increment(ref _savingRemoveCount);
                     EventHandler<SavingEventArgs>? current, updated;
                     do
                     {
-                        current = Volatile.Read(ref _saving);
+                        current = System.Threading.Volatile.Read(ref _saving);
                         updated = (EventHandler<SavingEventArgs>?)Delegate.Remove(current, value);
                     }
-                    while (Interlocked.CompareExchange(ref _saving, updated, current) != current);
+                    while (System.Threading.Interlocked.CompareExchange(ref _saving, updated, current) != current);
                 }
             }
 

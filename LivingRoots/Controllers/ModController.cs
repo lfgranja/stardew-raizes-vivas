@@ -146,7 +146,7 @@ namespace LivingRoots.Controllers
             int currentState, newState;
             do
             {
-                currentState = Volatile.Read(ref _state);
+                currentState = System.Threading.Volatile.Read(ref _state);
                 if ((currentState & DisposedFlag) != 0)
                 {
                     monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
@@ -335,7 +335,7 @@ namespace LivingRoots.Controllers
             var gameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
             var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
             var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
-            var currentState = Volatile.Read(ref _state);
+            var currentState = System.Threading.Volatile.Read(ref _state);
             var wasRegistered = (currentState & EventsRegisteredFlag) != 0;
 
             // Check if any handlers are non-null for best-effort cleanup
@@ -440,7 +440,7 @@ namespace LivingRoots.Controllers
 
         private bool ShouldAttemptUnregister()
         {
-            if ((Volatile.Read(ref _state) & (EventsRegisteredFlag | UnregisteringFlag)) == 0)
+            if ((System.Threading.Volatile.Read(ref _state) & (EventsRegisteredFlag | UnregisteringFlag)) == 0)
             {
                 // Check if any handlers are non-null for best-effort cleanup
                 var earlyGameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
@@ -463,7 +463,7 @@ namespace LivingRoots.Controllers
             int currentState, newState;
             while (true)
             {
-                currentState = Volatile.Read(ref _state);
+                currentState = System.Threading.Volatile.Read(ref _state);
 
                 // Avoid racing a registration in progress; otherwise state can become inconsistent.
                 if ((currentState & UnregisteringFlag) != 0)
@@ -497,7 +497,7 @@ namespace LivingRoots.Controllers
             // Update event-registration flags to maintain consistent state.
             // The EventsRegisteredFlag was cleared at the start of unregistration.
             // If unregistration was incomplete, restore the flag to indicate handlers
-            // are still subscribed, preventing duplicate subscriptions.
+            // are still subscribed, preventing duplicate subscriptions
             if (IsDisposed())
             {
                 // During disposal, force-clear all lifecycle flags.
@@ -561,7 +561,11 @@ namespace LivingRoots.Controllers
             try
             {
                 // Initialize the mod with constants and settings
-                _monitor.Log($"The '{_manifest.Name}' mod was loaded successfully!", LogLevel.Info);
+                var displayName = string.IsNullOrWhiteSpace(_manifest.Name)
+                    ? (_manifest.UniqueID ?? "Living Roots")
+                    : _manifest.Name;
+
+                _monitor.Log($"The '{displayName}' mod was loaded successfully!", LogLevel.Info);
 
                 // Register the console command
                 RegisterConsoleCommand();
@@ -600,7 +604,7 @@ namespace LivingRoots.Controllers
                 // Reset the warning flag when a valid save ID is found
                 if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 0, 1) == 1)
                 {
-                    // The flag was previously set to 1 (true), so we reset it to 0 (false)
+                    // The flag was previously set to 1 (true), so we set it to 0 (false)
                     // This means the warning was previously shown and is now being reset
                 }
 
@@ -803,20 +807,17 @@ namespace LivingRoots.Controllers
 
         public void Dispose()
         {
-            // If a registration attempt was in-flight, clear its transient claim so cleanup isn't blocked.
-            System.Threading.Interlocked.And(ref _state, ~RegisteringFlag);
-
-            // Use TrySetStateFlag to ensure disposal flag is only set once
+            // First, atomically mark as disposed to prevent any new work from starting.
             if (!TrySetStateFlag(DisposedFlag))
-            {
-                // If already disposed, return to prevent duplicate disposal processing
-                return; // Already disposed
-            }
+                return;
+
+            // Now clear any in-flight transient claims so cleanup isn't blocked.
+            System.Threading.Interlocked.And(ref _state, ~RegisteringFlag);
 
             // If we reach this point, we successfully set the disposed flag and can proceed with cleanup
             _monitor.Log("Controller disposed successfully.", LogLevel.Trace);
 
-            // Unregister events to prevent memory leaks
+            // Best-effort cleanup
             UnregisterEvents();
         }
 
