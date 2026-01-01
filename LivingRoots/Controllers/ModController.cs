@@ -183,31 +183,18 @@ namespace LivingRoots.Controllers
             ctx.Monitor.Log(ctx.Exception.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
 #endif
 
-            bool rollbackFailed = false;
+            // Execute the rollback by unsubscribing the handlers that were successfully added
+            if (ctx.LocalGameLaunchedHandler != null)
+                ctx.GameLoop.GameLaunched -= ctx.LocalGameLaunchedHandler;
+            if (ctx.LocalSaveLoadedHandler != null)
+                ctx.GameLoop.SaveLoaded -= ctx.LocalSaveLoadedHandler;
+            if (ctx.LocalSavingHandler != null)
+                ctx.GameLoop.Saving -= ctx.LocalSavingHandler;
 
-            try
-            {
-                if (ctx.LocalGameLaunchedHandler != null)
-                    ctx.GameLoop.GameLaunched -= ctx.LocalGameLaunchedHandler;
-                if (ctx.LocalSaveLoadedHandler != null)
-                    ctx.GameLoop.SaveLoaded -= ctx.LocalSaveLoadedHandler;
-                if (ctx.LocalSavingHandler != null)
-                    ctx.GameLoop.Saving -= ctx.LocalSavingHandler;
-            }
-            catch
-            {
-                rollbackFailed = true;
-                ctx.Monitor.Log("Error during event subscription rollback.", LogLevel.Trace);
-            }
-
-            // Only clear handler fields if we successfully completed the rollback; otherwise keep
-            // references for best-effort cleanup during UnregisterEvents/Dispose.
-            if (!rollbackFailed)
-            {
-                Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                Interlocked.Exchange(ref _onSavingHandler, null);
-            }
+            // Clear handler references to prevent memory leaks
+            System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
+            System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
+            System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
 
             System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
         }

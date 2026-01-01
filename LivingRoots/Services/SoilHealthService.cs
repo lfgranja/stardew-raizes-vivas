@@ -491,6 +491,18 @@ namespace LivingRoots.Services
                 return; // Ignore invalid delta values.
             }
 
+            // Handle infinity delta values by converting them to appropriate clamped values
+            if (float.IsInfinity(delta))
+            {
+                // For infinity deltas, we want to set the health to the appropriate extreme value
+                // rather than adding infinity to the current value
+                float targetValue = float.IsPositiveInfinity(delta) ? ModConstants.MaxSoilHealth : ModConstants.MinSoilHealth;
+
+                // Use SetSoilHealth to set the target value directly
+                SetSoilHealth(locationName, tile, targetValue);
+                return;
+            }
+
             // Validate the tile using the validation helper
             if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
@@ -530,6 +542,12 @@ namespace LivingRoots.Services
                 case SoilHealthOperationResult.TileLimitExceeded:
                     _monitor.Log($"Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{TruncateForLogging(locationName)}'; refusing to add new tile to prevent memory growth.", LogLevel.Warn);
                     break;
+                case SoilHealthOperationResult.Success:
+                    // No-op, success doesn't need logging.
+                    break;
+                default:
+                    _monitor.Log($"Unexpected SoilHealthOperationResult: {operationResult}", LogLevel.Error);
+                    break;
             }
         }
 
@@ -559,7 +577,9 @@ namespace LivingRoots.Services
                 if (_runtimeCache.TryGetValue(locationName, out var existingTiles) && existingTiles.Remove(tilePoint))
                 {
                     if (existingTiles.Count == 0)
+                    {
                         _runtimeCache.Remove(locationName);
+                    }
                 }
                 return SoilHealthOperationResult.Success;
             }
