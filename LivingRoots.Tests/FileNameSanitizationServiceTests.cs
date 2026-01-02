@@ -1,6 +1,6 @@
 using System;
-using Moq;
 using LivingRoots.Domain;
+using Moq;
 using Xunit;
 
 namespace LivingRoots.Tests
@@ -15,12 +15,12 @@ namespace LivingRoots.Tests
         {
             _mockUnicodeNormalizationService = new Mock<IUnicodeNormalizationService>();
             _mockReservedNameHandler = new Mock<IReservedNameHandler>();
-            
+
             // Setup the ReservedNameHandler to return the input by default
             _mockReservedNameHandler
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-                
+
             _service = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object, _mockReservedNameHandler.Object);
         }
 
@@ -99,7 +99,7 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".<>"))
                 .Returns(".<>");
-    
+
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<>"));
             Assert.Contains("Filename sanitizes to an empty string.", exception.Message);
@@ -282,19 +282,19 @@ namespace LivingRoots.Tests
             // Arrange
             var mockUnicodeNormalizationService = new Mock<IUnicodeNormalizationService>();
             var mockReservedNameHandler = new Mock<IReservedNameHandler>();
-            
+
             // Setup the Unicode normalization service to return null
             mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns((string?)null);
-                
+
             // Setup the ReservedNameHandler to return the input by default
             mockReservedNameHandler
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             var service = new FileNameSanitizationService(
-                mockUnicodeNormalizationService.Object, 
+                mockUnicodeNormalizationService.Object,
                 mockReservedNameHandler.Object);
 
             // Act & Assert
@@ -302,22 +302,6 @@ namespace LivingRoots.Tests
             Assert.Contains("Normalized filename is null", exception.Message);
         }
 
-        [Fact]
-        public void Sanitize_WithBlockedExtension_RemovesDangerousExtensionInsteadOfAppendingBlocked()
-        {
-            // Arrange
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize("test.exe"))
-                .Returns("test.exe");
-
-            // Act
-            var result = _service.Sanitize("test.exe");
-
-            // Assert - The current implementation produces "test_blocked.exe" which is still dangerous
-            // The fixed implementation should produce "test.blocked" or "test_safe"
-            Assert.Equal("test.blocked", result); // This test will fail with current implementation
-        }
-        
         [Fact]
         public void Sanitize_WithMultipleBlockedExtensions_RemovesDangerousExtension()
         {
@@ -332,7 +316,7 @@ namespace LivingRoots.Tests
             // Assert - Should not keep the dangerous extension
             Assert.Equal("test.blocked", result); // This test will fail with current implementation
         }
-        
+
         [Fact]
         public void Sanitize_WithBlockedExtensionInComplexName_RemovesDangerousExtension()
         {
@@ -347,7 +331,7 @@ namespace LivingRoots.Tests
             // Assert - Should not keep the dangerous extension
             Assert.Equal("my_file.blocked", result); // This test will fail with current implementation
         }
-        
+
         [Fact]
         public void Sanitize_WithValidExtension_KeepsExtension()
         {
@@ -376,7 +360,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal("test.config-xml", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithExtensionContainingUnderscores_KeepsExtension()
         {
@@ -391,7 +375,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal("test.config_xml", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithExtensionContainingHyphensAndUnderscores_KeepsExtension()
         {
@@ -406,7 +390,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal("test.config_xml-dev", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithMultipleHyphensInExtension_KeepsExtension()
         {
@@ -421,7 +405,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal("test.config--xml", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithMultipleUnderscoresInExtension_KeepsExtension()
         {
@@ -471,7 +455,7 @@ namespace LivingRoots.Tests
             // After truncation of the name part to 240 chars, adding ".txt" would exceed max length
             // So it should be further truncated to ensure total length <= 240
             var expected = new string('a', 236) + ".txt"; // 236 + 4 = 240 chars total
-            
+
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
@@ -491,7 +475,7 @@ namespace LivingRoots.Tests
             // After truncation of the name part to 239 chars (leaving 1 char for the dot), adding ".txt" would exceed max length
             // So it should be further truncated to ensure total length <= 240
             var expected = "." + new string('a', 235) + ".txt"; // 1 + 235 + 4 = 240 chars total
-            
+
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
@@ -509,7 +493,7 @@ namespace LivingRoots.Tests
             // Arrange
             var input = "tëst.txt";
             var normalized = "test.txt";
-            
+
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(input))
                 .Returns(normalized);
@@ -533,33 +517,33 @@ namespace LivingRoots.Tests
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("..."));
             Assert.Contains("Filename sanitizes to an empty string.", exception.Message);
         }
-        
+
         [Fact]
         public void Sanitize_WithReservedNameHandlerReturningNull_ThrowsArgumentException()
         {
             // Arrange
             var mockUnicodeNormalizationService = new Mock<IUnicodeNormalizationService>();
             var mockReservedNameHandler = new Mock<IReservedNameHandler>();
-            
+
             // Setup the reserved name handler to return null
             mockReservedNameHandler
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns((string?)null);
-            
+
             var service = new FileNameSanitizationService(
-                mockUnicodeNormalizationService.Object, 
+                mockUnicodeNormalizationService.Object,
                 mockReservedNameHandler.Object);
-            
+
             // Setup Unicode normalization to return the input
             mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(input => input);
-            
+
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => service.Sanitize("test.txt"));
             Assert.Contains("Filename sanitizes to an empty string.", exception.Message);
         }
-        
+
         [Fact]
         public void Sanitize_WithLongFilenameAndExtension_EnforcesMaxLengthAfterAddingExtension()
         {
@@ -567,21 +551,21 @@ namespace LivingRoots.Tests
             var baseName = new string('a', 240); // This is at the max length limit
             var extension = ".txt";
             var longFilename = baseName + extension; // This exceeds the limit when extension is added back
-            
+
             // Setup the mock to return the input unchanged for normalization
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Act
             var result = _service.Sanitize(longFilename);
-            
+
             // Assert: The result should be truncated to fit within MaxFileNameLength
             Assert.NotNull(result);
             Assert.True(result.Length <= 240);
             Assert.EndsWith(".txt", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithLongHiddenFilenameAndExtension_EnforcesMaxLengthAfterAddingExtension()
         {
@@ -589,22 +573,22 @@ namespace LivingRoots.Tests
             var hiddenBase = "." + new string('a', 239); // Max length - 1 for the dot
             var extension = ".txt";
             var longHiddenFilename = hiddenBase + extension; // This exceeds the limit when extension is added back
-            
+
             // Setup the mock to return the input unchanged for normalization
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Act
             var result = _service.Sanitize(longHiddenFilename);
-            
+
             // Assert: The result should be truncated to fit within MaxFileNameLength
             Assert.NotNull(result);
             Assert.True(result.Length <= 240);
             Assert.StartsWith(".", result);
             Assert.EndsWith(".txt", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithLongFilenameThatExceedsMaxLengthAfterAddingExtension_EnforcesMaxLength()
         {
@@ -614,21 +598,21 @@ namespace LivingRoots.Tests
             var baseName = new string('a', 238); // 238 chars
             var extension = ".exe"; // 4 chars, will be replaced with ".blocked"
             var longFilename = baseName + extension; // 238 + 4 = 242 chars total, which exceeds max
-            
+
             // Setup the mock to return the input unchanged for normalization
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Act
             var result = _service.Sanitize(longFilename);
-            
+
             // Assert: The result should be truncated to fit within MaxFileNameLength
             Assert.NotNull(result);
             Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
             Assert.EndsWith(".blocked", result); // Dangerous extension should be replaced
         }
-        
+
         [Fact]
         public void Sanitize_WithMaxFilenameLengthThatBecomesTooLongAfterExtensionHandling_EnforcesMaxLength()
         {
@@ -637,21 +621,21 @@ namespace LivingRoots.Tests
             var baseName = new string('a', 236); // 236 chars + ".txt" (4 chars) = 240 chars (at the limit)
             var extension = ".txt";
             var longFilename = baseName + "..." + extension; // Add trailing dots that will be trimmed, then extension added back
-            
+
             // Setup the mock to return the input unchanged for normalization
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Act
             var result = _service.Sanitize(longFilename);
-            
+
             // Assert: The result should be truncated to fit within MaxFileNameLength
             Assert.NotNull(result);
             Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
             Assert.EndsWith(".txt", result); // Extension should be preserved
         }
-        
+
         [Fact]
         public void Sanitize_WithLongFilenameAndExtensionThatRequiresPostExtensionTruncation_DoesNotLeaveTrailingChars()
         {
@@ -660,25 +644,25 @@ namespace LivingRoots.Tests
             var baseName = new string('a', 237) + "   "; // 237 + 3 = 240 chars, then add extension
             var extension = ".txt";
             var longFilename = baseName + extension; // This will exceed the limit when extension is added back after processing
-            
+
             // Setup the mock to return the input unchanged for normalization
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Act
             var result = _service.Sanitize(longFilename);
-            
+
             // Assert: The result should be truncated to fit within MaxFileNameLength and not have trailing spaces/dots
             Assert.NotNull(result);
             Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
             Assert.EndsWith(".txt", result); // Extension should be preserved
             // Should not end with spaces, dots or underscores after extension
-            Assert.False(result.EndsWith(" "), "Result should not end with spaces");
-            Assert.False(result.EndsWith("."), "Result should not end with dots unless part of extension");
-            Assert.False(result.EndsWith("_"), "Result should not end with underscores");
+            Assert.False(result.EndsWith(' '), "Result should not end with spaces");
+            Assert.False(result.EndsWith('.'), "Result should not end with dots unless part of extension");
+            Assert.False(result.EndsWith('_'), "Result should not end with underscores");
         }
-        
+
         [Fact]
         public void Sanitize_WithExtensionAddedAfterTruncation_DoesFinalCleanup()
         {
@@ -688,15 +672,15 @@ namespace LivingRoots.Tests
             var baseName = new string('a', 238) + ".."; // This will become 240 chars + extension exceeds limit
             var extension = ".txt";
             var longFilename = baseName + extension; // Total exceeds MaxFileNameLength
-            
+
             // Setup the mock to return the input unchanged for normalization
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Act
             var result = _service.Sanitize(longFilename);
-            
+
             // Assert: The result should not end with trailing dots (other than in extension)
             Assert.NotNull(result);
             Assert.True(result.Length <= 240, $"Result length {result.Length} exceeds MaxFileNameLength of 240");
@@ -705,10 +689,10 @@ namespace LivingRoots.Tests
             if (result.Length > 4) // If result is longer than just the extension
             {
                 var withoutExtension = result.Substring(0, result.Length - 4); // Remove .txt
-                Assert.False(withoutExtension.EndsWith("."), "Should not end with dots after truncation");
+                Assert.False(withoutExtension.EndsWith('.'), "Should not end with dots after truncation");
             }
         }
-        
+
         [Fact]
         public void Sanitize_WithDotfileWithoutExtension_DoesNotTreatAsHavingExtension()
         {
@@ -723,7 +707,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal(".profile", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithDotfileWithFakeExtension_DoesNotTreatAsHavingExtension()
         {
@@ -740,48 +724,18 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Sanitize_WithHiddenFileStartingWithDotAndValidContent_PreservesHiddenFileStatus()
-        {
-            // Arrange
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize(".hidden_file.txt"))
-                .Returns(".hidden_file.txt");
-
-            // Act
-            var result = _service.Sanitize(".hidden_file.txt");
-
-            // Assert
-            Assert.Equal(".hidden_file.txt", result);
-        }
-        
-        [Fact]
-        public void Sanitize_WithHiddenFileStartingWithDotAndInvalidChars_BecomesHiddenFileWithValidContent()
-        {
-            // Arrange
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize(".<hidden_file.txt"))
-                .Returns(".<hidden_file.txt");
-
-            // Act
-            var result = _service.Sanitize(".<hidden_file.txt");
-
-            // Assert
-            Assert.Equal(".hidden_file.txt", result);
-        }
-        
-        [Fact]
         public void Sanitize_WithHiddenFileStartingWithDotFollowedByOnlyInvalidChars_ThrowsArgumentException()
         {
             // Arrange
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".<>"))
                 .Returns(".<>");
-    
+
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<>"));
             Assert.Contains("Filename sanitizes to an empty string", exception.Message);
         }
-        
+
         [Fact]
         public void Sanitize_WithHiddenFileStartingWithDotFollowedBySpacesAndInvalidChars_ThrowsArgumentException()
         {
@@ -794,7 +748,7 @@ namespace LivingRoots.Tests
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".   <>"));
             Assert.Contains("Filename sanitizes to an empty string", exception.Message);
         }
-        
+
         [Fact]
         public void Sanitize_WithHiddenFileStartingWithDotFollowedByMeaningfulContentAfterSanitization_PreservesHiddenFile()
         {
@@ -809,7 +763,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal(".file_name.txt", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithHiddenFileStartingWithDotAndSanitizesToOnlyDots_ThrowsArgumentException()
         {
@@ -822,7 +776,7 @@ namespace LivingRoots.Tests
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<...>"));
             Assert.Contains("Filename sanitizes to an empty string", exception.Message);
         }
-        
+
         [Fact]
         public void Sanitize_WithHiddenFileStartingWithDotAndSanitizesToOnlyUnderscores_ThrowsArgumentException()
         {
@@ -835,7 +789,7 @@ namespace LivingRoots.Tests
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<___>"));
             Assert.Contains("Filename sanitizes to an empty string", exception.Message);
         }
-        
+
         [Fact]
         public void Sanitize_WithHiddenFileStartingWithDotAndSanitizesToMeaningfulContent_PreservesHiddenFile()
         {
@@ -843,14 +797,14 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".valid_name.txt"))
                 .Returns(".valid_name.txt");
-            
+
             // Act
             var result = _service.Sanitize(".valid_name.txt");
-        
+
             // Assert
             Assert.Equal(".valid_name.txt", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithBlockedExtensionThatResultsInInvalidBase_ReturnsSafeFilename()
         {
@@ -858,14 +812,14 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".exe"))
                 .Returns(".exe");
-        
+
             // Act
             var result = _service.Sanitize(".exe");
-        
+
             // Assert - With the fix, ".exe" should be handled safely and return a safe filename
             Assert.Equal(".file.blocked", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithBlockedExtensionThatResultsInEmptyBase_ThrowsArgumentException()
         {
@@ -873,14 +827,14 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize("..exe"))
                 .Returns("..exe");
-        
+
             // Act & Assert
             // For "..exe", the name part ".." gets sanitized to "." and then to empty,
             // so the exception occurs at the name processing level, not after extension blocking
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("..exe"));
             Assert.Contains("Filename sanitizes to an empty string", exception.Message);
         }
-        
+
         [Fact]
         public void Sanitize_WithMinimalHiddenFilename_ReturnsValidResult()
         {
@@ -889,14 +843,14 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".a"))
                 .Returns(".a");
-        
+
             // Act
             var result = _service.Sanitize(".a");
-        
+
             // Assert
             Assert.Equal(".a", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithMinimalNonHiddenFilename_ReturnsValidResult()
         {
@@ -905,14 +859,14 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize("a"))
                 .Returns("a");
-        
+
             // Act
             var result = _service.Sanitize("a");
-        
+
             // Assert
             Assert.Equal("a", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithMinimalHiddenFilenameWithBlockedExtension_ReturnsSafeResult()
         {
@@ -921,14 +875,14 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(".js"))
                 .Returns(".js");
-        
+
             // Act
             var result = _service.Sanitize(".js");
-        
+
             // Assert
             Assert.Equal(".file.blocked", result);
         }
-        
+
         [Fact]
         public void Sanitize_WithMinimalNonHiddenFilenameWithBlockedExtension_ReturnsSafeResult()
         {
@@ -937,14 +891,14 @@ namespace LivingRoots.Tests
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize("x.exe"))
                 .Returns("x.exe");
-        
+
             // Act
             var result = _service.Sanitize("x.exe");
-        
+
             // Assert
             Assert.Equal("x.blocked", result);
         }
-        
+
         #region SafeSubstring Tests
         [Fact]
         public void SafeSubstring_WithNullString_ReturnsEmptyString()
@@ -952,17 +906,17 @@ namespace LivingRoots.Tests
             // Arrange
             var method = typeof(FileNameSanitizationService)
                 .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
+
             // Assert that the method was found
             Assert.NotNull(method);
-            
+
             // Act
             var result = method.Invoke(null, new object?[] { null, 0, 5 }) as string;
 
             // Assert
             Assert.Equal(string.Empty, result);
         }
-        
+
         [Fact]
         public void SafeSubstring_WithNegativeStartIndex_NormalizesToZero()
         {
@@ -970,17 +924,17 @@ namespace LivingRoots.Tests
             var testString = "Hello World";
             var method = typeof(FileNameSanitizationService)
                 .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
+
             // Assert that the method was found
             Assert.NotNull(method);
-            
+
             // Act
             var result = method.Invoke(null, new object[] { testString, -1, 5 }) as string;
 
             // Assert
             Assert.Equal("Hello", result);
         }
-        
+
         [Fact]
         public void SafeSubstring_WithZeroLength_ReturnsEmptyString()
         {
@@ -988,17 +942,17 @@ namespace LivingRoots.Tests
             var testString = "Hello World";
             var method = typeof(FileNameSanitizationService)
                 .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
+
             // Assert that the method was found
             Assert.NotNull(method);
-            
+
             // Act
             var result = method.Invoke(null, new object[] { testString, 0, 0 }) as string;
 
             // Assert
             Assert.Equal(string.Empty, result);
         }
-        
+
         [Fact]
         public void SafeSubstring_WithNegativeLength_ReturnsEmptyString()
         {
@@ -1006,17 +960,17 @@ namespace LivingRoots.Tests
             var testString = "Hello World";
             var method = typeof(FileNameSanitizationService)
                 .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
+
             // Assert that the method was found
             Assert.NotNull(method);
-            
+
             // Act
             var result = method.Invoke(null, new object[] { testString, 0, -5 }) as string;
 
             // Assert
             Assert.Equal(string.Empty, result);
         }
-        
+
         [Fact]
         public void SafeSubstring_WithStartIndexBeyondStringLength_ReturnsEmptyString()
         {
@@ -1024,17 +978,17 @@ namespace LivingRoots.Tests
             var testString = "Hello";
             var method = typeof(FileNameSanitizationService)
                 .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
+
             // Assert that the method was found
             Assert.NotNull(method);
-            
+
             // Act
             var result = method.Invoke(null, new object[] { testString, 10, 5 }) as string;
 
             // Assert
             Assert.Equal(string.Empty, result);
         }
-        
+
         [Fact]
         public void SafeSubstring_WithStartIndexAtStringLength_ReturnsEmptyString()
         {
@@ -1042,17 +996,17 @@ namespace LivingRoots.Tests
             var testString = "Hello";
             var method = typeof(FileNameSanitizationService)
                 .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
+
             // Assert that the method was found
             Assert.NotNull(method);
-            
+
             // Act
             var result = method.Invoke(null, new object[] { testString, 5, 5 }) as string;
 
             // Assert
             Assert.Equal(string.Empty, result);
         }
-        
+
         [Fact]
         public void SafeSubstring_WithSurrogatePairAtBoundary_DoesNotSplitPair()
         {
@@ -1061,17 +1015,17 @@ namespace LivingRoots.Tests
             var testString = "Hello" + "\uD83D\uDE00" + "World"; // "Hello😀World"
             var method = typeof(FileNameSanitizationService)
                 .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
+
             // Assert that the method was found
             Assert.NotNull(method);
-            
+
             // Act: Try to truncate at the position where it would split the surrogate pair
             var result = method.Invoke(null, new object[] { testString, 0, 6 }) as string; // Should avoid splitting the emoji
 
             // Assert: The result should not split the surrogate pair
             Assert.Equal("Hello", result); // Should return only up to the boundary without splitting
         }
-        
+
         [Fact]
         public void SafeSubstring_WithSurrogatePair_DoesNotSplitWhenPossible()
         {
@@ -1079,17 +1033,17 @@ namespace LivingRoots.Tests
             var testString = "Test" + "\uD83D\uDE00" + "End"; // "Test😀End"
             var method = typeof(FileNameSanitizationService)
                 .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
+
             // Assert that the method was found
             Assert.NotNull(method);
-            
+
             // Act: Extract a substring that would include the surrogate pair
             var result = method.Invoke(null, new object[] { testString, 0, 10 }) as string;
 
             // Assert: Should include the full surrogate pair if possible
             Assert.Equal("Test😀End", result);
         }
-        
+
         [Fact]
         public void SafeSubstring_WithValidParameters_WorksCorrectly()
         {
@@ -1097,17 +1051,17 @@ namespace LivingRoots.Tests
             var testString = "Hello World";
             var method = typeof(FileNameSanitizationService)
                 .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
+
             // Assert that the method was found
             Assert.NotNull(method);
-            
+
             // Act
             var result = method.Invoke(null, new object[] { testString, 0, 5 }) as string;
 
             // Assert
             Assert.Equal("Hello", result);
         }
-        
+
         [Fact]
         public void SafeSubstring_WithStartIndexAndLength_WorksCorrectly()
         {
@@ -1115,17 +1069,17 @@ namespace LivingRoots.Tests
             var testString = "Hello World";
             var method = typeof(FileNameSanitizationService)
                 .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
+
             // Assert that the method was found
             Assert.NotNull(method);
-            
+
             // Act
             var result = method.Invoke(null, new object[] { testString, 6, 5 }) as string;
 
             // Assert
             Assert.Equal("World", result);
         }
-        
+
         [Fact]
         public void SafeSubstring_WithLengthExceedingStringBounds_DoesNotThrow()
         {
@@ -1133,10 +1087,10 @@ namespace LivingRoots.Tests
             var testString = "Hi";
             var method = typeof(FileNameSanitizationService)
                 .GetMethod("SafeSubstring", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-            
+
             // Assert that the method was found
             Assert.NotNull(method);
-            
+
             // Act
             var result = method.Invoke(null, new object[] { testString, 0, 10 }) as string;
 
