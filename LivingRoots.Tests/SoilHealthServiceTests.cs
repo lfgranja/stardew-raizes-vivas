@@ -569,9 +569,9 @@ namespace LivingRoots.Tests
             _mockDataService.Verify(x => x.SaveData(It.Is<SoilHealthState>(state =>
                 state.LocationHealthData.ContainsKey("Farm") &&
                 state.LocationHealthData["Farm"].ContainsKey("10,10") &&
-                state.LocationHealthData["Farm"]["10,10"] == 75.5f &&
+                Math.Abs(state.LocationHealthData["Farm"]["10,10"] - 75.5f) < 0.0001f &&
                 state.LocationHealthData["Farm"].ContainsKey("15,20") &&
-                state.LocationHealthData["Farm"]["15,20"] == 25.5f
+                Math.Abs(state.LocationHealthData["Farm"]["15,20"] - 25.5f) < 0.0001f
             ), "soil_health_data_test_save"), Times.Once);
         }
 
@@ -669,9 +669,6 @@ namespace LivingRoots.Tests
         public void SaveData_WithNullLocationName_DoesNotSaveInvalidEntries()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            var tile = new Vector2(10, 10);
-
             // We need to test the save logic with invalid location names
             // We'll create a scenario where the internal cache has invalid entries
             // but the public API prevents this, so we'll test validation directly
@@ -808,6 +805,8 @@ namespace LivingRoots.Tests
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
             // Fixed: Capture the loop variable in a local variable before creating the task
             using var startGate = new System.Threading.ManualResetEventSlim(false);
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
+
             var tasks = new List<Task>();
             for (int i = 0; i < 10; i++)
             {
@@ -816,8 +815,7 @@ namespace LivingRoots.Tests
                 {
                     try
                     {
-                        if (!startGate.Wait(TimeSpan.FromSeconds(5)))
-                            throw new TimeoutException("Start gate timed out.");
+                        startGate.Wait(cts.Token);
 
                         for (int j = 0; j < 100; j++)
                         {
@@ -836,12 +834,12 @@ namespace LivingRoots.Tests
                             exceptions.Add(ex);
                         }
                     }
-                });
+                }, cts.Token);
                 tasks.Add(task);
             }
 
             startGate.Set();
-            await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(30));
+            await Task.WhenAll(tasks);
 
             // Assert - No exceptions should be thrown due to race conditions
             // Verify that events were registered only once despite multiple concurrent calls
@@ -864,6 +862,8 @@ namespace LivingRoots.Tests
 
             // Act - Multiple threads accessing the service simultaneously
             using var startGate = new System.Threading.ManualResetEventSlim(false);
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
+
             var tasks = new List<Task>();
             for (int i = 0; i < 3; i++) // Use fewer threads to make overlapping easier to detect
             {
@@ -871,12 +871,11 @@ namespace LivingRoots.Tests
                 {
                     try
                     {
-                        if (!startGate.Wait(TimeSpan.FromSeconds(5)))
-                            throw new TimeoutException("Start gate timed out.");
+                        startGate.Wait(cts.Token);
 
-                        for (int j = 0; j < 10; j++) // Use fewer operations to make overlapping easier to detect
+                        for (int j = 0; j < 200; j++) // More ops to exercise resizing + multi-row overlap
                         {
-                            var tile = new Vector2(j % 10, j / 10); // This creates overlapping tile ranges across threads
+                            var tile = new Vector2(j % 10, (j / 10) % 10); // Overlap across threads, spans multiple rows
 
                             // Record the tile being accessed
                             lock (tilesLock)
@@ -896,12 +895,12 @@ namespace LivingRoots.Tests
                             exceptions.Add(ex);
                         }
                     }
-                });
+                }, cts.Token);
                 tasks.Add(task);
             }
 
             startGate.Set();
-            await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(30));
+            await Task.WhenAll(tasks);
 
             // Assert - Verify that overlapping tile ranges were used
             Assert.Empty(exceptions);
@@ -945,54 +944,81 @@ namespace LivingRoots.Tests
             }
         }
 
-        [Fact]
-        public async Task ThreadSafety_WithDisjointTileRanges_DoesNotThrow()
+        private static void VerifyNoTileOverlaps(List<(int workerId, List<Vector2> tiles)> workerTiles)
         {
-            // This is a new test to verify that each worker operates on disjoint tile ranges
-            // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            var exceptions = new List<Exception>();
-            var lockObj = new object();
-
-            // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
-            using var startGate = new System.Threading.ManualResetEventSlim(false);
-            var tasks = new List<Task>();
-            for (int i = 0; i < 10; i++)
+            var seen = new HashSet<Point>();
+            foreach (var (_, tiles) in workerTiles)
             {
-                var workerId = i; // Capture per-iteration value to avoid closure issues
-                var task = Task.Run(() =>
+                foreach (var tile in tiles)
                 {
-                    try
-                    {
-                        if (!startGate.Wait(TimeSpan.FromSeconds(5)))
-                            throw new TimeoutException("Start gate timed out.");
-
-                        for (int j = 0; j < 100; j++)
-                        {
-                            int x = (workerId * 100) + j;  // Changed from (workerId * 10) + j to (workerId * 100) + j for truly disjoint ranges
-                            int y = workerId;
-                            var tile = new Vector2(x, y);
-                            service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,100] range
-                            service.GetSoilHealth("Farm", tile);
-                            service.UpdateHealth("Farm", tile, 1.0f);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        lock (lockObj)
-                        {
-                            exceptions.Add(ex);
-                        }
-                    }
-                });
-                tasks.Add(task);
+                    var p = new Point((int)tile.X, (int)tile.Y);
+                    Assert.True(seen.Add(p), $"Tile overlap detected: {p}");
+                }
             }
+        }
 
-            startGate.Set();
-            await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(30));
+        private static void VerifyWorkerTileDisjointness(List<(int workerId, List<Vector2> tiles)> workerTiles)
+        {
+            for (int i = 0; i < workerTiles.Count; i++)
+            {
+                for (int j = i + 1; j < workerTiles.Count; j++)
+                {
+                    var tilesI = workerTiles[i].tiles;
+                    var tilesJ = workerTiles[j].tiles;
 
-            // Assert - No exceptions should have occurred due to race conditions
-            Assert.Empty(exceptions);
+                    foreach (var tileI in tilesI)
+                    {
+                        foreach (var tileJ in tilesJ)
+                        {
+                            Assert.NotEqual(tileI, tileJ);
+                        }
+                    }
+                }
+            }
+        }
+
+        private static Task CreateWorkerTask(SoilHealthService service, int workerId,
+            System.Threading.ManualResetEventSlim startGate,
+            System.Threading.CancellationToken token,
+            object lockObj,
+            List<Exception> exceptions,
+            List<(int workerId, List<Vector2> tiles)> workerTiles)
+        {
+            return Task.Run(() =>
+            {
+                var workerTileList = new List<Vector2>();
+
+                try
+                {
+                    startGate.Wait(token);
+
+                    for (int j = 0; j < 10; j++)
+                    {
+                        int x = (workerId * 100) + j;
+                        int y = workerId;
+                        var tile = new Vector2(x, y);
+                        workerTileList.Add(tile);
+
+                        service.SetSoilHealth("Farm", tile, workerId * 10.0f);
+                        service.GetSoilHealth("Farm", tile);
+                        service.UpdateHealth("Farm", tile, 1.0f);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lock (lockObj)
+                    {
+                        exceptions.Add(ex);
+                    }
+                }
+                finally
+                {
+                    lock (lockObj)
+                    {
+                        workerTiles.Add((workerId, workerTileList));
+                    }
+                }
+            }, token);
         }
 
         [Fact]
@@ -1007,86 +1033,24 @@ namespace LivingRoots.Tests
 
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
             using var startGate = new System.Threading.ManualResetEventSlim(false);
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
+
             var tasks = new List<Task>();
-            for (int i = 0; i < 5; i++) // Using 5 workers to make verification easier
+            for (int i = 0; i < 5; i++)
             {
-                var workerId = i;
-
-                tasks.Add(Task.Run(() =>
-                {
-                    var workerTileList = new List<Vector2>();
-
-                    try
-                    {
-                        if (!startGate.Wait(TimeSpan.FromSeconds(5)))
-                            throw new TimeoutException("Start gate timed out.");
-
-                        for (int j = 0; j < 10; j++) // Only 10 operations per worker for easier verification
-                        {
-
-                            int x = (workerId * 100) + j;
-                            int y = workerId;
-                            var tile = new Vector2(x, y);
-                            workerTileList.Add(tile);
-
-                            service.SetSoilHealth("Farm", tile, workerId * 10.0f); // Set value based on workerId
-                            service.GetSoilHealth("Farm", tile);
-                            service.UpdateHealth("Farm", tile, 1.0f);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        lock (lockObj)
-                        {
-                            exceptions.Add(ex);
-                        }
-                    }
-                    finally
-                    {
-                        lock (lockObj)
-                        {
-                            workerTiles.Add((workerId, workerTileList));
-                        }
-                    }
-                }));
+                tasks.Add(CreateWorkerTask(service, i, startGate, cts.Token, lockObj, exceptions, workerTiles));
             }
 
             startGate.Set();
-            await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(30));
+            await Task.WhenAll(tasks);
 
             // Assert - No exceptions should have occurred
             Assert.Empty(exceptions);
 
             // Verify that each worker operated on disjoint tile ranges
-            Assert.Empty(exceptions);
             Assert.Equal(5, workerTiles.Count);
-            var seen = new HashSet<Point>();
-            foreach (var (_, tiles) in workerTiles)
-            {
-                foreach (var tile in tiles)
-                {
-                    var p = new Point((int)tile.X, (int)tile.Y);
-                    Assert.True(seen.Add(p), $"Tile overlap detected: {p}");
-                }
-            }
-
-            for (int i = 0; i < workerTiles.Count; i++)
-            {
-                for (int j = i + 1; j < workerTiles.Count; j++)
-                {
-                    var tilesI = workerTiles[i].tiles;
-                    var tilesJ = workerTiles[j].tiles;
-
-                    // Check that no tiles overlap between workers
-                    foreach (var tileI in tilesI)
-                    {
-                        foreach (var tileJ in tilesJ)
-                        {
-                            Assert.NotEqual(tileI, tileJ);
-                        }
-                    }
-                }
-            }
+            VerifyNoTileOverlaps(workerTiles);
+            VerifyWorkerTileDisjointness(workerTiles);
         }
 
         [Fact]
@@ -1224,7 +1188,8 @@ namespace LivingRoots.Tests
             int loadedEntriesCount = 0;
             for (int i = 0; i < totalEntries; i++)
             {
-                if (service.GetSoilHealth("Farm", new Vector2(i, 0)) != 0.0f)
+                var healthValue = service.GetSoilHealth("Farm", new Vector2(i, 0));
+                if (Math.Abs(healthValue - 0.0f) > 0.0001f)
                 {
                     loadedEntriesCount++;
                 }
@@ -1341,30 +1306,38 @@ namespace LivingRoots.Tests
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
-            // Use reflection to directly add an empty string location key to the runtime cache
-            // This test now uses the public API to validate that empty string locations are handled correctly
+            var corruptedState = new SoilHealthState
+            {
+                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
+                {
+                    [""] = new Dictionary<string, float> { ["1,1"] = 25.5f },
+                    ["Farm"] = new Dictionary<string, float> { ["10,10"] = 75.5f }
+                }
+            };
+
             _mockFileNameSanitizationService
                 .Setup(x => x.Sanitize("test_save"))
                 .Returns("test_save");
 
-            // Capture the saved state to verify what was actually saved
+            _mockDataService
+                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
+                .Returns(corruptedState);
+
+            service.LoadData("test_save");
+
             SoilHealthState capturedSaveState = null!;
             _mockDataService
                 .Setup(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()))
-                .Callback<SoilHealthState, string>((state, key) =>
-                {
-                    capturedSaveState = state;
-                });
+                .Callback<SoilHealthState, string>((state, _) => capturedSaveState = state);
 
-            // Act - SaveData should not crash and should skip the empty string location key
+            // Act
             var ex = Record.Exception(() => service.SaveData("test_save"));
 
-            // Assert - Should not throw an exception
+            // Assert
             Assert.Null(ex);
-
-            // Verify that only the valid location was saved
             Assert.NotNull(capturedSaveState);
             Assert.False(capturedSaveState.LocationHealthData.ContainsKey(""));
+            Assert.True(capturedSaveState.LocationHealthData.ContainsKey("Farm"));
         }
 
         [Fact]
