@@ -17,7 +17,7 @@ namespace LivingRoots.Services
         private readonly Dictionary<string, Dictionary<Point, float>> _runtimeCache = new();
 
         // Lock object for thread safety
-        private readonly object _lock = new object();
+        private readonly object _lock = new();
 
         public void LoadData(string saveId)
         {
@@ -138,7 +138,11 @@ namespace LivingRoots.Services
                     }
                     else if (!processResult.IsSuccess)
                     {
-                        // If processing failed due to DoS protection, return early
+                        // If processing failed due to DoS protection, ensure we don't keep any stale state.
+                        lock (_lock)
+                        {
+                            _runtimeCache.Clear();
+                        }
                         return;
                     }
                 }
@@ -186,67 +190,113 @@ namespace LivingRoots.Services
                 // Increment tile counter for ALL entries (even if they end up being invalid/skipped)
                 tileCount++;
 
-                // CRITICAL DOS PROTECTION: Check if we've exceeded the tile limit for this location
-                // When per-location tile limit is exceeded, we must abort the entire load operation
-                // to prevent data loss and maintain cache consistency. This prevents partial loading
-                // which could result in inconsistent state where some data is loaded while other data is lost.
-                if (tileCount > ModConstants.MaxTilesPerLocation)
+                // Check DoS protection limits and abort if exceeded
+                if (CheckDosProtectionLimits(locationEntry.Key, tileCount, ref totalTileEntriesProcessed))
                 {
-                    _monitor.Log(
-                        $"LoadData aborted: Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{TruncateForLogging(locationEntry.Key)}'. Cache cleared to prevent inconsistent state.",
-                        LogLevel.Alert);
-
-                    lock (_lock)
-                    {
-                        _runtimeCache.Clear();
-                    }
-                    return ProcessLocationResult.Failure(); // Abort entire operation to maintain data consistency
-                }
-
-                // GLOBAL DOS PROTECTION: Increment total tile entries across all locations
-                totalTileEntriesProcessed++;
-                if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
-                {
-                    _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) exceeded; stopping load to prevent DoS.", LogLevel.Warn);
-                    lock (_lock)
-                    {
-                        _runtimeCache.Clear();
-                    }
                     return ProcessLocationResult.Failure();
                 }
 
                 // Process tile entry using the helper method
                 var processingResult = ProcessTileEntry(tileEntry);
 
-                // Handle valid tile entries
-                if (processingResult.IsSuccess &&
-                    processingResult.TilePoint.HasValue &&
-                    processingResult.HealthValue.HasValue &&
-                    Math.Abs(processingResult.HealthValue.Value) > 0.0001f) // Using epsilon comparison for floating point
-                {
-                    tileDict[processingResult.TilePoint.Value] = processingResult.HealthValue.Value;
-                }
-                // Handle invalid values with logging
-                else if (processingResult.Status == TileValidationStatus.InvalidValue && !warnedForInvalidValue)
-                {
-                    // Only warn once per location for invalid values to prevent log spam
-                    var truncatedLocationName = TruncateForLogging(locationEntry.Key);
-                    _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [{ModConstants.MinSoilHealth}, {ModConstants.MaxSoilHealth}].", LogLevel.Warn);
-                    warnedForInvalidValue = true;
-                }
-                // Handle malformed keys or extreme coordinates with logging
-                else if ((processingResult.Status == TileValidationStatus.MalformedKey ||
-                          processingResult.Status == TileValidationStatus.ExtremeCoordinates) &&
-                         !warnedForMalformedKey)
-                {
-                    // Only warn once per location for malformed keys to prevent log spam
-                    var truncatedLocationName = TruncateForLogging(locationEntry.Key);
-                    _monitor.Log($"Malformed tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
-                    warnedForMalformedKey = true;
-                }
+                // Handle warnings for invalid values
+                warnedForInvalidValue = LogInvalidValueWarningIfNeeded(processingResult, locationEntry.Key, warnedForInvalidValue);
+
+                // Add valid tiles to dictionary and log warnings for malformed keys
+                warnedForMalformedKey = AddTileEntryAndLogWarnings(tileDict, processingResult, locationEntry.Key, warnedForMalformedKey);
             }
 
             return ProcessLocationResult.SuccessWithTiles(tileDict);
+        }
+
+        /// <summary>
+        /// Checks DoS protection limits for tile entries and aborts if limits are exceeded.
+        /// </summary>
+        /// <param name="locationName">The location name for logging</param>
+        /// <param name="tileCount">Current tile count for this location</param>
+        /// <param name="totalTileEntriesProcessed">Reference to total tile entries processed across all locations</param>
+        /// <returns>True if limits were exceeded and operation should abort, false otherwise</returns>
+        private bool CheckDosProtectionLimits(string locationName, int tileCount, ref int totalTileEntriesProcessed)
+        {
+            // CRITICAL DOS PROTECTION: Check if we've exceeded the tile limit for this location
+            // When per-location tile limit is exceeded, we must abort the entire load operation
+            // to prevent data loss and maintain cache consistency. This prevents partial loading
+            // which could result in inconsistent state where some data is loaded while other data is lost.
+            if (tileCount > ModConstants.MaxTilesPerLocation)
+            {
+                _monitor.Log(
+                    $"LoadData aborted: Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{TruncateForLogging(locationName)}'. Cache cleared to prevent inconsistent state.",
+                    LogLevel.Alert);
+
+                lock (_lock)
+                {
+                    _runtimeCache.Clear();
+                }
+                return true; // Abort entire operation to maintain data consistency
+            }
+
+            // GLOBAL DOS PROTECTION: Increment total tile entries across all locations
+            totalTileEntriesProcessed++;
+            if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
+            {
+                _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) exceeded; stopping load to prevent DoS.", LogLevel.Warn);
+                lock (_lock)
+                {
+                    _runtimeCache.Clear();
+                }
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Logs a warning for invalid health values if not already warned for this location.
+        /// </summary>
+        /// <param name="processingResult">The tile processing result</param>
+        /// <param name="locationName">The location name for logging</param>
+        /// <param name="alreadyWarned">Whether a warning has already been logged for this location</param>
+        /// <returns>Updated warning status</returns>
+        private bool LogInvalidValueWarningIfNeeded(TileProcessingResult processingResult, string locationName, bool alreadyWarned)
+        {
+            if (processingResult.Status == TileValidationStatus.InvalidValue && !alreadyWarned)
+            {
+                var truncatedLocationName = TruncateForLogging(locationName);
+                _monitor.Log($"Invalid health value found in save data for location '{truncatedLocationName}'; clamping to valid range [{ModConstants.MinSoilHealth}, {ModConstants.MaxSoilHealth}].", LogLevel.Warn);
+                return true;
+            }
+            return alreadyWarned;
+        }
+
+        /// <summary>
+        /// Adds valid tile entries to the dictionary and logs warnings for malformed keys.
+        /// </summary>
+        /// <param name="tileDict">The tile dictionary to populate</param>
+        /// <param name="processingResult">The tile processing result</param>
+        /// <param name="locationName">The location name for logging</param>
+        /// <param name="alreadyWarned">Whether a warning has already been logged for this location</param>
+        /// <returns>Updated warning status</returns>
+        private bool AddTileEntryAndLogWarnings(Dictionary<Point, float> tileDict, TileProcessingResult processingResult, string locationName, bool alreadyWarned)
+        {
+            // Handle valid tile entries
+            if (processingResult.IsSuccess &&
+                processingResult.TilePoint.HasValue &&
+                processingResult.HealthValue.HasValue &&
+                Math.Abs(processingResult.HealthValue.Value) > 0.0001f) // Using epsilon comparison for floating point
+            {
+                tileDict[processingResult.TilePoint.Value] = processingResult.HealthValue.Value;
+            }
+            // Handle malformed keys or extreme coordinates with logging
+            else if ((processingResult.Status == TileValidationStatus.MalformedKey ||
+                      processingResult.Status == TileValidationStatus.ExtremeCoordinates) &&
+                     !alreadyWarned)
+            {
+                // Only warn once per location for malformed keys to prevent log spam
+                var truncatedLocationName = TruncateForLogging(locationName);
+                _monitor.Log($"Malformed tile key found in save data for location '{truncatedLocationName}'; skipping entry.", LogLevel.Warn);
+                return true;
+            }
+            return alreadyWarned;
         }
 
         /// <summary>
