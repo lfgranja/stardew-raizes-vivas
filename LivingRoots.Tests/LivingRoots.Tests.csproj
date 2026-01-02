@@ -12,6 +12,7 @@
     <BundleExtraAssemblies>All</BundleExtraAssemblies>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <SuppressTfmSupportBuildErrors>true</SuppressTfmSupportBuildErrors>
+    <RollForward>Major</RollForward>
   </PropertyGroup>
 
   <PropertyGroup>
