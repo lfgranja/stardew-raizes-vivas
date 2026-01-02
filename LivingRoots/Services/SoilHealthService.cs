@@ -484,18 +484,6 @@ namespace LivingRoots.Services
                 return; // Ignore invalid delta values.
             }
 
-            // Handle infinity delta values by converting them to appropriate clamped values
-            if (float.IsInfinity(delta))
-            {
-                // For infinity deltas, we want to set the health to the appropriate extreme value
-                // rather than adding infinity to the current value
-                var targetValue = float.IsPositiveInfinity(delta) ? ModConstants.MaxSoilHealth : ModConstants.MinSoilHealth;
-
-                // Use SetSoilHealth to set the target value directly
-                SetSoilHealth(locationName, tile, targetValue);
-                return;
-            }
-
             // Validate the tile using the validation helper
             if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
@@ -692,8 +680,11 @@ namespace LivingRoots.Services
         /// <param name="value">The string value to truncate</param>
         /// <param name="maxLength">The maximum length before truncation (default 50)</param>
         /// <returns>The original string if within length, otherwise a truncated version with "..." appended</returns>
-        private static string TruncateForLogging(string value, int maxLength = 50)
+        private static string TruncateForLogging(string? value, int maxLength = 50)
         {
+            if (string.IsNullOrEmpty(value))
+                return "<null>";
+
             if (value.Length <= maxLength)
                 return value;
             return string.Concat(value.AsSpan(0, maxLength), "...");
@@ -898,3 +889,4 @@ namespace LivingRoots.Services
         TileLimitExceeded
     }
 }
+
