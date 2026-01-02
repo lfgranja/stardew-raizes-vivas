@@ -28,7 +28,7 @@ namespace LivingRoots.Tests
         {
             // Arrange: Create save data with more tiles than the per-location limit (500)
             var excessTiles = ModConstants.MaxTilesPerLocation + 10; // 510 tiles (exceeds limit by 10)
-            
+
             var locationEntries = new Dictionary<string, float>(excessTiles);
             for (int i = 0; i < excessTiles; i++)
             {
@@ -53,7 +53,7 @@ namespace LivingRoots.Tests
                 .Returns(saveData);
 
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            
+
             // Pre-populate cache with some data to verify it gets cleared
             service.SetSoilHealth("ExistingLocation", new Vector2(1, 1), 80.0f);
 
@@ -62,15 +62,15 @@ namespace LivingRoots.Tests
 
             // Assert: Verify that the critical error log appeared when exceeding the per-location tile limit
             _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("Tile count limit") && 
-                                   msg.Contains("exceeded for location") && 
+                It.Is<string>(msg => msg.Contains("Tile count limit") &&
+                                   msg.Contains("exceeded for location") &&
                                    msg.Contains("Cache cleared to prevent inconsistent state.")),
-                LogLevel.Alert), 
+                LogLevel.Alert),
                 Times.Once);
 
             // Verify that the cache was cleared - the existing data should be gone
             Assert.Equal(0.0f, service.GetSoilHealth("ExistingLocation", new Vector2(1, 1)));
-            
+
             // Verify that no data from the loaded save was added to the cache
             for (int i = 0; i < excessTiles; i++)
             {
@@ -83,7 +83,7 @@ namespace LivingRoots.Tests
         {
             // Arrange: Create save data with one location exceeding the limit and another valid location
             var excessTiles = ModConstants.MaxTilesPerLocation + 10; // Exceeds the limit
-            
+
             var locationEntriesExceeding = new Dictionary<string, float>(excessTiles);
             for (int i = 0; i < excessTiles; i++)
             {
@@ -112,7 +112,7 @@ namespace LivingRoots.Tests
                 .Returns(saveData);
 
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            
+
             // Pre-populate cache with some data to verify it gets cleared
             service.SetSoilHealth("ExistingLocation", new Vector2(1, 1), 80.0f);
 
@@ -121,34 +121,33 @@ namespace LivingRoots.Tests
 
             // Assert: Verify that the critical error log appeared
             _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("Tile count limit") && 
-                                   msg.Contains("exceeded for location") && 
-                                   msg.Contains("Cache cleared to prevent inconsistent state.")),                LogLevel.Alert), 
+                It.Is<string>(msg => msg.Contains("Tile count limit") &&
+                                   msg.Contains("exceeded for location") &&
+                                   msg.Contains("Cache cleared to prevent inconsistent state.")), LogLevel.Alert),
                 Times.Once);
 
             // Verify that the cache was cleared - the existing data should be gone
             Assert.Equal(0.0f, service.GetSoilHealth("ExistingLocation", new Vector2(1, 1)));
-            
+
             // Verify that no data from either location was added to the cache
             for (int i = 0; i < excessTiles; i++)
             {
                 Assert.Equal(0.0f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)));
             }
-            
+
             // The valid location should also not be processed since the operation was aborted
             Assert.Equal(0.0f, service.GetSoilHealth("ValidLocation", new Vector2(100, 100)));
         }
 
         [Fact]
-        public void LoadData_WithPerLocationTileLimitExceeded_StillProcessesWithinLimit()
+        public void LoadData_WhenOneLocationExceedsLimit_AbortsProcessing()
         {
-            // Arrange: Create save data with one location at the limit and verify others can be processed
-            // Actually, this test verifies the behavior when we have multiple locations and one exceeds the limit
-            // In this case, the first location that exceeds the limit should cause an abort
-            
+            // Arrange: Create save data with one location at the limit and one that exceeds the limit
+            // When the second location exceeds the limit, processing should abort and cache should be cleared
+
             var atLimitTiles = ModConstants.MaxTilesPerLocation; // Exactly at the limit
             var excessTiles = ModConstants.MaxTilesPerLocation + 1; // Exceeds the limit by 1
-            
+
             var locationEntriesAtLimit = new Dictionary<string, float>(atLimitTiles);
             for (int i = 0; i < atLimitTiles; i++)
             {
@@ -181,16 +180,33 @@ namespace LivingRoots.Tests
 
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
+            // Pre-populate cache with some data to verify it gets cleared
+            service.SetSoilHealth("ExistingLocation", new Vector2(1, 1), 80.0f);
+
             // Act: Load the data - should abort when the second location exceeds the limit
             service.LoadData("test_save");
 
             // Assert: Verify that the critical error log appeared
             _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("Tile count limit") && 
-                                   msg.Contains("exceeded for location") && 
+                It.Is<string>(msg => msg.Contains("Tile count limit") &&
+                                   msg.Contains("exceeded for location") &&
                                    msg.Contains("Cache cleared to prevent inconsistent state.")),
-                LogLevel.Alert), 
+                LogLevel.Alert),
                 Times.Once);
+
+            // Verify that the cache was cleared - the existing data should be gone
+            Assert.Equal(0.0f, service.GetSoilHealth("ExistingLocation", new Vector2(1, 1)));
+
+            // Verify that no data from either location was added to the cache
+            for (int i = 0; i < atLimitTiles; i++)
+            {
+                Assert.Equal(0.0f, service.GetSoilHealth("AtLimitLocation", new Vector2(i, 0)));
+            }
+
+            for (int i = 0; i < excessTiles; i++)
+            {
+                Assert.Equal(0.0f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)));
+            }
         }
 
         [Fact]
@@ -198,7 +214,7 @@ namespace LivingRoots.Tests
         {
             // Arrange: Create save data with exactly the per-location limit (should NOT trigger DoS protection)
             var atLimitTiles = ModConstants.MaxTilesPerLocation; // Exactly at the limit
-            
+
             var locationEntries = new Dictionary<string, float>(atLimitTiles);
             for (int i = 0; i < atLimitTiles; i++)
             {
@@ -229,9 +245,9 @@ namespace LivingRoots.Tests
 
             // Assert: Verify that no critical error log appeared for tile limit exceeded
             _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("Tile count limit") && 
+                It.Is<string>(msg => msg.Contains("Tile count limit") &&
                                    msg.Contains("exceeded for location")),
-                LogLevel.Alert), 
+                LogLevel.Alert),
                 Times.Never);
 
             // Verify that the data was loaded successfully (up to the limit)
@@ -247,13 +263,13 @@ namespace LivingRoots.Tests
             // Arrange: Create save data with multiple locations, each within the per-location limit
             var location1Entries = new Dictionary<string, float>();
             var location2Entries = new Dictionary<string, float>();
-            
+
             // Add tiles to first location (well within the limit)
             for (int i = 0; i < 100; i++)
             {
                 location1Entries.Add($"{i},0", 75.0f);
             }
-            
+
             // Add tiles to second location (well within the limit)
             for (int i = 0; i < 200; i++)
             {
@@ -285,9 +301,9 @@ namespace LivingRoots.Tests
 
             // Assert: Verify that no critical error log appeared for tile limit exceeded
             _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("Tile count limit") && 
+                It.Is<string>(msg => msg.Contains("Tile count limit") &&
                                    msg.Contains("exceeded for location")),
-                LogLevel.Alert), 
+                LogLevel.Alert),
                 Times.Never);
 
             // Verify that data from both locations was loaded successfully
@@ -295,7 +311,7 @@ namespace LivingRoots.Tests
             {
                 Assert.Equal(75.0f, service.GetSoilHealth("Farm", new Vector2(i, 0)));
             }
-            
+
             for (int i = 0; i < 200; i++)
             {
                 Assert.Equal(85.0f, service.GetSoilHealth("Town", new Vector2(i, 0)));
