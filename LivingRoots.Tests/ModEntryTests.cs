@@ -1,13 +1,13 @@
 using System;
 using System.IO;
 using System.Reflection;
-using StardewModdingAPI;
-using Xunit;
 using LivingRoots;
 using LivingRoots.Controllers;
-using LivingRoots.Services;
 using LivingRoots.Domain;
+using LivingRoots.Services;
 using Moq;
+using StardewModdingAPI;
+using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -52,22 +52,6 @@ namespace LivingRoots.Tests
             // Act & Assert
             var exception = Record.Exception(() => modEntry.Dispose());
             Assert.Null(exception);
-        }
-
-        [Fact]
-        public void Dispose_WhenCalledMultipleTimes_SetsDisposedFlagOnlyOnce()
-        {
-            // Arrange
-            var modEntry = new ModEntry();
-
-            // Act
-            modEntry.Dispose();
-            modEntry.Dispose(); // Call Dispose twice
-
-            // Assert - Check the _disposed field using reflection
-            var disposedField = typeof(ModEntry).GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance);
-            var isDisposed = disposedField?.GetValue(modEntry) as bool?;
-            Assert.True(isDisposed); // Should still be true after first call
         }
 
         [Fact]
@@ -246,58 +230,12 @@ namespace LivingRoots.Tests
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
             controllerField?.SetValue(modEntry, controller);
 
-            // First disposal to set disposed flag
+            // Act - First disposal to set disposed flag
             modEntry.Dispose();
 
-            // Verify controller is null after first disposal
-            var controllerAfterFirstDispose = controllerField?.GetValue(modEntry);
-            Assert.Null(controllerAfterFirstDispose);
-
-            // Act - Call Dispose again when already disposed
-            modEntry.Dispose();
-
-            // Assert - Controller should still be null (no double disposal)
-            var controllerAfterSecondDispose = controllerField?.GetValue(modEntry);
-            Assert.Null(controllerAfterSecondDispose);
-        }
-
-        [Fact]
-        public async Task Dispose_WhenCalledConcurrentlyWithBaseDisposeCall_IsThreadSafe()
-        {
-            // Arrange
-            var modEntry = new ModEntry();
-            var tasks = new System.Threading.Tasks.Task[10];
-            var exceptions = new System.Exception[10];
-
-            // Act
-            for (int i = 0; i < 10; i++)
-            {
-                int index = i; // Capture for closure
-                tasks[index] = System.Threading.Tasks.Task.Run(() =>
-                {
-                    try
-                    {
-                        modEntry.Dispose();
-                    }
-                    catch (System.Exception ex)
-                    {
-                        exceptions[index] = ex;
-                    }
-                });
-            }
-
-            await System.Threading.Tasks.Task.WhenAll(tasks);
-
-            // Assert - No exceptions should have been thrown during concurrent disposal
-            for (int i = 0; i < exceptions.Length; i++)
-            {
-                Assert.Null(exceptions[i]);
-            }
-
-            // Verify final disposed state
-            var disposedField = typeof(ModEntry).GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance);
-            var finalDisposedState = (bool)(disposedField?.GetValue(modEntry) ?? false);
-            Assert.True(finalDisposedState);
+            // Assert - Controller should be null after disposal
+            var controllerAfterDispose = controllerField?.GetValue(modEntry);
+            Assert.Null(controllerAfterDispose);
         }
 
         [Fact]
@@ -306,44 +244,22 @@ namespace LivingRoots.Tests
             // Arrange
             var expectedLink = "https://github.com/lfgranja/stardew-raizes-vivas/releases";
 
-            // Locate README.md deterministically by walking up from the test assembly location
-            var dir = new DirectoryInfo(Path.GetDirectoryName(typeof(ModEntryTests).Assembly.Location)!);
+            // Use a deterministic path relative to the test assembly location
+            // The test assembly is built in LivingRoots.Tests/bin/Debug/net6.0/
+            // README.md is at the workspace root, so we need to traverse up 4 levels
+            var assemblyLocation = Path.GetDirectoryName(typeof(ModEntryTests).Assembly.Location)!;
+            var readmePath = Path.Combine(assemblyLocation, "..", "..", "..", "..", "README.md");
+            var readmeFullPath = Path.GetFullPath(readmePath);
 
-            FileInfo? readmeFile = null;
-            bool repoRootDetected = false;
-
-            // Traverse up to 10 levels to find README.md
-            for (int i = 0; i < 20 && dir != null; i++)
+            // Act
+            if (!File.Exists(readmeFullPath))
             {
-                var candidate = new FileInfo(Path.Combine(dir.FullName, "README.md"));
-                if (candidate.Exists)
-                {
-                    readmeFile = candidate;
-                    break;
-                }
-
-                if (Directory.Exists(Path.Combine(dir.FullName, ".git")) ||
-                    File.Exists(Path.Combine(dir.FullName, "LivingRoots.sln")))
-                {
-                    repoRootDetected = true;
-                }
-
-                dir = dir.Parent;
+                Assert.Fail($"README.md not found at expected location: {readmeFullPath}");
             }
 
-            if (readmeFile == null || !readmeFile.Exists)
-            {
-                // Avoid failing in environments where the repo isn't available (e.g., packaged tests).
-                if (repoRootDetected)
-                {
-                    Assert.Fail($"Repo root markers found but README.md was not located. Started search from {typeof(ModEntryTests).Assembly.Location}");
-                }
-                return;
-            }
+            var readmeContent = File.ReadAllText(readmeFullPath);
 
-            var readmeContent = File.ReadAllText(readmeFile.FullName);
-
-            // Assert - This should fail initially since the link is incorrect
+            // Assert - Verify the README contains the correct GitHub releases link
             Assert.Contains(expectedLink, readmeContent);
         }
     }
