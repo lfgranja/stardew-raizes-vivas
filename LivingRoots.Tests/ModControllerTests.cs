@@ -283,7 +283,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("csharpsquid", "S3966", Justification = )]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("csharpsquid", "S3966", Justification = "Testing idempotency - multiple Dispose calls are intentional")]
         public void Dispose_IsIdempotent_CanBeCalledMultipleTimes()
         {
             // Arrange
