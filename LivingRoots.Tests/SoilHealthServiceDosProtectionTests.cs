@@ -30,7 +30,7 @@ namespace LivingRoots.Tests
             var excessTiles = ModConstants.MaxTilesPerLocation + 10; // 510 tiles (exceeds limit by 10)
 
             var locationEntries = new Dictionary<string, float>(excessTiles);
-            for (int i = 0; i < excessTiles; i++)
+            for (var i = 0; i < excessTiles; i++)
             {
                 locationEntries.Add($"{i},0", 75.0f); // Valid tile keys that will be processed
             }
@@ -72,7 +72,7 @@ namespace LivingRoots.Tests
             Assert.Equal(0.0f, service.GetSoilHealth("ExistingLocation", new Vector2(1, 1)));
 
             // Verify that no data from the loaded save was added to the cache
-            for (int i = 0; i < excessTiles; i++)
+            for (var i = 0; i < excessTiles; i++)
             {
                 Assert.Equal(0.0f, service.GetSoilHealth("Farm", new Vector2(i, 0)));
             }
@@ -85,7 +85,7 @@ namespace LivingRoots.Tests
             var excessTiles = ModConstants.MaxTilesPerLocation + 10; // Exceeds the limit
 
             var locationEntriesExceeding = new Dictionary<string, float>(excessTiles);
-            for (int i = 0; i < excessTiles; i++)
+            for (var i = 0; i < excessTiles; i++)
             {
                 locationEntriesExceeding.Add($"{i},0", 75.0f);
             }
@@ -130,7 +130,7 @@ namespace LivingRoots.Tests
             Assert.Equal(0.0f, service.GetSoilHealth("ExistingLocation", new Vector2(1, 1)));
 
             // Verify that no data from either location was added to the cache
-            for (int i = 0; i < excessTiles; i++)
+            for (var i = 0; i < excessTiles; i++)
             {
                 Assert.Equal(0.0f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)));
             }
@@ -149,13 +149,13 @@ namespace LivingRoots.Tests
             var excessTiles = ModConstants.MaxTilesPerLocation + 1; // Exceeds the limit by 1
 
             var locationEntriesAtLimit = new Dictionary<string, float>(atLimitTiles);
-            for (int i = 0; i < atLimitTiles; i++)
+            for (var i = 0; i < atLimitTiles; i++)
             {
                 locationEntriesAtLimit.Add($"{i},0", 75.0f);
             }
 
             var locationEntriesExceeding = new Dictionary<string, float>(excessTiles);
-            for (int i = 0; i < excessTiles; i++)
+            for (var i = 0; i < excessTiles; i++)
             {
                 locationEntriesExceeding.Add($"{i},0", 85.0f);
             }
@@ -198,12 +198,12 @@ namespace LivingRoots.Tests
             Assert.Equal(0.0f, service.GetSoilHealth("ExistingLocation", new Vector2(1, 1)));
 
             // Verify that no data from either location was added to the cache
-            for (int i = 0; i < atLimitTiles; i++)
+            for (var i = 0; i < atLimitTiles; i++)
             {
                 Assert.Equal(0.0f, service.GetSoilHealth("AtLimitLocation", new Vector2(i, 0)));
             }
 
-            for (int i = 0; i < excessTiles; i++)
+            for (var i = 0; i < excessTiles; i++)
             {
                 Assert.Equal(0.0f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)));
             }
@@ -216,7 +216,7 @@ namespace LivingRoots.Tests
             var atLimitTiles = ModConstants.MaxTilesPerLocation; // Exactly at the limit
 
             var locationEntries = new Dictionary<string, float>(atLimitTiles);
-            for (int i = 0; i < atLimitTiles; i++)
+            for (var i = 0; i < atLimitTiles; i++)
             {
                 locationEntries.Add($"{i},0", 75.0f); // Valid tile keys that will be processed
             }
@@ -251,7 +251,7 @@ namespace LivingRoots.Tests
                 Times.Never);
 
             // Verify that the data was loaded successfully (up to the limit)
-            for (int i = 0; i < atLimitTiles; i++)
+            for (var i = 0; i < atLimitTiles; i++)
             {
                 Assert.Equal(75.0f, service.GetSoilHealth("Farm", new Vector2(i, 0)));
             }
@@ -265,13 +265,13 @@ namespace LivingRoots.Tests
             var location2Entries = new Dictionary<string, float>();
 
             // Add tiles to first location (well within the limit)
-            for (int i = 0; i < 100; i++)
+            for (var i = 0; i < 100; i++)
             {
                 location1Entries.Add($"{i},0", 75.0f);
             }
 
             // Add tiles to second location (well within the limit)
-            for (int i = 0; i < 200; i++)
+            for (var i = 0; i < 200; i++)
             {
                 location2Entries.Add($"{i},0", 85.0f);
             }
@@ -307,12 +307,12 @@ namespace LivingRoots.Tests
                 Times.Never);
 
             // Verify that data from both locations was loaded successfully
-            for (int i = 0; i < 100; i++)
+            for (var i = 0; i < 100; i++)
             {
                 Assert.Equal(75.0f, service.GetSoilHealth("Farm", new Vector2(i, 0)));
             }
 
-            for (int i = 0; i < 200; i++)
+            for (var i = 0; i < 200; i++)
             {
                 Assert.Equal(85.0f, service.GetSoilHealth("Town", new Vector2(i, 0)));
             }

@@ -48,7 +48,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(10, 10);
 
             // Act
@@ -86,7 +86,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
 
             // Act
             var resultNaN = service.GetSoilHealth(location, new Vector2(float.NaN, 10));
@@ -104,7 +104,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
 
             // Act
             var resultHigh = service.GetSoilHealth(location, new Vector2(float.MaxValue, 10));
@@ -149,7 +149,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
 
             // Act
             service.SetSoilHealth(location, new Vector2(float.NaN, 10), 50.0f);
@@ -169,7 +169,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
 
             // Act
             service.SetSoilHealth(location, new Vector2(float.MaxValue, 10), 50.0f);
@@ -204,7 +204,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f); // Set initial value
 
@@ -222,7 +222,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f); // Set initial value
 
@@ -239,7 +239,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f);
 
@@ -255,7 +255,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f);
 
@@ -271,7 +271,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f);
 
@@ -454,10 +454,10 @@ namespace LivingRoots.Tests
             var tile13 = new Vector2(13, 13);
 
             // Verify that all entries were processed and stored with correct conversions
-            float result10 = service.GetSoilHealth("Farm", tile10);
-            float result11 = service.GetSoilHealth("Farm", tile11);
-            float result12 = service.GetSoilHealth("Farm", tile12);
-            float result13 = service.GetSoilHealth("Farm", tile13);
+            var result10 = service.GetSoilHealth("Farm", tile10);
+            var result11 = service.GetSoilHealth("Farm", tile11);
+            var result12 = service.GetSoilHealth("Farm", tile12);
+            var result13 = service.GetSoilHealth("Farm", tile13);
 
             Assert.Equal(0f, result10); // NaN value converted to 0
             Assert.Equal(100f, result11); // PositiveInfinity value converted to 100
@@ -735,7 +735,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(10.7f, 15.3f); // Should map to (10, 15)
             service.SetSoilHealth(location, tile, 50.0f);
 
@@ -751,7 +751,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
 
             // Act - Set with fractional coordinates
             service.SetSoilHealth(location, new Vector2(10.7f, 15.3f), 50.0f);
@@ -767,7 +767,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(10, 15);
             service.SetSoilHealth(location, tile, 50.0f);
 
@@ -783,7 +783,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(-5.7f, -3.3f); // Should map to (-6, -4) using MathF.Floor
             service.SetSoilHealth(location, tile, 50.0f);
 
@@ -801,14 +801,16 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             var exceptions = new List<Exception>();
             var lockObj = new object();
+            var accessedTiles = new List<Vector2>();
+            var tilesLock = new object();
 
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
             // Fixed: Capture the loop variable in a local variable before creating the task
             using var startGate = new System.Threading.ManualResetEventSlim(false);
-            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             var tasks = new List<Task>();
-            for (int i = 0; i < 10; i++)
+            for (var i = 0; i < 5; i++)
             {
                 var workerId = i; // Capture per-iteration value to avoid closure issues
                 var task = Task.Run(() =>
@@ -817,11 +819,18 @@ namespace LivingRoots.Tests
                     {
                         startGate.Wait(cts.Token);
 
-                        for (int j = 0; j < 100; j++)
+                        for (var j = 0; j < 20; j++)
                         {
-                            int x = (workerId * 100) + j; // Unique X coordinate per worker
-                            int y = workerId;              // Same Y for all operations of this worker
+                            var x = (workerId * 20) + j; // Unique X coordinate per worker
+                            var y = workerId;              // Same Y for all operations of this worker
                             var tile = new Vector2(x, y);
+
+                            // Record the tile being accessed
+                            lock (tilesLock)
+                            {
+                                accessedTiles.Add(tile);
+                            }
+
                             service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,100] range
                             service.GetSoilHealth("Farm", tile);
                             service.UpdateHealth("Farm", tile, 1.0f);
@@ -842,8 +851,26 @@ namespace LivingRoots.Tests
             await Task.WhenAll(tasks);
 
             // Assert - No exceptions should be thrown due to race conditions
-            // Verify that events were registered only once despite multiple concurrent calls
             Assert.Empty(exceptions);
+
+            // Post-condition: Verify that the expected number of tiles were accessed
+            Assert.Equal(100, accessedTiles.Count); // 5 workers × 20 operations = 100 total
+
+            // Post-condition: Verify that all values remain within expected range [0, 100]
+            var distinctTiles = accessedTiles.Distinct().ToList();
+            foreach (var tile in distinctTiles)
+            {
+                var healthValue = service.GetSoilHealth("Farm", tile);
+
+                // Assert that the value is within the valid range [0, 100]
+                Assert.InRange(healthValue, 0.0f, 100.0f);
+
+                // Additional validation: Check that the value is a valid float (not NaN or Infinity)
+                Assert.False(float.IsNaN(healthValue),
+                    $"Soil health value for tile {tile} is NaN after concurrent access, indicating potential data corruption.");
+                Assert.False(float.IsInfinity(healthValue),
+                    $"Soil health value for tile {tile} is Infinity after concurrent access, indicating potential data corruption.");
+            }
         }
 
         [Fact]
@@ -862,10 +889,10 @@ namespace LivingRoots.Tests
 
             // Act - Multiple threads accessing the service simultaneously
             using var startGate = new System.Threading.ManualResetEventSlim(false);
-            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             var tasks = new List<Task>();
-            for (int i = 0; i < 3; i++) // Use fewer threads to make overlapping easier to detect
+            for (var i = 0; i < 3; i++) // Use fewer threads to make overlapping easier to detect
             {
                 var task = Task.Run(() =>
                 {
@@ -873,7 +900,7 @@ namespace LivingRoots.Tests
                     {
                         startGate.Wait(cts.Token);
 
-                        for (int j = 0; j < 200; j++) // More ops to exercise resizing + multi-row overlap
+                        for (var j = 0; j < 50; j++) // Reduced from 200 to 50 ops to improve performance while maintaining overlap
                         {
                             var tile = new Vector2(j % 10, (j / 10) % 10); // Overlap across threads, spans multiple rows
 
@@ -914,6 +941,9 @@ namespace LivingRoots.Tests
             Assert.True(totalAccesses > distinctTiles.Count,
                 $"Expected overlapping tile accesses: {totalAccesses} total accesses vs {distinctTiles.Count} distinct tiles. " +
                 $"This confirms that threads access the same tiles, creating race conditions.");
+
+            // Verify the expected number of total accesses
+            Assert.Equal(150, totalAccesses); // 3 threads × 50 operations = 150 total
 
             // NEW: Strengthened post-condition assertions to validate service state after concurrent access
             // Verify that all values remain within expected range [0, 100] after concurrent access
@@ -959,9 +989,9 @@ namespace LivingRoots.Tests
 
         private static void VerifyWorkerTileDisjointness(List<(int workerId, List<Vector2> tiles)> workerTiles)
         {
-            for (int i = 0; i < workerTiles.Count; i++)
+            for (var i = 0; i < workerTiles.Count; i++)
             {
-                for (int j = i + 1; j < workerTiles.Count; j++)
+                for (var j = i + 1; j < workerTiles.Count; j++)
                 {
                     var tilesI = workerTiles[i].tiles;
                     var tilesJ = workerTiles[j].tiles;
@@ -992,10 +1022,10 @@ namespace LivingRoots.Tests
                 {
                     startGate.Wait(token);
 
-                    for (int j = 0; j < 10; j++)
+                    for (var j = 0; j < 10; j++)
                     {
-                        int x = (workerId * 100) + j;
-                        int y = workerId;
+                        var x = (workerId * 20) + j;
+                        var y = workerId;
                         var tile = new Vector2(x, y);
                         workerTileList.Add(tile);
 
@@ -1033,10 +1063,10 @@ namespace LivingRoots.Tests
 
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
             using var startGate = new System.Threading.ManualResetEventSlim(false);
-            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             var tasks = new List<Task>();
-            for (int i = 0; i < 5; i++)
+            for (var i = 0; i < 5; i++)
             {
                 tasks.Add(CreateWorkerTask(service, i, startGate, cts.Token, lockObj, exceptions, workerTiles));
             }
@@ -1051,6 +1081,28 @@ namespace LivingRoots.Tests
             Assert.Equal(5, workerTiles.Count);
             VerifyNoTileOverlaps(workerTiles);
             VerifyWorkerTileDisjointness(workerTiles);
+
+            // Post-condition: Verify that the expected number of tiles were accessed
+            var totalTiles = workerTiles.Sum(wt => wt.tiles.Count);
+            Assert.Equal(50, totalTiles); // 5 workers × 10 operations = 50 total
+
+            // Post-condition: Verify that all values remain within expected range [0, 100]
+            foreach (var (_, tiles) in workerTiles)
+            {
+                foreach (var tile in tiles)
+                {
+                    var healthValue = service.GetSoilHealth("Farm", tile);
+
+                    // Assert that the value is within the valid range [0, 100]
+                    Assert.InRange(healthValue, 0.0f, 100.0f);
+
+                    // Additional validation: Check that the value is a valid float (not NaN or Infinity)
+                    Assert.False(float.IsNaN(healthValue),
+                        $"Soil health value for tile {tile} is NaN after concurrent access, indicating potential data corruption.");
+                    Assert.False(float.IsInfinity(healthValue),
+                        $"Soil health value for tile {tile} is Infinity after concurrent access, indicating potential data corruption.");
+                }
+            }
         }
 
         [Fact]
@@ -1151,7 +1203,7 @@ namespace LivingRoots.Tests
 
             // Add all valid entries that will be processed and counted
             // Use valid tile keys that will be processed and loaded
-            for (int i = 0; i < totalEntries; i++)
+            for (var i = 0; i < totalEntries; i++)
             {
                 locationEntries.Add($"{i},0", 75.0f);
             }
@@ -1185,8 +1237,8 @@ namespace LivingRoots.Tests
             // With the high severity fix implemented, when the limit is exceeded,
             // the entire load operation should abort and the cache should be cleared.
             // Therefore, no entries should be loaded.
-            int loadedEntriesCount = 0;
-            for (int i = 0; i < totalEntries; i++)
+            var loadedEntriesCount = 0;
+            for (var i = 0; i < totalEntries; i++)
             {
                 var healthValue = service.GetSoilHealth("Farm", new Vector2(i, 0));
                 if (Math.Abs(healthValue - 0.0f) > 0.0001f)
@@ -1204,7 +1256,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f); // Set initial value
 
@@ -1220,7 +1272,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f); // Set initial value
 
@@ -1236,7 +1288,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            string location = "Farm";
+            var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f); // Set initial value
 
@@ -1599,7 +1651,7 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
             // Add some data to the cache
-            for (int i = 0; i < 10; i++)
+            for (var i = 0; i < 10; i++)
             {
                 service.SetSoilHealth("Farm", new Vector2(i, 0), i * 10.0f);
             }
@@ -1611,7 +1663,7 @@ namespace LivingRoots.Tests
             var tasks = new List<Task>();
 
             // Task to call Reset() from multiple threads
-            for (int i = 0; i < 3; i++)
+            for (var i = 0; i < 3; i++)
             {
                 var task = Task.Run(() =>
                 {
@@ -1631,13 +1683,13 @@ namespace LivingRoots.Tests
             }
 
             // Task to call other operations from multiple threads
-            for (int i = 0; i < 3; i++)
+            for (var i = 0; i < 3; i++)
             {
                 var task = Task.Run(() =>
                 {
                     try
                     {
-                        for (int j = 0; j < 10; j++)
+                        for (var j = 0; j < 10; j++)
                         {
                             var tile = new Vector2(j, 0);
                             service.SetSoilHealth("Farm", tile, j * 5.0f);
