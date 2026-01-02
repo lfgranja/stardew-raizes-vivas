@@ -96,7 +96,6 @@ namespace LivingRoots.Tests
         public void RegisterEvents_WithNullEvents_DoesNotThrow()
         {
             // Arrange
-            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
             _mockHelper.Setup(x => x.Events).Returns((IModEvents)null!); // Return null for Events
@@ -114,7 +113,6 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var mockEvents = new Mock<IModEvents>();
-            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
             _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
@@ -147,7 +145,6 @@ namespace LivingRoots.Tests
             var tasks = new List<System.Threading.Tasks.Task>();
             for (int i = 0; i < 10; i++)
             {
-                var workerId = i; // Capture per-iteration value to avoid closure issues
                 var task = System.Threading.Tasks.Task.Run(() =>
                 {
                     // All tasks call RegisterEvents on the same controller instance
@@ -286,6 +283,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("csharpsquid", "S3966", Justification = )]
         public void Dispose_IsIdempotent_CanBeCalledMultipleTimes()
         {
             // Arrange
@@ -311,7 +309,8 @@ namespace LivingRoots.Tests
             // First register events to initialize the controller
             controller.RegisterEvents();
 
-            // Act - Dispose multiple times
+            // Act - Dispose multiple times to verify idempotency
+            // Note: Not using 'using' statement here to explicitly test multiple Dispose() calls
             controller.Dispose();
             controller.Dispose(); // Second call should not cause issues
             controller.Dispose(); // Third call should not cause issues
@@ -408,19 +407,19 @@ namespace LivingRoots.Tests
             // Register events first to initialize the command registration
             controller.RegisterEvents();
 
+            // Arrange - Capture the registered command action BEFORE raising event
+            Action<string, string[]>? printVersionAction = null;
+            mockCommandHelper
+                .Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
+                .Callback<string, string, Action<string, string[]>>((name, desc, action) => printVersionAction = action);
+
             // Act - Trigger the OnGameLaunched event to register the command
             mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
 
-            // Act - Execute the command with mock helper
-            Action<string, string[]>? printVersionAction = null;
-            mockCommandHelper.Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
-                             .Callback<string, string, Action<string, string[]>>((name, desc, action) => printVersionAction = action);
+            Assert.NotNull(printVersionAction);
 
-            // Register the command to capture the action
-            mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
-
-            // Now execute the captured action
-            var ex = Record.Exception(() => printVersionAction?.Invoke("lr_version", Array.Empty<string>()));
+            // Act - Execute the captured action
+            var ex = Record.Exception(() => printVersionAction("lr_version", Array.Empty<string>()));
 
             // Assert - Should not throw any exceptions
             Assert.Null(ex);
@@ -443,19 +442,19 @@ namespace LivingRoots.Tests
             // Register events first to initialize the command registration
             controller.RegisterEvents();
 
+            // Arrange - Capture the registered command action BEFORE raising event
+            Action<string, string[]>? printVersionAction = null;
+            mockCommandHelper
+                .Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
+                .Callback<string, string, Action<string, string[]>>((name, desc, action) => printVersionAction = action);
+
             // Act - Trigger the OnGameLaunched event to register the command
             mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
 
-            // Act - Execute the command with help arguments
-            Action<string, string[]>? printVersionAction = null;
-            mockCommandHelper.Setup(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()))
-                             .Callback<string, string, Action<string, string[]>>((name, desc, action) => printVersionAction = action);
+            Assert.NotNull(printVersionAction);
 
-            // Register the command to capture the action
-            mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
-
-            // Now execute the captured action with help arguments
-            var ex = Record.Exception(() => printVersionAction?.Invoke("lr_version", new string[] { "/?", "-help", "--help" }));
+            // Act - Execute the captured action with help arguments
+            var ex = Record.Exception(() => printVersionAction("lr_version", new string[] { "/?", "-help", "--help" }));
 
             // Assert - Should not throw with help arguments
             Assert.Null(ex);
@@ -561,7 +560,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
-            const int testFlag = 1 << 0; // Use EventsRegisteredFlag for testing
+            const int testFlag = 1; // Use EventsRegisteredFlag for testing
 
             // Act
             bool result = controller.TrySetStateFlag(testFlag);
@@ -617,182 +616,5 @@ namespace LivingRoots.Tests
             Assert.Equal(1, controller._saveIdUnavailableWarningShownOnSaving);
         }
 
-        /// <summary>
-        /// Test class with a constructor that has required reference-type parameters.
-        /// This type should be skipped by the improved CreateInstanceWithFallback method.
-        /// </summary>
-        private class TypeWithRequiredReferenceParameter
-        {
-            private readonly string _requiredParam;
-            private readonly object _anotherRequiredParam;
-
-            public TypeWithRequiredReferenceParameter(string requiredParam, object anotherRequiredParam)
-            {
-                _requiredParam = requiredParam;
-                _anotherRequiredParam = anotherRequiredParam;
-            }
-        }
-
-        /// <summary>
-        /// Test class with a constructor that has optional parameters.
-        /// This type should work with CreateInstanceWithFallback after the fix.
-        /// </summary>
-        private class TypeWithOptionalParameters
-        {
-            private readonly string _optionalParam;
-            private readonly int _optionalIntParam;
-
-            public TypeWithOptionalParameters(string optionalParam = "default", int optionalIntParam = 42)
-            {
-                _optionalParam = optionalParam;
-                _optionalIntParam = optionalIntParam;
-            }
-        }
-
-        /// <summary>
-        /// Test class with a constructor that has required parameters without defaults.
-        /// This type cannot be instantiated by CreateInstanceWithFallback without the FormatterServices fallback.
-        /// </summary>
-        private class TypeWithRequiredConstructorParameter
-        {
-            private readonly string _requiredParam;
-
-            public TypeWithRequiredConstructorParameter(string requiredParam)
-            {
-                _requiredParam = requiredParam;
-            }
-        }
-
-        /// <summary>
-        /// Thread-safe stub implementation of IGameLoopEvents for concurrency testing.
-        /// Uses Interlocked operations to track event additions and removals in a thread-safe manner.
-        /// This ensures tests reliably validate application code's thread safety without
-        /// relying on Moq's internal state which is not thread-safe.
-        /// </summary>
-        private sealed class ThreadSafeGameLoopEventsStub : IGameLoopEvents
-        {
-            private EventHandler<GameLaunchedEventArgs>? _gameLaunched;
-            private EventHandler<SaveLoadedEventArgs>? _saveLoaded;
-            private EventHandler<SavingEventArgs>? _saving;
-
-            // Thread-safe counters using Interlocked operations
-            private int _gameLaunchedAddCount = 0;
-            private int _saveLoadedAddCount = 0;
-            private int _savingAddCount = 0;
-            private int _gameLaunchedRemoveCount = 0;
-            private int _saveLoadedRemoveCount = 0;
-            private int _savingRemoveCount = 0;
-
-            public int GameLaunchedAddCount => Volatile.Read(ref _gameLaunchedAddCount);
-            public int SaveLoadedAddCount => Volatile.Read(ref _saveLoadedAddCount);
-            public int SavingAddCount => Volatile.Read(ref _savingAddCount);
-            public int GameLaunchedRemoveCount => Volatile.Read(ref _gameLaunchedRemoveCount);
-            public int SaveLoadedRemoveCount => Volatile.Read(ref _saveLoadedRemoveCount);
-            public int SavingRemoveCount => Volatile.Read(ref _savingRemoveCount);
-
-            public event EventHandler<GameLaunchedEventArgs>? GameLaunched
-            {
-                add
-                {
-                    Interlocked.Increment(ref _gameLaunchedAddCount);
-                    EventHandler<GameLaunchedEventArgs>? current, updated;
-                    do
-                    {
-                        current = Volatile.Read(ref _gameLaunched);
-                        updated = (EventHandler<GameLaunchedEventArgs>?)Delegate.Combine(current, value);
-                    }
-                    while (Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
-                }
-                remove
-                {
-                    Interlocked.Increment(ref _gameLaunchedRemoveCount);
-                    EventHandler<GameLaunchedEventArgs>? current, updated;
-                    do
-                    {
-                        current = Volatile.Read(ref _gameLaunched);
-                        updated = (EventHandler<GameLaunchedEventArgs>?)Delegate.Remove(current, value);
-                    }
-                    while (Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
-                }
-            }
-
-            public event EventHandler<SaveLoadedEventArgs>? SaveLoaded
-            {
-                add
-                {
-                    Interlocked.Increment(ref _saveLoadedAddCount);
-                    EventHandler<SaveLoadedEventArgs>? current, updated;
-                    do
-                    {
-                        current = Volatile.Read(ref _saveLoaded);
-                        updated = (EventHandler<SaveLoadedEventArgs>?)Delegate.Combine(current, value);
-                    }
-                    while (Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
-                }
-                remove
-                {
-                    Interlocked.Increment(ref _saveLoadedRemoveCount);
-                    EventHandler<SaveLoadedEventArgs>? current, updated;
-                    do
-                    {
-                        current = Volatile.Read(ref _saveLoaded);
-                        updated = (EventHandler<SaveLoadedEventArgs>?)Delegate.Remove(current, value);
-                    }
-                    while (Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
-                }
-            }
-
-            public event EventHandler<SavingEventArgs>? Saving
-            {
-                add
-                {
-                    Interlocked.Increment(ref _savingAddCount);
-                    EventHandler<SavingEventArgs>? current, updated;
-                    do
-                    {
-                        current = Volatile.Read(ref _saving);
-                        updated = (EventHandler<SavingEventArgs>?)Delegate.Combine(current, value);
-                    }
-                    while (Interlocked.CompareExchange(ref _saving, updated, current) != current);
-                }
-                remove
-                {
-                    Interlocked.Increment(ref _savingRemoveCount);
-                    EventHandler<SavingEventArgs>? current, updated;
-                    do
-                    {
-                        current = Volatile.Read(ref _saving);
-                        updated = (EventHandler<SavingEventArgs>?)Delegate.Remove(current, value);
-                    }
-                    while (Interlocked.CompareExchange(ref _saving, updated, current) != current);
-                }
-            }
-
-            // Other IGameLoopEvents members not used in tests - implemented as no-ops
-            public event EventHandler<UpdateTickedEventArgs>? UpdateTicked { add { } remove { } }
-            public event EventHandler<UpdateTickingEventArgs>? UpdateTicking { add { } remove { } }
-            public event EventHandler<OneSecondUpdateTickedEventArgs>? OneSecondUpdateTicked { add { } remove { } }
-            public event EventHandler<OneSecondUpdateTickingEventArgs>? OneSecondUpdateTicking { add { } remove { } }
-            public event EventHandler<DayStartedEventArgs>? DayStarted
-            {
-                add { }
-                remove { }
-            }
-            public event EventHandler<DayEndingEventArgs>? DayEnding { add { } remove { } }
-            public event EventHandler<TimeChangedEventArgs>? TimeChanged
-            {
-                add { }
-                remove { }
-            }
-            public event EventHandler<ReturnedToTitleEventArgs>? ReturnedToTitle
-            {
-                add { }
-                remove { }
-            }
-            public event EventHandler<SaveCreatingEventArgs>? SaveCreating { add { } remove { } }
-            public event EventHandler<SaveCreatedEventArgs>? SaveCreated { add { } remove { } }
-            public event EventHandler<SavedEventArgs>? Saved { add { } remove { } }
-            public event EventHandler<LoadStageChangedEventArgs>? LoadStageChanged { add { } remove { } }
-        }
     }
 }
