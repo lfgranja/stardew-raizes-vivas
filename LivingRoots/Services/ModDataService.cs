@@ -1,10 +1,10 @@
-using StardewModdingAPI;
-using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
-using System.Globalization;
-using System.Collections.Generic;
 using LivingRoots.Domain;
+using Newtonsoft.Json;
+using StardewModdingAPI;
 
 namespace LivingRoots.Services
 {
@@ -13,20 +13,12 @@ namespace LivingRoots.Services
     /// Following architecture pattern described in ARCHITECTURE.md
     /// Now following Dependency Inversion Principle by depending on domain abstractions
     /// </summary>
-    public class ModDataService : IModDataService
+    public class ModDataService(IModHelper helper, IMonitor monitor, IModLogic modLogic) : IModDataService
     {
-        private readonly IModHelper _helper;
-        private readonly IMonitor _monitor;
-        private readonly IModLogic _modLogic;
-        
-        
-        public ModDataService(IModHelper helper, IMonitor monitor, IModLogic modLogic)
-        {
-            _helper = helper ?? throw new ArgumentNullException(nameof(helper));
-            _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-            _modLogic = modLogic ?? throw new ArgumentNullException(nameof(modLogic));
-        }
-        
+        private readonly IModHelper _helper = helper ?? throw new ArgumentNullException(nameof(helper));
+        private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+        private readonly IModLogic _modLogic = modLogic ?? throw new ArgumentNullException(nameof(modLogic));
+
         /// <summary>
         /// Save mod data to persistent storage
         /// </summary>
@@ -37,10 +29,10 @@ namespace LivingRoots.Services
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data), "Data cannot be null");
-            
+
             if (key == null)
                 throw new ArgumentException("Key cannot be null", nameof(key));
-            
+
             // Defensive checks for null helpers - added to satisfy test expectations
             // This is for artificial test scenarios using reflection to set internal fields to null
             if (_helper == null)
@@ -48,15 +40,15 @@ namespace LivingRoots.Services
                 _monitor?.Log("ModHelper is null in SaveData method", LogLevel.Error);
                 throw new InvalidOperationException("ModHelper is null");
             }
-            
+
             if (_helper.Data == null)
             {
                 _monitor?.Log("Helper.Data is null in SaveData method", LogLevel.Error);
                 throw new InvalidOperationException("Helper.Data is null");
             }
-            
-            string sanitizedKey = GetValidatedAndSanitizedKey(key);
-            
+
+            var sanitizedKey = GetValidatedAndSanitizedKey(key);
+
             var path = GetFilePath(sanitizedKey);
             try
             {
@@ -64,7 +56,7 @@ namespace LivingRoots.Services
                 // Use sanitized key for logging to avoid exposing raw input
                 _monitor?.Log($"Saved data for key '{sanitizedKey}'.", LogLevel.Trace);
             }
-            
+
             catch (System.IO.DirectoryNotFoundException)
             {
                 // Handle DirectoryNotFoundException consistently with other methods
@@ -88,7 +80,7 @@ namespace LivingRoots.Services
                 throw; // Keep rethrowing for save operations as these are critical
             }
         }
-        
+
         /// <summary>
         /// Load mod data from persistent storage
         /// Security improvements applied:
@@ -109,13 +101,13 @@ namespace LivingRoots.Services
                 _monitor?.Log("ModHelper is null in LoadData method", LogLevel.Error);
                 return null; // Return null instead of throwing to maintain consistency
             }
-            
+
             if (_helper.Data == null)
             {
                 _monitor?.Log("Helper.Data is null in LoadData method", LogLevel.Error);
                 return null; // Return null instead of throwing to maintain consistency
             }
-            
+
             string sanitizedKey;
             try
             {
@@ -127,14 +119,14 @@ namespace LivingRoots.Services
                 _monitor?.Log("Invalid key provided to LoadData", LogLevel.Warn);
                 return null; // Return null instead of throwing when key is invalid
             }
-            
+
             try
             {
                 var path = GetFilePath(sanitizedKey);
-                
+
                 // Single file read to avoid TOCTOU race condition
                 var result = _helper.Data.ReadJsonFile<T>(path);
-                
+
                 // If result is null, the file doesn't exist or contains no valid data for the specific type
                 // We can't distinguish between these cases with a single read, but this is the correct approach
                 // to avoid the race condition
@@ -143,7 +135,7 @@ namespace LivingRoots.Services
                     _monitor?.Log($"No valid data found for key '{sanitizedKey}'", LogLevel.Trace);
                     return null;
                 }
-                
+
                 return result;
             }
             catch (System.IO.FileNotFoundException)
@@ -182,13 +174,6 @@ namespace LivingRoots.Services
                 _monitor?.Log("Invalid key provided to LoadData", LogLevel.Warn);
                 return null; // Return null instead of throwing when key is invalid
             }
-            catch (System.NullReferenceException)
-            {
-                // Handle potential null reference exceptions that could occur if SMAPI framework has issues
-                // Log with error level as this indicates a fundamental problem
-                _monitor?.Log("Null reference error occurred while loading data - SMAPI framework may have issues", LogLevel.Error);
-                return null; // Return null instead of throwing to maintain consistency
-            }
             catch (Exception)
             {
                 // Log unexpected errors and return null to maintain consistency with DataExists behavior
@@ -197,7 +182,7 @@ namespace LivingRoots.Services
                 return null; // Return null instead of rethrowing to maintain consistency with LoadData
             }
         }
-        
+
         /// <summary>
         /// Check if data exists for a given key
         /// </summary>
@@ -212,13 +197,13 @@ namespace LivingRoots.Services
                 _monitor?.Log("ModHelper is null in DataExists method", LogLevel.Error);
                 return false; // Return false instead of throwing to maintain consistency
             }
-            
+
             if (_helper.Data == null)
             {
                 _monitor?.Log("Helper.Data is null in DataExists method", LogLevel.Error);
                 return false; // Return null instead of throwing to maintain consistency
             }
-            
+
             string sanitizedKey;
             try
             {
@@ -232,12 +217,12 @@ namespace LivingRoots.Services
 
             try
             {
-                string path = GetFilePath(sanitizedKey);
-                
+                var path = GetFilePath(sanitizedKey);
+
                 // Use SMAPI's ReadJsonFile API to check for data existence to maintain consistency
                 // with LoadData and avoid TOCTOU race conditions
                 var result = _helper.Data.ReadJsonFile<object>(path);
-                
+
                 // If result is not null, the file exists and contains valid data
                 // If result is null, the file doesn't exist or contains no valid data
                 return result != null;
@@ -272,12 +257,6 @@ namespace LivingRoots.Services
                 _monitor?.Log($"JSON parsing error occurred while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
                 return false;
             }
-            catch (System.NullReferenceException)
-            {
-                // Handle potential null reference exceptions that could occur if SMAPI framework has issues
-                _monitor?.Log("Null reference error occurred while checking data existence - SMAPI framework may have issues", LogLevel.Error);
-                return false; // Return false instead of throwing to maintain consistency
-            }
             catch (Exception)
             {
                 // Log unexpected errors and return false to maintain consistency with LoadData behavior
@@ -285,7 +264,7 @@ namespace LivingRoots.Services
                 return false; // Return false instead of rethrowing to maintain consistency with LoadData
             }
         }
-        
+
         /// <summary>
         /// Remove data for a given key
         /// Security improvements applied:
@@ -303,17 +282,17 @@ namespace LivingRoots.Services
                 _monitor?.Log("ModHelper is null in RemoveData method", LogLevel.Error);
                 throw new InvalidOperationException("ModHelper is null");
             }
-            
+
             if (_helper.Data == null)
             {
                 _monitor?.Log("Helper.Data is null in RemoveData method", LogLevel.Error);
                 throw new InvalidOperationException("Helper.Data is null");
             }
-            
+
             // Perform argument validation before attempting to remove data
             // This maintains consistency with other methods and existing tests
-            string sanitizedKey = GetValidatedAndSanitizedKey(key);
-            
+            var sanitizedKey = GetValidatedAndSanitizedKey(key);
+
             // Delete data file to properly remove stored data
             var filePath = GetFilePath(sanitizedKey);
             try
@@ -355,13 +334,6 @@ namespace LivingRoots.Services
                 // For critical removal operations, rethrow the exception to signal failure
                 throw;
             }
-            catch (System.NullReferenceException)
-            {
-                // Handle potential null reference exceptions that could occur if SMAPI framework has issues
-                _monitor?.Log("Null reference error occurred while removing data - SMAPI framework may have issues", LogLevel.Error);
-                // For critical removal operations, rethrow the exception to signal failure
-                throw;
-            }
             catch (Exception)
             {
                 // Log unexpected errors as Error and rethrow for critical operations
@@ -371,7 +343,7 @@ namespace LivingRoots.Services
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Validates and sanitizes key in a single method to reduce code duplication
         /// </summary>
@@ -381,8 +353,8 @@ namespace LivingRoots.Services
         {
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Key cannot be null or empty", nameof(key));
-            
-            try 
+
+            try
             {
                 // Validate raw key first to catch path traversal attempts
                 _modLogic.ValidatePath(key);
@@ -395,16 +367,16 @@ namespace LivingRoots.Services
                 // Re-throw with generic message to prevent information disclosure
                 throw new ArgumentException("Invalid key format - path validation failed", nameof(key));
             }
-            
+
             // Sanitize key once before try-catch block to prevent exceptions during error handling
-            string sanitizedKey = SanitizePathSegments(key);
+            var sanitizedKey = SanitizePathSegments(key);
             if (string.IsNullOrWhiteSpace(sanitizedKey))
                 throw new ArgumentException("Key sanitization failed - sanitized key cannot be null or whitespace.", nameof(key));
-            
+
             return sanitizedKey;
         }
-        
-        private string GetFilePath(string key)
+
+        private static string GetFilePath(string key)
         {
             // The key should already be sanitized at this point, so we just return path
             // The validation already happened when SanitizeFileName was called in public methods
@@ -412,7 +384,7 @@ namespace LivingRoots.Services
             // Return final path with .json extension using forward slash for cross-platform consistency
             return $"data/{key}.json";
         }
-        
+
         /// <summary>
         /// Sanitizes each segment of a path separately to preserve directory structure
         /// </summary>
@@ -425,13 +397,13 @@ namespace LivingRoots.Services
 
             if (path.Length == 0)
                 throw new ArgumentException("Path cannot be empty.", nameof(path));
-            
+
             // Split path by both forward and backward slashes
-            string[] segments = path.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
-            
+            var segments = path.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+
             // Sanitize each segment individually
             var validSegments = new List<string>();
-            for (int i = 0; i < segments.Length; i++)
+            for (var i = 0; i < segments.Length; i++)
             {
                 // Handle special path segments that need special handling
                 if (segments[i] == ".")
@@ -439,17 +411,17 @@ namespace LivingRoots.Services
                     // Skip . segments to prevent unnecessary directory references
                     continue;
                 }
-                
+
                 // Defense-in-depth security check: explicitly block .. segments and segments with multiple consecutive dots
                 // Even though path traversal validation happens in ValidatePath, this provides additional protection
                 if (IsPathTraversalSegment(segments[i]))
                 {
                     throw new ArgumentException("Path cannot contain '..' segments for security reasons.", nameof(path));
                 }
-                
+
                 // Use existing SanitizeFileName method for other segments
-                string? sanitizedSegment = _modLogic.SanitizeFileName(segments[i]);
-                
+                var sanitizedSegment = _modLogic.SanitizeFileName(segments[i]);
+
                 // If any segment becomes null or whitespace after sanitization, collect it for final validation
                 // Don't throw exception here - let final validation handle it
                 if (!string.IsNullOrWhiteSpace(sanitizedSegment))
@@ -457,20 +429,20 @@ namespace LivingRoots.Services
                     validSegments.Add(sanitizedSegment);
                 }
             }
-            
+
             // Check if we have any valid segments after processing
             if (validSegments.Count == 0)
                 throw new ArgumentException("Path sanitization resulted in empty path.", nameof(path));
-            
+
             // Join sanitized segments back together using forward slash for consistency across platforms
             // This ensures keys are consistent regardless of the operating system
             return string.Join("/", validSegments);
         }
-        
+
         /// <summary>
         /// Checks if a segment is a path traversal attempt (e.g., "..", multiple consecutive dots, etc.)
         /// Enhanced defense-in-depth security check to catch more potential path traversal attempts
-        /// 
+        ///
         /// IMPROVEMENT: Refactored to only block actual path traversal patterns, not legitimate filenames
         /// containing ".." like "file..backup.txt". The overly restrictive check for any segment containing
         /// ".." has been replaced with more precise pattern detection.
@@ -481,21 +453,21 @@ namespace LivingRoots.Services
         {
             if (string.IsNullOrEmpty(segment))
                 return false;
-            
+
             // Check for exact ".." match - this is a direct path traversal attempt
             if (segment == "..")
                 return true;
-            
+
             // Check for exact "." match - this represents current directory navigation
             if (segment == ".")
                 return false; // Not a traversal, but handled elsewhere in SanitizePathSegments
-            
+
             // Check for segments with multiple consecutive dots (defense-in-depth against bypass attempts)
             // Look for patterns like "....", ".....", etc. that could be attempts to bypass simple ".." filters
-            int consecutiveDots = 0;
-            int maxConsecutiveDots = 0;
-            
-            for (int i = 0; i < segment.Length; i++)
+            var consecutiveDots = 0;
+            var maxConsecutiveDots = 0;
+
+            for (var i = 0; i < segment.Length; i++)
             {
                 if (segment[i] == '.')
                 {
@@ -507,39 +479,36 @@ namespace LivingRoots.Services
                     consecutiveDots = 0;
                 }
             }
-            
+
             // If there are more than 2 consecutive dots, it could be an evasion attempt
             // (e.g., "...." might be used to bypass a simple ".." filter)
             if (maxConsecutiveDots > 2)
                 return true;
-            
+
             // Additional defense-in-depth checks for actual path traversal patterns
             // Only block if the segment contains ".." as a complete traversal pattern
             // Allow legitimate filenames like "file..backup.txt" where ".." is not a traversal pattern
-            if (segment.Contains(".."))
+            if (segment.Contains("..") && IsActualPathTraversalPattern(segment))
             {
                 // Check if the segment contains actual path traversal patterns
                 // This is more precise than the previous overly restrictive check
-                if (IsActualPathTraversalPattern(segment))
-                {
-                    return true;
-                }
+                return true;
             }
-            
+
             // Check for other potential path traversal indicators
             // Examples: segments that contain path separators within them (which shouldn't happen in a properly segmented path)
             if (segment.Contains('/') || segment.Contains('\\'))
             {
                 return true;
             }
-            
+
             return false;
         }
-        
+
         /// <summary>
         /// Helper method to determine if a segment containing ".." is actually a path traversal pattern
         /// rather than a legitimate filename containing dots.
-        /// 
+        ///
         /// This method provides precise detection that allows filenames like "file..backup.txt"
         /// while still blocking actual traversal attempts like "../etc/passwd" or "dir/../etc".
         /// </summary>
@@ -550,27 +519,27 @@ namespace LivingRoots.Services
             // If segment is exactly "..", it's a traversal attempt
             if (segment == "..")
                 return true;
-            
+
             // Check for patterns where ".." is followed or preceded by path separators
             // These indicate actual traversal attempts like "../", "/..", "..\\", "\\..", etc.
-            if (segment.Contains("../") || segment.Contains("/..") || 
+            if (segment.Contains("../") || segment.Contains("/..") ||
                 segment.Contains("..\\") || segment.Contains("\\.."))
             {
                 return true;
             }
-            
+
             // Check if the segment starts or ends with ".." followed/preceded by a separator
             // This would indicate traversal attempts like ".." at the start or end of a path component
             if (segment.StartsWith("..") && segment.Length >= 3 && (segment[2] == '/' || segment[2] == '\\'))
             {
                 return true;
             }
-            
+
             if (segment.EndsWith("..") && segment.Length >= 3 && (segment[segment.Length - 3] == '/' || segment[segment.Length - 3] == '\\'))
             {
                 return true;
             }
-            
+
             // For segments that contain ".." but don't match traversal patterns,
             // they are likely legitimate filenames like "file..backup.txt"
             return false;

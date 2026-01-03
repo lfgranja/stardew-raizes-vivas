@@ -6,17 +6,11 @@ namespace LivingRoots.Domain
     /// Implementation for core mod logic in the domain layer
     /// following the Dependency Inversion Principle
     /// </summary>
-    public class ModLogic : IModLogic
+    public class ModLogic(IFileNameSanitizationService fileNameSanitizationService, IPathValidationService pathValidationService) : IModLogic
     {
-        private readonly IFileNameSanitizationService _fileNameSanitizationService;
-        private readonly IPathValidationService _pathValidationService;
+        private readonly IFileNameSanitizationService _fileNameSanitizationService = fileNameSanitizationService ?? throw new ArgumentNullException(nameof(fileNameSanitizationService));
+        private readonly IPathValidationService _pathValidationService = pathValidationService ?? throw new ArgumentNullException(nameof(pathValidationService));
 
-        public ModLogic(IFileNameSanitizationService fileNameSanitizationService, IPathValidationService pathValidationService)
-        {
-            _fileNameSanitizationService = fileNameSanitizationService ?? throw new ArgumentNullException(nameof(fileNameSanitizationService));
-            _pathValidationService = pathValidationService ?? throw new ArgumentNullException(nameof(pathValidationService));
-        }
-        
         /// <summary>
         /// Sanitizes a filename using domain services
         /// </summary>
@@ -26,7 +20,7 @@ namespace LivingRoots.Domain
         {
             return _fileNameSanitizationService.Sanitize(filename);
         }
-        
+
         /// <summary>
         /// Validates a path for security concerns
         /// </summary>

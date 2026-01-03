@@ -28,23 +28,23 @@ namespace LivingRoots.Tests
 
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
             var tasks = new List<Task>();
-            for (int i = 0; i < 10; i++)
+            for (var i = 0; i < 10; i++)
             {
                 var workerId = i; // Capture per-iteration value to avoid closure issues
                 var task = Task.Run(() =>
                 {
                     try
                     {
-                        for (int j = 0; j < 100; j++)
+                        for (var j = 0; j < 100; j++)
                         {
-                            int x = (workerId * 100) + j;
-                            int y = workerId;
+                            var x = (workerId * 100) + j;
+                            var y = workerId;
                             var tile = new Vector2(x, y);
                             service.SetSoilHealth("Farm", tile, j % 10 * 5.0f); // Keep values within [0,100] range
                             service.GetSoilHealth("Farm", tile);
                             service.UpdateHealth("Farm", tile, 1.0f);
                         }
-                        
+
                         // Record which worker ID was used
                         lock (workerIdLock)
                         {
@@ -65,25 +65,25 @@ namespace LivingRoots.Tests
             // Add timeout to prevent hanging indefinitely
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
             var whenAllTask = Task.WhenAll(tasks);
-            
+
             var completedTask = await Task.WhenAny(whenAllTask, timeoutTask);
             if (completedTask == timeoutTask)
             {
                 Assert.Fail("ThreadSafety_WithDisjointTileRanges_VerifiesUniqueWorkerIds test timed out after 30 seconds");
             }
-            
+
             // Wait for the actual tasks to complete if they haven't already
             await whenAllTask;
 
             // Assert - No exceptions should have occurred due to race conditions
             Assert.Empty(exceptions);
-            
+
             // Verify that each worker used a unique workerId
             var uniqueWorkerIds = new HashSet<int>(accessedWorkerIds);
             Assert.Equal(10, uniqueWorkerIds.Count); // Should have 10 unique worker IDs
-            
+
             // Verify that all expected worker IDs were used (0 through 9)
-            for (int i = 0; i < 10; i++)
+            for (var i = 0; i < 10; i++)
             {
                 Assert.Contains(i, uniqueWorkerIds);
             }

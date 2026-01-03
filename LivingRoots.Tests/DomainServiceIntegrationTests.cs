@@ -1,7 +1,7 @@
 using System;
-using Moq;
 using LivingRoots.Domain;
 using LivingRoots.Services;
+using Moq;
 using Xunit;
 
 namespace LivingRoots.Tests
@@ -17,18 +17,18 @@ namespace LivingRoots.Tests
         {
             _mockUnicodeNormalizationService = new Mock<IUnicodeNormalizationService>();
             _mockReservedNameHandler = new Mock<IReservedNameHandler>();
-            
+
             // Setup ReservedNameHandler to return input by default
             _mockReservedNameHandler
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-                
+
             _fileNameSanitizationService = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object, _mockReservedNameHandler.Object);
-            
+
             // Create mock Unicode service for PathValidationService
             var mockUnicodeForPathValidation = new Mock<IUnicodeNormalizationService>();
             mockUnicodeForPathValidation.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
-            
+
             _pathValidationService = new PathValidationService(mockUnicodeForPathValidation.Object);
         }
 
@@ -38,7 +38,7 @@ namespace LivingRoots.Tests
             // Arrange
             var input = "tеst.txt"; // Contains Cyrillic 'е' that should be normalized
             var normalized = "test.txt"; // Expected normalized output
-            
+
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(input))
                 .Returns(normalized);
@@ -56,17 +56,17 @@ namespace LivingRoots.Tests
         {
             // This test verifies that sanitized filenames can be used in path validation
             var fileName = "valid_filename.txt";
-            
+
             // First, sanitize filename
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(fileName))
                 .Returns(fileName);
-            
+
             var sanitized = _fileNameSanitizationService.Sanitize(fileName);
-            
+
             // Then validate that it can be part of a path
             _pathValidationService.Validate($"folder/{sanitized}"); // Should not throw
-            
+
             Assert.Equal("valid_filename.txt", sanitized);
         }
 
@@ -76,7 +76,7 @@ namespace LivingRoots.Tests
             // Arrange
             var input = "malicious.exe";
             var normalized = "malicious.exe"; // No change expected from normalization
-            
+
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(input))
                 .Returns(normalized);
@@ -93,16 +93,16 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var input = "../malicious_file.txt";
-            
+
             // Setup mock to return a non-null value for path traversal input
             _mockUnicodeNormalizationService
                 .Setup(x => x.Normalize(input))
                 .Returns(input);
-            
+
             // Act - Path traversal should now pass through FileNameSanitizationService
             // and be caught by PathValidationService at a higher level
-            string result = _fileNameSanitizationService.Sanitize(input)!;
-            
+            var result = _fileNameSanitizationService.Sanitize(input)!;
+
             // Assert - The filename sanitizer itself should not block this (it's handled elsewhere)
             Assert.Equal("._malicious_file.txt", result); // Path traversal is now handled by PathValidationService
         }

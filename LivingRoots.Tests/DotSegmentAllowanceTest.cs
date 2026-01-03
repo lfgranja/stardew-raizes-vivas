@@ -1,11 +1,11 @@
-using StardewModdingAPI;
-using Moq;
-using LivingRoots.Services;
-using LivingRoots.Domain;
-using Xunit;
 using System;
 using System.IO;
 using System.Reflection;
+using LivingRoots.Domain;
+using LivingRoots.Services;
+using Moq;
+using StardewModdingAPI;
+using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -15,19 +15,19 @@ namespace LivingRoots.Tests
         private readonly Mock<IDataHelper> _mockDataHelper;
         private readonly Mock<IModLogic> _mockModLogic;
         private readonly Mock<IMonitor> _mockMonitor;
-        
+
         public DotSegmentAllowanceTest()
         {
             _mockHelper = new Mock<IModHelper>();
             _mockDataHelper = new Mock<IDataHelper>();
             _mockMonitor = new Mock<IMonitor>();
             _mockModLogic = new Mock<IModLogic>();
-            
+
             // Set up DirectoryPath to return a valid path
             _mockHelper.Setup(x => x.DirectoryPath).Returns("/test/directory");
-            
+
             _mockHelper.Setup(x => x.Data).Returns(_mockDataHelper.Object);
-            
+
             // Configure mod logic with explicit input/output pairs for SanitizeFileName
             // This replaces the complex lambda that re-implemented production logic
             // Each specific input is mapped to its expected output to avoid re-implementing
@@ -42,161 +42,153 @@ namespace LivingRoots.Tests
             _mockModLogic.Setup(x => x.SanitizeFileName("valid2")).Returns("valid2");
             _mockModLogic.Setup(x => x.SanitizeFileName("start")).Returns("start");
             _mockModLogic.Setup(x => x.SanitizeFileName("end")).Returns("end");
-            
+
             // Configure exceptions for inputs that should throw
-            _mockModLogic.Setup(x => x.SanitizeFileName(It.Is<string>(s => string.IsNullOrEmpty(s) || s == "<>:\"|?*" || s == "........." || s == "___"))).Throws(new ArgumentException("Filename sanitizes to an empty string.", "input"));
-            _mockModLogic.Setup(x => x.SanitizeFileName("..")).Throws(new ArgumentException($"Filename sanitizes to invalid path component '..'.", "input"));
-            
+            _mockModLogic.Setup(x => x.SanitizeFileName(It.Is<string>(s => string.IsNullOrEmpty(s) || s == "<>:\"|?*" || s == "........." || s == "___"))).Throws(new ArgumentException("Filename sanitizes to an empty string."));
+            _mockModLogic.Setup(x => x.SanitizeFileName("..")).Throws(new ArgumentException($"Filename sanitizes to invalid path component '..'."));
+
             // Configure path validation to not throw for valid paths in most tests
             // but throw for path traversal attempts
             _mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Verifiable();
-            _mockModLogic.Setup(x => x.ValidatePath(It.Is<string>(s => 
-                s.Contains("../") || 
-                s.Contains("..\\") || 
-                s.Contains("../../../") || 
-                s.Contains("..\\..\\") || 
-                ContainsIgnoreCase(s, "http://") || 
+            _mockModLogic.Setup(x => x.ValidatePath(It.Is<string>(s =>
+                s.Contains("../") ||
+                s.Contains("..\\") ||
+                s.Contains("../../../") ||
+                s.Contains("..\\..\\") ||
+                ContainsIgnoreCase(s, "http://") ||
                 ContainsIgnoreCase(s, "https://") ||
                 ContainsIgnoreCase(s, "ftp://") ||
                 ContainsIgnoreCase(s, "file://")))).Throws<ArgumentException>();
         }
-        
+
         // Helper method for case-insensitive string containment check
         private static bool ContainsIgnoreCase(string source, string value)
         {
             if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(value))
                 return false;
-            
+
             return source.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0;
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithDotSegments_SkipsDotSegmentsCorrectly()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Use reflection to access private SanitizePathSegments method
             var method = service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act - Test path with dot segments that should be skipped
             var result = method?.Invoke(service, new object[] { "segment1/./segment2/./segment3" });
-            
+
             // Assert - Dot segments should be skipped, resulting in only the valid segments
             Assert.Equal("segment1/segment2/segment3", result);
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithOnlyDotSegments_ThrowsArgumentException()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Use reflection to access private SanitizePathSegments method
             var method = service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act & Assert - Path with only dot segments should result in empty path and throw exception
-            var exception = Assert.Throws<TargetInvocationException>(() => 
+            var exception = Assert.Throws<TargetInvocationException>(() =>
                 method?.Invoke(service, new object[] { "././." }));
-            
+
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Contains("Path sanitization resulted in empty path", exception.InnerException?.Message);
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithMixedDotAndValidSegments_SkipsOnlyDotSegments()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Use reflection to access private SanitizePathSegments method
             var method = service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act - Test path with mix of dot segments and valid segments
             var result = method?.Invoke(service, new object[] { "./valid1/./valid2/." });
-            
+
             // Assert - Only the valid segments should remain
             Assert.Equal("valid1/valid2", result);
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithDotSegmentAtBeginning_SkipsDotSegment()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Use reflection to access private SanitizePathSegments method
             var method = service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act - Test path starting with dot segment
             var result = method?.Invoke(service, new object[] { "./start/end" });
-            
+
             // Assert - Dot segment at beginning should be skipped
             Assert.Equal("start/end", result);
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithDotSegmentAtEnd_SkipsDotSegment()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Use reflection to access private SanitizePathSegments method
             var method = service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act - Test path ending with dot segment
             var result = method?.Invoke(service, new object[] { "start/end/." });
-            
+
             // Assert - Dot segment at end should be skipped
             Assert.Equal("start/end", result);
         }
-        
+
         [Fact]
         public void IsPathTraversalSegment_WithDotSegment_ReturnsFalse_AfterRemovalOfRedundantCheck()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Use reflection to access private IsPathTraversalSegment method
             var method = service.GetType()
                 .GetMethod("IsPathTraversalSegment", BindingFlags.NonPublic | BindingFlags.Static);
-            
-            // Check if the method exists before invoking it
-            Assert.NotNull(method);
-            
+
             // Act - Test IsPathTraversalSegment with a dot segment
             var result = method?.Invoke(null, new object[] { "." });
-            
+
             // Assert - After removing the redundant check, this should return false
             // because dot segments are handled in the calling method by skipping them
-            Assert.NotNull(result); // Ensure result is not null
             Assert.IsType<bool>(result); // Ensure result is a boolean
             Assert.False((bool)result);
         }
-        
+
         [Fact]
         public void IsPathTraversalSegment_WithDotDotSegment_StillReturnsTrue()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Use reflection to access private IsPathTraversalSegment method
             var method = service.GetType()
                 .GetMethod("IsPathTraversalSegment", BindingFlags.NonPublic | BindingFlags.Static);
-            
-            // Check if the method exists before invoking it
-            Assert.NotNull(method);
-            
+
             // Act - Test IsPathTraversalSegment with a dot-dot segment
             var result = method?.Invoke(null, new object[] { ".." });
-            
+
             // Assert - This should still return true as it's a legitimate path traversal attempt
-            Assert.NotNull(result); // Ensure result is not null
             Assert.IsType<bool>(result); // Ensure result is a boolean
             Assert.True((bool)result);
         }

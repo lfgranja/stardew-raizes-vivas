@@ -64,7 +64,6 @@ namespace LivingRoots.Tests
             var mockHelper = new Mock<IModHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockManifest = new Mock<IManifest>();
-            var mockModDataService = new Mock<IModDataService>();
             var mockSoilHealthService = new Mock<ISoilHealthService>();
             var mockSaveIdProvider = new Mock<ISaveIdProvider>();
 
@@ -72,7 +71,6 @@ namespace LivingRoots.Tests
                 mockHelper.Object,
                 mockMonitor.Object,
                 mockManifest.Object,
-                mockModDataService.Object,
                 mockSoilHealthService.Object,
                 mockSaveIdProvider.Object);
 
@@ -103,7 +101,6 @@ namespace LivingRoots.Tests
             var mockHelper = new Mock<IModHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockManifest = new Mock<IManifest>();
-            var mockModDataService = new Mock<IModDataService>();
             var mockSoilHealthService = new Mock<ISoilHealthService>();
             var mockSaveIdProvider = new Mock<ISaveIdProvider>();
 
@@ -111,7 +108,6 @@ namespace LivingRoots.Tests
                 mockHelper.Object,
                 mockMonitor.Object,
                 mockManifest.Object,
-                mockModDataService.Object,
                 mockSoilHealthService.Object,
                 mockSaveIdProvider.Object);
 
@@ -141,7 +137,6 @@ namespace LivingRoots.Tests
             var mockHelper = new Mock<IModHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockManifest = new Mock<IManifest>();
-            var mockModDataService = new Mock<IModDataService>();
             var mockSoilHealthService = new Mock<ISoilHealthService>();
             var mockSaveIdProvider = new Mock<ISaveIdProvider>();
 
@@ -149,7 +144,6 @@ namespace LivingRoots.Tests
                 mockHelper.Object,
                 mockMonitor.Object,
                 mockManifest.Object,
-                mockModDataService.Object,
                 mockSoilHealthService.Object,
                 mockSaveIdProvider.Object);
 
@@ -214,7 +208,6 @@ namespace LivingRoots.Tests
             var mockHelper = new Mock<IModHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockManifest = new Mock<IManifest>();
-            var mockModDataService = new Mock<IModDataService>();
             var mockSoilHealthService = new Mock<ISoilHealthService>();
             var mockSaveIdProvider = new Mock<ISaveIdProvider>();
 
@@ -222,7 +215,6 @@ namespace LivingRoots.Tests
                 mockHelper.Object,
                 mockMonitor.Object,
                 mockManifest.Object,
-                mockModDataService.Object,
                 mockSoilHealthService.Object,
                 mockSaveIdProvider.Object);
 

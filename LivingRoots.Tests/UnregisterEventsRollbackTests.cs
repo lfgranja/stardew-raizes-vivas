@@ -17,7 +17,6 @@ namespace LivingRoots.Tests
         private readonly Mock<IModHelper> _mockHelper;
         private readonly Mock<IMonitor> _mockMonitor;
         private readonly Mock<IManifest> _mockManifest;
-        private readonly Mock<IModDataService> _mockModDataService;
         private readonly Mock<ISoilHealthService> _mockSoilHealthService;
         private readonly Mock<ISaveIdProvider> _mockSaveIdProvider;
 
@@ -26,7 +25,6 @@ namespace LivingRoots.Tests
             _mockHelper = new Mock<IModHelper>();
             _mockMonitor = new Mock<IMonitor>();
             _mockManifest = new Mock<IManifest>();
-            _mockModDataService = new Mock<IModDataService>();
             _mockSoilHealthService = new Mock<ISoilHealthService>();
             _mockSaveIdProvider = new Mock<ISaveIdProvider>();
 
@@ -90,7 +88,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -98,7 +96,7 @@ namespace LivingRoots.Tests
             // Act - This should trigger the rollback mechanism
             controller.UnregisterEvents();
 
-            // Assert - Verify that rollback was attempted for the successfully unsubscribed handlers
+            // Assert - Verify that rollback was attempted for successfully unsubscribed handlers
             // During registration: 1 add for each event
             // During rollback: 1 additional add for GameLaunched and Saving (the ones that were successfully unsubscribed)
             // Total expected: 2 for GameLaunched and Saving, 1 for SaveLoaded (no rollback since unsubscription failed)
@@ -106,10 +104,10 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Exactly(2));
             mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
 
-            // Check that EventsRegisteredFlag is restored in the state after rollback
+            // Check that EventsRegisteredFlag is restored in state after rollback
             var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
             var stateValue = (int)(stateField?.GetValue(controller) ?? 0);
-            var eventsRegisteredFlag = 1 << 0;
+            var eventsRegisteredFlag = 1;
             Assert.True((stateValue & eventsRegisteredFlag) != 0, "EventsRegisteredFlag should be restored after rollback");
         }
 
@@ -145,7 +143,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
                 .Throws(new InvalidOperationException("Saving unsubscribe failed"));
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -162,8 +160,8 @@ namespace LivingRoots.Tests
             // Check that EventsRegisteredFlag remains in the appropriate state
             var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
             var stateValue = (int)(stateField?.GetValue(controller) ?? 0);
-            var eventsRegisteredFlag = 1 << 0;
-            // Since no unsubscriptions were successful, the state should reflect the original registered state
+            var eventsRegisteredFlag = 1;
+            // Since no unsubscriptions were successful, state should reflect the original registered state
             Assert.True((stateValue & eventsRegisteredFlag) != 0, "EventsRegisteredFlag should remain after failed unregistration");
         }
 
@@ -199,7 +197,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -212,10 +210,10 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Exactly(2));
             mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Exactly(2));
 
-            // Check that EventsRegisteredFlag is restored in the state after rollback
+            // Check that EventsRegisteredFlag is restored in state after rollback
             var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
             var stateValue = (int)(stateField?.GetValue(controller) ?? 0);
-            var eventsRegisteredFlag = 1 << 0;
+            var eventsRegisteredFlag = 1;
             Assert.True((stateValue & eventsRegisteredFlag) != 0, "EventsRegisteredFlag should be restored after rollback");
         }
 
@@ -251,7 +249,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -268,7 +266,7 @@ namespace LivingRoots.Tests
             // Check that EventsRegisteredFlag is cleared after successful unregistration
             var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
             var stateValue = (int)(stateField?.GetValue(controller) ?? 0);
-            var eventsRegisteredFlag = 1 << 0;
+            var eventsRegisteredFlag = 1;
             Assert.True((stateValue & eventsRegisteredFlag) == 0, "EventsRegisteredFlag should be cleared after successful unregistration");
         }
     }

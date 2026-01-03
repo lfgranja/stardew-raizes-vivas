@@ -16,8 +16,8 @@ namespace LivingRoots.Tests
             // Arrange
             var dir = new DirectoryInfo(AppContext.BaseDirectory);
             FileInfo? readmeFile = null;
-            
-            for (int i = 0; i < 10 && dir != null; i++)
+
+            for (var i = 0; i < 10 && dir != null; i++)
             {
                 var files = dir.GetFiles("README.md");
                 if (files.Length > 0)
@@ -27,7 +27,7 @@ namespace LivingRoots.Tests
                 }
                 dir = dir.Parent;
             }
-            
+
             Assert.True(readmeFile != null && readmeFile.Exists, $"README.md could not be found. Started search from {AppContext.BaseDirectory}");
             var readmePath = readmeFile.FullName;
 
@@ -39,10 +39,10 @@ namespace LivingRoots.Tests
                 "Health degrades over time when soil is left bare (Planned)",
                 "Health improves with compost application (Planned)"
             };
-            
+
             // Act
             var readmeContent = File.ReadAllText(readmePath);
-            
+
             // Assert - This should fail initially since the features are not marked as planned yet
             foreach (var feature in expectedPlannedFeatures)
             {

@@ -15,7 +15,7 @@ namespace LivingRoots.Services
         /// <param name="data">Data to save</param>
         /// <param name="key">Key to identify the data</param>
         void SaveData<T>(T data, string key) where T : class;
-        
+
         /// <summary>
         /// Load mod data from persistent storage
         /// </summary>
@@ -23,14 +23,14 @@ namespace LivingRoots.Services
         /// <param name="key">Key to identify the data</param>
         /// <returns>Loaded data or default value if not found</returns>
         T? LoadData<T>(string key) where T : class;
-        
+
         /// <summary>
         /// Check if data exists for a given key
         /// </summary>
         /// <param name="key">Key to check</param>
         /// <returns>True if data exists, false otherwise</returns>
         bool DataExists(string key);
-        
+
         /// <summary>
         /// Remove data for a given key
         /// </summary>

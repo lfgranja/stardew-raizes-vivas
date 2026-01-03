@@ -6,14 +6,9 @@ namespace LivingRoots.Services
     /// <summary>
     /// Adapter implementation for IUnicodeNormalizer that uses domain service
     /// </summary>
-    public class UnicodeNormalizer : IUnicodeNormalizer
+    public class UnicodeNormalizer(IUnicodeNormalizationService unicodeNormalizationService) : IUnicodeNormalizer
     {
-        private readonly IUnicodeNormalizationService _unicodeNormalizationService;
-
-        public UnicodeNormalizer(IUnicodeNormalizationService unicodeNormalizationService)
-        {
-            _unicodeNormalizationService = unicodeNormalizationService ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
-        }
+        private readonly IUnicodeNormalizationService _unicodeNormalizationService = unicodeNormalizationService ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
 
         /// <summary>
         /// Normalizes Unicode characters by handling diacritics, homoglyphs, and other Unicode security concerns.

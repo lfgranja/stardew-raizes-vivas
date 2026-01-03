@@ -6,14 +6,9 @@ namespace LivingRoots.Services
     /// <summary>
     /// Adapter implementation for IFileNameSanitizer that uses domain service
     /// </summary>
-    public class FileNameSanitizer : IFileNameSanitizer
+    public class FileNameSanitizer(IFileNameSanitizationService fileNameSanitizationService) : IFileNameSanitizer
     {
-        private readonly IFileNameSanitizationService _fileNameSanitizationService;
-
-        public FileNameSanitizer(IFileNameSanitizationService fileNameSanitizationService)
-        {
-            _fileNameSanitizationService = fileNameSanitizationService ?? throw new ArgumentNullException(nameof(fileNameSanitizationService));
-        }
+        private readonly IFileNameSanitizationService _fileNameSanitizationService = fileNameSanitizationService ?? throw new ArgumentNullException(nameof(fileNameSanitizationService));
 
         /// <summary>
         /// Sanitizes a filename by removing or replacing invalid characters and handling security concerns.

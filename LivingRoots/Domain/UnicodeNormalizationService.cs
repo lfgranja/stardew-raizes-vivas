@@ -37,12 +37,12 @@ namespace LivingRoots.Domain
             { '‐', "-" }, { '‑', "-" }, // Hyphen and non-breaking hyphen to regular hyphen
             { '′', "'" }, { '″', "\"" }, // Prime and double prime to regular quotes
             { '‘', "'" }, { '’', "'" }, { '‚', "'" }, // Different single quotes to regular apostrophe
-            { '“', "\"" }, { '”', "\"" }, { '„', "\"" }, // Different double quotes to regular quotes
+            { '„', "\"" }, // Different double quotes to regular quotes
             { '⁰', "0" }, { '¹', "1" }, { '²', "2" }, { '³', "3" }, { '⁴', "4" }, { '⁵', "5" }, { '⁶', "6" }, { '⁷', "7" }, { '⁸', "8" }, { '⁹', "9" }, // Superscript numbers
             { '₀', "0" }, { '₁', "1" }, { '₂', "2" }, { '₃', "3" }, { '₄', "4" }, { '₅', "5" }, { '₆', "6" }, { '₇', "7" }, { '₈', "8" }, { '₉', "9" }, // Subscript numbers
         });
-        
-        
+
+
         /// <summary>
         /// Normalizes Unicode characters by handling diacritics, homoglyphs, and other Unicode security concerns.
         /// Security-focused normalization that converts potentially deceptive characters while preserving legitimate Unicode.
@@ -54,121 +54,132 @@ namespace LivingRoots.Domain
             if (string.IsNullOrEmpty(input))
                 return input;
 
-            // First, handle invalid surrogate pairs by replacing them with replacement characters
-            // This prevents exceptions when calling Normalize() on strings with invalid Unicode
-            string sanitizedInput = SanitizeSurrogatePairs(input);
-            
-            // Apply canonical decomposition normalization to separate base characters from diacritics
-            // FormD (Canonical Decomposition) separates combined characters like 'é' into 'e' + combining acute accent
-            string decomposed = sanitizedInput.Normalize(NormalizationForm.FormD);
-            
+            var sanitizedInput = SanitizeSurrogatePairs(input);
+            var decomposed = sanitizedInput.Normalize(NormalizationForm.FormD);
+
             var resultBuilder = new StringBuilder();
-            char lastBaseChar = '\0'; // Track the last base character for diacritic processing
+            var lastBaseChar = '\0';
 
-            for (int i = 0; i < decomposed.Length; i++)
+            var i = 0;
+            while (i < decomposed.Length)
             {
-                char c = decomposed[i];
-
-                // Handle surrogate pairs (needed for emojis and other characters outside BMP)
-                // Enhanced handling to properly process dangling surrogates
-                if (char.IsHighSurrogate(c))
-                {
-                    if (i + 1 < decomposed.Length && char.IsLowSurrogate(decomposed[i + 1]))
-                    {
-                        // Valid surrogate pair: preserve as-is
-                        resultBuilder.Append(c);
-                        resultBuilder.Append(decomposed[i + 1]);
-                        i++; // consume low surrogate
-                        continue;
-                    }
-                    else
-                    {
-                        // Dangling high surrogate: replace with U+FFFD (replacement character) to avoid data loss
-                        resultBuilder.Append('\uFFFD');
-                    }
-                }
-                else if (char.IsLowSurrogate(c))
-                {
-                    // Dangling low surrogate: replace with U+FFFD (replacement character) to avoid data loss
-                    resultBuilder.Append('\uFFFD');
-                }
-                else
-                {
-                    // Process non-surrogate characters normally
-                    var category = CharUnicodeInfo.GetUnicodeCategory(c);
-
-                    if (category == UnicodeCategory.NonSpacingMark)
-                    {
-                        // This is a combining mark (like a diacritic)
-                        // For security, remove diacritics from Latin and Greek letters
-                        // But preserve diacritics for other scripts like Hebrew, Arabic, etc.
-                        // Use the last known base character to determine if diacritic should be removed
-                        if (lastBaseChar == '\0')
-                        {
-                            // Skip orphan combining marks that don't have a valid base character
-                            // This prevents leading or orphan combining marks from being preserved
-                            continue;
-                        }
-                        else if (IsLatinLetter(lastBaseChar) || IsGreekLetter(lastBaseChar))
-                        {
-                            // Remove diacritics from Latin and Greek letters
-                            continue;
-                        }
-                        else
-                        {
-                            // This is likely part of a legitimate non-Latin character, keep it
-                            resultBuilder.Append(c);
-                        }
-                    }
-                    else if (category == UnicodeCategory.Control || IsZeroWidthOrBidirectional(c))
-                    {
-                        // Remove control and format characters completely to avoid creating false word boundaries
-                        // This prevents format characters from being replaced with underscores which could alter string semantics
-                        // Do not insert spaces - these characters should be completely removed
-                        continue;
-                    }
-                    else
-                    {
-                        // Update the last base character for any non-combining, non-control/format character
-                        // Only update lastBaseChar for actual base characters, not surrogate pairs or combining marks
-                        lastBaseChar = c;
-                        
-                        // Check for security confusables (homoglyphs that should be converted)
-                        // Apply context-aware conversion for security homoglyphs
-                        // The goal is to convert confusable characters when they're used to disguise other scripts
-                        if (SecurityConfusables.TryGetValue(c, out var replacement))
-                        {
-                            // For context-aware conversion, we need to check if this confusable character is being used in a context
-                            // where it might be disguising another script. If it's surrounded by other non-Latin characters that are
-                            // part of the same script (like Cyrillic), we should preserve it.
-                            
-                            bool shouldConvert = ShouldConvertConfusable(c, decomposed, i);
-                            
-                            if (shouldConvert)
-                            {
-                                // Convert confusable characters when they're being used to disguise other scripts
-                                resultBuilder.Append(replacement);
-                            }
-                            else
-                            {
-                                // Preserve the original character when it's in a legitimate script context
-                                resultBuilder.Append(c);
-                            }
-                        }
-                        else
-                        {
-                            // Special handling for non-confusable characters
-                            string simplified = SimplifyCharacter(c);
-                            resultBuilder.Append(simplified);
-                        }
-                    }
-                }
+                i = ProcessCharacter(decomposed, i, resultBuilder, ref lastBaseChar);
+                i++;
             }
 
-            // Apply FormC to ensure proper composition after processing
-            // This handles cases where compatibility normalization might have preserved some diacritics
-            string result = resultBuilder.ToString();
+            var result = resultBuilder.ToString();
             return result.Normalize(NormalizationForm.FormC);
+        }
+
+        /// <summary>
+        /// Processes a single character in the decomposed string.
+        /// </summary>
+        /// <param name="decomposed">The decomposed string being processed.</param>
+        /// <param name="currentIndex">The current index in the string.</param>
+        /// <param name="resultBuilder">The string builder for the result.</param>
+        /// <param name="lastBaseChar">The last base character encountered.</param>
+        /// <returns>The new index to continue from (may be incremented for surrogate pairs).</returns>
+        private static int ProcessCharacter(string decomposed, int currentIndex, StringBuilder resultBuilder, ref char lastBaseChar)
+        {
+            var c = decomposed[currentIndex];
+
+            if (char.IsHighSurrogate(c))
+            {
+                return ProcessHighSurrogate(decomposed, currentIndex, resultBuilder);
+            }
+
+            if (char.IsLowSurrogate(c))
+            {
+                resultBuilder.Append('\uFFFD');
+                return currentIndex;
+            }
+
+            return ProcessNonSurrogateCharacter(decomposed, currentIndex, resultBuilder, ref lastBaseChar);
+        }
+
+        /// <summary>
+        /// Processes a high surrogate character.
+        /// </summary>
+        /// <param name="decomposed">The decomposed string being processed.</param>
+        /// <param name="currentIndex">The current index in the string.</param>
+        /// <param name="resultBuilder">The string builder for the result.</param>
+        /// <returns>The new index to continue from.</returns>
+        private static int ProcessHighSurrogate(string decomposed, int currentIndex, StringBuilder resultBuilder)
+        {
+            if (currentIndex + 1 < decomposed.Length && char.IsLowSurrogate(decomposed[currentIndex + 1]))
+            {
+                resultBuilder.Append(decomposed[currentIndex]);
+                resultBuilder.Append(decomposed[currentIndex + 1]);
+                return currentIndex + 1;
+            }
+
+            resultBuilder.Append('\uFFFD');
+            return currentIndex;
+        }
+
+        /// <summary>
+        /// Processes a non-surrogate character.
+        /// </summary>
+        /// <param name="decomposed">The decomposed string being processed.</param>
+        /// <param name="currentIndex">The current index in the string.</param>
+        /// <param name="resultBuilder">The string builder for the result.</param>
+        /// <param name="lastBaseChar">The last base character encountered.</param>
+        /// <returns>The same index (no increment needed).</returns>
+        private static int ProcessNonSurrogateCharacter(string decomposed, int currentIndex, StringBuilder resultBuilder, ref char lastBaseChar)
+        {
+            var c = decomposed[currentIndex];
+            var category = CharUnicodeInfo.GetUnicodeCategory(c);
+
+            if (category == UnicodeCategory.NonSpacingMark)
+            {
+                ProcessNonSpacingMark(c, lastBaseChar, resultBuilder);
+                return currentIndex;
+            }
+
+            if (category == UnicodeCategory.Control || IsZeroWidthOrBidirectional(c))
+            {
+                return currentIndex;
+            }
+
+            lastBaseChar = c;
+            ProcessRegularCharacter(c, decomposed, currentIndex, resultBuilder);
+            return currentIndex;
+        }
+
+        /// <summary>
+        /// Processes a non-spacing mark (diacritic).
+        /// </summary>
+        /// <param name="c">The non-spacing mark character.</param>
+        /// <param name="lastBaseChar">The last base character encountered.</param>
+        /// <param name="resultBuilder">The string builder for the result.</param>
+        private static void ProcessNonSpacingMark(char c, char lastBaseChar, StringBuilder resultBuilder)
+        {
+            var shouldRemoveDiacritic = lastBaseChar == '\0' || IsLatinLetter(lastBaseChar) || IsGreekLetter(lastBaseChar);
+            if (!shouldRemoveDiacritic)
+            {
+                resultBuilder.Append(c);
+            }
+        }
+
+        /// <summary>
+        /// Processes a regular character (not a surrogate, control, or combining mark).
+        /// </summary>
+        /// <param name="c">The character to process.</param>
+        /// <param name="decomposed">The decomposed string being processed.</param>
+        /// <param name="index">The index of the character.</param>
+        /// <param name="resultBuilder">The string builder for the result.</param>
+        private static void ProcessRegularCharacter(char c, string decomposed, int index, StringBuilder resultBuilder)
+        {
+            if (SecurityConfusables.TryGetValue(c, out var replacement))
+            {
+                var shouldConvert = ShouldConvertConfusable(c, decomposed, index);
+                resultBuilder.Append(shouldConvert ? replacement : c.ToString());
+            }
+            else
+            {
+                var simplified = SimplifyCharacter(c);
+                resultBuilder.Append(simplified);
+            }
         }
 
         /// <summary>
@@ -183,38 +194,49 @@ namespace LivingRoots.Domain
                 return input;
 
             var resultBuilder = new StringBuilder();
-            for (int i = 0; i < input.Length; i++)
+            var i = 0;
+
+            while (i < input.Length)
             {
-                char c = input[i];
+                var c = input[i];
 
                 if (char.IsHighSurrogate(c))
                 {
-                    if (i + 1 < input.Length && char.IsLowSurrogate(input[i + 1]))
-                    {
-                        // Valid surrogate pair: preserve both characters
-                        resultBuilder.Append(c);
-                        resultBuilder.Append(input[i + 1]);
-                        i++; // Skip the low surrogate since we just processed it
-                    }
-                    else
-                    {
-                        // Dangling high surrogate: replace with replacement character
-                        resultBuilder.Append('\uFFFD');
-                    }
+                    i = ProcessHighSurrogateInSanitization(input, i, resultBuilder);
                 }
                 else if (char.IsLowSurrogate(c))
                 {
-                    // Dangling low surrogate: replace with replacement character
                     resultBuilder.Append('\uFFFD');
+                    i++;
                 }
                 else
                 {
-                    // Regular character: add as-is
                     resultBuilder.Append(c);
+                    i++;
                 }
             }
 
             return resultBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Processes a high surrogate during sanitization.
+        /// </summary>
+        /// <param name="input">The input string being processed.</param>
+        /// <param name="currentIndex">The current index.</param>
+        /// <param name="resultBuilder">The string builder for the result.</param>
+        /// <returns>The new index to continue from.</returns>
+        private static int ProcessHighSurrogateInSanitization(string input, int currentIndex, StringBuilder resultBuilder)
+        {
+            if (currentIndex + 1 < input.Length && char.IsLowSurrogate(input[currentIndex + 1]))
+            {
+                resultBuilder.Append(input[currentIndex]);
+                resultBuilder.Append(input[currentIndex + 1]);
+                return currentIndex + 2;
+            }
+
+            resultBuilder.Append('\uFFFD');
+            return currentIndex + 1;
         }
 
         /// <summary>
@@ -274,7 +296,7 @@ namespace LivingRoots.Domain
         {
             return (c >= '\u0400' && c <= '\u04FF') || // Cyrillic block
                    (c >= '\u0500' && c <= '\u052F') || // Cyrillic Supplement block
-                   (c >= '\u2DE0' && c <= '\u2DFF') || // Cyrillic Extended-A block  
+                   (c >= '\u2DE0' && c <= '\u2DFF') || // Cyrillic Extended-A block
                    (c >= '\uA640' && c <= '\uA69F');   // Cyrillic Extended-B block
         }
 
@@ -290,29 +312,29 @@ namespace LivingRoots.Domain
             // Zero-width characters - added the missing U+200B, U+200C, U+200D
             if (c == '\u200B' || c == '\u200C' || c == '\u200D') // ZERO WIDTH SPACE, ZERO WIDTH NON-JOINER, ZERO WIDTH JOINER
                 return true;
-                
+
             if (c == '\u202A' || c == '\u202B' || c == '\u202C' || c == '\u202D' || c == '\u202E') // LRE, RLE, PDF, LRO, RLO
                 return true;
-                
+
             // Additional zero-width and bidirectional control characters for enhanced security
             if (c == '\u202E' || c == '\u202F') // Left-to-right mark, Right-to-left mark
                 return true;
-                
+
             if (c == '\u2066' || c == '\u2067' || c == '\u2068' || c == '\u2069') // First strong isolate, Left-to-right isolate, Right-to-left isolate, Pop directional isolate
                 return true;
-                
+
             // Zero-width no-break space (Byte Order Mark)
             if (c == '\uFEFF')
                 return true;
-                
+
             // Other format characters that should be removed
             var category = CharUnicodeInfo.GetUnicodeCategory(c);
             if (category == UnicodeCategory.Format)
                 return true;
-                
+
             return false;
         }
-        
+
         /// <summary>
         /// Determines whether a confusable character should be converted based on its context.
         /// </summary>
@@ -322,115 +344,144 @@ namespace LivingRoots.Domain
         /// <returns>True if the character should be converted, false if it should be preserved</returns>
         private static bool ShouldConvertConfusable(char c, string text, int index)
         {
-            // For security confusables, we need to be careful about the context
-            // The main goal is to convert confusable characters when they're used to disguise Latin text
-            // but preserve them when they appear in legitimate non-Latin contexts
-            
-            // Look for the previous and next non-combining mark characters to determine context
-            // This ensures we skip combining marks when checking script context
-            int prevIndex = FindPreviousNonMark(text, index);
-            int nextIndex = FindNextNonMark(text, index);
-            
-            // Check if the character is in a mixed script context
-            // If both neighbors are the same script type as the confusable character, preserve it
-            bool isCyrillicConfusable = IsCyrillicLookalike(c);
-            bool isGreekConfusable = IsGreekLookalike(c);
-            
-            // For the specific test cases, we need to understand the context better:
-            // - "passwordтест" - the 'е' in "тест" should be preserved because it's part of a Cyrillic word
-            // - "cafe тест naive" - the 'е' in "тест" should be preserved because it's part of a Cyrillic word
-            
-            // If at the beginning of the string (no previous character), consider only the next neighbor
-            if (prevIndex == -1)
+            var prevIndex = FindPreviousNonMark(text, index);
+            var nextIndex = FindNextNonMark(text, index);
+            var isCyrillicConfusable = IsCyrillicLookalike(c);
+            var isGreekConfusable = IsGreekLookalike(c);
+
+            if (ShouldPreserveAtBoundary(prevIndex, nextIndex, text, isCyrillicConfusable, isGreekConfusable))
             {
-                // If the next character is of the same script type as the confusable, preserve it
-                if (nextIndex != -1)
-                {
-                    if (isCyrillicConfusable && IsCyrillicLetter(text[nextIndex]))
-                        return false; // Don't convert - part of legitimate Cyrillic text
-                    if (isGreekConfusable && IsGreekLetter(text[nextIndex]))
-                        return false; // Don't convert - part of legitimate Greek text
-                }
+                return false;
             }
-            // If at the end of the string (no next character), consider only the previous neighbor
-            else if (nextIndex == -1)
+
+            if (ShouldPreserveInMiddle(prevIndex, nextIndex, text, isCyrillicConfusable, isGreekConfusable, index))
             {
-                // If the previous character is of the same script type as the confusable, preserve it
-                if (isCyrillicConfusable && IsCyrillicLetter(text[prevIndex]))
-                    return false; // Don't convert - part of legitimate Cyrillic text
-                if (isGreekConfusable && IsGreekLetter(text[prevIndex]))
-                    return false; // Don't convert - part of legitimate Greek text
+                return false;
             }
-            // If not at boundaries, check both neighbors
-            else
+
+            if (ShouldPreserveGreekWithNeighbor(prevIndex, nextIndex, text, isGreekConfusable))
             {
-                // For the test cases, we need to detect when a confusable character is part of a legitimate
-                // non-Latin word. A character should be preserved if:
-                // 1. Both neighbors are of the same script type as the confusable (original logic)
-                // 2. OR if the character is part of a sequence of the same script type
-                bool prevIsCyrillic = IsCyrillicLetter(text[prevIndex]);
-                bool nextIsCyrillic = IsCyrillicLetter(text[nextIndex]);
-                bool prevIsGreek = IsGreekLetter(text[prevIndex]);
-                bool nextIsGreek = IsGreekLetter(text[nextIndex]);
-                
-                if (isCyrillicConfusable && prevIsCyrillic && nextIsCyrillic)
-                {
-                    return false; // Don't convert - surrounded by Cyrillic
-                }
-                if (isGreekConfusable && prevIsGreek && nextIsGreek)
-                {
-                    return false; // Don't convert - surrounded by Greek
-                }
-                
-                // For cases like "passwordтест" where 'е' has Latin on left and Cyrillic on right:
-                // If the confusable is Cyrillic and the next character is Cyrillic, preserve it
-                // This handles cases where a Latin word transitions to a Cyrillic word
-                if (isCyrillicConfusable && nextIsCyrillic)
-                {
-                    return false; // Don't convert - followed by Cyrillic (likely part of Cyrillic text)
-                }
-                
-                // For cases where the confusable is part of a sequence of the same script
-                // Check for longer context - look for extended sequences
-                if (isCyrillicConfusable)
-                {
-                    // If there are multiple Cyrillic characters nearby, it's likely legitimate Cyrillic text
-                    int cyrillicCount = 0;
-                    // Check a wider context around the character
-                    for (int i = System.Math.Max(0, index - 5); i < System.Math.Min(text.Length, index + 6); i++)
-                    {
-                        if (i != index && IsCyrillicLetter(text[i]))
-                        {
-                            cyrillicCount++;
-                        }
-                    }
-                    // If there are multiple Cyrillic characters in the vicinity, preserve the confusable
-                    if (cyrillicCount >= 2)
-                    {
-                        return false;
-                    }
-                }
+                return false;
             }
-            
-            // For Greek confusables in mixed contexts, be more conservative and preserve them
-            // This addresses the test case where Greek letters should remain as Greek in mixed text
-            if (isGreekConfusable)
-            {
-                // If either neighbor is Greek, preserve the Greek confusable
-                if ((prevIndex != -1 && IsGreekLetter(text[prevIndex])) || 
-                    (nextIndex != -1 && IsGreekLetter(text[nextIndex])))
-                {
-                    return false;
-                }
-            }
-            
-            // Convert the confusable character to prevent spoofing
-            // This includes cases where:
-            // - Character is at beginning/end and neighbor is not of the same script type
-            // - Character is in middle and not surrounded by the same script type on both sides
+
             return true;
         }
-        
+
+        /// <summary>
+        /// Checks if a confusable character at a string boundary should be preserved.
+        /// </summary>
+        private static bool ShouldPreserveAtBoundary(int prevIndex, int nextIndex, string text, bool isCyrillicConfusable, bool isGreekConfusable)
+        {
+            if (prevIndex == -1)
+            {
+                return ShouldPreserveAtStart(nextIndex, text, isCyrillicConfusable, isGreekConfusable);
+            }
+
+            if (nextIndex == -1)
+            {
+                return ShouldPreserveAtEnd(prevIndex, text, isCyrillicConfusable, isGreekConfusable);
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a confusable character at the start of the string should be preserved.
+        /// </summary>
+        private static bool ShouldPreserveAtStart(int nextIndex, string text, bool isCyrillicConfusable, bool isGreekConfusable)
+        {
+            if (nextIndex == -1)
+                return false;
+
+            if (isCyrillicConfusable && IsCyrillicLetter(text[nextIndex]))
+                return true;
+
+            if (isGreekConfusable && IsGreekLetter(text[nextIndex]))
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a confusable character at the end of the string should be preserved.
+        /// </summary>
+        private static bool ShouldPreserveAtEnd(int prevIndex, string text, bool isCyrillicConfusable, bool isGreekConfusable)
+        {
+            if (isCyrillicConfusable && IsCyrillicLetter(text[prevIndex]))
+                return true;
+
+            if (isGreekConfusable && IsGreekLetter(text[prevIndex]))
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a confusable character in the middle of the string should be preserved.
+        /// </summary>
+        private static bool ShouldPreserveInMiddle(int prevIndex, int nextIndex, string text, bool isCyrillicConfusable, bool isGreekConfusable, int index)
+        {
+            // Guard against invalid indices
+            if (prevIndex < 0 || nextIndex < 0 || prevIndex >= text.Length || nextIndex >= text.Length)
+                return false;
+
+            var prevIsCyrillic = IsCyrillicLetter(text[prevIndex]);
+            var nextIsCyrillic = IsCyrillicLetter(text[nextIndex]);
+            var prevIsGreek = IsGreekLetter(text[prevIndex]);
+            var nextIsGreek = IsGreekLetter(text[nextIndex]);
+
+            if (isCyrillicConfusable && prevIsCyrillic && nextIsCyrillic)
+                return true;
+
+            if (isGreekConfusable && prevIsGreek && nextIsGreek)
+                return true;
+
+            if (isCyrillicConfusable && nextIsCyrillic)
+                return true;
+
+            if (isCyrillicConfusable && HasMultipleCyrillicNeighbors(text, index))
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if a Greek confusable character with at least one Greek neighbor should be preserved.
+        /// </summary>
+        private static bool ShouldPreserveGreekWithNeighbor(int prevIndex, int nextIndex, string text, bool isGreekConfusable)
+        {
+            if (!isGreekConfusable)
+                return false;
+
+            if (prevIndex != -1 && IsGreekLetter(text[prevIndex]))
+                return true;
+
+            if (nextIndex != -1 && IsGreekLetter(text[nextIndex]))
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if there are multiple Cyrillic characters in the vicinity of the index.
+        /// </summary>
+        private static bool HasMultipleCyrillicNeighbors(string text, int index)
+        {
+            var cyrillicCount = 0;
+            var start = System.Math.Max(0, index - 5);
+            var end = System.Math.Min(text.Length, index + 6);
+
+            for (var i = start; i < end; i++)
+            {
+                if (i != index && IsCyrillicLetter(text[i]))
+                {
+                    cyrillicCount++;
+                }
+            }
+
+            return cyrillicCount >= 2;
+        }
+
         /// <summary>
         /// Checks if a character is a Cyrillic lookalike that maps to a Latin equivalent
         /// </summary>
@@ -438,10 +489,10 @@ namespace LivingRoots.Domain
         /// <returns>True if the character is a Cyrillic lookalike</returns>
         private static bool IsCyrillicLookalike(char c)
         {
-            return SecurityConfusables.ContainsKey(c) && 
+            return SecurityConfusables.ContainsKey(c) &&
                    (IsCyrillicLetter(c) || c == 'і' || c == 'І'); // Additional Cyrillic lookalikes
         }
-        
+
         /// <summary>
         /// Checks if a character is a Greek lookalike that maps to a Latin equivalent
         /// </summary>
@@ -451,7 +502,7 @@ namespace LivingRoots.Domain
         {
             return SecurityConfusables.ContainsKey(c) && IsGreekLetter(c);
         }
-        
+
         /// <summary>
         /// Finds the previous non-combining mark character in the text.
         /// </summary>
@@ -460,11 +511,11 @@ namespace LivingRoots.Domain
         /// <returns>The index of the previous non-combining mark character, or -1 if not found</returns>
         private static int FindPreviousNonMark(string text, int startIndex)
         {
-            for (int i = startIndex - 1; i >= 0; i--)
+            for (var i = startIndex - 1; i >= 0; i--)
             {
                 var category = CharUnicodeInfo.GetUnicodeCategory(text[i]);
-                if (category != UnicodeCategory.NonSpacingMark && 
-                    category != UnicodeCategory.SpacingCombiningMark && 
+                if (category != UnicodeCategory.NonSpacingMark &&
+                    category != UnicodeCategory.SpacingCombiningMark &&
                     category != UnicodeCategory.EnclosingMark)
                 {
                     return i;
@@ -472,7 +523,7 @@ namespace LivingRoots.Domain
             }
             return -1;
         }
-        
+
         /// <summary>
         /// Finds the next non-combining mark character in the text.
         /// </summary>
@@ -481,11 +532,11 @@ namespace LivingRoots.Domain
         /// <returns>The index of the next non-combining mark character, or -1 if not found</returns>
         private static int FindNextNonMark(string text, int startIndex)
         {
-            for (int i = startIndex + 1; i < text.Length; i++)
+            for (var i = startIndex + 1; i < text.Length; i++)
             {
                 var category = CharUnicodeInfo.GetUnicodeCategory(text[i]);
-                if (category != UnicodeCategory.NonSpacingMark && 
-                    category != UnicodeCategory.SpacingCombiningMark && 
+                if (category != UnicodeCategory.NonSpacingMark &&
+                    category != UnicodeCategory.SpacingCombiningMark &&
                     category != UnicodeCategory.EnclosingMark)
                 {
                     return i;

@@ -13,7 +13,7 @@ namespace LivingRoots.Tests
         {
             // This test demonstrates the issue where worker tasks are not properly awaited
             // causing exceptions to go unobserved and the test to pass silently
-            
+
             var exceptions = new List<Exception>();
             var lockObj = new object();
             var tasks = new List<Task>();
@@ -27,7 +27,8 @@ namespace LivingRoots.Tests
 
             // The problematic pattern: only adding the continuation task to be awaited
             // The original worker task is not awaited, so unobserved exceptions can occur
-            tasks.Add(task.ContinueWith(continuationTask => {
+            tasks.Add(task.ContinueWith(continuationTask =>
+            {
                 // Handle the exception from the original task to prevent unobserved exception
                 if (continuationTask.IsFaulted && continuationTask.Exception != null)
                 {
@@ -53,7 +54,7 @@ namespace LivingRoots.Tests
         {
             // This test demonstrates the correct pattern where both the main task
             // and its continuation are properly awaited
-            
+
             var exceptions = new List<Exception>();
             var lockObj = new object();
             var tasks = new List<Task>();
@@ -66,7 +67,8 @@ namespace LivingRoots.Tests
             });
 
             // The correct pattern: both the original task and its continuation are awaited
-            var recordTask = task.ContinueWith(continuationTask => {
+            var recordTask = task.ContinueWith(continuationTask =>
+            {
                 // Handle the exception from the original task to capture it properly
                 if (continuationTask.IsFaulted && continuationTask.Exception != null)
                 {

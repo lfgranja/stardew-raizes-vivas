@@ -1,9 +1,9 @@
 using System;
 using System.IO;
-using Xunit;
-using LivingRoots.Services;
 using LivingRoots.Domain;
+using LivingRoots.Services;
 using Moq;
+using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -51,24 +51,24 @@ namespace LivingRoots.Tests
             // After removing overly restrictive check, "./file" should now be allowed (as it refers to current directory)
             var ex1 = Record.Exception(() => _validator.Validate("./file"));
             Assert.Null(ex1);
-            
+
             // Also test with backslash separator
             var ex2 = Record.Exception(() => _validator.Validate(".\\file"));
             Assert.Null(ex2);
-            
+
             // But "file/." should still be allowed (as it refers to a directory)
             var ex3 = Record.Exception(() => _validator.Validate("file/."));
             Assert.Null(ex3);
-            
+
             // Also test with backslash separator
             var ex4 = Record.Exception(() => _validator.Validate("file\\."));
             Assert.Null(ex4);
-            
+
             // And "folder/./file" should be allowed (middle "." segments are safe)
             _validator.Validate("folder/./file"); // This should not throw
             _validator.Validate("path/to/./file.txt");  // This should not throw
             _validator.Validate("normal/.hidden");  // This should not throw
-            
+
             // Test with backslash separators too
             _validator.Validate("folder\\.\\file"); // This should not throw
             _validator.Validate("path\\to\\.\\file.txt");  // This should not throw
@@ -88,27 +88,27 @@ namespace LivingRoots.Tests
             // After removing overly restrictive check, paths that start with "." should now be allowed as they represent relative paths to current directory
             var ex1 = Record.Exception(() => _validator.Validate("./path"));
             Assert.Null(ex1);
-            
+
             // Also test with backslash separator
             var ex2 = Record.Exception(() => _validator.Validate(".\\path"));
             Assert.Null(ex2);
-            
+
             // Paths that end with "." should be allowed as they refer to directories
             var ex3 = Record.Exception(() => _validator.Validate("path/."));
             Assert.Null(ex3);
-            
+
             // Also test with backslash separator
             var ex4 = Record.Exception(() => _validator.Validate("path\\."));
             Assert.Null(ex4);
         }
-        
+
         [Fact]
         public void Validate_PathWithPlatformSpecificSeparators_ShouldWorkCorrectly()
         {
             // Test that paths with platform-specific separators are handled correctly
             var ex1 = Record.Exception(() => _validator.Validate(Path.Combine("path", "to", "file.txt")));
             Assert.Null(ex1);
-            
+
             // Test that paths with platform-specific separators for dot segments work correctly
             var ex2 = Record.Exception(() => _validator.Validate(Path.Combine("path", ".", "file.txt")));
             Assert.Null(ex2);

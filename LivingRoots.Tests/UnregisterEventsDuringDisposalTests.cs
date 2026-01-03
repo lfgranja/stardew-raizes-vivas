@@ -17,7 +17,6 @@ namespace LivingRoots.Tests
         private readonly Mock<IModHelper> _mockHelper;
         private readonly Mock<IMonitor> _mockMonitor;
         private readonly Mock<IManifest> _mockManifest;
-        private readonly Mock<IModDataService> _mockModDataService;
         private readonly Mock<ISoilHealthService> _mockSoilHealthService;
         private readonly Mock<ISaveIdProvider> _mockSaveIdProvider;
 
@@ -26,7 +25,6 @@ namespace LivingRoots.Tests
             _mockHelper = new Mock<IModHelper>();
             _mockMonitor = new Mock<IMonitor>();
             _mockManifest = new Mock<IManifest>();
-            _mockModDataService = new Mock<IModDataService>();
             _mockSoilHealthService = new Mock<ISoilHealthService>();
             _mockSaveIdProvider = new Mock<ISaveIdProvider>();
 
@@ -75,7 +73,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -94,10 +92,10 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once);
-            
+
             // Check that EventsRegisteredFlag is properly cleared during disposal
             var stateValue = (int)stateField.GetValue(controller)!;
-            var eventsRegisteredFlag = 1 << 0;
+            var eventsRegisteredFlag = 1;
             Assert.True((stateValue & disposedFlag) != 0, "Controller should still be marked as disposed");
             Assert.True((stateValue & eventsRegisteredFlag) == 0, "EventsRegisteredFlag should be cleared during disposal");
         }
@@ -140,7 +138,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -159,10 +157,10 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
             mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once);
-            
+
             // Check that EventsRegisteredFlag is properly cleared during disposal
             var stateValue = (int)stateField.GetValue(controller)!;
-            var eventsRegisteredFlag = 1 << 0;
+            var eventsRegisteredFlag = 1;
             Assert.True((stateValue & disposedFlag) != 0, "Controller should still be marked as disposed");
             Assert.True((stateValue & eventsRegisteredFlag) == 0, "EventsRegisteredFlag should be cleared during disposal");
         }
@@ -206,7 +204,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -226,10 +224,10 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Exactly(2));
             mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once); // No rollback for failed unsubscribe
             mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Exactly(2));
-            
+
             // Check that EventsRegisteredFlag is restored after rollback when not disposed
             stateValue = (int)stateField.GetValue(controller)!;
-            var eventsRegisteredFlag = 1 << 0;
+            var eventsRegisteredFlag = 1;
             Assert.True((stateValue & eventsRegisteredFlag) != 0, "EventsRegisteredFlag should be restored after rollback when not disposed");
         }
     }

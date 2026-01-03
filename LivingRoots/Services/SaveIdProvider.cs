@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
-using StardewModdingAPI;
 using LivingRoots.Domain;
+using StardewModdingAPI;
 
 namespace LivingRoots.Services
 {
@@ -9,39 +9,34 @@ namespace LivingRoots.Services
     /// Provides the save ID for data persistence operations by accessing Stardew Valley's Game1 class.
     /// This implementation uses SMAPI's Constants to access the save folder name.
     /// </summary>
-    public class SaveIdProvider : ISaveIdProvider
+    public class SaveIdProvider(IMonitor? monitor = null) : ISaveIdProvider
     {
-        private readonly IMonitor? _monitor;
-
-        public SaveIdProvider(IMonitor? monitor = null)
-        {
-            _monitor = monitor;
-        }
+        private readonly IMonitor? _monitor = monitor;
 
         public string? GetSaveId()
         {
             try
             {
-                // Use SMAPI's Constants to get the save folder name directly
-                // This is more reliable than using reflection
-                string? saveId = Constants.SaveFolderName;
-                
-                // Validate that the save ID is not null, empty, or whitespace before returning
-                if (IsValidSaveId(saveId))
-                    return saveId;
-                
-                // If save folder name is not available (e.g., during early initialization),
-                // return null which will be handled by the calling code
-                return null;
+                var saveId = Constants.SaveFolderName;
+
+                if (!IsValidSaveId(saveId))
+                    return null;
+
+                if (saveId!.Length > ModConstants.MaxSaveIdLength)
+                {
+                    _monitor?.Log($"GetSaveId: Save ID exceeded maximum length ({ModConstants.MaxSaveIdLength}); returning null.", LogLevel.Trace);
+                    return null;
+                }
+
+                return saveId;
             }
             catch (Exception ex)
             {
-                // Log minimal information about any errors at Trace level for debugging
                 _monitor?.Log($"GetSaveId: Exception occurred: {ex.GetType().Name}", LogLevel.Trace);
                 return null;
             }
         }
-        
+
         /// <summary>
         /// Validates that the save ID is not null, empty, or whitespace
         /// </summary>

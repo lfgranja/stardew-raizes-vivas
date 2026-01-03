@@ -19,10 +19,12 @@ namespace LivingRoots.Tests
             public double DoubleParam { get; }
             public bool BoolParam { get; }
 
+#pragma warning disable S1144
+            // Constructor is used via reflection in tests
             public TypeWithOptionalParametersAndDefaults(
-                string stringParam = "default_string", 
-                int intParam = 123, 
-                double doubleParam = 45.67, 
+                string stringParam = "default_string",
+                int intParam = 123,
+                double doubleParam = 45.67,
                 bool boolParam = true)
             {
                 StringParam = stringParam;
@@ -30,6 +32,7 @@ namespace LivingRoots.Tests
                 DoubleParam = doubleParam;
                 BoolParam = boolParam;
             }
+#pragma warning restore S1144
         }
 
         /// <summary>
@@ -44,74 +47,25 @@ namespace LivingRoots.Tests
             Exception? lastError = null;
 
             // First try: Activator.CreateInstance with nonPublic: true
-            try
+            var instance = TryCreateInstanceWithActivator<T>(ref lastError);
+            if (instance != null)
             {
-                var instance = Activator.CreateInstance(typeof(T), nonPublic: true) as T;
-                if (instance != null)
-                {
-                    return instance;
-                }
-            }
-            catch (Exception ex)
-            {
-                lastError = ex;
+                return instance;
             }
 
             // Second try: Find a constructor with optional/default parameters
             var constructors = typeof(T).GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             foreach (var constructor in constructors)
             {
-                var parameters = constructor.GetParameters();
-                
-                // Skip constructors with any required reference-type parameter (can't safely provide a value)
-                if (parameters.Any(p =>
-                        !p.IsOptional &&
-                        !p.HasDefaultValue &&
-                        !p.ParameterType.IsValueType))
+                if (!CanCreateInstanceFromConstructor(constructor))
                 {
                     continue;
                 }
 
-                try
+                instance = TryCreateInstanceFromConstructor<T>(constructor, ref lastError);
+                if (instance != null)
                 {
-                    var args = constructor.GetParameters().Select(p =>
-                    {
-                        // Optional parameters in C# always have a default value; prefer DefaultValue over Type.Missing.
-                        if (p.IsOptional || p.HasDefaultValue)
-                        {
-                            var dv = p.DefaultValue;
-                            
-                            // Normalize reflection sentinel defaults to an invokable argument
-                            if (dv == Type.Missing || dv == Missing.Value || dv == DBNull.Value)
-                            {
-                                return p.ParameterType.IsValueType
-                                    ? Activator.CreateInstance(p.ParameterType)
-                                    : null;
-                            }
-                            
-                            return dv;
-                        }
-
-                        if (p.ParameterType.IsValueType)
-                            return Activator.CreateInstance(p.ParameterType);
-
-                        // Should be unreachable due to the "required reference-type parameter" skip above,
-                        // but keep a safe fallback.
-                        return null;
-                    }).ToArray();
-
-                    // Try to invoke the constructor with the default arguments
-                    var instance = constructor.Invoke(args) as T;
-                    if (instance != null)
-                    {
-                        return instance;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    lastError = ex;
-                    // Try to next constructor
-                    continue;
+                    return instance;
                 }
             }
 
@@ -123,80 +77,69 @@ namespace LivingRoots.Tests
                 lastError);
         }
 
-        /// <summary>
-        /// Creates an instance of type T using reflection with fallback strategies.
-        /// This is the original version that uses Type.Missing for optional parameters.
-        /// </summary>
-        /// <typeparam name="T">The type to instantiate.</typeparam>
-        /// <returns>An instance of type T.</returns>
-        /// <exception cref="InvalidOperationException">Thrown when no valid constructor is found.</exception>
-        private static T CreateInstanceWithFallbackOriginal<T>() where T : class
+        private static T? TryCreateInstanceWithActivator<T>(ref Exception? lastError) where T : class
         {
-            Exception? lastError = null;
-
-            // First try: Activator.CreateInstance with nonPublic: true
             try
             {
                 var instance = Activator.CreateInstance(typeof(T), nonPublic: true) as T;
-                if (instance != null)
-                {
-                    return instance;
-                }
+                return instance;
             }
             catch (Exception ex)
             {
                 lastError = ex;
+                return null;
             }
+        }
 
-            // Second try: Find a constructor with optional/default parameters
-            var constructors = typeof(T).GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-            foreach (var constructor in constructors)
+        private static bool CanCreateInstanceFromConstructor(ConstructorInfo constructor)
+        {
+            var parameters = constructor.GetParameters();
+            return !parameters.Any(p =>
+                !p.IsOptional &&
+                !p.HasDefaultValue &&
+                !p.ParameterType.IsValueType);
+        }
+
+        private static T? TryCreateInstanceFromConstructor<T>(ConstructorInfo constructor, ref Exception? lastError) where T : class
+        {
+            try
             {
-                var parameters = constructor.GetParameters();
-                
-                // Skip constructors with any required reference-type parameter (can't safely provide a value)
-                if (parameters.Any(p =>
-                        !p.IsOptional &&
-                        !p.HasDefaultValue &&
-                        !p.ParameterType.IsValueType))
+                var args = constructor.GetParameters().Select(GetParameterArgument).ToArray();
+                var instance = constructor.Invoke(args) as T;
+                return instance;
+            }
+            catch (Exception ex)
+            {
+                lastError = ex;
+                return null;
+            }
+        }
+
+        private static object GetParameterArgument(ParameterInfo p)
+        {
+            if (p.IsOptional || p.HasDefaultValue)
+            {
+                var dv = p.DefaultValue;
+
+                // Normalize reflection sentinel defaults to an invokable argument
+                if (dv == Type.Missing || dv == Missing.Value || dv == DBNull.Value)
                 {
-                    continue;
+                    return p.ParameterType.IsValueType
+                        ? Activator.CreateInstance(p.ParameterType)!
+                        : null!;
                 }
 
-                try
-                {
-                    var args = constructor.GetParameters().Select(p =>
-                    {
-                        if (p.IsOptional)
-                            return Type.Missing;
-                        if (p.HasDefaultValue)
-                            return p.DefaultValue;
-                        if (p.ParameterType.IsValueType)
-                            return Activator.CreateInstance(p.ParameterType);
-                        return Type.Missing;
-                    }).ToArray();
-
-                    // Try to invoke the constructor with the default arguments
-                    var instance = constructor.Invoke(args) as T;
-                    if (instance != null)
-                    {
-                        return instance;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    lastError = ex;
-                    // Try to next constructor
-                    continue;
-                }
+                return dv!;
             }
 
-            // If all attempts fail, throw an informative exception with the last error as InnerException
-            throw new InvalidOperationException(
-                $"Failed to create instance of type {typeof(T)} for tests. " +
-                $"Tried Activator.CreateInstance and all constructors with default/optional parameters via reflection. " +
-                $"Ensure that type has an accessible constructor with default/optional parameters or provide a test-specific factory method.",
-                lastError);
+            if (p.ParameterType.IsValueType)
+            {
+                return Activator.CreateInstance(p.ParameterType)!;
+            }
+
+            // Should be unreachable due to the "required reference-type parameter" skip above,
+            // but keep a safe fallback.
+            return null!;
         }
 
         [Fact]
@@ -222,18 +165,18 @@ namespace LivingRoots.Tests
             var constructor = typeof(TypeWithOptionalParametersAndDefaults).GetConstructor(new[] {
                 typeof(string), typeof(int), typeof(double), typeof(bool)
             });
-            
+
             Assert.NotNull(constructor);
-            
+
             var parameters = constructor.GetParameters();
             Assert.Equal(4, parameters.Length);
 
             // All parameters in this constructor are optional with default values
             foreach (var param in parameters)
             {
-                Assert.True(param.IsOptional || param.HasDefaultValue, 
+                Assert.True(param.IsOptional || param.HasDefaultValue,
                     $"Parameter {param.Name} should be either optional or have a default value");
-                
+
                 // For optional parameters in C#, they should have default values
                 Assert.NotNull(param.DefaultValue);
             }

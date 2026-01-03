@@ -13,7 +13,6 @@ namespace LivingRoots.Tests
         private readonly Mock<IModHelper> _mockHelper;
         private readonly Mock<IMonitor> _mockMonitor;
         private readonly Mock<IManifest> _mockManifest;
-        private readonly Mock<IModDataService> _mockModDataService;
         private readonly Mock<ISoilHealthService> _mockSoilHealthService;
         private readonly Mock<ISaveIdProvider> _mockSaveIdProvider;
 
@@ -22,7 +21,6 @@ namespace LivingRoots.Tests
             _mockHelper = new Mock<IModHelper>();
             _mockMonitor = new Mock<IMonitor>();
             _mockManifest = new Mock<IManifest>();
-            _mockModDataService = new Mock<IModDataService>();
             _mockSoilHealthService = new Mock<ISoilHealthService>();
             _mockSaveIdProvider = new Mock<ISaveIdProvider>();
 
@@ -45,7 +43,7 @@ namespace LivingRoots.Tests
 
             // Create a single ModController instance to be shared across all tasks
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object,
-                _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+                _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // First register events to set up the controller with handlers
             controller.RegisterEvents();
@@ -65,7 +63,7 @@ namespace LivingRoots.Tests
 
             // Create a scenario where multiple RegisterEvents calls happen concurrently
             // This can expose the race condition between the non-atomic checks
-            for (int i = 0; i < 5; i++)
+            for (var i = 0; i < 5; i++)
             {
                 var task = Task.Run(() =>
                 {
@@ -75,7 +73,7 @@ namespace LivingRoots.Tests
             }
 
             // Add some unregistration tasks as well to create mixed operations
-            for (int i = 0; i < 3; i++)
+            for (var i = 0; i < 3; i++)
             {
                 var task = Task.Run(() =>
                 {
@@ -133,13 +131,13 @@ namespace LivingRoots.Tests
 
             // Create a single ModController instance to be shared across all tasks
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object,
-                _mockModDataService.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+                _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
             // Act: Simulate multiple concurrent registration attempts
             // This should reveal the race condition where multiple threads pass the
             // UnregisteringFlag check but before the EventsRegisteredFlag is set
             var tasks = new List<Task>();
-            for (int i = 0; i < 10; i++)
+            for (var i = 0; i < 10; i++)
             {
                 var task = Task.Run(() =>
                 {
@@ -161,124 +159,5 @@ namespace LivingRoots.Tests
             Assert.Equal(1, threadSafeGameLoopEvents.SavingAddCount);
         }
 
-        /// <summary>
-        /// Thread-safe stub implementation of IGameLoopEvents for concurrency testing.
-        /// Uses Interlocked operations to track event additions and removals in a thread-safe manner.
-        /// This ensures tests reliably validate application code's thread safety without
-        /// relying on Moq's internal state which is not thread-safe.
-        /// </summary>
-        private sealed class ThreadSafeGameLoopEventsStub : IGameLoopEvents
-        {
-            private EventHandler<GameLaunchedEventArgs>? _gameLaunched;
-            private EventHandler<SaveLoadedEventArgs>? _saveLoaded;
-            private EventHandler<SavingEventArgs>? _saving;
-
-            // Thread-safe counters using Interlocked operations
-            private int _gameLaunchedAddCount = 0;
-            private int _saveLoadedAddCount = 0;
-            private int _savingAddCount = 0;
-            private int _gameLaunchedRemoveCount = 0;
-            private int _saveLoadedRemoveCount = 0;
-            private int _savingRemoveCount = 0;
-
-            public int GameLaunchedAddCount => System.Threading.Volatile.Read(ref _gameLaunchedAddCount);
-            public int SaveLoadedAddCount => System.Threading.Volatile.Read(ref _saveLoadedAddCount);
-            public int SavingAddCount => System.Threading.Volatile.Read(ref _savingAddCount);
-            public int GameLaunchedRemoveCount => System.Threading.Volatile.Read(ref _gameLaunchedRemoveCount);
-            public int SaveLoadedRemoveCount => System.Threading.Volatile.Read(ref _saveLoadedRemoveCount);
-            public int SavingRemoveCount => System.Threading.Volatile.Read(ref _savingRemoveCount);
-
-            public event EventHandler<GameLaunchedEventArgs>? GameLaunched
-            {
-                add
-                {
-                    System.Threading.Interlocked.Increment(ref _gameLaunchedAddCount);
-                    EventHandler<GameLaunchedEventArgs>? current, updated;
-                    do
-                    {
-                        current = System.Threading.Volatile.Read(ref _gameLaunched);
-                        updated = (EventHandler<GameLaunchedEventArgs>?)Delegate.Combine(current, value);
-                    }
-                    while (System.Threading.Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
-                }
-                remove
-                {
-                    System.Threading.Interlocked.Increment(ref _gameLaunchedRemoveCount);
-                    EventHandler<GameLaunchedEventArgs>? current, updated;
-                    do
-                    {
-                        current = System.Threading.Volatile.Read(ref _gameLaunched);
-                        updated = (EventHandler<GameLaunchedEventArgs>?)Delegate.Remove(current, value);
-                    }
-                    while (System.Threading.Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
-                }
-            }
-
-            public event EventHandler<SaveLoadedEventArgs>? SaveLoaded
-            {
-                add
-                {
-                    System.Threading.Interlocked.Increment(ref _saveLoadedAddCount);
-                    EventHandler<SaveLoadedEventArgs>? current, updated;
-                    do
-                    {
-                        current = System.Threading.Volatile.Read(ref _saveLoaded);
-                        updated = (EventHandler<SaveLoadedEventArgs>?)Delegate.Combine(current, value);
-                    }
-                    while (System.Threading.Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
-                }
-                remove
-                {
-                    System.Threading.Interlocked.Increment(ref _saveLoadedRemoveCount);
-                    EventHandler<SaveLoadedEventArgs>? current, updated;
-                    do
-                    {
-                        current = System.Threading.Volatile.Read(ref _saveLoaded);
-                        updated = (EventHandler<SaveLoadedEventArgs>?)Delegate.Remove(current, value);
-                    }
-                    while (System.Threading.Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
-                }
-            }
-
-            public event EventHandler<SavingEventArgs>? Saving
-            {
-                add
-                {
-                    System.Threading.Interlocked.Increment(ref _savingAddCount);
-                    EventHandler<SavingEventArgs>? current, updated;
-                    do
-                    {
-                        current = System.Threading.Volatile.Read(ref _saving);
-                        updated = (EventHandler<SavingEventArgs>?)Delegate.Combine(current, value);
-                    }
-                    while (System.Threading.Interlocked.CompareExchange(ref _saving, updated, current) != current);
-                }
-                remove
-                {
-                    System.Threading.Interlocked.Increment(ref _savingRemoveCount);
-                    EventHandler<SavingEventArgs>? current, updated;
-                    do
-                    {
-                        current = System.Threading.Volatile.Read(ref _saving);
-                        updated = (EventHandler<SavingEventArgs>?)Delegate.Remove(current, value);
-                    }
-                    while (System.Threading.Interlocked.CompareExchange(ref _saving, updated, current) != current);
-                }
-            }
-
-            // Other IGameLoopEvents members not used in tests - implemented as no-ops
-            public event EventHandler<UpdateTickedEventArgs>? UpdateTicked { add { } remove { } }
-            public event EventHandler<UpdateTickingEventArgs>? UpdateTicking { add { } remove { } }
-            public event EventHandler<OneSecondUpdateTickedEventArgs>? OneSecondUpdateTicked { add { } remove { } }
-            public event EventHandler<OneSecondUpdateTickingEventArgs>? OneSecondUpdateTicking { add { } remove { } }
-            public event EventHandler<DayStartedEventArgs>? DayStarted { add { } remove { } }
-            public event EventHandler<DayEndingEventArgs>? DayEnding { add { } remove { } }
-            public event EventHandler<TimeChangedEventArgs>? TimeChanged { add { } remove { } }
-            public event EventHandler<ReturnedToTitleEventArgs>? ReturnedToTitle { add { } remove { } }
-            public event EventHandler<SaveCreatingEventArgs>? SaveCreating { add { } remove { } }
-            public event EventHandler<SaveCreatedEventArgs>? SaveCreated { add { } remove { } }
-            public event EventHandler<SavedEventArgs>? Saved { add { } remove { } }
-            public event EventHandler<LoadStageChangedEventArgs>? LoadStageChanged { add { } remove { } }
-        }
     }
 }

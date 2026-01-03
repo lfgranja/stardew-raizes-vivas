@@ -41,7 +41,7 @@ namespace LivingRoots
             var saveIdProvider = new SaveIdProvider(this.Monitor);
 
             // Create controller with dependency injection
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, modDataService, soilHealthService, saveIdProvider);
+            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider);
 
             // Register events through the Controller
             _controller.RegisterEvents();

@@ -183,55 +183,55 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal("בדיקה.txt", result);
         }
-        
+
         [Fact]
         public void Normalize_WithValidSurrogatePair_PreservesPair()
         {
             // Arrange: Create a string with a valid surrogate pair (emoji)
             var input = "test" + "\uD83D\uDE00" + "file.txt"; // "test😀file.txt"
-            
+
             // Act
             var result = _service.Normalize(input);
-            
+
             // Assert: The emoji should be preserved as a valid surrogate pair
             Assert.Equal("test😀file.txt", result);
         }
-        
+
         [Fact]
         public void Normalize_WithDanglingHighSurrogate_ReplacesWithReplacementChar()
         {
             // Arrange: Create a string with a dangling high surrogate
             var input = "test" + "\uD83D" + "file.txt"; // Dangling high surrogate
-            
+
             // Act
             var result = _service.Normalize(input);
-            
+
             // Assert: The dangling high surrogate should be replaced with the replacement character
             Assert.Equal("test\uFFFDfile.txt", result);
         }
-        
+
         [Fact]
         public void Normalize_WithDanglingLowSurrogate_ReplacesWithReplacementChar()
         {
             // Arrange: Create a string with a dangling low surrogate
             var input = "test" + "\uDE00" + "file.txt"; // Dangling low surrogate
-            
+
             // Act
             var result = _service.Normalize(input);
-            
+
             // Assert: The dangling low surrogate should be replaced with the replacement character
             Assert.Equal("test\uFFFDfile.txt", result);
         }
-        
+
         [Fact]
         public void Normalize_WithSurrogatePairsAndDiacritics_HandlesBothCorrectly()
         {
             // Arrange: String with both surrogate pairs and diacritics
             var input = "café" + "\uD83D\uDE00" + "naïve.txt"; // Contains diacritics and an emoji
-            
+
             // Act
             var result = _service.Normalize(input);
-            
+
             // Assert: Diacritics should be removed, emoji should be preserved
             Assert.Equal("cafe😀naive.txt", result);
         }

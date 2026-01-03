@@ -1,7 +1,8 @@
+
 using System;
-using Xunit;
 using LivingRoots.Domain;
 using Moq;
+using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -13,49 +14,49 @@ namespace LivingRoots.Tests
             // Create an instance of the service with mocked dependencies
             var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
             var mockReservedService = new Mock<IReservedNameHandler>();
-            
+
             // Setup the mock to return the input with the combining character normalized
             mockUnicodeService
                 .Setup(x => x.Normalize("test\u0301.txt"))
                 .Returns("test\u0301.txt"); // Using the original form for this test
-            
+
             // Setup reserved name handler to return input unchanged
             mockReservedService
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
 
             // Test filename with potential Unicode normalization issues through public API
-            string filename = "test\u0301.txt"; // é with combining acute accent
-            
+            var filename = "test\u0301.txt"; // é with combining acute accent
+
             // Call the public Sanitize method
             var result = service.Sanitize(filename);
-            
+
             // Should preserve the original filename structure since it's safe
             Assert.NotNull(result);
             Assert.EndsWith(".txt", result); // The .txt extension should be preserved
         }
-        
+
         [Fact]
         public void TestFindExtensionStartIndexScenariosThroughPublicApi()
         {
             // Create an instance of the service with mocked dependencies
             var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
             var mockReservedService = new Mock<IReservedNameHandler>();
-            
+
             // Setup the mock to return the input unchanged for these tests
             mockUnicodeService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Setup reserved name handler to return input unchanged
             mockReservedService
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
-            
+
             // Test various cases through the public API
             var testCases = new[]
             {
@@ -68,33 +69,33 @@ namespace LivingRoots.Tests
                 ("test.", "test"),             // Ends with dot - should remove trailing dot
                 ("test..", "test"),            // Ends with multiple dots - should remove trailing dots
             };
-            
+
             foreach (var (input, expected) in testCases)
             {
                 var result = service.Sanitize(input);
                 Assert.Equal(expected, result);
             }
         }
-        
+
         [Fact]
         public void TestExtensionDetectionWithHyphensAndUnderscoresThroughPublicApi()
         {
             // Create an instance of the service with mocked dependencies
             var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
             var mockReservedService = new Mock<IReservedNameHandler>();
-            
+
             // Setup the mock to return the input unchanged for these tests
             mockUnicodeService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Setup reserved name handler to return input unchanged
             mockReservedService
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
-            
+
             // Test various extensions with hyphens and underscores through public API
             var testCases = new[]
             {
@@ -107,99 +108,99 @@ namespace LivingRoots.Tests
                 ("script.test-script.js", "script.test-script.blocked"), // Extension with hyphen but blocked extension
                 ("config.my_app.config", "config.my_app.config"),  // Extension with underscore
             };
-            
+
             foreach (var (input, expected) in testCases)
             {
                 var result = service.Sanitize(input);
                 Assert.Equal(expected, result);
             }
         }
-        
+
         [Fact]
         public void TestBlockedExtensionsAreHandledThroughPublicApi()
         {
             // Create an instance of the service with mocked dependencies
             var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
             var mockReservedService = new Mock<IReservedNameHandler>();
-            
+
             // Setup the mock to return the input unchanged for these tests
             mockUnicodeService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Setup reserved name handler to return input unchanged
             mockReservedService
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
-            
+
             // Test various blocked extensions through the public API
             var blockedExtensions = new[]
             {
-                "test.exe", "file.dll", "script.js", "program.bat", 
+                "test.exe", "file.dll", "script.js", "program.bat",
                 "app.sh", "config.php", "data.asp", "script.vbs"
             };
-            
+
             foreach (var input in blockedExtensions)
             {
                 var result = service.Sanitize(input);
                 Assert.EndsWith(".blocked", result); // All blocked extensions should be replaced with .blocked
             }
         }
-        
+
         [Fact]
         public void TestValidExtensionsArePreservedThroughPublicApi()
         {
             // Create an instance of the service with mocked dependencies
             var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
             var mockReservedService = new Mock<IReservedNameHandler>();
-            
+
             // Setup the mock to return the input unchanged for these tests
             mockUnicodeService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Setup reserved name handler to return input unchanged
             mockReservedService
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
-            
+
             // Test various valid extensions through the public API
             var validExtensions = new[]
             {
-                "test.txt", "file.pdf", "image.jpg", "document.docx", 
+                "test.txt", "file.pdf", "image.jpg", "document.docx",
                 "archive.zip", "data.json", "config.xml", "script.cs"
             };
-            
+
             foreach (var input in validExtensions)
             {
                 var result = service.Sanitize(input);
                 Assert.Equal(input, result); // Valid extensions should be preserved unchanged
             }
         }
-        
+
         [Fact]
         public void TestExtensionDetectionEdgeCases()
         {
             // Create an instance of the service with mocked dependencies
             var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
             var mockReservedService = new Mock<IReservedNameHandler>();
-            
+
             // Setup the mock to return the input unchanged for these tests
             mockUnicodeService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Setup reserved name handler to return input unchanged
             mockReservedService
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
-            
+
             // Test edge cases that specifically target extension detection
             var testCases = new[]
             {
@@ -214,33 +215,33 @@ namespace LivingRoots.Tests
                 ("file.txt.", "file.txt"),     // Ends with dot after extension
                 ("file.txt..", "file.txt"),    // Ends with multiple dots after extension
             };
-            
+
             foreach (var (input, expected) in testCases)
             {
                 var result = service.Sanitize(input);
                 Assert.Equal(expected, result);
             }
         }
-        
+
         [Fact]
         public void TestExtensionWithSpecialCharacters()
         {
             // Create an instance of the service with mocked dependencies
             var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
             var mockReservedService = new Mock<IReservedNameHandler>();
-            
+
             // Setup the mock to return the input unchanged for these tests
             mockUnicodeService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Setup reserved name handler to return input unchanged
             mockReservedService
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
-            
+
             // Test extensions with special characters that should be handled properly
             var testCases = new[]
             {
@@ -251,33 +252,33 @@ namespace LivingRoots.Tests
                 ("file-name.exe", "file-name.blocked"), // Blocked extension with hyphen
                 ("file_name.php", "file_name.blocked"), // Blocked extension with underscore
             };
-            
+
             foreach (var (input, expected) in testCases)
             {
                 var result = service.Sanitize(input);
                 Assert.Equal(expected, result);
             }
         }
-        
+
         [Fact]
         public void TestHiddenFilesWithBlockedExtensions()
         {
             // Create an instance of the service with mocked dependencies
             var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
             var mockReservedService = new Mock<IReservedNameHandler>();
-            
+
             // Setup the mock to return the input unchanged for these tests
             mockUnicodeService
                 .Setup(x => x.Normalize(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             // Setup reserved name handler to return input unchanged
             mockReservedService
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-            
+
             var service = new FileNameSanitizationService(mockUnicodeService.Object, mockReservedService.Object);
-            
+
             // Test cases for hidden files with blocked extensions
             var testCases = new[]
             {
@@ -286,7 +287,7 @@ namespace LivingRoots.Tests
                 (".exe", ".file.blocked"),      // Hidden file with blocked extension
                 (".vbs", ".file.blocked"),      // Another hidden file with blocked extension
             };
-            
+
             foreach (var (input, expected) in testCases)
             {
                 var result = service.Sanitize(input);
