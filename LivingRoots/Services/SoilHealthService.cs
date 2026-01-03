@@ -136,15 +136,8 @@ namespace LivingRoots.Services
                     {
                         tempCache[locationEntry.Key] = processResult.TileDict;
                     }
-                    else if (!processResult.IsSuccess)
-                    {
-                        // If processing failed due to DoS protection, ensure we don't keep any stale state.
-                        lock (_lock)
-                        {
-                            _runtimeCache.Clear();
-                        }
-                        return;
-                    }
+                    // If location was skipped due to DoS protection, continue with other locations
+                    // This is the new data-preserving behavior - we don't abort the entire operation
                 }
             }
 
@@ -190,10 +183,10 @@ namespace LivingRoots.Services
                 // Increment tile counter for ALL entries (even if they end up being invalid/skipped)
                 tileCount++;
 
-                // Check DoS protection limits and abort if exceeded
+                // Check DoS protection limits and skip if exceeded
                 if (CheckDosProtectionLimits(locationEntry.Key, tileCount, ref totalTileEntriesProcessed))
                 {
-                    return ProcessLocationResult.Failure();
+                    return ProcessLocationResult.Skipped();
                 }
 
                 // Process tile entry using the helper method
@@ -210,29 +203,24 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
-        /// Checks DoS protection limits for tile entries and aborts if limits are exceeded.
+        /// Checks DoS protection limits for tile entries and skips if limits are exceeded.
         /// </summary>
         /// <param name="locationName">The location name for logging</param>
         /// <param name="tileCount">Current tile count for this location</param>
         /// <param name="totalTileEntriesProcessed">Reference to total tile entries processed across all locations</param>
-        /// <returns>True if limits were exceeded and operation should abort, false otherwise</returns>
+        /// <returns>True if limits were exceeded and location should be skipped, false otherwise</returns>
         private bool CheckDosProtectionLimits(string locationName, int tileCount, ref int totalTileEntriesProcessed)
         {
             // CRITICAL DOS PROTECTION: Check if we've exceeded the tile limit for this location
-            // When per-location tile limit is exceeded, we must abort the entire load operation
-            // to prevent data loss and maintain cache consistency. This prevents partial loading
-            // which could result in inconsistent state where some data is loaded while other data is lost.
+            // When per-location tile limit is exceeded, we skip only that location while other
+            // valid locations continue to load. This is more data-safe than aborting the entire
+            // operation and clearing the cache.
             if (tileCount > ModConstants.MaxTilesPerLocation)
             {
                 _monitor.Log(
-                    $"LoadData aborted: Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded for location '{TruncateForLogging(locationName)}'. Cache cleared to prevent inconsistent state.",
+                    $"Skipping location '{TruncateForLogging(locationName)}': Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded. Other locations will continue to load.",
                     LogLevel.Alert);
-
-                lock (_lock)
-                {
-                    _runtimeCache.Clear();
-                }
-                return true; // Abort entire operation to maintain data consistency
+                return true; // Skip this location only
             }
 
             // GLOBAL DOS PROTECTION: Increment total tile entries across all locations
@@ -402,16 +390,22 @@ namespace LivingRoots.Services
             return (snapshotState, saveAbortedForLimits);
         }
 
-        private static ProcessSaveLocationResult ProcessLocationForSave(KeyValuePair<string, Dictionary<Point, float>> location,
+        private ProcessSaveLocationResult ProcessLocationForSave(KeyValuePair<string, Dictionary<Point, float>> location,
             ref int totalTilesToSave, ref int locationsToSave)
         {
             // Defensive: skip invalid location names to avoid crashing during Saving.
             if (string.IsNullOrWhiteSpace(location.Key))
+            {
+                _monitor.Log("Skipping save for location with null/whitespace name", LogLevel.Warn);
                 return ProcessSaveLocationResult.SuccessEmpty();
+            }
 
             // ADD LOCATION NAME LENGTH CHECK: Check location name length during save to ensure consistency with load logic
             if (location.Key.Length > ModConstants.MaxLocationNameLength)
+            {
+                _monitor.Log($"Skipping save for location '{TruncateForLogging(location.Key)}': name length ({location.Key.Length}) exceeds maximum ({ModConstants.MaxLocationNameLength})", LogLevel.Warn);
                 return ProcessSaveLocationResult.SuccessEmpty();
+            }
 
             if (location.Value == null)
                 return ProcessSaveLocationResult.SuccessEmpty();
@@ -838,11 +832,11 @@ namespace LivingRoots.Services
     /// <summary>
     /// Represents the result of processing a location entry during load
     /// </summary>
-    internal readonly struct ProcessLocationResult(bool isSuccess, Dictionary<Point, float> tileDict, bool isFailure)
+    internal readonly struct ProcessLocationResult(bool isSuccess, Dictionary<Point, float> tileDict, bool isSkipped)
     {
         public bool IsSuccess { get; } = isSuccess;
         public Dictionary<Point, float> TileDict { get; } = tileDict;
-        public bool IsFailure { get; } = isFailure;
+        public bool IsSkipped { get; } = isSkipped;
 
         public static ProcessLocationResult SuccessWithTiles(Dictionary<Point, float> tileDict)
         {
@@ -854,7 +848,7 @@ namespace LivingRoots.Services
             return new ProcessLocationResult(true, new Dictionary<Point, float>(), false);
         }
 
-        public static ProcessLocationResult Failure()
+        public static ProcessLocationResult Skipped()
         {
             return new ProcessLocationResult(false, new Dictionary<Point, float>(), true);
         }

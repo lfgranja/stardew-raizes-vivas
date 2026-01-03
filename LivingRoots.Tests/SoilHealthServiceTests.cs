@@ -807,7 +807,6 @@ namespace LivingRoots.Tests
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
             // Fixed: Capture the loop variable in a local variable before creating the task
             using var startGate = new System.Threading.ManualResetEventSlim(false);
-            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             var tasks = new List<Task>();
             for (var i = 0; i < 5; i++)
@@ -817,7 +816,7 @@ namespace LivingRoots.Tests
                 {
                     try
                     {
-                        startGate.Wait(cts.Token);
+                        startGate.Wait();
 
                         for (var j = 0; j < 20; j++)
                         {
@@ -843,12 +842,15 @@ namespace LivingRoots.Tests
                             exceptions.Add(ex);
                         }
                     }
-                }, cts.Token);
+                });
                 tasks.Add(task);
             }
 
             startGate.Set();
-            await Task.WhenAll(tasks);
+            var allTasks = Task.WhenAll(tasks);
+            var completed = await Task.WhenAny(allTasks, Task.Delay(TimeSpan.FromSeconds(10)));
+            Assert.True(completed == allTasks, "Concurrency test timed out (possible deadlock or extreme slowness).");
+            await allTasks;
 
             // Assert - No exceptions should be thrown due to race conditions
             Assert.Empty(exceptions);
@@ -889,7 +891,6 @@ namespace LivingRoots.Tests
 
             // Act - Multiple threads accessing the service simultaneously
             using var startGate = new System.Threading.ManualResetEventSlim(false);
-            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             var tasks = new List<Task>();
             for (var i = 0; i < 3; i++) // Use fewer threads to make overlapping easier to detect
@@ -898,7 +899,7 @@ namespace LivingRoots.Tests
                 {
                     try
                     {
-                        startGate.Wait(cts.Token);
+                        startGate.Wait();
 
                         for (var j = 0; j < 50; j++) // Reduced from 200 to 50 ops to improve performance while maintaining overlap
                         {
@@ -922,12 +923,15 @@ namespace LivingRoots.Tests
                             exceptions.Add(ex);
                         }
                     }
-                }, cts.Token);
+                });
                 tasks.Add(task);
             }
 
             startGate.Set();
-            await Task.WhenAll(tasks);
+            var allTasks = Task.WhenAll(tasks);
+            var completed = await Task.WhenAny(allTasks, Task.Delay(TimeSpan.FromSeconds(10)));
+            Assert.True(completed == allTasks, "Concurrency test timed out (possible deadlock or extreme slowness).");
+            await allTasks;
 
             // Assert - Verify that overlapping tile ranges were used
             Assert.Empty(exceptions);
@@ -1009,7 +1013,6 @@ namespace LivingRoots.Tests
 
         private static Task CreateWorkerTask(SoilHealthService service, int workerId,
             System.Threading.ManualResetEventSlim startGate,
-            System.Threading.CancellationToken token,
             object lockObj,
             List<Exception> exceptions,
             List<(int workerId, List<Vector2> tiles)> workerTiles)
@@ -1020,7 +1023,7 @@ namespace LivingRoots.Tests
 
                 try
                 {
-                    startGate.Wait(token);
+                    startGate.Wait();
 
                     for (var j = 0; j < 10; j++)
                     {
@@ -1048,7 +1051,7 @@ namespace LivingRoots.Tests
                         workerTiles.Add((workerId, workerTileList));
                     }
                 }
-            }, token);
+            });
         }
 
         [Fact]
@@ -1063,16 +1066,18 @@ namespace LivingRoots.Tests
 
             // Act - Multiple threads accessing the service simultaneously with disjoint tile ranges
             using var startGate = new System.Threading.ManualResetEventSlim(false);
-            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             var tasks = new List<Task>();
             for (var i = 0; i < 5; i++)
             {
-                tasks.Add(CreateWorkerTask(service, i, startGate, cts.Token, lockObj, exceptions, workerTiles));
+                tasks.Add(CreateWorkerTask(service, i, startGate, lockObj, exceptions, workerTiles));
             }
 
             startGate.Set();
-            await Task.WhenAll(tasks);
+            var allTasks = Task.WhenAll(tasks);
+            var completed = await Task.WhenAny(allTasks, Task.Delay(TimeSpan.FromSeconds(10)));
+            Assert.True(completed == allTasks, "Concurrency test timed out (possible deadlock or extreme slowness).");
+            await allTasks;
 
             // Assert - No exceptions should have occurred
             Assert.Empty(exceptions);
@@ -1232,7 +1237,7 @@ namespace LivingRoots.Tests
             service.LoadData("test_save");
 
             // Assert: Verify that the critical error log appeared when exceeding the cap
-            _mockMonitor.Verify(x => x.Log(It.Is<string>(msg => msg.Contains("Tile count limit") && msg.Contains("exceeded for location")), LogLevel.Alert), Times.AtLeastOnce);
+            _mockMonitor.Verify(x => x.Log(It.Is<string>(msg => msg.Contains("Tile count limit") && msg.Contains("exceeded")), LogLevel.Alert), Times.AtLeastOnce);
 
             // With the high severity fix implemented, when the limit is exceeded,
             // the entire load operation should abort and the cache should be cleared.

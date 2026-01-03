@@ -236,18 +236,25 @@ namespace LivingRoots.Tests
             // Arrange
             var expectedLink = "https://github.com/lfgranja/stardew-raizes-vivas/releases";
 
-            // Use a deterministic path relative to the test assembly location
-            // The test assembly is built in LivingRoots.Tests/bin/Debug/net6.0/
-            // README.md is at the workspace root, so we need to traverse up 4 levels
-            var assemblyLocation = Path.GetDirectoryName(typeof(ModEntryTests).Assembly.Location)!;
-            var readmePath = Path.Combine(assemblyLocation, "..", "..", "..", "..", "README.md");
-            var readmeFullPath = Path.GetFullPath(readmePath);
+            // Search upward through parent directories to find README.md
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            FileInfo? readmeFile = null;
+
+            for (int i = 0; i < 10 && dir != null; i++)
+            {
+                var files = dir.GetFiles("README.md");
+                if (files.Length > 0)
+                {
+                    readmeFile = files[0];
+                    break;
+                }
+                dir = dir.Parent;
+            }
+
+            Assert.True(readmeFile != null && readmeFile.Exists, $"README.md could not be found. Started search from {AppContext.BaseDirectory}");
+            var readmeFullPath = readmeFile.FullName;
 
             // Act
-            if (!File.Exists(readmeFullPath))
-            {
-                Assert.Fail($"README.md not found at expected location: {readmeFullPath}");
-            }
 
             var readmeContent = File.ReadAllText(readmeFullPath);
 
