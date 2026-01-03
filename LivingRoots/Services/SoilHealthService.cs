@@ -838,18 +838,11 @@ namespace LivingRoots.Services
     /// <summary>
     /// Represents the result of processing a location entry during load
     /// </summary>
-    internal readonly struct ProcessLocationResult
+    internal readonly struct ProcessLocationResult(bool isSuccess, Dictionary<Point, float> tileDict, bool isFailure)
     {
-        public bool IsSuccess { get; }
-        public Dictionary<Point, float> TileDict { get; }
-        public bool IsFailure { get; }
-
-        public ProcessLocationResult(bool isSuccess, Dictionary<Point, float> tileDict, bool isFailure)
-        {
-            IsSuccess = isSuccess;
-            TileDict = tileDict;
-            IsFailure = isFailure;
-        }
+        public bool IsSuccess { get; } = isSuccess;
+        public Dictionary<Point, float> TileDict { get; } = tileDict;
+        public bool IsFailure { get; } = isFailure;
 
         public static ProcessLocationResult SuccessWithTiles(Dictionary<Point, float> tileDict)
         {
@@ -870,18 +863,11 @@ namespace LivingRoots.Services
     /// <summary>
     /// Represents the result of processing a location for save
     /// </summary>
-    internal readonly struct ProcessSaveLocationResult
+    internal readonly struct ProcessSaveLocationResult(bool isSuccess, Dictionary<string, float> tileDict, bool isAborted)
     {
-        public bool IsSuccess { get; }
-        public Dictionary<string, float> TileDict { get; }
-        public bool IsAborted { get; }
-
-        public ProcessSaveLocationResult(bool isSuccess, Dictionary<string, float> tileDict, bool isAborted)
-        {
-            IsSuccess = isSuccess;
-            TileDict = tileDict;
-            IsAborted = isAborted;
-        }
+        public bool IsSuccess { get; } = isSuccess;
+        public Dictionary<string, float> TileDict { get; } = tileDict;
+        public bool IsAborted { get; } = isAborted;
 
         public static ProcessSaveLocationResult SuccessWithTiles(Dictionary<string, float> tileDict)
         {
@@ -902,20 +888,12 @@ namespace LivingRoots.Services
     /// <summary>
     /// Represents the result of processing a tile entry from save data
     /// </summary>
-    internal readonly struct TileProcessingResult
+    internal readonly struct TileProcessingResult(bool isSuccess, Point? tilePoint, float? healthValue, TileValidationStatus status)
     {
-        public bool IsSuccess { get; }
-        public Point? TilePoint { get; }
-        public float? HealthValue { get; }
-        public TileValidationStatus Status { get; }
-
-        public TileProcessingResult(bool isSuccess, Point? tilePoint, float? healthValue, TileValidationStatus status)
-        {
-            IsSuccess = isSuccess;
-            TilePoint = tilePoint;
-            HealthValue = healthValue;
-            Status = status;
-        }
+        public bool IsSuccess { get; } = isSuccess;
+        public Point? TilePoint { get; } = tilePoint;
+        public float? HealthValue { get; } = healthValue;
+        public TileValidationStatus Status { get; } = status;
     }
 
     /// <summary>
