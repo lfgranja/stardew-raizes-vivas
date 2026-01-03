@@ -5,7 +5,12 @@ using StardewModdingAPI.Events;
 
 namespace LivingRoots.Controllers
 {
-    public sealed class ModController : IDisposable
+    public sealed class ModController(
+        IModHelper helper,
+        IMonitor monitor,
+        IManifest manifest,
+        ISoilHealthService soilHealthService,
+        ISaveIdProvider saveIdProvider) : IDisposable
     {
         // State flags for thread safety using atomic operations
         private const int EventsRegisteredFlag = 1 << 0;
@@ -22,12 +27,11 @@ namespace LivingRoots.Controllers
         internal int _saveIdUnavailableWarningShownOnSaving = 0; // 0 = false, 1 = true
 
         // Dependencies
-        private readonly IModHelper _helper;
-        private readonly IMonitor _monitor;
-        private readonly IManifest _manifest;
-        private readonly IModDataService _modDataService;
-        private readonly ISoilHealthService _soilHealthService;
-        private readonly ISaveIdProvider _saveIdProvider;
+        private readonly IModHelper _helper = helper ?? throw new ArgumentNullException(nameof(helper));
+        private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+        private readonly IManifest _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
+        private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
+        private readonly ISaveIdProvider _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
 
         // Event handlers - stored as fields to enable proper unsubscription
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
@@ -35,7 +39,7 @@ namespace LivingRoots.Controllers
         private EventHandler<SavingEventArgs>? _onSavingHandler;
 
         // Console command registration state
-        private readonly object _commandLock = new object();
+        private readonly object _commandLock = new();
 
         // Help flags for console commands
         private static readonly HashSet<string> HelpFlags = new(StringComparer.OrdinalIgnoreCase)
@@ -51,22 +55,6 @@ namespace LivingRoots.Controllers
             "-help-"
         };
 
-        public ModController(
-            IModHelper helper,
-            IMonitor monitor,
-            IManifest manifest,
-            IModDataService modDataService,
-            ISoilHealthService soilHealthService,
-            ISaveIdProvider saveIdProvider)
-        {
-            _helper = helper ?? throw new ArgumentNullException(nameof(helper));
-            _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-            _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
-            _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
-            _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
-            _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
-        }
-
         public void RegisterEvents()
         {
             // Early disposal check: check if controller is disposed before accessing dependencies
@@ -77,17 +65,17 @@ namespace LivingRoots.Controllers
             }
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
-            var monitor = _monitor;
-            var helper = _helper;
+            var monitorSnapshot = _monitor;
+            var helperSnapshot = _helper;
             // Capture GameLoop once for consistent subscribe/rollback
-            var gameLoop = helper?.Events?.GameLoop;
+            var gameLoop = helperSnapshot?.Events?.GameLoop;
             if (gameLoop == null)
             {
-                monitor.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
+                monitorSnapshot.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
                 return;
             }
 
-            if (!TryEnterRegisteringState(monitor))
+            if (!TryEnterRegisteringState(monitorSnapshot))
             {
                 return;
             }
@@ -107,7 +95,7 @@ namespace LivingRoots.Controllers
                 // Double-check disposed state after setting the flag but before subscribing to prevent race condition
                 if (IsDisposed())
                 {
-                    monitor.Log("Controller disposed during registration. Skipping event subscription.", LogLevel.Trace);
+                    monitorSnapshot.Log("Controller disposed during registration. Skipping event subscription.", LogLevel.Trace);
                     // Clear the flag since we didn't actually register anything
                     System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                     return;
@@ -120,7 +108,7 @@ namespace LivingRoots.Controllers
 
                 // now that everything succeeded, publish the "registered" state
                 System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
-                monitor.Log("Events registered successfully.", LogLevel.Trace);
+                monitorSnapshot.Log("Events registered successfully.", LogLevel.Trace);
             }
             catch (Exception ex)
             {
@@ -131,7 +119,7 @@ namespace LivingRoots.Controllers
                     LocalGameLaunchedHandler = localGameLaunchedHandler,
                     LocalSaveLoadedHandler = localSaveLoadedHandler,
                     LocalSavingHandler = localSavingHandler,
-                    Monitor = monitor
+                    Monitor = monitorSnapshot
                 });
             }
             finally
@@ -223,8 +211,8 @@ namespace LivingRoots.Controllers
             var eventUnregisterContext = CreateUnregisterContext();
 
             // Create snapshots of dependencies to avoid errors if disposed mid-execution
-            var monitor = _monitor;
-            var helper = _helper;
+            var monitorSnapshot = _monitor;
+            var helperSnapshot = _helper;
 
             // Declare the rollback tracking variable at method scope so it's accessible in finally block
             var mayStillBeSubscribed = false;
@@ -232,11 +220,11 @@ namespace LivingRoots.Controllers
             try
             {
                 // Capture GameLoop once for consistent unsubscribe
-                var gameLoop = helper?.Events?.GameLoop;
+                var gameLoop = helperSnapshot?.Events?.GameLoop;
                 if (gameLoop == null)
                 {
                     mayStillBeSubscribed = eventUnregisterContext.WasRegistered || eventUnregisterContext.HasHandlers;
-                    monitor.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
+                    monitorSnapshot.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
 
                     // If we're disposing, clear handler references to avoid leaks even if we
                     // can't detach from SMAPI events.
@@ -251,7 +239,7 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                var unsubscribeResults = AttemptUnregistration(monitor, gameLoop, eventUnregisterContext);
+                var unsubscribeResults = AttemptUnregistration(monitorSnapshot, gameLoop, eventUnregisterContext);
 
                 var allUnsubscribed = unsubscribeResults.AllUnsubscribed;
 
@@ -268,7 +256,7 @@ namespace LivingRoots.Controllers
                 if (unsubscribeResults.SavingRemoved)
                     System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, null, eventUnregisterContext.SavingHandler);
 
-                HandleUnregistrationResult(monitor, gameLoop, unsubscribeResults, eventUnregisterContext, allUnsubscribed, ref mayStillBeSubscribed);
+                HandleUnregistrationResult(monitorSnapshot, gameLoop, unsubscribeResults, eventUnregisterContext, allUnsubscribed, ref mayStillBeSubscribed);
             }
             finally
             {
@@ -767,8 +755,8 @@ namespace LivingRoots.Controllers
                 return;
 
             // Snapshot dependencies to local variables to avoid NullReferenceExceptions
-            var monitor = _monitor;
-            var manifest = _manifest;
+            var monitorSnapshot = _monitor;
+            var manifestSnapshot = _manifest;
 
             try
             {
@@ -779,28 +767,28 @@ namespace LivingRoots.Controllers
                 // Trim arguments before matching to handle cases like " /help " or "-help "
                 if (args.Any(arg => !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg.Trim())))
                 {
-                    monitor?.Log("Usage: lr_version", LogLevel.Info);
-                    monitor?.Log("Shows the Living Roots version and UniqueID.", LogLevel.Info);
+                    monitorSnapshot?.Log("Usage: lr_version", LogLevel.Info);
+                    monitorSnapshot?.Log("Shows the Living Roots version and UniqueID.", LogLevel.Info);
                     return;
                 }
 
                 // Use the standard version.ToString() method which provides consistent output
-                var version = manifest?.Version;
+                var version = manifestSnapshot?.Version;
                 var versionString = version?.ToString() ?? "unknown";
 
-                monitor?.Log($"Living Roots Mod Version: {versionString} (UniqueID: {manifest?.UniqueID ?? "unknown"})", LogLevel.Info);
+                monitorSnapshot?.Log($"Living Roots Mod Version: {versionString} (UniqueID: {manifestSnapshot?.UniqueID ?? "unknown"})", LogLevel.Info);
             }
             catch (Exception ex)
             {
                 // Log error but don't expose raw exception message for security
-                _monitor?.Log("Error occurred while executing version command.", LogLevel.Error);
+                monitorSnapshot?.Log("Error occurred while executing version command.", LogLevel.Error);
 
                 // Add trace level exception details for debugging
-                _monitor?.Log($"PrintVersion exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                monitorSnapshot?.Log($"PrintVersion exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
 #if DEBUG
-                _monitor?.Log(ex.StackTrace ?? "PrintVersion stack trace unavailable.", LogLevel.Trace);
+                monitorSnapshot?.Log(ex.StackTrace ?? "PrintVersion stack trace unavailable.", LogLevel.Trace);
 #endif
             }
         }
