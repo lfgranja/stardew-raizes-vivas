@@ -18,15 +18,21 @@ namespace LivingRoots.Services
             {
                 var saveId = Constants.SaveFolderName;
 
-                if (!IsValidSaveId(saveId))
-                    return null;
-
-                if (saveId!.Length > ModConstants.MaxSaveIdLength)
+                // Combine validation checks to eliminate null reference issues
+                if (string.IsNullOrWhiteSpace(saveId) || saveId.Length > ModConstants.MaxSaveIdLength)
                 {
-                    _monitor?.Log($"GetSaveId: Save ID exceeded maximum length ({ModConstants.MaxSaveIdLength}); returning null.", LogLevel.Trace);
+                    if (string.IsNullOrWhiteSpace(saveId))
+                    {
+                        // Save ID is null, empty, or whitespace - no specific log needed
+                    }
+                    else if (saveId.Length > ModConstants.MaxSaveIdLength)
+                    {
+                        _monitor?.Log($"GetSaveId: Save ID exceeded maximum length ({ModConstants.MaxSaveIdLength}); returning null.", LogLevel.Trace);
+                    }
                     return null;
                 }
 
+                // At this point, saveId is guaranteed non-null and within length limit
                 return saveId;
             }
             catch (Exception ex)
@@ -36,14 +42,5 @@ namespace LivingRoots.Services
             }
         }
 
-        /// <summary>
-        /// Validates that the save ID is not null, empty, or whitespace
-        /// </summary>
-        /// <param name="saveId">The save ID to validate</param>
-        /// <returns>True if the save ID is valid, false otherwise</returns>
-        private static bool IsValidSaveId(string? saveId)
-        {
-            return !string.IsNullOrWhiteSpace(saveId);
-        }
     }
 }
