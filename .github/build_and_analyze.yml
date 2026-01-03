@@ -1,0 +1,77 @@
+name: Build, Test & Analyze
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: Build and Analyze
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Baixa o código
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Importante para o SonarCloud analisar o histórico de git
+
+      # 2. Configura o Java 17 (Necessário para o scanner do SonarCloud, mesmo o projeto sendo .NET)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      # 3. Configura o .NET 6 (Versão do seu projeto)
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 6.0.x
+
+      # 4. Instala a ferramenta de scan do Sonar
+      - name: Install SonarCloud scanner
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+
+      # 5. Inicia o Scan (Antes do Build)
+      # Substitua as chaves abaixo pelos valores reais ou use Secrets para PROJECT e ORG também se preferir
+      - name: Begin SonarCloud Analysis
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Gerado automaticamente pelo GitHub
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}    # O que você configurou nos Secrets
+        run: |
+          dotnet sonarscanner begin \
+            /k:"lfgranja_stardew-raizes-vivas" \
+            /o:"lfgranja" \
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
+
+      # 6. Restaura dependências
+      # O pacote Pathoschild.Stardew.ModBuildConfig lidará com as dependências do jogo automaticamente
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # 7. Verifica formatação (Linting no CI)
+      - name: Check Formatting
+        run: dotnet format --verify-no-changes
+
+      # 8. Build do Projeto
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      # 9. Testes com Cobertura de Código
+      # O formato opencover é necessário para o SonarCloud ler a cobertura no Linux
+      - name: Test
+        run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      # 10. Finaliza o Scan e envia para o SonarCloud
+      - name: End SonarCloud Analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
