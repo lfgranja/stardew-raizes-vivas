@@ -407,7 +407,6 @@ namespace LivingRoots.Services
             var snapshotState = new Dictionary<string, Dictionary<string, float>>();
             var totalTilesToSave = 0;
             var locationsToSave = 0;
-            var saveAbortedForLimits = false;
 
             lock (_lock)
             {
@@ -427,7 +426,7 @@ namespace LivingRoots.Services
                 }
             }
 
-            return (snapshotState, saveAbortedForLimits);
+            return (snapshotState, false);
         }
 
         private ProcessSaveLocationResult ProcessLocationForSave(KeyValuePair<string, Dictionary<Point, float>> location,
@@ -563,7 +562,7 @@ namespace LivingRoots.Services
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
         {
             // Validation for the delta value to prevent invalid updates.
-            if (float.IsNaN(delta))
+            if (float.IsNaN(delta) || float.IsInfinity(delta))
             {
                 return; // Ignore invalid delta values.
             }
@@ -624,6 +623,7 @@ namespace LivingRoots.Services
             }
         }
 
+#if DEBUG
         /// <summary>
         /// Test-only method to directly inject raw soil health data into the runtime cache.
         /// This bypasses validation and is intended for testing corruption scenarios.
@@ -631,7 +631,7 @@ namespace LivingRoots.Services
         /// <param name="locationName">The location name (can be invalid for testing)</param>
         /// <param name="tile">The tile coordinates</param>
         /// <param name="value">The health value</param>
-        public void TestOnly_SetRawSoilHealth(string locationName, Vector2 tile, float value)
+        internal void TestOnly_SetRawSoilHealth(string locationName, Vector2 tile, float value)
         {
             lock (_lock)
             {
@@ -644,6 +644,7 @@ namespace LivingRoots.Services
                 tiles[tilePoint] = value;
             }
         }
+#endif
 
         /// <summary>
         /// Internal helper method to set soil health value in the cache.

@@ -25,19 +25,13 @@ namespace LivingRoots.Tests
             _mockFileNameSanitizationService = new Mock<IFileNameSanitizationService>();
         }
 
-        [Theory]
-        [InlineData(null)]
-        [InlineData("")]
-        [InlineData("   ")]
-        public void Constructor_WithInvalidParameters_ThrowsArgumentNullException(string? value)
+        [Fact]
+        public void Constructor_WithNullDependencies_ThrowsArgumentNullException()
         {
             // Act & Assert
-            if (value == null)
-            {
-                Assert.Throws<ArgumentNullException>(() => new SoilHealthService(null!, _mockMonitor.Object, _mockFileNameSanitizationService.Object));
-                Assert.Throws<ArgumentNullException>(() => new SoilHealthService(_mockDataService.Object, null!, _mockFileNameSanitizationService.Object));
-                Assert.Throws<ArgumentNullException>(() => new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, null!));
-            }
+            Assert.Throws<ArgumentNullException>(() => new SoilHealthService(null!, _mockMonitor.Object, _mockFileNameSanitizationService.Object));
+            Assert.Throws<ArgumentNullException>(() => new SoilHealthService(_mockDataService.Object, null!, _mockFileNameSanitizationService.Object));
+            Assert.Throws<ArgumentNullException>(() => new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, null!));
         }
 
         [Fact]
@@ -1192,8 +1186,8 @@ namespace LivingRoots.Tests
 
         [Theory]
         [InlineData(float.NaN, 50.0f)]
-        [InlineData(float.PositiveInfinity, 100.0f)]
-        [InlineData(float.NegativeInfinity, 0.0f)]
+        [InlineData(float.PositiveInfinity, 50.0f)]
+        [InlineData(float.NegativeInfinity, 50.0f)]
         public void UpdateHealth_WithInvalidDelta_ModifiesExistingHealthCorrectly(float delta, float expectedValue)
         {
             // Arrange
@@ -1205,7 +1199,8 @@ namespace LivingRoots.Tests
             // Act
             service.UpdateHealth(location, tile, delta); // Try to update with invalid delta
 
-            // Assert - Value should be clamped to max for PositiveInfinity, min for NegativeInfinity, or remain unchanged for NaN
+            // Assert - Invalid delta values (NaN and Infinity) are now rejected early to prevent invalid arithmetic operations
+            // The value should remain unchanged at 50.0f
             Assert.Equal(expectedValue, service.GetSoilHealth(location, tile));
         }
 

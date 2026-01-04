@@ -19,12 +19,14 @@ namespace LivingRoots.Services
                 var saveId = Constants.SaveFolderName;
 
                 // Combine validation checks to eliminate null reference issues
-                if (string.IsNullOrWhiteSpace(saveId) || saveId.Length > ModConstants.MaxSaveIdLength)
+                if (string.IsNullOrWhiteSpace(saveId))
                 {
-                    if (!string.IsNullOrWhiteSpace(saveId) && saveId.Length > ModConstants.MaxSaveIdLength)
-                    {
-                        _monitor?.Log($"GetSaveId: Save ID exceeded maximum length ({ModConstants.MaxSaveIdLength}); returning null.", LogLevel.Trace);
-                    }
+                    return null;
+                }
+
+                if (saveId.Length > ModConstants.MaxSaveIdLength)
+                {
+                    _monitor?.Log($"GetSaveId: Save ID exceeded maximum length ({ModConstants.MaxSaveIdLength}); returning null.", LogLevel.Trace);
                     return null;
                 }
 

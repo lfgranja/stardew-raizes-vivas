@@ -52,6 +52,9 @@ namespace LivingRoots.Domain
             ".command", ".csh", ".tcsh", ".zsh", ".fish", ".ksh", ".bash"
         };
 
+        // Static readonly field to cache invalid file name characters and avoid repeated array allocations
+        private static readonly HashSet<char> InvalidFileNameChars = new(Path.GetInvalidFileNameChars());
+
         /// <summary>
         /// Sanitizes a filename by removing or replacing invalid characters and handling security concerns.
         /// </summary>
@@ -242,7 +245,7 @@ namespace LivingRoots.Domain
                 return true;
 
             // Check against system invalid file name characters
-            if (Path.GetInvalidFileNameChars().Contains(c))
+            if (InvalidFileNameChars.Contains(c))
                 return true;
 
             return false;
