@@ -1364,81 +1364,11 @@ namespace LivingRoots.Tests
         [InlineData(" 10,10", 10, 10, 75.5f)]
         [InlineData("  11,15", 11, 15, 25.5f)]
         [InlineData("12,12", 12, 12, 50.0f)]
-        public void LoadData_WithLeadingWhitespaceInTileKeys_ParsesCorrectly(string tileKey, int x, int y, float expectedValue)
-        {
-            // Arrange
-            var saveData = new SoilHealthState
-            {
-                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
-                {
-                    ["Farm"] = new Dictionary<string, float>
-                    {
-                        [tileKey] = expectedValue,
-                        ["12,12"] = 50.0f      // Valid entry for comparison
-                    }
-                }
-            };
-
-            // Set up mock to return expected sanitized value
-            _mockFileNameSanitizationService
-                .Setup(x => x.Sanitize("test_save"))
-                .Returns("test_save");
-
-            _mockDataService
-                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
-                .Returns(saveData);
-
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-
-            // Act
-            service.LoadData("test_save");
-
-            // Assert - Tile keys with leading whitespace should be parsed correctly
-            Assert.Equal(expectedValue, service.GetSoilHealth("Farm", new Vector2(x, y)));
-        }
-
-        [Theory]
         [InlineData("10,10 ", 10, 10, 75.5f)]
         [InlineData("11,15  ", 11, 15, 25.5f)]
-        [InlineData("12,12", 12, 12, 50.0f)]
-        public void LoadData_WithTrailingWhitespaceInTileKeys_ParsesCorrectly(string tileKey, int x, int y, float expectedValue)
-        {
-            // Arrange
-            var saveData = new SoilHealthState
-            {
-                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
-                {
-                    ["Farm"] = new Dictionary<string, float>
-                    {
-                        [tileKey] = expectedValue,
-                        ["12,12"] = 50.0f      // Valid entry for comparison
-                    }
-                }
-            };
-
-            // Set up mock to return expected sanitized value
-            _mockFileNameSanitizationService
-                .Setup(x => x.Sanitize("test_save"))
-                .Returns("test_save");
-
-            _mockDataService
-                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
-                .Returns(saveData);
-
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-
-            // Act
-            service.LoadData("test_save");
-
-            // Assert - Tile keys with trailing whitespace should be parsed correctly
-            Assert.Equal(expectedValue, service.GetSoilHealth("Farm", new Vector2(x, y)));
-        }
-
-        [Theory]
         [InlineData(" 10,10 ", 10, 10, 75.5f)]
         [InlineData("  11,15 ", 11, 15, 25.5f)]
-        [InlineData("12,12", 12, 12, 50.0f)]
-        public void LoadData_WithLeadingAndTrailingWhitespaceInTileKeys_ParsesCorrectly(string tileKey, int x, int y, float expectedValue)
+        public void LoadData_WithWhitespaceInTileKeys_ParsesCorrectly(string tileKey, int x, int y, float expectedValue)
         {
             // Arrange
             var saveData = new SoilHealthState
@@ -1467,7 +1397,7 @@ namespace LivingRoots.Tests
             // Act
             service.LoadData("test_save");
 
-            // Assert - Tile keys with leading and trailing whitespace should be parsed correctly
+            // Assert - Tile keys with whitespace should be parsed correctly
             Assert.Equal(expectedValue, service.GetSoilHealth("Farm", new Vector2(x, y)));
         }
 
