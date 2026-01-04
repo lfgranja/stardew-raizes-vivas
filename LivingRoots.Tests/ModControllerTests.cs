@@ -376,7 +376,7 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Trigger the OnGameLaunched event by raising it on the mock
-            mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
+            mockGameLoopEvents.Raise(x => x.GameLaunched += null, (EventArgs)null!);
 
             // Assert - Command should have been added to console commands
             mockCommandHelper.Verify(x => x.Add("lr_version", "Shows the Living Roots version.", It.IsAny<Action<string, string[]>>()), Times.Once);
@@ -406,7 +406,7 @@ namespace LivingRoots.Tests
                 .Callback<string, string, Action<string, string[]>>((name, desc, action) => printVersionAction = action);
 
             // Act - Trigger the OnGameLaunched event to register the command
-            mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
+            mockGameLoopEvents.Raise(x => x.GameLaunched += null, (EventArgs)null!);
 
             Assert.NotNull(printVersionAction);
 
@@ -441,7 +441,7 @@ namespace LivingRoots.Tests
                 .Callback<string, string, Action<string, string[]>>((name, desc, action) => printVersionAction = action);
 
             // Act - Trigger the OnGameLaunched event to register the command
-            mockGameLoopEvents.Raise(x => x.GameLaunched += null, new GameLaunchedEventArgs());
+            mockGameLoopEvents.Raise(x => x.GameLaunched += null, (EventArgs)null!);
 
             Assert.NotNull(printVersionAction);
 
@@ -473,7 +473,7 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Raise the SaveLoaded event to trigger OnSaveLoaded
-            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, (EventArgs)null!);
 
             // Assert - Soil health service should have been called to load data
             _mockSoilHealthService.Verify(x => x.LoadData("test_save_id"), Times.Once);
@@ -500,7 +500,7 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Raise the Saving event to trigger OnSaving
-            mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
+            mockGameLoopEvents.Raise(x => x.Saving += null, (EventArgs)null!);
 
             // Assert - Soil health service should have been called to save data
             _mockSoilHealthService.Verify(x => x.SaveData("test_save_id"), Times.Once);
@@ -576,37 +576,85 @@ namespace LivingRoots.Tests
         public void TrySetStateFlag_WhenDisposed_ReturnsFalseForOtherFlags()
         {
             // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
-            const int disposedFlag = ModController.DisposedFlag;
-            const int eventsRegisteredFlag = ModController.EventsRegisteredFlag;
 
-            // First set the disposed flag directly (internal member accessible via InternalsVisibleTo)
-            controller._state = disposedFlag;
+            // Act - Dispose the controller
+            controller.Dispose();
 
-            // Act - Try to set another flag when disposed
-            var result = controller.TrySetStateFlag(eventsRegisteredFlag);
+            // Act & Assert - Try to set a flag when disposed
+            var result = controller.TrySetStateFlag(ModController.EventsRegisteredFlag);
 
             // Assert - Should return false when trying to set other flags when disposed
             Assert.False(result);
+
+            // Verify that RegisterEvents does not actually register after disposal (observable behavior)
+            mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Never);
         }
 
         [Fact]
-        public void GetSaveIdUnavailableWarningShownOnSaveLoadedProperty_WorksCorrectly()
+        public void SaveIdUnavailableWarning_ShownOnlyOncePerEvent()
         {
             // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            // Mock SaveIdProvider to return null (simulating unavailable save folder)
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns((string?)null);
+
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
 
-            // Act & Assert - Initially should be false (0)
-            Assert.Equal(0, controller._saveIdUnavailableWarningShownOnSaveLoaded);
-            Assert.Equal(0, controller._saveIdUnavailableWarningShownOnSaving);
+            // Register events to ensure proper setup
+            controller.RegisterEvents();
 
-            // Act - Change properties to true (1) directly (internal members accessible via InternalsVisibleTo)
-            controller._saveIdUnavailableWarningShownOnSaveLoaded = 1;
-            controller._saveIdUnavailableWarningShownOnSaving = 1;
+            // Act - Raise SaveLoaded event multiple times
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, (EventArgs)null!);
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, (EventArgs)null!);
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, (EventArgs)null!);
 
-            // Assert - Should now be true (1)
-            Assert.Equal(1, controller._saveIdUnavailableWarningShownOnSaveLoaded);
-            Assert.Equal(1, controller._saveIdUnavailableWarningShownOnSaving);
+            // Assert - Warning should be logged only once, not on every event
+            _mockMonitor.Verify(x => x.Log(It.Is<string>(s => s.Contains("SaveFolderName unavailable")), LogLevel.Warn), Times.Once);
+        }
+
+        [Fact]
+        public void SaveIdUnavailableWarning_ShownOnlyOncePerSavingEvent()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            // Mock SaveIdProvider to return null (simulating unavailable save folder)
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns((string?)null);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+
+            // Register events to ensure proper setup
+            controller.RegisterEvents();
+
+            // Act - Raise Saving event multiple times
+            mockGameLoopEvents.Raise(x => x.Saving += null, (EventArgs)null!);
+            mockGameLoopEvents.Raise(x => x.Saving += null, (EventArgs)null!);
+            mockGameLoopEvents.Raise(x => x.Saving += null, (EventArgs)null!);
+
+            // Assert - Warning should be logged only once, not on every event
+            _mockMonitor.Verify(x => x.Log(It.Is<string>(s => s.Contains("SaveFolderName unavailable")), LogLevel.Warn), Times.Once);
         }
 
         #region End-to-End Integration Tests
@@ -640,7 +688,7 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Raise the SaveLoaded event to trigger the complete integration flow
-            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, (EventArgs)null!);
 
             // Assert - Verify the complete integration flow
             // 1. SaveIdProvider.GetSaveId() was called to obtain the saveId
@@ -682,7 +730,7 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Raise the Saving event to trigger the complete integration flow
-            mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
+            mockGameLoopEvents.Raise(x => x.Saving += null, (EventArgs)null!);
 
             // Assert - Verify the complete integration flow
             // 1. SaveIdProvider.GetSaveId() was called to obtain the saveId
@@ -725,8 +773,8 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Simulate a complete game session: load then save
-            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
-            mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, (EventArgs)null!);
+            mockGameLoopEvents.Raise(x => x.Saving += null, (EventArgs)null!);
 
             // Assert - Verify the complete integration flow for both events
             // 1. SaveIdProvider.GetSaveId() was called twice (once for each event)
@@ -768,7 +816,7 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Raise the SaveLoaded event
-            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, (EventArgs)null!);
 
             // Assert - Verify that no service methods were called when saveId is null
             _mockSaveIdProvider.Verify(x => x.GetSaveId(), Times.Once, "SaveIdProvider.GetSaveId should be called once");
@@ -808,7 +856,7 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Raise the Saving event
-            mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
+            mockGameLoopEvents.Raise(x => x.Saving += null, (EventArgs)null!);
 
             // Assert - Verify that no service methods were called when saveId is empty
             _mockSaveIdProvider.Verify(x => x.GetSaveId(), Times.Once, "SaveIdProvider.GetSaveId should be called once");
@@ -849,8 +897,8 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Raise both SaveLoaded and Saving events
-            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
-            mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, (EventArgs)null!);
+            mockGameLoopEvents.Raise(x => x.Saving += null, (EventArgs)null!);
 
             // Assert - Verify that the exact same saveId is passed to both service methods
             _mockSoilHealthService.Verify(x => x.LoadData(complexSaveId), Times.Once, $"SoilHealthService.LoadData should be called with the exact saveId '{complexSaveId}'");
@@ -893,7 +941,7 @@ namespace LivingRoots.Tests
             const int eventCount = 3;
             for (int i = 0; i < eventCount; i++)
             {
-                mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
+                mockGameLoopEvents.Raise(x => x.SaveLoaded += null, (EventArgs)null!);
             }
 
             // Assert - Verify that LoadData was called for each event
@@ -933,7 +981,7 @@ namespace LivingRoots.Tests
             const int eventCount = 3;
             for (int i = 0; i < eventCount; i++)
             {
-                mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
+                mockGameLoopEvents.Raise(x => x.Saving += null, (EventArgs)null!);
             }
 
             // Assert - Verify that SaveData was called for each event

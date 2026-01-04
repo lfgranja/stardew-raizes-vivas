@@ -780,8 +780,8 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Handles a regular (non-surrogate) character
-        /// For hidden files (starting with '.'), path traversal characters are replaced with underscores,
-        /// while other invalid characters are removed entirely.
+        /// For hidden files (starting with '.'), only forward slash and backslash are replaced with underscores,
+        /// while other invalid characters are removed entirely. Note that '.' is considered safe and is preserved.
         /// </summary>
         private static void HandleRegularCharacter(StringBuilder resultBuilder, char c, bool isHiddenFile)
         {
@@ -979,7 +979,7 @@ namespace LivingRoots.Domain
         /// </summary>
         private static bool ContainsInvalidFilenameChars(string extNormalized)
         {
-            return extNormalized.IndexOfAny(Path.GetInvalidFileNameChars()) != -1;
+            return extNormalized.Any(c => InvalidFileNameChars.Contains(c));
         }
 
         /// <summary>
@@ -1136,8 +1136,16 @@ namespace LivingRoots.Domain
         private static int AdjustStartIndexForSurrogatePair(string str, int startIndex)
         {
             if (startIndex < str.Length && startIndex > 0 &&
-                char.IsLowSurrogate(str[startIndex]) && char.IsHighSurrogate(str[startIndex - 1]))
+                char.IsLowSurrogate(str[startIndex]))
             {
+                // Check if the previous character is a high surrogate
+                if (char.IsHighSurrogate(str[startIndex - 1]))
+                {
+                    // Skip the low surrogate to avoid starting in the middle of a surrogate pair
+                    return startIndex + 1;
+                }
+                // If previous character is not a high surrogate, we have an isolated low surrogate
+                // Skip it to prevent malformed string output
                 return startIndex + 1;
             }
             return startIndex;

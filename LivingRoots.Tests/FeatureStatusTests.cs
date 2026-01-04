@@ -1,5 +1,5 @@
-using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Xunit;
 
@@ -14,25 +14,6 @@ namespace LivingRoots.Tests
         public void Readme_FeaturesMarkedAsPlanned_ContainsPlannedPrefix()
         {
             // Arrange
-            var dir = new DirectoryInfo(AppContext.BaseDirectory);
-            FileInfo? readmeFile = null;
-
-            for (var i = 0; i < 10 && dir != null; i++)
-            {
-                var files = dir.GetFiles("README.md");
-                if (files.Length > 0)
-                {
-                    readmeFile = files[0];
-                    break;
-                }
-                dir = dir.Parent;
-            }
-
-            Assert.True(readmeFile != null && readmeFile.Exists, $"README.md could not be found. Started search from {AppContext.BaseDirectory}");
-            var readmePath = readmeFile.FullName;
-
-
-
             var expectedPlannedFeatures = new[]
             {
                 "Visual indicators show soil health status (Planned)",
@@ -40,8 +21,19 @@ namespace LivingRoots.Tests
                 "Health improves with compost application (Planned)"
             };
 
+            // Read README.md from embedded resource for reliable test access across all environments
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceNames = assembly.GetManifestResourceNames();
+            var readmeResourceName = resourceNames.FirstOrDefault(name => name.EndsWith("README.md"));
+
+            Assert.True(readmeResourceName != null, $"README.md resource not found in assembly. Available resources: {string.Join(", ", resourceNames)}");
+
             // Act
-            var readmeContent = File.ReadAllText(readmePath);
+            using var stream = assembly.GetManifestResourceStream(readmeResourceName);
+            Assert.True(stream != null, $"Could not load README.md resource: {readmeResourceName}");
+
+            using var reader = new StreamReader(stream);
+            var readmeContent = reader.ReadToEnd();
 
             // Assert - This should fail initially since the features are not marked as planned yet
             foreach (var feature in expectedPlannedFeatures)

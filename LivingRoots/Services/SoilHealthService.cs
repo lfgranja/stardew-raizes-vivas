@@ -370,26 +370,11 @@ namespace LivingRoots.Services
             {
                 _monitor.Log("SaveData aborted: runtime cache exceeds configured limits; refusing to write potentially huge/partial state.", LogLevel.Error);
 
-                // Overwrite the stored state with an empty state to prevent a persistent failure loop
-                try
+                // Skip writing to avoid overwriting persisted data with empty state
+                // Clear in-memory cache to prevent a persistent limit-abort loop and reclaim memory
+                lock (_lock)
                 {
-                    _modDataService.SaveData(new SoilHealthState { LocationHealthData = new Dictionary<string, Dictionary<string, float>>() }, dataKey);
-                }
-                catch (Exception ex)
-                {
-                    _monitor.Log("Error clearing soil health data after SaveData limit abort.", LogLevel.Error);
-                    _monitor.Log($"SaveData(clear) exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-#if DEBUG
-                    _monitor.Log(ex.StackTrace ?? "SaveData(clear) stack trace unavailable.", LogLevel.Trace);
-#endif
-                }
-                finally
-                {
-                    // Prevent a persistent in-memory limit-abort loop and reclaim memory.
-                    lock (_lock)
-                    {
-                        _runtimeCache.Clear();
-                    }
+                    _runtimeCache.Clear();
                 }
 
                 return;
