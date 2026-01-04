@@ -607,5 +607,338 @@ namespace LivingRoots.Tests
             Assert.Equal(1, controller._saveIdUnavailableWarningShownOnSaving);
         }
 
+        #region End-to-End Integration Tests
+
+        /// <summary>
+        /// Integration test: Verifies the complete flow when SaveLoaded event is triggered.
+        /// This test ensures that:
+        /// 1. The SaveIdProvider is called to obtain the saveId
+        /// 2. The saveId is passed correctly to SoilHealthService.LoadData
+        /// 3. The integration between controller, SaveIdProvider, and SoilHealthService works correctly
+        /// </summary>
+        [Fact]
+        [Trait("Category", "Integration")]
+        public void Integration_SaveLoadedEvent_CallsSaveIdProviderAndLoadData()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            const string expectedSaveId = "test_save_12345";
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns(expectedSaveId);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+
+            // Register events to ensure proper setup before triggering SaveLoaded
+            controller.RegisterEvents();
+
+            // Act - Raise the SaveLoaded event to trigger the complete integration flow
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
+
+            // Assert - Verify the complete integration flow
+            // 1. SaveIdProvider.GetSaveId() was called to obtain the saveId
+            _mockSaveIdProvider.Verify(x => x.GetSaveId(), Times.Once, "SaveIdProvider.GetSaveId should be called once when SaveLoaded event is triggered");
+
+            // 2. SoilHealthService.LoadData() was called with the correct saveId
+            _mockSoilHealthService.Verify(x => x.LoadData(expectedSaveId), Times.Once, $"SoilHealthService.LoadData should be called once with saveId '{expectedSaveId}'");
+
+            // 3. Verify that no other service methods were called (ensuring correct isolation)
+            _mockSoilHealthService.Verify(x => x.SaveData(It.IsAny<string>()), Times.Never, "SoilHealthService.SaveData should not be called during SaveLoaded event");
+        }
+
+        /// <summary>
+        /// Integration test: Verifies the complete flow when Saving event is triggered.
+        /// This test ensures that:
+        /// 1. The SaveIdProvider is called to obtain the saveId
+        /// 2. The saveId is passed correctly to SoilHealthService.SaveData
+        /// 3. The integration between controller, SaveIdProvider, and SoilHealthService works correctly
+        /// </summary>
+        [Fact]
+        [Trait("Category", "Integration")]
+        public void Integration_SavingEvent_CallsSaveIdProviderAndSaveData()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            const string expectedSaveId = "test_save_67890";
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns(expectedSaveId);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+
+            // Register events to ensure proper setup before triggering Saving
+            controller.RegisterEvents();
+
+            // Act - Raise the Saving event to trigger the complete integration flow
+            mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
+
+            // Assert - Verify the complete integration flow
+            // 1. SaveIdProvider.GetSaveId() was called to obtain the saveId
+            _mockSaveIdProvider.Verify(x => x.GetSaveId(), Times.Once, "SaveIdProvider.GetSaveId should be called once when Saving event is triggered");
+
+            // 2. SoilHealthService.SaveData() was called with the correct saveId
+            _mockSoilHealthService.Verify(x => x.SaveData(expectedSaveId), Times.Once, $"SoilHealthService.SaveData should be called once with saveId '{expectedSaveId}'");
+
+            // 3. Verify that no other service methods were called (ensuring correct isolation)
+            _mockSoilHealthService.Verify(x => x.LoadData(It.IsAny<string>()), Times.Never, "SoilHealthService.LoadData should not be called during Saving event");
+        }
+
+        /// <summary>
+        /// Integration test: Verifies the complete flow when both SaveLoaded and Saving events are triggered.
+        /// This test ensures that:
+        /// 1. Both events correctly trigger their respective service methods
+        /// 2. The SaveIdProvider is called for each event
+        /// 3. The correct saveId is passed to each service method
+        /// 4. The integration works correctly for multiple event triggers
+        /// </summary>
+        [Fact]
+        [Trait("Category", "Integration")]
+        public void Integration_SaveLoadedAndSavingEvents_CorrectlyCallLoadDataAndSaveData()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            const string expectedSaveId = "test_save_complete_flow";
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns(expectedSaveId);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+
+            // Register events to ensure proper setup
+            controller.RegisterEvents();
+
+            // Act - Simulate a complete game session: load then save
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
+            mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
+
+            // Assert - Verify the complete integration flow for both events
+            // 1. SaveIdProvider.GetSaveId() was called twice (once for each event)
+            _mockSaveIdProvider.Verify(x => x.GetSaveId(), Times.Exactly(2), "SaveIdProvider.GetSaveId should be called twice (once for SaveLoaded, once for Saving)");
+
+            // 2. SoilHealthService.LoadData() was called once with the correct saveId
+            _mockSoilHealthService.Verify(x => x.LoadData(expectedSaveId), Times.Once, $"SoilHealthService.LoadData should be called once with saveId '{expectedSaveId}'");
+
+            // 3. SoilHealthService.SaveData() was called once with the correct saveId
+            _mockSoilHealthService.Verify(x => x.SaveData(expectedSaveId), Times.Once, $"SoilHealthService.SaveData should be called once with saveId '{expectedSaveId}'");
+        }
+
+        /// <summary>
+        /// Integration test: Verifies that when SaveIdProvider returns null/empty, no service methods are called.
+        /// This test ensures that:
+        /// 1. The controller correctly handles null/empty saveId from SaveIdProvider
+        /// 2. No service methods are called when saveId is unavailable
+        /// 3. A warning is logged (verified through monitor)
+        /// </summary>
+        [Fact]
+        [Trait("Category", "Integration")]
+        public void Integration_SaveLoadedEvent_WithNullSaveId_DoesNotCallLoadData()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            // Mock SaveIdProvider to return null (simulating unavailable save folder)
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns((string?)null);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+
+            // Register events to ensure proper setup
+            controller.RegisterEvents();
+
+            // Act - Raise the SaveLoaded event
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
+
+            // Assert - Verify that no service methods were called when saveId is null
+            _mockSaveIdProvider.Verify(x => x.GetSaveId(), Times.Once, "SaveIdProvider.GetSaveId should be called once");
+            _mockSoilHealthService.Verify(x => x.LoadData(It.IsAny<string>()), Times.Never, "SoilHealthService.LoadData should not be called when saveId is null");
+            _mockSoilHealthService.Verify(x => x.SaveData(It.IsAny<string>()), Times.Never, "SoilHealthService.SaveData should not be called when saveId is null");
+
+            // Verify that a warning was logged
+            _mockMonitor.Verify(x => x.Log(It.Is<string>(s => s.Contains("SaveFolderName unavailable")), LogLevel.Warn), Times.Once, "A warning should be logged when saveId is null");
+        }
+
+        /// <summary>
+        /// Integration test: Verifies that when SaveIdProvider returns empty string, no service methods are called.
+        /// This test ensures that:
+        /// 1. The controller correctly handles empty string saveId from SaveIdProvider
+        /// 2. No service methods are called when saveId is empty
+        /// 3. A warning is logged (verified through monitor)
+        /// </summary>
+        [Fact]
+        [Trait("Category", "Integration")]
+        public void Integration_SavingEvent_WithEmptySaveId_DoesNotCallSaveData()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            // Mock SaveIdProvider to return empty string (simulating unavailable save folder)
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns(string.Empty);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+
+            // Register events to ensure proper setup
+            controller.RegisterEvents();
+
+            // Act - Raise the Saving event
+            mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
+
+            // Assert - Verify that no service methods were called when saveId is empty
+            _mockSaveIdProvider.Verify(x => x.GetSaveId(), Times.Once, "SaveIdProvider.GetSaveId should be called once");
+            _mockSoilHealthService.Verify(x => x.LoadData(It.IsAny<string>()), Times.Never, "SoilHealthService.LoadData should not be called when saveId is empty");
+            _mockSoilHealthService.Verify(x => x.SaveData(It.IsAny<string>()), Times.Never, "SoilHealthService.SaveData should not be called when saveId is empty");
+
+            // Verify that a warning was logged
+            _mockMonitor.Verify(x => x.Log(It.Is<string>(s => s.Contains("SaveFolderName unavailable")), LogLevel.Warn), Times.Once, "A warning should be logged when saveId is empty");
+        }
+
+        /// <summary>
+        /// Integration test: Verifies that the saveId from SaveIdProvider is correctly passed to SoilHealthService.
+        /// This test ensures that:
+        /// 1. The saveId returned by SaveIdProvider is exactly what's passed to SoilHealthService
+        /// 2. No transformation or modification of the saveId occurs
+        /// 3. The integration maintains data integrity throughout the flow
+        /// </summary>
+        [Fact]
+        [Trait("Category", "Integration")]
+        public void Integration_SaveIdFromProvider_IsCorrectlyPassedToService()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            // Use a complex saveId with special characters to ensure no transformation occurs
+            const string complexSaveId = "Save_2024-01-15_FarmerName_123";
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns(complexSaveId);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+
+            // Register events to ensure proper setup
+            controller.RegisterEvents();
+
+            // Act - Raise both SaveLoaded and Saving events
+            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
+            mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
+
+            // Assert - Verify that the exact same saveId is passed to both service methods
+            _mockSoilHealthService.Verify(x => x.LoadData(complexSaveId), Times.Once, $"SoilHealthService.LoadData should be called with the exact saveId '{complexSaveId}'");
+            _mockSoilHealthService.Verify(x => x.SaveData(complexSaveId), Times.Once, $"SoilHealthService.SaveData should be called with the exact saveId '{complexSaveId}'");
+
+            // Verify that no other saveId was used
+            _mockSoilHealthService.Verify(x => x.LoadData(It.Is<string>(s => s != complexSaveId)), Times.Never, "SoilHealthService.LoadData should not be called with any other saveId");
+            _mockSoilHealthService.Verify(x => x.SaveData(It.Is<string>(s => s != complexSaveId)), Times.Never, "SoilHealthService.SaveData should not be called with any other saveId");
+        }
+
+        /// <summary>
+        /// Integration test: Verifies that multiple SaveLoaded events correctly call LoadData each time.
+        /// This test ensures that:
+        /// 1. Each SaveLoaded event triggers a LoadData call
+        /// 2. The SaveIdProvider is called for each event
+        /// 3. The integration handles multiple event triggers correctly
+        /// </summary>
+        [Fact]
+        [Trait("Category", "Integration")]
+        public void Integration_MultipleSaveLoadedEvents_CorrectlyCallLoadDataEachTime()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            const string expectedSaveId = "test_save_multiple";
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns(expectedSaveId);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+
+            // Register events to ensure proper setup
+            controller.RegisterEvents();
+
+            // Act - Raise SaveLoaded event multiple times (simulating loading the same save multiple times)
+            const int eventCount = 3;
+            for (int i = 0; i < eventCount; i++)
+            {
+                mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
+            }
+
+            // Assert - Verify that LoadData was called for each event
+            _mockSaveIdProvider.Verify(x => x.GetSaveId(), Times.Exactly(eventCount), $"SaveIdProvider.GetSaveId should be called {eventCount} times");
+            _mockSoilHealthService.Verify(x => x.LoadData(expectedSaveId), Times.Exactly(eventCount), $"SoilHealthService.LoadData should be called {eventCount} times");
+        }
+
+        /// <summary>
+        /// Integration test: Verifies that multiple Saving events correctly call SaveData each time.
+        /// This test ensures that:
+        /// 1. Each Saving event triggers a SaveData call
+        /// 2. The SaveIdProvider is called for each event
+        /// 3. The integration handles multiple event triggers correctly
+        /// </summary>
+        [Fact]
+        [Trait("Category", "Integration")]
+        public void Integration_MultipleSavingEvents_CorrectlyCallSaveDataEachTime()
+        {
+            // Arrange
+            var mockEvents = new Mock<IModEvents>();
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            const string expectedSaveId = "test_save_multiple_saves";
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns(expectedSaveId);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+
+            // Register events to ensure proper setup
+            controller.RegisterEvents();
+
+            // Act - Raise Saving event multiple times (simulating saving multiple times)
+            const int eventCount = 3;
+            for (int i = 0; i < eventCount; i++)
+            {
+                mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
+            }
+
+            // Assert - Verify that SaveData was called for each event
+            _mockSaveIdProvider.Verify(x => x.GetSaveId(), Times.Exactly(eventCount), $"SaveIdProvider.GetSaveId should be called {eventCount} times");
+            _mockSoilHealthService.Verify(x => x.SaveData(expectedSaveId), Times.Exactly(eventCount), $"SoilHealthService.SaveData should be called {eventCount} times");
+        }
+
+        #endregion
     }
 }

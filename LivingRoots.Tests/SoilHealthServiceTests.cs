@@ -25,22 +25,19 @@ namespace LivingRoots.Tests
             _mockFileNameSanitizationService = new Mock<IFileNameSanitizationService>();
         }
 
-        [Fact]
-        public void Constructor_WithNullDataService_ThrowsArgumentNullException()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void Constructor_WithInvalidParameters_ThrowsArgumentNullException(string? value)
         {
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthService(null!, _mockMonitor.Object, _mockFileNameSanitizationService.Object));
-        }
-
-        [Fact]
-        public void Constructor_WithNullMonitor_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthService(_mockDataService.Object, null!, _mockFileNameSanitizationService.Object));
-        }
-
-        [Fact]
-        public void Constructor_WithNullFileNameSanitizationService_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, null!));
+            // Act & Assert
+            if (value == null)
+            {
+                Assert.Throws<ArgumentNullException>(() => new SoilHealthService(null!, _mockMonitor.Object, _mockFileNameSanitizationService.Object));
+                Assert.Throws<ArgumentNullException>(() => new SoilHealthService(_mockDataService.Object, null!, _mockFileNameSanitizationService.Object));
+                Assert.Throws<ArgumentNullException>(() => new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, null!));
+            }
         }
 
         [Fact]
@@ -63,69 +60,53 @@ namespace LivingRoots.Tests
             Assert.Equal(0.0f, resultMin); // -5 should be clamped to 0 (MinSoilHealth)
         }
 
-        [Fact]
-        public void GetSoilHealth_WithInvalidLocationName_ReturnsDefault()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void GetSoilHealth_WithInvalidLocationName_ReturnsDefault(string? location)
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             var tile = new Vector2(10, 10);
 
             // Act
-            var result = service.GetSoilHealth(null!, tile);
-            var resultEmpty = service.GetSoilHealth("", tile);
-            var resultWhitespace = service.GetSoilHealth("   ", tile);
+            var result = service.GetSoilHealth(location!, tile);
 
             // Assert
             Assert.Equal(0f, result);
-            Assert.Equal(0f, resultEmpty);
-            Assert.Equal(0f, resultWhitespace);
         }
 
-        [Fact]
-        public void GetSoilHealth_WithInvalidTileCoordinates_ReturnsDefault()
+        [Theory]
+        [InlineData(float.NaN, 10)]
+        [InlineData(float.PositiveInfinity, 10)]
+        [InlineData(float.MaxValue, 10)]
+        [InlineData(float.MinValue, 10)]
+        public void GetSoilHealth_WithInvalidTileCoordinates_ReturnsDefault(float x, float y)
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             var location = "Farm";
 
             // Act
-            var resultNaN = service.GetSoilHealth(location, new Vector2(float.NaN, 10));
-            var resultInfinity = service.GetSoilHealth(location, new Vector2(float.PositiveInfinity, 10));
-            var resultBothNaN = service.GetSoilHealth(location, new Vector2(float.NaN, float.NaN));
+            var result = service.GetSoilHealth(location, new Vector2(x, y));
 
             // Assert
-            Assert.Equal(0f, resultNaN);
-            Assert.Equal(0f, resultInfinity);
-            Assert.Equal(0f, resultBothNaN);
+            Assert.Equal(0f, result);
         }
 
-        [Fact]
-        public void GetSoilHealth_WithOverflowCoordinates_ReturnsDefault()
-        {
-            // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            var location = "Farm";
-
-            // Act
-            var resultHigh = service.GetSoilHealth(location, new Vector2(float.MaxValue, 10));
-            var resultLow = service.GetSoilHealth(location, new Vector2(float.MinValue, 10));
-
-            // Assert
-            Assert.Equal(0f, resultHigh);
-            Assert.Equal(0f, resultLow);
-        }
-
-        [Fact]
-        public void SetSoilHealth_WithInvalidLocationName_DoesNotAddEntry()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void SetSoilHealth_WithInvalidLocationName_DoesNotAddEntry(string? location)
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             var tile = new Vector2(10, 10);
 
             // Act
-            service.SetSoilHealth(null!, tile, 5.0f);
-            service.SetSoilHealth("", tile, 5.0f);
-            service.SetSoilHealth("   ", tile, 5.0f);
+            service.SetSoilHealth(location!, tile, 5.0f);
 
             // Assert via observable behavior: invalid location names must not be persisted
             _mockFileNameSanitizationService
@@ -144,46 +125,31 @@ namespace LivingRoots.Tests
             Assert.False(capturedSaveState.LocationHealthData.ContainsKey("   "));
         }
 
-        [Fact]
-        public void SetSoilHealth_WithInvalidTileCoordinates_DoesNotAddEntry()
+        [Theory]
+        [InlineData(float.NaN, 10)]
+        [InlineData(float.PositiveInfinity, 10)]
+        [InlineData(float.MaxValue, 10)]
+        [InlineData(float.MinValue, 10)]
+        [InlineData(10, float.NaN)]
+        public void SetSoilHealth_WithInvalidTileCoordinates_DoesNotAddEntry(float x, float y)
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             var location = "Farm";
 
             // Act
-            service.SetSoilHealth(location, new Vector2(float.NaN, 10), 50.0f);
-            service.SetSoilHealth(location, new Vector2(float.PositiveInfinity, 10), 50.0f);
-            service.SetSoilHealth(location, new Vector2(10, float.NaN), 50.0f);
+            service.SetSoilHealth(location, new Vector2(x, y), 50.0f);
 
             // Assert - Should not have added any entries to the cache
-            // Use the public API to verify that no entries were added
             Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(0, 0)));
-            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(float.NaN, 10)));
-            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(float.PositiveInfinity, 10)));
-            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(10, float.NaN)));
+            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(x, y)));
         }
 
-        [Fact]
-        public void SetSoilHealth_WithOverflowCoordinates_DoesNotAddEntry()
-        {
-            // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            var location = "Farm";
-
-            // Act
-            service.SetSoilHealth(location, new Vector2(float.MaxValue, 10), 50.0f);
-            service.SetSoilHealth(location, new Vector2(float.MinValue, 10), 50.0f);
-
-            // Assert - Should not have added any entries to the cache
-            // Use the public API to verify that no entries were added
-            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(0, 0)));
-            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(float.MaxValue, 10)));
-            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(float.MinValue, 10)));
-        }
-
-        [Fact]
-        public void UpdateHealth_WithInvalidLocationName_DoesNotUpdate()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void UpdateHealth_WithInvalidLocationName_DoesNotUpdate(string? location)
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -191,16 +157,19 @@ namespace LivingRoots.Tests
             service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
             // Act
-            service.UpdateHealth(null!, tile, 100.0f);
-            service.UpdateHealth("", tile, 10.0f);
-            service.UpdateHealth("   ", tile, 10.0f);
+            service.UpdateHealth(location!, tile, 100.0f);
 
             // Assert - Value should remain unchanged
             Assert.Equal(50.0f, service.GetSoilHealth("Farm", tile));
         }
 
-        [Fact]
-        public void UpdateHealth_WithInvalidTileCoordinates_DoesNotUpdate()
+        [Theory]
+        [InlineData(float.NaN, 10)]
+        [InlineData(float.PositiveInfinity, 10)]
+        [InlineData(float.MaxValue, 10)]
+        [InlineData(float.MinValue, 10)]
+        [InlineData(10, float.NaN)]
+        public void UpdateHealth_WithInvalidTileCoordinates_DoesNotUpdate(float x, float y)
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -209,26 +178,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f); // Set initial value
 
             // Act
-            service.UpdateHealth(location, new Vector2(float.NaN, 10), 10.0f);
-            service.UpdateHealth(location, new Vector2(float.PositiveInfinity, 10), 10.0f);
-            service.UpdateHealth(location, new Vector2(10, float.NaN), 10.0f);
-
-            // Assert - Value should remain unchanged
-            Assert.Equal(50.0f, service.GetSoilHealth("Farm", tile));
-        }
-
-        [Fact]
-        public void UpdateHealth_WithOverflowCoordinates_DoesNotUpdate()
-        {
-            // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            var location = "Farm";
-            var tile = new Vector2(10, 10);
-            service.SetSoilHealth(location, tile, 50.0f); // Set initial value
-
-            // Act
-            service.UpdateHealth(location, new Vector2(float.MaxValue, 10), 10.0f);
-            service.UpdateHealth(location, new Vector2(float.MinValue, 10), 10.0f);
+            service.UpdateHealth(location, new Vector2(x, y), 10.0f);
 
             // Assert - Value should remain unchanged
             Assert.Equal(50.0f, service.GetSoilHealth("Farm", tile));
@@ -288,8 +238,11 @@ namespace LivingRoots.Tests
             Assert.Equal(0.0f, resultMin); // -50 clamped to 0
         }
 
-        [Fact]
-        public void LoadData_WithInvalidSaveId_ClearsCacheToPreventLeakage()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void LoadData_WithInvalidSaveId_ClearsCacheToPreventLeakage(string? saveId)
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -297,9 +250,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
             // Act
-            service.LoadData(null!); // Should clear cache
-            service.LoadData(""); // Should clear cache
-            service.LoadData("   "); // Should clear cache
+            service.LoadData(saveId!); // Should clear cache
 
             // Assert - Value should be cleared (not preserved) when invalid saveId is passed
             // This prevents data leakage between different game saves
@@ -446,24 +397,6 @@ namespace LivingRoots.Tests
             Assert.Equal(100f, service.GetSoilHealth("Farm", new Vector2(11, 11)));
             Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
 
-            // Strengthen the test by verifying the internal state more thoroughly
-            // Check that all expected keys are present in the internal cache with correct values
-            var tile10 = new Vector2(10, 10);
-            var tile11 = new Vector2(11, 11);
-            var tile12 = new Vector2(12, 12);
-            var tile13 = new Vector2(13, 13);
-
-            // Verify that all entries were processed and stored with correct conversions
-            var result10 = service.GetSoilHealth("Farm", tile10);
-            var result11 = service.GetSoilHealth("Farm", tile11);
-            var result12 = service.GetSoilHealth("Farm", tile12);
-            var result13 = service.GetSoilHealth("Farm", tile13);
-
-            Assert.Equal(0f, result10); // NaN value converted to 0
-            Assert.Equal(100f, result11); // PositiveInfinity value converted to 100
-            Assert.Equal(0f, result12); // NegativeInfinity value converted to 0
-            Assert.Equal(50.0f, result13); // Valid value remains unchanged
-
             // Additional verification: Ensure that no unexpected values were created
             Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(99, 99))); // Non-existent tile should return default value
         }
@@ -527,8 +460,11 @@ namespace LivingRoots.Tests
             Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
         }
 
-        [Fact]
-        public void SaveData_WithInvalidSaveId_DoesNotSave()
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void SaveData_WithInvalidSaveId_DoesNotSave(string? saveId)
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -536,9 +472,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth("Farm", tile, 50.0f);
 
             // Act
-            service.SaveData(null!);
-            service.SaveData("");
-            service.SaveData("   ");
+            service.SaveData(saveId!);
 
             // Assert - Data should not be saved
             _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
@@ -1256,8 +1190,11 @@ namespace LivingRoots.Tests
             Assert.Equal(0, loadedEntriesCount);
         }
 
-        [Fact]
-        public void UpdateHealth_WithNaNDelta_DoesNotModifyExistingHealth()
+        [Theory]
+        [InlineData(float.NaN, 50.0f)]
+        [InlineData(float.PositiveInfinity, 100.0f)]
+        [InlineData(float.NegativeInfinity, 0.0f)]
+        public void UpdateHealth_WithInvalidDelta_ModifiesExistingHealthCorrectly(float delta, float expectedValue)
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -1266,46 +1203,16 @@ namespace LivingRoots.Tests
             service.SetSoilHealth(location, tile, 50.0f); // Set initial value
 
             // Act
-            service.UpdateHealth(location, tile, float.NaN); // Try to update with NaN delta
+            service.UpdateHealth(location, tile, delta); // Try to update with invalid delta
 
-            // Assert - Value should remain unchanged (not reset to 0)
-            Assert.Equal(50.0f, service.GetSoilHealth(location, tile));
+            // Assert - Value should be modified according to the delta type
+            Assert.Equal(expectedValue, service.GetSoilHealth(location, tile));
         }
 
-        [Fact]
-        public void UpdateHealth_WithPositiveInfinityDelta_ModifyExistingHealthtoMax()
-        {
-            // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            var location = "Farm";
-            var tile = new Vector2(10, 10);
-            service.SetSoilHealth(location, tile, 50.0f); // Set initial value
-
-            // Act
-            service.UpdateHealth(location, tile, float.PositiveInfinity); // Try to update with PositiveInfinity delta
-
-            // Assert - Value should remain unchanged (not reset to 0)
-            Assert.Equal(100.0f, service.GetSoilHealth(location, tile));
-        }
-
-        [Fact]
-        public void UpdateHealth_WithNegativeInfinityDelta_ModifyExistingHealthtoMin()
-        {
-            // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
-            var location = "Farm";
-            var tile = new Vector2(10, 10);
-            service.SetSoilHealth(location, tile, 50.0f); // Set initial value
-
-            // Act
-            service.UpdateHealth(location, tile, float.NegativeInfinity); // Try to update with NegativeInfinity delta
-
-            // Assert - Value should remain unchanged (not reset to 0)
-            Assert.Equal(0.0f, service.GetSoilHealth(location, tile));
-        }
-
-        [Fact]
-        public void SaveData_WithWhitespaceLocationKeyInRuntimeCache_SkipsInvalidEntry()
+        [Theory]
+        [InlineData("   ", "5,5")]
+        [InlineData("\t\n", "6,6")]
+        public void SaveData_WithWhitespaceLocationKeyInRuntimeCache_SkipsInvalidEntry(string locationKey, string tileKey)
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
@@ -1315,8 +1222,7 @@ namespace LivingRoots.Tests
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
                     ["Farm"] = new Dictionary<string, float> { ["10,10"] = 75.5f },
-                    ["   "] = new Dictionary<string, float> { ["5,5"] = 50.0f },
-                    ["\t\n"] = new Dictionary<string, float> { ["6,6"] = 60.0f }
+                    [locationKey] = new Dictionary<string, float> { [tileKey] = 50.0f }
                 }
             };
 
@@ -1353,8 +1259,7 @@ namespace LivingRoots.Tests
             // Verify that only the valid location was saved
             Assert.NotNull(capturedSaveState);
             Assert.True(capturedSaveState.LocationHealthData.ContainsKey("Farm"));
-            Assert.False(capturedSaveState.LocationHealthData.ContainsKey("   "));
-            Assert.False(capturedSaveState.LocationHealthData.ContainsKey("\t\n"));
+            Assert.False(capturedSaveState.LocationHealthData.ContainsKey(locationKey));
         }
 
         [Fact]
@@ -1455,8 +1360,11 @@ namespace LivingRoots.Tests
             Assert.Equal(50.0f, capturedSaveState.LocationHealthData["Town"]["15,20"]);
         }
 
-        [Fact]
-        public void LoadData_WithLeadingWhitespaceInTileKeys_ParsesCorrectly()
+        [Theory]
+        [InlineData(" 10,10", 10, 10, 75.5f)]
+        [InlineData("  11,15", 11, 15, 25.5f)]
+        [InlineData("12,12", 12, 12, 50.0f)]
+        public void LoadData_WithLeadingWhitespaceInTileKeys_ParsesCorrectly(string tileKey, int x, int y, float expectedValue)
         {
             // Arrange
             var saveData = new SoilHealthState
@@ -1465,8 +1373,7 @@ namespace LivingRoots.Tests
                 {
                     ["Farm"] = new Dictionary<string, float>
                     {
-                        [" 10,10"] = 75.5f,   // Leading whitespace before X
-                        ["  11,15"] = 25.5f,  // Multiple leading spaces before X
+                        [tileKey] = expectedValue,
                         ["12,12"] = 50.0f      // Valid entry for comparison
                     }
                 }
@@ -1487,13 +1394,14 @@ namespace LivingRoots.Tests
             service.LoadData("test_save");
 
             // Assert - Tile keys with leading whitespace should be parsed correctly
-            Assert.Equal(75.5f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
-            Assert.Equal(25.5f, service.GetSoilHealth("Farm", new Vector2(11, 15)));
-            Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
+            Assert.Equal(expectedValue, service.GetSoilHealth("Farm", new Vector2(x, y)));
         }
 
-        [Fact]
-        public void LoadData_WithTrailingWhitespaceInTileKeys_ParsesCorrectly()
+        [Theory]
+        [InlineData("10,10 ", 10, 10, 75.5f)]
+        [InlineData("11,15  ", 11, 15, 25.5f)]
+        [InlineData("12,12", 12, 12, 50.0f)]
+        public void LoadData_WithTrailingWhitespaceInTileKeys_ParsesCorrectly(string tileKey, int x, int y, float expectedValue)
         {
             // Arrange
             var saveData = new SoilHealthState
@@ -1502,8 +1410,7 @@ namespace LivingRoots.Tests
                 {
                     ["Farm"] = new Dictionary<string, float>
                     {
-                        ["10,10 "] = 75.5f,   // Trailing whitespace after Y
-                        ["11,15  "] = 25.5f,  // Multiple trailing spaces after Y
+                        [tileKey] = expectedValue,
                         ["12,12"] = 50.0f      // Valid entry for comparison
                     }
                 }
@@ -1524,13 +1431,14 @@ namespace LivingRoots.Tests
             service.LoadData("test_save");
 
             // Assert - Tile keys with trailing whitespace should be parsed correctly
-            Assert.Equal(75.5f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
-            Assert.Equal(25.5f, service.GetSoilHealth("Farm", new Vector2(11, 15)));
-            Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
+            Assert.Equal(expectedValue, service.GetSoilHealth("Farm", new Vector2(x, y)));
         }
 
-        [Fact]
-        public void LoadData_WithLeadingAndTrailingWhitespaceInTileKeys_ParsesCorrectly()
+        [Theory]
+        [InlineData(" 10,10 ", 10, 10, 75.5f)]
+        [InlineData("  11,15 ", 11, 15, 25.5f)]
+        [InlineData("12,12", 12, 12, 50.0f)]
+        public void LoadData_WithLeadingAndTrailingWhitespaceInTileKeys_ParsesCorrectly(string tileKey, int x, int y, float expectedValue)
         {
             // Arrange
             var saveData = new SoilHealthState
@@ -1539,8 +1447,7 @@ namespace LivingRoots.Tests
                 {
                     ["Farm"] = new Dictionary<string, float>
                     {
-                        [" 10,10 "] = 75.5f,   // Leading and trailing whitespace
-                        ["  11,15 "] = 25.5f,  // Multiple leading and trailing spaces
+                        [tileKey] = expectedValue,
                         ["12,12"] = 50.0f      // Valid entry for comparison
                     }
                 }
@@ -1561,13 +1468,15 @@ namespace LivingRoots.Tests
             service.LoadData("test_save");
 
             // Assert - Tile keys with leading and trailing whitespace should be parsed correctly
-            Assert.Equal(75.5f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
-            Assert.Equal(25.5f, service.GetSoilHealth("Farm", new Vector2(11, 15)));
-            Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
+            Assert.Equal(expectedValue, service.GetSoilHealth("Farm", new Vector2(x, y)));
         }
 
-        [Fact]
-        public void LoadData_WithWhitespaceAroundCommaInTileKeys_ParsesCorrectly()
+        [Theory]
+        [InlineData("10 ,10", 10, 10, 75.5f)]
+        [InlineData("11, 15", 11, 15, 25.5f)]
+        [InlineData("12 , 15", 12, 15, 50.0f)]
+        [InlineData("13,13", 13, 13, 60.0f)]
+        public void LoadData_WithWhitespaceAroundCommaInTileKeys_ParsesCorrectly(string tileKey, int x, int y, float expectedValue)
         {
             // Arrange
             var saveData = new SoilHealthState
@@ -1576,9 +1485,7 @@ namespace LivingRoots.Tests
                 {
                     ["Farm"] = new Dictionary<string, float>
                     {
-                        ["10 ,10"] = 75.5f,   // Space before comma
-                        ["11, 15"] = 25.5f,   // Space after comma
-                        ["12 , 15"] = 50.0f,   // Spaces around comma
+                        [tileKey] = expectedValue,
                         ["13,13"] = 60.0f      // Valid entry for comparison
                     }
                 }
@@ -1599,10 +1506,7 @@ namespace LivingRoots.Tests
             service.LoadData("test_save");
 
             // Assert - Tile keys with whitespace around comma should be parsed correctly
-            Assert.Equal(75.5f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
-            Assert.Equal(25.5f, service.GetSoilHealth("Farm", new Vector2(11, 15)));
-            Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(12, 15)));
-            Assert.Equal(60.0f, service.GetSoilHealth("Farm", new Vector2(13, 13)));
+            Assert.Equal(expectedValue, service.GetSoilHealth("Farm", new Vector2(x, y)));
         }
 
         [Fact]

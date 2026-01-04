@@ -21,11 +21,7 @@ namespace LivingRoots.Services
                 // Combine validation checks to eliminate null reference issues
                 if (string.IsNullOrWhiteSpace(saveId) || saveId.Length > ModConstants.MaxSaveIdLength)
                 {
-                    if (string.IsNullOrWhiteSpace(saveId))
-                    {
-                        // Save ID is null, empty, or whitespace - no specific log needed
-                    }
-                    else if (saveId.Length > ModConstants.MaxSaveIdLength)
+                    if (!string.IsNullOrWhiteSpace(saveId) && saveId.Length > ModConstants.MaxSaveIdLength)
                     {
                         _monitor?.Log($"GetSaveId: Save ID exceeded maximum length ({ModConstants.MaxSaveIdLength}); returning null.", LogLevel.Trace);
                     }
