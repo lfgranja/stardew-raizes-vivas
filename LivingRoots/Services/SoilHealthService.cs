@@ -230,9 +230,8 @@ namespace LivingRoots.Services
             public bool IsLimitExceeded { get; } = isLimitExceeded;
             public bool IsGlobalLimitExceeded { get; } = isGlobalLimitExceeded;
 
-            public static DosProtectionResult NoneExceeded() => new DosProtectionResult(false, false);
-            public static DosProtectionResult PerLocationExceeded() => new DosProtectionResult(true, false);
-            public static DosProtectionResult GlobalLimitExceeded() => new DosProtectionResult(true, true);
+            public static DosProtectionResult NoneExceeded() => new(false, false);
+            public static DosProtectionResult GlobalLimitExceeded() => new(true, true);
         }
 
         /// <summary>
@@ -245,15 +244,15 @@ namespace LivingRoots.Services
         private DosProtectionResult CheckDosProtectionLimits(string locationName, int tileCount, ref int totalTileEntriesProcessed)
         {
             // CRITICAL DOS PROTECTION: Check if we've exceeded the tile limit for this location
-            // When per-location tile limit is exceeded, we skip only that location while other
-            // valid locations continue to load. This is more data-safe than aborting the entire
-            // operation and clearing the cache.
+            // When per-location tile limit is exceeded, we abort the entire load operation to prevent
+            // data loss. If we only skipped the exceeding location, the next save would permanently
+            // delete that location's data without user consent.
             if (tileCount > ModConstants.MaxTilesPerLocation)
             {
                 _monitor.Log(
-                    $"Skipping location '{TruncateForLogging(locationName)}': Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded. Other locations will continue to load.",
+                    $"Aborting load: Location '{TruncateForLogging(locationName)}' exceeds tile count limit ({ModConstants.MaxTilesPerLocation}). To prevent data loss, the entire load operation is being aborted.",
                     LogLevel.Alert);
-                return DosProtectionResult.PerLocationExceeded(); // Skip this location only
+                return DosProtectionResult.GlobalLimitExceeded(); // Treat as a global failure to prevent data loss.
             }
 
             // GLOBAL DOS PROTECTION: Increment total tile entries across all locations
@@ -383,6 +382,14 @@ namespace LivingRoots.Services
 #if DEBUG
                     _monitor.Log(ex.StackTrace ?? "SaveData(clear) stack trace unavailable.", LogLevel.Trace);
 #endif
+                }
+                finally
+                {
+                    // Prevent a persistent in-memory limit-abort loop and reclaim memory.
+                    lock (_lock)
+                    {
+                        _runtimeCache.Clear();
+                    }
                 }
 
                 return;
@@ -614,6 +621,27 @@ namespace LivingRoots.Services
             lock (_lock)
             {
                 _runtimeCache.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Test-only method to directly inject raw soil health data into the runtime cache.
+        /// This bypasses validation and is intended for testing corruption scenarios.
+        /// </summary>
+        /// <param name="locationName">The location name (can be invalid for testing)</param>
+        /// <param name="tile">The tile coordinates</param>
+        /// <param name="value">The health value</param>
+        public void TestOnly_SetRawSoilHealth(string locationName, Vector2 tile, float value)
+        {
+            lock (_lock)
+            {
+                if (!_runtimeCache.TryGetValue(locationName, out var tiles))
+                {
+                    tiles = new Dictionary<Point, float>();
+                    _runtimeCache[locationName] = tiles;
+                }
+                var tilePoint = new Point((int)MathF.Floor(tile.X), (int)MathF.Floor(tile.Y));
+                tiles[tilePoint] = value;
             }
         }
 

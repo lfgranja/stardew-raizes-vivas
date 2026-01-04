@@ -1171,7 +1171,7 @@ namespace LivingRoots.Tests
             service.LoadData("test_save");
 
             // Assert: Verify that the critical error log appeared when exceeding the cap
-            _mockMonitor.Verify(x => x.Log(It.Is<string>(msg => msg.Contains("Tile count limit") && msg.Contains("exceeded")), LogLevel.Alert), Times.AtLeastOnce);
+            _mockMonitor.Verify(x => x.Log(It.Is<string>(msg => msg.Contains("tile count limit") && msg.Contains("exceeds")), LogLevel.Alert), Times.AtLeastOnce);
 
             // With the high severity fix implemented, when the limit is exceeded,
             // the entire load operation should abort and the cache should be cleared.
@@ -1205,36 +1205,21 @@ namespace LivingRoots.Tests
             // Act
             service.UpdateHealth(location, tile, delta); // Try to update with invalid delta
 
-            // Assert - Value should be modified according to the delta type
+            // Assert - Value should be clamped to max for PositiveInfinity, min for NegativeInfinity, or remain unchanged for NaN
             Assert.Equal(expectedValue, service.GetSoilHealth(location, tile));
         }
 
         [Theory]
-        [InlineData("   ", "5,5")]
-        [InlineData("\t\n", "6,6")]
-        public void SaveData_WithWhitespaceLocationKeyInRuntimeCache_SkipsInvalidEntry(string locationKey, string tileKey)
+        [InlineData("   ")]
+        [InlineData("\t\n")]
+        public void SaveData_WithWhitespaceLocationKeyInRuntimeCache_SkipsInvalidEntry(string locationKey)
         {
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
-            var corruptedState = new SoilHealthState
-            {
-                LocationHealthData = new Dictionary<string, Dictionary<string, float>>
-                {
-                    ["Farm"] = new Dictionary<string, float> { ["10,10"] = 75.5f },
-                    [locationKey] = new Dictionary<string, float> { [tileKey] = 50.0f }
-                }
-            };
-
-            _mockFileNameSanitizationService
-                .Setup(x => x.Sanitize("test_save"))
-                .Returns("test_save");
-
-            _mockDataService
-                .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
-                .Returns(corruptedState);
-
-            service.LoadData("test_save");
+            // Inject corrupted runtime cache entries directly (avoid going through LoadData which may already filter them).
+            service.TestOnly_SetRawSoilHealth("Farm", new Vector2(10, 10), 75.5f);
+            service.TestOnly_SetRawSoilHealth(locationKey, new Vector2(5, 5), 50.0f);
 
             // Set up mock to return expected sanitized value
             _mockFileNameSanitizationService
@@ -1554,3 +1539,4 @@ namespace LivingRoots.Tests
         }
     }
 }
+

@@ -50,19 +50,19 @@ namespace LivingRoots.Tests
         [Fact]
         public void Constructor_WithNullManifest_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, (IManifest)null!, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, null!, _mockSoilHealthService.Object, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullSoilHealthService_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, (ISoilHealthService)null!, _mockSaveIdProvider.Object));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, null!, _mockSaveIdProvider.Object));
         }
 
         [Fact]
         public void Constructor_WithNullSaveIdProvider_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, (ISaveIdProvider)null!));
+            Assert.Throws<ArgumentNullException>(() => new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, null!));
         }
 
         [Fact]

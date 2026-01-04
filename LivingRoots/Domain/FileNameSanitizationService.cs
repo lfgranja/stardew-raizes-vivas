@@ -210,23 +210,20 @@ namespace LivingRoots.Domain
         /// </summary>
         private static string RemoveLeadingUnderscoreFromInvalidChar(string trimmedContent, string contentAfterDot, string? originalFilename)
         {
-            // Only remove leading underscore if it came from sanitizing an invalid character
-            // Check the original filename to see if the character after the dot was invalid
+            // Only consider removing a leading underscore if it likely came from sanitizing
+            // the original character right after the dot.
             if (contentAfterDot.Length > 0 && contentAfterDot[0] == '_' && originalFilename != null && originalFilename.Length > 1)
             {
                 var originalCharAfterDot = originalFilename[1];
+
+                // If underscore was introduced by sanitizing an invalid/problematic character,
+                // remove it (while keeping the already-trimmed result).
                 if (IsInvalidOrProblematicChar(originalCharAfterDot))
                 {
-                    // The underscore came from an invalid character, so we should NOT remove it
-                    // Return the content as-is (with the underscore preserved)
-                    return contentAfterDot;
-                }
-                else
-                {
-                    // The underscore did NOT come from an invalid character, so remove it
-                    return trimmedContent;
+                    return trimmedContent.TrimStart('_');
                 }
             }
+
             return trimmedContent;
         }
 

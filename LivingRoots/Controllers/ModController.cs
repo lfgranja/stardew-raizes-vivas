@@ -590,11 +590,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Reset the warning flag when a valid save ID is found
-                if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 0, 1) == 1)
-                {
-                    // The flag was previously set to 1 (true), so we set it to 0 (false)
-                    // This means the warning was previously shown and is now being reset
-                }
+                System.Threading.Interlocked.Exchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 0);
 
                 // Load data using the save folder name as unique ID
                 _soilHealthService.LoadData(saveId);
