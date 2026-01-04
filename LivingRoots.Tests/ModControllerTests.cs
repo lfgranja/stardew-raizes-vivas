@@ -553,7 +553,7 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
-            const int testFlag = 1; // Use EventsRegisteredFlag for testing
+            const int testFlag = ModController.EventsRegisteredFlag;
 
             // Act
             var result = controller.TrySetStateFlag(testFlag);
@@ -577,8 +577,8 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
-            const int disposedFlag = 1 << 2; // Use DisposedFlag
-            const int eventsRegisteredFlag = 1 << 0; // Use EventsRegisteredFlag
+            const int disposedFlag = ModController.DisposedFlag;
+            const int eventsRegisteredFlag = ModController.EventsRegisteredFlag;
 
             // First set the disposed flag directly (internal member accessible via InternalsVisibleTo)
             controller._state = disposedFlag;

@@ -13,13 +13,13 @@ namespace LivingRoots.Controllers
         ISaveIdProvider saveIdProvider) : IDisposable
     {
         // State flags for thread safety using atomic operations
-        private const int EventsRegisteredFlag = 1 << 0;
-        private const int CommandRegisteredFlag = 1 << 1;
-        private const int DisposedFlag = 1 << 2;
-        private const int OnSaveLoadedExecutingFlag = 1 << 3;
-        private const int OnSavingExecutingFlag = 1 << 4;
-        private const int UnregisteringFlag = 1 << 5;
-        private const int RegisteringFlag = 1 << 6;
+        internal const int EventsRegisteredFlag = 1 << 0;
+        internal const int CommandRegisteredFlag = 1 << 1;
+        internal const int DisposedFlag = 1 << 2;
+        internal const int OnSaveLoadedExecutingFlag = 1 << 3;
+        internal const int OnSavingExecutingFlag = 1 << 4;
+        internal const int UnregisteringFlag = 1 << 5;
+        internal const int RegisteringFlag = 1 << 6;
         internal int _state = 0; // Combine flags in single volatile field
 
         // Warning flag for preventing repeated log spam - using Interlocked operations for thread safety
@@ -346,7 +346,13 @@ namespace LivingRoots.Controllers
             var saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, context.SaveLoadedHandler, "SaveLoaded");
             var savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, context.SavingHandler, "Saving");
 
+            // Be conservative: if we thought we were registered but lost handler references, assume we may still be subscribed.
+            var missingHandlerWhileRegistered =
+                context.WasRegistered &&
+                (context.GameLaunchedHandler == null || context.SaveLoadedHandler == null || context.SavingHandler == null);
+
             var allUnsubscribed =
+                !missingHandlerWhileRegistered &&
                 (context.GameLaunchedHandler == null || gameLaunchedRemoved) &&
                 (context.SaveLoadedHandler == null || saveLoadedRemoved) &&
                 (context.SavingHandler == null || savingRemoved);
