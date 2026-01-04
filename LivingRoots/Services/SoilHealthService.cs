@@ -132,12 +132,31 @@ namespace LivingRoots.Services
 
                     // Process location entry with validation
                     var processResult = ProcessLocationEntry(locationEntry, ref totalTileEntriesProcessed);
+
+                    // If location was skipped due to global tile limit (DoS protection), abort the entire operation
+                    if (processResult.IsGlobalLimitExceeded)
+                    {
+                        _monitor.Log($"Global tile limit exceeded during load; aborting operation to prevent partial data load.", LogLevel.Warn);
+
+                        // Clear tempCache to ensure no partial data is loaded
+                        tempCache.Clear();
+
+                        // Clear _runtimeCache to ensure no stale data remains
+                        lock (_lock)
+                        {
+                            _runtimeCache.Clear();
+                        }
+
+                        // Return early without repopulating the cache
+                        return;
+                    }
+
+                    // If location was skipped due to per-location limit, continue with other locations
+                    // This is the data-preserving behavior - we don't abort the entire operation
                     if (processResult.IsSuccess && processResult.TileDict.Count > 0)
                     {
                         tempCache[locationEntry.Key] = processResult.TileDict;
                     }
-                    // If location was skipped due to DoS protection, continue with other locations
-                    // This is the new data-preserving behavior - we don't abort the entire operation
                 }
             }
 
@@ -184,9 +203,10 @@ namespace LivingRoots.Services
                 tileCount++;
 
                 // Check DoS protection limits and skip if exceeded
-                if (CheckDosProtectionLimits(locationEntry.Key, tileCount, ref totalTileEntriesProcessed))
+                var limitResult = CheckDosProtectionLimits(locationEntry.Key, tileCount, ref totalTileEntriesProcessed);
+                if (limitResult.IsLimitExceeded)
                 {
-                    return ProcessLocationResult.Skipped();
+                    return ProcessLocationResult.Skipped(limitResult.IsGlobalLimitExceeded);
                 }
 
                 // Process tile entry using the helper method
@@ -203,13 +223,26 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
+        /// Result of DoS protection limit check
+        /// </summary>
+        private readonly struct DosProtectionResult(bool isLimitExceeded, bool isGlobalLimitExceeded)
+        {
+            public bool IsLimitExceeded { get; } = isLimitExceeded;
+            public bool IsGlobalLimitExceeded { get; } = isGlobalLimitExceeded;
+
+            public static DosProtectionResult NoneExceeded() => new DosProtectionResult(false, false);
+            public static DosProtectionResult PerLocationExceeded() => new DosProtectionResult(true, false);
+            public static DosProtectionResult GlobalLimitExceeded() => new DosProtectionResult(true, true);
+        }
+
+        /// <summary>
         /// Checks DoS protection limits for tile entries and skips if limits are exceeded.
         /// </summary>
         /// <param name="locationName">The location name for logging</param>
         /// <param name="tileCount">Current tile count for this location</param>
         /// <param name="totalTileEntriesProcessed">Reference to total tile entries processed across all locations</param>
-        /// <returns>True if limits were exceeded and location should be skipped, false otherwise</returns>
-        private bool CheckDosProtectionLimits(string locationName, int tileCount, ref int totalTileEntriesProcessed)
+        /// <returns>Result indicating if limits were exceeded and whether it was a global limit</returns>
+        private DosProtectionResult CheckDosProtectionLimits(string locationName, int tileCount, ref int totalTileEntriesProcessed)
         {
             // CRITICAL DOS PROTECTION: Check if we've exceeded the tile limit for this location
             // When per-location tile limit is exceeded, we skip only that location while other
@@ -220,7 +253,7 @@ namespace LivingRoots.Services
                 _monitor.Log(
                     $"Skipping location '{TruncateForLogging(locationName)}': Tile count limit ({ModConstants.MaxTilesPerLocation}) exceeded. Other locations will continue to load.",
                     LogLevel.Alert);
-                return true; // Skip this location only
+                return DosProtectionResult.PerLocationExceeded(); // Skip this location only
             }
 
             // GLOBAL DOS PROTECTION: Increment total tile entries across all locations
@@ -232,10 +265,10 @@ namespace LivingRoots.Services
                 {
                     _runtimeCache.Clear();
                 }
-                return true;
+                return DosProtectionResult.GlobalLimitExceeded();
             }
 
-            return false;
+            return DosProtectionResult.NoneExceeded();
         }
 
         /// <summary>
@@ -832,25 +865,26 @@ namespace LivingRoots.Services
     /// <summary>
     /// Represents the result of processing a location entry during load
     /// </summary>
-    internal readonly struct ProcessLocationResult(bool isSuccess, Dictionary<Point, float> tileDict, bool isSkipped)
+    internal readonly struct ProcessLocationResult(bool isSuccess, Dictionary<Point, float> tileDict, bool isSkipped, bool isGlobalLimitExceeded)
     {
         public bool IsSuccess { get; } = isSuccess;
         public Dictionary<Point, float> TileDict { get; } = tileDict;
         public bool IsSkipped { get; } = isSkipped;
+        public bool IsGlobalLimitExceeded { get; } = isGlobalLimitExceeded;
 
         public static ProcessLocationResult SuccessWithTiles(Dictionary<Point, float> tileDict)
         {
-            return new ProcessLocationResult(true, tileDict, false);
+            return new ProcessLocationResult(true, tileDict, false, false);
         }
 
         public static ProcessLocationResult SuccessEmpty()
         {
-            return new ProcessLocationResult(true, new Dictionary<Point, float>(), false);
+            return new ProcessLocationResult(true, new Dictionary<Point, float>(), false, false);
         }
 
-        public static ProcessLocationResult Skipped()
+        public static ProcessLocationResult Skipped(bool isGlobalLimitExceeded = false)
         {
-            return new ProcessLocationResult(false, new Dictionary<Point, float>(), true);
+            return new ProcessLocationResult(false, new Dictionary<Point, float>(), true, isGlobalLimitExceeded);
         }
     }
 

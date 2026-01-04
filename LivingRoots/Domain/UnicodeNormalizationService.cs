@@ -317,7 +317,7 @@ namespace LivingRoots.Domain
                 return true;
 
             // Additional zero-width and bidirectional control characters for enhanced security
-            if (c == '\u202E' || c == '\u202F') // Left-to-right mark, Right-to-left mark
+            if (c == '\u202F') // Narrow no-break space
                 return true;
 
             if (c == '\u2066' || c == '\u2067' || c == '\u2068' || c == '\u2069') // First strong isolate, Left-to-right isolate, Right-to-left isolate, Pop directional isolate

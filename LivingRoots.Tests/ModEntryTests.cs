@@ -236,27 +236,19 @@ namespace LivingRoots.Tests
             // Arrange
             var expectedLink = "https://github.com/lfgranja/stardew-raizes-vivas/releases";
 
-            // Search upward through parent directories to find README.md
-            var dir = new DirectoryInfo(AppContext.BaseDirectory);
-            FileInfo? readmeFile = null;
+            // Read README.md from embedded resource for reliable test access across all environments
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceNames = assembly.GetManifestResourceNames();
+            var readmeResourceName = resourceNames.FirstOrDefault(name => name.EndsWith("README.md"));
 
-            for (int i = 0; i < 10 && dir != null; i++)
-            {
-                var files = dir.GetFiles("README.md");
-                if (files.Length > 0)
-                {
-                    readmeFile = files[0];
-                    break;
-                }
-                dir = dir.Parent;
-            }
-
-            Assert.True(readmeFile != null && readmeFile.Exists, $"README.md could not be found. Started search from {AppContext.BaseDirectory}");
-            var readmeFullPath = readmeFile.FullName;
+            Assert.True(readmeResourceName != null, $"README.md resource not found in assembly. Available resources: {string.Join(", ", resourceNames)}");
 
             // Act
+            using var stream = assembly.GetManifestResourceStream(readmeResourceName);
+            Assert.True(stream != null, $"Could not load README.md resource: {readmeResourceName}");
 
-            var readmeContent = File.ReadAllText(readmeFullPath);
+            using var reader = new StreamReader(stream);
+            var readmeContent = reader.ReadToEnd();
 
             // Assert - Verify the README contains the correct GitHub releases link
             Assert.Contains(expectedLink, readmeContent);
