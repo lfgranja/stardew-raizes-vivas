@@ -19,8 +19,15 @@ namespace LivingRoots.Services
         // Lock object for thread safety
         private readonly object _lock = new();
 
+        // Flag to prevent SaveData from executing if LoadData was aborted due to limits
+        // This avoids overwriting valid on-disk data with an empty or incomplete in-memory state
+        private volatile bool _loadAbortedForLimits;
+
         public void LoadData(string saveId)
         {
+            // Reset the abort flag at the start of each load operation
+            _loadAbortedForLimits = false;
+
             // Validate save ID and get sanitized key
             var dataKey = ValidateSaveId(saveId);
             if (dataKey == null)
@@ -137,6 +144,9 @@ namespace LivingRoots.Services
                     if (processResult.IsGlobalLimitExceeded)
                     {
                         _monitor.Log($"Global tile limit exceeded during load; aborting operation to prevent partial data load.", LogLevel.Warn);
+
+                        // Set flag to prevent SaveData from overwriting valid on-disk data
+                        _loadAbortedForLimits = true;
 
                         // Clear tempCache to ensure no partial data is loaded
                         tempCache.Clear();
@@ -260,6 +270,10 @@ namespace LivingRoots.Services
             if (totalTileEntriesProcessed > ModConstants.MaxTilesPerSave)
             {
                 _monitor.Log($"Total tile entry limit ({ModConstants.MaxTilesPerSave}) exceeded; stopping load to prevent DoS.", LogLevel.Warn);
+
+                // Set flag to prevent SaveData from overwriting valid on-disk data
+                _loadAbortedForLimits = true;
+
                 lock (_lock)
                 {
                     _runtimeCache.Clear();
@@ -360,6 +374,14 @@ namespace LivingRoots.Services
             if (dataKey == null)
             {
                 _monitor.Log("SaveData aborted: saveId sanitization failed.", LogLevel.Error);
+                return;
+            }
+
+            // Check if preceding LoadData operation was aborted due to limits
+            // This prevents overwriting valid on-disk data with an empty or incomplete in-memory state
+            if (_loadAbortedForLimits)
+            {
+                _monitor.Log("SaveData aborted: preceding LoadData was aborted due to limits; refusing to overwrite valid on-disk data.", LogLevel.Error);
                 return;
             }
 
@@ -959,4 +981,3 @@ namespace LivingRoots.Services
         TileLimitExceeded
     }
 }
-

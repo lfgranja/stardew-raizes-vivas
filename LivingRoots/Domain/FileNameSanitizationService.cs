@@ -1139,13 +1139,14 @@ namespace LivingRoots.Domain
                 char.IsLowSurrogate(str[startIndex]))
             {
                 // Check if the previous character is a high surrogate
+                // Note: startIndex > 0 is already guaranteed by the outer condition
                 if (char.IsHighSurrogate(str[startIndex - 1]))
                 {
                     // Skip the low surrogate to avoid starting in the middle of a surrogate pair
                     return startIndex + 1;
                 }
-                // If previous character is not a high surrogate, we have an isolated low surrogate
-                // Skip it to prevent malformed string output
+                // If previous character is not a high surrogate (or we're at startIndex 0),
+                // we have an isolated low surrogate. Skip it to prevent malformed string output
                 return startIndex + 1;
             }
             return startIndex;

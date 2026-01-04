@@ -351,13 +351,11 @@ namespace LivingRoots.Controllers
                 context.WasRegistered &&
                 (context.GameLaunchedHandler == null || context.SaveLoadedHandler == null || context.SavingHandler == null);
 
-            // Handle wedged registered state: log error and reset handler fields to allow future re-registration
+            // Handle wedged registered state: log warning but don't clear handler fields
+            // This prevents resource leaks and potential crashes from callbacks on disposed objects
             if (missingHandlerWhileRegistered)
             {
-                monitor.Log("Event handlers are missing despite being registered. Resetting handler fields to prevent wedged state.", LogLevel.Error);
-                System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
-                System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
-                System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
+                monitor.Log("Event handlers are missing despite being registered. Assuming subscriptions may still exist to prevent resource leaks.", LogLevel.Warn);
             }
 
             var allUnsubscribed =

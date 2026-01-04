@@ -118,7 +118,7 @@ namespace LivingRoots.Tests
             var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
             var state = (int)(stateField?.GetValue(controller) ?? 0);
 
-            var isUnregistering = (state & (1 << 5)) != 0; // UnregisteringFlag
+            var isUnregistering = (state & ModController.UnregisteringFlag) != 0; // UnregisteringFlag
 
             // After unregistration, EventsRegisteredFlag should be cleared
             // UnregisteringFlag should also be cleared after completion
