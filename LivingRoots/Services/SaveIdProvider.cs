@@ -35,7 +35,7 @@ namespace LivingRoots.Services
             }
             catch (Exception ex)
             {
-                _monitor?.Log($"GetSaveId: Exception occurred: {ex.GetType().Name}", LogLevel.Trace);
+                _monitor!.Log($"GetSaveId: Exception occurred: {ex.GetType().Name}", LogLevel.Trace);
                 return null;
             }
         }
