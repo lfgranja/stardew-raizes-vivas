@@ -10,7 +10,8 @@ namespace LivingRoots.Controllers
         IMonitor monitor,
         IManifest manifest,
         ISoilHealthService soilHealthService,
-        ISaveIdProvider saveIdProvider) : IDisposable
+        ISaveIdProvider saveIdProvider,
+        ISoilHealthVisualizationService soilHealthVisualizationService) : IDisposable
     {
         // State flags for thread safety using atomic operations
         internal const int EventsRegisteredFlag = 1 << 0;
@@ -32,6 +33,7 @@ namespace LivingRoots.Controllers
         private readonly IManifest _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
         private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
         private readonly ISaveIdProvider _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
+        private readonly ISoilHealthVisualizationService _soilHealthVisualizationService = soilHealthVisualizationService ?? throw new ArgumentNullException(nameof(soilHealthVisualizationService));
 
         // Event handlers - stored as fields to enable proper unsubscription
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
@@ -106,6 +108,12 @@ namespace LivingRoots.Controllers
                 gameLoop.SaveLoaded += localSaveLoadedHandler;
                 gameLoop.Saving += localSavingHandler;
 
+                // Register visualization events after core events
+                if (_soilHealthVisualizationService != null)
+                {
+                    _soilHealthVisualizationService.RegisterEvents();
+                }
+
                 // now that everything succeeded, publish the "registered" state
                 System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
                 monitorSnapshot.Log("Events registered successfully.", LogLevel.Trace);
@@ -159,6 +167,12 @@ namespace LivingRoots.Controllers
 
         private void HandleRegistrationError(RegistrationContext ctx)
         {
+            // Unregister visualization events on error
+            if (_soilHealthVisualizationService != null)
+            {
+                _soilHealthVisualizationService.UnregisterEvents();
+            }
+
             ctx.Monitor.Log("Error occurred while registering game events.", LogLevel.Error);
             ctx.Monitor.Log($"RegisterEvents exception type: {ctx.Exception.GetType().FullName} (HResult: 0x{ctx.Exception.HResult:X8})", LogLevel.Trace);
 #if DEBUG
@@ -194,6 +208,12 @@ namespace LivingRoots.Controllers
 
         public void UnregisterEvents()
         {
+            // Unregister visualization events before core events
+            if (_soilHealthVisualizationService != null)
+            {
+                _soilHealthVisualizationService.UnregisterEvents();
+            }
+
             // Early exit: if nothing registered and nothing to cleanup, return immediately
             if (!ShouldAttemptUnregister())
             {
@@ -608,6 +628,12 @@ namespace LivingRoots.Controllers
                 // Load data using the save folder name as unique ID
                 _soilHealthService.LoadData(saveId);
                 _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
+
+                // Enable visualization after loading soil health data
+                if (_soilHealthVisualizationService != null)
+                {
+                    _soilHealthVisualizationService.Enable();
+                }
             });
         }
 
