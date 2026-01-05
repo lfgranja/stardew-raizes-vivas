@@ -40,8 +40,28 @@ namespace LivingRoots
             // Create the save ID provider with monitor for logging
             var saveIdProvider = new SaveIdProvider(this.Monitor);
 
+            // Create visualization components
+            var visualizationConfig = new VisualizationConfig(this.Monitor, modDataService);
+            var colorMapper = new ColorMapper(this.Monitor, visualizationConfig);
+            var tileOverlayRenderer = new TileOverlayRenderer(this.Monitor, visualizationConfig, colorMapper, soilHealthService);
+            var tooltipRenderer = new TooltipRenderer(this.Monitor, visualizationConfig, colorMapper);
+            var soilHealthVisualizationService = new SoilHealthVisualizationService(
+                this.Monitor,
+                soilHealthService,
+                visualizationConfig,
+                colorMapper,
+                tileOverlayRenderer,
+                tooltipRenderer,
+                helper);
+
             // Create controller with dependency injection
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider);
+            _controller = new ModController(
+                helper,
+                this.Monitor,
+                this.ModManifest,
+                soilHealthService,
+                saveIdProvider,
+                soilHealthVisualizationService);
 
             // Register events through the Controller
             _controller.RegisterEvents();
