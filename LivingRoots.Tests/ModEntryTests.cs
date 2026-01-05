@@ -66,13 +66,15 @@ namespace LivingRoots.Tests
             var mockManifest = new Mock<IManifest>();
             var mockSoilHealthService = new Mock<ISoilHealthService>();
             var mockSaveIdProvider = new Mock<ISaveIdProvider>();
+            var mockSoilHealthVisualizationService = new Mock<ISoilHealthVisualizationService>();
 
             var controller = new ModController(
                 mockHelper.Object,
                 mockMonitor.Object,
                 mockManifest.Object,
                 mockSoilHealthService.Object,
-                mockSaveIdProvider.Object);
+                mockSaveIdProvider.Object,
+                mockSoilHealthVisualizationService.Object);
 
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -103,13 +105,15 @@ namespace LivingRoots.Tests
             var mockManifest = new Mock<IManifest>();
             var mockSoilHealthService = new Mock<ISoilHealthService>();
             var mockSaveIdProvider = new Mock<ISaveIdProvider>();
+            var mockSoilHealthVisualizationService = new Mock<ISoilHealthVisualizationService>();
 
             var controller = new ModController(
                 mockHelper.Object,
                 mockMonitor.Object,
                 mockManifest.Object,
                 mockSoilHealthService.Object,
-                mockSaveIdProvider.Object);
+                mockSaveIdProvider.Object,
+                mockSoilHealthVisualizationService.Object);
 
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -139,13 +143,15 @@ namespace LivingRoots.Tests
             var mockManifest = new Mock<IManifest>();
             var mockSoilHealthService = new Mock<ISoilHealthService>();
             var mockSaveIdProvider = new Mock<ISaveIdProvider>();
+            var mockSoilHealthVisualizationService = new Mock<ISoilHealthVisualizationService>();
 
             var controller = new ModController(
                 mockHelper.Object,
                 mockMonitor.Object,
                 mockManifest.Object,
                 mockSoilHealthService.Object,
-                mockSaveIdProvider.Object);
+                mockSaveIdProvider.Object,
+                mockSoilHealthVisualizationService.Object);
 
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -210,13 +216,15 @@ namespace LivingRoots.Tests
             var mockManifest = new Mock<IManifest>();
             var mockSoilHealthService = new Mock<ISoilHealthService>();
             var mockSaveIdProvider = new Mock<ISaveIdProvider>();
+            var mockSoilHealthVisualizationService = new Mock<ISoilHealthVisualizationService>();
 
             var controller = new ModController(
                 mockHelper.Object,
                 mockMonitor.Object,
                 mockManifest.Object,
                 mockSoilHealthService.Object,
-                mockSaveIdProvider.Object);
+                mockSaveIdProvider.Object,
+                mockSoilHealthVisualizationService.Object);
 
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
