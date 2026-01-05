@@ -15,6 +15,7 @@ namespace LivingRoots.Tests
         private readonly Mock<IManifest> _mockManifest;
         private readonly Mock<ISoilHealthService> _mockSoilHealthService;
         private readonly Mock<ISaveIdProvider> _mockSaveIdProvider;
+        private readonly Mock<ISoilHealthVisualizationService> _mockSoilHealthVisualizationService;
 
         public ConcurrentRegisterUnregisterRaceConditionTest()
         {
@@ -23,6 +24,7 @@ namespace LivingRoots.Tests
             _mockManifest = new Mock<IManifest>();
             _mockSoilHealthService = new Mock<ISoilHealthService>();
             _mockSaveIdProvider = new Mock<ISaveIdProvider>();
+            _mockSoilHealthVisualizationService = new Mock<ISoilHealthVisualizationService>();
 
             // Add default setup for _mockManifest properties to prevent NullReferenceException
             _mockManifest.Setup(x => x.UniqueID).Returns("test.mod.id");
@@ -43,7 +45,7 @@ namespace LivingRoots.Tests
 
             // Create a single ModController instance to be shared across all tasks
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object,
-                _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+                _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockSoilHealthVisualizationService.Object);
 
             // First register events to set up the controller with handlers
             controller.RegisterEvents();
@@ -142,7 +144,7 @@ namespace LivingRoots.Tests
 
             // Create a single ModController instance to be shared across all tasks
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object,
-                _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+                _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockSoilHealthVisualizationService.Object);
 
             // First register events to set up the controller with handlers
             controller.RegisterEvents();
