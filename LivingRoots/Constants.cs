@@ -9,6 +9,12 @@ namespace LivingRoots
         public const float MinSoilHealth = 0f;
         public const float MaxSoilHealth = 100f;  // Changed from 10 to 100 to align with documentation
 
+        // Visualization defaults
+        public const float DefaultOverlayOpacity = 0.3f;
+        public const int PoorHealthThreshold = 33;
+        public const int ModerateHealthThreshold = 66;
+        public const int HealthyHealthThreshold = 100;
+
         // Security Constants
         public const int MaxTilesPerLocation = 500; // Maximum number of tiles allowed per location to prevent DoS attacks
         public const int MaxLocationsPerSave = 50; // Maximum number of locations allowed per save to prevent DoS attacks
@@ -25,5 +31,11 @@ namespace LivingRoots
         public const int MaxPathDepth = 10; // Maximum depth for path traversal to prevent DoS attacks
         public const int MaxFileNameLength = 255; // Standard maximum file name length to prevent OS issues
         public const int MaxDataValueSizeBytes = 1024 * 1024; // 1MB maximum size for data values to prevent memory exhaustion
+
+        // Performance settings
+        public const int MaxTilesPerFrame = 200; // Maximum number of tiles to render per frame for performance
+        public const int TileHealthCacheSize = 100; // Maximum cache size for tile health values
+        public const int CacheClearIntervalSeconds = 5; // Interval in seconds to clear the health cache
+        public const int PerformanceLogIntervalMinutes = 1; // Interval in minutes to log performance metrics
     }
 }
