@@ -500,7 +500,7 @@ namespace LivingRoots.Tests
             controller.RegisterEvents();
 
             // Act - Raise the Saving event to trigger OnSaving
-            mockGameLoopEvents.Raise(x => x.SaveLoaded += null, new SaveLoadedEventArgs());
+            mockGameLoopEvents.Raise(x => x.Saving += null, new SavingEventArgs());
 
             // Assert - Soil health service should have been called to save data
             _mockSoilHealthService.Verify(x => x.SaveData("test_save_id"), Times.Once);
