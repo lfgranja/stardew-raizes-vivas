@@ -392,12 +392,8 @@ namespace LivingRoots.Services
             {
                 _monitor.Log("SaveData aborted: runtime cache exceeds configured limits; refusing to write potentially huge/partial state.", LogLevel.Error);
 
-                // Skip writing to avoid overwriting persisted data with empty state
-                // Clear in-memory cache to prevent a persistent limit-abort loop and reclaim memory
-                lock (_lock)
-                {
-                    _runtimeCache.Clear();
-                }
+                // Prevent any subsequent SaveData calls from overwriting on-disk data in this session.
+                _loadAbortedForLimits = true;
 
                 return;
             }
