@@ -16,9 +16,15 @@ namespace LivingRoots.Tests
             // Arrange
             var expectedPlannedFeatures = new[]
             {
-                "Visual indicators show soil health status (Planned)",
                 "Health degrades over time when soil is left bare (Planned)",
                 "Health improves with compost application (Planned)"
+            };
+
+            var expectedImplementedFeatures = new[]
+            {
+                "Visual indicators show soil health status",
+                "hover tooltips",
+                "color-coded tile overlays"
             };
 
             // Read README.md from embedded resource for reliable test access across all environments
@@ -35,8 +41,14 @@ namespace LivingRoots.Tests
             using var reader = new StreamReader(stream);
             var readmeContent = reader.ReadToEnd();
 
-            // Assert - This should fail initially since the features are not marked as planned yet
+            // Assert - Verify planned features
             foreach (var feature in expectedPlannedFeatures)
+            {
+                Assert.Contains(feature, readmeContent);
+            }
+
+            // Assert - Verify implemented features
+            foreach (var feature in expectedImplementedFeatures)
             {
                 Assert.Contains(feature, readmeContent);
             }
