@@ -1,12 +1,12 @@
-using StardewModdingAPI;
-using Moq;
-using LivingRoots.Services;
-using LivingRoots.Domain;
-using Xunit;
 using System;
-using Newtonsoft.Json;
 using System.IO;
 using System.Reflection;
+using LivingRoots.Domain;
+using LivingRoots.Services;
+using Moq;
+using Newtonsoft.Json;
+using StardewModdingAPI;
+using Xunit;
 
 #nullable disable
 
@@ -25,66 +25,109 @@ namespace LivingRoots.Tests
             _mockDataHelper = new Mock<IDataHelper>();
             _mockMonitor = new Mock<IMonitor>();
             _mockModLogic = new Mock<IModLogic>();
-            
+
             // Set up DirectoryPath to return a valid path
             _mockHelper.Setup(x => x.DirectoryPath).Returns("/test/directory");
-            
+
             _mockHelper.Setup(x => x.Data).Returns(_mockDataHelper.Object);
-            
+
+            SetupSanitizeFileNameMock();
+            SetupValidatePathMock();
+        }
+
+        private void SetupSanitizeFileNameMock()
+        {
             // Configure mod logic to return expected sanitized values for testing
             // and throw exceptions for cases that would result in empty strings
-            _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(input => 
+            _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(input =>
             {
-                // Simulate real sanitization behavior for individual segments
-                if (input == "with:invalid|chars")
-                    return "with_invalid_chars";
-                if (input == "file....name")
-                    return "file.name";
-                if (input == "  test_key " || input == "test_key " || input == " test_key")
-                    return "test_key";
-                if (input == "<>:\"|?*" || input == "........." || input == "___" || input == "   ")
-                    throw new ArgumentException("Filename sanitizes to an empty string.", nameof(input)); // This should throw like real implementation
-                // Special handling for "." and ".." which should be blocked at path segment level
-                if (input == "." || input == "..")
-                    throw new ArgumentException($"Filename sanitizes to invalid path component '{input}'.", nameof(input));
-                // For individual segments with invalid characters, replace them with underscores
-                if (input.Contains(':') || input.Contains('|') || input.Contains('?') || input.Contains('*') || input.Contains('<') || input.Contains('>') || input.Contains('"'))
-                {
-                    return input.Replace(':', '_').Replace('|', '_').Replace('?', '_').Replace('*', '_')
-                                   .Replace('<', '_').Replace('>', '_').Replace('"', '_');
-                }
-                // For segments with multiple dots, process them appropriately
-                if (input.Contains("...."))
-                {
-                    return input.Replace("....", ".").Replace("...", "."); // Simplified processing for test
-                }
-                return input;
+                return SanitizeFileNameForTest(input);
             });
-            
+        }
+
+        private static string SanitizeFileNameForTest(string input)
+        {
+            // Simulate real sanitization behavior for individual segments
+            if (input == "with:invalid|chars")
+                return "with_invalid_chars";
+            if (input == "file....name")
+                return "file.name";
+            if (IsTrimmedTestKey(input))
+                return "test_key";
+            if (ShouldThrowEmptyResultException(input))
+                throw new ArgumentException("Filename sanitizes to an empty string.", nameof(input));
+            if (ShouldThrowInvalidPathComponentException(input))
+                throw new ArgumentException($"Filename sanitizes to invalid path component '{input}'.", nameof(input));
+            if (ContainsInvalidCharacters(input))
+                return ReplaceInvalidCharacters(input);
+            if (ContainsMultipleDots(input))
+                return ReplaceMultipleDots(input);
+            return input;
+        }
+
+        private static bool IsTrimmedTestKey(string input)
+        {
+            return input == "  test_key " || input == "test_key " || input == " test_key";
+        }
+
+        private static bool ShouldThrowEmptyResultException(string input)
+        {
+            return input == "<>:\"|?*" || input == "........." || input == "___" || input == "   ";
+        }
+
+        private static bool ShouldThrowInvalidPathComponentException(string input)
+        {
+            return input == "." || input == "..";
+        }
+
+        private static bool ContainsInvalidCharacters(string input)
+        {
+            return input.Contains(':') || input.Contains('|') || input.Contains('?') || input.Contains('*') ||
+                   input.Contains('<') || input.Contains('>') || input.Contains('"');
+        }
+
+        private static string ReplaceInvalidCharacters(string input)
+        {
+            return input.Replace(':', '_').Replace('|', '_').Replace('?', '_').Replace('*', '_')
+                       .Replace('<', '_').Replace('>', '_').Replace('"', '_');
+        }
+
+        private static bool ContainsMultipleDots(string input)
+        {
+            return input.Contains("....");
+        }
+
+        private static string ReplaceMultipleDots(string input)
+        {
+            return input.Replace("....", ".").Replace("...", ".");
+        }
+
+        private void SetupValidatePathMock()
+        {
             // Configure path validation to not throw for valid paths in most tests
             // but throw for path traversal attempts
             // The more specific setup (with conditions) must come after general one to avoid being overridden
             _mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Verifiable();
-            _mockModLogic.Setup(x => x.ValidatePath(It.Is<string>(s => 
-                s.Contains("../") || 
-                s.Contains("..\\") || 
-                s.Contains("../../../") || 
-                s.Contains("..\\..\\") || 
-                ContainsIgnoreCase(s, "http://") || 
+            _mockModLogic.Setup(x => x.ValidatePath(It.Is<string>(s =>
+                s.Contains("../") ||
+                s.Contains("..\\") ||
+                s.Contains("../../../") ||
+                s.Contains("..\\..\\") ||
+                ContainsIgnoreCase(s, "http://") ||
                 ContainsIgnoreCase(s, "https://") ||
                 ContainsIgnoreCase(s, "ftp://") ||
                 ContainsIgnoreCase(s, "file://")))).Throws<ArgumentException>();
         }
-        
+
         // Helper method for case-insensitive string containment check
         private static bool ContainsIgnoreCase(string source, string value)
         {
             if (string.IsNullOrEmpty(source) || string.IsNullOrEmpty(value))
                 return false;
-            
+
             return source.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0;
         }
-        
+
         [Fact]
         public void SaveData_WithValidData_CallsWriteJsonFile()
         {
@@ -98,7 +141,7 @@ namespace LivingRoots.Tests
             // Assert
             _mockDataHelper.Verify(x => x.WriteJsonFile("data/test_key.json", testData), Times.Once);
         }
-        
+
         [Fact]
         public void SaveData_WithNullKey_ThrowsArgumentException()
         {
@@ -111,7 +154,7 @@ namespace LivingRoots.Tests
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, ""));
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, "   "));
         }
-        
+
         [Fact]
         public void SaveData_WithNullData_ThrowsArgumentNullException()
         {
@@ -122,7 +165,7 @@ namespace LivingRoots.Tests
             var exception = Assert.Throws<ArgumentNullException>(() => service.SaveData<object>(null!, "test_key"));
             Assert.Equal("data", exception.ParamName);
         }
-        
+
         [Fact]
         public void LoadData_WithValidKey_CallsReadJsonFile()
         {
@@ -137,7 +180,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Equal(expectedData, result);
         }
-        
+
         [Fact]
         public void LoadData_WithFileNotFound_ReturnsNull()
         {
@@ -151,7 +194,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Null(result);
         }
-        
+
         [Fact]
         public void DataExists_WithExistingData_ReturnsTrue()
         {
@@ -165,7 +208,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.True(result);
         }
-        
+
         [Fact]
         public void DataExists_WithNonExistingData_ReturnsFalse()
         {
@@ -179,7 +222,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.False(result);
         }
-        
+
         [Fact]
         public void RemoveData_WithExistingData_RemovesData()
         {
@@ -192,7 +235,7 @@ namespace LivingRoots.Tests
             // Assert
             _mockDataHelper.Verify(x => x.WriteJsonFile<object>("data/test_key.json", null), Times.Once);
         }
-        
+
         [Fact]
         public void GetFilePath_WithInvalidChars_Sanitizes()
         {
@@ -206,7 +249,7 @@ namespace LivingRoots.Tests
             // Assert - With segment-based sanitization, this should be "data/test/key/with_invalid_chars.json"
             _mockDataHelper.Verify(x => x.WriteJsonFile("data/test/key/with_invalid_chars.json", testData), Times.Once);
         }
-        
+
         [Fact]
         public void GetFilePath_WithPathTraversal_ThrowsArgumentException()
         {
@@ -218,7 +261,7 @@ namespace LivingRoots.Tests
             // Act & Assert
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, "../../../etc/passwd"));
         }
-        
+
         [Fact]
         public void SanitizeKey_WithEdgeCaseEmptyResults_ThrowsArgumentException()
         {
@@ -231,7 +274,7 @@ namespace LivingRoots.Tests
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, "........."));
             Assert.Throws<ArgumentException>(() => service.SaveData(testData, "___"));
         }
-        
+
         [Fact]
         public void LoadData_WithJsonParsingError_ReturnsNull()
         {
@@ -246,7 +289,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Null(result);
         }
-        
+
         [Fact]
         public void LoadData_WithDirectoryNotFoundException_ReturnsNull()
         {
@@ -261,7 +304,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Null(result);
         }
-        
+
         [Fact]
         public void LoadData_WithUnauthorizedAccessException_ReturnsNull()
         {
@@ -276,7 +319,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Null(result);
         }
-        
+
         [Fact]
         public void LoadData_WithIOException_ReturnsNull()
         {
@@ -291,7 +334,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.Null(result);
         }
-        
+
         [Fact]
         public void DataExists_WithIOException_ReturnsFalse()
         {
@@ -306,7 +349,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.False(result);
         }
-        
+
         [Fact]
         public void LoadData_WithFileNotFoundException_LogsSanitizedKey()
         {
@@ -323,7 +366,7 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("test_key")),
                 It.IsAny<LogLevel>()), Times.Once);
         }
-        
+
         [Fact]
         public void LoadData_WithIOException_LogsSanitizedKey()
         {
@@ -340,7 +383,7 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("test_key")),
                 It.IsAny<LogLevel>()), Times.Once);
         }
-        
+
         [Fact]
         public void LoadData_WithJsonException_LogsSanitizedKey()
         {
@@ -357,7 +400,7 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("test_key")),
                 It.IsAny<LogLevel>()), Times.Once);
         }
-        
+
         [Fact]
         public void LoadData_WithJsonException_LogsSanitizedKeyAsWarn()
         {
@@ -365,7 +408,7 @@ namespace LivingRoots.Tests
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var jsonException = new Newtonsoft.Json.JsonException("JSON error");
             // Setup to trigger the JSON exception path by ensuring the file appears to exist
-            // Since the implementation now checks file existence first, we need to make sure 
+            // Since the implementation now checks file existence first, we need to make sure
             // ReadJsonFile is called which will throw the JsonException
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(jsonException);
 
@@ -378,30 +421,25 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("test_key")),
                 It.IsAny<LogLevel>()), Times.AtLeastOnce);
         }
-        
+
         [Fact]
         public void LoadData_WithMissingFile_ReturnsNullAndLogsTrace()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
-            // Configure helper to return a directory path for file check
-            _mockHelper.Setup(x => x.DirectoryPath).Returns("/test/directory");
-            
             // Mock File.Exists to return false to simulate missing file
             // We'll use reflection to test direct file check behavior
             var testDataHelper = new Mock<IDataHelper>();
             var mockHelperWithDir = new Mock<IModHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockModLogic = new Mock<IModLogic>();
-            
+
             mockHelperWithDir.Setup(x => x.Data).Returns(testDataHelper.Object);
             mockHelperWithDir.Setup(x => x.DirectoryPath).Returns("/test/directory");
             mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(s => s);
             mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Verifiable();
-            
+
             var serviceWithDir = new ModDataService(mockHelperWithDir.Object, mockMonitor.Object, mockModLogic.Object);
-            
+
             // Mock ReadJsonFile to throw FileNotFoundException which is what happens when file doesn't exist
             testDataHelper.Setup(x => x.ReadJsonFile<object>("data/test_key.json")).Throws(new FileNotFoundException());
 
@@ -414,13 +452,13 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("test_key") && msg.Contains("No valid data found")),
                 LogLevel.Trace), Times.Once);
         }
-        
+
         [Fact]
         public void LoadData_WithCorruptFile_ReturnsNullAndLogsWarn()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // With the single read approach, when a file contains invalid JSON,
             // ReadJsonFile throws JsonException which is caught and logged appropriately
             var jsonException = new Newtonsoft.Json.JsonException("Invalid JSON format");
@@ -435,7 +473,7 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("test_key") && msg.Contains("File contains no valid data")),
                 LogLevel.Warn), Times.Once);
         }
-        
+
         [Fact]
         public void DataExists_WithFileNotFoundException_LogsSanitizedKey()
         {
@@ -452,7 +490,7 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("test_key.json")),
                 LogLevel.Trace), Times.Once);
         }
-        
+
         [Fact]
         public void DataExists_WithIOException_LogsSanitizedKey()
         {
@@ -469,7 +507,7 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("test_key.json")),
                 LogLevel.Warn), Times.Once);
         }
-        
+
         [Fact]
         public void DataExists_WithJsonException_LogsSanitizedKey()
         {
@@ -486,7 +524,7 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("test_key") && !msg.Contains("test_key.json")),
                 LogLevel.Warn), Times.Once);
         }
-        
+
         [Fact]
         public void SaveData_WithIOException_LogsSanitizedPath()
         {
@@ -504,7 +542,7 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("IOException occurred while saving data")),
                 LogLevel.Warn), Times.Once);
         }
-        
+
         [Fact]
         public void SaveData_WithJsonException_LogsSanitizedPath()
         {
@@ -522,7 +560,7 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("JSON error occurred while saving data")),
                 LogLevel.Warn), Times.Once);
         }
-        
+
         [Fact]
         public void SaveData_WithDangerousPathKey_DoesNotLogFullFilePath()
         {
@@ -533,10 +571,10 @@ namespace LivingRoots.Tests
             _mockModLogic.Setup(x => x.SanitizeFileName("dangerous")).Returns("dangerous");
             _mockModLogic.Setup(x => x.SanitizeFileName("path.exe")).Returns("path"); // Return just "path" instead of "path.blocked"
             _mockModLogic.Setup(x => x.SanitizeFileName(It.Is<string>(s => s != "dangerous" && s != "path.exe"))).Returns<string>(s => s);
-            
+
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var testData = new { TestValue = "test" };
-            
+
             // Setup helper to throw an exception to trigger error logging
             _mockDataHelper.Setup(x => x.WriteJsonFile(It.IsAny<string>(), testData))
                 .Throws(new System.IO.IOException("Test exception"));
@@ -551,63 +589,63 @@ namespace LivingRoots.Tests
             {
                 caughtException = ex;
             }
-            
+
             // Assert - Verify that an exception was thrown
             Assert.NotNull(caughtException);
             Assert.IsType<System.IO.IOException>(caughtException);
-            
+
             // Verify that monitor did NOT log original dangerous path in error message
             _mockMonitor.Verify(m => m.Log(
-                It.Is<string>(msg => msg.Contains("dangerous/path.exe")), 
+                It.Is<string>(msg => msg.Contains("dangerous/path.exe")),
                 It.IsAny<LogLevel>()), Times.Never);
-                
+
             // Verify that monitor logged generic message instead of specific path
             _mockMonitor.Verify(m => m.Log(
-                It.Is<string>(msg => msg.Contains("IOException occurred while saving data")), 
+                It.Is<string>(msg => msg.Contains("IOException occurred while saving data")),
                 LogLevel.Warn), Times.Once);
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithDotSegment_SkipsSegment()
         {
             // This test addresses second issue: Eliminate Dot-Segment Traversal Risk
             // In SanitizePathSegments, we should skip . segments instead of preserving them
             // The path should pass validation and . segments should be skipped during sanitization
-            
+
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Act & Assert - This should NOT throw because . segments in middle are allowed by PathValidationService
             // The method should complete successfully without exceptions
             var method = service.GetType()
                 .GetMethod("GetValidatedAndSanitizedKey", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // This should not throw - path "segment1/./segment2" should be valid
             var result = method?.Invoke(service, new object[] { "segment1/./segment2" });
-            
+
             // Should complete without throwing an exception
             Assert.NotNull(result);
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithDotDotSegment_ThrowsArgumentException()
         {
             // This test addresses second issue: Eliminate Dot-Segment Traversal Risk
             // Path traversal with ".." segments should be caught by PathValidationService first
-            
+
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Act & Assert - This should throw because PathValidationService will reject ".." as path traversal
             // Since we're using reflection, the exception will be wrapped in a TargetInvocationException
             var exception = Assert.Throws<TargetInvocationException>(() => service.GetType()
                 .GetMethod("GetValidatedAndSanitizedKey", BindingFlags.NonPublic | BindingFlags.Instance)
                 ?.Invoke(service, new object[] { "../.." }));
-            
+
             // The actual exception should be an ArgumentException from PathValidationService
             Assert.IsType<ArgumentException>(exception.InnerException);
         }
-        
+
         [Fact]
         public void LoadData_WithValidationExceptionInGetValidatedAndSanitizedKey_ReturnsNull()
         {
@@ -624,7 +662,7 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("Invalid key provided to LoadData")),
                 LogLevel.Warn), Times.Once);
         }
-        
+
         [Fact]
         public void DataExists_WithValidationExceptionInGetValidatedAndSanitizedKey_ReturnsFalse()
         {
@@ -641,26 +679,26 @@ namespace LivingRoots.Tests
                 It.Is<string>(msg => msg.Contains("Invalid key provided to DataExists")),
                 LogLevel.Warn), Times.Once);
         }
-        
+
         [Fact]
         public void GetValidatedAndSanitizedKey_WithEmptySanitizedResult_ThrowsArgumentException()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Configure mock to return null for a specific input that would cause empty sanitization
-            _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(input => 
+            _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(input =>
             {
                 if (input == "<>:\"|?*")
                     return null!; // This simulates case where sanitization results in null
                 return input;
             });
-            
+
             // Act & Assert
             var exception = Assert.Throws<TargetInvocationException>(() => service.GetType()
                 .GetMethod("GetValidatedAndSanitizedKey", BindingFlags.NonPublic | BindingFlags.Instance)
                 ?.Invoke(service, new object[] { "<>:\"|?*" }));
-                
+
             // The actual exception should be an ArgumentException from GetValidatedAndSanitizedKey
             Assert.IsType<ArgumentException>(exception.InnerException);
             // Verify that the exception message doesn't contain the raw key
@@ -668,57 +706,57 @@ namespace LivingRoots.Tests
             // Verify that the exception message contains the new generic message from SanitizePathSegments
             Assert.Contains("Path sanitization resulted in empty path", exception.InnerException.Message);
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithDotDotSegment_ThrowsArgumentException_Verify()
         {
             // This test verifies that SanitizePathSegments throws ArgumentException instead of InvalidOperationException
             // when encountering .. segments
-            
+
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Act & Assert - This should throw because .. segments should be blocked in SanitizePathSegments
             var exception = Assert.Throws<TargetInvocationException>(() => service.GetType()
                 .GetMethod("GetValidatedAndSanitizedKey", BindingFlags.NonPublic | BindingFlags.Instance)
                 ?.Invoke(service, new object[] { "../test" }));
-            
+
             // The actual exception should be an ArgumentException (after fix)
             Assert.IsType<ArgumentException>(exception.InnerException);
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithMultipleSegments_JoinsCorrectly()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Configure mock to return expected sanitized values
             _mockModLogic.Setup(x => x.SanitizeFileName("segment1")).Returns("segment1");
             _mockModLogic.Setup(x => x.SanitizeFileName("segment2")).Returns("segment2");
             _mockModLogic.Setup(x => x.SanitizeFileName("segment3")).Returns("segment3");
-            
+
             // Use reflection to access private SanitizePathSegments method
             var method = service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act
             var result = method?.Invoke(service, new object[] { "segment1/segment2/segment3" });
-            
+
             // Assert
             Assert.Equal("segment1/segment2/segment3", result);
         }
-        
+
         [Fact]
         public void DataExists_WithCorruptJsonFile_ReturnsFalse()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var jsonException = new Newtonsoft.Json.JsonException("Invalid JSON format");
-            
+
             // Setup mock DirectoryPath for file system check
             _mockHelper.Setup(x => x.DirectoryPath).Returns("/test/directory");
-            
+
             // Setup mock to throw JsonException when trying to read the file
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/corrupt_key.json")).Throws(jsonException);
 
@@ -727,23 +765,23 @@ namespace LivingRoots.Tests
 
             // Assert - Should return false because file contains invalid JSON (treated as non-existent data)
             Assert.False(result);
-            
+
             // Verify that JsonException was logged as a warning - UPDATED EXPECTATION
             _mockMonitor.Verify(x => x.Log(
                 It.Is<string>(msg => msg.Contains("JSON parsing error occurred while checking data existence for key 'corrupt_key'")),
                 LogLevel.Warn), Times.Once);
         }
-        
+
         [Fact]
         public void DataExists_WithValidFile_ReturnsTrue()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var testData = new { Name = "Test" };
-            
+
             // Setup mock DirectoryPath for file system check
             _mockHelper.Setup(x => x.DirectoryPath).Returns("/test/directory");
-            
+
             // Setup mock to return valid data
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/valid_key.json")).Returns(testData);
 
@@ -753,17 +791,17 @@ namespace LivingRoots.Tests
             // Assert - Should return true for valid file
             Assert.True(result);
         }
-        
+
         [Fact]
         public void DataExists_WithNonExistentFile_ReturnsFalse()
         {
             // Arrange
             var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
             var fileNotFoundException = new System.IO.FileNotFoundException("File not found");
-            
+
             // Setup mock DirectoryPath for file system check
             _mockHelper.Setup(x => x.DirectoryPath).Returns("/test/directory");
-            
+
             // Setup mock to throw FileNotFoundException
             _mockDataHelper.Setup(x => x.ReadJsonFile<object>("data/nonexistent_key.json")).Throws(fileNotFoundException);
 
@@ -772,13 +810,13 @@ namespace LivingRoots.Tests
 
             // Assert - Should return false for non-existent file
             Assert.False(result);
-            
+
             // Verify that FileNotFoundException was logged as Trace - UPDATED EXPECTATION
             _mockMonitor.Verify(x => x.Log(
                 It.Is<string>(msg => msg.Contains("File not found while checking data existence for key 'nonexistent_key'")),
                 LogLevel.Trace), Times.Once);
         }
-        
+
         [Fact]
         public void RemoveData_WithNullKey_ThrowsArgumentException()
         {
@@ -790,7 +828,7 @@ namespace LivingRoots.Tests
             Assert.Throws<ArgumentException>(() => service.RemoveData(""));
             Assert.Throws<ArgumentException>(() => service.RemoveData("   "));
         }
-        
+
         [Fact]
         public void RemoveData_WithPathTraversal_ThrowsArgumentException()
         {
@@ -801,7 +839,7 @@ namespace LivingRoots.Tests
             // Act & Assert
             Assert.Throws<ArgumentException>(() => service.RemoveData("../../../etc/passwd"));
         }
-        
+
         [Fact]
         public void RemoveData_WithInvalidCharsThatSanitizeToEmpty_ThrowsArgumentException()
         {
@@ -813,7 +851,7 @@ namespace LivingRoots.Tests
             Assert.Throws<ArgumentException>(() => service.RemoveData("........."));
             Assert.Throws<ArgumentException>(() => service.RemoveData("___"));
         }
-        
+
         [Fact]
         public void LoadData_WithNullHelper_ReturnsNull()
         {
@@ -822,21 +860,21 @@ namespace LivingRoots.Tests
             var mockMonitor = new Mock<IMonitor>();
             var mockModLogic = new Mock<IModLogic>();
             var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
-            
+
             // Use reflection to set _helper field to null
             var helperField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
             helperField?.SetValue(service, null);
 
             // Act
             var result = service.LoadData<object>("test_key");
-            
+
             // Assert
             Assert.Null(result);
             mockMonitor.Verify(x => x.Log(
                 It.Is<string>(msg => msg.Contains("ModHelper is null in LoadData method")),
                 LogLevel.Error), Times.Once);
         }
-        
+
         [Fact]
         public void LoadData_WithNullDataHelper_ReturnsNull()
         {
@@ -845,10 +883,10 @@ namespace LivingRoots.Tests
             var mockDataHelper = new Mock<IDataHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockModLogic = new Mock<IModLogic>();
-            
+
             mockHelper.Setup(x => x.Data).Returns(mockDataHelper.Object);
             var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
-            
+
             // Set up the helper to return null for Data property
             var helperWithNullData = new Mock<IModHelper>();
             helperWithNullData.Setup(x => x.Data).Returns((IDataHelper)null!);
@@ -856,27 +894,25 @@ namespace LivingRoots.Tests
             // Replace the helper in the service using reflection
             var helperField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
             helperField?.SetValue(service, helperWithNullData.Object);
-            
+
             // Act
             var result = service.LoadData<object>("test_key");
-            
+
             // Assert
             Assert.Null(result);
             mockMonitor.Verify(x => x.Log(
                 It.Is<string>(msg => msg.Contains("Helper.Data is null in LoadData method")),
                 LogLevel.Error), Times.Once);
         }
-        
+
         [Fact]
         public void DataExists_WithNullHelper_ReturnsFalse()
         {
             // Arrange - Create a service with null helper from the start
             var mockHelper = new Mock<IModHelper>();
-            var mockMonitor = new Mock<IMonitor>();
-            var mockModLogic = new Mock<IModLogic>();
-            
+
             var service = new ModDataService(mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Set up the helper to return null for Data property
             var helperWithNullData = new Mock<IModHelper>();
             helperWithNullData.Setup(x => x.Data).Returns((IDataHelper)null!);
@@ -884,35 +920,31 @@ namespace LivingRoots.Tests
             // Replace the helper in the service using reflection
             var serviceField = typeof(ModDataService).GetField("_helper", BindingFlags.NonPublic | BindingFlags.Instance);
             serviceField?.SetValue(service, null);
-            
+
             // Act - Since null checks were removed from DataExists, this should now return false
             var result = service.DataExists("test_key");
-            
+
             // Assert - Should return false instead of throwing exception
             Assert.False(result);
         }
-        
+
         [Fact]
         public void DataExists_WithNullDataHelper_ReturnsFalse()
         {
             // Arrange - Create a service with null DataHelper from the start
-            var mockHelper = new Mock<IModHelper>();
-            var mockMonitor = new Mock<IMonitor>();
-            var mockModLogic = new Mock<IModLogic>();
-            
             // Set up the helper to return null for Data property
             var helperWithNullData = new Mock<IModHelper>();
             helperWithNullData.Setup(x => x.Data).Returns((IDataHelper)null!);
-            
+
             var service = new ModDataService(helperWithNullData.Object, _mockMonitor.Object, _mockModLogic.Object);
-            
+
             // Act - Since null checks were removed from DataExists, this should now return false
             var result = service.DataExists("test_key");
-            
+
             // Assert - Should return false instead of throwing exception
             Assert.False(result);
         }
-        
+
         [Fact]
         public void GetFilePath_WithCrossPlatformPathSeparators_ConstructsCorrectly()
         {
@@ -925,7 +957,7 @@ namespace LivingRoots.Tests
 
             // Assert - Use Path.Combine for cross-platform compatibility
             _mockDataHelper.Verify(x => x.WriteJsonFile(
-                Path.Combine("data", "test", "key", "with_invalid_chars.json").Replace('\\', '/'), 
+                Path.Combine("data", "test", "key", "with_invalid_chars.json").Replace('\\', '/'),
                 testData), Times.Once);
         }
     }

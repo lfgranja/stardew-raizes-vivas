@@ -14,7 +14,7 @@ namespace LivingRoots.Tests
         {
             var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
             mockUnicodeService.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
-            
+
             _service = new PathValidationService(mockUnicodeService.Object);
         }
 
@@ -66,7 +66,7 @@ namespace LivingRoots.Tests
             // After removing overly restrictive check, these should be allowed - they are relative paths to current directory
             var ex1 = Record.Exception(() => _service.Validate("./file"));
             Assert.Null(ex1);
-            
+
             var ex2 = Record.Exception(() => _service.Validate("./path/to/file.txt"));
             Assert.Null(ex2);
         }
@@ -77,7 +77,7 @@ namespace LivingRoots.Tests
             // These should be allowed - "file/." is a valid path referring to file directory
             var ex1 = Record.Exception(() => _service.Validate("file/."));
             Assert.Null(ex1);
-            
+
             var ex2 = Record.Exception(() => _service.Validate("path/to/file/."));
             Assert.Null(ex2);
         }
@@ -88,7 +88,7 @@ namespace LivingRoots.Tests
             // These should still be blocked - standalone navigation
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("."));
             Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
-            
+
             var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("./"));
             Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
         }
@@ -99,10 +99,10 @@ namespace LivingRoots.Tests
             // These should still be blocked - path traversal with ".."
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("../file.txt"));
             Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
-            
+
             var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("../../file.txt"));
             Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
-            
+
             // This path should be allowed as it doesn't go above root level
             var ex3 = Record.Exception(() => _service.Validate("folder/../file.txt"));
             Assert.Null(ex3);
@@ -114,7 +114,7 @@ namespace LivingRoots.Tests
             // This should still be blocked - "./../" goes above root level
             var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("./../file.txt"));
             Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
-            
+
             // This path should be allowed - it doesn't go above root level: folder(1) -> .(1) -> ..(0) -> file(1)
             var ex2 = Record.Exception(() => _service.Validate("folder/./../file.txt"));
             Assert.Null(ex2);

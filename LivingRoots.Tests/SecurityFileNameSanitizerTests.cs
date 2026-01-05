@@ -1,13 +1,13 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Globalization;
+using LivingRoots.Domain;
+using LivingRoots.Services;
 using Moq;
 using StardewModdingAPI;
 using Xunit;
-using LivingRoots.Services;
-using LivingRoots.Domain;
 
 namespace LivingRoots.Tests
 {
@@ -20,7 +20,7 @@ namespace LivingRoots.Tests
         {
             _mockUnicodeNormalizer = new Mock<IUnicodeNormalizer>();
             _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string?>())).Returns<string?>(input => input!);
-            
+
             var unicodeNormalizationService = new UnicodeNormalizationService();
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
             _fileNameSanitizer = new FileNameSanitizer(new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler));
@@ -32,11 +32,11 @@ namespace LivingRoots.Tests
         {
             // Arrange - This filename could be used for extension smuggling
             // The file might look like a text file but actually be an executable
-            string input = "document.txt.exe";
-            
+            var input = "document.txt.exe";
+
             // Act
-            string result = _fileNameSanitizer.Sanitize(input)!;
-            
+            var result = _fileNameSanitizer.Sanitize(input)!;
+
             // Assert - The sanitizer should block the dangerous extension
             Assert.Equal("document.txt.blocked", result); // Dangerous extension is blocked
         }
@@ -46,11 +46,11 @@ namespace LivingRoots.Tests
         public void Sanitize_WithInvalidCharacters_UsesAllowlistApproach()
         {
             // Arrange - Using characters that should be filtered by allowlist
-            string input = "file@#$%^&*()name";
-            
+            var input = "file@#$%^&*()name";
+
             // Act
-            string result = _fileNameSanitizer.Sanitize(input)!;
-            
+            var result = _fileNameSanitizer.Sanitize(input)!;
+
             // Assert - Only allowlisted characters should be preserved, with consecutive invalid chars consolidated
             Assert.Equal("file_name", result); // Non-allowlisted chars become single underscores
         }
@@ -60,11 +60,11 @@ namespace LivingRoots.Tests
         public void Sanitize_WithDangerousExtensions_BlocksAndAppends()
         {
             // Arrange - Dangerous extensions should be blocked
-            string input = "malicious.exe";
-            
+            var input = "malicious.exe";
+
             // Act
-            string result = _fileNameSanitizer.Sanitize(input)!;
-            
+            var result = _fileNameSanitizer.Sanitize(input)!;
+
             // Assert - Dangerous extension should be handled safely
             Assert.Equal("malicious.blocked", result);
         }
@@ -74,11 +74,11 @@ namespace LivingRoots.Tests
         public void Sanitize_WithMultipleDangerousExtensions_BlocksRiskyExtension()
         {
             // Arrange - Multiple extensions where the "real" extension is the last one
-            string input = "innocent.jpg.exe";
-            
+            var input = "innocent.jpg.exe";
+
             // Act
-            string result = _fileNameSanitizer.Sanitize(input)!;
-            
+            var result = _fileNameSanitizer.Sanitize(input)!;
+
             // Assert - The dangerous extension should be blocked
             Assert.Equal("innocent.jpg.blocked", result);
         }
@@ -88,16 +88,16 @@ namespace LivingRoots.Tests
         public void Sanitize_WithHomoglyphs_AppliesContextAwareNormalization()
         {
             // Arrange - Using homoglyphs that should be converted for security
-            string input1 = "user";  // Normal Latin
-            string input2 = "usеr";  // Contains Cyrillic 'е'
-            
+            var input1 = "user";  // Normal Latin
+            var input2 = "usеr";  // Contains Cyrillic 'е'
+
             // Setup mock to normalize the second input
             _mockUnicodeNormalizer.Setup(x => x.Normalize(input2)).Returns("user"!);
-            
+
             // Act
-            string result1 = _fileNameSanitizer.Sanitize(input1)!;
-            string result2 = _fileNameSanitizer.Sanitize(input2)!;
-            
+            var result1 = _fileNameSanitizer.Sanitize(input1)!;
+            var result2 = _fileNameSanitizer.Sanitize(input2)!;
+
             // This shows the security measure: different inputs that normalize to same output
             // are handled consistently
             Assert.Equal(result1, result2);
@@ -110,23 +110,23 @@ namespace LivingRoots.Tests
             // Arrange - Test that the system handles legitimate Cyrillic properly
             // The Unicode normalizer has context-aware logic to preserve Cyrillic in proper contexts
             var realNormalizer = new UnicodeNormalizer(new UnicodeNormalizationService());
-            
+
             // Test that a mixed context with both Cyrillic and Latin characters works appropriately
-            string mixedInput = "file_тест_data"; // Mix of Latin and Cyrillic
-            
+            var mixedInput = "file_тест_data"; // Mix of Latin and Cyrillic
+
             // Act
-            string result = realNormalizer.Normalize(mixedInput)!;
-            
+            var result = realNormalizer.Normalize(mixedInput)!;
+
             // The result should not be empty and should handle the mixed content appropriately
             Assert.NotNull(result);
             Assert.NotEmpty(result);
-            
+
             // Now test with the filename sanitizer
             var unicodeNormalizationService = new UnicodeNormalizationService();
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
             var realFileNameSanitizer = new FileNameSanitizer(new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler));
-            string sanitizedResult = realFileNameSanitizer.Sanitize(mixedInput)!;
-            
+            var sanitizedResult = realFileNameSanitizer.Sanitize(mixedInput)!;
+
             Assert.NotNull(sanitizedResult);
             Assert.NotEmpty(sanitizedResult);
         }
@@ -136,16 +136,16 @@ namespace LivingRoots.Tests
         public void Sanitize_WithDiacritics_RemovesForSecurity()
         {
             // Arrange - Diacritics that might be important for identity but removed for security
-            string input1 = "resume";  // English
-            string input2 = "résumé";  // French with diacritics
-            
+            var input1 = "resume";  // English
+            var input2 = "résumé";  // French with diacritics
+
             // Setup mock to normalize the second input
             _mockUnicodeNormalizer.Setup(x => x.Normalize(input2)).Returns("resume"!);
-            
+
             // Act
-            string result1 = _fileNameSanitizer.Sanitize(input1)!;
-            string result2 = _fileNameSanitizer.Sanitize(input2)!;
-            
+            var result1 = _fileNameSanitizer.Sanitize(input1)!;
+            var result2 = _fileNameSanitizer.Sanitize(input2)!;
+
             // The diacritic removal prevents identity confusion in security contexts
             Assert.Equal(result1, result2);
         }
@@ -155,11 +155,11 @@ namespace LivingRoots.Tests
         public void Sanitize_WithValidExtensions_AllowsSafeExtensions()
         {
             // Arrange - Valid extensions should be preserved
-            string input = "document.pdf";
-            
+            var input = "document.pdf";
+
             // Act
-            string result = _fileNameSanitizer.Sanitize(input)!;
-            
+            var result = _fileNameSanitizer.Sanitize(input)!;
+
             // Assert - Valid extensions should be allowed
             Assert.Equal("document.pdf", result);
         }
@@ -170,12 +170,12 @@ namespace LivingRoots.Tests
         public void Sanitize_WithPathTraversal_Attempts_AllowsForPathValidation()
         {
             // Arrange - Path traversal attempts
-            string input = "../etc/passwd";
-            
+            var input = "../etc/passwd";
+
             // Act - Path traversal should now pass through FileNameSanitizationService
             // and be caught by PathValidationService at a higher level
-            string result = _fileNameSanitizer.Sanitize(input)!;
-            
+            var result = _fileNameSanitizer.Sanitize(input)!;
+
             // Assert - The filename sanitizer itself should not block this (it's handled elsewhere)
             Assert.Equal("._etc_passwd", result); // Path traversal is now handled by PathValidationService
         }
@@ -185,14 +185,14 @@ namespace LivingRoots.Tests
         public void Sanitize_WithZeroWidthChars_RemovesForSecurity()
         {
             // Arrange - Zero-width characters that should be removed
-            string input = "test\u200Bzwsp\u200Czwnj\u200Dzwj";
-            
+            var input = "test\u200Bzwsp\u200Czwnj\u200Dzwj";
+
             // Setup mock to return the string with zero-width chars removed
             _mockUnicodeNormalizer.Setup(x => x.Normalize(input)).Returns("testzwspzwnjzwj"!);
-            
+
             // Act
-            string result = _fileNameSanitizer.Sanitize(input)!;
-            
+            var result = _fileNameSanitizer.Sanitize(input)!;
+
             // Assert - Zero-width characters should be removed for security
             Assert.Equal("testzwspzwnjzwj", result);
         }

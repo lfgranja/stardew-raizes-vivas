@@ -14,7 +14,7 @@ namespace LivingRoots.Tests
         {
             var mockUnicodeService = new Mock<IUnicodeNormalizationService>();
             mockUnicodeService.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
-            
+
             _service = new PathValidationService(mockUnicodeService.Object);
         }
 
@@ -24,7 +24,7 @@ namespace LivingRoots.Tests
             // This test verifies that paths that go negative in depth immediately throw an exception
             // This confirms that minDepth check at the end is redundant since depth < 0 check
             // in loop already catches traversal attempts
-            
+
             // Test case where depth goes negative: "folder/../../file.txt"
             // folder = depth 1
             // .. = depth 0  

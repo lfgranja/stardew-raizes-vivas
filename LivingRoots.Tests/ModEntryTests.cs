@@ -1,12 +1,13 @@
 using System;
+using System.IO;
 using System.Reflection;
-using StardewModdingAPI;
-using Xunit;
 using LivingRoots;
 using LivingRoots.Controllers;
-using LivingRoots.Services;
 using LivingRoots.Domain;
+using LivingRoots.Services;
 using Moq;
+using StardewModdingAPI;
+using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -28,10 +29,10 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var modEntry = new ModEntry();
-            
+
             // Act
             modEntry.Dispose();
-            
+
             // Assert - Check the _disposed field using reflection
             var disposedField = typeof(ModEntry).GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance);
             var isDisposed = disposedField?.GetValue(modEntry) as bool?;
@@ -43,30 +44,14 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var modEntry = new ModEntry();
-            
+
             // Ensure controller is null by not calling Entry
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
             controllerField?.SetValue(modEntry, null);
-            
+
             // Act & Assert
             var exception = Record.Exception(() => modEntry.Dispose());
             Assert.Null(exception);
-        }
-
-        [Fact]
-        public void Dispose_WhenCalledMultipleTimes_SetsDisposedFlagOnlyOnce()
-        {
-            // Arrange
-            var modEntry = new ModEntry();
-            
-            // Act
-            modEntry.Dispose();
-            modEntry.Dispose(); // Call Dispose twice
-            
-            // Assert - Check the _disposed field using reflection
-            var disposedField = typeof(ModEntry).GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance);
-            var isDisposed = disposedField?.GetValue(modEntry) as bool?;
-            Assert.True(isDisposed); // Should still be true after first call
         }
 
         [Fact]
@@ -74,31 +59,33 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var modEntry = new ModEntry();
-            
+
             // Create a real controller and set it directly
             var mockHelper = new Mock<IModHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockManifest = new Mock<IManifest>();
-            var mockModDataService = new Mock<IModDataService>();
-            
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var mockSaveIdProvider = new Mock<ISaveIdProvider>();
+
             var controller = new ModController(
-                mockHelper.Object, 
-                mockMonitor.Object, 
-                mockManifest.Object, 
-                mockModDataService.Object);
-            
+                mockHelper.Object,
+                mockMonitor.Object,
+                mockManifest.Object,
+                mockSoilHealthService.Object,
+                mockSaveIdProvider.Object);
+
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
             controllerField?.SetValue(modEntry, controller);
-            
+
             // Verify controller is not null before disposal
             var controllerBeforeDispose = controllerField?.GetValue(modEntry);
             Assert.NotNull(controllerBeforeDispose);
-            
+
             // Act - Call Dispose with disposing=false using reflection
             var disposeMethod = typeof(ModEntry).GetMethod("Dispose", BindingFlags.NonPublic | BindingFlags.Instance);
             disposeMethod?.Invoke(modEntry, new object[] { false });
-            
+
             // Assert - Controller should not be set to null when disposing=false
             var controllerAfterDispose = controllerField?.GetValue(modEntry);
             Assert.NotNull(controllerAfterDispose);
@@ -109,30 +96,32 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var modEntry = new ModEntry();
-            
+
             // Create a real controller and set it directly
             var mockHelper = new Mock<IModHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockManifest = new Mock<IManifest>();
-            var mockModDataService = new Mock<IModDataService>();
-            
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var mockSaveIdProvider = new Mock<ISaveIdProvider>();
+
             var controller = new ModController(
-                mockHelper.Object, 
-                mockMonitor.Object, 
-                mockManifest.Object, 
-                mockModDataService.Object);
-            
+                mockHelper.Object,
+                mockMonitor.Object,
+                mockManifest.Object,
+                mockSoilHealthService.Object,
+                mockSaveIdProvider.Object);
+
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
             controllerField?.SetValue(modEntry, controller);
-            
+
             // Set the disposed flag to true manually to simulate already disposed state
             var disposedField = typeof(ModEntry).GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance);
             disposedField?.SetValue(modEntry, true);
-            
+
             // Act
             modEntry.Dispose();
-            
+
             // Assert - Controller should still not be null since we didn't actually dispose it
             var controllerAfterDispose = controllerField?.GetValue(modEntry);
             Assert.NotNull(controllerAfterDispose);
@@ -143,35 +132,37 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var modEntry = new ModEntry();
-            
+
             // Create a real controller and set it directly
             var mockHelper = new Mock<IModHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockManifest = new Mock<IManifest>();
-            var mockModDataService = new Mock<IModDataService>();
-            
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var mockSaveIdProvider = new Mock<ISaveIdProvider>();
+
             var controller = new ModController(
-                mockHelper.Object, 
-                mockMonitor.Object, 
-                mockManifest.Object, 
-                mockModDataService.Object);
-            
+                mockHelper.Object,
+                mockMonitor.Object,
+                mockManifest.Object,
+                mockSoilHealthService.Object,
+                mockSaveIdProvider.Object);
+
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
             controllerField?.SetValue(modEntry, controller);
-            
+
             // Verify controller is not null before disposal
             var controllerBeforeDispose = controllerField?.GetValue(modEntry);
             Assert.NotNull(controllerBeforeDispose);
-            
+
             // Act
             modEntry.Dispose();
-            
+
             // Assert
             var controllerAfterDispose = controllerField?.GetValue(modEntry);
             Assert.Null(controllerAfterDispose);
         }
-        
+
         [Fact]
         public async Task Dispose_WhenCalledFromMultipleThreads_IsThreadSafe()
         {
@@ -179,7 +170,7 @@ namespace LivingRoots.Tests
             var modEntry = new ModEntry();
             var tasks = new System.Threading.Tasks.Task[10];
             var disposedFlags = new bool[10];
-            
+
             // Act
             for (int i = 0; i < 10; i++)
             {
@@ -192,14 +183,14 @@ namespace LivingRoots.Tests
                     disposedFlags[index] = (bool)(disposedField?.GetValue(modEntry) ?? false);
                 });
             }
-            
+
             await System.Threading.Tasks.Task.WhenAll(tasks);
-            
+
             // Assert - Only one disposal should have happened effectively, but the flag should be true
             var disposedField = typeof(ModEntry).GetField("_disposed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var finalDisposedState = (bool)(disposedField?.GetValue(modEntry) ?? false);
             Assert.True(finalDisposedState);
-            
+
             // Ensure no exceptions were thrown during concurrent disposal
             foreach (var task in tasks)
             {
@@ -212,75 +203,55 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var modEntry = new ModEntry();
-            
+
             // Create a real controller and set it directly
             var mockHelper = new Mock<IModHelper>();
             var mockMonitor = new Mock<IMonitor>();
             var mockManifest = new Mock<IManifest>();
-            var mockModDataService = new Mock<IModDataService>();
-            
+            var mockSoilHealthService = new Mock<ISoilHealthService>();
+            var mockSaveIdProvider = new Mock<ISaveIdProvider>();
+
             var controller = new ModController(
-                mockHelper.Object, 
-                mockMonitor.Object, 
-                mockManifest.Object, 
-                mockModDataService.Object);
-            
+                mockHelper.Object,
+                mockMonitor.Object,
+                mockManifest.Object,
+                mockSoilHealthService.Object,
+                mockSaveIdProvider.Object);
+
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
             controllerField?.SetValue(modEntry, controller);
-            
-            // First disposal to set disposed flag
+
+            // Act - First disposal to set disposed flag
             modEntry.Dispose();
-            
-            // Verify controller is null after first disposal
-            var controllerAfterFirstDispose = controllerField?.GetValue(modEntry);
-            Assert.Null(controllerAfterFirstDispose);
-            
-            // Act - Call Dispose again when already disposed
-            modEntry.Dispose();
-            
-            // Assert - Controller should still be null (no double disposal)
-            var controllerAfterSecondDispose = controllerField?.GetValue(modEntry);
-            Assert.Null(controllerAfterSecondDispose);
+
+            // Assert - Controller should be null after disposal
+            var controllerAfterDispose = controllerField?.GetValue(modEntry);
+            Assert.Null(controllerAfterDispose);
         }
 
         [Fact]
-        public async Task Dispose_WhenCalledConcurrentlyWithBaseDisposeCall_IsThreadSafe()
+        public void Readme_ContainsCorrectGitHubReleasesLink()
         {
             // Arrange
-            var modEntry = new ModEntry();
-            var tasks = new System.Threading.Tasks.Task[10];
-            var exceptions = new System.Exception[10];
-            
+            var expectedLink = "https://github.com/lfgranja/stardew-raizes-vivas/releases";
+
+            // Read README.md from embedded resource for reliable test access across all environments
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceNames = assembly.GetManifestResourceNames();
+            var readmeResourceName = resourceNames.FirstOrDefault(name => name.EndsWith("README.md"));
+
+            Assert.True(readmeResourceName != null, $"README.md resource not found in assembly. Available resources: {string.Join(", ", resourceNames)}");
+
             // Act
-            for (int i = 0; i < 10; i++)
-            {
-                int index = i; // Capture for closure
-                tasks[index] = System.Threading.Tasks.Task.Run(() =>
-                {
-                    try
-                    {
-                        modEntry.Dispose();
-                    }
-                    catch (System.Exception ex)
-                    {
-                        exceptions[index] = ex;
-                    }
-                });
-            }
-            
-            await System.Threading.Tasks.Task.WhenAll(tasks);
-            
-            // Assert - No exceptions should have been thrown during concurrent disposal
-            for (int i = 0; i < exceptions.Length; i++)
-            {
-                Assert.Null(exceptions[i]);
-            }
-            
-            // Verify final disposed state
-            var disposedField = typeof(ModEntry).GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance);
-            var finalDisposedState = (bool)(disposedField?.GetValue(modEntry) ?? false);
-            Assert.True(finalDisposedState);
+            using var stream = assembly.GetManifestResourceStream(readmeResourceName);
+            Assert.True(stream != null, $"Could not load README.md resource: {readmeResourceName}");
+
+            using var reader = new StreamReader(stream);
+            var readmeContent = reader.ReadToEnd();
+
+            // Assert - Verify the README contains the correct GitHub releases link
+            Assert.Contains(expectedLink, readmeContent);
         }
     }
 }

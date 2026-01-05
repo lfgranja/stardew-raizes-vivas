@@ -1,8 +1,8 @@
 using System;
-using Xunit;
-using LivingRoots.Services;
 using LivingRoots.Domain;
+using LivingRoots.Services;
 using Moq;
+using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -25,7 +25,7 @@ namespace LivingRoots.Tests
             _validator.Validate(".config");
             _validator.Validate(".env");
             _validator.Validate(".gitignore");
-            
+
             // Paths with "." segments in middle should also be allowed
             _validator.Validate("folder/./file");
             _validator.Validate("path/to/./file.txt");

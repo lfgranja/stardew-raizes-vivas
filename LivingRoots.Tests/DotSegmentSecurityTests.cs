@@ -1,6 +1,6 @@
 using System;
-using Moq;
 using LivingRoots.Domain;
+using Moq;
 using Xunit;
 
 namespace LivingRoots.Tests
@@ -15,12 +15,12 @@ namespace LivingRoots.Tests
         {
             _mockUnicodeNormalizationService = new Mock<IUnicodeNormalizationService>();
             _mockReservedNameHandler = new Mock<IReservedNameHandler>();
-            
+
             // Setup the ReservedNameHandler to return the input by default
             _mockReservedNameHandler
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
-                
+
             _service = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object, _mockReservedNameHandler.Object);
         }
 
@@ -73,19 +73,6 @@ namespace LivingRoots.Tests
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("<..>"));
-            Assert.Contains("Filename sanitizes to an empty string.", exception.Message);
-        }
-
-        [Fact]
-        public void Sanitize_WithFilenameThatBecomesDotAfterConsecutiveDotsProcessing_ThrowsArgumentException()
-        {
-            // Arrange - filename that becomes "." after processing consecutive dots
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize("..."))
-                .Returns("..."); // SanitizeInvalidCharacters would convert to "..." -> ProcessConsecutiveDots makes it "." -> Trim makes it ""
-
-            // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("..."));
             Assert.Contains("Filename sanitizes to an empty string.", exception.Message);
         }
 

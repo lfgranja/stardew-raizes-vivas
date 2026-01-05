@@ -1,0 +1,16 @@
+{
+    "typescript.tsserver.watchOptions": "vscode",
+    "dotnet.defaultSolution": "Stardew-LivingRoots.sln",
+    "dotnet.server.useOmnisharp": true,
+    "editor.formatOnSave": true,
+    "[csharp]": {
+        "editor.defaultFormatter": "ms-dotnettools.csharp",
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "always"
+        }
+    },
+    "sonarlint.connectedMode.project": {
+        "connectionId": "lfgranja",
+        "projectKey": "lfgranja_stardew-raizes-vivas"
+    }
+}

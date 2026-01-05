@@ -1,11 +1,11 @@
-using StardewModdingAPI;
-using Moq;
-using LivingRoots.Services;
-using LivingRoots.Domain;
-using Xunit;
 using System;
 using System.IO;
 using System.Reflection;
+using LivingRoots.Domain;
+using LivingRoots.Services;
+using Moq;
+using StardewModdingAPI;
+using Xunit;
 
 #nullable disable
 
@@ -23,7 +23,7 @@ namespace LivingRoots.Tests
             _mockHelper = new Mock<IModHelper>();
             _mockMonitor = new Mock<IMonitor>();
             _mockModLogic = new Mock<IModLogic>();
-            
+
             _service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
         }
 
@@ -33,11 +33,11 @@ namespace LivingRoots.Tests
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act & Assert
-            var exception = Assert.Throws<TargetInvocationException>(() => 
+            var exception = Assert.Throws<TargetInvocationException>(() =>
                 method?.Invoke(_service, new object[] { null! }));
-            
+
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
             Assert.Contains("Path cannot be null", exception.InnerException.Message);
@@ -49,11 +49,11 @@ namespace LivingRoots.Tests
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act & Assert
-            var exception = Assert.Throws<TargetInvocationException>(() => 
+            var exception = Assert.Throws<TargetInvocationException>(() =>
                 method?.Invoke(_service, new object[] { "" }));
-            
+
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
             Assert.Contains("Path cannot be empty", exception.InnerException.Message);
@@ -65,11 +65,11 @@ namespace LivingRoots.Tests
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act & Assert
-            var exception = Assert.Throws<TargetInvocationException>(() => 
+            var exception = Assert.Throws<TargetInvocationException>(() =>
                 method?.Invoke(_service, new object[] { "   " }));
-            
+
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
             Assert.Contains("Path sanitization resulted in empty path", exception.InnerException.Message);
@@ -81,14 +81,14 @@ namespace LivingRoots.Tests
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Configure mock to return null for sanitization (simulating empty result)
             _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns((string)null);
-            
+
             // Act & Assert
-            var exception = Assert.Throws<TargetInvocationException>(() => 
+            var exception = Assert.Throws<TargetInvocationException>(() =>
                 method?.Invoke(_service, new object[] { "segment1" }));
-            
+
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
             Assert.Contains("Path sanitization resulted in empty path", exception.InnerException.Message);
@@ -100,14 +100,14 @@ namespace LivingRoots.Tests
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Configure mock to return whitespace for sanitization (simulating empty result)
             _mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns("   ");
-            
+
             // Act & Assert
-            var exception = Assert.Throws<TargetInvocationException>(() => 
+            var exception = Assert.Throws<TargetInvocationException>(() =>
                 method?.Invoke(_service, new object[] { "segment1" }));
-            
+
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
             Assert.Contains("Path sanitization resulted in empty path", exception.InnerException.Message);
@@ -119,119 +119,119 @@ namespace LivingRoots.Tests
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Configure mock to return valid sanitized segments
             _mockModLogic.Setup(x => x.SanitizeFileName("segment1")).Returns("segment1");
             _mockModLogic.Setup(x => x.SanitizeFileName("segment2")).Returns("segment2");
-            
+
             // Act
             var result = method?.Invoke(_service, new object[] { "segment1/segment2" });
-            
+
             // Assert
             Assert.NotNull(result);
             Assert.Equal("segment1/segment2", result.ToString().Replace('\\', '/'));
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithPlatformSpecificSeparators_ReturnsSanitizedPath()
         {
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Configure mock to return valid sanitized segments
             _mockModLogic.Setup(x => x.SanitizeFileName("segment1")).Returns("segment1");
             _mockModLogic.Setup(x => x.SanitizeFileName("segment2")).Returns("segment2");
-            
+
             // Act - Test with backslash separators (Windows-style)
             var result = method?.Invoke(_service, new object[] { @"segment1\segment2" });
-            
+
             // Assert
             Assert.NotNull(result);
             // Convert result to forward slashes for comparison to ensure consistency
             Assert.Equal("segment1/segment2", result.ToString().Replace('\\', '/'));
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithMixedPathSeparators_ReturnsSanitizedPath()
         {
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Configure mock to return valid sanitized segments
             _mockModLogic.Setup(x => x.SanitizeFileName("segment1")).Returns("segment1");
             _mockModLogic.Setup(x => x.SanitizeFileName("segment2")).Returns("segment2");
             _mockModLogic.Setup(x => x.SanitizeFileName("segment3")).Returns("segment3");
-            
+
             // Act - Test with mixed separators
             var result = method?.Invoke(_service, new object[] { @"segment1/segment2\segment3" });
-            
+
             // Assert
             Assert.NotNull(result);
             // The result should handle mixed separators properly and return forward slashes consistently
             Assert.Equal("segment1/segment2/segment3", result.ToString());
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithDotDotSegment_ThrowsArgumentException()
         {
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act & Assert
-            var exception = Assert.Throws<TargetInvocationException>(() => 
+            var exception = Assert.Throws<TargetInvocationException>(() =>
                 method?.Invoke(_service, new object[] { ".." }));
-            
+
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
             Assert.Contains("Path cannot contain '..' segments for security reasons", exception.InnerException.Message);
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithDotDotSegmentInPath_ThrowsArgumentException()
         {
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act & Assert
-            var exception = Assert.Throws<TargetInvocationException>(() => 
+            var exception = Assert.Throws<TargetInvocationException>(() =>
                 method?.Invoke(_service, new object[] { "valid/..../invalid" }));
-            
+
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
             Assert.Contains("Path cannot contain '..' segments for security reasons", exception.InnerException.Message);
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithDotDotSegmentWithBackslashes_ThrowsArgumentException()
         {
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act & Assert
-            var exception = Assert.Throws<TargetInvocationException>(() => 
+            var exception = Assert.Throws<TargetInvocationException>(() =>
                 method?.Invoke(_service, new object[] { @"valid\..\invalid" }));
-            
+
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
             Assert.Contains("Path cannot contain '..' segments for security reasons", exception.InnerException.Message);
         }
-        
+
         [Fact]
         public void SanitizePathSegments_WithMultipleDotDotSegments_ThrowsArgumentException()
         {
             // Arrange
             var method = _service.GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
-            
+
             // Act & Assert
-            var exception = Assert.Throws<TargetInvocationException>(() => 
+            var exception = Assert.Throws<TargetInvocationException>(() =>
                 method?.Invoke(_service, new object[] { "../.." }));
-            
+
             Assert.IsType<ArgumentException>(exception.InnerException);
             Assert.Equal("path", ((ArgumentException)exception.InnerException).ParamName);
             Assert.Contains("Path cannot contain '..' segments for security reasons", exception.InnerException.Message);

@@ -12,7 +12,13 @@
     <BundleExtraAssemblies>All</BundleExtraAssemblies>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <SuppressTfmSupportBuildErrors>true</SuppressTfmSupportBuildErrors>
+    <RollForward>Major</RollForward>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Embed README.md as a resource for reliable test access -->
+    <EmbeddedResource Include="..\README.md" Link="Resources\README.md" />
+  </ItemGroup>
 
   <PropertyGroup>
     <!-- Optional override path; leave empty by default -->
@@ -34,13 +40,13 @@
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
-    
-    
+
+
   </ItemGroup>
 
   <ItemGroup>
      <ProjectReference Include="..\LivingRoots\LivingRoots.csproj" />
-      
+
   </ItemGroup>
 
 </Project>
