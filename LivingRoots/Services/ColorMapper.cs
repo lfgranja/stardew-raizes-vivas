@@ -8,25 +8,19 @@ namespace LivingRoots.Services
     /// Implementation of color mapping for soil health values.
     /// Provides color interpolation based on health levels with smooth gradients.
     /// </summary>
-    public class ColorMapper : IColorMapper
+    /// <remarks>
+    /// Initializes a new instance of ColorMapper.
+    /// </remarks>
+    /// <param name="config">Visualization configuration</param>
+    public class ColorMapper(IVisualizationConfig config) : IColorMapper
     {
         // Dependencies
-        private readonly IVisualizationConfig _config;
+        private readonly IVisualizationConfig _config = config ?? throw new ArgumentNullException(nameof(config));
 
         // Default colors
         private static readonly Color DefaultPoorColor = new Color(139, 69, 19);  // SaddleBrown
         private static readonly Color DefaultModerateColor = new Color(218, 165, 32);  // GoldenRod
         private static readonly Color DefaultHealthyColor = new Color(85, 107, 47);  // DarkOliveGreen
-
-        /// <summary>
-        /// Initializes a new instance of ColorMapper.
-        /// </summary>
-        /// <param name="monitor">Monitor for logging</param>
-        /// <param name="config">Visualization configuration</param>
-        public ColorMapper(IMonitor monitor, IVisualizationConfig config)
-        {
-            _config = config ?? throw new ArgumentNullException(nameof(config));
-        }
 
         /// <inheritdoc/>
         public Color GetHealthColor(float health)
@@ -51,14 +45,14 @@ namespace LivingRoots.Services
             else if (health <= ModConstants.ModerateHealthThreshold)
             {
                 // Moderate health: interpolate between poor and moderate colors
-                float t = (health - ModConstants.PoorHealthThreshold) /
+                var t = (health - ModConstants.PoorHealthThreshold) /
                            (ModConstants.ModerateHealthThreshold - ModConstants.PoorHealthThreshold);
                 return InterpolateColors(poor, moderate, t);
             }
             else
             {
                 // Healthy health: interpolate between moderate and healthy colors
-                float t = (health - ModConstants.ModerateHealthThreshold) /
+                var t = (health - ModConstants.ModerateHealthThreshold) /
                            (ModConstants.HealthyHealthThreshold - ModConstants.ModerateHealthThreshold);
                 return InterpolateColors(moderate, healthy, t);
             }
@@ -77,10 +71,10 @@ namespace LivingRoots.Services
             t = Math.Clamp(t, 0f, 1f);
 
             // Linear interpolation for each color channel
-            byte r = (byte)(start.R + (end.R - start.R) * t);
-            byte g = (byte)(start.G + (end.G - start.G) * t);
-            byte b = (byte)(start.B + (end.B - start.B) * t);
-            byte a = (byte)(start.A + (end.A - start.A) * t);
+            var r = (byte)(start.R + (end.R - start.R) * t);
+            var g = (byte)(start.G + (end.G - start.G) * t);
+            var b = (byte)(start.B + (end.B - start.B) * t);
+            var a = (byte)(start.A + (end.A - start.A) * t);
 
             return new Color(r, g, b, a);
         }
