@@ -96,9 +96,9 @@ namespace LivingRoots.Tests
                 ShowHoeFeedback = false,
                 OverlayOpacity = 0.5f,
                 UseCustomColors = true,
-                PoorHealthColor = new ColorData(new Color(255, 0, 0)),
-                ModerateHealthColor = new ColorData(new Color(0, 255, 0)),
-                HealthyHealthColor = new ColorData(new Color(0, 0, 255))
+                PoorHealthColor = new LivingRoots.Services.ColorData(new Color(255, 0, 0)),
+                ModerateHealthColor = new LivingRoots.Services.ColorData(new Color(0, 255, 0)),
+                HealthyHealthColor = new LivingRoots.Services.ColorData(new Color(0, 0, 255))
             };
 
             _mockModDataService.Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
@@ -296,7 +296,7 @@ namespace LivingRoots.Tests
         public void ColorValidation_ValidColor_IsLoaded()
         {
             // Arrange
-            var validColor = new ColorData(new Color(100, 150, 200, 255));
+            var validColor = new LivingRoots.Services.ColorData(new Color(100, 150, 200, 255));
             var configData = new VisualizationConfigData
             {
                 PoorHealthColor = validColor

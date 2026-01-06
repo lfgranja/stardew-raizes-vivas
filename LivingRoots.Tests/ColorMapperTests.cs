@@ -13,22 +13,20 @@ namespace LivingRoots.Tests
     /// </summary>
     public class ColorMapperTests
     {
-        private readonly Mock<IMonitor> _mockMonitor;
         private readonly Mock<IVisualizationConfig> _mockConfig;
         private readonly ColorMapper _colorMapper;
 
         public ColorMapperTests()
         {
-            _mockMonitor = new Mock<IMonitor>();
             _mockConfig = new Mock<IVisualizationConfig>();
-            _colorMapper = new ColorMapper(_mockMonitor.Object, _mockConfig.Object);
+            _colorMapper = new ColorMapper(_mockConfig.Object);
         }
 
         [Fact]
         public void Constructor_NullConfig_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new ColorMapper(_mockMonitor.Object, null!));
+            Assert.Throws<ArgumentNullException>(() => new ColorMapper(null!));
         }
 
         [Fact]

@@ -14,11 +14,10 @@ namespace LivingRoots.Tests
         [Fact]
         public void PrintColorValues()
         {
-            var mockMonitor = new Mock<IMonitor>();
             var mockConfig = new Mock<IVisualizationConfig>();
             mockConfig.Setup(c => c.UseCustomColors).Returns(false);
 
-            var colorMapper = new ColorMapper(mockMonitor.Object, mockConfig.Object);
+            var colorMapper = new ColorMapper(mockConfig.Object);
 
             // Test poor health (10)
             Color poorColor = colorMapper.GetHealthColor(10f);
