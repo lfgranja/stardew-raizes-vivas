@@ -10,12 +10,21 @@ namespace LivingRoots.Services
     /// Implementation of tooltip and hoe feedback renderer for soil health visualization.
     /// Renders hover tooltips with soil health information and visual feedback for hoe actions.
     /// </summary>
-    public class TooltipRenderer : ITooltipRenderer
+    /// <remarks>
+    /// Initializes a new instance of TooltipRenderer.
+    /// </remarks>
+    /// <param name="monitor">Monitor for logging</param>
+    /// <param name="config">Visualization configuration</param>
+    /// <param name="colorMapper">Color mapper for health values</param>
+    public class TooltipRenderer(
+        IMonitor monitor,
+        IVisualizationConfig config,
+        IColorMapper colorMapper) : ITooltipRenderer
     {
         // Dependencies
-        private readonly IMonitor _monitor;
-        private readonly IVisualizationConfig _config;
-        private readonly IColorMapper _colorMapper;
+        private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+        private readonly IVisualizationConfig _config = config ?? throw new ArgumentNullException(nameof(config));
+        private readonly IColorMapper _colorMapper = colorMapper ?? throw new ArgumentNullException(nameof(colorMapper));
 
         // Tooltip styling constants
         private const int TooltipPadding = 8;
@@ -26,22 +35,6 @@ namespace LivingRoots.Services
 
         // Hoe feedback constants
         private const int FloatingTextOffsetY = -20;
-
-        /// <summary>
-        /// Initializes a new instance of TooltipRenderer.
-        /// </summary>
-        /// <param name="monitor">Monitor for logging</param>
-        /// <param name="config">Visualization configuration</param>
-        /// <param name="colorMapper">Color mapper for health values</param>
-        public TooltipRenderer(
-            IMonitor monitor,
-            IVisualizationConfig config,
-            IColorMapper colorMapper)
-        {
-            _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-            _config = config ?? throw new ArgumentNullException(nameof(config));
-            _colorMapper = colorMapper ?? throw new ArgumentNullException(nameof(colorMapper));
-        }
 
         /// <inheritdoc/>
         public void RenderHoverTooltip(SpriteBatch spriteBatch, Vector2 cursorPosition, float health)
@@ -65,10 +58,10 @@ namespace LivingRoots.Services
                 health = Math.Clamp(health, 0f, 100f);
 
                 // Get health level text
-                string healthLevelText = VisualizationHelpers.GetHealthLevelText(health);
+                var healthLevelText = VisualizationHelpers.GetHealthLevelText(health);
 
                 // Format tooltip text
-                string[] tooltipLines = new string[]
+                var tooltipLines = new string[]
                 {
                     $"Soil Health: {health:F0}%",
                     $"Status: {healthLevelText}"
@@ -139,15 +132,15 @@ namespace LivingRoots.Services
         private static Vector2 CalculateTooltipPosition(Vector2 cursorPosition, string[] tooltipLines)
         {
             // Calculate tooltip dimensions
-            int maxLineWidth = 0;
-            foreach (string line in tooltipLines)
+            var maxLineWidth = 0;
+            foreach (var line in tooltipLines)
             {
                 Vector2 textSize = Game1.dialogueFont.MeasureString(line);
                 maxLineWidth = Math.Max(maxLineWidth, (int)textSize.X);
             }
 
-            int tooltipWidth = maxLineWidth + (TooltipPadding * 2);
-            int tooltipHeight = (tooltipLines.Length * TooltipLineHeight) + (TooltipPadding * 2);
+            var tooltipWidth = maxLineWidth + (TooltipPadding * 2);
+            var tooltipHeight = (tooltipLines.Length * TooltipLineHeight) + (TooltipPadding * 2);
 
             // Calculate position with offset from cursor
             Vector2 position = new Vector2(
@@ -172,15 +165,15 @@ namespace LivingRoots.Services
         private static void RenderTooltipBackground(SpriteBatch spriteBatch, Vector2 position, string[] tooltipLines, Color borderColor)
         {
             // Calculate tooltip dimensions
-            int maxLineWidth = 0;
-            foreach (string line in tooltipLines)
+            var maxLineWidth = 0;
+            foreach (var line in tooltipLines)
             {
                 Vector2 textSize = Game1.dialogueFont.MeasureString(line);
                 maxLineWidth = Math.Max(maxLineWidth, (int)textSize.X);
             }
 
-            int tooltipWidth = maxLineWidth + (TooltipPadding * 2);
-            int tooltipHeight = (tooltipLines.Length * TooltipLineHeight) + (TooltipPadding * 2);
+            var tooltipWidth = maxLineWidth + (TooltipPadding * 2);
+            var tooltipHeight = (tooltipLines.Length * TooltipLineHeight) + (TooltipPadding * 2);
 
             // Create background rectangle
             Rectangle backgroundRect = new Rectangle(
@@ -193,14 +186,14 @@ namespace LivingRoots.Services
             // Render semi-transparent black background
             Color backgroundColor = new Color(0, 0, 0, 204); // 0.8 alpha
             spriteBatch.Draw(
-                GetOrCreateOverlayTexture(),
+                VisualizationHelpers.GetOrCreateOverlayTexture(),
                 backgroundRect,
                 backgroundColor
             );
 
             // Render border with health color
             spriteBatch.Draw(
-                GetOrCreateOverlayTexture(),
+                VisualizationHelpers.GetOrCreateOverlayTexture(),
                 new Rectangle(
                     backgroundRect.X,
                     backgroundRect.Y,
@@ -211,7 +204,7 @@ namespace LivingRoots.Services
             ); // Left border
 
             spriteBatch.Draw(
-                GetOrCreateOverlayTexture(),
+                VisualizationHelpers.GetOrCreateOverlayTexture(),
                 new Rectangle(
                     backgroundRect.X + backgroundRect.Width - TooltipBorderWidth,
                     backgroundRect.Y,
@@ -222,7 +215,7 @@ namespace LivingRoots.Services
             ); // Right border
 
             spriteBatch.Draw(
-                GetOrCreateOverlayTexture(),
+                VisualizationHelpers.GetOrCreateOverlayTexture(),
                 new Rectangle(
                     backgroundRect.X,
                     backgroundRect.Y,
@@ -233,7 +226,7 @@ namespace LivingRoots.Services
             ); // Top border
 
             spriteBatch.Draw(
-                GetOrCreateOverlayTexture(),
+                VisualizationHelpers.GetOrCreateOverlayTexture(),
                 new Rectangle(
                     backgroundRect.X,
                     backgroundRect.Y + backgroundRect.Height - TooltipBorderWidth,
@@ -254,7 +247,7 @@ namespace LivingRoots.Services
         {
             Color textColor = Color.White;
 
-            for (int i = 0; i < tooltipLines.Length; i++)
+            for (var i = 0; i < tooltipLines.Length; i++)
             {
                 Vector2 textPosition = new Vector2(
                     position.X + TooltipPadding,
@@ -288,7 +281,7 @@ namespace LivingRoots.Services
 
             // Render flash rectangle
             spriteBatch.Draw(
-                GetOrCreateOverlayTexture(),
+                VisualizationHelpers.GetOrCreateOverlayTexture(),
                 new Rectangle((int)tilePosition.X, (int)tilePosition.Y, 64, 64),
                 flashColor
             );
@@ -304,7 +297,7 @@ namespace LivingRoots.Services
         private static void RenderFloatingText(SpriteBatch spriteBatch, Vector2 tilePosition, float health, Color color)
         {
             // Format floating text
-            string text = $"{health:F0}%";
+            var text = $"{health:F0}%";
 
             // Calculate text position (above the tile)
             Vector2 textPosition = new Vector2(
@@ -326,31 +319,6 @@ namespace LivingRoots.Services
                 textPosition,
                 color
             ); // Main text
-        }
-
-        /// <summary>
-        /// Gets or creates a simple texture for rendering.
-        /// </summary>
-        /// <returns>A 1x1 white texture that can be scaled</returns>
-        private static Texture2D GetOrCreateOverlayTexture()
-        {
-            // Try to get existing texture from game
-            if (Game1.staminaRect != null)
-            {
-                return Game1.staminaRect;
-            }
-
-            // Create a simple white texture if needed
-            try
-            {
-                Texture2D texture = new Texture2D(Game1.graphics.GraphicsDevice, 1, 1);
-                texture.SetData(new[] { Color.White });
-                return texture;
-            }
-            catch
-            {
-                return null!;
-            }
         }
     }
 }
