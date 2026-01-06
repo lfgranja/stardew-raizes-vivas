@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
+using StardewValley.TerrainFeatures;
 
 namespace LivingRoots.Services
 {
@@ -526,6 +527,31 @@ namespace LivingRoots.Services
             _hoeActionStartTime = null;
         }
 
+        /// <summary>
+        /// Checks if a tile has a HoeDirt terrain feature (tilled soil).
+        /// </summary>
+        /// <param name="location">The game location containing the tile</param>
+        /// <param name="tile">The tile coordinates to check</param>
+        /// <returns>True if the tile has HoeDirt (tilled soil), false otherwise</returns>
+        private bool IsTileTilled(GameLocation location, Vector2 tile)
+        {
+            try
+            {
+                if (location == null)
+                {
+                    return false;
+                }
+
+                // Check if the tile has a HoeDirt terrain feature
+                return location.terrainFeatures.TryGetValue(tile, out var feature) && feature is HoeDirt;
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Error checking if tile {tile} is tilled: {ex.Message}", LogLevel.Trace);
+                return false;
+            }
+        }
+
         #region Event Handlers
 
         /// <summary>
@@ -677,7 +703,7 @@ namespace LivingRoots.Services
                         var cursorPosition = Game1.getMousePosition().ToVector2();
                         var location = Game1.currentLocation;
 
-                        if (location != null)
+                        if (location != null && IsTileTilled(location, _currentHoverTile.Value))
                         {
                             var health = _soilHealthService.GetSoilHealth(location.Name, _currentHoverTile.Value);
                             _tooltipRenderer.RenderHoverTooltip(e.SpriteBatch, cursorPosition, health);

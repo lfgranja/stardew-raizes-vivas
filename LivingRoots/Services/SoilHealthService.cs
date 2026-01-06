@@ -697,7 +697,7 @@ namespace LivingRoots.Services
             return SoilHealthOperationResult.Success;
         }
 
-        private static float ClampHealthValue(float value)
+        public static float ClampHealthValue(float value)
         {
             // Handle NaN and Infinity values before clamping
             if (float.IsPositiveInfinity(value))

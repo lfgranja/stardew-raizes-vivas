@@ -55,7 +55,7 @@ namespace LivingRoots.Services
         public static string GetHealthLevelText(float health)
         {
             // Clamp health to valid range
-            health = Math.Clamp(health, 0f, 100f);
+            health = SoilHealthService.ClampHealthValue(health);
 
             // Determine health category based on thresholds
             if (health <= ModConstants.PoorHealthThreshold)
@@ -185,13 +185,13 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
-        /// Clamps a health value to valid range [0, 100].
+        /// Clamps a health value to valid range [ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth].
         /// </summary>
         /// <param name="health">The health value to clamp</param>
         /// <returns>The clamped health value</returns>
         public static float ClampHealth(float health)
         {
-            return Math.Clamp(health, 0f, 100f);
+            return SoilHealthService.ClampHealthValue(health);
         }
 
         /// <summary>
@@ -229,7 +229,7 @@ namespace LivingRoots.Services
         public static HealthCategory GetHealthCategory(float health)
         {
             // Clamp health to valid range
-            health = Math.Clamp(health, 0f, 100f);
+            health = SoilHealthService.ClampHealthValue(health);
 
             // Determine health category based on thresholds
             if (health <= ModConstants.PoorHealthThreshold)

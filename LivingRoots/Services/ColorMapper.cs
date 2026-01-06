@@ -34,7 +34,7 @@ namespace LivingRoots.Services
         public Color GetHealthColor(float health, Color poor, Color moderate, Color healthy)
         {
             // Clamp health to valid range [0, 100]
-            health = Math.Clamp(health, 0f, 100f);
+            health = SoilHealthService.ClampHealthValue(health);
 
             // Determine health category and interpolate colors
             if (health <= ModConstants.PoorHealthThreshold)

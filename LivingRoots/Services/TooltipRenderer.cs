@@ -55,7 +55,7 @@ namespace LivingRoots.Services
                 }
 
                 // Validate health value
-                health = Math.Clamp(health, 0f, 100f);
+                health = SoilHealthService.ClampHealthValue(health);
 
                 // Get health level text
                 var healthLevelText = VisualizationHelpers.GetHealthLevelText(health);
@@ -105,7 +105,7 @@ namespace LivingRoots.Services
                 }
 
                 // Validate health value
-                health = Math.Clamp(health, 0f, 100f);
+                health = SoilHealthService.ClampHealthValue(health);
 
                 // Get color for health value
                 Color healthColor = _colorMapper.GetHealthColor(health);
