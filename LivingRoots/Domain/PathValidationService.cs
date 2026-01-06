@@ -7,9 +7,10 @@ namespace LivingRoots.Domain
     /// Implementation for validating file paths to prevent path traversal attacks and other security issues.
     /// All path validation logic is consolidated in this service to reduce redundancy.
     /// </summary>
-    public class PathValidationService : IPathValidationService
+    public class PathValidationService(
+        IUnicodeNormalizationService unicodeNormalizationService) : IPathValidationService
     {
-        private readonly IUnicodeNormalizationService _unicodeNormalizationService;
+        private readonly IUnicodeNormalizationService _unicodeNormalizationService = unicodeNormalizationService ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
 
         // Regex patterns for detecting absolute paths and URIs
         private static readonly Regex AbsolutePathPattern = new(
@@ -25,12 +26,6 @@ namespace LivingRoots.Domain
             @"(?:%2e%2e%2[fF]|%2e%2e[/\\]|%2e%2e%0|%%32[eE]%%32[fF]|%25%32%65%25%32%65%25%32%66|%252[eE]%252[eE][/\\%3F%5C%2F]|%c0%ae%c0%ae|%e0%80%ae%e0%80%ae|%f0%80%80%ae%f0%80%80%ae|%c0%2e%c0%2e|%c0%2[fF]|%c0%5[cC]|%c0%af|%e2%80%a5%e2%80%a5%e2%80%a5|%ef%bc%8[fF]%ef%bc%8[eE]%ef%bc%8[eE]%ef%bc%8[fF]|%ef%bc%9[cC]%ef%bc%9[eE]%ef%bc%9[cC]%ef%bc%9[eE]|\.%252[eE]|%252[eE]\.|%252[eE]%252[eE]|\.%00\.|%00\.\.|%u02e%u02e%u002[fF]|%u02e%u002e%u005[cC]|%uff0[eE]%uff0[eE]|%u2024%u2024|%u2025%u2025|%u2026%u2026|%u302e%u3002|%uff0[fF]|%uff3[cC]|%u221[56])",
             RegexOptions.Compiled | RegexOptions.IgnoreCase
         );
-
-        public PathValidationService(
-            IUnicodeNormalizationService unicodeNormalizationService)
-        {
-            _unicodeNormalizationService = unicodeNormalizationService ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
-        }
 
         /// <summary>
         /// Validates a file path to ensure it doesn't contain path traversal patterns or absolute paths.
