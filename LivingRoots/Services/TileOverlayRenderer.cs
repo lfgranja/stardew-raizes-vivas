@@ -10,45 +10,33 @@ namespace LivingRoots.Services
     /// Implementation of tile overlay renderer for soil health visualization.
     /// Renders colored rectangles over tiles based on soil health values with viewport culling.
     /// </summary>
-    public class TileOverlayRenderer : ITileOverlayRenderer
+    /// <remarks>
+    /// Initializes a new instance of TileOverlayRenderer.
+    /// </remarks>
+    /// <param name="monitor">Monitor for logging</param>
+    /// <param name="config">Visualization configuration</param>
+    /// <param name="colorMapper">Color mapper for health values</param>
+    /// <param name="soilHealthService">Service for retrieving soil health data</param>
+    public class TileOverlayRenderer(
+        IMonitor monitor,
+        IVisualizationConfig config,
+        IColorMapper colorMapper,
+        ISoilHealthService soilHealthService) : ITileOverlayRenderer
     {
         // Dependencies
-        private readonly IMonitor _monitor;
-        private readonly IVisualizationConfig _config;
-        private readonly IColorMapper _colorMapper;
-        private readonly ISoilHealthService _soilHealthService;
+        private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+        private readonly IVisualizationConfig _config = config ?? throw new ArgumentNullException(nameof(config));
+        private readonly IColorMapper _colorMapper = colorMapper ?? throw new ArgumentNullException(nameof(colorMapper));
+        private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
 
         // Rendering constants
         private const int TileSize = 64; // Stardew Valley tile size in pixels
 
         // Performance: Health cache
-        private readonly Dictionary<Vector2, float> _healthCache = new Dictionary<Vector2, float>();
-        private readonly int _cacheSize;
+        private readonly Dictionary<(string Location, Vector2 Tile), float> _healthCache = new Dictionary<(string, Vector2), float>();
+        private readonly int _cacheSize = ModConstants.TileHealthCacheSize;
         private DateTime _lastCacheClear = DateTime.UtcNow;
-        private readonly TimeSpan _cacheClearInterval;
-
-        /// <summary>
-        /// Initializes a new instance of TileOverlayRenderer.
-        /// </summary>
-        /// <param name="monitor">Monitor for logging</param>
-        /// <param name="config">Visualization configuration</param>
-        /// <param name="colorMapper">Color mapper for health values</param>
-        /// <param name="soilHealthService">Service for retrieving soil health data</param>
-        public TileOverlayRenderer(
-            IMonitor monitor,
-            IVisualizationConfig config,
-            IColorMapper colorMapper,
-            ISoilHealthService soilHealthService)
-        {
-            _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-            _config = config ?? throw new ArgumentNullException(nameof(config));
-            _colorMapper = colorMapper ?? throw new ArgumentNullException(nameof(colorMapper));
-            _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
-
-            // Initialize performance settings
-            _cacheSize = ModConstants.TileHealthCacheSize;
-            _cacheClearInterval = TimeSpan.FromSeconds(ModConstants.CacheClearIntervalSeconds);
-        }
+        private readonly TimeSpan _cacheClearInterval = TimeSpan.FromSeconds(ModConstants.CacheClearIntervalSeconds);
 
         /// <inheritdoc/>
         public void RenderTileOverlay(SpriteBatch spriteBatch, GameLocation location, Vector2 tile, float health)
@@ -140,7 +128,7 @@ namespace LivingRoots.Services
                 }
 
                 // Render overlays for visible tiles with performance limit
-                int tilesRenderedThisFrame = 0;
+                var tilesRenderedThisFrame = 0;
                 var renderResult = RenderOverlaysForTileRange(
                     spriteBatch, location, tileRange.Value, ref tilesRenderedThisFrame);
 
@@ -181,10 +169,10 @@ namespace LivingRoots.Services
             Rectangle viewport = GetViewportBounds();
 
             // Calculate tile range for viewport
-            int startTileX = (int)Math.Floor(viewport.X / (double)TileSize);
-            int startTileY = (int)Math.Floor(viewport.Y / (double)TileSize);
-            int endTileX = (int)Math.Ceiling((viewport.X + viewport.Width) / (double)TileSize);
-            int endTileY = (int)Math.Ceiling((viewport.Y + viewport.Height) / (double)TileSize);
+            var startTileX = (int)Math.Floor(viewport.X / (double)TileSize);
+            var startTileY = (int)Math.Floor(viewport.Y / (double)TileSize);
+            var endTileX = (int)Math.Ceiling((viewport.X + viewport.Width) / (double)TileSize);
+            var endTileY = (int)Math.Ceiling((viewport.Y + viewport.Height) / (double)TileSize);
 
             // Validate tile range
             if (startTileX > endTileX || startTileY > endTileY)
@@ -202,12 +190,12 @@ namespace LivingRoots.Services
         private (int OverlayCount, int SkippedTiles) RenderOverlaysForTileRange(
             SpriteBatch spriteBatch, GameLocation location, (int startX, int startY, int endX, int endY) tileRange, ref int tilesRenderedThisFrame)
         {
-            int overlayCount = 0;
-            int skippedTiles = 0;
+            var overlayCount = 0;
+            var skippedTiles = 0;
 
-            for (int tileX = tileRange.startX; tileX <= tileRange.endX; tileX++)
+            for (var tileX = tileRange.startX; tileX <= tileRange.endX; tileX++)
             {
-                for (int tileY = tileRange.startY; tileY <= tileRange.endY; tileY++)
+                for (var tileY = tileRange.startY; tileY <= tileRange.endY; tileY++)
                 {
                     // Performance: Check tile limit per frame
                     if (tilesRenderedThisFrame >= ModConstants.MaxTilesPerFrame)
@@ -226,7 +214,7 @@ namespace LivingRoots.Services
                     }
 
                     // Get soil health for this tile using cache
-                    float health = GetCachedHealth(location.NameOrUniqueName, tile,
+                    var health = GetCachedHealth(location.NameOrUniqueName, tile,
                         t => _soilHealthService.GetSoilHealth(location.NameOrUniqueName, t));
 
                     // Skip if no health data (health is 0 or negative)
@@ -368,7 +356,7 @@ namespace LivingRoots.Services
         private static void RenderColoredRectangle(SpriteBatch spriteBatch, Vector2 position, Color color)
         {
             // Create a simple texture for rendering
-            Texture2D texture = GetOrCreateOverlayTexture();
+            Texture2D texture = VisualizationHelpers.GetOrCreateOverlayTexture();
 
             if (texture != null)
             {
@@ -377,32 +365,6 @@ namespace LivingRoots.Services
                     new Rectangle((int)position.X, (int)position.Y, TileSize, TileSize),
                     color
                 );
-            }
-        }
-
-        /// <summary>
-        /// Gets or creates a simple texture for overlay rendering.
-        /// </summary>
-        /// <returns>A 1x1 white texture that can be scaled</returns>
-        private static Texture2D GetOrCreateOverlayTexture()
-        {
-            // Try to get existing texture from game
-            if (Game1.staminaRect != null)
-            {
-                return Game1.staminaRect;
-            }
-
-            // Create a simple white texture if needed
-            // Note: This is a simplified approach. In production, you might want to cache this.
-            try
-            {
-                Texture2D texture = new Texture2D(Game1.graphics.GraphicsDevice, 1, 1);
-                texture.SetData(new[] { Color.White });
-                return texture;
-            }
-            catch
-            {
-                return null!;
             }
         }
 
@@ -429,8 +391,7 @@ namespace LivingRoots.Services
         {
             try
             {
-                // Create a composite cache key including location name
-                Vector2 cacheKey = new Vector2(tile.X + locationName.GetHashCode() * 10000f, tile.Y);
+                var cacheKey = (locationName, tile);
 
                 // Check cache first
                 if (_healthCache.TryGetValue(cacheKey, out var cachedHealth))
