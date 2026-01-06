@@ -33,7 +33,7 @@ namespace LivingRoots.Services
         private const int TileSize = 64; // Stardew Valley tile size in pixels
 
         // Performance: Health cache
-        private readonly Dictionary<(string Location, Vector2 Tile), float> _healthCache = new Dictionary<(string, Vector2), float>();
+        private readonly Dictionary<(string Location, Point Tile), float> _healthCache = new Dictionary<(string, Point), float>();
         private readonly int _cacheSize = ModConstants.TileHealthCacheSize;
         private DateTime _lastCacheClear = DateTime.UtcNow;
         private readonly TimeSpan _cacheClearInterval = TimeSpan.FromSeconds(ModConstants.CacheClearIntervalSeconds);
@@ -356,7 +356,7 @@ namespace LivingRoots.Services
         private static void RenderColoredRectangle(SpriteBatch spriteBatch, Vector2 position, Color color)
         {
             // Create a simple texture for rendering
-            Texture2D texture = VisualizationHelpers.GetOrCreateOverlayTexture();
+            Texture2D? texture = VisualizationHelpers.GetOrCreateOverlayTexture();
 
             if (texture != null)
             {
@@ -391,7 +391,8 @@ namespace LivingRoots.Services
         {
             try
             {
-                var cacheKey = (locationName, tile);
+                var tileKey = new Point((int)tile.X, (int)tile.Y);
+                var cacheKey = (locationName, tileKey);
 
                 // Check cache first
                 if (_healthCache.TryGetValue(cacheKey, out var cachedHealth))

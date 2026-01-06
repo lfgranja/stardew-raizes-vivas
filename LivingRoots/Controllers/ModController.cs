@@ -109,11 +109,15 @@ namespace LivingRoots.Controllers
                 gameLoop.Saving += localSavingHandler;
 
                 // Register visualization events after core events
-                if (_soilHealthVisualizationService != null)
+                try
                 {
                     _soilHealthVisualizationService.RegisterEvents();
                 }
-
+                catch (Exception ex)
+                {
+                    _monitor.Log($"Visualization event registration failed: {ex.Message}", LogLevel.Error);
+                    _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                }
                 // now that everything succeeded, publish the "registered" state
                 System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
                 monitorSnapshot.Log("Events registered successfully.", LogLevel.Trace);
@@ -168,10 +172,7 @@ namespace LivingRoots.Controllers
         private void HandleRegistrationError(RegistrationContext ctx)
         {
             // Unregister visualization events on error
-            if (_soilHealthVisualizationService != null)
-            {
-                _soilHealthVisualizationService.UnregisterEvents();
-            }
+            _soilHealthVisualizationService?.UnregisterEvents();
 
             ctx.Monitor.Log("Error occurred while registering game events.", LogLevel.Error);
             ctx.Monitor.Log($"RegisterEvents exception type: {ctx.Exception.GetType().FullName} (HResult: 0x{ctx.Exception.HResult:X8})", LogLevel.Trace);
@@ -209,10 +210,7 @@ namespace LivingRoots.Controllers
         public void UnregisterEvents()
         {
             // Unregister visualization events before core events
-            if (_soilHealthVisualizationService != null)
-            {
-                _soilHealthVisualizationService.UnregisterEvents();
-            }
+            _soilHealthVisualizationService?.UnregisterEvents();
 
             // Early exit: if nothing registered and nothing to cleanup, return immediately
             if (!ShouldAttemptUnregister())
@@ -630,10 +628,7 @@ namespace LivingRoots.Controllers
                 _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
 
                 // Enable visualization after loading soil health data
-                if (_soilHealthVisualizationService != null)
-                {
-                    _soilHealthVisualizationService.Enable();
-                }
+                _soilHealthVisualizationService?.Enable();
             });
         }
 

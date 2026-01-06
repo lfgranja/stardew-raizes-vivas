@@ -138,34 +138,104 @@ namespace LivingRoots.Services
                     return;
                 }
 
+                var registrationResult = new EventRegistrationResult();
+
                 try
                 {
-                    // Initialize the handlers once
-                    _onCursorMovedHandler ??= OnCursorMoved;
-                    _onButtonPressedHandler ??= OnButtonPressed;
-                    _onRenderedWorldLayerHandler ??= OnRenderedWorld;
-                    _onRenderedHandler ??= OnRendered;
-                    _onUpdateTickedHandler ??= OnUpdateTicked;
-
-                    // Register events via SMAPI helper
-                    _helper.Events.Input.ButtonPressed += _onButtonPressedHandler;
-                    _helper.Events.Input.CursorMoved += _onCursorMovedHandler;
-                    _helper.Events.Display.RenderedWorld += _onRenderedWorldLayerHandler;
-                    _helper.Events.Display.Rendered += _onRenderedHandler;
-                    _helper.Events.GameLoop.UpdateTicked += _onUpdateTickedHandler;
+                    InitializeEventHandlers();
+                    RegisterEventHandlers(registrationResult);
 
                     _eventsRegistered = true;
                     _monitor.Log("Visualization events registered successfully.", LogLevel.Info);
                 }
                 catch (Exception ex)
                 {
-                    _monitor.Log($"Error registering visualization events: {ex.Message}", LogLevel.Error);
-                    _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-
-                    // Cleanup on failure
-                    UnregisterEvents();
+                    HandleRegistrationFailure(ex, registrationResult);
                 }
             }
+        }
+
+        /// <summary>
+        /// Initializes event handler delegates if they haven't been initialized.
+        /// </summary>
+        private void InitializeEventHandlers()
+        {
+            _onCursorMovedHandler ??= OnCursorMoved;
+            _onButtonPressedHandler ??= OnButtonPressed;
+            _onRenderedWorldLayerHandler ??= OnRenderedWorld;
+            _onRenderedHandler ??= OnRendered;
+            _onUpdateTickedHandler ??= OnUpdateTicked;
+        }
+
+        /// <summary>
+        /// Registers all event handlers via SMAPI helper.
+        /// </summary>
+        /// <param name="result">Registration result to track which events were successfully registered</param>
+        private void RegisterEventHandlers(EventRegistrationResult result)
+        {
+            _helper.Events.Input.ButtonPressed += _onButtonPressedHandler;
+            result.ButtonPressedAdded = true;
+
+            _helper.Events.Input.CursorMoved += _onCursorMovedHandler;
+            result.CursorMovedAdded = true;
+
+            _helper.Events.Display.RenderedWorld += _onRenderedWorldLayerHandler;
+            result.RenderedWorldAdded = true;
+
+            _helper.Events.Display.Rendered += _onRenderedHandler;
+            result.RenderedAdded = true;
+
+            _helper.Events.GameLoop.UpdateTicked += _onUpdateTickedHandler;
+            result.UpdateTickedAdded = true;
+        }
+
+        /// <summary>
+        /// Handles registration failure by logging error and cleaning up partial registrations.
+        /// </summary>
+        /// <param name="ex">The exception that occurred</param>
+        /// <param name="result">Registration result tracking which events were registered</param>
+        private void HandleRegistrationFailure(Exception ex, EventRegistrationResult result)
+        {
+            _monitor.Log($"Error registering visualization events: {ex.Message}", LogLevel.Error);
+            _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+
+            UnregisterPartialRegistrations(result);
+            _eventsRegistered = false;
+            UnregisterEvents();
+        }
+
+        /// <summary>
+        /// Unregisters any partial event registrations that occurred before the failure.
+        /// </summary>
+        /// <param name="result">Registration result tracking which events were registered</param>
+        private void UnregisterPartialRegistrations(EventRegistrationResult result)
+        {
+            if (result.ButtonPressedAdded && _onButtonPressedHandler != null)
+                _helper.Events.Input.ButtonPressed -= _onButtonPressedHandler;
+
+            if (result.CursorMovedAdded && _onCursorMovedHandler != null)
+                _helper.Events.Input.CursorMoved -= _onCursorMovedHandler;
+
+            if (result.RenderedWorldAdded && _onRenderedWorldLayerHandler != null)
+                _helper.Events.Display.RenderedWorld -= _onRenderedWorldLayerHandler;
+
+            if (result.RenderedAdded && _onRenderedHandler != null)
+                _helper.Events.Display.Rendered -= _onRenderedHandler;
+
+            if (result.UpdateTickedAdded && _onUpdateTickedHandler != null)
+                _helper.Events.GameLoop.UpdateTicked -= _onUpdateTickedHandler;
+        }
+
+        /// <summary>
+        /// Tracks which event handlers were successfully registered during event registration.
+        /// </summary>
+        private sealed class EventRegistrationResult
+        {
+            public bool ButtonPressedAdded { get; set; }
+            public bool CursorMovedAdded { get; set; }
+            public bool RenderedWorldAdded { get; set; }
+            public bool RenderedAdded { get; set; }
+            public bool UpdateTickedAdded { get; set; }
         }
 
         /// <inheritdoc/>
@@ -508,7 +578,7 @@ namespace LivingRoots.Services
                 }
 
                 var tool = Game1.player?.CurrentTool;
-                if (tool == null || tool.QualifiedItemId != "(H)Hoe")
+                if (tool == null || tool.QualifiedItemId != "(T)Hoe")
                 {
                     return;
                 }
@@ -573,7 +643,6 @@ namespace LivingRoots.Services
                 try
                 {
                     _tileOverlayRenderer.RenderAllVisibleOverlays(e.SpriteBatch, location);
-                    _renderedTilesLastFrame++;
                 }
                 catch (Exception ex)
                 {

@@ -18,7 +18,7 @@ namespace LivingRoots.Services
         /// </summary>
         /// <returns>A 1x1 white texture that can be scaled</returns>
         private static Texture2D? _overlayTexture;
-        public static Texture2D GetOrCreateOverlayTexture()
+        public static Texture2D? GetOrCreateOverlayTexture()
         {
             if (_overlayTexture != null)
             {
@@ -37,10 +37,10 @@ namespace LivingRoots.Services
                     _overlayTexture = new Texture2D(Game1.graphics.GraphicsDevice, 1, 1);
                     _overlayTexture.SetData(new[] { Color.White });
                 }
-                catch (Exception ex)
+                catch
                 {
-                    // Log error via IMonitor if available, or rethrow
-                    throw new InvalidOperationException("Failed to create overlay texture", ex);
+                    // Return null on failure. The caller is responsible for logging.
+                    return null;
                 }
             }
             return _overlayTexture;
