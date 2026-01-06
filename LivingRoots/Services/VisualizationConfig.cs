@@ -207,15 +207,23 @@ namespace LivingRoots.Services
     /// <summary>
     /// Color data structure for JSON serialization.
     /// </summary>
-    /// <remarks>
-    /// Initializes a new ColorData instance from a Color.
-    /// </remarks>
-    /// <param name="color">The color to convert</param>
-    public class ColorData(Color color)
+    public class ColorData
     {
-        public byte R { get; set; } = color.R;
-        public byte G { get; set; } = color.G;
-        public byte B { get; set; } = color.B;
-        public byte A { get; set; } = color.A;
+        public byte R { get; set; }
+        public byte G { get; set; }
+        public byte B { get; set; }
+        public byte A { get; set; }
+
+        // Parameterless constructor for deserialization
+        public ColorData() { }
+
+        public ColorData(Color color)
+        {
+            R = color.R;
+            G = color.G;
+            B = color.B;
+            A = color.A;
+        }
     }
 }
+
