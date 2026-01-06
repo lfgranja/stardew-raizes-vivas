@@ -307,7 +307,7 @@ namespace LivingRoots.Tests
             float result = VisualizationHelpers.ClampHealth(health);
 
             // Assert
-            Assert.Equal(0f, result);
+            Assert.Equal(0f, result); // -10 is clamped to 0 (MinSoilHealth)
         }
 
         [Fact]
@@ -340,8 +340,8 @@ namespace LivingRoots.Tests
         public void ClampHealth_BoundaryValues_ReturnsCorrectValues()
         {
             // Act & Assert
-            Assert.Equal(0f, VisualizationHelpers.ClampHealth(0f));
-            Assert.Equal(100f, VisualizationHelpers.ClampHealth(100f));
+            Assert.Equal(0f, VisualizationHelpers.ClampHealth(0f)); // 0 is already at the minimum boundary
+            Assert.Equal(100f, VisualizationHelpers.ClampHealth(100f)); // 100 is at the maximum boundary
         }
 
         [Fact]

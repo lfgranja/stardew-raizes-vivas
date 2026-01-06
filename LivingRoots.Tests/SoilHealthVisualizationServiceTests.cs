@@ -349,7 +349,7 @@ namespace LivingRoots.Tests
             float health = _service.GetSoilHealth("TestLocation", invalidTile);
 
             // Assert
-            Assert.Equal(0f, health);
+            Assert.Equal(0f, health); // Returns 0f for invalid tile (visualization service error handling)
             _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Invalid tile")), LogLevel.Trace), Times.Once);
         }
 
@@ -364,7 +364,7 @@ namespace LivingRoots.Tests
             float health = _service.GetSoilHealth("TestLocation", tile);
 
             // Assert
-            Assert.Equal(0f, health);
+            Assert.Equal(0f, health); // Returns 0f when health is negative (clamped to 0 by VisualizationHelpers.ClampHealth)
         }
 
         [Fact]
@@ -546,7 +546,7 @@ namespace LivingRoots.Tests
             float health = _service.GetSoilHealth("TestLocation", new Vector2(5, 10));
 
             // Assert
-            Assert.Equal(0f, health);
+            Assert.Equal(0f, health); // Returns 0f when exception occurs (visualization service error handling)
             _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Error getting soil health")), LogLevel.Error), Times.Once);
         }
 

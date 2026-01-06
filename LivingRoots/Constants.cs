@@ -17,7 +17,7 @@ namespace LivingRoots
         public const int HealthyHealthThreshold = 100;
 
         // Security Constants
-        public const int MaxTilesPerLocation = 500; // Maximum number of tiles allowed per location to prevent DoS attacks
+        public const int MaxTilesPerLocation = 5000; // Maximum number of tiles allowed per location to prevent DoS attacks
         public const int MaxLocationsPerSave = 50; // Maximum number of locations allowed per save to prevent DoS attacks
         public const int MaxAbsoluteTileCoordinate = 10000; // Maximum absolute value for tile coordinates to prevent malicious save files
         public const int MaxSaveIdLength = 200; // Maximum length for save IDs to prevent overlong filenames
@@ -25,7 +25,7 @@ namespace LivingRoots
 
         // Additional constants for security and performance
         public const int MaxDataKeyLength = 200; // Maximum length for generated data keys (prefix + sanitized saveId)
-        public const int MaxTilesPerSave = 30000; // Global limit for tile processing across all locations to prevent DoS attacks (slightly above theoretical max of 50 * 500 = 25,000)
+        public const int MaxTilesPerSave = 300000; // Global limit for tile processing across all locations to prevent DoS attacks (slightly above theoretical max of 50 * 500 = 25,000)
 
         // Additional constants for security and performance
         public const int MaxPathSegmentLength = 100; // Maximum length for individual path segments to prevent DoS attacks

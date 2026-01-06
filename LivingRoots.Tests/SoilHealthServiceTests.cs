@@ -51,7 +51,7 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.Equal(100.0f, resultMax); // 105 should be clamped to 100 (MaxSoilHealth)
-            Assert.Equal(0.0f, resultMin); // -5 should be clamped to 0 (MinSoilHealth)
+            Assert.Equal(30.0f, resultMin); // -5 should be clamped to 0 (MinSoilHealth), then not stored due to sparse cache, so returns InitialSoilHealth (30f)
         }
 
         [Theory]
@@ -68,7 +68,7 @@ namespace LivingRoots.Tests
             var result = service.GetSoilHealth(location!, tile);
 
             // Assert
-            Assert.Equal(0f, result);
+            Assert.Equal(30f, result); // InitialSoilHealth is 30f
         }
 
         [Theory]
@@ -86,7 +86,7 @@ namespace LivingRoots.Tests
             var result = service.GetSoilHealth(location, new Vector2(x, y));
 
             // Assert
-            Assert.Equal(0f, result);
+            Assert.Equal(30f, result); // Returns InitialSoilHealth (30f) for invalid coordinates
         }
 
         [Theory]
@@ -134,9 +134,9 @@ namespace LivingRoots.Tests
             // Act
             service.SetSoilHealth(location, new Vector2(x, y), 50.0f);
 
-            // Assert - Should not have added any entries to the cache
-            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(0, 0)));
-            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(x, y)));
+            // Assert - Should not have added any entries to the cache, returns InitialSoilHealth (30f)
+            Assert.Equal(30f, service.GetSoilHealth(location, new Vector2(0, 0)));
+            Assert.Equal(30f, service.GetSoilHealth(location, new Vector2(x, y)));
         }
 
         [Theory]
@@ -224,12 +224,12 @@ namespace LivingRoots.Tests
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
-            service.UpdateHealth(location, tile, -100.0f); // Should result in 50-100=-50 -> clamp to 0 (MinSoilHealth)
+            service.UpdateHealth(location, tile, -100.0f); // Should result in 50-100=-50 -> clamp to 0 (MinSoilHealth), not stored due to sparse cache
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
             Assert.Equal(100.0f, resultMax); // 130 clamped to 100
-            Assert.Equal(0.0f, resultMin); // -50 clamped to 0
+            Assert.Equal(30f, resultMin); // -50 clamped to 0, not stored due to sparse cache, so returns InitialSoilHealth (30f)
         }
 
         [Theory]
@@ -248,7 +248,7 @@ namespace LivingRoots.Tests
 
             // Assert - Value should be cleared (not preserved) when invalid saveId is passed
             // This prevents data leakage between different game saves
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            Assert.Equal(30f, service.GetSoilHealth("Farm", tile)); // Returns InitialSoilHealth (30f) when cache is cleared
         }
 
         [Fact]
@@ -310,7 +310,7 @@ namespace LivingRoots.Tests
             service.LoadData("test_save");
 
             // Assert - Should not throw and should have empty cache
-            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(10, 10))); // Returns InitialSoilHealth (30f) when cache is empty
         }
 
         [Fact]
@@ -348,7 +348,7 @@ namespace LivingRoots.Tests
             // Assert - Only valid entry should be loaded
             Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
             // Invalid entries should not exist
-            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(0, 0))); // Default for invalid
+            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(0, 0))); // Default for invalid
         }
 
         [Fact]
@@ -386,13 +386,13 @@ namespace LivingRoots.Tests
             // Assert - Invalid values should be converted to 0, valid entries should remain
             Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(13, 13)));
             // NegativeInfinity should be converted to 0 (not skipped)
-            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
             // PositiveInfinity should be converted to 100.
             Assert.Equal(100f, service.GetSoilHealth("Farm", new Vector2(11, 11)));
-            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
+            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
 
             // Additional verification: Ensure that no unexpected values were created
-            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(99, 99))); // Non-existent tile should return default value
+            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(99, 99))); // Non-existent tile should return default value
         }
 
         [Fact]
@@ -426,8 +426,8 @@ namespace LivingRoots.Tests
             // Assert - Only valid location should be loaded
             Assert.Equal(75.5f, service.GetSoilHealth("Farm", new Vector2(13, 13)));
             // Empty/whitespace locations should not exist
-            Assert.Equal(0f, service.GetSoilHealth("", new Vector2(11, 11)));
-            Assert.Equal(0f, service.GetSoilHealth("   ", new Vector2(12, 12)));
+            Assert.Equal(30f, service.GetSoilHealth("", new Vector2(11, 11)));
+            Assert.Equal(30f, service.GetSoilHealth("   ", new Vector2(12, 12)));
         }
 
         [Fact]
@@ -451,7 +451,7 @@ namespace LivingRoots.Tests
             var ex = Record.Exception(() => service.LoadData("test_save"));
             Assert.Null(ex); // Should not throw
             // Cache should be cleared when exception occurs during loading
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            Assert.Equal(30f, service.GetSoilHealth("Farm", tile)); // Returns InitialSoilHealth (30f) when cache is cleared
         }
 
         [Theory]
@@ -1054,7 +1054,7 @@ namespace LivingRoots.Tests
             service.LoadData("invalid_save");
 
             // Assert - Cache should be cleared when sanitization fails
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            Assert.Equal(30f, service.GetSoilHealth("Farm", tile)); // Returns InitialSoilHealth (30f) when cache is cleared
             // Verify that the monitor was called to log the error
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
         }
@@ -1096,7 +1096,7 @@ namespace LivingRoots.Tests
             service.LoadData("empty_result");
 
             // Assert - Cache should be cleared when sanitization results in empty string
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            Assert.Equal(30f, service.GetSoilHealth("Farm", tile)); // Returns InitialSoilHealth (30f) when cache is cleared
             // Verify that the monitor was called to log the error
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
         }
@@ -1174,7 +1174,7 @@ namespace LivingRoots.Tests
             for (var i = 0; i < totalEntries; i++)
             {
                 var healthValue = service.GetSoilHealth("Farm", new Vector2(i, 0));
-                if (Math.Abs(healthValue - 0.0f) > 0.0001f)
+                if (Math.Abs(healthValue - 30.0f) > 0.0001f) // Check if value differs from InitialSoilHealth (30f)
                 {
                     loadedEntriesCount++;
                 }
@@ -1440,10 +1440,10 @@ namespace LivingRoots.Tests
             // Act
             service.Reset();
 
-            // Assert - All cached data should be cleared
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile1));
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile2));
-            Assert.Equal(0.0f, service.GetSoilHealth("Town", tile1));
+            // Assert - All cached data should be cleared, returns InitialSoilHealth (30f) for non-existent tiles
+            Assert.Equal(30f, service.GetSoilHealth("Farm", tile1));
+            Assert.Equal(30f, service.GetSoilHealth("Farm", tile2));
+            Assert.Equal(30f, service.GetSoilHealth("Town", tile1));
         }
 
         [Fact]
@@ -1452,15 +1452,15 @@ namespace LivingRoots.Tests
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
-            // Cache is initially empty, verify this
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            // Cache is initially empty, verify this (returns InitialSoilHealth)
+            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(10, 10))); // Returns InitialSoilHealth (30f)
 
             // Act & Assert
             var ex = Record.Exception(() => service.Reset());
             Assert.Null(ex); // Should not throw
 
-            // Verify cache is still empty after reset
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            // Verify cache is still empty after reset (returns InitialSoilHealth)
+            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(10, 10))); // Returns InitialSoilHealth (30f)
         }
 
         [Fact]

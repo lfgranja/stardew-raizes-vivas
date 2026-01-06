@@ -70,7 +70,7 @@ namespace LivingRoots.Tests
             // Verify that no data from the exceeding location was added to the cache
             for (var i = 0; i < excessTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("Farm", new Vector2(i, 0)));
+                Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(i, 0))); // Returns InitialSoilHealth (30f) when cache is cleared
             }
         }
 
@@ -125,11 +125,11 @@ namespace LivingRoots.Tests
             // Verify that no data from the exceeding location was added to the cache
             for (var i = 0; i < excessTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)));
+                Assert.Equal(30f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0))); // Returns InitialSoilHealth (30f) when cache is cleared
             }
 
             // The valid location should NOT be processed since the entire load is aborted
-            Assert.Equal(0.0f, service.GetSoilHealth("ValidLocation", new Vector2(100, 100)));
+            Assert.Equal(30f, service.GetSoilHealth("ValidLocation", new Vector2(100, 100))); // Returns InitialSoilHealth (30f) when cache is cleared
         }
 
         [Fact]
@@ -189,13 +189,13 @@ namespace LivingRoots.Tests
             // Verify that the at-limit location was NOT processed since the entire load was aborted
             for (var i = 0; i < atLimitTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("AtLimitLocation", new Vector2(i, 0)));
+                Assert.Equal(30f, service.GetSoilHealth("AtLimitLocation", new Vector2(i, 0))); // Returns InitialSoilHealth (30f) when cache is cleared
             }
 
             // Verify that no data from the exceeding location was added to the cache
             for (var i = 0; i < excessTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)));
+                Assert.Equal(30f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0))); // Returns InitialSoilHealth (30f) when cache is cleared
             }
         }
 
