@@ -1,5 +1,6 @@
 using LivingRoots.Domain;
 using LivingRoots.Services;
+using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
@@ -836,143 +837,153 @@ namespace LivingRoots.Controllers
 
         private void ModifySoilHealth(string command, string[] args, float amount, bool isIncrease, bool setToValue = false)
         {
-            // Skip if controller has been disposed
             if (IsDisposed())
                 return;
 
-            // Snapshot dependencies to local variables to avoid NullReferenceExceptions
             var monitorSnapshot = _monitor;
             var soilHealthServiceSnapshot = _soilHealthService;
 
             try
             {
-                // Add null check for args parameter
                 args = args ?? Array.Empty<string>();
 
-                // Check if any non-whitespace argument matches a help flag
-                if (args.Any(arg => !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg.Trim())))
+                if (IsHelpRequested(args))
                 {
-                    monitorSnapshot?.Log($"Usage: {command}", LogLevel.Info);
-                    if (isIncrease)
-                    {
-                        if (setToValue)
-                        {
-                            monitorSnapshot?.Log($"Sets soil health to maximum ({ModConstants.MaxSoilHealth}) on the tile you're standing on.", LogLevel.Info);
-                        }
-                        else
-                        {
-                            monitorSnapshot?.Log($"Increases soil health by {amount} on the tile you're standing on.", LogLevel.Info);
-                        }
-                    }
-                    else
-                    {
-                        if (setToValue)
-                        {
-                            monitorSnapshot?.Log($"Sets soil health to minimum ({ModConstants.MinSoilHealth}) on the tile you're standing on.", LogLevel.Info);
-                        }
-                        else
-                        {
-                            monitorSnapshot?.Log($"Decreases soil health by {amount} on the tile you're standing on.", LogLevel.Info);
-                        }
-                    }
+                    DisplayHelpMessage(command, amount, isIncrease, setToValue, monitorSnapshot);
                     return;
                 }
 
-                // Get the player
-                var player = Game1.player;
-                if (player == null)
+                var context = GetSoilHealthModificationContext(monitorSnapshot);
+                if (!context.HasValue)
+                    return;
+
+                var ctx = context.Value;
+                var currentHealth = soilHealthServiceSnapshot?.GetSoilHealth(ctx.Location.Name, ctx.Tile) ?? ModConstants.InitialSoilHealth;
+                var newHealth = CalculateNewHealth(currentHealth, amount, isIncrease, setToValue);
+                newHealth = ValidateHealthBounds(newHealth, monitorSnapshot);
+
+                if (IsHealthUnchanged(currentHealth, newHealth))
                 {
-                    monitorSnapshot?.Log("Player not found. Make sure you're in-game.", LogLevel.Error);
+                    LogNoChangeMessage(setToValue, newHealth, currentHealth, monitorSnapshot);
                     return;
                 }
 
-                // Get the current location
-                var currentLocation = player.currentLocation;
-                if (currentLocation == null)
-                {
-                    monitorSnapshot?.Log("Current location not found.", LogLevel.Error);
-                    return;
-                }
-
-                // Get the tile the player is standing on
-                var playerTile = player.Tile;
-
-                // Check if the tile has tilled soil (HoeDirt)
-                var terrainFeature = currentLocation.terrainFeatures.Pairs
-                    .FirstOrDefault(tf => tf.Key == playerTile)
-                    .Value;
-
-                if (terrainFeature == null)
-                {
-                    monitorSnapshot?.Log("No terrain feature found on this tile. Stand on tilled soil to use this command.", LogLevel.Warn);
-                    return;
-                }
-
-                if (terrainFeature is not HoeDirt)
-                {
-                    monitorSnapshot?.Log("This tile is not tilled soil. Stand on tilled soil (tilled with a hoe) to use this command.", LogLevel.Warn);
-                    return;
-                }
-
-                // Get current soil health
-                var currentHealth = soilHealthServiceSnapshot?.GetSoilHealth(currentLocation.Name, playerTile) ?? ModConstants.InitialSoilHealth;
-
-                // Calculate new health value
-                float newHealth;
-                if (setToValue)
-                {
-                    newHealth = amount;
-                }
-                else
-                {
-                    newHealth = isIncrease ? currentHealth + amount : currentHealth - amount;
-                }
-
-                // Validate against constants
-                if (newHealth > ModConstants.MaxSoilHealth)
-                {
-                    newHealth = ModConstants.MaxSoilHealth;
-                    monitorSnapshot?.Log($"Soil health capped at maximum ({ModConstants.MaxSoilHealth}).", LogLevel.Info);
-                }
-                else if (newHealth < ModConstants.MinSoilHealth)
-                {
-                    newHealth = ModConstants.MinSoilHealth;
-                    monitorSnapshot?.Log($"Soil health capped at minimum ({ModConstants.MinSoilHealth}).", LogLevel.Info);
-                }
-
-                // Check if value would not change
-                if (Math.Abs(newHealth - currentHealth) < 0.0001f)
-                {
-                    if (setToValue)
-                    {
-                        monitorSnapshot?.Log($"Soil health is already at the requested value ({newHealth:F1}).", LogLevel.Info);
-                    }
-                    else
-                    {
-                        monitorSnapshot?.Log($"Soil health would not change from current value ({currentHealth:F1}).", LogLevel.Info);
-                    }
-                    return;
-                }
-
-                // Set the new soil health value
-                soilHealthServiceSnapshot?.SetSoilHealth(currentLocation.Name, playerTile, newHealth);
-
-                // Provide feedback
-                monitorSnapshot?.Log($"Soil health changed from {currentHealth:F1} to {newHealth:F1} on tile ({playerTile.X}, {playerTile.Y}) in {currentLocation.Name}.", LogLevel.Info);
+                soilHealthServiceSnapshot?.SetSoilHealth(ctx.Location.Name, ctx.Tile, newHealth);
+                monitorSnapshot?.Log($"Soil health changed from {currentHealth:F1} to {newHealth:F1} on tile ({ctx.Tile.X}, {ctx.Tile.Y}) in {ctx.Location.Name}.", LogLevel.Info);
             }
             catch (Exception ex)
             {
-                // Log error but don't expose raw exception message for security
                 monitorSnapshot?.Log("Error occurred while modifying soil health.", LogLevel.Error);
-
-                // Add trace-level exception details for debugging
                 monitorSnapshot?.Log($"ModifySoilHealth exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-
-                // Add stack trace logging for better diagnostics without exposing sensitive information
 #if DEBUG
                 monitorSnapshot?.Log(ex.StackTrace ?? "ModifySoilHealth stack trace unavailable.", LogLevel.Trace);
 #endif
             }
+        }
+
+        private static bool IsHelpRequested(string[] args)
+        {
+            return args.Any(arg => !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg.Trim()));
+        }
+
+        private static void DisplayHelpMessage(string command, float amount, bool isIncrease, bool setToValue, IMonitor monitor)
+        {
+            monitor?.Log($"Usage: {command}", LogLevel.Info);
+
+            if (isIncrease)
+            {
+                var message = setToValue
+                    ? $"Sets soil health to maximum ({ModConstants.MaxSoilHealth}) on the tile you're standing on."
+                    : $"Increases soil health by {amount} on the tile you're standing on.";
+                monitor?.Log(message, LogLevel.Info);
+            }
+            else
+            {
+                var message = setToValue
+                    ? $"Sets soil health to minimum ({ModConstants.MinSoilHealth}) on the tile you're standing on."
+                    : $"Decreases soil health by {amount} on the tile you're standing on.";
+                monitor?.Log(message, LogLevel.Info);
+            }
+        }
+
+        private SoilHealthModificationContext? GetSoilHealthModificationContext(IMonitor monitor)
+        {
+            var player = Game1.player;
+            if (player == null)
+            {
+                monitor?.Log("Player not found. Make sure you're in-game.", LogLevel.Error);
+                return null;
+            }
+
+            var currentLocation = player.currentLocation;
+            if (currentLocation == null)
+            {
+                monitor?.Log("Current location not found.", LogLevel.Error);
+                return null;
+            }
+
+            var playerTile = player.Tile;
+            var terrainFeature = currentLocation.terrainFeatures.Pairs
+                .FirstOrDefault(tf => tf.Key == playerTile)
+                .Value;
+
+            if (terrainFeature == null)
+            {
+                monitor?.Log("No terrain feature found on this tile. Stand on tilled soil to use this command.", LogLevel.Warn);
+                return null;
+            }
+
+            if (terrainFeature is not HoeDirt)
+            {
+                monitor?.Log("This tile is not tilled soil. Stand on tilled soil (tilled with a hoe) to use this command.", LogLevel.Warn);
+                return null;
+            }
+
+            return new SoilHealthModificationContext
+            {
+                Location = currentLocation,
+                Tile = playerTile
+            };
+        }
+
+        private static float CalculateNewHealth(float currentHealth, float amount, bool isIncrease, bool setToValue)
+        {
+            if (setToValue)
+            {
+                return amount;
+            }
+
+            return isIncrease ? currentHealth + amount : currentHealth - amount;
+        }
+
+        private static float ValidateHealthBounds(float health, IMonitor monitor)
+        {
+            if (health > ModConstants.MaxSoilHealth)
+            {
+                monitor?.Log($"Soil health capped at maximum ({ModConstants.MaxSoilHealth}).", LogLevel.Info);
+                return ModConstants.MaxSoilHealth;
+            }
+
+            if (health < ModConstants.MinSoilHealth)
+            {
+                monitor?.Log($"Soil health capped at minimum ({ModConstants.MinSoilHealth}).", LogLevel.Info);
+                return ModConstants.MinSoilHealth;
+            }
+
+            return health;
+        }
+
+        private static bool IsHealthUnchanged(float currentHealth, float newHealth)
+        {
+            return Math.Abs(newHealth - currentHealth) < 0.0001f;
+        }
+
+        private static void LogNoChangeMessage(bool setToValue, float newHealth, float currentHealth, IMonitor monitor)
+        {
+            var message = setToValue
+                ? $"Soil health is already at the requested value ({newHealth:F1})."
+                : $"Soil health would not change from current value ({currentHealth:F1}).";
+            monitor?.Log(message, LogLevel.Info);
         }
 
         public void Dispose()
@@ -1082,5 +1093,14 @@ namespace LivingRoots.Controllers
         public EventHandler<SaveLoadedEventArgs>? SaveLoadedHandler { get; init; }
         public bool SavingRemoved { get; init; }
         public EventHandler<SavingEventArgs>? SavingHandler { get; init; }
+    }
+
+    /// <summary>
+    /// Context class to encapsulate soil health modification parameters
+    /// </summary>
+    internal readonly struct SoilHealthModificationContext
+    {
+        public GameLocation Location { get; init; }
+        public Vector2 Tile { get; init; }
     }
 }
