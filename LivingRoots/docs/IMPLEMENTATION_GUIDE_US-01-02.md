@@ -1450,17 +1450,13 @@ namespace LivingRoots.Domain
         private Color ParseColor(ColorData? colorData, Color defaultColor)
         {
             if (colorData == null)
+            {
                 return defaultColor;
+            }
 
-            try
-            {
-                return new Color(colorData.R, colorData.G, colorData.B, colorData.A);
-            }
-            catch
-            {
-                _monitor.Log("Invalid color data, using default.", LogLevel.Warn);
-                return defaultColor;
-            }
+            // The Color constructor with byte arguments will not throw.
+            // Any validation should occur when deserializing the config file.
+            return new Color(colorData.R, colorData.G, colorData.B, colorData.A);
         }
     }
 
