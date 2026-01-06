@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using StardewValley;
 
 namespace LivingRoots.Services
@@ -11,6 +12,40 @@ namespace LivingRoots.Services
     {
         // Rendering constants
         private const int TileSize = 64; // Stardew Valley tile size in pixels
+
+        /// <summary>
+        /// Gets or creates a simple texture for rendering.
+        /// </summary>
+        /// <returns>A 1x1 white texture that can be scaled</returns>
+        private static Texture2D? _overlayTexture;
+        public static Texture2D GetOrCreateOverlayTexture()
+        {
+            if (_overlayTexture != null)
+            {
+                return _overlayTexture;
+            }
+
+            // Try to get existing texture from game
+            if (Game1.staminaRect != null)
+            {
+                _overlayTexture = Game1.staminaRect;
+            }
+            else
+            {
+                try
+                {
+                    _overlayTexture = new Texture2D(Game1.graphics.GraphicsDevice, 1, 1);
+                    _overlayTexture.SetData(new[] { Color.White });
+                }
+                catch (Exception ex)
+                {
+                    // Log error via IMonitor if available, or rethrow
+                    throw new InvalidOperationException("Failed to create overlay texture", ex);
+                }
+            }
+            return _overlayTexture;
+        }
+
 
         /// <summary>
         /// Gets health level text for a given health value.
