@@ -42,7 +42,7 @@ namespace LivingRoots
 
             // Create visualization components
             var visualizationConfig = new VisualizationConfig(this.Monitor, modDataService);
-            var colorMapper = new ColorMapper(this.Monitor, visualizationConfig);
+            var colorMapper = new ColorMapper(visualizationConfig);
             var tileOverlayRenderer = new TileOverlayRenderer(this.Monitor, visualizationConfig, colorMapper, soilHealthService);
             var tooltipRenderer = new TooltipRenderer(this.Monitor, visualizationConfig, colorMapper);
             var soilHealthVisualizationService = new SoilHealthVisualizationService(
