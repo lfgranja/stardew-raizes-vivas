@@ -312,11 +312,10 @@ namespace LivingRoots.Services
         /// <returns>Updated warning status</returns>
         private bool AddTileEntryAndLogWarnings(Dictionary<Point, float> tileDict, TileProcessingResult processingResult, string locationName, bool alreadyWarned)
         {
-            // Handle valid tile entries
+            // Handle valid tile entries - including 0 values to distinguish "set to 0" from "not set"
             if (processingResult.IsSuccess &&
                 processingResult.TilePoint.HasValue &&
-                processingResult.HealthValue.HasValue &&
-                Math.Abs(processingResult.HealthValue.Value) > 0.0001f) // Using epsilon comparison for floating point
+                processingResult.HealthValue.HasValue)
             {
                 tileDict[processingResult.TilePoint.Value] = processingResult.HealthValue.Value;
             }
@@ -480,11 +479,8 @@ namespace LivingRoots.Services
                 // Clamp value to valid range [0, 100] before saving - ClampHealthValue handles NaN/Infinity
                 var clampedValue = ClampHealthValue(tile.Value);
 
-                // Only save non-zero values to prevent bloating the save file with default values
-                if (Math.Abs(clampedValue) > 0.0001f) // Using epsilon comparison for floating point
-                {
-                    tileDict[tileKey] = clampedValue;
-                }
+                // Save all values including 0 to distinguish "set to 0" from "not set"
+                tileDict[tileKey] = clampedValue;
             }
 
             return ProcessSaveLocationResult.SuccessWithTiles(tileDict);
@@ -661,19 +657,9 @@ namespace LivingRoots.Services
             // Domain Rule: Clamp between 0 and 100 (aligning with documentation and MaxSoilHealth constant)
             var clampedValue = ClampHealthValue(value);
 
-            // Don't store default values; keep the cache sparse to prevent unbounded growth.
-            if (Math.Abs(clampedValue) < 0.0001f) // Using epsilon comparison for floating point
-            {
-                if (_runtimeCache.TryGetValue(locationName, out var existingTiles) &&
-                    existingTiles.Remove(tilePoint) &&
-                    existingTiles.Count == 0)
-                {
-                    _runtimeCache.Remove(locationName);
-                }
-                return SoilHealthOperationResult.Success;
-            }
-
-            // Only allocate location storage if we actually need to store a non-default value.
+            // Store all values including 0 to distinguish "set to 0" from "not set"
+            // This fixes the bug where soil health set to 0 would be treated as non-existent
+            // and return InitialSoilHealth (30f) instead of 0
             if (!_runtimeCache.TryGetValue(locationName, out var tiles))
             {
                 // Check location count limit before creating a new location

@@ -51,7 +51,7 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.Equal(100.0f, resultMax); // 105 should be clamped to 100 (MaxSoilHealth)
-            Assert.Equal(30.0f, resultMin); // -5 should be clamped to 0 (MinSoilHealth), then not stored due to sparse cache, so returns InitialSoilHealth (30f)
+            Assert.Equal(0.0f, resultMin); // -5 should be clamped to 0 (MinSoilHealth) and stored, so returns 0
         }
 
         [Theory]
@@ -224,12 +224,12 @@ namespace LivingRoots.Tests
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
-            service.UpdateHealth(location, tile, -100.0f); // Should result in 50-100=-50 -> clamp to 0 (MinSoilHealth), not stored due to sparse cache
+            service.UpdateHealth(location, tile, -100.0f); // Should result in 50-100=-50 -> clamp to 0 (MinSoilHealth), stored as 0
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
             Assert.Equal(100.0f, resultMax); // 130 clamped to 100
-            Assert.Equal(30f, resultMin); // -50 clamped to 0, not stored due to sparse cache, so returns InitialSoilHealth (30f)
+            Assert.Equal(0.0f, resultMin); // -50 clamped to 0 and stored, so returns 0
         }
 
         [Theory]
@@ -385,11 +385,12 @@ namespace LivingRoots.Tests
 
             // Assert - Invalid values should be converted to 0, valid entries should remain
             Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(13, 13)));
-            // NegativeInfinity should be converted to 0 (not skipped)
-            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            // NegativeInfinity should be converted to 0 (stored as 0)
+            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
             // PositiveInfinity should be converted to 100.
             Assert.Equal(100f, service.GetSoilHealth("Farm", new Vector2(11, 11)));
-            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
+            // NaN should be converted to 0 (stored as 0)
+            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
 
             // Additional verification: Ensure that no unexpected values were created
             Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(99, 99))); // Non-existent tile should return default value
@@ -534,22 +535,22 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void SaveData_WithNaNInfinityValues_SavesNonZeroValuesAndSkipsZeroValuesDueToSparseCache()
+        public void SaveData_WithNaNInfinityValues_SavesAllValuesIncludingZero()
         {
             // This test validates the correct behavior of NaN and Infinity values during save:
-            // - NaN values are converted to 0 by ClampHealthValue and are NOT saved due to sparse cache functionality
+            // - NaN values are converted to 0 by ClampHealthValue and ARE saved (to distinguish "set to 0" from "not set")
             // - PositiveInfinity values are converted to MaxSoilHealth (100) by ClampHealthValue and ARE saved
-            // - NegativeInfinity values are converted to MinSoilHealth (0) by ClampHealthValue and are NOT saved due to sparse cache
+            // - NegativeInfinity values are converted to MinSoilHealth (0) by ClampHealthValue and ARE saved
             // - Valid values are saved normally
 
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
             // Manually set some values including NaN and Infinity to test save behavior
             service.SetSoilHealth("Farm", new Vector2(10, 10), 75.5f); // Valid value - should be saved
-            service.SetSoilHealth("Farm", new Vector2(11, 11), float.NaN); // Invalid value - will be converted to 0 by ClampHealthValue, not saved due to sparse cache
+            service.SetSoilHealth("Farm", new Vector2(11, 11), float.NaN); // Invalid value - will be converted to 0 by ClampHealthValue, IS saved
             service.SetSoilHealth("Farm", new Vector2(12, 12), float.PositiveInfinity); // Invalid value - will be converted to MaxSoilHealth (100) by ClampHealthValue, IS saved
             service.SetSoilHealth("Farm", new Vector2(13, 13), 25.5f); // Valid value - should be saved
-            service.SetSoilHealth("Farm", new Vector2(14, 14), float.NegativeInfinity); // Invalid value - will be converted to MinSoilHealth (0) by ClampHealthValue, not saved due to sparse cache
+            service.SetSoilHealth("Farm", new Vector2(14, 14), float.NegativeInfinity); // Invalid value - will be converted to MinSoilHealth (0) by ClampHealthValue, IS saved
 
             // Set up mock to capture the data that gets saved
             SoilHealthState capturedSaveState = null!;
@@ -578,16 +579,18 @@ namespace LivingRoots.Tests
             Assert.Contains("Farm", capturedSaveState.LocationHealthData.Keys);
 
             var farmData = capturedSaveState.LocationHealthData["Farm"];
-            // Only entries with non-zero values should be present due to sparse cache
+            // All entries should be present including 0 values (to distinguish "set to 0" from "not set")
             Assert.Contains("10,10", farmData.Keys); // 75.5f -> should be saved
-            Assert.DoesNotContain("11,11", farmData.Keys); // NaN converted to 0, so not saved due to sparse cache
+            Assert.Contains("11,11", farmData.Keys); // NaN converted to 0, so IS saved
             Assert.Contains("12,12", farmData.Keys); // PositiveInfinity converted to 100, so IS saved
             Assert.Contains("13,13", farmData.Keys); // 25.5f -> should be saved
-            Assert.DoesNotContain("14,14", farmData.Keys); // NegativeInfinity converted to 0, so not saved due to sparse cache
+            Assert.Contains("14,14", farmData.Keys); // NegativeInfinity converted to 0, so IS saved
 
             Assert.Equal(75.5f, farmData["10,10"]);
+            Assert.Equal(0f, farmData["11,11"]); // NaN converted to 0
             Assert.Equal(100f, farmData["12,12"]); // PositiveInfinity converted to MaxSoilHealth (100)
             Assert.Equal(25.5f, farmData["13,13"]);
+            Assert.Equal(0f, farmData["14,14"]); // NegativeInfinity converted to 0
 
             // Verify that SaveData was called exactly once
             _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Once);
