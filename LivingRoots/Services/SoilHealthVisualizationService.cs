@@ -205,6 +205,13 @@ namespace LivingRoots.Services
 
                     _eventsRegistered = false;
                     _monitor.Log("Visualization events unregistered successfully.", LogLevel.Trace);
+
+                    // Clear handler references
+                    _onButtonPressedHandler = null;
+                    _onCursorMovedHandler = null;
+                    _onRenderedWorldLayerHandler = null;
+                    _onRenderedHandler = null;
+                    _onUpdateTickedHandler = null;
                 }
                 catch (Exception ex)
                 {
@@ -232,7 +239,7 @@ namespace LivingRoots.Services
                 }
 
                 // Get health from soil health service
-                float health = _soilHealthService.GetSoilHealth(locationName, tile);
+                var health = _soilHealthService.GetSoilHealth(locationName, tile);
 
                 // Clamp to valid range
                 return VisualizationHelpers.ClampHealth(health);
@@ -495,7 +502,7 @@ namespace LivingRoots.Services
                     return;
                 }
 
-                if (e.Button != SButton.MouseLeft)
+                if (!e.Button.IsUseToolButton())
                 {
                     return;
                 }
