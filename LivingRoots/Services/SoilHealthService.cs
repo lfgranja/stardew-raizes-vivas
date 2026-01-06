@@ -523,7 +523,7 @@ namespace LivingRoots.Services
             // Use the validation helper to check for a valid tile
             if (!IsValidTile(locationName, tile, out Point tilePoint))
             {
-                return 0f;
+                return ModConstants.InitialSoilHealth;
             }
 
             float result;
@@ -535,7 +535,7 @@ namespace LivingRoots.Services
                 }
                 else
                 {
-                    result = 0f; // Return default (Poor Soil) if no data exists
+                    result = ModConstants.InitialSoilHealth; // Return initial soil health if no data exists
                 }
             }
             return result;

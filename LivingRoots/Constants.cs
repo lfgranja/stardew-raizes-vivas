@@ -6,6 +6,7 @@ namespace LivingRoots
     {
         // Soil Health Constants
         public const string KeyPrefix = "soil_health_data_";
+        public const float InitialSoilHealth = 30f;
         public const float MinSoilHealth = 0f;
         public const float MaxSoilHealth = 100f;  // Changed from 10 to 100 to align with documentation
 

@@ -29,7 +29,7 @@ namespace LivingRoots.Services
         // Tooltip styling constants
         private const int TooltipPadding = 8;
         private const int TooltipBorderWidth = 2;
-        private const int TooltipLineHeight = 16;
+        private const int TooltipLineHeight = 20;
         private const int CursorOffsetX = 16;
         private const int CursorOffsetY = -32;
 
