@@ -762,12 +762,14 @@ namespace LivingRoots.Controllers
                     _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
 
                     // Register soil health modification commands
-                    _helper.ConsoleCommands.Add("lr_health_up_1", "Increase soil health by 1 on current tile.", (cmd, args) => ModifySoilHealth(cmd, args, 1f, true));
-                    _helper.ConsoleCommands.Add("lr_health_up_10", "Increase soil health by 10 on current tile.", (cmd, args) => ModifySoilHealth(cmd, args, 10f, true));
+                    // Use named methods instead of lambdas with float literals to avoid BadImageFormatException
+                    _helper.ConsoleCommands.Add("lr_health_up_1", "Increase soil health by 1 on current tile.", ModifySoilHealthUp1);
+                    _helper.ConsoleCommands.Add("lr_health_up_10", "Increase soil health by 10 on current tile.", ModifySoilHealthUp10);
                     _helper.ConsoleCommands.Add("lr_health_up_max", "Set soil health to maximum (100) on current tile.", (cmd, args) => ModifySoilHealth(cmd, args, ModConstants.MaxSoilHealth, true, true));
-                    _helper.ConsoleCommands.Add("lr_health_down_1", "Decrease soil health by 1 on current tile.", (cmd, args) => ModifySoilHealth(cmd, args, 1f, false));
-                    _helper.ConsoleCommands.Add("lr_health_down_10", "Decrease soil health by 10 on current tile.", (cmd, args) => ModifySoilHealth(cmd, args, 10f, false));
+                    _helper.ConsoleCommands.Add("lr_health_down_1", "Decrease soil health by 1 on current tile.", ModifySoilHealthDown1);
+                    _helper.ConsoleCommands.Add("lr_health_down_10", "Decrease soil health by 10 on current tile.", ModifySoilHealthDown10);
                     _helper.ConsoleCommands.Add("lr_health_down_min", "Set soil health to minimum (0) on current tile.", (cmd, args) => ModifySoilHealth(cmd, args, ModConstants.MinSoilHealth, false, true));
+                    _helper.ConsoleCommands.Add("lr_sethealth", "Set soil health to a specific value (0-100) on current tile.", SetSoilHealth);
                     _monitor.Log("Soil health modification commands registered successfully.", LogLevel.Trace);
 
                     // Set the command registered flag atomically only on successful registration
@@ -787,6 +789,99 @@ namespace LivingRoots.Controllers
                     _monitor.Log(ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.", LogLevel.Trace);
 #endif
                 }
+            }
+        }
+
+        private void ModifySoilHealthUp1(string command, string[] args)
+        {
+            ModifySoilHealth(command, args, 1f, true);
+        }
+
+        private void ModifySoilHealthUp10(string command, string[] args)
+        {
+            ModifySoilHealth(command, args, 10f, true);
+        }
+
+        private void ModifySoilHealthDown1(string command, string[] args)
+        {
+            ModifySoilHealth(command, args, 1f, false);
+        }
+
+        private void ModifySoilHealthDown10(string command, string[] args)
+        {
+            ModifySoilHealth(command, args, 10f, false);
+        }
+
+        private void SetSoilHealth(string command, string[] args)
+        {
+            if (IsDisposed())
+                return;
+
+            var monitorSnapshot = _monitor;
+            var soilHealthServiceSnapshot = _soilHealthService;
+
+            try
+            {
+                args = args ?? Array.Empty<string>();
+
+                // Check for help flag
+                if (IsHelpRequested(args))
+                {
+                    monitorSnapshot?.Log("Usage: lr_sethealth <value>", LogLevel.Info);
+                    monitorSnapshot?.Log("Sets soil health to the specified value (0-100) on the tile you're standing on.", LogLevel.Info);
+                    monitorSnapshot?.Log("Example: lr_sethealth 50", LogLevel.Info);
+                    return;
+                }
+
+                // Validate that we have exactly one argument
+                if (args.Length != 1 || string.IsNullOrWhiteSpace(args[0]))
+                {
+                    monitorSnapshot?.Log("Error: Please provide a value between 0 and 100.", LogLevel.Error);
+                    monitorSnapshot?.Log("Usage: lr_sethealth <value>", LogLevel.Info);
+                    return;
+                }
+
+                // Parse the value
+                if (!float.TryParse(args[0], out float value))
+                {
+                    monitorSnapshot?.Log($"Error: '{args[0]}' is not a valid number.", LogLevel.Error);
+                    monitorSnapshot?.Log("Usage: lr_sethealth <value>", LogLevel.Info);
+                    return;
+                }
+
+                // Validate the value is within bounds
+                if (value < ModConstants.MinSoilHealth || value > ModConstants.MaxSoilHealth)
+                {
+                    monitorSnapshot?.Log($"Error: Value must be between {ModConstants.MinSoilHealth} and {ModConstants.MaxSoilHealth}.", LogLevel.Error);
+                    monitorSnapshot?.Log($"You provided: {value}", LogLevel.Info);
+                    return;
+                }
+
+                // Get the context and modify soil health
+                var context = GetSoilHealthModificationContext(monitorSnapshot);
+                if (!context.HasValue)
+                    return;
+
+                var ctx = context.Value;
+                var currentHealth = soilHealthServiceSnapshot?.GetSoilHealth(ctx.Location.Name, ctx.Tile) ?? ModConstants.InitialSoilHealth;
+                var newHealth = value;
+
+                if (IsHealthUnchanged(currentHealth, newHealth))
+                {
+                    monitorSnapshot?.Log($"Soil health is already at the requested value ({newHealth:F1}).", LogLevel.Info);
+                    return;
+                }
+
+                soilHealthServiceSnapshot?.SetSoilHealth(ctx.Location.Name, ctx.Tile, newHealth);
+                monitorSnapshot?.Log($"Soil health changed from {currentHealth:F1} to {newHealth:F1} on tile ({ctx.Tile.X}, {ctx.Tile.Y}) in {ctx.Location.Name}.", LogLevel.Info);
+            }
+            catch (Exception ex)
+            {
+                monitorSnapshot?.Log("Error occurred while setting soil health.", LogLevel.Error);
+                monitorSnapshot?.Log($"SetSoilHealth exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+#if DEBUG
+                monitorSnapshot?.Log(ex.StackTrace ?? "SetSoilHealth stack trace unavailable.", LogLevel.Trace);
+#endif
             }
         }
 

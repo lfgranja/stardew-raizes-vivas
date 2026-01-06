@@ -76,7 +76,8 @@ namespace LivingRoots.Services
                 }
 
                 // Check for missing or invalid soil health data
-                if (health <= 0.0001f)
+                // Allow health=0 to be rendered (distinguishes "set to 0" from "not set")
+                if (health < 0f)
                 {
                     _monitor.Log($"Missing soil health data for tile {tile}, skipping overlay.", LogLevel.Trace);
                     return;
@@ -217,8 +218,9 @@ namespace LivingRoots.Services
                     var health = GetCachedHealth(location.NameOrUniqueName, tile,
                         t => _soilHealthService.GetSoilHealth(location.NameOrUniqueName, t));
 
-                    // Skip if no health data (health is 0 or negative)
-                    if (health <= 0.0001f)
+                    // Skip if no health data (health is negative)
+                    // Allow health=0 to be rendered (distinguishes "set to 0" from "not set")
+                    if (health < 0f)
                     {
                         skippedTiles++;
                         continue;
@@ -330,7 +332,10 @@ namespace LivingRoots.Services
         /// <returns>The screen position in pixels</returns>
         private static Vector2 GetTileScreenPosition(Vector2 tile)
         {
-            return new Vector2(tile.X * TileSize, tile.Y * TileSize);
+            // Convert tile to world coordinates, then to screen coordinates by subtracting camera offset
+            var viewport = GetViewportBounds();
+            var worldPosition = new Vector2(tile.X * TileSize, tile.Y * TileSize);
+            return new Vector2(worldPosition.X - viewport.X, worldPosition.Y - viewport.Y);
         }
 
         /// <summary>
