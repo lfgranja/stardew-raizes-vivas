@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using LivingRoots.Domain;
 using Microsoft.Xna.Framework;
@@ -23,26 +24,7 @@ namespace LivingRoots.Services
         // This avoids overwriting valid on-disk data with an empty or incomplete in-memory state
         private volatile bool _loadAbortedForLimits;
 
-        // SECURITY NOTE: This is intentionally using System.Random (a pseudorandom number generator) instead of a cryptographically secure RNG.
-        //
-        // WHY THIS IS SAFE:
-        // - This PRNG is used exclusively for GAME MECHANICS (generating initial soil health values for tiles)
-        // - NOT used for any security-sensitive operations (no tokens, passwords, encryption keys, session IDs, etc.)
-        // - The generated values are only used to determine soil health levels in a farming game simulation
-        // - There is NO security impact if the random values are predictable or if the seed is known
-        //
-        // PURPOSE:
-        // - Generates initial soil health values following a weighted distribution pattern
-        // - Creates realistic soil health profiles across farm tiles for gameplay purposes
-        // - Used in GenerateInitialSoilHealth() method to create varied but consistent starting conditions
-        //
-        // FIXED SEED (42):
-        // - Ensures reproducibility across game sessions for consistent gameplay experience
-        // - Players will see the same soil health distribution when starting new games
-        // - Allows for predictable testing and debugging of game mechanics
-        //
-        // Noncompliant - False positive: Used for game mechanics, not cryptography
-        private static readonly Random _random = new Random(42);
+        private static readonly RandomNumberGenerator _randomGenerator = RandomNumberGenerator.Create();
 
         public void LoadData(string saveId)
         {
@@ -576,14 +558,14 @@ namespace LivingRoots.Services
         /// - Some tiles (20%) have poor health (20-30), representing depleted soil
         /// - Some tiles (30%) have good to excellent health (30-100), representing fertile patches
         ///
-        /// The random number generator uses a fixed seed (42) to ensure consistent results
-        /// across game sessions while maintaining the desired distribution pattern.
+        /// Uses cryptographically secure random number generation for improved security.
+        /// Note: Soil health distribution will vary between game sessions as there is no fixed seed.
         /// </summary>
         /// <returns>A soil health value between 20 and 100, following the weighted distribution</returns>
         public float GenerateInitialSoilHealth()
         {
             // Generate a random number between 0 and 99 to determine which distribution bucket to use
-            var roll = _random.Next(100);
+            var roll = RandomNumberGenerator.GetInt32(0, 100);
 
             // 50% chance (0-49): Return exactly 30 (baseline health)
             if (roll < 50)
@@ -594,14 +576,26 @@ namespace LivingRoots.Services
             else if (roll < 70)
             {
                 // Generate a random float between 20 and 30
-                return 20f + (float)_random.NextDouble() * 10f;
+                return 20f + GetRandomFloat() * 10f;
             }
             // 30% chance (70-99): Return a random value in the gradient range [30, 100]
             else
             {
                 // Generate a random float between 30 and 100
-                return 30f + (float)_random.NextDouble() * 70f;
+                return 30f + GetRandomFloat() * 70f;
             }
+        }
+
+        /// <summary>
+        /// Generates a random float between 0.0 and 1.0 using cryptographically secure random number generation.
+        /// </summary>
+        /// <returns>A random float between 0.0 and 1.0</returns>
+        private static float GetRandomFloat()
+        {
+            var bytes = new byte[4];
+            _randomGenerator.GetBytes(bytes);
+            var randomInt = BitConverter.ToUInt32(bytes, 0);
+            return randomInt / (float)uint.MaxValue;
         }
 
         public void SetSoilHealth(string locationName, Vector2 tile, float value)

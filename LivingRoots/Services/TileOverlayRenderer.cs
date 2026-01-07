@@ -69,11 +69,11 @@ namespace LivingRoots.Services
         private const int TileSize = 64; // Stardew Valley tile size in pixels
 
         // Thread safety locks
-        private readonly object _cacheLock = new object();
-        private readonly object _aggregationLock = new object();
+        private readonly object _cacheLock = new();
+        private readonly object _aggregationLock = new();
 
         // Performance: LRU Health cache
-        private readonly LruCache<(string Location, Point Tile), float> _healthCache = new LruCache<(string, Point), float>(ModConstants.TileHealthCacheSize);
+        private readonly LruCache<(string Location, Point Tile), float> _healthCache = new(ModConstants.TileHealthCacheSize);
 
         // Aggregated tile data for batch rendering (from DataLayers)
         private readonly Dictionary<Vector2, TileDrawData> _aggregatedTiles = [];

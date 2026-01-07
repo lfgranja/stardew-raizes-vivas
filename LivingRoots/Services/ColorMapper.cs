@@ -18,9 +18,9 @@ namespace LivingRoots.Services
         private readonly IVisualizationConfig _config = config ?? throw new ArgumentNullException(nameof(config));
 
         // Default colors
-        private static readonly Color DefaultPoorColor = new Color(139, 69, 19);  // SaddleBrown
-        private static readonly Color DefaultModerateColor = new Color(218, 165, 32);  // GoldenRod
-        private static readonly Color DefaultHealthyColor = new Color(85, 107, 47);  // DarkOliveGreen
+        private static readonly Color DefaultPoorColor = new(139, 69, 19);  // SaddleBrown
+        private static readonly Color DefaultModerateColor = new(218, 165, 32);  // GoldenRod
+        private static readonly Color DefaultHealthyColor = new(85, 107, 47);  // DarkOliveGreen
 
         /// <inheritdoc/>
         public Color GetHealthColor(float health)

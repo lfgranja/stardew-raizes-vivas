@@ -32,7 +32,7 @@ namespace LivingRoots.Services
 
         // Event management
         private bool _eventsRegistered = false;
-        private readonly object _eventLock = new object();
+        private readonly object _eventLock = new();
 
         // Event handler fields for proper unsubscription
         private EventHandler<CursorMovedEventArgs>? _onCursorMovedHandler;

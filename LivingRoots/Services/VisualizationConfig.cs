@@ -23,9 +23,9 @@ namespace LivingRoots.Services
         private bool _showHoeFeedback = true;
         private float _overlayOpacity = 0.3f;
         private bool _useCustomColors = false;
-        private Color _poorHealthColor = new Color(139, 69, 19);  // SaddleBrown
-        private Color _moderateHealthColor = new Color(218, 165, 32);  // GoldenRod
-        private Color _healthyHealthColor = new Color(85, 107, 47);  // DarkOliveGreen
+        private Color _poorHealthColor = new(139, 69, 19);  // SaddleBrown
+        private Color _moderateHealthColor = new(218, 165, 32);  // GoldenRod
+        private Color _healthyHealthColor = new(85, 107, 47);  // DarkOliveGreen
 
         /// <summary>
         /// Initializes a new instance of VisualizationConfig.
