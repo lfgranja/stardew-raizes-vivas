@@ -23,9 +23,26 @@ namespace LivingRoots.Services
         // This avoids overwriting valid on-disk data with an empty or incomplete in-memory state
         private volatile bool _loadAbortedForLimits;
 
-        // Random number generator for initial soil health distribution
-        // Using a single instance with a fixed seed ensures consistent results across game sessions
-        private static readonly Random _random = new Random(42); // Fixed seed for reproducibility
+        // SECURITY NOTE: This is intentionally using System.Random (a pseudorandom number generator) instead of a cryptographically secure RNG.
+        //
+        // WHY THIS IS SAFE:
+        // - This PRNG is used exclusively for GAME MECHANICS (generating initial soil health values for tiles)
+        // - NOT used for any security-sensitive operations (no tokens, passwords, encryption keys, session IDs, etc.)
+        // - The generated values are only used to determine soil health levels in a farming game simulation
+        // - There is NO security impact if the random values are predictable or if the seed is known
+        //
+        // PURPOSE:
+        // - Generates initial soil health values following a weighted distribution pattern
+        // - Creates realistic soil health profiles across farm tiles for gameplay purposes
+        // - Used in GenerateInitialSoilHealth() method to create varied but consistent starting conditions
+        //
+        // FIXED SEED (42):
+        // - Ensures reproducibility across game sessions for consistent gameplay experience
+        // - Players will see the same soil health distribution when starting new games
+        // - Allows for predictable testing and debugging of game mechanics
+        //
+        // Noncompliant - False positive: Used for game mechanics, not cryptography
+        private static readonly Random _random = new Random(42);
 
         public void LoadData(string saveId)
         {
