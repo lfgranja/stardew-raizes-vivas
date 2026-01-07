@@ -1,8 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using LivingRoots.Domain;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewValley;
+using StardewValley.TerrainFeatures;
 
 namespace LivingRoots.Services
 {
@@ -11,7 +15,39 @@ namespace LivingRoots.Services
     /// Renders colored rectangles over tiles based on soil health values with viewport culling.
     /// </summary>
     /// <remarks>
-    /// Initializes a new instance of TileOverlayRenderer.
+    /// <para>
+    /// <strong>Attribution to DataLayers by Pathoschild:</strong>
+    /// </para>
+    /// <para>
+    /// The tile aggregation, border detection, and batch rendering pipeline algorithms implemented in this class
+    /// were adapted from the DataLayers mod by Pathoschild. DataLayers is a sophisticated Stardew Valley mod
+    /// that provides comprehensive overlay visualization for various game data layers.
+    /// </para>
+    /// <para>
+    /// <strong>DataLayers Mod Information:</strong>
+    /// <list type="bullet">
+    /// <item><description>Author: Pathoschild</description></item>
+    /// <item><description>GitHub: https://github.com/Pathoschild/StardewMods</description></item>
+    /// <item><description>Mod: DataLayers</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>Adapted Components:</strong>
+    /// <list type="bullet">
+    /// <item><description>Tile aggregation logic for grouping tiles by category</description></item>
+    /// <item><description>Border detection algorithms for identifying tile edges</description></item>
+    /// <item><description>Batch rendering pipeline for efficient overlay drawing</description></item>
+    /// <item><description>Data structures: TileData, TileDrawData, TileGroup</description></item>
+    /// <item><description>TileEdges enum for edge direction flags</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <strong>Adaptation for LivingRoots:</strong>
+    /// The original DataLayers algorithms have been adapted and modified to meet LivingRoots' specific
+    /// soil health visualization needs. This includes grouping tiles by soil health categories,
+    /// applying health-based colors and borders, and integrating with LivingRoots' caching and
+    /// configuration systems.
+    /// </para>
     /// </remarks>
     /// <param name="monitor">Monitor for logging</param>
     /// <param name="config">Visualization configuration</param>
@@ -32,11 +68,16 @@ namespace LivingRoots.Services
         // Rendering constants
         private const int TileSize = 64; // Stardew Valley tile size in pixels
 
-        // Performance: Health cache
-        private readonly Dictionary<(string Location, Point Tile), float> _healthCache = new Dictionary<(string, Point), float>();
-        private readonly int _cacheSize = ModConstants.TileHealthCacheSize;
-        private DateTime _lastCacheClear = DateTime.UtcNow;
-        private readonly TimeSpan _cacheClearInterval = TimeSpan.FromSeconds(ModConstants.CacheClearIntervalSeconds);
+        // Thread safety locks
+        private readonly object _cacheLock = new object();
+        private readonly object _aggregationLock = new object();
+
+        // Performance: LRU Health cache
+        private readonly LruCache<(string Location, Point Tile), float> _healthCache = new LruCache<(string, Point), float>(ModConstants.TileHealthCacheSize);
+
+        // Aggregated tile data for batch rendering (from DataLayers)
+        private readonly Dictionary<Vector2, TileDrawData> _aggregatedTiles = [];
+        private readonly List<TileGroup> _tileGroups = [];
 
         /// <inheritdoc/>
         public void RenderTileOverlay(SpriteBatch spriteBatch, GameLocation location, Vector2 tile, float health)
@@ -44,33 +85,7 @@ namespace LivingRoots.Services
             try
             {
                 // Validate parameters
-                if (spriteBatch == null)
-                {
-                    _monitor.Log("SpriteBatch is null, cannot render tile overlay.", LogLevel.Trace);
-                    return;
-                }
-
-                if (location == null)
-                {
-                    _monitor.Log("GameLocation is null, cannot render tile overlay.", LogLevel.Trace);
-                    return;
-                }
-
-                if (!IsValidTile(tile))
-                {
-                    _monitor.Log($"Invalid tile coordinates {tile}, skipping overlay.", LogLevel.Trace);
-                    return;
-                }
-
-                // Check if tile overlays are enabled
-                if (!_config.ShowTileOverlays)
-                {
-                    _monitor.Log("Tile overlays are disabled, skipping overlay rendering.", LogLevel.Trace);
-                    return;
-                }
-
-                // Check if tile is visible in viewport
-                if (!IsTileVisible(tile))
+                if (spriteBatch == null || location == null || !VisualizationHelpers.IsValidTile(tile) || !_config.ShowTileOverlays)
                 {
                     return;
                 }
@@ -79,24 +94,22 @@ namespace LivingRoots.Services
                 // Allow health=0 to be rendered (distinguishes "set to 0" from "not set")
                 if (health < 0f)
                 {
-                    _monitor.Log($"Missing soil health data for tile {tile}, skipping overlay.", LogLevel.Trace);
                     return;
                 }
 
                 // Get color for health value
                 Color baseColor = _colorMapper.GetHealthColor(health);
-                Color overlayColor = ApplyOpacity(baseColor, _config.OverlayOpacity);
+                Color overlayColor = VisualizationHelpers.ApplyOpacity(baseColor, _config.OverlayOpacity);
 
-                // Calculate screen position
-                Vector2 screenPosition = GetTileScreenPosition(tile);
+                // Calculate world position (for world-space rendering in OnRenderedWorld event)
+                Vector2 worldPosition = GetTileWorldPosition(tile);
 
-                // Render overlay
-                RenderColoredRectangle(spriteBatch, screenPosition, overlayColor);
+                // Render overlay at world position
+                RenderColoredRectangle(spriteBatch, worldPosition, overlayColor);
             }
             catch (Exception ex)
             {
                 _monitor.Log($"Error rendering tile overlay for tile {tile}: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
             }
         }
 
@@ -114,12 +127,8 @@ namespace LivingRoots.Services
                 // Check if tile overlays are enabled
                 if (!_config.ShowTileOverlays)
                 {
-                    _monitor.Log("Tile overlays are disabled, skipping overlay rendering.", LogLevel.Trace);
                     return;
                 }
-
-                // Clear cache if needed
-                ClearCacheIfNeeded();
 
                 // Get viewport bounds and tile range
                 var tileRange = GetViewportTileRange();
@@ -128,34 +137,320 @@ namespace LivingRoots.Services
                     return;
                 }
 
-                // Render overlays for visible tiles with performance limit
-                var tilesRenderedThisFrame = 0;
-                var renderResult = RenderOverlaysForTileRange(
-                    spriteBatch, location, tileRange.Value, ref tilesRenderedThisFrame);
+                // Aggregate tile data for batch rendering (from DataLayers)
+                AggregateTileDataForBatchRendering(location, tileRange.Value);
 
-                LogRenderingResult(renderResult.OverlayCount, renderResult.SkippedTiles, tilesRenderedThisFrame);
             }
             catch (Exception ex)
             {
                 _monitor.Log($"Error rendering all visible overlays: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+        }
+
+        /// <summary>
+        /// Gets the border color for a health category.
+        /// </summary>
+        /// <param name="category">The health category</param>
+        /// <returns>The border color for the category</returns>
+        private static Color GetCategoryBorderColor(SoilHealthCategory category)
+        {
+            return category switch
+            {
+                SoilHealthCategory.Poor => new Color(139, 0, 0, 255),      // Dark red for poor soil
+                SoilHealthCategory.Moderate => new Color(139, 139, 0, 255), // Dark yellow for moderate soil
+                SoilHealthCategory.Healthy => new Color(0, 100, 0, 255),    // Dark green for healthy soil
+                _ => Color.Gray
+            };
+        }
+
+        /// <summary>
+        /// Aggregates tile data for batch rendering using DataLayers' tile aggregation logic.
+        /// This groups tiles by health category for efficient rendering and detects borders.
+        /// </summary>
+        /// <remarks>
+        /// <strong>Adapted from DataLayers:</strong>
+        /// This method implements the tile aggregation algorithm from DataLayers by Pathoschild.
+        /// The original algorithm groups tiles by data category for efficient batch rendering.
+        /// Adapted for LivingRoots to group tiles by soil health categories (Poor, Moderate, Healthy).
+        /// Reference: https://github.com/Pathoschild/StardewMods/tree/develop/DataLayers/Framework
+        /// </remarks>
+        private void AggregateTileDataForBatchRendering(GameLocation location, (int startX, int startY, int endX, int endY) tileRange)
+        {
+            lock (_aggregationLock)
+            {
+                // Clear previous aggregation
+                _tileGroups.Clear();
+                _aggregatedTiles.Clear();
+
+                // Group tiles by health category
+                var tilesByCategory = GroupTilesByCategory(location, tileRange);
+
+                // Create tile groups for batch rendering
+                CreateTileGroups(tilesByCategory);
+
+                // Aggregate tile data for rendering
+                AggregateTileDataWithBorders();
+
+                // Detect combined borders
+                DetectCombinedBorders();
+            }
+        }
+
+        /// <summary>
+        /// Groups tiles by health category for efficient batch rendering.
+        /// </summary>
+        private Dictionary<SoilHealthCategory, List<TileData>> GroupTilesByCategory(
+            GameLocation location, (int startX, int startY, int endX, int endY) tileRange)
+        {
+            var tilesByCategory = new Dictionary<SoilHealthCategory, List<TileData>>();
+
+            for (var tileX = tileRange.startX; tileX <= tileRange.endX; tileX++)
+            {
+                for (var tileY = tileRange.startY; tileY <= tileRange.endY; tileY++)
+                {
+                    var tile = new Vector2(tileX, tileY);
+
+                    if (!TryProcessTile(location, tile, out var tileData))
+                    {
+                        continue;
+                    }
+
+                    // tileData is guaranteed to be non-null here since TryProcessTile returned true
+                    var category = GetHealthCategoryFromTileData(tileData!);
+                    AddTileToCategory(tilesByCategory, category, tileData!);
+                }
+            }
+
+            return tilesByCategory;
+        }
+
+        /// <summary>
+        /// Tries to process a single tile and returns tile data if successful.
+        /// </summary>
+        private bool TryProcessTile(GameLocation location, Vector2 tile, out TileData? tileData)
+        {
+            tileData = null;
+
+            // Skip invalid tiles
+            if (!VisualizationHelpers.IsValidTile(tile))
+            {
+                return false;
+            }
+
+            // Check if tile has HoeDirt (tilled soil)
+            if (!location.terrainFeatures.TryGetValue(tile, out var feature) || feature is not HoeDirt)
+            {
+                return false;
+            }
+
+            // Get soil health for this tile using cache
+            var health = GetCachedHealth(location.NameOrUniqueName, tile,
+                t => _soilHealthService.GetSoilHealth(location.NameOrUniqueName, t));
+
+            // Skip if no health data (health is negative)
+            if (health < 0f)
+            {
+                return false;
+            }
+
+            // Get color for health value
+            Color baseColor = _colorMapper.GetHealthColor(health);
+            Color overlayColor = VisualizationHelpers.ApplyOpacity(baseColor, _config.OverlayOpacity);
+
+            // Create tile data structure
+            tileData = new TileData(tile, overlayColor);
+            return true;
+        }
+
+        /// <summary>
+        /// Gets health category from tile data.
+        /// </summary>
+        private static SoilHealthCategory GetHealthCategoryFromTileData(TileData tileData)
+        {
+            // Extract health value from color (reverse mapping)
+            // For simplicity, we'll use the color to determine category
+            var color = tileData.Color;
+
+            // Check against known category colors
+            var poorColor = GetCategoryBorderColor(SoilHealthCategory.Poor);
+            var moderateColor = GetCategoryBorderColor(SoilHealthCategory.Moderate);
+
+            // Simple comparison (not perfect but works for our use case)
+            if (Math.Abs(color.R - poorColor.R) < 10 && Math.Abs(color.G - poorColor.G) < 10)
+                return SoilHealthCategory.Poor;
+            else if (Math.Abs(color.R - moderateColor.R) < 10 && Math.Abs(color.G - moderateColor.G) < 10)
+                return SoilHealthCategory.Moderate;
+            else
+                return SoilHealthCategory.Healthy;
+        }
+
+        /// <summary>
+        /// Adds tile to the appropriate category list.
+        /// </summary>
+        private static void AddTileToCategory(
+            Dictionary<SoilHealthCategory, List<TileData>> tilesByCategory,
+            SoilHealthCategory category,
+            TileData tileData)
+        {
+            if (!tilesByCategory.ContainsKey(category))
+            {
+                tilesByCategory[category] = [];
+            }
+            tilesByCategory[category].Add(tileData);
+        }
+
+        /// <summary>
+        /// Creates tile groups from categorized tiles.
+        /// </summary>
+        private void CreateTileGroups(Dictionary<SoilHealthCategory, List<TileData>> tilesByCategory)
+        {
+            foreach (var kvp in tilesByCategory)
+            {
+                var category = kvp.Key;
+                var tiles = kvp.Value;
+
+                // Create a tile group with category-specific border color
+                var borderColor = GetCategoryBorderColor(category);
+
+                var tileGroup = new TileGroup(tiles, borderColor, shouldExport: false);
+                _tileGroups.Add(tileGroup);
+            }
+        }
+
+        /// <summary>
+        /// Aggregates tile data with border detection.
+        /// </summary>
+        private void AggregateTileDataWithBorders()
+        {
+            foreach (TileGroup group in _tileGroups)
+            {
+                Lazy<HashSet<Vector2>> inGroupLazy = new Lazy<HashSet<Vector2>>(
+                    () => new HashSet<Vector2>(group.Tiles.Select(p => p.TilePosition)),
+                    LazyThreadSafetyMode.ExecutionAndPublication);
+
+                foreach (TileData groupTile in group.Tiles)
+                {
+                    ProcessTileForAggregation(groupTile, group, inGroupLazy);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Processes a single tile for aggregation.
+        /// </summary>
+        private void ProcessTileForAggregation(
+            TileData groupTile,
+            TileGroup group,
+            Lazy<HashSet<Vector2>> inGroupLazy)
+        {
+            Vector2 position = groupTile.TilePosition;
+            if (!_aggregatedTiles.TryGetValue(position, out TileDrawData? data))
+                data = _aggregatedTiles[position] = new TileDrawData(position, Point.Zero);
+
+            // Update data
+            data.Colors.Add(groupTile.Color);
+            if (group.OuterBorderColor.HasValue)
+                data.BorderColors.TryAdd(group.OuterBorderColor.Value, TileEdges.None);
+
+            // Detect borders
+            if (group.OuterBorderColor.HasValue)
+            {
+                DetectTileBorders(groupTile, group.OuterBorderColor.Value, inGroupLazy, data);
+            }
+        }
+
+        /// <summary>
+        /// Detects borders for a tile within a group.
+        /// </summary>
+        private static void DetectTileBorders(
+            TileData groupTile,
+            Color borderColor,
+            Lazy<HashSet<Vector2>> inGroupLazy,
+            TileDrawData data)
+        {
+            var x = (int)groupTile.TilePosition.X;
+            var y = (int)groupTile.TilePosition.Y;
+            HashSet<Vector2> inGroup = inGroupLazy.Value;
+
+            TileEdges edge = data.BorderColors[borderColor];
+
+            if (!inGroup.Contains(new Vector2(x - 1, y)))
+                edge |= TileEdges.Left;
+            if (!inGroup.Contains(new Vector2(x + 1, y)))
+                edge |= TileEdges.Right;
+            if (!inGroup.Contains(new Vector2(x, y - 1)))
+                edge |= TileEdges.Top;
+            if (!inGroup.Contains(new Vector2(x, y + 1)))
+                edge |= TileEdges.Bottom;
+
+            data.BorderColors[borderColor] = edge;
+        }
+
+        /// <summary>
+        /// Detects combined borders by comparing adjacent tiles.
+        /// </summary>
+        private void DetectCombinedBorders()
+        {
+            foreach (Vector2 position in _aggregatedTiles.Keys.ToList())
+            {
+                var x = (int)position.X;
+                var y = (int)position.Y;
+                TileDrawData data = _aggregatedTiles[position];
+
+                if (!data.BorderColors.Any())
+                    continue;
+
+                var neighbors = GetTileNeighbors(x, y);
+                UpdateTileBordersWithNeighbors(data, neighbors);
+            }
+        }
+
+        /// <summary>
+        /// Gets neighboring tiles for a position.
+        /// </summary>
+        private (TileDrawData? left, TileDrawData? right, TileDrawData? top, TileDrawData? bottom) GetTileNeighbors(
+            int x, int y)
+        {
+            _aggregatedTiles.TryGetValue(new Vector2(x - 1, y), out var left);
+            _aggregatedTiles.TryGetValue(new Vector2(x + 1, y), out var right);
+            _aggregatedTiles.TryGetValue(new Vector2(x, y - 1), out var top);
+            _aggregatedTiles.TryGetValue(new Vector2(x, y + 1), out var bottom);
+
+            return (left, right, top, bottom);
+        }
+
+        /// <summary>
+        /// Updates tile borders based on neighbor data.
+        /// </summary>
+        private static void UpdateTileBordersWithNeighbors(
+            TileDrawData data,
+            (TileDrawData? left, TileDrawData? right, TileDrawData? top, TileDrawData? bottom) neighbors)
+        {
+            foreach (Color color in data.BorderColors.Keys.ToArray())
+            {
+                if (neighbors.left == null || !neighbors.left.BorderColors.ContainsKey(color))
+                    data.BorderColors[color] |= TileEdges.Left;
+                if (neighbors.right == null || !neighbors.right.BorderColors.ContainsKey(color))
+                    data.BorderColors[color] |= TileEdges.Right;
+                if (neighbors.top == null || !neighbors.top.BorderColors.ContainsKey(color))
+                    data.BorderColors[color] |= TileEdges.Top;
+                if (neighbors.bottom == null || !neighbors.bottom.BorderColors.ContainsKey(color))
+                    data.BorderColors[color] |= TileEdges.Bottom;
             }
         }
 
         /// <summary>
         /// Validates rendering parameters.
         /// </summary>
-        private bool ValidateRenderingParameters(SpriteBatch spriteBatch, GameLocation location)
+        private static bool ValidateRenderingParameters(SpriteBatch spriteBatch, GameLocation location)
         {
             if (spriteBatch == null)
             {
-                _monitor.Log("SpriteBatch is null, cannot render overlays.", LogLevel.Trace);
                 return false;
             }
 
             if (location == null)
             {
-                _monitor.Log("GameLocation is null, cannot render overlays.", LogLevel.Trace);
                 return false;
             }
 
@@ -165,9 +460,9 @@ namespace LivingRoots.Services
         /// <summary>
         /// Gets the tile range for the current viewport.
         /// </summary>
-        private (int startX, int startY, int endX, int endY)? GetViewportTileRange()
+        private static (int startX, int startY, int endX, int endY)? GetViewportTileRange()
         {
-            Rectangle viewport = GetViewportBounds();
+            Rectangle viewport = VisualizationHelpers.GetViewportBounds();
 
             // Calculate tile range for viewport
             var startTileX = (int)Math.Floor(viewport.X / (double)TileSize);
@@ -178,7 +473,6 @@ namespace LivingRoots.Services
             // Validate tile range
             if (startTileX > endTileX || startTileY > endTileY)
             {
-                _monitor.Log($"Invalid tile range: X[{startTileX}, {endTileX}], Y[{startTileY}, {endTileY}], skipping overlay rendering.", LogLevel.Trace);
                 return null;
             }
 
@@ -186,170 +480,14 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
-        /// Renders overlays for a given tile range.
-        /// </summary>
-        private (int OverlayCount, int SkippedTiles) RenderOverlaysForTileRange(
-            SpriteBatch spriteBatch, GameLocation location, (int startX, int startY, int endX, int endY) tileRange, ref int tilesRenderedThisFrame)
-        {
-            var overlayCount = 0;
-            var skippedTiles = 0;
-
-            for (var tileX = tileRange.startX; tileX <= tileRange.endX; tileX++)
-            {
-                for (var tileY = tileRange.startY; tileY <= tileRange.endY; tileY++)
-                {
-                    // Performance: Check tile limit per frame
-                    if (tilesRenderedThisFrame >= ModConstants.MaxTilesPerFrame)
-                    {
-                        _monitor.Log($"Reached tile rendering limit ({ModConstants.MaxTilesPerFrame}) for this frame.", LogLevel.Trace);
-                        return (overlayCount, skippedTiles);
-                    }
-
-                    Vector2 tile = new Vector2(tileX, tileY);
-
-                    // Skip invalid tiles
-                    if (!IsValidTile(tile))
-                    {
-                        skippedTiles++;
-                        continue;
-                    }
-
-                    // Get soil health for this tile using cache
-                    var health = GetCachedHealth(location.NameOrUniqueName, tile,
-                        t => _soilHealthService.GetSoilHealth(location.NameOrUniqueName, t));
-
-                    // Skip if no health data (health is negative)
-                    // Allow health=0 to be rendered (distinguishes "set to 0" from "not set")
-                    if (health < 0f)
-                    {
-                        skippedTiles++;
-                        continue;
-                    }
-
-                    // Render overlay for this tile
-                    RenderTileOverlay(spriteBatch, location, tile, health);
-                    overlayCount++;
-                    tilesRenderedThisFrame++;
-                }
-            }
-
-            return (overlayCount, skippedTiles);
-        }
-
-        /// <summary>
-        /// Logs the rendering result.
-        /// </summary>
-        private void LogRenderingResult(int overlayCount, int skippedTiles, int tilesRendered)
-        {
-            if (overlayCount > 0)
-            {
-                _monitor.Log($"Rendered {overlayCount} tile overlays ({tilesRendered} tiles processed), skipped {skippedTiles} tiles.", LogLevel.Trace);
-            }
-            else if (skippedTiles > 0)
-            {
-                _monitor.Log($"No overlays rendered ({tilesRendered} tiles processed), skipped {skippedTiles} tiles.", LogLevel.Trace);
-            }
-        }
-
-        /// <summary>
-        /// Validates tile coordinates.
-        /// </summary>
-        /// <param name="tile">The tile coordinates to validate</param>
-        /// <returns>True if tile coordinates are valid, false otherwise</returns>
-        private static bool IsValidTile(Vector2 tile)
-        {
-            // Check for NaN or Infinity
-            if (float.IsNaN(tile.X) || float.IsNaN(tile.Y) ||
-                float.IsInfinity(tile.X) || float.IsInfinity(tile.Y))
-            {
-                return false;
-            }
-
-            // Check for extreme values (security constraint)
-            if (Math.Abs(tile.X) > ModConstants.MaxAbsoluteTileCoordinate ||
-                Math.Abs(tile.Y) > ModConstants.MaxAbsoluteTileCoordinate)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Checks if a tile is visible in current viewport.
-        /// </summary>
-        /// <param name="tile">The tile coordinates to check</param>
-        /// <returns>True if tile is visible, false otherwise</returns>
-        private static bool IsTileVisible(Vector2 tile)
-        {
-            try
-            {
-                // Get viewport bounds
-                Rectangle viewport = GetViewportBounds();
-
-                // Calculate tile screen position
-                Vector2 screenPosition = GetTileScreenPosition(tile);
-
-                // Check if tile intersects with viewport
-                return viewport.Intersects(new Rectangle(
-                    (int)screenPosition.X,
-                    (int)screenPosition.Y,
-                    TileSize,
-                    TileSize
-                ));
-            }
-            catch
-            {
-                // If we can't determine visibility, assume visible to avoid missing overlays
-                return true;
-            }
-        }
-
-        /// <summary>
-        /// Gets current viewport bounds.
-        /// </summary>
-        /// <returns>The viewport rectangle</returns>
-        private static Rectangle GetViewportBounds()
-        {
-            // Return default viewport if Game1.viewport is not available
-            if (Game1.viewport.Width <= 0 || Game1.viewport.Height <= 0)
-            {
-                return new Rectangle(0, 0, Game1.uiViewport.Width, Game1.uiViewport.Height);
-            }
-
-            return new Rectangle(
-                Game1.viewport.X,
-                Game1.viewport.Y,
-                Game1.viewport.Width,
-                Game1.viewport.Height
-            );
-        }
-
-        /// <summary>
-        /// Calculates screen position for a tile.
+        /// Calculates world position for a tile (for world-space rendering).
         /// </summary>
         /// <param name="tile">The tile coordinates</param>
-        /// <returns>The screen position in pixels</returns>
-        private static Vector2 GetTileScreenPosition(Vector2 tile)
+        /// <returns>The world position in pixels</returns>
+        private static Vector2 GetTileWorldPosition(Vector2 tile)
         {
-            // Convert tile to world coordinates, then to screen coordinates by subtracting camera offset
-            var viewport = GetViewportBounds();
-            var worldPosition = new Vector2(tile.X * TileSize, tile.Y * TileSize);
-            return new Vector2(worldPosition.X - viewport.X, worldPosition.Y - viewport.Y);
-        }
-
-        /// <summary>
-        /// Applies opacity to a color.
-        /// </summary>
-        /// <param name="color">The base color</param>
-        /// <param name="opacity">The opacity value (0.0 to 1.0)</param>
-        /// <returns>The color with applied opacity</returns>
-        private static Color ApplyOpacity(Color color, float opacity)
-        {
-            // Clamp opacity to valid range
-            opacity = Math.Clamp(opacity, 0.0f, 1.0f);
-
-            return new Color(color.R, color.G, color.B, (byte)(color.A * opacity));
+            // Convert tile to world coordinates (no viewport offset)
+            return new Vector2(tile.X * TileSize, tile.Y * TileSize);
         }
 
         /// <summary>
@@ -358,7 +496,7 @@ namespace LivingRoots.Services
         /// <param name="spriteBatch">The SpriteBatch for rendering</param>
         /// <param name="position">The screen position</param>
         /// <param name="color">The color to render</param>
-        private static void RenderColoredRectangle(SpriteBatch spriteBatch, Vector2 position, Color color)
+        private void RenderColoredRectangle(SpriteBatch spriteBatch, Vector2 position, Color color)
         {
             // Create a simple texture for rendering
             Texture2D? texture = VisualizationHelpers.GetOrCreateOverlayTexture();
@@ -371,22 +509,15 @@ namespace LivingRoots.Services
                     color
                 );
             }
-        }
-
-        /// <summary>
-        /// Clears the health cache if the configured interval has passed.
-        /// </summary>
-        private void ClearCacheIfNeeded()
-        {
-            if (DateTime.UtcNow - _lastCacheClear > _cacheClearInterval)
+            else
             {
-                _healthCache.Clear();
-                _lastCacheClear = DateTime.UtcNow;
+                _monitor.Log("Texture is null, cannot draw overlay!", LogLevel.Error);
             }
         }
 
         /// <summary>
         /// Gets cached health value for a tile, or retrieves and caches it if not present.
+        /// Uses LRU cache to prevent sudden cache flushes.
         /// </summary>
         /// <param name="locationName">The name of the game location</param>
         /// <param name="tile">The tile coordinates</param>
@@ -399,31 +530,293 @@ namespace LivingRoots.Services
                 var tileKey = new Point((int)tile.X, (int)tile.Y);
                 var cacheKey = (locationName, tileKey);
 
-                // Check cache first
-                if (_healthCache.TryGetValue(cacheKey, out var cachedHealth))
+                // Check cache first (thread-safe)
+                lock (_cacheLock)
                 {
-                    return cachedHealth;
+                    if (_healthCache.TryGetValue(cacheKey, out var cachedHealth))
+                    {
+                        return cachedHealth;
+                    }
                 }
 
                 // Retrieve health value
                 var health = getHealth(tile);
 
-                // Clear cache if size limit reached
-                if (_healthCache.Count >= _cacheSize)
+                // Cache the health value (thread-safe)
+                lock (_cacheLock)
                 {
-                    _healthCache.Clear();
+                    _healthCache.Put(cacheKey, health);
                 }
 
-                // Cache the health value
-                _healthCache[cacheKey] = health;
                 return health;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _monitor.Log($"Error getting cached health for tile {tile}: {ex.Message}", LogLevel.Trace);
                 // Return 0 on error to avoid exceptions
                 return 0f;
             }
         }
     }
+
+    #region DataLayers Structures (Adapted for LivingRoots)
+    /// <remarks>
+    /// <strong>Attribution to DataLayers:</strong>
+    /// The following data structures (TileEdges, TileData, TileDrawData, TileGroup) were adapted
+    /// from the DataLayers mod by Pathoschild. These structures form the foundation of the
+    /// tile aggregation and batch rendering pipeline.
+    /// Reference: https://github.com/Pathoschild/StardewMods/tree/develop/DataLayers/Framework
+    /// </remarks>
+
+    /// <summary>
+    /// Soil health category for grouping tiles with similar health values.
+    /// </summary>
+    internal enum SoilHealthCategory
+    {
+        /// <summary>Poor soil health (health < 40).</summary>
+        Poor = 0,
+
+        /// <summary>Moderate soil health (health 40-69).</summary>
+        Moderate = 1,
+
+        /// <summary>Healthy soil (health >= 70).</summary>
+        Healthy = 2
+    }
+
+    /// <summary>
+    /// A tile edge direction (adapted from DataLayers).
+    /// </summary>
+    /// <remarks>
+    /// <strong>Adapted from DataLayers:</strong>
+    /// This enum defines tile edge directions used for border detection.
+    /// DataLayers uses these flags to efficiently track which tile edges need borders.
+    /// Reference: https://github.com/Pathoschild/StardewMods/tree/develop/DataLayers/Framework
+    /// </remarks>
+    [Flags]
+    internal enum TileEdges
+    {
+        /// <summary>No edge.</summary>
+        None = 0,
+
+        /// <summary>The top tile edge.</summary>
+        Top = 1,
+
+        /// <summary>The left tile edge.</summary>
+        Left = 2,
+
+        /// <summary>The right tile edge.</summary>
+        Right = 4,
+
+        /// <summary>The bottom tile edge.</summary>
+        Bottom = 8
+    }
+
+    /// <summary>
+    /// Metadata for a tile (adapted from DataLayers).
+    /// Adapted for LivingRoots without LegendEntry dependency.
+    /// </summary>
+    /// <remarks>
+    /// <strong>Adapted from DataLayers:</strong>
+    /// This class stores tile position and overlay color metadata.
+    /// DataLayers uses TileData as the fundamental unit for tile aggregation.
+    /// Reference: https://github.com/Pathoschild/StardewMods/tree/develop/DataLayers/Framework
+    /// </remarks>
+    /// <remarks>Construct an instance.</remarks>
+    /// <param name="tile">The tile position.</param>
+    /// <param name="color">The overlay color.</param>
+    internal class TileData(Vector2 tile, Color color)
+    {
+        /// <summary>The tile position.</summary>
+        public Vector2 TilePosition { get; } = tile;
+
+        /// <summary>The overlay color.</summary>
+        public Color Color { get; } = color;
+
+        /// <summary>The pixel offset at which to draw this tile.</summary>
+        public Point DrawOffset { get; } = Point.Zero;
+    }
+
+    /// <summary>
+    /// Aggregate drawing metadata for a tile (adapted from DataLayers).
+    /// </summary>
+    /// <remarks>
+    /// <strong>Adapted from DataLayers:</strong>
+    /// This class aggregates drawing metadata for efficient batch rendering.
+    /// DataLayers uses TileDrawData to store multiple colors and border information per tile.
+    /// Reference: https://github.com/Pathoschild/StardewMods/tree/develop/DataLayers/Framework
+    /// </remarks>
+    /// <remarks>Construct an instance.</remarks>
+    /// <param name="position">The tile position.</param>
+    /// <param name="drawOffset">The pixel offset at which to draw this tile.</param>
+    internal class TileDrawData(Vector2 position, Point drawOffset)
+    {
+        /// <summary>The tile position.</summary>
+        public Vector2 TilePosition { get; } = position;
+
+        /// <summary>The overlay colors to draw.</summary>
+        public HashSet<Color> Colors { get; } = [];
+
+        /// <summary>The border colors to draw.</summary>
+        public Dictionary<Color, TileEdges> BorderColors { get; } = [];
+
+        /// <summary>The pixel offset at which to draw this tile.</summary>
+        public Point DrawOffset { get; } = drawOffset;
+    }
+
+    /// <summary>
+    /// A group of tiles (adapted from DataLayers).
+    /// </summary>
+    /// <remarks>
+    /// <strong>Adapted from DataLayers:</strong>
+    /// This class groups tiles with shared properties for efficient batch rendering.
+    /// DataLayers uses TileGroup to organize tiles by data layer and apply shared borders.
+    /// Reference: https://github.com/Pathoschild/StardewMods/tree/develop/DataLayers/Framework
+    /// </remarks>
+    /// <remarks>Construct an instance.</remarks>
+    /// <param name="tiles">The tiles in the group.</param>
+    /// <param name="outerBorderColor">A border color to draw along edges that aren't touching another tile in the group (if any).</param>
+    /// <param name="shouldExport">Whether to include this tile group in data exports.</param>
+    internal class TileGroup(IEnumerable<TileData> tiles, Color? outerBorderColor = null, bool shouldExport = true)
+    {
+        /// <summary>The tiles in the group.</summary>
+        public TileData[] Tiles { get; } = tiles.ToArray();
+
+        /// <summary>A border color to draw along edges that aren't touching another tile in the group (if any).</summary>
+        public Color? OuterBorderColor { get; } = outerBorderColor;
+
+        /// <summary>Whether to include this tile group in data exports.</summary>
+        public bool ShouldExport { get; } = shouldExport;
+    }
+
+    #endregion
+
+    #region LRU Cache Implementation
+
+    /// <summary>
+    /// A simple Least Recently Used (LRU) cache implementation.
+    /// Prevents sudden cache flushes by evicting least recently used items when capacity is reached.
+    /// </summary>
+    /// <typeparam name="TKey">The type of keys in the cache</typeparam>
+    /// <typeparam name="TValue">The type of values in the cache</typeparam>
+    internal class LruCache<TKey, TValue> where TKey : notnull
+    {
+        private readonly int _capacity;
+        private readonly Dictionary<TKey, LinkedListNode<LruCacheItem>> _cacheMap;
+        private readonly LinkedList<LruCacheItem> _lruList;
+
+        /// <summary>
+        /// Gets the number of items in the cache.
+        /// </summary>
+        public int Count => _cacheMap.Count;
+
+        /// <summary>
+        /// Initializes a new instance of the LRUCache class.
+        /// </summary>
+        /// <param name="capacity">The maximum number of items to store in the cache</param>
+        public LruCache(int capacity)
+        {
+            if (capacity <= 0)
+                throw new ArgumentException("Capacity must be greater than 0", nameof(capacity));
+
+            _capacity = capacity;
+            _cacheMap = [];
+            _lruList = new LinkedList<LruCacheItem>();
+        }
+
+        /// <summary>
+        /// Gets the value associated with the specified key.
+        /// </summary>
+        /// <param name="key">The key of the value to get</param>
+        /// <param name="value">When this method returns, contains the value associated with the specified key, if the key is found; otherwise, the default value for the type of the value parameter</param>
+        /// <returns>true if the cache contains an element with the specified key; otherwise, false</returns>
+        public bool TryGetValue(TKey key, out TValue value)
+        {
+            if (_cacheMap.TryGetValue(key, out var node))
+            {
+                // Move to front (most recently used)
+                _lruList.Remove(node);
+                _lruList.AddFirst(node);
+                value = node.Value.Value;
+                return true;
+            }
+
+            value = default!;
+            return false;
+        }
+
+        /// <summary>
+        /// Adds or updates a key-value pair in the cache.
+        /// </summary>
+        /// <param name="key">The key of the element to add</param>
+        /// <param name="value">The value of the element to add</param>
+        public void Put(TKey key, TValue value)
+        {
+            if (_cacheMap.TryGetValue(key, out var existingNode))
+            {
+                // Update existing node
+                existingNode.Value.Value = value;
+                _lruList.Remove(existingNode);
+                _lruList.AddFirst(existingNode);
+            }
+            else
+            {
+                // Add new node
+                if (_cacheMap.Count >= _capacity)
+                {
+                    // Remove least recently used item
+                    var lruNode = _lruList.Last;
+                    if (lruNode != null)
+                    {
+                        _cacheMap.Remove(lruNode.Value.Key);
+                        _lruList.RemoveLast();
+                    }
+                }
+
+                var newNode = new LinkedListNode<LruCacheItem>(new LruCacheItem(key, value));
+                _lruList.AddFirst(newNode);
+                _cacheMap[key] = newNode;
+            }
+        }
+
+        /// <summary>
+        /// Removes the value with the specified key from the cache.
+        /// </summary>
+        /// <param name="key">The key of the element to remove</param>
+        /// <returns>true if the element is successfully found and removed; otherwise, false</returns>
+        public bool Remove(TKey key)
+        {
+            if (_cacheMap.TryGetValue(key, out var node))
+            {
+                _cacheMap.Remove(key);
+                _lruList.Remove(node);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Removes all keys and values from the cache.
+        /// </summary>
+        public void Clear()
+        {
+            _cacheMap.Clear();
+            _lruList.Clear();
+        }
+
+        /// <summary>
+        /// Gets all keys in the cache.
+        /// </summary>
+        /// <returns>An enumerable of all keys in the cache</returns>
+        public IEnumerable<TKey> Keys => _cacheMap.Keys;
+
+        /// <summary>
+        /// Internal class representing a cache item.
+        /// </summary>
+        private sealed class LruCacheItem(TKey key, TValue value)
+        {
+            public TKey Key { get; } = key;
+            public TValue Value { get; set; } = value;
+        }
+    }
+
+    #endregion
 }

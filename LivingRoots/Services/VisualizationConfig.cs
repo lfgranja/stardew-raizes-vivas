@@ -74,6 +74,7 @@ namespace LivingRoots.Services
                 if (configData == null)
                 {
                     _monitor.Log("No visualization config found, using defaults.", LogLevel.Trace);
+                    _monitor.Log($"[CONFIG] ShowTileOverlays: {_showTileOverlays}, ShowHoverTooltips: {_showHoverTooltips}, ShowHoeFeedback: {_showHoeFeedback}, OverlayOpacity: {_overlayOpacity}", LogLevel.Info);
                     return;
                 }
 
@@ -90,11 +91,13 @@ namespace LivingRoots.Services
                 _healthyHealthColor = ValidateColor(configData.HealthyHealthColor, _healthyHealthColor);
 
                 _monitor.Log("Visualization configuration loaded successfully.", LogLevel.Trace);
+                _monitor.Log($"[CONFIG] ShowTileOverlays: {_showTileOverlays}, ShowHoverTooltips: {_showHoverTooltips}, ShowHoeFeedback: {_showHoeFeedback}, OverlayOpacity: {_overlayOpacity}", LogLevel.Info);
             }
             catch (Exception ex)
             {
                 _monitor.Log("Error loading visualization configuration, using defaults.", LogLevel.Error);
                 _monitor.Log($"Load exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log($"[CONFIG] ShowTileOverlays: {_showTileOverlays}, ShowHoverTooltips: {_showHoverTooltips}, ShowHoeFeedback: {_showHoeFeedback}, OverlayOpacity: {_overlayOpacity}", LogLevel.Info);
             }
         }
 

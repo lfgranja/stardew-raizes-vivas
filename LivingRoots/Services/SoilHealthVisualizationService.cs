@@ -528,6 +528,24 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
+        /// Gets the set of currently tilled tiles in the current location.
+        /// </summary>
+        /// <returns>A set of tile coordinates that are currently tilled</returns>
+        private static HashSet<Vector2> GetTilledTiles(GameLocation location)
+        {
+            if (location?.terrainFeatures == null)
+            {
+                return new HashSet<Vector2>();
+            }
+
+            return new HashSet<Vector2>(
+                location.terrainFeatures.Pairs
+                    .Where(pair => pair.Value is HoeDirt)
+                    .Select(pair => pair.Key)
+            );
+        }
+
+        /// <summary>
         /// Checks if a tile has a HoeDirt terrain feature (tilled soil).
         /// </summary>
         /// <param name="location">The game location containing the tile</param>
@@ -609,27 +627,33 @@ namespace LivingRoots.Services
                     return;
                 }
 
-                var cursorTile = e.Cursor.Tile;
-                if (!VisualizationHelpers.IsValidTile(cursorTile))
-                {
-                    return;
-                }
-
                 var location = Game1.currentLocation;
                 if (location == null)
                 {
                     return;
                 }
 
-                // Get soil health for the tile
-                var health = _soilHealthService.GetSoilHealth(location.Name, cursorTile);
+                // Get the set of tilled tiles BEFORE the hoe action
+                var tilledTilesBefore = GetTilledTiles(location);
 
-                // Set hoe action feedback
-                _hoeActionTile = cursorTile;
-                _hoeActionHealth = health;
-                _hoeActionStartTime = DateTime.UtcNow;
+                // Get soil health for tiles and track them for feedback
+                var tilesWithHealth = new List<(Vector2 tile, float health)>();
+                foreach (var tile in tilledTilesBefore)
+                {
+                    var health = _soilHealthService.GetSoilHealth(location.NameOrUniqueName, tile);
+                    tilesWithHealth.Add((tile, health));
+                }
 
-                _monitor.Log($"Hoe used on tile {cursorTile} with soil health: {health}%", LogLevel.Debug);
+                // Set hoe action feedback for all tilled tiles
+                if (tilesWithHealth.Count > 0)
+                {
+                    // Use the first tilled tile for feedback (or could show feedback for all)
+                    _hoeActionTile = tilesWithHealth[0].tile;
+                    _hoeActionHealth = tilesWithHealth[0].health;
+                    _hoeActionStartTime = DateTime.UtcNow;
+
+                    _monitor.Log($"Hoe used on tile {_hoeActionTile} with soil health: {_hoeActionHealth}%", LogLevel.Debug);
+                }
             }
             catch (Exception ex)
             {
@@ -639,7 +663,7 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
-        /// Handles rendered world events to render tile overlays.
+        /// Handles rendered world events to render tile overlays and hoe feedback.
         /// </summary>
         /// <param name="sender">The event sender</param>
         /// <param name="e">Rendered world event arguments</param>
@@ -647,22 +671,25 @@ namespace LivingRoots.Services
         {
             try
             {
+                _monitor.Log($"[RENDER] OnRenderedWorld called - IsEnabled: {_isEnabled}, ShowTileOverlays: {_config.ShowTileOverlays}", LogLevel.Debug);
+
                 if (!_isEnabled || !_config.ShowTileOverlays)
                 {
+                    _monitor.Log("[RENDER] OnRenderedWorld - Early exit due to disabled state", LogLevel.Trace);
                     return;
                 }
 
                 var location = Game1.currentLocation;
                 if (location == null)
                 {
-                    _monitor.Log("Game1.currentLocation is null, skipping overlay rendering.", LogLevel.Trace);
+                    _monitor.Log("[RENDER] OnRenderedWorld - Current location is null", LogLevel.Trace);
                     return;
                 }
 
                 var player = Game1.player;
                 if (player == null)
                 {
-                    _monitor.Log("Game1.player is null, skipping overlay rendering.", LogLevel.Trace);
+                    _monitor.Log("[RENDER] OnRenderedWorld - Player is null", LogLevel.Trace);
                     return;
                 }
 
@@ -676,6 +703,24 @@ namespace LivingRoots.Services
                     _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                 }
 
+                // Render hoe feedback (flash effect and floating text) in world space
+                if (_config.ShowHoeFeedback && _hoeActionTile.HasValue && _hoeActionHealth.HasValue)
+                {
+                    try
+                    {
+                        // Convert tile coordinates to world position (no viewport offset)
+                        var worldPosition = new Vector2(
+                            _hoeActionTile.Value.X * 64f,
+                            _hoeActionTile.Value.Y * 64f
+                        );
+                        _tooltipRenderer.RenderHoeFeedback(e.SpriteBatch, worldPosition, _hoeActionHealth.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        _monitor.Log($"Error rendering hoe feedback: {ex.Message}", LogLevel.Error);
+                    }
+                }
+
                 // Log performance metrics periodically
                 LogPerformanceIfNeeded();
             }
@@ -687,7 +732,8 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
-        /// Handles rendered events to render tooltips and feedback.
+        /// Handles rendered events to render tooltips.
+        /// Renders tooltips in both outdoor and indoor locations (including Greenhouse).
         /// </summary>
         /// <param name="sender">The event sender</param>
         /// <param name="e">Rendered event arguments</param>
@@ -695,37 +741,28 @@ namespace LivingRoots.Services
         {
             try
             {
-                // Render hover tooltip
+                var location = Game1.currentLocation;
+                if (location == null)
+                {
+                    return;
+                }
+
+                // Render hover tooltip (works in both outdoor and indoor locations)
                 if (_isEnabled && _config.ShowHoverTooltips && _currentHoverTile.HasValue)
                 {
                     try
                     {
                         var cursorPosition = Game1.getMousePosition().ToVector2();
-                        var location = Game1.currentLocation;
 
-                        if (location != null && IsTileTilled(location, _currentHoverTile.Value))
+                        if (IsTileTilled(location, _currentHoverTile.Value))
                         {
-                            var health = _soilHealthService.GetSoilHealth(location.Name, _currentHoverTile.Value);
+                            var health = _soilHealthService.GetSoilHealth(location.NameOrUniqueName, _currentHoverTile.Value);
                             _tooltipRenderer.RenderHoverTooltip(e.SpriteBatch, cursorPosition, health);
                         }
                     }
                     catch (Exception ex)
                     {
                         _monitor.Log($"Error rendering hover tooltip: {ex.Message}", LogLevel.Error);
-                    }
-                }
-
-                // Render hoe feedback
-                if (_isEnabled && _config.ShowHoeFeedback && _hoeActionTile.HasValue && _hoeActionHealth.HasValue)
-                {
-                    try
-                    {
-                        var tilePosition = VisualizationHelpers.GetTileScreenPosition(_hoeActionTile.Value);
-                        _tooltipRenderer.RenderHoeFeedback(e.SpriteBatch, tilePosition, _hoeActionHealth.Value);
-                    }
-                    catch (Exception ex)
-                    {
-                        _monitor.Log($"Error rendering hoe feedback: {ex.Message}", LogLevel.Error);
                     }
                 }
             }
@@ -745,12 +782,15 @@ namespace LivingRoots.Services
         {
             try
             {
+                _monitor.Log($"[UPDATE] OnUpdateTicked called - IsEnabled: {_isEnabled}", LogLevel.Trace);
+
                 // Clear hoe action feedback after duration
                 if (_hoeActionStartTime.HasValue)
                 {
                     var elapsed = (DateTime.UtcNow - _hoeActionStartTime.Value).TotalMilliseconds;
                     if (elapsed > _config.GetHoeFeedbackDuration())
                     {
+                        _monitor.Log("[UPDATE] Clearing hoe action feedback", LogLevel.Trace);
                         _hoeActionTile = null;
                         _hoeActionHealth = null;
                         _hoeActionStartTime = null;

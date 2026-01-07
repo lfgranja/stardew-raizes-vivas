@@ -29,12 +29,20 @@ namespace LivingRoots.Services
         // Tooltip styling constants
         private const int TooltipPadding = 8;
         private const int TooltipBorderWidth = 2;
-        private const int TooltipLineHeight = 20;
         private const int CursorOffsetX = 16;
         private const int CursorOffsetY = -32;
 
         // Hoe feedback constants
         private const int FloatingTextOffsetY = -20;
+
+        /// <summary>
+        /// Gets the actual line height for the dialogue font.
+        /// </summary>
+        /// <returns>The line height in pixels</returns>
+        private static float GetLineHeight()
+        {
+            return Game1.dialogueFont.MeasureString("Ay").Y;
+        }
 
         /// <inheritdoc/>
         public void RenderHoverTooltip(SpriteBatch spriteBatch, Vector2 cursorPosition, float health)
@@ -139,11 +147,12 @@ namespace LivingRoots.Services
                 maxLineWidth = Math.Max(maxLineWidth, (int)textSize.X);
             }
 
+            var lineHeight = GetLineHeight();
             var tooltipWidth = maxLineWidth + (TooltipPadding * 2);
-            var tooltipHeight = (tooltipLines.Length * TooltipLineHeight) + (TooltipPadding * 2);
+            var tooltipHeight = (tooltipLines.Length * lineHeight) + (TooltipPadding * 2);
 
             // Calculate position with offset from cursor
-            Vector2 position = new Vector2(
+            var position = new Vector2(
                 cursorPosition.X + CursorOffsetX,
                 cursorPosition.Y + CursorOffsetY
             );
@@ -172,19 +181,20 @@ namespace LivingRoots.Services
                 maxLineWidth = Math.Max(maxLineWidth, (int)textSize.X);
             }
 
+            var lineHeight = GetLineHeight();
             var tooltipWidth = maxLineWidth + (TooltipPadding * 2);
-            var tooltipHeight = (tooltipLines.Length * TooltipLineHeight) + (TooltipPadding * 2);
+            var tooltipHeight = (tooltipLines.Length * lineHeight) + (TooltipPadding * 2);
 
             // Create background rectangle
-            Rectangle backgroundRect = new Rectangle(
+            var backgroundRect = new Rectangle(
                 (int)position.X,
                 (int)position.Y,
                 tooltipWidth,
-                tooltipHeight
+                (int)tooltipHeight
             );
 
             // Render semi-transparent black background
-            Color backgroundColor = new Color(0, 0, 0, 204); // 0.8 alpha
+            var backgroundColor = new Color(0, 0, 0, 204); // 0.8 alpha
             spriteBatch.Draw(
                 VisualizationHelpers.GetOrCreateOverlayTexture(),
                 backgroundRect,
@@ -246,12 +256,13 @@ namespace LivingRoots.Services
         private static void RenderTooltipText(SpriteBatch spriteBatch, Vector2 position, string[] tooltipLines)
         {
             Color textColor = Color.White;
+            var lineHeight = GetLineHeight();
 
             for (var i = 0; i < tooltipLines.Length; i++)
             {
-                Vector2 textPosition = new Vector2(
+                var textPosition = new Vector2(
                     position.X + TooltipPadding,
-                    position.Y + TooltipPadding + (i * TooltipLineHeight)
+                    position.Y + TooltipPadding + (i * lineHeight)
                 );
 
                 spriteBatch.DrawString(
@@ -267,22 +278,31 @@ namespace LivingRoots.Services
         /// Renders a flash effect at the tile position.
         /// </summary>
         /// <param name="spriteBatch">The SpriteBatch for rendering</param>
-        /// <param name="tilePosition">The tile position</param>
+        /// <param name="tilePosition">The tile position in world coordinates</param>
         /// <param name="color">The color for the flash</param>
         private static void RenderFlashEffect(SpriteBatch spriteBatch, Vector2 tilePosition, Color color)
         {
             // Create a bright version of the color for the flash
-            Color flashColor = new Color(
+            var flashColor = new Color(
                 Math.Min(255, color.R + 50),
                 Math.Min(255, color.G + 50),
                 Math.Min(255, color.B + 50),
                 200
             );
 
-            // Render flash rectangle
+            // Get viewport for coordinate conversion
+            Rectangle viewport = VisualizationHelpers.GetViewportBounds();
+
+            // Convert world coordinates to screen coordinates (same logic as tile overlays)
+            Vector2 screenPosition = new Vector2(
+                tilePosition.X - viewport.X,
+                tilePosition.Y - viewport.Y
+            );
+
+            // Render flash rectangle at screen position
             spriteBatch.Draw(
                 VisualizationHelpers.GetOrCreateOverlayTexture(),
-                new Rectangle((int)tilePosition.X, (int)tilePosition.Y, 64, 64),
+                new Rectangle((int)screenPosition.X, (int)screenPosition.Y, 64, 64),
                 flashColor
             );
         }
@@ -291,7 +311,7 @@ namespace LivingRoots.Services
         /// Renders floating text at the tile position.
         /// </summary>
         /// <param name="spriteBatch">The SpriteBatch for rendering</param>
-        /// <param name="tilePosition">The tile position</param>
+        /// <param name="tilePosition">The tile position in world coordinates</param>
         /// <param name="health">The soil health value</param>
         /// <param name="color">The color for the text</param>
         private static void RenderFloatingText(SpriteBatch spriteBatch, Vector2 tilePosition, float health, Color color)
@@ -299,10 +319,19 @@ namespace LivingRoots.Services
             // Format floating text
             var text = $"{health:F0}%";
 
+            // Get viewport for coordinate conversion
+            Rectangle viewport = VisualizationHelpers.GetViewportBounds();
+
+            // Convert world coordinates to screen coordinates (same logic as tile overlays)
+            Vector2 screenPosition = new Vector2(
+                tilePosition.X - viewport.X,
+                tilePosition.Y - viewport.Y
+            );
+
             // Calculate text position (above the tile)
-            Vector2 textPosition = new Vector2(
-                tilePosition.X + 32 - (Game1.dialogueFont.MeasureString(text).X / 2),
-                tilePosition.Y + FloatingTextOffsetY
+            var textPosition = new Vector2(
+                screenPosition.X + 32 - (Game1.dialogueFont.MeasureString(text).X / 2),
+                screenPosition.Y + FloatingTextOffsetY
             );
 
             // Render text with a slight shadow for visibility

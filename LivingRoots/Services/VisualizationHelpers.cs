@@ -18,10 +18,16 @@ namespace LivingRoots.Services
         /// </summary>
         /// <returns>A 1x1 white texture that can be scaled</returns>
         private static Texture2D? _overlayTexture;
+        private static bool _textureLogged = false;
         public static Texture2D? GetOrCreateOverlayTexture()
         {
             if (_overlayTexture != null)
             {
+                if (!_textureLogged)
+                {
+                    _textureLogged = true;
+                    // We can't log here without a monitor, but the texture exists
+                }
                 return _overlayTexture;
             }
 
@@ -29,6 +35,11 @@ namespace LivingRoots.Services
             if (Game1.staminaRect != null)
             {
                 _overlayTexture = Game1.staminaRect;
+                if (!_textureLogged)
+                {
+                    _textureLogged = true;
+                    // We can't log here without a monitor
+                }
             }
             else
             {
@@ -36,10 +47,16 @@ namespace LivingRoots.Services
                 {
                     _overlayTexture = new Texture2D(Game1.graphics.GraphicsDevice, 1, 1);
                     _overlayTexture.SetData(new[] { Color.White });
+                    if (!_textureLogged)
+                    {
+                        _textureLogged = true;
+                        // We can't log here without a monitor
+                    }
                 }
-                catch
+                catch (Exception)
                 {
                     // Return null on failure. The caller is responsible for logging.
+                    // Log to monitor if we had access to one, but we don't here
                     return null;
                 }
             }
