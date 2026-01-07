@@ -1133,7 +1133,7 @@ namespace LivingRoots.Controllers
             ModifySoilHealth(command, args, 10f, false);
         }
 
-        private void SetSoilHealth(string command, string[] args)
+        private void SetSoilHealth(string _command, string[] args)
         {
             if (IsDisposed())
                 return;
