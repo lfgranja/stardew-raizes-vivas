@@ -47,7 +47,6 @@ jobs:
                   dotnet sonarscanner begin \
                     /k:"lfgranja_stardew-raizes-vivas" \
                     /o:"lfgranja" \
-                    /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
                     /d:sonar.host.url="https://sonarcloud.io" \
                     /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml"
 
@@ -62,20 +61,50 @@ jobs:
             - name: Check Formatting (CSharpier)
               run: dotnet csharpier --check .
 
-            - name: Build & Lint (Roslyn)
-              run: dotnet build --no-restore /p:TreatWarningsAsErrors=true
-
-            # 8. Build do Projeto
+            # 8. Build do Projeto com tratamento de warnings como erros
             - name: Build
-              run: dotnet build --no-restore --configuration Release
+              run: dotnet build --no-restore --configuration Release /p:TreatWarningsAsErrors=true
 
             # 9. Testes com Cobertura de Código
             # O formato opencover é necessário para o SonarCloud ler a cobertura no Linux
             - name: Test
-              run: dotnet test --no-build --verbosity normal --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+              run: |
+                  dotnet test --no-build --configuration Release --verbosity normal \
+                    --collect:"XPlat Code Coverage" \
+                    --results-directory ./coverage \
+                    --logger trx
 
-            # 10. Finaliza o Scan e envia para o SonarCloud
+            # 10. Extração de artefatos de cobertura para inspeção
+            - name: Upload coverage reports
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage-reports
+                  path: |
+                      **/coverage.opencover.xml
+                      ./coverage/
+                  include-hidden-files: true
+                  retention-days: 30
+
+            # 11. Finaliza o Scan e envia para o SonarCloud
             - name: End SonarCloud Analysis
               env:
                   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
               run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+
+            # 12. Análise de Segurança com CodeQL
+            - name: Initialize CodeQL
+              uses: github/codeql-action/init@v3
+              with:
+                  languages: csharp
+
+            - name: Perform CodeQL Analysis
+              uses: github/codeql-action/analyze@v3
+
+            # 13. Upload SARIF files for security findings
+            - name: Upload SARIF files
+              uses: actions/upload-artifact@v4
+              if: ${{ !cancelled() }}
+              with:
+                  name: SARIF files
+                  path: ${{ runner.temp }}/codeql_databases/*.sarif
+                  retention-days: 30
