@@ -5,6 +5,7 @@ A Stardew Valley mod that introduces sustainable farming practices through soil 
 ## Features
 
 ### Soil Health System
+
 - Each farm tile has a persistent soil health value (0-100%)
 - Health values are saved and loaded with the game
 - **NEW: Visual indicators show soil health status** - See soil health through hover tooltips, color-coded tile overlays, and hoe action feedback
@@ -12,11 +13,13 @@ A Stardew Valley mod that introduces sustainable farming practices through soil 
 - Health improves with compost application (Planned)
 
 ### Composting
+
 - Create compost from organic materials
 - Apply compost to improve soil health
 - Different materials provide different benefits
 
 ### Agroecological Practices
+
 - Implement sustainable farming techniques
 - Learn about real-world soil management
 - Enhance your farming experience with educational elements
@@ -40,6 +43,7 @@ The mod can be customized through the `config.json` file in the mod folder. Key 
 - **Custom Colors**: Customize colors for Poor/Moderate/Healthy soil
 
 Example configuration:
+
 ```json
 {
   "ShowTileOverlays": true,
@@ -59,12 +63,14 @@ For detailed configuration options, see the [Soil Health Visualization User Guid
 This mod follows Domain-Driven Design (DDD) principles and implements a layered architecture with clear separation of concerns. The soil health system uses a robust persistence mechanism that ensures data integrity across game sessions.
 
 ### Architecture Highlights
+
 - **Domain Layer**: Contains business logic and models
 - **Services Layer**: Implements application services
 - **Controllers Layer**: Handles game events
 - **Test-Driven Development**: Comprehensive test coverage
 
 ### Documentation
+
 - [Soil Health Visualization User Guide](LivingRoots/docs/SOIL_HEALTH_VISUALIZATION_USER_GUIDE.md) - Complete user documentation for visualization features
 - [Soil Health Visualization Developer Guide](LivingRoots/docs/SOIL_HEALTH_VISUALIZATION_DEVELOPER_GUIDE.md) - Technical documentation for developers
 - [Implementation Guide: US-01-02](LivingRoots/docs/IMPLEMENTATION_GUIDE_US-01-02.md) - Detailed implementation plan
@@ -79,3 +85,18 @@ We welcome contributions! Please see our [contribution guidelines](CONTRIBUTING.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+This project incorporates tile overlay rendering logic adapted from the [DataLayers mod](https://github.com/Pathoschild/StardewMods/tree/develop/DataLayers) by [Pathoschild](https://github.com/Pathoschild).
+
+Specifically, the following components were adapted from DataLayers:
+
+- Tile aggregation algorithms for grouping tiles by category
+- Border detection algorithms for identifying tile edges
+- Batch rendering pipeline for efficient overlay drawing
+- Data structures: `TileData`, `TileDrawData`, `TileGroup`, and `TileEdges` enum
+
+The original DataLayers algorithms have been adapted and modified to meet LivingRoots' soil health visualization needs, including grouping tiles by soil health categories, applying health-based colors and borders, and integrating with LivingRoots' caching and configuration systems.
+
+We thank Pathoschild for their excellent work on DataLayers and for providing a solid foundation for tile-based overlay visualization in Stardew Valley mods.
