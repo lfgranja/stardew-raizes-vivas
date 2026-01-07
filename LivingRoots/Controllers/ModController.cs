@@ -842,7 +842,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Parse the value
-                if (!float.TryParse(args[0], out float value))
+                if (!float.TryParse(args[0], out var value))
                 {
                     monitorSnapshot?.Log($"Error: '{args[0]}' is not a valid number.", LogLevel.Error);
                     monitorSnapshot?.Log("Usage: lr_sethealth <value>", LogLevel.Info);
@@ -863,7 +863,7 @@ namespace LivingRoots.Controllers
                     return;
 
                 var ctx = context.Value;
-                var currentHealth = soilHealthServiceSnapshot?.GetSoilHealth(ctx.Location.Name, ctx.Tile) ?? ModConstants.InitialSoilHealth;
+                var currentHealth = soilHealthServiceSnapshot.GetSoilHealth(ctx.Location.Name, ctx.Tile);
                 var newHealth = value;
 
                 if (IsHealthUnchanged(currentHealth, newHealth))
@@ -872,7 +872,7 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                soilHealthServiceSnapshot?.SetSoilHealth(ctx.Location.Name, ctx.Tile, newHealth);
+                soilHealthServiceSnapshot.SetSoilHealth(ctx.Location.Name, ctx.Tile, newHealth);
                 monitorSnapshot?.Log($"Soil health changed from {currentHealth:F1} to {newHealth:F1} on tile ({ctx.Tile.X}, {ctx.Tile.Y}) in {ctx.Location.Name}.", LogLevel.Info);
             }
             catch (Exception ex)
@@ -953,7 +953,7 @@ namespace LivingRoots.Controllers
                     return;
 
                 var ctx = context.Value;
-                var currentHealth = soilHealthServiceSnapshot?.GetSoilHealth(ctx.Location.Name, ctx.Tile) ?? ModConstants.InitialSoilHealth;
+                var currentHealth = soilHealthServiceSnapshot.GetSoilHealth(ctx.Location.Name, ctx.Tile);
                 var newHealth = CalculateNewHealth(currentHealth, amount, isIncrease, setToValue);
                 newHealth = ValidateHealthBounds(newHealth, monitorSnapshot);
 
@@ -963,7 +963,7 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                soilHealthServiceSnapshot?.SetSoilHealth(ctx.Location.Name, ctx.Tile, newHealth);
+                soilHealthServiceSnapshot.SetSoilHealth(ctx.Location.Name, ctx.Tile, newHealth);
                 monitorSnapshot?.Log($"Soil health changed from {currentHealth:F1} to {newHealth:F1} on tile ({ctx.Tile.X}, {ctx.Tile.Y}) in {ctx.Location.Name}.", LogLevel.Info);
             }
             catch (Exception ex)
