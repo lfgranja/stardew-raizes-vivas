@@ -185,14 +185,18 @@ namespace LivingRoots.Services
                     // draw fill(s)
                     foreach (Color c in data.Colors)
                     {
-                        Vector2 worldPosition =
-                            GetTileWorldPosition(data.TilePosition)
-                            + new Vector2(data.DrawOffset.X, data.DrawOffset.Y);
+                        // Calculate world position with camera offset for proper rendering in OnRenderedWorld event
+                        Vector2 worldPosition = GetTileWorldPosition(data.TilePosition);
+                        Vector2 screenPosition = new Vector2(
+                            worldPosition.X - Game1.viewport.X,
+                            worldPosition.Y - Game1.viewport.Y
+                        );
+
                         spriteBatch.Draw(
                             texture,
                             new Rectangle(
-                                (int)worldPosition.X,
-                                (int)worldPosition.Y,
+                                (int)screenPosition.X,
+                                (int)screenPosition.Y,
                                 TileSize,
                                 TileSize
                             ),
@@ -327,10 +331,19 @@ namespace LivingRoots.Services
             }
 
             // Categorize from health (not from color)
-            SoilHealthCategory category =
-                health < 40f ? SoilHealthCategory.Poor
-                : health < 70f ? SoilHealthCategory.Moderate
-                : SoilHealthCategory.Healthy;
+            SoilHealthCategory category;
+            if (health < 40f)
+            {
+                category = SoilHealthCategory.Poor;
+            }
+            else if (health < 70f)
+            {
+                category = SoilHealthCategory.Moderate;
+            }
+            else
+            {
+                category = SoilHealthCategory.Healthy;
+            }
 
             // Get color for health value
             Color baseColor = _colorMapper.GetHealthColor(health);
@@ -582,9 +595,15 @@ namespace LivingRoots.Services
 
             if (texture != null)
             {
+                // Adjust position for camera offset when rendering in world space
+                Vector2 screenPosition = new Vector2(
+                    position.X - Game1.viewport.X,
+                    position.Y - Game1.viewport.Y
+                );
+
                 spriteBatch.Draw(
                     texture,
-                    new Rectangle((int)position.X, (int)position.Y, TileSize, TileSize),
+                    new Rectangle((int)screenPosition.X, (int)screenPosition.Y, TileSize, TileSize),
                     color
                 );
             }

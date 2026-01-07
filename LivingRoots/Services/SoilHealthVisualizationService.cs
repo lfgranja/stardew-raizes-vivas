@@ -690,15 +690,20 @@ namespace LivingRoots.Services
                 // Record the actual tile the player targeted with the hoe
                 var targetTile = e.Cursor.Tile;
 
-                // Only show feedback for the targeted tile (and only if it’s relevant)
+                // Only show feedback for the targeted tile (and only if it's relevant)
                 var tilesWithHealth = new List<(Vector2 tile, float health)>();
+
                 if (VisualizationHelpers.IsValidTile(targetTile))
                 {
-                    _hoeActionTile = targetTile;
-                    _hoeActionHealth = _soilHealthService.GetSoilHealth(
+                    var health = _soilHealthService.GetSoilHealth(
                         location.NameOrUniqueName,
                         targetTile
                     );
+
+                    tilesWithHealth.Add((targetTile, health));
+
+                    _hoeActionTile = targetTile;
+                    _hoeActionHealth = health;
                     _hoeActionStartTime = DateTime.UtcNow;
 
                     _monitor.Log(
