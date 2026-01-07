@@ -656,19 +656,38 @@ namespace LivingRoots.Services
                 if (!_runtimeCache.TryGetValue(locationName, out tiles))
                 {
                     if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
-                        return initial; // can't store, but still return a stable-ish value for this call
+                        return GenerateDeterministicInitialSoilHealth(locationName, tilePoint);
 
                     tiles = new Dictionary<Point, float>();
                     _runtimeCache[locationName] = tiles;
                 }
 
-                if (tiles.Count < ModConstants.MaxTilesPerLocation)
-                {
-                    tiles[tilePoint] = initial;
-                }
+                if (tiles.Count >= ModConstants.MaxTilesPerLocation)
+                    return GenerateDeterministicInitialSoilHealth(locationName, tilePoint);
 
+                tiles[tilePoint] = initial;
                 return initial;
             }
+        }
+
+        private static float GenerateDeterministicInitialSoilHealth(
+            string locationName,
+            Point tilePoint
+        )
+        {
+            var input = Encoding.UTF8.GetBytes($"{locationName}\n{tilePoint.X},{tilePoint.Y}");
+            var hash = SHA256.HashData(input);
+
+            // derive stable "random" values from the hash
+            var roll = (int)(BitConverter.ToUInt32(hash, 0) % 100);
+            var u = BitConverter.ToUInt32(hash, 4) / (float)uint.MaxValue;
+
+            if (roll < 50)
+                return 30f;
+            if (roll < 70)
+                return 20f + u * 10f;
+
+            return 30f + u * 70f;
         }
 
         /// <summary>

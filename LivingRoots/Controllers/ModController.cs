@@ -142,6 +142,20 @@ namespace LivingRoots.Controllers
                         $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
                         LogLevel.Trace
                     );
+
+                    // Roll back core subscriptions and do not publish "registered" state
+                    HandleRegistrationError(
+                        new RegistrationContext
+                        {
+                            Exception = ex,
+                            GameLoop = gameLoop,
+                            LocalGameLaunchedHandler = localGameLaunchedHandler,
+                            LocalSaveLoadedHandler = localSaveLoadedHandler,
+                            LocalSavingHandler = localSavingHandler,
+                            Monitor = monitorSnapshot,
+                        }
+                    );
+                    return;
                 }
                 // now that everything succeeded, publish the "registered" state
                 System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
@@ -1055,8 +1069,7 @@ namespace LivingRoots.Controllers
                     _helper.ConsoleCommands.Add(
                         "lr_health_up_max",
                         "Set soil health to maximum (100) on current tile.",
-                        (cmd, args) =>
-                            ModifySoilHealth(cmd, args, ModConstants.MaxSoilHealth, true, true)
+                        ModifySoilHealthMax
                     );
                     _helper.ConsoleCommands.Add(
                         "lr_health_down_1",
@@ -1071,8 +1084,7 @@ namespace LivingRoots.Controllers
                     _helper.ConsoleCommands.Add(
                         "lr_health_down_min",
                         "Set soil health to minimum (0) on current tile.",
-                        (cmd, args) =>
-                            ModifySoilHealth(cmd, args, ModConstants.MinSoilHealth, false, true)
+                        ModifySoilHealthMin
                     );
                     _helper.ConsoleCommands.Add(
                         "lr_sethealth",
@@ -1133,6 +1145,16 @@ namespace LivingRoots.Controllers
             ModifySoilHealth(command, args, 10f, false);
         }
 
+        private void ModifySoilHealthMax(string command, string[] args)
+        {
+            ModifySoilHealth(command, args, ModConstants.MaxSoilHealth, true, true);
+        }
+
+        private void ModifySoilHealthMin(string command, string[] args)
+        {
+            ModifySoilHealth(command, args, ModConstants.MinSoilHealth, false, true);
+        }
+
         private void SetSoilHealth(string _command, string[] args)
         {
             if (IsDisposed())
@@ -1168,8 +1190,15 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                // Parse the value
-                if (!float.TryParse(args[0], out var value))
+                // Parse the value (culture-invariant to avoid locale issues)
+                if (
+                    !float.TryParse(
+                        args[0],
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var value
+                    )
+                )
                 {
                     monitorSnapshot?.Log(
                         $"Error: '{args[0]}' is not a valid number.",
@@ -1411,9 +1440,13 @@ namespace LivingRoots.Controllers
             }
 
             var playerTile = player.Tile;
-            var terrainFeature = currentLocation
-                .terrainFeatures.Pairs.FirstOrDefault(tf => tf.Key == playerTile)
-                .Value;
+            if (
+                currentLocation.terrainFeatures == null
+                || !currentLocation.terrainFeatures.TryGetValue(playerTile, out var terrainFeature)
+            )
+            {
+                terrainFeature = null;
+            }
 
             if (terrainFeature == null)
             {
