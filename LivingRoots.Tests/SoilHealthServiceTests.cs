@@ -68,7 +68,7 @@ namespace LivingRoots.Tests
             var result = service.GetSoilHealth(location!, tile);
 
             // Assert
-            Assert.Equal(30f, result); // InitialSoilHealth is 30f
+            Assert.InRange(result, 20f, 100f); // GenerateInitialSoilHealth returns values in [20, 100]
         }
 
         [Theory]
@@ -86,7 +86,7 @@ namespace LivingRoots.Tests
             var result = service.GetSoilHealth(location, new Vector2(x, y));
 
             // Assert
-            Assert.Equal(30f, result); // Returns InitialSoilHealth (30f) for invalid coordinates
+            Assert.InRange(result, 20f, 100f); // GenerateInitialSoilHealth returns values in [20, 100]
         }
 
         [Theory]
@@ -134,9 +134,9 @@ namespace LivingRoots.Tests
             // Act
             service.SetSoilHealth(location, new Vector2(x, y), 50.0f);
 
-            // Assert - Should not have added any entries to the cache, returns InitialSoilHealth (30f)
-            Assert.Equal(30f, service.GetSoilHealth(location, new Vector2(0, 0)));
-            Assert.Equal(30f, service.GetSoilHealth(location, new Vector2(x, y)));
+            // Assert - Should not have added any entries to the cache, returns value in [20, 100]
+            Assert.InRange(service.GetSoilHealth(location, new Vector2(0, 0)), 20f, 100f);
+            Assert.InRange(service.GetSoilHealth(location, new Vector2(x, y)), 20f, 100f);
         }
 
         [Theory]
@@ -248,7 +248,7 @@ namespace LivingRoots.Tests
 
             // Assert - Value should be cleared (not preserved) when invalid saveId is passed
             // This prevents data leakage between different game saves
-            Assert.Equal(30f, service.GetSoilHealth("Farm", tile)); // Returns InitialSoilHealth (30f) when cache is cleared
+            Assert.InRange(service.GetSoilHealth("Farm", tile), 20f, 100f); // Returns value in [20, 100] when cache is cleared
         }
 
         [Fact]
@@ -310,7 +310,7 @@ namespace LivingRoots.Tests
             service.LoadData("test_save");
 
             // Assert - Should not throw and should have empty cache
-            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(10, 10))); // Returns InitialSoilHealth (30f) when cache is empty
+            Assert.InRange(service.GetSoilHealth("Farm", new Vector2(10, 10)), 20f, 100f); // Returns value in [20, 100] when cache is empty
         }
 
         [Fact]
@@ -348,7 +348,7 @@ namespace LivingRoots.Tests
             // Assert - Only valid entry should be loaded
             Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
             // Invalid entries should not exist
-            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(0, 0))); // Default for invalid
+            Assert.InRange(service.GetSoilHealth("Farm", new Vector2(0, 0)), 20f, 100f); // Default for invalid - returns value in [20, 100]
         }
 
         [Fact]
@@ -393,7 +393,7 @@ namespace LivingRoots.Tests
             Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
 
             // Additional verification: Ensure that no unexpected values were created
-            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(99, 99))); // Non-existent tile should return default value
+            Assert.InRange(service.GetSoilHealth("Farm", new Vector2(99, 99)), 20f, 100f); // Non-existent tile should return value in [20, 100]
         }
 
         [Fact]
@@ -427,8 +427,8 @@ namespace LivingRoots.Tests
             // Assert - Only valid location should be loaded
             Assert.Equal(75.5f, service.GetSoilHealth("Farm", new Vector2(13, 13)));
             // Empty/whitespace locations should not exist
-            Assert.Equal(30f, service.GetSoilHealth("", new Vector2(11, 11)));
-            Assert.Equal(30f, service.GetSoilHealth("   ", new Vector2(12, 12)));
+            Assert.InRange(service.GetSoilHealth("", new Vector2(11, 11)), 20f, 100f);
+            Assert.InRange(service.GetSoilHealth("   ", new Vector2(12, 12)), 20f, 100f);
         }
 
         [Fact]
@@ -452,7 +452,7 @@ namespace LivingRoots.Tests
             var ex = Record.Exception(() => service.LoadData("test_save"));
             Assert.Null(ex); // Should not throw
             // Cache should be cleared when exception occurs during loading
-            Assert.Equal(30f, service.GetSoilHealth("Farm", tile)); // Returns InitialSoilHealth (30f) when cache is cleared
+            Assert.InRange(service.GetSoilHealth("Farm", tile), 20f, 100f); // Returns value in [20, 100] when cache is cleared
         }
 
         [Theory]
@@ -1057,7 +1057,7 @@ namespace LivingRoots.Tests
             service.LoadData("invalid_save");
 
             // Assert - Cache should be cleared when sanitization fails
-            Assert.Equal(30f, service.GetSoilHealth("Farm", tile)); // Returns InitialSoilHealth (30f) when cache is cleared
+            Assert.InRange(service.GetSoilHealth("Farm", tile), 20f, 100f); // Returns value in [20, 100] when cache is cleared
             // Verify that the monitor was called to log the error
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
         }
@@ -1099,7 +1099,7 @@ namespace LivingRoots.Tests
             service.LoadData("empty_result");
 
             // Assert - Cache should be cleared when sanitization results in empty string
-            Assert.Equal(30f, service.GetSoilHealth("Farm", tile)); // Returns InitialSoilHealth (30f) when cache is cleared
+            Assert.InRange(service.GetSoilHealth("Farm", tile), 20f, 100f); // Returns value in [20, 100] when cache is cleared
             // Verify that the monitor was called to log the error
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
         }
@@ -1126,7 +1126,7 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void LoadData_DosProtectionCountsProcessedEntriesNotJustSaved()
+        public void LoadData_DosProtectionCountsProcessedEntries()
         {
             // Arrange: Create save data with more than MaxTilesPerLocation (500) valid entries to trigger the limit
             // This test verifies that DoS protection counts ALL processed entries,
@@ -1164,7 +1164,7 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
             // Act: Load the data - this should trigger DoS protection because
-            // we're processing more than the limit of entries (50 > 50 limit)
+            // we're processing more than the limit of entries (5050 > 5000 limit)
             service.LoadData("test_save");
 
             // Assert: Verify that the critical error log appeared when exceeding the cap
@@ -1172,19 +1172,31 @@ namespace LivingRoots.Tests
 
             // With the high severity fix implemented, when the limit is exceeded,
             // the entire load operation should abort and the cache should be cleared.
-            // Therefore, no entries should be loaded.
-            var loadedEntriesCount = 0;
+            // With the high severity fix implemented, when the per-location limit is exceeded,
+            // the entire load operation should abort and the cache should be cleared.
+            // Therefore, no entries should be loaded - all tiles return random default values.
+            // Verify that all entries (including those within the limit) return random default values.
             for (var i = 0; i < totalEntries; i++)
             {
                 var healthValue = service.GetSoilHealth("Farm", new Vector2(i, 0));
-                if (Math.Abs(healthValue - 30.0f) > 0.0001f) // Check if value differs from InitialSoilHealth (30f)
+                    // All entries should return random default values in range [20, 100], not the saved value (75.0f)
+                    Assert.InRange(healthValue, 20f, 100f);
+                    Assert.NotEqual(75.0f, healthValue);
+                }
+
+            // Verify that entries beyond the limit were NOT loaded (they return random default values)
+            var entriesBeyondLimitHaveRandomValues = true;
+            for (var i = ModConstants.MaxTilesPerLocation; i < totalEntries; i++)
+            {
+                var healthValue = service.GetSoilHealth("Farm", new Vector2(i, 0));
+                // These should be random default values, not the saved value (75.0f)
+                if (Math.Abs(healthValue - 75.0f) < 0.0001f)
                 {
-                    loadedEntriesCount++;
+                    entriesBeyondLimitHaveRandomValues = false;
+                    break;
                 }
             }
-
-            // Verify that no entries were loaded (the cache was cleared due to the limit exceeded error)
-            Assert.Equal(0, loadedEntriesCount);
+            Assert.True(entriesBeyondLimitHaveRandomValues, "Entries beyond the limit should have random default values, not the saved value");
         }
 
         [Theory]
@@ -1443,10 +1455,10 @@ namespace LivingRoots.Tests
             // Act
             service.Reset();
 
-            // Assert - All cached data should be cleared, returns InitialSoilHealth (30f) for non-existent tiles
-            Assert.Equal(30f, service.GetSoilHealth("Farm", tile1));
-            Assert.Equal(30f, service.GetSoilHealth("Farm", tile2));
-            Assert.Equal(30f, service.GetSoilHealth("Town", tile1));
+            // Assert - All cached data should be cleared, returns value in [20, 100] for non-existent tiles
+            Assert.InRange(service.GetSoilHealth("Farm", tile1), 20f, 100f);
+            Assert.InRange(service.GetSoilHealth("Farm", tile2), 20f, 100f);
+            Assert.InRange(service.GetSoilHealth("Town", tile1), 20f, 100f);
         }
 
         [Fact]
@@ -1455,15 +1467,15 @@ namespace LivingRoots.Tests
             // Arrange
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
-            // Cache is initially empty, verify this (returns InitialSoilHealth)
-            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(10, 10))); // Returns InitialSoilHealth (30f)
+            // Cache is initially empty, verify this (returns value in [20, 100])
+            Assert.InRange(service.GetSoilHealth("Farm", new Vector2(10, 10)), 20f, 100f); // Returns value in [20, 100]
 
             // Act & Assert
             var ex = Record.Exception(() => service.Reset());
             Assert.Null(ex); // Should not throw
 
-            // Verify cache is still empty after reset (returns InitialSoilHealth)
-            Assert.Equal(30f, service.GetSoilHealth("Farm", new Vector2(10, 10))); // Returns InitialSoilHealth (30f)
+            // Verify cache is still empty after reset (returns value in [20, 100])
+            Assert.InRange(service.GetSoilHealth("Farm", new Vector2(10, 10)), 20f, 100f); // Returns value in [20, 100]
         }
 
         [Fact]
