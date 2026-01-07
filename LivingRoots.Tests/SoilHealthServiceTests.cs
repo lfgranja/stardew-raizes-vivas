@@ -537,7 +537,7 @@ namespace LivingRoots.Tests
         [Fact]
         public void SaveData_WithNaNInfinityValues_SavesAllValuesIncludingZero()
         {
-            // This test validates the correct behavior of NaN and Infinity values during save:
+            // This test validates correct behavior of NaN and Infinity values during save:
             // - NaN values are converted to 0 by ClampHealthValue and ARE saved (to distinguish "set to 0" from "not set")
             // - PositiveInfinity values are converted to MaxSoilHealth (100) by ClampHealthValue and ARE saved
             // - NegativeInfinity values are converted to MinSoilHealth (0) by ClampHealthValue and ARE saved
@@ -552,7 +552,7 @@ namespace LivingRoots.Tests
             service.SetSoilHealth("Farm", new Vector2(13, 13), 25.5f); // Valid value - should be saved
             service.SetSoilHealth("Farm", new Vector2(14, 14), float.NegativeInfinity); // Invalid value - will be converted to MinSoilHealth (0) by ClampHealthValue, IS saved
 
-            // Set up mock to capture the data that gets saved
+            // Set up mock to capture data that gets saved
             SoilHealthState capturedSaveState = null!;
             string capturedSaveKey = null!;
             _mockDataService
@@ -571,11 +571,11 @@ namespace LivingRoots.Tests
             // Act: Save the data
             service.SaveData("test_save");
 
-            // Assert: Verify that the correct state was captured
+            // Assert: Verify that correct state was captured
             Assert.NotNull(capturedSaveState);
             Assert.Equal("soil_health_data_test_save", capturedSaveKey);
 
-            // Check that the saved state contains the Farm location
+            // Check that saved state contains Farm location
             Assert.Contains("Farm", capturedSaveState.LocationHealthData.Keys);
 
             var farmData = capturedSaveState.LocationHealthData["Farm"];
@@ -606,7 +606,7 @@ namespace LivingRoots.Tests
             var serviceWithValidData = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
             serviceWithValidData.SetSoilHealth("Farm", new Vector2(13, 13), 75.5f);
 
-            // Add invalid location names to the internal state by bypassing public API
+            // Add invalid location names to the internal state by bypassing the public API
             // This simulates what might happen with corrupted data
             var corruptedState = new SoilHealthState
             {
@@ -673,7 +673,7 @@ namespace LivingRoots.Tests
             // Act
             var result = service.GetSoilHealth(location, new Vector2(10.9f, 15.8f)); // Should still get (10, 15)
 
-            // Assert - Should get the value from the floored coordinates
+            // Assert - Should get value from floored coordinates
             Assert.Equal(50.0f, result);
         }
 
@@ -721,7 +721,7 @@ namespace LivingRoots.Tests
             // Act
             var result = service.GetSoilHealth(location, new Vector2(-5.9f, -3.8f)); // Should still get (-6, -4)
 
-            // Assert - Should get the value from the floored negative coordinates
+            // Assert - Should get value from floored negative coordinates
             Assert.Equal(50.0f, result);
         }
 
@@ -1179,10 +1179,10 @@ namespace LivingRoots.Tests
             for (var i = 0; i < totalEntries; i++)
             {
                 var healthValue = service.GetSoilHealth("Farm", new Vector2(i, 0));
-                    // All entries should return random default values in range [20, 100], not the saved value (75.0f)
-                    Assert.InRange(healthValue, 20f, 100f);
-                    Assert.NotEqual(75.0f, healthValue);
-                }
+                // All entries should return random default values in range [20, 100], not the saved value (75.0f)
+                Assert.InRange(healthValue, 20f, 100f);
+                Assert.NotEqual(75.0f, healthValue);
+            }
 
             // Verify that entries beyond the limit were NOT loaded (they return random default values)
             var entriesBeyondLimitHaveRandomValues = true;
@@ -1350,7 +1350,7 @@ namespace LivingRoots.Tests
             Assert.False(capturedSaveState.LocationHealthData.ContainsKey("   "));
             Assert.False(capturedSaveState.LocationHealthData.ContainsKey("\t\n"));
 
-            // Verify that saved data is correct
+            // Verify that the saved data is correct
             Assert.Equal(75.5f, capturedSaveState.LocationHealthData["Farm"]["10,10"]);
             Assert.Equal(50.0f, capturedSaveState.LocationHealthData["Town"]["15,20"]);
         }
@@ -1549,4 +1549,3 @@ namespace LivingRoots.Tests
         }
     }
 }
-
