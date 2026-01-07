@@ -1133,7 +1133,7 @@ namespace LivingRoots.Controllers
             ModifySoilHealth(command, args, 10f, false);
         }
 
-        private void SetSoilHealth(string arg1, string[] arg2)
+        private void SetSoilHealth(string _command, string[] args)
         {
             if (IsDisposed())
                 return;
@@ -1143,10 +1143,10 @@ namespace LivingRoots.Controllers
 
             try
             {
-                arg2 ??= [];
+                args ??= [];
 
                 // Check for help flag
-                if (IsHelpRequested(arg2))
+                if (IsHelpRequested(args))
                 {
                     monitorSnapshot?.Log("Usage: lr_sethealth <value>", LogLevel.Info);
                     monitorSnapshot?.Log(
@@ -1158,7 +1158,7 @@ namespace LivingRoots.Controllers
                 }
 
                 // Validate that we have exactly one argument
-                if (arg2.Length != 1 || string.IsNullOrWhiteSpace(arg2[0]))
+                if (args.Length != 1 || string.IsNullOrWhiteSpace(args[0]))
                 {
                     monitorSnapshot?.Log(
                         "Error: Please provide a value between 0 and 100.",
@@ -1169,10 +1169,10 @@ namespace LivingRoots.Controllers
                 }
 
                 // Parse the value
-                if (!float.TryParse(arg2[0], out var value))
+                if (!float.TryParse(args[0], out var value))
                 {
                     monitorSnapshot?.Log(
-                        $"Error: '{arg2[0]}' is not a valid number.",
+                        $"Error: '{args[0]}' is not a valid number.",
                         LogLevel.Error
                     );
                     monitorSnapshot?.Log("Usage: lr_sethealth <value>", LogLevel.Info);
