@@ -22,7 +22,7 @@ namespace LivingRoots
 
         // Additional constants for security and performance
         public const int MaxDataKeyLength = 200; // Maximum length for generated data keys (prefix + sanitized saveId)
-        public const int MaxTilesPerSave = 300000; // Global limit for tile processing across all locations to prevent DoS attacks (slightly above theoretical max of 50 * 500 = 25,000)
+        public const int MaxTilesPerSave = (MaxLocationsPerSave * MaxTilesPerLocation) + 5000; // small headroom above the theoretical max
 
         // Additional constants for security and performance
         public const int MaxPathSegmentLength = 100; // Maximum length for individual path segments to prevent DoS attacks

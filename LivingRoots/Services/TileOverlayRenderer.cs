@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using LivingRoots.Domain;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -57,13 +54,18 @@ namespace LivingRoots.Services
         IMonitor monitor,
         IVisualizationConfig config,
         IColorMapper colorMapper,
-        ISoilHealthService soilHealthService) : ITileOverlayRenderer
+        ISoilHealthService soilHealthService
+    ) : ITileOverlayRenderer
     {
         // Dependencies
-        private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-        private readonly IVisualizationConfig _config = config ?? throw new ArgumentNullException(nameof(config));
-        private readonly IColorMapper _colorMapper = colorMapper ?? throw new ArgumentNullException(nameof(colorMapper));
-        private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
+        private readonly IMonitor _monitor =
+            monitor ?? throw new ArgumentNullException(nameof(monitor));
+        private readonly IVisualizationConfig _config =
+            config ?? throw new ArgumentNullException(nameof(config));
+        private readonly IColorMapper _colorMapper =
+            colorMapper ?? throw new ArgumentNullException(nameof(colorMapper));
+        private readonly ISoilHealthService _soilHealthService =
+            soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
 
         // Rendering constants
         private const int TileSize = 64; // Stardew Valley tile size in pixels
@@ -73,19 +75,31 @@ namespace LivingRoots.Services
         private readonly object _aggregationLock = new();
 
         // Performance: LRU Health cache
-        private readonly LruCache<(string Location, Point Tile), float> _healthCache = new(ModConstants.TileHealthCacheSize);
+        private readonly LruCache<(string Location, Point Tile), float> _healthCache = new(
+            ModConstants.TileHealthCacheSize
+        );
 
         // Aggregated tile data for batch rendering (from DataLayers)
         private readonly Dictionary<Vector2, TileDrawData> _aggregatedTiles = [];
         private readonly List<TileGroup> _tileGroups = [];
 
         /// <inheritdoc/>
-        public void RenderTileOverlay(SpriteBatch spriteBatch, GameLocation location, Vector2 tile, float health)
+        public void RenderTileOverlay(
+            SpriteBatch spriteBatch,
+            GameLocation location,
+            Vector2 tile,
+            float health
+        )
         {
             try
             {
                 // Validate parameters
-                if (spriteBatch == null || location == null || !VisualizationHelpers.IsValidTile(tile) || !_config.ShowTileOverlays)
+                if (
+                    spriteBatch == null
+                    || location == null
+                    || !VisualizationHelpers.IsValidTile(tile)
+                    || !_config.ShowTileOverlays
+                )
                 {
                     return;
                 }
@@ -99,7 +113,10 @@ namespace LivingRoots.Services
 
                 // Get color for health value
                 Color baseColor = _colorMapper.GetHealthColor(health);
-                Color overlayColor = VisualizationHelpers.ApplyOpacity(baseColor, _config.OverlayOpacity);
+                Color overlayColor = VisualizationHelpers.ApplyOpacity(
+                    baseColor,
+                    _config.OverlayOpacity
+                );
 
                 // Calculate world position (for world-space rendering in OnRenderedWorld event)
                 Vector2 worldPosition = GetTileWorldPosition(tile);
@@ -109,7 +126,10 @@ namespace LivingRoots.Services
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error rendering tile overlay for tile {tile}: {ex.Message}", LogLevel.Error);
+                _monitor.Log(
+                    $"Error rendering tile overlay for tile {tile}: {ex.Message}",
+                    LogLevel.Error
+                );
             }
         }
 
@@ -140,10 +160,48 @@ namespace LivingRoots.Services
                 // Aggregate tile data for batch rendering (from DataLayers)
                 AggregateTileDataForBatchRendering(location, tileRange.Value);
 
+                // Draw aggregated overlays
+                DrawAggregatedTiles(spriteBatch);
             }
             catch (Exception ex)
             {
                 _monitor.Log($"Error rendering all visible overlays: {ex.Message}", LogLevel.Error);
+            }
+        }
+
+        private void DrawAggregatedTiles(SpriteBatch spriteBatch)
+        {
+            Texture2D? texture = VisualizationHelpers.GetOrCreateOverlayTexture();
+            if (texture == null)
+            {
+                _monitor.Log("Texture is null, cannot draw overlay!", LogLevel.Error);
+                return;
+            }
+
+            lock (_aggregationLock)
+            {
+                foreach (TileDrawData data in _aggregatedTiles.Values)
+                {
+                    // draw fill(s)
+                    foreach (Color c in data.Colors)
+                    {
+                        Vector2 worldPosition =
+                            GetTileWorldPosition(data.TilePosition)
+                            + new Vector2(data.DrawOffset.X, data.DrawOffset.Y);
+                        spriteBatch.Draw(
+                            texture,
+                            new Rectangle(
+                                (int)worldPosition.X,
+                                (int)worldPosition.Y,
+                                TileSize,
+                                TileSize
+                            ),
+                            c
+                        );
+                    }
+
+                    // (optional) border drawing could be added here using `data.BorderColors`
+                }
             }
         }
 
@@ -156,10 +214,10 @@ namespace LivingRoots.Services
         {
             return category switch
             {
-                SoilHealthCategory.Poor => new Color(139, 0, 0, 255),      // Dark red for poor soil
+                SoilHealthCategory.Poor => new Color(139, 0, 0, 255), // Dark red for poor soil
                 SoilHealthCategory.Moderate => new Color(139, 139, 0, 255), // Dark yellow for moderate soil
-                SoilHealthCategory.Healthy => new Color(0, 100, 0, 255),    // Dark green for healthy soil
-                _ => Color.Gray
+                SoilHealthCategory.Healthy => new Color(0, 100, 0, 255), // Dark green for healthy soil
+                _ => Color.Gray,
             };
         }
 
@@ -174,7 +232,10 @@ namespace LivingRoots.Services
         /// Adapted for LivingRoots to group tiles by soil health categories (Poor, Moderate, Healthy).
         /// Reference: https://github.com/Pathoschild/StardewMods/tree/develop/DataLayers/Framework
         /// </remarks>
-        private void AggregateTileDataForBatchRendering(GameLocation location, (int startX, int startY, int endX, int endY) tileRange)
+        private void AggregateTileDataForBatchRendering(
+            GameLocation location,
+            (int startX, int startY, int endX, int endY) tileRange
+        )
         {
             lock (_aggregationLock)
             {
@@ -199,8 +260,10 @@ namespace LivingRoots.Services
         /// <summary>
         /// Groups tiles by health category for efficient batch rendering.
         /// </summary>
-        private Dictionary<SoilHealthCategory, List<TileData>> GroupTilesByCategory(
-            GameLocation location, (int startX, int startY, int endX, int endY) tileRange)
+        private Dictionary<SoilHealthCategory, List<Services.TileData>> GroupTilesByCategory(
+            GameLocation location,
+            (int startX, int startY, int endX, int endY) tileRange
+        )
         {
             var tilesByCategory = new Dictionary<SoilHealthCategory, List<TileData>>();
 
@@ -216,7 +279,7 @@ namespace LivingRoots.Services
                     }
 
                     // tileData is guaranteed to be non-null here since TryProcessTile returned true
-                    var category = GetHealthCategoryFromTileData(tileData!);
+                    var category = tileData!.Category;
                     AddTileToCategory(tilesByCategory, category, tileData!);
                 }
             }
@@ -227,7 +290,11 @@ namespace LivingRoots.Services
         /// <summary>
         /// Tries to process a single tile and returns tile data if successful.
         /// </summary>
-        private bool TryProcessTile(GameLocation location, Vector2 tile, out TileData? tileData)
+        private bool TryProcessTile(
+            GameLocation location,
+            Vector2 tile,
+            out Services.TileData? tileData
+        )
         {
             tileData = null;
 
@@ -238,14 +305,20 @@ namespace LivingRoots.Services
             }
 
             // Check if tile has HoeDirt (tilled soil)
-            if (!location.terrainFeatures.TryGetValue(tile, out var feature) || feature is not HoeDirt)
+            if (
+                !location.terrainFeatures.TryGetValue(tile, out var feature)
+                || feature is not HoeDirt
+            )
             {
                 return false;
             }
 
             // Get soil health for this tile using cache
-            var health = GetCachedHealth(location.NameOrUniqueName, tile,
-                t => _soilHealthService.GetSoilHealth(location.NameOrUniqueName, t));
+            var health = GetCachedHealth(
+                location.NameOrUniqueName,
+                tile,
+                t => _soilHealthService.GetSoilHealth(location.NameOrUniqueName, t)
+            );
 
             // Skip if no health data (health is negative)
             if (health < 0f)
@@ -253,44 +326,32 @@ namespace LivingRoots.Services
                 return false;
             }
 
+            // Categorize from health (not from color)
+            SoilHealthCategory category =
+                health < 40f ? SoilHealthCategory.Poor
+                : health < 70f ? SoilHealthCategory.Moderate
+                : SoilHealthCategory.Healthy;
+
             // Get color for health value
             Color baseColor = _colorMapper.GetHealthColor(health);
-            Color overlayColor = VisualizationHelpers.ApplyOpacity(baseColor, _config.OverlayOpacity);
+            Color overlayColor = VisualizationHelpers.ApplyOpacity(
+                baseColor,
+                _config.OverlayOpacity
+            );
 
             // Create tile data structure
-            tileData = new TileData(tile, overlayColor);
+            tileData = new TileData(tile, overlayColor, category);
             return true;
-        }
-
-        /// <summary>
-        /// Gets health category from tile data.
-        /// </summary>
-        private static SoilHealthCategory GetHealthCategoryFromTileData(TileData tileData)
-        {
-            // Extract health value from color (reverse mapping)
-            // For simplicity, we'll use the color to determine category
-            var color = tileData.Color;
-
-            // Check against known category colors
-            var poorColor = GetCategoryBorderColor(SoilHealthCategory.Poor);
-            var moderateColor = GetCategoryBorderColor(SoilHealthCategory.Moderate);
-
-            // Simple comparison (not perfect but works for our use case)
-            if (Math.Abs(color.R - poorColor.R) < 10 && Math.Abs(color.G - poorColor.G) < 10)
-                return SoilHealthCategory.Poor;
-            else if (Math.Abs(color.R - moderateColor.R) < 10 && Math.Abs(color.G - moderateColor.G) < 10)
-                return SoilHealthCategory.Moderate;
-            else
-                return SoilHealthCategory.Healthy;
         }
 
         /// <summary>
         /// Adds tile to the appropriate category list.
         /// </summary>
         private static void AddTileToCategory(
-            Dictionary<SoilHealthCategory, List<TileData>> tilesByCategory,
+            Dictionary<SoilHealthCategory, List<Services.TileData>> tilesByCategory,
             SoilHealthCategory category,
-            TileData tileData)
+            Services.TileData tileData
+        )
         {
             if (!tilesByCategory.ContainsKey(category))
             {
@@ -302,7 +363,9 @@ namespace LivingRoots.Services
         /// <summary>
         /// Creates tile groups from categorized tiles.
         /// </summary>
-        private void CreateTileGroups(Dictionary<SoilHealthCategory, List<TileData>> tilesByCategory)
+        private void CreateTileGroups(
+            Dictionary<SoilHealthCategory, List<Services.TileData>> tilesByCategory
+        )
         {
             foreach (var kvp in tilesByCategory)
             {
@@ -324,11 +387,12 @@ namespace LivingRoots.Services
         {
             foreach (TileGroup group in _tileGroups)
             {
-                Lazy<HashSet<Vector2>> inGroupLazy = new Lazy<HashSet<Vector2>>(
-                    () => new HashSet<Vector2>(group.Tiles.Select(p => p.TilePosition)),
-                    LazyThreadSafetyMode.ExecutionAndPublication);
+                var inGroupLazy = new Lazy<HashSet<Vector2>>(
+                    () => [.. group.Tiles.Select(p => p.TilePosition)],
+                    LazyThreadSafetyMode.ExecutionAndPublication
+                );
 
-                foreach (TileData groupTile in group.Tiles)
+                foreach (Services.TileData groupTile in group.Tiles)
                 {
                     ProcessTileForAggregation(groupTile, group, inGroupLazy);
                 }
@@ -339,9 +403,10 @@ namespace LivingRoots.Services
         /// Processes a single tile for aggregation.
         /// </summary>
         private void ProcessTileForAggregation(
-            TileData groupTile,
+            Services.TileData groupTile,
             TileGroup group,
-            Lazy<HashSet<Vector2>> inGroupLazy)
+            Lazy<HashSet<Vector2>> inGroupLazy
+        )
         {
             Vector2 position = groupTile.TilePosition;
             if (!_aggregatedTiles.TryGetValue(position, out TileDrawData? data))
@@ -363,10 +428,11 @@ namespace LivingRoots.Services
         /// Detects borders for a tile within a group.
         /// </summary>
         private static void DetectTileBorders(
-            TileData groupTile,
+            Services.TileData groupTile,
             Color borderColor,
             Lazy<HashSet<Vector2>> inGroupLazy,
-            TileDrawData data)
+            TileDrawData data
+        )
         {
             var x = (int)groupTile.TilePosition.X;
             var y = (int)groupTile.TilePosition.Y;
@@ -408,8 +474,12 @@ namespace LivingRoots.Services
         /// <summary>
         /// Gets neighboring tiles for a position.
         /// </summary>
-        private (TileDrawData? left, TileDrawData? right, TileDrawData? top, TileDrawData? bottom) GetTileNeighbors(
-            int x, int y)
+        private (
+            TileDrawData? left,
+            TileDrawData? right,
+            TileDrawData? top,
+            TileDrawData? bottom
+        ) GetTileNeighbors(int x, int y)
         {
             _aggregatedTiles.TryGetValue(new Vector2(x - 1, y), out var left);
             _aggregatedTiles.TryGetValue(new Vector2(x + 1, y), out var right);
@@ -424,7 +494,13 @@ namespace LivingRoots.Services
         /// </summary>
         private static void UpdateTileBordersWithNeighbors(
             TileDrawData data,
-            (TileDrawData? left, TileDrawData? right, TileDrawData? top, TileDrawData? bottom) neighbors)
+            (
+                TileDrawData? left,
+                TileDrawData? right,
+                TileDrawData? top,
+                TileDrawData? bottom
+            ) neighbors
+        )
         {
             foreach (Color color in data.BorderColors.Keys.ToArray())
             {
@@ -442,7 +518,10 @@ namespace LivingRoots.Services
         /// <summary>
         /// Validates rendering parameters.
         /// </summary>
-        private static bool ValidateRenderingParameters(SpriteBatch spriteBatch, GameLocation location)
+        private static bool ValidateRenderingParameters(
+            SpriteBatch spriteBatch,
+            GameLocation location
+        )
         {
             if (spriteBatch == null)
             {
@@ -523,7 +602,11 @@ namespace LivingRoots.Services
         /// <param name="tile">The tile coordinates</param>
         /// <param name="getHealth">Function to retrieve health value if not cached</param>
         /// <returns>The cached or retrieved health value</returns>
-        private float GetCachedHealth(string locationName, Vector2 tile, Func<Vector2, float> getHealth)
+        private float GetCachedHealth(
+            string locationName,
+            Vector2 tile,
+            Func<Vector2, float> getHealth
+        )
         {
             try
             {
@@ -552,8 +635,8 @@ namespace LivingRoots.Services
             }
             catch (Exception)
             {
-                // Return 0 on error to avoid exceptions
-                return 0f;
+                // Return negative sentinel on error so callers can skip rendering
+                return -1f;
             }
         }
     }
@@ -566,7 +649,6 @@ namespace LivingRoots.Services
     /// tile aggregation and batch rendering pipeline.
     /// Reference: https://github.com/Pathoschild/StardewMods/tree/develop/DataLayers/Framework
     /// </remarks>
-
     /// <summary>
     /// Soil health category for grouping tiles with similar health values.
     /// </summary>
@@ -579,7 +661,7 @@ namespace LivingRoots.Services
         Moderate = 1,
 
         /// <summary>Healthy soil (health >= 70).</summary>
-        Healthy = 2
+        Healthy = 2,
     }
 
     /// <summary>
@@ -607,7 +689,7 @@ namespace LivingRoots.Services
         Right = 4,
 
         /// <summary>The bottom tile edge.</summary>
-        Bottom = 8
+        Bottom = 8,
     }
 
     /// <summary>
@@ -623,7 +705,12 @@ namespace LivingRoots.Services
     /// <remarks>Construct an instance.</remarks>
     /// <param name="tile">The tile position.</param>
     /// <param name="color">The overlay color.</param>
-    internal class TileData(Vector2 tile, Color color)
+    /// <param name="category">The soil health category (optional, for LivingRoots).</param>
+    internal class TileData(
+        Vector2 tile,
+        Color color,
+        SoilHealthCategory category = SoilHealthCategory.Healthy
+    )
     {
         /// <summary>The tile position.</summary>
         public Vector2 TilePosition { get; } = tile;
@@ -633,6 +720,9 @@ namespace LivingRoots.Services
 
         /// <summary>The pixel offset at which to draw this tile.</summary>
         public Point DrawOffset { get; } = Point.Zero;
+
+        /// <summary>The soil health category (LivingRoots-specific).</summary>
+        public SoilHealthCategory Category { get; } = category;
     }
 
     /// <summary>
@@ -675,7 +765,11 @@ namespace LivingRoots.Services
     /// <param name="tiles">The tiles in the group.</param>
     /// <param name="outerBorderColor">A border color to draw along edges that aren't touching another tile in the group (if any).</param>
     /// <param name="shouldExport">Whether to include this tile group in data exports.</param>
-    internal class TileGroup(IEnumerable<TileData> tiles, Color? outerBorderColor = null, bool shouldExport = true)
+    internal class TileGroup(
+        IEnumerable<TileData> tiles,
+        Color? outerBorderColor = null,
+        bool shouldExport = true
+    )
     {
         /// <summary>The tiles in the group.</summary>
         public TileData[] Tiles { get; } = tiles.ToArray();
@@ -697,7 +791,8 @@ namespace LivingRoots.Services
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the cache</typeparam>
     /// <typeparam name="TValue">The type of values in the cache</typeparam>
-    internal class LruCache<TKey, TValue> where TKey : notnull
+    internal class LruCache<TKey, TValue>
+        where TKey : notnull
     {
         private readonly int _capacity;
         private readonly Dictionary<TKey, LinkedListNode<LruCacheItem>> _cacheMap;
