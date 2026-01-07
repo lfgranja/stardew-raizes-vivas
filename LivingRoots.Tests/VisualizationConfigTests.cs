@@ -1,9 +1,7 @@
-using LivingRoots.Domain;
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -21,7 +19,8 @@ namespace LivingRoots.Tests
         {
             _mockMonitor = new Mock<IMonitor>();
             _mockModDataService = new Mock<IModDataService>();
-            _mockModDataService.Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
                 .Returns((VisualizationConfigData?)null);
 
             _config = new VisualizationConfig(_mockMonitor.Object, _mockModDataService.Object);
@@ -31,21 +30,28 @@ namespace LivingRoots.Tests
         public void Constructor_NullMonitor_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new VisualizationConfig(null!, _mockModDataService.Object));
+            Assert.Throws<ArgumentNullException>(() =>
+                new VisualizationConfig(null!, _mockModDataService.Object)
+            );
         }
 
         [Fact]
         public void Constructor_NullModDataService_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new VisualizationConfig(_mockMonitor.Object, null!));
+            Assert.Throws<ArgumentNullException>(() =>
+                new VisualizationConfig(_mockMonitor.Object, null!)
+            );
         }
 
         [Fact]
         public void Constructor_LoadsConfiguration()
         {
             // Assert - Constructor should call Load
-            _mockModDataService.Verify(d => d.LoadData<VisualizationConfigData>("visualization_config"), Times.Once);
+            _mockModDataService.Verify(
+                d => d.LoadData<VisualizationConfigData>("visualization_config"),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -72,7 +78,8 @@ namespace LivingRoots.Tests
         public void Load_NoExistingData_UsesDefaults()
         {
             // Arrange
-            _mockModDataService.Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
                 .Returns((VisualizationConfigData?)null);
 
             // Act
@@ -98,17 +105,21 @@ namespace LivingRoots.Tests
                 UseCustomColors = true,
                 PoorHealthColor = new LivingRoots.Services.ColorData(new Color(255, 0, 0)),
                 ModerateHealthColor = new LivingRoots.Services.ColorData(new Color(0, 255, 0)),
-                HealthyHealthColor = new LivingRoots.Services.ColorData(new Color(0, 0, 255))
+                HealthyHealthColor = new LivingRoots.Services.ColorData(new Color(0, 0, 255)),
             };
 
-            _mockModDataService.Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
                 .Returns(configData);
 
             // Act
             _config.Load();
 
             // Assert - Note: Load is called in constructor, so we need to verify the data was loaded
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("loaded successfully")), LogLevel.Trace), Times.AtLeastOnce);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("loaded successfully")), LogLevel.Trace),
+                Times.AtLeastOnce
+            );
         }
 
         [Fact]
@@ -117,10 +128,11 @@ namespace LivingRoots.Tests
             // Arrange
             var configData = new VisualizationConfigData
             {
-                OverlayOpacity = 1.5f // Invalid: > 1.0
+                OverlayOpacity = 1.5f, // Invalid: > 1.0
             };
 
-            _mockModDataService.Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
                 .Returns(configData);
 
             // Act
@@ -136,10 +148,11 @@ namespace LivingRoots.Tests
             // Arrange
             var configData = new VisualizationConfigData
             {
-                OverlayOpacity = -0.5f // Invalid: < 0.0
+                OverlayOpacity = -0.5f, // Invalid: < 0.0
             };
 
-            _mockModDataService.Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
                 .Returns(configData);
 
             // Act
@@ -157,10 +170,11 @@ namespace LivingRoots.Tests
             {
                 PoorHealthColor = null,
                 ModerateHealthColor = null,
-                HealthyHealthColor = null
+                HealthyHealthColor = null,
             };
 
-            _mockModDataService.Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
                 .Returns(configData);
 
             // Act
@@ -179,22 +193,32 @@ namespace LivingRoots.Tests
             _config.Save();
 
             // Assert
-            _mockModDataService.Verify(d => d.SaveData(It.IsAny<VisualizationConfigData>(), "visualization_config"), Times.Once);
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("saved successfully")), LogLevel.Trace), Times.Once);
+            _mockModDataService.Verify(
+                d => d.SaveData(It.IsAny<VisualizationConfigData>(), "visualization_config"),
+                Times.Once
+            );
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("saved successfully")), LogLevel.Trace),
+                Times.Once
+            );
         }
 
         [Fact]
         public void Save_WithException_LogsError()
         {
             // Arrange
-            _mockModDataService.Setup(d => d.SaveData(It.IsAny<VisualizationConfigData>(), It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.SaveData(It.IsAny<VisualizationConfigData>(), It.IsAny<string>()))
                 .Throws(new Exception("Save failed"));
 
             // Act
             _config.Save();
 
             // Assert
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Error saving")), LogLevel.Error), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("Error saving")), LogLevel.Error),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -221,7 +245,10 @@ namespace LivingRoots.Tests
             _config.ResetToDefaults();
 
             // Assert
-            _mockModDataService.Verify(d => d.SaveData(It.IsAny<VisualizationConfigData>(), "visualization_config"), Times.Once);
+            _mockModDataService.Verify(
+                d => d.SaveData(It.IsAny<VisualizationConfigData>(), "visualization_config"),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -231,7 +258,10 @@ namespace LivingRoots.Tests
             _config.ResetToDefaults();
 
             // Assert
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("reset to defaults")), LogLevel.Info), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("reset to defaults")), LogLevel.Info),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -253,12 +283,10 @@ namespace LivingRoots.Tests
         public void OpacityValidation_ValidValues_AreAccepted(float opacity)
         {
             // Arrange
-            var configData = new VisualizationConfigData
-            {
-                OverlayOpacity = opacity
-            };
+            var configData = new VisualizationConfigData { OverlayOpacity = opacity };
 
-            _mockModDataService.Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
                 .Returns(configData);
 
             // Act
@@ -277,12 +305,10 @@ namespace LivingRoots.Tests
         public void OpacityValidation_InvalidValues_AreClamped(float opacity)
         {
             // Arrange
-            var configData = new VisualizationConfigData
-            {
-                OverlayOpacity = opacity
-            };
+            var configData = new VisualizationConfigData { OverlayOpacity = opacity };
 
-            _mockModDataService.Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
                 .Returns(configData);
 
             // Act
@@ -297,12 +323,10 @@ namespace LivingRoots.Tests
         {
             // Arrange
             var validColor = new LivingRoots.Services.ColorData(new Color(100, 150, 200, 255));
-            var configData = new VisualizationConfigData
-            {
-                PoorHealthColor = validColor
-            };
+            var configData = new VisualizationConfigData { PoorHealthColor = validColor };
 
-            _mockModDataService.Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
                 .Returns(configData);
 
             // Act
@@ -319,14 +343,18 @@ namespace LivingRoots.Tests
         public void Load_WithException_LogsErrorAndUsesDefaults()
         {
             // Arrange
-            _mockModDataService.Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.LoadData<VisualizationConfigData>(It.IsAny<string>()))
                 .Throws(new Exception("Load failed"));
 
             // Act
             _config.Load();
 
             // Assert
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Error loading")), LogLevel.Error), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("Error loading")), LogLevel.Error),
+                Times.Once
+            );
             // Should still have default values
             Assert.True(_config.ShowTileOverlays);
             Assert.Equal(0.3f, _config.OverlayOpacity);
@@ -336,14 +364,22 @@ namespace LivingRoots.Tests
         public void ResetToDefaults_WithException_LogsError()
         {
             // Arrange
-            _mockModDataService.Setup(d => d.SaveData(It.IsAny<VisualizationConfigData>(), It.IsAny<string>()))
+            _mockModDataService
+                .Setup(d => d.SaveData(It.IsAny<VisualizationConfigData>(), It.IsAny<string>()))
                 .Throws(new Exception("Save failed"));
 
             // Act
             _config.ResetToDefaults();
 
             // Assert
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Error saving visualization configuration")), LogLevel.Error), Times.Once);
+            _mockMonitor.Verify(
+                m =>
+                    m.Log(
+                        It.Is<string>(s => s.Contains("Error saving visualization configuration")),
+                        LogLevel.Error
+                    ),
+                Times.Once
+            );
         }
 
         [Fact]

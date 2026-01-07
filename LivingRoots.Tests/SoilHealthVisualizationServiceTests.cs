@@ -6,7 +6,6 @@ using Moq;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -44,12 +43,16 @@ namespace LivingRoots.Tests
             _mockGameLoopEvents = new Mock<IGameLoopEvents>();
 
             // Setup Events property to return mock events
-            _mockHelper.Setup(h => h.Events).Returns(new ModEvents(
-                _mockInputEvents.Object,
-                _mockPlayerEvents.Object,
-                _mockDisplayEvents.Object,
-                _mockGameLoopEvents.Object
-            ));
+            _mockHelper
+                .Setup(h => h.Events)
+                .Returns(
+                    new ModEvents(
+                        _mockInputEvents.Object,
+                        _mockPlayerEvents.Object,
+                        _mockDisplayEvents.Object,
+                        _mockGameLoopEvents.Object
+                    )
+                );
 
             _service = new SoilHealthVisualizationService(
                 _mockMonitor.Object,
@@ -66,105 +69,119 @@ namespace LivingRoots.Tests
         public void Constructor_NullMonitor_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthVisualizationService(
-                null!,
-                _mockSoilHealthService.Object,
-                _mockConfig.Object,
-                _mockColorMapper.Object,
-                _mockTileOverlayRenderer.Object,
-                _mockTooltipRenderer.Object,
-                _mockHelper.Object
-            ));
+            Assert.Throws<ArgumentNullException>(() =>
+                new SoilHealthVisualizationService(
+                    null!,
+                    _mockSoilHealthService.Object,
+                    _mockConfig.Object,
+                    _mockColorMapper.Object,
+                    _mockTileOverlayRenderer.Object,
+                    _mockTooltipRenderer.Object,
+                    _mockHelper.Object
+                )
+            );
         }
 
         [Fact]
         public void Constructor_NullSoilHealthService_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthVisualizationService(
-                _mockMonitor.Object,
-                null!,
-                _mockConfig.Object,
-                _mockColorMapper.Object,
-                _mockTileOverlayRenderer.Object,
-                _mockTooltipRenderer.Object,
-                _mockHelper.Object
-            ));
+            Assert.Throws<ArgumentNullException>(() =>
+                new SoilHealthVisualizationService(
+                    _mockMonitor.Object,
+                    null!,
+                    _mockConfig.Object,
+                    _mockColorMapper.Object,
+                    _mockTileOverlayRenderer.Object,
+                    _mockTooltipRenderer.Object,
+                    _mockHelper.Object
+                )
+            );
         }
 
         [Fact]
         public void Constructor_NullConfig_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthVisualizationService(
-                _mockMonitor.Object,
-                _mockSoilHealthService.Object,
-                null!,
-                _mockColorMapper.Object,
-                _mockTileOverlayRenderer.Object,
-                _mockTooltipRenderer.Object,
-                _mockHelper.Object
-            ));
+            Assert.Throws<ArgumentNullException>(() =>
+                new SoilHealthVisualizationService(
+                    _mockMonitor.Object,
+                    _mockSoilHealthService.Object,
+                    null!,
+                    _mockColorMapper.Object,
+                    _mockTileOverlayRenderer.Object,
+                    _mockTooltipRenderer.Object,
+                    _mockHelper.Object
+                )
+            );
         }
 
         [Fact]
         public void Constructor_NullColorMapper_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthVisualizationService(
-                _mockMonitor.Object,
-                _mockSoilHealthService.Object,
-                _mockConfig.Object,
-                null!,
-                _mockTileOverlayRenderer.Object,
-                _mockTooltipRenderer.Object,
-                _mockHelper.Object
-            ));
+            Assert.Throws<ArgumentNullException>(() =>
+                new SoilHealthVisualizationService(
+                    _mockMonitor.Object,
+                    _mockSoilHealthService.Object,
+                    _mockConfig.Object,
+                    null!,
+                    _mockTileOverlayRenderer.Object,
+                    _mockTooltipRenderer.Object,
+                    _mockHelper.Object
+                )
+            );
         }
 
         [Fact]
         public void Constructor_NullTileOverlayRenderer_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthVisualizationService(
-                _mockMonitor.Object,
-                _mockSoilHealthService.Object,
-                _mockConfig.Object,
-                _mockColorMapper.Object,
-                null!,
-                _mockTooltipRenderer.Object,
-                _mockHelper.Object
-            ));
+            Assert.Throws<ArgumentNullException>(() =>
+                new SoilHealthVisualizationService(
+                    _mockMonitor.Object,
+                    _mockSoilHealthService.Object,
+                    _mockConfig.Object,
+                    _mockColorMapper.Object,
+                    null!,
+                    _mockTooltipRenderer.Object,
+                    _mockHelper.Object
+                )
+            );
         }
 
         [Fact]
         public void Constructor_NullTooltipRenderer_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthVisualizationService(
-                _mockMonitor.Object,
-                _mockSoilHealthService.Object,
-                _mockConfig.Object,
-                _mockColorMapper.Object,
-                _mockTileOverlayRenderer.Object,
-                null!,
-                _mockHelper.Object
-            ));
+            Assert.Throws<ArgumentNullException>(() =>
+                new SoilHealthVisualizationService(
+                    _mockMonitor.Object,
+                    _mockSoilHealthService.Object,
+                    _mockConfig.Object,
+                    _mockColorMapper.Object,
+                    _mockTileOverlayRenderer.Object,
+                    null!,
+                    _mockHelper.Object
+                )
+            );
         }
 
         [Fact]
         public void Constructor_NullHelper_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthVisualizationService(
-                _mockMonitor.Object,
-                _mockSoilHealthService.Object,
-                _mockConfig.Object,
-                _mockColorMapper.Object,
-                _mockTileOverlayRenderer.Object,
-                _mockTooltipRenderer.Object,
-                null!
-            ));
+            Assert.Throws<ArgumentNullException>(() =>
+                new SoilHealthVisualizationService(
+                    _mockMonitor.Object,
+                    _mockSoilHealthService.Object,
+                    _mockConfig.Object,
+                    _mockColorMapper.Object,
+                    _mockTileOverlayRenderer.Object,
+                    _mockTooltipRenderer.Object,
+                    null!
+                )
+            );
         }
 
         [Fact]
@@ -185,7 +202,10 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.True(_service.IsEnabled);
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("enabled")), LogLevel.Info), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("enabled")), LogLevel.Info),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -199,7 +219,10 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.True(_service.IsEnabled);
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("already enabled")), LogLevel.Trace), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("already enabled")), LogLevel.Trace),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -213,7 +236,10 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.False(_service.IsEnabled);
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("disabled")), LogLevel.Info), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("disabled")), LogLevel.Info),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -224,7 +250,10 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.False(_service.IsEnabled);
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("already disabled")), LogLevel.Trace), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("already disabled")), LogLevel.Trace),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -249,7 +278,11 @@ namespace LivingRoots.Tests
 
             // Assert - Verify that Events property was accessed (may be accessed multiple times)
             _mockHelper.Verify(h => h.Events, Times.AtLeastOnce);
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("registered successfully")), LogLevel.Info), Times.Once);
+            _mockMonitor.Verify(
+                m =>
+                    m.Log(It.Is<string>(s => s.Contains("registered successfully")), LogLevel.Info),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -262,7 +295,10 @@ namespace LivingRoots.Tests
             _service.RegisterEvents();
 
             // Assert
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("already registered")), LogLevel.Trace), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("already registered")), LogLevel.Trace),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -275,7 +311,14 @@ namespace LivingRoots.Tests
             _service.UnregisterEvents();
 
             // Assert
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("unregistered successfully")), LogLevel.Trace), Times.Once);
+            _mockMonitor.Verify(
+                m =>
+                    m.Log(
+                        It.Is<string>(s => s.Contains("unregistered successfully")),
+                        LogLevel.Trace
+                    ),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -285,7 +328,10 @@ namespace LivingRoots.Tests
             _service.UnregisterEvents();
 
             // Assert
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("not registered")), LogLevel.Trace), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("not registered")), LogLevel.Trace),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -312,7 +358,10 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.Null(_service.GetHoverTile());
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Invalid hover tile")), LogLevel.Trace), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("Invalid hover tile")), LogLevel.Trace),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -350,7 +399,10 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.Equal(0f, health); // Returns 0f for invalid tile (visualization service error handling)
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Invalid tile")), LogLevel.Trace), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("Invalid tile")), LogLevel.Trace),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -407,7 +459,10 @@ namespace LivingRoots.Tests
             _service.RenderTileOverlay(It.IsAny<SpriteBatch>(), location, tile, 75f);
 
             // Assert
-            _mockTileOverlayRenderer.Verify(r => r.RenderTileOverlay(It.IsAny<SpriteBatch>(), location, tile, 75f), Times.Once);
+            _mockTileOverlayRenderer.Verify(
+                r => r.RenderTileOverlay(It.IsAny<SpriteBatch>(), location, tile, 75f),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -422,7 +477,16 @@ namespace LivingRoots.Tests
             _service.RenderTileOverlay(It.IsAny<SpriteBatch>(), location, tile, 75f);
 
             // Assert
-            _mockTileOverlayRenderer.Verify(r => r.RenderTileOverlay(It.IsAny<SpriteBatch>(), It.IsAny<GameLocation>(), It.IsAny<Vector2>(), It.IsAny<float>()), Times.Never);
+            _mockTileOverlayRenderer.Verify(
+                r =>
+                    r.RenderTileOverlay(
+                        It.IsAny<SpriteBatch>(),
+                        It.IsAny<GameLocation>(),
+                        It.IsAny<Vector2>(),
+                        It.IsAny<float>()
+                    ),
+                Times.Never
+            );
         }
 
         [Fact]
@@ -436,7 +500,10 @@ namespace LivingRoots.Tests
             _service.RenderAllVisibleOverlays(It.IsAny<SpriteBatch>(), location);
 
             // Assert
-            _mockTileOverlayRenderer.Verify(r => r.RenderAllVisibleOverlays(It.IsAny<SpriteBatch>(), location), Times.Once);
+            _mockTileOverlayRenderer.Verify(
+                r => r.RenderAllVisibleOverlays(It.IsAny<SpriteBatch>(), location),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -450,7 +517,10 @@ namespace LivingRoots.Tests
             _service.RenderAllVisibleOverlays(It.IsAny<SpriteBatch>(), location);
 
             // Assert
-            _mockTileOverlayRenderer.Verify(r => r.RenderAllVisibleOverlays(It.IsAny<SpriteBatch>(), It.IsAny<GameLocation>()), Times.Never);
+            _mockTileOverlayRenderer.Verify(
+                r => r.RenderAllVisibleOverlays(It.IsAny<SpriteBatch>(), It.IsAny<GameLocation>()),
+                Times.Never
+            );
         }
 
         [Fact]
@@ -464,7 +534,10 @@ namespace LivingRoots.Tests
             _service.RenderHoverTooltip(It.IsAny<SpriteBatch>(), cursorPosition, 75f);
 
             // Assert
-            _mockTooltipRenderer.Verify(r => r.RenderHoverTooltip(It.IsAny<SpriteBatch>(), cursorPosition, 75f), Times.Once);
+            _mockTooltipRenderer.Verify(
+                r => r.RenderHoverTooltip(It.IsAny<SpriteBatch>(), cursorPosition, 75f),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -478,7 +551,15 @@ namespace LivingRoots.Tests
             _service.RenderHoverTooltip(It.IsAny<SpriteBatch>(), cursorPosition, 75f);
 
             // Assert
-            _mockTooltipRenderer.Verify(r => r.RenderHoverTooltip(It.IsAny<SpriteBatch>(), It.IsAny<Vector2>(), It.IsAny<float>()), Times.Never);
+            _mockTooltipRenderer.Verify(
+                r =>
+                    r.RenderHoverTooltip(
+                        It.IsAny<SpriteBatch>(),
+                        It.IsAny<Vector2>(),
+                        It.IsAny<float>()
+                    ),
+                Times.Never
+            );
         }
 
         [Fact]
@@ -492,7 +573,10 @@ namespace LivingRoots.Tests
             _service.RenderHoeFeedback(It.IsAny<SpriteBatch>(), tilePosition, 75f);
 
             // Assert
-            _mockTooltipRenderer.Verify(r => r.RenderHoeFeedback(It.IsAny<SpriteBatch>(), tilePosition, 75f), Times.Once);
+            _mockTooltipRenderer.Verify(
+                r => r.RenderHoeFeedback(It.IsAny<SpriteBatch>(), tilePosition, 75f),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -506,7 +590,15 @@ namespace LivingRoots.Tests
             _service.RenderHoeFeedback(It.IsAny<SpriteBatch>(), tilePosition, 75f);
 
             // Assert
-            _mockTooltipRenderer.Verify(r => r.RenderHoeFeedback(It.IsAny<SpriteBatch>(), It.IsAny<Vector2>(), It.IsAny<float>()), Times.Never);
+            _mockTooltipRenderer.Verify(
+                r =>
+                    r.RenderHoeFeedback(
+                        It.IsAny<SpriteBatch>(),
+                        It.IsAny<Vector2>(),
+                        It.IsAny<float>()
+                    ),
+                Times.Never
+            );
         }
 
         [Fact]
@@ -519,7 +611,10 @@ namespace LivingRoots.Tests
             _service.RecordHoeAction(tile);
 
             // Assert
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Invalid hoe action")), LogLevel.Trace), Times.Never);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("Invalid hoe action")), LogLevel.Trace),
+                Times.Never
+            );
         }
 
         [Fact]
@@ -532,14 +627,18 @@ namespace LivingRoots.Tests
             _service.RecordHoeAction(invalidTile);
 
             // Assert
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Invalid hoe action")), LogLevel.Trace), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("Invalid hoe action")), LogLevel.Trace),
+                Times.Once
+            );
         }
 
         [Fact]
         public void GetSoilHealth_WithException_LogsErrorAndReturnsZero()
         {
             // Arrange
-            _mockSoilHealthService.Setup(s => s.GetSoilHealth(It.IsAny<string>(), It.IsAny<Vector2>()))
+            _mockSoilHealthService
+                .Setup(s => s.GetSoilHealth(It.IsAny<string>(), It.IsAny<Vector2>()))
                 .Throws(new Exception("Service error"));
 
             // Act
@@ -547,14 +646,22 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.Equal(0f, health); // Returns 0f when exception occurs (visualization service error handling)
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Error getting soil health")), LogLevel.Error), Times.Once);
+            _mockMonitor.Verify(
+                m =>
+                    m.Log(
+                        It.Is<string>(s => s.Contains("Error getting soil health")),
+                        LogLevel.Error
+                    ),
+                Times.Once
+            );
         }
 
         [Fact]
         public void GetColorForHealth_WithException_LogsErrorAndReturnsGray()
         {
             // Arrange
-            _mockColorMapper.Setup(c => c.GetHealthColor(It.IsAny<float>()))
+            _mockColorMapper
+                .Setup(c => c.GetHealthColor(It.IsAny<float>()))
                 .Throws(new Exception("Mapper error"));
 
             // Act
@@ -562,7 +669,10 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.Equal(Color.Gray, color);
-            _mockMonitor.Verify(m => m.Log(It.Is<string>(s => s.Contains("Error getting color")), LogLevel.Error), Times.Once);
+            _mockMonitor.Verify(
+                m => m.Log(It.Is<string>(s => s.Contains("Error getting color")), LogLevel.Error),
+                Times.Once
+            );
         }
 
         // Helper class for mocking ModEvents
@@ -577,7 +687,12 @@ namespace LivingRoots.Tests
             public IWorldEvents World { get; }
             public ISpecializedEvents Specialized { get; }
 
-            public ModEvents(IInputEvents input, IPlayerEvents player, IDisplayEvents display, IGameLoopEvents gameLoop)
+            public ModEvents(
+                IInputEvents input,
+                IPlayerEvents player,
+                IDisplayEvents display,
+                IGameLoopEvents gameLoop
+            )
             {
                 Input = input;
                 Player = player;

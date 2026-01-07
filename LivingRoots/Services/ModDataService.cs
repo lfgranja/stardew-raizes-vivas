@@ -1,9 +1,4 @@
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Text;
 using LivingRoots.Domain;
-using Newtonsoft.Json;
 using StardewModdingAPI;
 
 namespace LivingRoots.Services
@@ -13,11 +8,15 @@ namespace LivingRoots.Services
     /// Following architecture pattern described in ARCHITECTURE.md
     /// Now following Dependency Inversion Principle by depending on domain abstractions
     /// </summary>
-    public class ModDataService(IModHelper helper, IMonitor monitor, IModLogic modLogic) : IModDataService
+    public class ModDataService(IModHelper helper, IMonitor monitor, IModLogic modLogic)
+        : IModDataService
     {
-        private readonly IModHelper _helper = helper ?? throw new ArgumentNullException(nameof(helper));
-        private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-        private readonly IModLogic _modLogic = modLogic ?? throw new ArgumentNullException(nameof(modLogic));
+        private readonly IModHelper _helper =
+            helper ?? throw new ArgumentNullException(nameof(helper));
+        private readonly IMonitor _monitor =
+            monitor ?? throw new ArgumentNullException(nameof(monitor));
+        private readonly IModLogic _modLogic =
+            modLogic ?? throw new ArgumentNullException(nameof(modLogic));
 
         /// <summary>
         /// Save mod data to persistent storage
@@ -25,7 +24,8 @@ namespace LivingRoots.Services
         /// <typeparam name="T">Type of data to save (must be a reference type)</typeparam>
         /// <param name="data">Data to save</param>
         /// <param name="key">Key to identify data</param>
-        public void SaveData<T>(T data, string key) where T : class
+        public void SaveData<T>(T data, string key)
+            where T : class
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data), "Data cannot be null");
@@ -56,12 +56,14 @@ namespace LivingRoots.Services
                 // Use sanitized key for logging to avoid exposing raw input
                 _monitor?.Log($"Saved data for key '{sanitizedKey}'.", LogLevel.Trace);
             }
-
             catch (System.IO.DirectoryNotFoundException)
             {
                 // Handle DirectoryNotFoundException consistently with other methods
                 // Log as trace to maintain consistency with LoadData, DataExists, and RemoveData
-                _monitor?.Log($"Directory not found while saving data for key '{sanitizedKey}'", LogLevel.Trace);
+                _monitor?.Log(
+                    $"Directory not found while saving data for key '{sanitizedKey}'",
+                    LogLevel.Trace
+                );
                 throw; // Re-throw for save operations as these are critical
             }
             catch (System.IO.IOException)
@@ -92,7 +94,8 @@ namespace LivingRoots.Services
         /// <typeparam name="T">Type of data to load (must be a reference type)</typeparam>
         /// <param name="key">Key to identify data</param>
         /// <returns>Loaded data or default value if not found</returns>
-        public T? LoadData<T>(string key) where T : class
+        public T? LoadData<T>(string key)
+            where T : class
         {
             // Defensive checks for null helpers - added to satisfy test expectations
             // This is for artificial test scenarios using reflection to set internal fields to null
@@ -165,7 +168,10 @@ namespace LivingRoots.Services
             catch (Newtonsoft.Json.JsonException) // Catch broader JsonException instead of JsonReaderException
             {
                 // Log as generic message but with Warn level since JSON parsing errors indicate data corruption
-                _monitor?.Log($"File contains no valid data for key '{sanitizedKey}'", LogLevel.Warn);
+                _monitor?.Log(
+                    $"File contains no valid data for key '{sanitizedKey}'",
+                    LogLevel.Warn
+                );
                 return null; // Return null instead of throwing when JSON is invalid (consistent with DataExists behavior)
             }
             catch (ArgumentException)
@@ -177,7 +183,10 @@ namespace LivingRoots.Services
             catch (Exception)
             {
                 // Log unexpected errors and return null to maintain consistency with DataExists behavior
-                _monitor?.Log($"Unexpected error occurred while loading data for key '{sanitizedKey}'.", LogLevel.Error);
+                _monitor?.Log(
+                    $"Unexpected error occurred while loading data for key '{sanitizedKey}'.",
+                    LogLevel.Error
+                );
                 // Security improvement: Don't include the raw key in the exception message to prevent information disclosure
                 return null; // Return null instead of rethrowing to maintain consistency with LoadData
             }
@@ -230,7 +239,10 @@ namespace LivingRoots.Services
             catch (System.IO.FileNotFoundException)
             {
                 // Log as generic message to prevent information disclosure about file existence
-                _monitor?.Log($"File not found while checking data existence for key '{sanitizedKey}'", LogLevel.Trace);
+                _monitor?.Log(
+                    $"File not found while checking data existence for key '{sanitizedKey}'",
+                    LogLevel.Trace
+                );
                 return false;
             }
             catch (System.IO.DirectoryNotFoundException)
@@ -242,25 +254,37 @@ namespace LivingRoots.Services
             catch (System.UnauthorizedAccessException)
             {
                 // Log as generic message to prevent information disclosure about access permissions
-                _monitor?.Log($"Access denied while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
+                _monitor?.Log(
+                    $"Access denied while checking data existence for key '{sanitizedKey}'",
+                    LogLevel.Warn
+                );
                 return false;
             }
             catch (System.IO.IOException)
             {
                 // Log as generic message to prevent information disclosure about IO errors
-                _monitor?.Log($"IOException occurred while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
+                _monitor?.Log(
+                    $"IOException occurred while checking data existence for key '{sanitizedKey}'",
+                    LogLevel.Warn
+                );
                 return false;
             }
             catch (Newtonsoft.Json.JsonException)
             {
                 // Log as generic message but with Warn level since JSON parsing errors indicate data corruption
-                _monitor?.Log($"JSON parsing error occurred while checking data existence for key '{sanitizedKey}'", LogLevel.Warn);
+                _monitor?.Log(
+                    $"JSON parsing error occurred while checking data existence for key '{sanitizedKey}'",
+                    LogLevel.Warn
+                );
                 return false;
             }
             catch (Exception)
             {
                 // Log unexpected errors and return false to maintain consistency with LoadData behavior
-                _monitor?.Log($"Unexpected error occurred while checking data existence for key '{sanitizedKey}'.", LogLevel.Error);
+                _monitor?.Log(
+                    $"Unexpected error occurred while checking data existence for key '{sanitizedKey}'.",
+                    LogLevel.Error
+                );
                 return false; // Return false instead of rethrowing to maintain consistency with LoadData
             }
         }
@@ -299,7 +323,10 @@ namespace LivingRoots.Services
             {
                 // Always use SMAPI's API for consistency and cross-platform compatibility
                 _helper.Data.WriteJsonFile<object>(filePath, null);
-                _monitor?.Log($"Removed data for key '{sanitizedKey}' by writing null.", LogLevel.Trace);
+                _monitor?.Log(
+                    $"Removed data for key '{sanitizedKey}' by writing null.",
+                    LogLevel.Trace
+                );
             }
             catch (System.IO.FileNotFoundException)
             {
@@ -308,7 +335,10 @@ namespace LivingRoots.Services
                 // This is a thread safety improvement: if multiple threads attempt to remove the same file,
                 // subsequent attempts will find the file already gone and should succeed silently
                 // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor?.Log($"File not found while removing data for key '{sanitizedKey}'", LogLevel.Trace);
+                _monitor?.Log(
+                    $"File not found while removing data for key '{sanitizedKey}'",
+                    LogLevel.Trace
+                );
             }
             catch (System.IO.DirectoryNotFoundException)
             {
@@ -322,7 +352,10 @@ namespace LivingRoots.Services
             {
                 // Log UnauthorizedAccessException as Warn to reduce log noise from non-critical issues
                 // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor?.Log($"Access denied while removing data for key '{sanitizedKey}'", LogLevel.Warn);
+                _monitor?.Log(
+                    $"Access denied while removing data for key '{sanitizedKey}'",
+                    LogLevel.Warn
+                );
                 // For critical removal operations, rethrow the exception to signal failure
                 throw;
             }
@@ -330,7 +363,10 @@ namespace LivingRoots.Services
             {
                 // Log other IOExceptions as Warn to reduce log noise from non-critical issues
                 // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor?.Log($"IOException occurred while removing data for key '{sanitizedKey}'", LogLevel.Warn);
+                _monitor?.Log(
+                    $"IOException occurred while removing data for key '{sanitizedKey}'",
+                    LogLevel.Warn
+                );
                 // For critical removal operations, rethrow the exception to signal failure
                 throw;
             }
@@ -338,7 +374,10 @@ namespace LivingRoots.Services
             {
                 // Log unexpected errors as Error and rethrow for critical operations
                 // Security improvement: Don't log exception message to prevent information disclosure
-                _monitor?.Log($"Unexpected error occurred while removing data for key '{sanitizedKey}'", LogLevel.Error);
+                _monitor?.Log(
+                    $"Unexpected error occurred while removing data for key '{sanitizedKey}'",
+                    LogLevel.Error
+                );
                 // Rethrow critical removal failures to ensure proper error handling by callers
                 throw;
             }
@@ -363,15 +402,24 @@ namespace LivingRoots.Services
             {
                 // Security improvement: Don't log the original exception message to prevent information disclosure
                 // The original message could contain details about why validation failed
-                _monitor?.Log("Path validation failed for key - validation error occurred", LogLevel.Debug);
+                _monitor?.Log(
+                    "Path validation failed for key - validation error occurred",
+                    LogLevel.Debug
+                );
                 // Re-throw with generic message to prevent information disclosure
-                throw new ArgumentException("Invalid key format - path validation failed", nameof(key));
+                throw new ArgumentException(
+                    "Invalid key format - path validation failed",
+                    nameof(key)
+                );
             }
 
             // Sanitize key once before try-catch block to prevent exceptions during error handling
             var sanitizedKey = SanitizePathSegments(key);
             if (string.IsNullOrWhiteSpace(sanitizedKey))
-                throw new ArgumentException("Key sanitization failed - sanitized key cannot be null or whitespace.", nameof(key));
+                throw new ArgumentException(
+                    "Key sanitization failed - sanitized key cannot be null or whitespace.",
+                    nameof(key)
+                );
 
             return sanitizedKey;
         }
@@ -399,7 +447,10 @@ namespace LivingRoots.Services
                 throw new ArgumentException("Path cannot be empty.", nameof(path));
 
             // Split path by both forward and backward slashes
-            var segments = path.Split(new char[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            var segments = path.Split(
+                new char[] { '/', '\\' },
+                StringSplitOptions.RemoveEmptyEntries
+            );
 
             // Sanitize each segment individually
             var validSegments = new List<string>();
@@ -416,7 +467,10 @@ namespace LivingRoots.Services
                 // Even though path traversal validation happens in ValidatePath, this provides additional protection
                 if (IsPathTraversalSegment(segments[i]))
                 {
-                    throw new ArgumentException("Path cannot contain '..' segments for security reasons.", nameof(path));
+                    throw new ArgumentException(
+                        "Path cannot contain '..' segments for security reasons.",
+                        nameof(path)
+                    );
                 }
 
                 // Use existing SanitizeFileName method for other segments
@@ -432,7 +486,10 @@ namespace LivingRoots.Services
 
             // Check if we have any valid segments after processing
             if (validSegments.Count == 0)
-                throw new ArgumentException("Path sanitization resulted in empty path.", nameof(path));
+                throw new ArgumentException(
+                    "Path sanitization resulted in empty path.",
+                    nameof(path)
+                );
 
             // Join sanitized segments back together using forward slash for consistency across platforms
             // This ensures keys are consistent regardless of the operating system
@@ -522,20 +579,32 @@ namespace LivingRoots.Services
 
             // Check for patterns where ".." is followed or preceded by path separators
             // These indicate actual traversal attempts like "../", "/..", "..\\", "\\..", etc.
-            if (segment.Contains("../") || segment.Contains("/..") ||
-                segment.Contains("..\\") || segment.Contains("\\.."))
+            if (
+                segment.Contains("../")
+                || segment.Contains("/..")
+                || segment.Contains("..\\")
+                || segment.Contains("\\..")
+            )
             {
                 return true;
             }
 
             // Check if the segment starts or ends with ".." followed/preceded by a separator
             // This would indicate traversal attempts like ".." at the start or end of a path component
-            if (segment.StartsWith("..") && segment.Length >= 3 && (segment[2] == '/' || segment[2] == '\\'))
+            if (
+                segment.StartsWith("..")
+                && segment.Length >= 3
+                && (segment[2] == '/' || segment[2] == '\\')
+            )
             {
                 return true;
             }
 
-            if (segment.EndsWith("..") && segment.Length >= 3 && (segment[segment.Length - 3] == '/' || segment[segment.Length - 3] == '\\'))
+            if (
+                segment.EndsWith("..")
+                && segment.Length >= 3
+                && (segment[segment.Length - 3] == '/' || segment[segment.Length - 3] == '\\')
+            )
             {
                 return true;
             }

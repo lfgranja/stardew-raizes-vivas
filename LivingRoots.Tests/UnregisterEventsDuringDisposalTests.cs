@@ -1,14 +1,9 @@
-using System;
 using System.Reflection;
-using System.Threading;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
-using LivingRoots.Services;
-using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -32,7 +27,9 @@ namespace LivingRoots.Tests
 
             // Add default setup for _mockManifest properties to prevent NullReferenceException
             _mockManifest.Setup(x => x.UniqueID).Returns("test.mod.id");
-            _mockManifest.Setup(x => x.Version).Returns(new StardewModdingAPI.SemanticVersion(1, 0, 0));
+            _mockManifest
+                .Setup(x => x.Version)
+                .Returns(new StardewModdingAPI.SemanticVersion(1, 0, 0));
         }
 
         [Fact]
@@ -52,36 +49,55 @@ namespace LivingRoots.Tests
             EventHandler<SaveLoadedEventArgs> saveLoadedHandler = null!;
             EventHandler<SavingEventArgs> savingHandler = null!;
 
-            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Callback<EventHandler<GameLaunchedEventArgs>>(h => gameLaunchedHandler = h);
-            mockGameLoopEvents.SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
                 .Callback<EventHandler<SaveLoadedEventArgs>>(h => saveLoadedHandler = h);
-            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => savingHandler = h);
 
             // Setup unsubscriptions that will fail to trigger rollback
-            mockGameLoopEvents.SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Throws(new InvalidOperationException("GameLaunched unsubscribe failed"));
-            mockGameLoopEvents.SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+            mockGameLoopEvents
+                .SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>())
                 .Throws(new InvalidOperationException("SaveLoaded unsubscribe failed"));
-            mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
+            mockGameLoopEvents
+                .SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
                 .Throws(new InvalidOperationException("Saving unsubscribe failed"));
 
             // Setup re-subscription for rollback - this should NOT happen during disposal
-            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Callback<EventHandler<GameLaunchedEventArgs>>(h => { });
-            mockGameLoopEvents.SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
                 .Callback<EventHandler<SaveLoadedEventArgs>>(h => { });
-            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockSoilHealthVisualizationService.Object);
+            var controller = new ModController(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockManifest.Object,
+                _mockSoilHealthService.Object,
+                _mockSaveIdProvider.Object,
+                _mockSoilHealthVisualizationService.Object
+            );
 
             // Register events first to set up the controller
             controller.RegisterEvents();
 
             // Manually set the disposed flag using reflection to simulate disposal state
-            var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+            var stateField = typeof(ModController).GetField(
+                "_state",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             var disposedFlag = 1 << 2; // DisposedFlag constant value
             var currentState = (int)stateField!.GetValue(controller)!;
             stateField.SetValue(controller, currentState | disposedFlag);
@@ -91,15 +107,30 @@ namespace LivingRoots.Tests
 
             // Assert - Verify that rollback did NOT happen during disposal
             // Total invocations should be just 1 (from original registration) since rollback was skipped
-            mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
-            mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
-            mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyAdd(
+                x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(),
+                Times.Once
+            );
+            mockGameLoopEvents.VerifyAdd(
+                x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(),
+                Times.Once
+            );
+            mockGameLoopEvents.VerifyAdd(
+                x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(),
+                Times.Once
+            );
 
             // Check that EventsRegisteredFlag is properly cleared during disposal
             var stateValue = (int)stateField.GetValue(controller)!;
             var eventsRegisteredFlag = 1;
-            Assert.True((stateValue & disposedFlag) != 0, "Controller should still be marked as disposed");
-            Assert.True((stateValue & eventsRegisteredFlag) == 0, "EventsRegisteredFlag should be cleared during disposal");
+            Assert.True(
+                (stateValue & disposedFlag) != 0,
+                "Controller should still be marked as disposed"
+            );
+            Assert.True(
+                (stateValue & eventsRegisteredFlag) == 0,
+                "EventsRegisteredFlag should be cleared during disposal"
+            );
         }
 
         [Fact]
@@ -119,34 +150,52 @@ namespace LivingRoots.Tests
             EventHandler<SaveLoadedEventArgs> saveLoadedHandler = null!;
             EventHandler<SavingEventArgs> savingHandler = null!;
 
-            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Callback<EventHandler<GameLaunchedEventArgs>>(h => gameLaunchedHandler = h);
-            mockGameLoopEvents.SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
                 .Callback<EventHandler<SaveLoadedEventArgs>>(h => saveLoadedHandler = h);
-            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => savingHandler = h);
 
             // Setup partial unsubscription failure (only SaveLoaded fails)
-            mockGameLoopEvents.SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Callback<EventHandler<GameLaunchedEventArgs>>(h => { });
-            mockGameLoopEvents.SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+            mockGameLoopEvents
+                .SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>())
                 .Throws(new InvalidOperationException("SaveLoaded unsubscribe failed"));
-            mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
+            mockGameLoopEvents
+                .SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
             // Setup re-subscription for rollback - this should NOT happen during disposal
-            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Callback<EventHandler<GameLaunchedEventArgs>>(h => { });
-            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockSoilHealthVisualizationService.Object);
+            var controller = new ModController(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockManifest.Object,
+                _mockSoilHealthService.Object,
+                _mockSaveIdProvider.Object,
+                _mockSoilHealthVisualizationService.Object
+            );
 
             // Register events first to set up the controller
             controller.RegisterEvents();
 
             // Manually set the disposed flag using reflection to simulate disposal state
-            var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+            var stateField = typeof(ModController).GetField(
+                "_state",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             var disposedFlag = 1 << 2; // DisposedFlag constant value
             var currentState = (int)stateField!.GetValue(controller)!;
             stateField.SetValue(controller, currentState | disposedFlag);
@@ -156,15 +205,30 @@ namespace LivingRoots.Tests
 
             // Assert - Verify that rollback did NOT happen during disposal
             // Total invocations should be just 1 (from original registration) since rollback was skipped
-            mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Once);
-            mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once);
-            mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Once);
+            mockGameLoopEvents.VerifyAdd(
+                x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(),
+                Times.Once
+            );
+            mockGameLoopEvents.VerifyAdd(
+                x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(),
+                Times.Once
+            );
+            mockGameLoopEvents.VerifyAdd(
+                x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(),
+                Times.Once
+            );
 
             // Check that EventsRegisteredFlag is properly cleared during disposal
             var stateValue = (int)stateField.GetValue(controller)!;
             var eventsRegisteredFlag = 1;
-            Assert.True((stateValue & disposedFlag) != 0, "Controller should still be marked as disposed");
-            Assert.True((stateValue & eventsRegisteredFlag) == 0, "EventsRegisteredFlag should be cleared during disposal");
+            Assert.True(
+                (stateValue & disposedFlag) != 0,
+                "Controller should still be marked as disposed"
+            );
+            Assert.True(
+                (stateValue & eventsRegisteredFlag) == 0,
+                "EventsRegisteredFlag should be cleared during disposal"
+            );
         }
 
         [Fact]
@@ -184,38 +248,59 @@ namespace LivingRoots.Tests
             EventHandler<SaveLoadedEventArgs> saveLoadedHandler = null!;
             EventHandler<SavingEventArgs> savingHandler = null!;
 
-            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Callback<EventHandler<GameLaunchedEventArgs>>(h => gameLaunchedHandler = h);
-            mockGameLoopEvents.SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>())
                 .Callback<EventHandler<SaveLoadedEventArgs>>(h => saveLoadedHandler = h);
-            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => savingHandler = h);
 
             // Setup partial unsubscription: GameLaunched and Saving succeed, SaveLoaded fails
-            mockGameLoopEvents.SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+            mockGameLoopEvents
+                .SetupRemove(x => x.GameLaunched -= It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Callback<EventHandler<GameLaunchedEventArgs>>(h => { });
-            mockGameLoopEvents.SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>())
+            mockGameLoopEvents
+                .SetupRemove(x => x.SaveLoaded -= It.IsAny<EventHandler<SaveLoadedEventArgs>>())
                 .Throws(new InvalidOperationException("SaveLoaded unsubscribe failed"));
-            mockGameLoopEvents.SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
+            mockGameLoopEvents
+                .SetupRemove(x => x.Saving -= It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
             // Setup re-subscription for rollback - this SHOULD happen when not disposed
             // Only GameLaunched and Saving should be re-subscribed since SaveLoaded was never unsubscribed
-            mockGameLoopEvents.SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>())
                 .Callback<EventHandler<GameLaunchedEventArgs>>(h => { });
-            mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
+            mockGameLoopEvents
+                .SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockSoilHealthVisualizationService.Object);
+            var controller = new ModController(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockManifest.Object,
+                _mockSoilHealthService.Object,
+                _mockSaveIdProvider.Object,
+                _mockSoilHealthVisualizationService.Object
+            );
 
             // Register events first to set up the controller
             controller.RegisterEvents();
 
             // Ensure controller is NOT disposed (do not set disposed flag)
-            var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+            var stateField = typeof(ModController).GetField(
+                "_state",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             var disposedFlag = 1 << 2; // DisposedFlag constant value
             var stateValue = (int)stateField!.GetValue(controller)!;
-            Assert.True((stateValue & disposedFlag) == 0, "Controller should not be disposed initially");
+            Assert.True(
+                (stateValue & disposedFlag) == 0,
+                "Controller should not be disposed initially"
+            );
 
             // Act - This should attempt rollback because controller is not disposed
             controller.UnregisterEvents();
@@ -223,14 +308,26 @@ namespace LivingRoots.Tests
             // Assert - Verify that rollback DID happen when not disposed for successfully unsubscribed handlers
             // Total invocations should be 2 for GameLaunched and Saving (1 from original registration + 1 from rollback)
             // SaveLoaded should remain at 1 since it was never unsubscribed
-            mockGameLoopEvents.VerifyAdd(x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(), Times.Exactly(2));
-            mockGameLoopEvents.VerifyAdd(x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(), Times.Once); // No rollback for failed unsubscribe
-            mockGameLoopEvents.VerifyAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(), Times.Exactly(2));
+            mockGameLoopEvents.VerifyAdd(
+                x => x.GameLaunched += It.IsAny<EventHandler<GameLaunchedEventArgs>>(),
+                Times.Exactly(2)
+            );
+            mockGameLoopEvents.VerifyAdd(
+                x => x.SaveLoaded += It.IsAny<EventHandler<SaveLoadedEventArgs>>(),
+                Times.Once
+            ); // No rollback for failed unsubscribe
+            mockGameLoopEvents.VerifyAdd(
+                x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>(),
+                Times.Exactly(2)
+            );
 
             // Check that EventsRegisteredFlag is restored after rollback when not disposed
             stateValue = (int)stateField.GetValue(controller)!;
             var eventsRegisteredFlag = 1;
-            Assert.True((stateValue & eventsRegisteredFlag) != 0, "EventsRegisteredFlag should be restored after rollback when not disposed");
+            Assert.True(
+                (stateValue & eventsRegisteredFlag) != 0,
+                "EventsRegisteredFlag should be restored after rollback when not disposed"
+            );
         }
     }
 }

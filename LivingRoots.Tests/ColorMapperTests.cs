@@ -2,8 +2,6 @@ using LivingRoots.Domain;
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using Moq;
-using StardewModdingAPI;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -183,9 +181,15 @@ namespace LivingRoots.Tests
             Assert.True(poorColor.R > 200, "Poor health should use custom red");
             // Moderate health (50) interpolates between customPoor (255,0,0) and customModerate (0,255,0)
             // At 50% interpolation: R=127, G=127, B=0
-            Assert.True(moderateColor.R > 0 || moderateColor.G > 0 || moderateColor.B > 0, "Moderate health should use custom palette");
+            Assert.True(
+                moderateColor.R > 0 || moderateColor.G > 0 || moderateColor.B > 0,
+                "Moderate health should use custom palette"
+            );
             // Healthy health (85) interpolates between customModerate (0,255,0) and customHealthy (0,0,255)
-            Assert.True(healthyColor.R > 0 || healthyColor.G > 0 || healthyColor.B > 0, "Healthy health should use custom palette");
+            Assert.True(
+                healthyColor.R > 0 || healthyColor.G > 0 || healthyColor.B > 0,
+                "Healthy health should use custom palette"
+            );
         }
 
         [Fact]
@@ -200,7 +204,10 @@ namespace LivingRoots.Tests
             Color color = _colorMapper.GetHealthColor(50f, poor, moderate, healthy);
 
             // Assert - Should use provided custom colors
-            Assert.True(color.R > 0 || color.G > 0 || color.B > 0, "Should have color from custom palette");
+            Assert.True(
+                color.R > 0 || color.G > 0 || color.B > 0,
+                "Should have color from custom palette"
+            );
         }
 
         [Fact]

@@ -1,6 +1,5 @@
 using LivingRoots.Domain;
 using Microsoft.Xna.Framework;
-using StardewModdingAPI;
 
 namespace LivingRoots.Services
 {
@@ -15,19 +14,23 @@ namespace LivingRoots.Services
     public class ColorMapper(IVisualizationConfig config) : IColorMapper
     {
         // Dependencies
-        private readonly IVisualizationConfig _config = config ?? throw new ArgumentNullException(nameof(config));
+        private readonly IVisualizationConfig _config =
+            config ?? throw new ArgumentNullException(nameof(config));
 
         // Default colors
-        private static readonly Color DefaultPoorColor = new(139, 69, 19);  // SaddleBrown
-        private static readonly Color DefaultModerateColor = new(218, 165, 32);  // GoldenRod
-        private static readonly Color DefaultHealthyColor = new(85, 107, 47);  // DarkOliveGreen
+        private static readonly Color DefaultPoorColor = new(139, 69, 19); // SaddleBrown
+        private static readonly Color DefaultModerateColor = new(218, 165, 32); // GoldenRod
+        private static readonly Color DefaultHealthyColor = new(85, 107, 47); // DarkOliveGreen
 
         /// <inheritdoc/>
         public Color GetHealthColor(float health)
         {
-            return GetHealthColor(health, _config.UseCustomColors ? _config.PoorHealthColor : DefaultPoorColor,
+            return GetHealthColor(
+                health,
+                _config.UseCustomColors ? _config.PoorHealthColor : DefaultPoorColor,
                 _config.UseCustomColors ? _config.ModerateHealthColor : DefaultModerateColor,
-                _config.UseCustomColors ? _config.HealthyHealthColor : DefaultHealthyColor);
+                _config.UseCustomColors ? _config.HealthyHealthColor : DefaultHealthyColor
+            );
         }
 
         /// <inheritdoc/>
@@ -40,20 +43,26 @@ namespace LivingRoots.Services
             if (health <= ModConstants.PoorHealthThreshold)
             {
                 // Poor health: interpolate from red to poor color
-                return InterpolateColors(new Color(255, 0, 0), poor, health / ModConstants.PoorHealthThreshold);
+                return InterpolateColors(
+                    new Color(255, 0, 0),
+                    poor,
+                    health / ModConstants.PoorHealthThreshold
+                );
             }
             else if (health <= ModConstants.ModerateHealthThreshold)
             {
                 // Moderate health: interpolate between poor and moderate colors
-                var t = (health - ModConstants.PoorHealthThreshold) /
-                           (ModConstants.ModerateHealthThreshold - ModConstants.PoorHealthThreshold);
+                var t =
+                    (health - ModConstants.PoorHealthThreshold)
+                    / (ModConstants.ModerateHealthThreshold - ModConstants.PoorHealthThreshold);
                 return InterpolateColors(poor, moderate, t);
             }
             else
             {
                 // Healthy health: interpolate between moderate and healthy colors
-                var t = (health - ModConstants.ModerateHealthThreshold) /
-                           (ModConstants.HealthyHealthThreshold - ModConstants.ModerateHealthThreshold);
+                var t =
+                    (health - ModConstants.ModerateHealthThreshold)
+                    / (ModConstants.HealthyHealthThreshold - ModConstants.ModerateHealthThreshold);
                 return InterpolateColors(moderate, healthy, t);
             }
         }

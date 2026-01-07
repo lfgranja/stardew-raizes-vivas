@@ -1,8 +1,6 @@
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using StardewValley;
-using xTile.Dimensions;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -136,8 +134,14 @@ namespace LivingRoots.Tests
         public void GetViewportBounds_ReturnsValidRectangle()
         {
             // Arrange - Use reflection to set Game1.viewport to avoid requiring game runtime state
-            var viewportField = typeof(Game1).GetField("viewport", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-            var uiViewportField = typeof(Game1).GetField("uiViewport", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            var viewportField = typeof(Game1).GetField(
+                "viewport",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static
+            );
+            var uiViewportField = typeof(Game1).GetField(
+                "uiViewport",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static
+            );
 
             var originalViewport = viewportField?.GetValue(null);
             var originalUiViewport = uiViewportField?.GetValue(null);

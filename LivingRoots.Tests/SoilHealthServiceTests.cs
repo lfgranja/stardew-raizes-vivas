@@ -1,14 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -29,16 +23,34 @@ namespace LivingRoots.Tests
         public void Constructor_WithNullDependencies_ThrowsArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthService(null!, _mockMonitor.Object, _mockFileNameSanitizationService.Object));
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthService(_mockDataService.Object, null!, _mockFileNameSanitizationService.Object));
-            Assert.Throws<ArgumentNullException>(() => new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, null!));
+            Assert.Throws<ArgumentNullException>(() =>
+                new SoilHealthService(
+                    null!,
+                    _mockMonitor.Object,
+                    _mockFileNameSanitizationService.Object
+                )
+            );
+            Assert.Throws<ArgumentNullException>(() =>
+                new SoilHealthService(
+                    _mockDataService.Object,
+                    null!,
+                    _mockFileNameSanitizationService.Object
+                )
+            );
+            Assert.Throws<ArgumentNullException>(() =>
+                new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, null!)
+            );
         }
 
         [Fact]
         public void SetHealth_ValuesAreClampedTo0And100()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
             var tile = new Vector2(10, 10);
 
@@ -61,14 +73,18 @@ namespace LivingRoots.Tests
         public void GetSoilHealth_WithInvalidLocationName_ReturnsDefault(string? location)
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile = new Vector2(10, 10);
 
             // Act
             var result = service.GetSoilHealth(location!, tile);
 
             // Assert
-            Assert.InRange(result, 20f, 100f); // GenerateInitialSoilHealth returns values in [20, 100]
+            Assert.Equal(0f, result); // Invalid location name returns 0
         }
 
         [Theory]
@@ -79,14 +95,18 @@ namespace LivingRoots.Tests
         public void GetSoilHealth_WithInvalidTileCoordinates_ReturnsDefault(float x, float y)
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
 
             // Act
             var result = service.GetSoilHealth(location, new Vector2(x, y));
 
             // Assert
-            Assert.InRange(result, 20f, 100f); // GenerateInitialSoilHealth returns values in [20, 100]
+            Assert.Equal(0f, result); // Invalid coordinates return 0
         }
 
         [Theory]
@@ -96,7 +116,11 @@ namespace LivingRoots.Tests
         public void SetSoilHealth_WithInvalidLocationName_DoesNotAddEntry(string? location)
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile = new Vector2(10, 10);
 
             // Act
@@ -128,15 +152,19 @@ namespace LivingRoots.Tests
         public void SetSoilHealth_WithInvalidTileCoordinates_DoesNotAddEntry(float x, float y)
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
 
             // Act
             service.SetSoilHealth(location, new Vector2(x, y), 50.0f);
 
-            // Assert - Should not have added any entries to the cache, returns value in [20, 100]
+            // Assert - Should not have added any entries to the cache, returns 0 for invalid coordinates
             Assert.InRange(service.GetSoilHealth(location, new Vector2(0, 0)), 20f, 100f);
-            Assert.InRange(service.GetSoilHealth(location, new Vector2(x, y)), 20f, 100f);
+            Assert.Equal(0f, service.GetSoilHealth(location, new Vector2(x, y))); // Invalid coordinates return 0
         }
 
         [Theory]
@@ -146,7 +174,11 @@ namespace LivingRoots.Tests
         public void UpdateHealth_WithInvalidLocationName_DoesNotUpdate(string? location)
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
@@ -166,7 +198,11 @@ namespace LivingRoots.Tests
         public void UpdateHealth_WithInvalidTileCoordinates_DoesNotUpdate(float x, float y)
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f); // Set initial value
@@ -182,7 +218,11 @@ namespace LivingRoots.Tests
         public void UpdateHealth_IncrementsValueCorrectly()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f);
@@ -198,7 +238,11 @@ namespace LivingRoots.Tests
         public void UpdateHealth_DecrementsValueCorrectly()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f);
@@ -214,7 +258,11 @@ namespace LivingRoots.Tests
         public void UpdateHealth_ClampsTo0And100()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f);
@@ -239,7 +287,11 @@ namespace LivingRoots.Tests
         public void LoadData_WithInvalidSaveId_ClearsCacheToPreventLeakage(string? saveId)
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
@@ -262,9 +314,9 @@ namespace LivingRoots.Tests
                     ["Farm"] = new Dictionary<string, float>
                     {
                         ["10,10"] = 75.5f, // Within domain range [0,100], stays 75.5
-                        ["11,15"] = 25.5f   // Within domain range [0,100], stays 25.5
-                    }
-                }
+                        ["11,15"] = 25.5f, // Within domain range [0,100], stays 25.5
+                    },
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -276,7 +328,11 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act
             service.LoadData("test_save");
@@ -292,7 +348,7 @@ namespace LivingRoots.Tests
             // Arrange
             var saveData = new SoilHealthState
             {
-                LocationHealthData = null! // This could happen during deserialization
+                LocationHealthData = null!, // This could happen during deserialization
             };
 
             // Set up mock to return expected sanitized value
@@ -304,7 +360,11 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act
             service.LoadData("test_save");
@@ -323,12 +383,12 @@ namespace LivingRoots.Tests
                 {
                     ["Farm"] = new Dictionary<string, float>
                     {
-                        ["invalid_key"] = 75.5f,      // Invalid format
+                        ["invalid_key"] = 75.5f, // Invalid format
                         ["10,not_a_number"] = 25.5f, // Invalid Y
-                        ["not_a_number,10"] = 30.0f,  // Invalid X
-                        ["10,10"] = 50.0f             // Valid
-                    }
-                }
+                        ["not_a_number,10"] = 30.0f, // Invalid X
+                        ["10,10"] = 50.0f, // Valid
+                    },
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -340,7 +400,11 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act
             service.LoadData("test_save");
@@ -361,12 +425,12 @@ namespace LivingRoots.Tests
                 {
                     ["Farm"] = new Dictionary<string, float>
                     {
-                        ["10,10"] = float.NaN,        // Invalid value
+                        ["10,10"] = float.NaN, // Invalid value
                         ["11,11"] = float.PositiveInfinity, // Invalid value, PositiveInfinity should be converted to 100f
                         ["12,12"] = float.NegativeInfinity, // Invalid value, NegativeInfinity should be converted to 0f
-                        ["13,13"] = 50.0f             // Valid
-                    }
-                }
+                        ["13,13"] = 50.0f, // Valid
+                    },
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -378,7 +442,11 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act
             service.LoadData("test_save");
@@ -404,10 +472,10 @@ namespace LivingRoots.Tests
             {
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    [""] = new Dictionary<string, float> { ["11,11"] = 25.5f },   // Empty location
+                    [""] = new Dictionary<string, float> { ["11,11"] = 25.5f }, // Empty location
                     ["   "] = new Dictionary<string, float> { ["12,12"] = 30.0f }, // Whitespace location
-                    ["Farm"] = new Dictionary<string, float> { ["13,13"] = 75.5f } // Valid location
-                }
+                    ["Farm"] = new Dictionary<string, float> { ["13,13"] = 75.5f }, // Valid location
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -419,7 +487,11 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act
             service.LoadData("test_save");
@@ -427,15 +499,19 @@ namespace LivingRoots.Tests
             // Assert - Only valid location should be loaded
             Assert.Equal(75.5f, service.GetSoilHealth("Farm", new Vector2(13, 13)));
             // Empty/whitespace locations should not exist
-            Assert.InRange(service.GetSoilHealth("", new Vector2(11, 11)), 20f, 100f);
-            Assert.InRange(service.GetSoilHealth("   ", new Vector2(12, 12)), 20f, 100f);
+            Assert.Equal(0f, service.GetSoilHealth("", new Vector2(11, 11)));
+            Assert.Equal(0f, service.GetSoilHealth("   ", new Vector2(12, 12)));
         }
 
         [Fact]
         public void LoadData_WithException_HandlesGracefully()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
@@ -462,7 +538,11 @@ namespace LivingRoots.Tests
         public void SaveData_WithInvalidSaveId_DoesNotSave(string? saveId)
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, 50.0f);
 
@@ -470,14 +550,21 @@ namespace LivingRoots.Tests
             service.SaveData(saveId!);
 
             // Assert - Data should not be saved
-            _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
+            _mockDataService.Verify(
+                x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()),
+                Times.Never
+            );
         }
 
         [Fact]
         public void SaveData_WithValidData_SavesCorrectly()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile1 = new Vector2(10, 10);
             var tile2 = new Vector2(15, 20);
             service.SetSoilHealth("Farm", tile1, 75.5f);
@@ -492,16 +579,26 @@ namespace LivingRoots.Tests
             service.SaveData("test_save");
 
             // Assert - Verify that data was saved with correct key and format
-            _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), "soil_health_data_test_save"), Times.Once);
+            _mockDataService.Verify(
+                x => x.SaveData(It.IsAny<SoilHealthState>(), "soil_health_data_test_save"),
+                Times.Once
+            );
 
             // Capture the actual data that was saved
-            _mockDataService.Verify(x => x.SaveData(It.Is<SoilHealthState>(state =>
-                state.LocationHealthData.ContainsKey("Farm") &&
-                state.LocationHealthData["Farm"].ContainsKey("10,10") &&
-                Math.Abs(state.LocationHealthData["Farm"]["10,10"] - 75.5f) < 0.0001f &&
-                state.LocationHealthData["Farm"].ContainsKey("15,20") &&
-                Math.Abs(state.LocationHealthData["Farm"]["15,20"] - 25.5f) < 0.0001f
-            ), "soil_health_data_test_save"), Times.Once);
+            _mockDataService.Verify(
+                x =>
+                    x.SaveData(
+                        It.Is<SoilHealthState>(state =>
+                            state.LocationHealthData.ContainsKey("Farm")
+                            && state.LocationHealthData["Farm"].ContainsKey("10,10")
+                            && Math.Abs(state.LocationHealthData["Farm"]["10,10"] - 75.5f) < 0.0001f
+                            && state.LocationHealthData["Farm"].ContainsKey("15,20")
+                            && Math.Abs(state.LocationHealthData["Farm"]["15,20"] - 25.5f) < 0.0001f
+                        ),
+                        "soil_health_data_test_save"
+                    ),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -513,7 +610,11 @@ namespace LivingRoots.Tests
             // on-disk data is also cleared.
 
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             // Don't add any data to the cache, so it remains empty
 
             // Set up mock to return expected sanitized value
@@ -526,10 +627,13 @@ namespace LivingRoots.Tests
 
             // Assert - Should save an empty state to clear any previously saved data on disk
             _mockDataService.Verify(
-                x => x.SaveData(
-                    It.Is<SoilHealthState>(s => s.LocationHealthData != null && s.LocationHealthData.Count == 0),
-                    "soil_health_data_test_save"
-                ),
+                x =>
+                    x.SaveData(
+                        It.Is<SoilHealthState>(s =>
+                            s.LocationHealthData != null && s.LocationHealthData.Count == 0
+                        ),
+                        "soil_health_data_test_save"
+                    ),
                 Times.Once
             );
         }
@@ -543,7 +647,11 @@ namespace LivingRoots.Tests
             // - NegativeInfinity values are converted to MinSoilHealth (0) by ClampHealthValue and ARE saved
             // - Valid values are saved normally
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Manually set some values including NaN and Infinity to test save behavior
             service.SetSoilHealth("Farm", new Vector2(10, 10), 75.5f); // Valid value - should be saved
@@ -557,11 +665,13 @@ namespace LivingRoots.Tests
             string capturedSaveKey = null!;
             _mockDataService
                 .Setup(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()))
-                .Callback<SoilHealthState, string>((state, key) =>
-                {
-                    capturedSaveState = state;
-                    capturedSaveKey = key;
-                });
+                .Callback<SoilHealthState, string>(
+                    (state, key) =>
+                    {
+                        capturedSaveState = state;
+                        capturedSaveKey = key;
+                    }
+                );
 
             // Set up mock to return expected sanitized value
             _mockFileNameSanitizationService
@@ -593,7 +703,10 @@ namespace LivingRoots.Tests
             Assert.Equal(0f, farmData["14,14"]); // NegativeInfinity converted to 0
 
             // Verify that SaveData was called exactly once
-            _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Once);
+            _mockDataService.Verify(
+                x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()),
+                Times.Once
+            );
         }
 
         [Fact]
@@ -603,7 +716,11 @@ namespace LivingRoots.Tests
             // We need to test the save logic with invalid location names
             // We'll create a scenario where the internal cache has invalid entries
             // but the public API prevents this, so we'll test validation directly
-            var serviceWithValidData = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var serviceWithValidData = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             serviceWithValidData.SetSoilHealth("Farm", new Vector2(13, 13), 75.5f);
 
             // Add invalid location names to the internal state by bypassing the public API
@@ -612,10 +729,10 @@ namespace LivingRoots.Tests
             {
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    [""] = new Dictionary<string, float> { ["11,1"] = 25.5f },   // Empty location
+                    [""] = new Dictionary<string, float> { ["11,1"] = 25.5f }, // Empty location
                     ["   "] = new Dictionary<string, float> { ["12,12"] = 30.0f }, // Whitespace location
-                    ["Farm"] = new Dictionary<string, float> { ["13,13"] = 75.5f } // Valid location
-                }
+                    ["Farm"] = new Dictionary<string, float> { ["13,13"] = 75.5f }, // Valid location
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -632,18 +749,29 @@ namespace LivingRoots.Tests
             serviceWithValidData.SaveData("test_save");
 
             // Verify that only valid locations are saved
-            _mockDataService.Verify(x => x.SaveData(It.Is<SoilHealthState>(s =>
-                !s.LocationHealthData.ContainsKey("") &&
-                !s.LocationHealthData.ContainsKey("   ") &&
-                s.LocationHealthData.ContainsKey("Farm")
-            ), "soil_health_data_test_save"), Times.Once);
+            _mockDataService.Verify(
+                x =>
+                    x.SaveData(
+                        It.Is<SoilHealthState>(s =>
+                            !s.LocationHealthData.ContainsKey("")
+                            && !s.LocationHealthData.ContainsKey("   ")
+                            && s.LocationHealthData.ContainsKey("Farm")
+                        ),
+                        "soil_health_data_test_save"
+                    ),
+                Times.Once
+            );
         }
 
         [Fact]
         public void SaveData_WithException_HandlesGracefully()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, 50.0f);
 
@@ -665,7 +793,11 @@ namespace LivingRoots.Tests
         public void GetSoilHealth_UsesFloorForCoordinateConversion()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
             var tile = new Vector2(10.7f, 15.3f); // Should map to (10, 15)
             service.SetSoilHealth(location, tile, 50.0f);
@@ -681,7 +813,11 @@ namespace LivingRoots.Tests
         public void SetSoilHealth_UsesFloorForCoordinateConversion()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
 
             // Act - Set with fractional coordinates
@@ -697,7 +833,11 @@ namespace LivingRoots.Tests
         public void UpdateHealth_UsesFloorForCoordinateConversion()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
             var tile = new Vector2(10, 15);
             service.SetSoilHealth(location, tile, 50.0f);
@@ -713,7 +853,11 @@ namespace LivingRoots.Tests
         public void GetSoilHealth_WithNegativeCoordinates_WorksCorrectly()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
             var tile = new Vector2(-5.7f, -3.3f); // Should map to (-6, -4) using MathF.Floor
             service.SetSoilHealth(location, tile, 50.0f);
@@ -729,7 +873,11 @@ namespace LivingRoots.Tests
         public async Task ThreadSafety_MultipleThreadsAccessingService_DoesNotThrow()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var exceptions = new List<Exception>();
             var lockObj = new object();
             var accessedTiles = new List<Vector2>();
@@ -752,7 +900,7 @@ namespace LivingRoots.Tests
                         for (var j = 0; j < 20; j++)
                         {
                             var x = (workerId * 20) + j; // Unique X coordinate per worker
-                            var y = workerId;              // Same Y for all operations of this worker
+                            var y = workerId; // Same Y for all operations of this worker
                             var tile = new Vector2(x, y);
 
                             // Record the tile being accessed
@@ -780,7 +928,10 @@ namespace LivingRoots.Tests
             startGate.Set();
             var allTasks = Task.WhenAll(tasks);
             var completed = await Task.WhenAny(allTasks, Task.Delay(TimeSpan.FromSeconds(10)));
-            Assert.True(completed == allTasks, "Concurrency test timed out (possible deadlock or extreme slowness).");
+            Assert.True(
+                completed == allTasks,
+                "Concurrency test timed out (possible deadlock or extreme slowness)."
+            );
             await allTasks;
 
             // Assert - No exceptions should be thrown due to race conditions
@@ -799,10 +950,14 @@ namespace LivingRoots.Tests
                 Assert.InRange(healthValue, 0.0f, 100.0f);
 
                 // Additional validation: Check that the value is a valid float (not NaN or Infinity)
-                Assert.False(float.IsNaN(healthValue),
-                    $"Soil health value for tile {tile} is NaN after concurrent access, indicating potential data corruption.");
-                Assert.False(float.IsInfinity(healthValue),
-                    $"Soil health value for tile {tile} is Infinity after concurrent access, indicating potential data corruption.");
+                Assert.False(
+                    float.IsNaN(healthValue),
+                    $"Soil health value for tile {tile} is NaN after concurrent access, indicating potential data corruption."
+                );
+                Assert.False(
+                    float.IsInfinity(healthValue),
+                    $"Soil health value for tile {tile} is Infinity after concurrent access, indicating potential data corruption."
+                );
             }
         }
 
@@ -814,7 +969,11 @@ namespace LivingRoots.Tests
             // Strengthened: Add meaningful post-condition assertions to validate service state after concurrent access
 
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var exceptions = new List<Exception>();
             var lockObj = new object();
             var accessedTiles = new List<Point>();
@@ -861,7 +1020,10 @@ namespace LivingRoots.Tests
             startGate.Set();
             var allTasks = Task.WhenAll(tasks);
             var completed = await Task.WhenAny(allTasks, Task.Delay(TimeSpan.FromSeconds(10)));
-            Assert.True(completed == allTasks, "Concurrency test timed out (possible deadlock or extreme slowness).");
+            Assert.True(
+                completed == allTasks,
+                "Concurrency test timed out (possible deadlock or extreme slowness)."
+            );
             await allTasks;
 
             // Assert - Verify that overlapping tile ranges were used
@@ -873,9 +1035,11 @@ namespace LivingRoots.Tests
             var totalAccesses = accessedTiles.Count;
 
             // If there are overlapping accesses, distinct tiles will be fewer than total accesses
-            Assert.True(totalAccesses > distinctTiles.Count,
-                $"Expected overlapping tile accesses: {totalAccesses} total accesses vs {distinctTiles.Count} distinct tiles. " +
-                $"This confirms that threads access the same tiles, creating race conditions.");
+            Assert.True(
+                totalAccesses > distinctTiles.Count,
+                $"Expected overlapping tile accesses: {totalAccesses} total accesses vs {distinctTiles.Count} distinct tiles. "
+                    + $"This confirms that threads access the same tiles, creating race conditions."
+            );
 
             // Verify the expected number of total accesses
             Assert.Equal(150, totalAccesses); // 3 threads × 50 operations = 150 total
@@ -890,15 +1054,22 @@ namespace LivingRoots.Tests
                 Assert.InRange(healthValue, 0.0f, 100.0f);
 
                 // Additional validation: Check that the value is a valid float (not NaN or Infinity)
-                Assert.False(float.IsNaN(healthValue),
-                    $"Soil health value for tile {tile} is NaN after concurrent access, indicating potential data corruption.");
-                Assert.False(float.IsInfinity(healthValue),
-                    $"Soil health value for tile {tile} is Infinity after concurrent access, indicating potential data corruption.");
+                Assert.False(
+                    float.IsNaN(healthValue),
+                    $"Soil health value for tile {tile} is NaN after concurrent access, indicating potential data corruption."
+                );
+                Assert.False(
+                    float.IsInfinity(healthValue),
+                    $"Soil health value for tile {tile} is Infinity after concurrent access, indicating potential data corruption."
+                );
             }
 
             // Additional post-condition validation: Verify that the service state is consistent
             // by checking that no unexpected tiles have invalid values
-            var allTiles = distinctTiles.Select(t => new Vector2(MathF.Floor(t.X), MathF.Floor(t.Y))).Distinct().ToList();
+            var allTiles = distinctTiles
+                .Select(t => new Vector2(MathF.Floor(t.X), MathF.Floor(t.Y)))
+                .Distinct()
+                .ToList();
             foreach (var tile in allTiles)
             {
                 var healthValue = service.GetSoilHealth("Farm", tile);
@@ -909,7 +1080,9 @@ namespace LivingRoots.Tests
             }
         }
 
-        private static void VerifyNoTileOverlaps(List<(int workerId, List<Vector2> tiles)> workerTiles)
+        private static void VerifyNoTileOverlaps(
+            List<(int workerId, List<Vector2> tiles)> workerTiles
+        )
         {
             var seen = new HashSet<Point>();
             foreach (var (_, tiles) in workerTiles)
@@ -922,7 +1095,9 @@ namespace LivingRoots.Tests
             }
         }
 
-        private static void VerifyWorkerTileDisjointness(List<(int workerId, List<Vector2> tiles)> workerTiles)
+        private static void VerifyWorkerTileDisjointness(
+            List<(int workerId, List<Vector2> tiles)> workerTiles
+        )
         {
             for (var i = 0; i < workerTiles.Count; i++)
             {
@@ -942,11 +1117,14 @@ namespace LivingRoots.Tests
             }
         }
 
-        private static Task CreateWorkerTask(SoilHealthService service, int workerId,
+        private static Task CreateWorkerTask(
+            SoilHealthService service,
+            int workerId,
             System.Threading.ManualResetEventSlim startGate,
             object lockObj,
             List<Exception> exceptions,
-            List<(int workerId, List<Vector2> tiles)> workerTiles)
+            List<(int workerId, List<Vector2> tiles)> workerTiles
+        )
         {
             return Task.Run(() =>
             {
@@ -990,7 +1168,11 @@ namespace LivingRoots.Tests
         {
             // This test verifies that each worker operates on disjoint tile ranges
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var exceptions = new List<Exception>();
             var lockObj = new object();
             var workerTiles = new List<(int workerId, List<Vector2> tiles)>();
@@ -1001,13 +1183,18 @@ namespace LivingRoots.Tests
             var tasks = new List<Task>();
             for (var i = 0; i < 5; i++)
             {
-                tasks.Add(CreateWorkerTask(service, i, startGate, lockObj, exceptions, workerTiles));
+                tasks.Add(
+                    CreateWorkerTask(service, i, startGate, lockObj, exceptions, workerTiles)
+                );
             }
 
             startGate.Set();
             var allTasks = Task.WhenAll(tasks);
             var completed = await Task.WhenAny(allTasks, Task.Delay(TimeSpan.FromSeconds(10)));
-            Assert.True(completed == allTasks, "Concurrency test timed out (possible deadlock or extreme slowness).");
+            Assert.True(
+                completed == allTasks,
+                "Concurrency test timed out (possible deadlock or extreme slowness)."
+            );
             await allTasks;
 
             // Assert - No exceptions should have occurred
@@ -1033,10 +1220,14 @@ namespace LivingRoots.Tests
                     Assert.InRange(healthValue, 0.0f, 100.0f);
 
                     // Additional validation: Check that the value is a valid float (not NaN or Infinity)
-                    Assert.False(float.IsNaN(healthValue),
-                        $"Soil health value for tile {tile} is NaN after concurrent access, indicating potential data corruption.");
-                    Assert.False(float.IsInfinity(healthValue),
-                        $"Soil health value for tile {tile} is Infinity after concurrent access, indicating potential data corruption.");
+                    Assert.False(
+                        float.IsNaN(healthValue),
+                        $"Soil health value for tile {tile} is NaN after concurrent access, indicating potential data corruption."
+                    );
+                    Assert.False(
+                        float.IsInfinity(healthValue),
+                        $"Soil health value for tile {tile} is Infinity after concurrent access, indicating potential data corruption."
+                    );
                 }
             }
         }
@@ -1049,7 +1240,11 @@ namespace LivingRoots.Tests
                 .Setup(x => x.Sanitize("invalid_save"))
                 .Throws(new ArgumentException("Invalid characters"));
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
@@ -1070,7 +1265,11 @@ namespace LivingRoots.Tests
                 .Setup(x => x.Sanitize("invalid_save"))
                 .Throws(new ArgumentException("Invalid characters"));
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, 50.0f);
 
@@ -1078,7 +1277,10 @@ namespace LivingRoots.Tests
             service.SaveData("invalid_save");
 
             // Assert - Data should not be saved when sanitization fails
-            _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
+            _mockDataService.Verify(
+                x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()),
+                Times.Never
+            );
             // Verify that the monitor was called to log the error
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
         }
@@ -1087,11 +1289,13 @@ namespace LivingRoots.Tests
         public void LoadData_WithSanitizationToEmptyResult_DoesNotLoadAndClearsCache()
         {
             // Arrange
-            _mockFileNameSanitizationService
-                .Setup(x => x.Sanitize("empty_result"))
-                .Returns("");
+            _mockFileNameSanitizationService.Setup(x => x.Sanitize("empty_result")).Returns("");
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, 50.0f); // Set initial value
 
@@ -1108,11 +1312,13 @@ namespace LivingRoots.Tests
         public void SaveData_WithSanitizationToEmptyResult_DoesNotSave()
         {
             // Arrange
-            _mockFileNameSanitizationService
-                .Setup(x => x.Sanitize("empty_result"))
-                .Returns("");
+            _mockFileNameSanitizationService.Setup(x => x.Sanitize("empty_result")).Returns("");
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, 50.0f);
 
@@ -1120,7 +1326,10 @@ namespace LivingRoots.Tests
             service.SaveData("empty_result");
 
             // Assert - Data should not be saved when sanitization results in empty string
-            _mockDataService.Verify(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()), Times.Never);
+            _mockDataService.Verify(
+                x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()),
+                Times.Never
+            );
             // Verify that the monitor was called to log the error
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
         }
@@ -1148,8 +1357,8 @@ namespace LivingRoots.Tests
             {
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    ["Farm"] = locationEntries
-                }
+                    ["Farm"] = locationEntries,
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -1161,14 +1370,27 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act: Load the data - this should trigger DoS protection because
             // we're processing more than the limit of entries (5050 > 5000 limit)
             service.LoadData("test_save");
 
             // Assert: Verify that the critical error log appeared when exceeding the cap
-            _mockMonitor.Verify(x => x.Log(It.Is<string>(msg => msg.Contains("tile count limit") && msg.Contains("exceeds")), LogLevel.Alert), Times.AtLeastOnce);
+            _mockMonitor.Verify(
+                x =>
+                    x.Log(
+                        It.Is<string>(msg =>
+                            msg.Contains("tile count limit") && msg.Contains("exceeds")
+                        ),
+                        LogLevel.Alert
+                    ),
+                Times.AtLeastOnce
+            );
 
             // With the high severity fix implemented, when the limit is exceeded,
             // the entire load operation should abort and the cache should be cleared.
@@ -1196,17 +1418,27 @@ namespace LivingRoots.Tests
                     break;
                 }
             }
-            Assert.True(entriesBeyondLimitHaveRandomValues, "Entries beyond the limit should have random default values, not the saved value");
+            Assert.True(
+                entriesBeyondLimitHaveRandomValues,
+                "Entries beyond the limit should have random default values, not the saved value"
+            );
         }
 
         [Theory]
         [InlineData(float.NaN, 50.0f)]
         [InlineData(float.PositiveInfinity, 50.0f)]
         [InlineData(float.NegativeInfinity, 50.0f)]
-        public void UpdateHealth_WithInvalidDelta_ModifiesExistingHealthCorrectly(float delta, float expectedValue)
+        public void UpdateHealth_WithInvalidDelta_ModifiesExistingHealthCorrectly(
+            float delta,
+            float expectedValue
+        )
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var location = "Farm";
             var tile = new Vector2(10, 10);
             service.SetSoilHealth(location, tile, 50.0f); // Set initial value
@@ -1222,10 +1454,16 @@ namespace LivingRoots.Tests
         [Theory]
         [InlineData("   ")]
         [InlineData("\t\n")]
-        public void SaveData_WithWhitespaceLocationKeyInRuntimeCache_SkipsInvalidEntry(string locationKey)
+        public void SaveData_WithWhitespaceLocationKeyInRuntimeCache_SkipsInvalidEntry(
+            string locationKey
+        )
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Inject corrupted runtime cache entries directly (avoid going through LoadData which may already filter them).
             service.TestOnly_SetRawSoilHealth("Farm", new Vector2(10, 10), 75.5f);
@@ -1240,10 +1478,12 @@ namespace LivingRoots.Tests
             SoilHealthState capturedSaveState = null!;
             _mockDataService
                 .Setup(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()))
-                .Callback<SoilHealthState, string>((state, key) =>
-                {
-                    capturedSaveState = state;
-                });
+                .Callback<SoilHealthState, string>(
+                    (state, key) =>
+                    {
+                        capturedSaveState = state;
+                    }
+                );
 
             // Act - SaveData should not crash and should skip whitespace location keys
             var ex = Record.Exception(() => service.SaveData("test_save"));
@@ -1261,15 +1501,19 @@ namespace LivingRoots.Tests
         public void SaveData_WithEmptyStringLocationKeyInRuntimeCache_SkipsInvalidEntry()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             var corruptedState = new SoilHealthState
             {
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
                     [""] = new Dictionary<string, float> { ["1,1"] = 25.5f },
-                    ["Farm"] = new Dictionary<string, float> { ["10,10"] = 75.5f }
-                }
+                    ["Farm"] = new Dictionary<string, float> { ["10,10"] = 75.5f },
+                },
             };
 
             _mockFileNameSanitizationService
@@ -1301,7 +1545,11 @@ namespace LivingRoots.Tests
         public void SaveData_WithMixedValidAndInvalidLocationKeys_SavesOnlyValidEntries()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Create a save data state with mixed valid and invalid locations
             var corruptedState = new SoilHealthState
@@ -1312,8 +1560,8 @@ namespace LivingRoots.Tests
                     ["Town"] = new Dictionary<string, float> { ["15,20"] = 50.0f },
                     [""] = new Dictionary<string, float> { ["2,2"] = 30.0f },
                     ["   "] = new Dictionary<string, float> { ["3,3"] = 35.0f },
-                    ["\t\n"] = new Dictionary<string, float> { ["4,4"] = 40.0f }
-                }
+                    ["\t\n"] = new Dictionary<string, float> { ["4,4"] = 40.0f },
+                },
             };
 
             _mockFileNameSanitizationService
@@ -1330,10 +1578,12 @@ namespace LivingRoots.Tests
             SoilHealthState capturedSaveState = null!;
             _mockDataService
                 .Setup(x => x.SaveData(It.IsAny<SoilHealthState>(), It.IsAny<string>()))
-                .Callback<SoilHealthState, string>((state, key) =>
-                {
-                    capturedSaveState = state;
-                });
+                .Callback<SoilHealthState, string>(
+                    (state, key) =>
+                    {
+                        capturedSaveState = state;
+                    }
+                );
 
             // Act - SaveData should not crash and should save only valid locations
             var ex = Record.Exception(() => service.SaveData("test_save"));
@@ -1363,7 +1613,12 @@ namespace LivingRoots.Tests
         [InlineData("11,15  ", 11, 15, 25.5f)]
         [InlineData(" 10,10 ", 10, 10, 75.5f)]
         [InlineData("  11,15 ", 11, 15, 25.5f)]
-        public void LoadData_WithWhitespaceInTileKeys_ParsesCorrectly(string tileKey, int x, int y, float expectedValue)
+        public void LoadData_WithWhitespaceInTileKeys_ParsesCorrectly(
+            string tileKey,
+            int x,
+            int y,
+            float expectedValue
+        )
         {
             // Arrange
             var saveData = new SoilHealthState
@@ -1373,9 +1628,9 @@ namespace LivingRoots.Tests
                     ["Farm"] = new Dictionary<string, float>
                     {
                         [tileKey] = expectedValue,
-                        ["12,12"] = 50.0f      // Valid entry for comparison
-                    }
-                }
+                        ["12,12"] = 50.0f, // Valid entry for comparison
+                    },
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -1387,7 +1642,11 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act
             service.LoadData("test_save");
@@ -1401,7 +1660,12 @@ namespace LivingRoots.Tests
         [InlineData("11, 15", 11, 15, 25.5f)]
         [InlineData("12 , 15", 12, 15, 50.0f)]
         [InlineData("13,13", 13, 13, 60.0f)]
-        public void LoadData_WithWhitespaceAroundCommaInTileKeys_ParsesCorrectly(string tileKey, int x, int y, float expectedValue)
+        public void LoadData_WithWhitespaceAroundCommaInTileKeys_ParsesCorrectly(
+            string tileKey,
+            int x,
+            int y,
+            float expectedValue
+        )
         {
             // Arrange
             var saveData = new SoilHealthState
@@ -1411,9 +1675,9 @@ namespace LivingRoots.Tests
                     ["Farm"] = new Dictionary<string, float>
                     {
                         [tileKey] = expectedValue,
-                        ["13,13"] = 60.0f      // Valid entry for comparison
-                    }
-                }
+                        ["13,13"] = 60.0f, // Valid entry for comparison
+                    },
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -1425,7 +1689,11 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act
             service.LoadData("test_save");
@@ -1438,7 +1706,11 @@ namespace LivingRoots.Tests
         public void Reset_ClearsAllCachedData()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
             var tile1 = new Vector2(10, 10);
             var tile2 = new Vector2(15, 20);
 
@@ -1465,7 +1737,11 @@ namespace LivingRoots.Tests
         public void Reset_WhenCacheIsEmpty_DoesNotThrow()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Cache is initially empty, verify this (returns value in [20, 100])
             Assert.InRange(service.GetSoilHealth("Farm", new Vector2(10, 10)), 20f, 100f); // Returns value in [20, 100]
@@ -1482,7 +1758,11 @@ namespace LivingRoots.Tests
         public async Task Reset_IsThreadSafe()
         {
             // Arrange
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Add some data to the cache
             for (var i = 0; i < 10; i++)

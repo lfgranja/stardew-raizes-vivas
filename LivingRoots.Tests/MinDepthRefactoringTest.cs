@@ -1,8 +1,5 @@
-using System;
 using LivingRoots.Domain;
-using LivingRoots.Services;
 using Moq;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -27,9 +24,11 @@ namespace LivingRoots.Tests
 
             // Test case where depth goes negative: "folder/../../file.txt"
             // folder = depth 1
-            // .. = depth 0  
+            // .. = depth 0
             // .. = depth -1 -> throws immediately
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("folder/../../file.txt"));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("folder/../../file.txt")
+            );
             Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
@@ -38,7 +37,9 @@ namespace LivingRoots.Tests
         {
             // Test case: "../../../file.txt"
             // .. = depth -1 -> throws immediately
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("../../../file.txt"));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("../../../file.txt")
+            );
             Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
@@ -46,14 +47,16 @@ namespace LivingRoots.Tests
         public void Validate_PathWithDotDotAtRootLevel_ThrowsArgumentException()
         {
             // Test case: "../file.txt" - this should fail immediately when depth goes negative
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("../file.txt"));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("../file.txt")
+            );
             Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
         [Fact]
         public void Validate_ValidPathWithDotDotThatDoesNotGoNegative_DoesNotThrow()
         {
-            // This path should be valid: "folder/../file.txt" 
+            // This path should be valid: "folder/../file.txt"
             // folder = depth 1
             // .. = depth 0 (back to root level, not negative)
             // So this should NOT throw
@@ -63,7 +66,7 @@ namespace LivingRoots.Tests
         [Fact]
         public void Validate_PathThatEndsInDotDotButNeverGoesNegative_DoesNotThrow()
         {
-            // After refactoring, this path should NOT throw: "folder/.." 
+            // After refactoring, this path should NOT throw: "folder/.."
             // folder = depth 1
             // .. = depth 0 (back to root level, not negative)
             // The redundant "ends with .." check has been removed

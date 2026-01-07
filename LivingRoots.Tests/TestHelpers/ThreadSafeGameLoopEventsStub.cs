@@ -1,5 +1,3 @@
-using System;
-using System.Threading;
 using StardewModdingAPI.Events;
 
 namespace LivingRoots.Tests
@@ -36,24 +34,29 @@ namespace LivingRoots.Tests
             add
             {
                 Interlocked.Increment(ref _gameLaunchedAddCount);
-                EventHandler<GameLaunchedEventArgs>? current, updated;
+                EventHandler<GameLaunchedEventArgs>? current,
+                    updated;
                 do
                 {
                     current = Volatile.Read(ref _gameLaunched);
-                    updated = (EventHandler<GameLaunchedEventArgs>?)Delegate.Combine(current, value);
-                }
-                while (Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
+                    updated = (EventHandler<GameLaunchedEventArgs>?)
+                        Delegate.Combine(current, value);
+                } while (
+                    Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current
+                );
             }
             remove
             {
                 Interlocked.Increment(ref _gameLaunchedRemoveCount);
-                EventHandler<GameLaunchedEventArgs>? current, updated;
+                EventHandler<GameLaunchedEventArgs>? current,
+                    updated;
                 do
                 {
                     current = Volatile.Read(ref _gameLaunched);
                     updated = (EventHandler<GameLaunchedEventArgs>?)Delegate.Remove(current, value);
-                }
-                while (Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current);
+                } while (
+                    Interlocked.CompareExchange(ref _gameLaunched, updated, current) != current
+                );
             }
         }
 
@@ -62,24 +65,24 @@ namespace LivingRoots.Tests
             add
             {
                 Interlocked.Increment(ref _saveLoadedAddCount);
-                EventHandler<SaveLoadedEventArgs>? current, updated;
+                EventHandler<SaveLoadedEventArgs>? current,
+                    updated;
                 do
                 {
                     current = Volatile.Read(ref _saveLoaded);
                     updated = (EventHandler<SaveLoadedEventArgs>?)Delegate.Combine(current, value);
-                }
-                while (Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
+                } while (Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
             }
             remove
             {
                 Interlocked.Increment(ref _saveLoadedRemoveCount);
-                EventHandler<SaveLoadedEventArgs>? current, updated;
+                EventHandler<SaveLoadedEventArgs>? current,
+                    updated;
                 do
                 {
                     current = Volatile.Read(ref _saveLoaded);
                     updated = (EventHandler<SaveLoadedEventArgs>?)Delegate.Remove(current, value);
-                }
-                while (Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
+                } while (Interlocked.CompareExchange(ref _saveLoaded, updated, current) != current);
             }
         }
 
@@ -88,38 +91,58 @@ namespace LivingRoots.Tests
             add
             {
                 Interlocked.Increment(ref _savingAddCount);
-                EventHandler<SavingEventArgs>? current, updated;
+                EventHandler<SavingEventArgs>? current,
+                    updated;
                 do
                 {
                     current = Volatile.Read(ref _saving);
                     updated = (EventHandler<SavingEventArgs>?)Delegate.Combine(current, value);
-                }
-                while (Interlocked.CompareExchange(ref _saving, updated, current) != current);
+                } while (Interlocked.CompareExchange(ref _saving, updated, current) != current);
             }
             remove
             {
                 Interlocked.Increment(ref _savingRemoveCount);
-                EventHandler<SavingEventArgs>? current, updated;
+                EventHandler<SavingEventArgs>? current,
+                    updated;
                 do
                 {
                     current = Volatile.Read(ref _saving);
                     updated = (EventHandler<SavingEventArgs>?)Delegate.Remove(current, value);
-                }
-                while (Interlocked.CompareExchange(ref _saving, updated, current) != current);
+                } while (Interlocked.CompareExchange(ref _saving, updated, current) != current);
             }
         }
 
         // Other IGameLoopEvents members not used in tests - implemented as no-ops
-        public event EventHandler<UpdateTickedEventArgs>? UpdateTicked { add => _ = value; remove => _ = value; }
-        public event EventHandler<UpdateTickingEventArgs>? UpdateTicking { add => _ = value; remove => _ = value; }
-        public event EventHandler<OneSecondUpdateTickedEventArgs>? OneSecondUpdateTicked { add => _ = value; remove => _ = value; }
-        public event EventHandler<OneSecondUpdateTickingEventArgs>? OneSecondUpdateTicking { add => _ = value; remove => _ = value; }
+        public event EventHandler<UpdateTickedEventArgs>? UpdateTicked
+        {
+            add => _ = value;
+            remove => _ = value;
+        }
+        public event EventHandler<UpdateTickingEventArgs>? UpdateTicking
+        {
+            add => _ = value;
+            remove => _ = value;
+        }
+        public event EventHandler<OneSecondUpdateTickedEventArgs>? OneSecondUpdateTicked
+        {
+            add => _ = value;
+            remove => _ = value;
+        }
+        public event EventHandler<OneSecondUpdateTickingEventArgs>? OneSecondUpdateTicking
+        {
+            add => _ = value;
+            remove => _ = value;
+        }
         public event EventHandler<DayStartedEventArgs>? DayStarted
         {
             add => _ = value;
             remove => _ = value;
         }
-        public event EventHandler<DayEndingEventArgs>? DayEnding { add => _ = value; remove => _ = value; }
+        public event EventHandler<DayEndingEventArgs>? DayEnding
+        {
+            add => _ = value;
+            remove => _ = value;
+        }
         public event EventHandler<TimeChangedEventArgs>? TimeChanged
         {
             add => _ = value;
@@ -130,9 +153,25 @@ namespace LivingRoots.Tests
             add => _ = value;
             remove => _ = value;
         }
-        public event EventHandler<SaveCreatingEventArgs>? SaveCreating { add => _ = value; remove => _ = value; }
-        public event EventHandler<SaveCreatedEventArgs>? SaveCreated { add => _ = value; remove => _ = value; }
-        public event EventHandler<SavedEventArgs>? Saved { add => _ = value; remove => _ = value; }
-        public event EventHandler<LoadStageChangedEventArgs>? LoadStageChanged { add => _ = value; remove => _ = value; }
+        public event EventHandler<SaveCreatingEventArgs>? SaveCreating
+        {
+            add => _ = value;
+            remove => _ = value;
+        }
+        public event EventHandler<SaveCreatedEventArgs>? SaveCreated
+        {
+            add => _ = value;
+            remove => _ = value;
+        }
+        public event EventHandler<SavedEventArgs>? Saved
+        {
+            add => _ = value;
+            remove => _ = value;
+        }
+        public event EventHandler<LoadStageChangedEventArgs>? LoadStageChanged
+        {
+            add => _ = value;
+            remove => _ = value;
+        }
     }
 }

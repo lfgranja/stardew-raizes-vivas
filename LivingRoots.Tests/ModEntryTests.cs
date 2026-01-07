@@ -1,13 +1,8 @@
-using System;
-using System.IO;
 using System.Reflection;
-using LivingRoots;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
-using LivingRoots.Services;
 using Moq;
 using StardewModdingAPI;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -34,7 +29,10 @@ namespace LivingRoots.Tests
             modEntry.Dispose();
 
             // Assert - Check the _disposed field using reflection
-            var disposedField = typeof(ModEntry).GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance);
+            var disposedField = typeof(ModEntry).GetField(
+                "_disposed",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             var isDisposed = disposedField?.GetValue(modEntry) as bool?;
             Assert.True(isDisposed);
         }
@@ -46,7 +44,10 @@ namespace LivingRoots.Tests
             var modEntry = new ModEntry();
 
             // Ensure controller is null by not calling Entry
-            var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
+            var controllerField = typeof(ModEntry).GetField(
+                "_controller",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             controllerField?.SetValue(modEntry, null);
 
             // Act & Assert
@@ -74,10 +75,14 @@ namespace LivingRoots.Tests
                 mockManifest.Object,
                 mockSoilHealthService.Object,
                 mockSaveIdProvider.Object,
-                mockSoilHealthVisualizationService.Object);
+                mockSoilHealthVisualizationService.Object
+            );
 
             // Set the controller field directly using reflection
-            var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
+            var controllerField = typeof(ModEntry).GetField(
+                "_controller",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             controllerField?.SetValue(modEntry, controller);
 
             // Verify controller is not null before disposal
@@ -85,7 +90,10 @@ namespace LivingRoots.Tests
             Assert.NotNull(controllerBeforeDispose);
 
             // Act - Call Dispose with disposing=false using reflection
-            var disposeMethod = typeof(ModEntry).GetMethod("Dispose", BindingFlags.NonPublic | BindingFlags.Instance);
+            var disposeMethod = typeof(ModEntry).GetMethod(
+                "Dispose",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             disposeMethod?.Invoke(modEntry, new object[] { false });
 
             // Assert - Controller should not be set to null when disposing=false
@@ -113,14 +121,21 @@ namespace LivingRoots.Tests
                 mockManifest.Object,
                 mockSoilHealthService.Object,
                 mockSaveIdProvider.Object,
-                mockSoilHealthVisualizationService.Object);
+                mockSoilHealthVisualizationService.Object
+            );
 
             // Set the controller field directly using reflection
-            var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
+            var controllerField = typeof(ModEntry).GetField(
+                "_controller",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             controllerField?.SetValue(modEntry, controller);
 
             // Set the disposed flag to true manually to simulate already disposed state
-            var disposedField = typeof(ModEntry).GetField("_disposed", BindingFlags.NonPublic | BindingFlags.Instance);
+            var disposedField = typeof(ModEntry).GetField(
+                "_disposed",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             disposedField?.SetValue(modEntry, true);
 
             // Act
@@ -151,10 +166,14 @@ namespace LivingRoots.Tests
                 mockManifest.Object,
                 mockSoilHealthService.Object,
                 mockSaveIdProvider.Object,
-                mockSoilHealthVisualizationService.Object);
+                mockSoilHealthVisualizationService.Object
+            );
 
             // Set the controller field directly using reflection
-            var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
+            var controllerField = typeof(ModEntry).GetField(
+                "_controller",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             controllerField?.SetValue(modEntry, controller);
 
             // Verify controller is not null before disposal
@@ -185,7 +204,11 @@ namespace LivingRoots.Tests
                 {
                     modEntry.Dispose();
                     // Check the disposed state after disposal
-                    var disposedField = typeof(ModEntry).GetField("_disposed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var disposedField = typeof(ModEntry).GetField(
+                        "_disposed",
+                        System.Reflection.BindingFlags.NonPublic
+                            | System.Reflection.BindingFlags.Instance
+                    );
                     disposedFlags[index] = (bool)(disposedField?.GetValue(modEntry) ?? false);
                 });
             }
@@ -193,7 +216,10 @@ namespace LivingRoots.Tests
             await System.Threading.Tasks.Task.WhenAll(tasks);
 
             // Assert - Only one disposal should have happened effectively, but the flag should be true
-            var disposedField = typeof(ModEntry).GetField("_disposed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var disposedField = typeof(ModEntry).GetField(
+                "_disposed",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             var finalDisposedState = (bool)(disposedField?.GetValue(modEntry) ?? false);
             Assert.True(finalDisposedState);
 
@@ -224,10 +250,14 @@ namespace LivingRoots.Tests
                 mockManifest.Object,
                 mockSoilHealthService.Object,
                 mockSaveIdProvider.Object,
-                mockSoilHealthVisualizationService.Object);
+                mockSoilHealthVisualizationService.Object
+            );
 
             // Set the controller field directly using reflection
-            var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
+            var controllerField = typeof(ModEntry).GetField(
+                "_controller",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             controllerField?.SetValue(modEntry, controller);
 
             // Act - First disposal to set disposed flag
@@ -247,9 +277,14 @@ namespace LivingRoots.Tests
             // Read README.md from embedded resource for reliable test access across all environments
             var assembly = Assembly.GetExecutingAssembly();
             var resourceNames = assembly.GetManifestResourceNames();
-            var readmeResourceName = resourceNames.FirstOrDefault(name => name.EndsWith("README.md"));
+            var readmeResourceName = resourceNames.FirstOrDefault(name =>
+                name.EndsWith("README.md")
+            );
 
-            Assert.True(readmeResourceName != null, $"README.md resource not found in assembly. Available resources: {string.Join(", ", resourceNames)}");
+            Assert.True(
+                readmeResourceName != null,
+                $"README.md resource not found in assembly. Available resources: {string.Join(", ", resourceNames)}"
+            );
 
             // Act
             using var stream = assembly.GetManifestResourceStream(readmeResourceName);

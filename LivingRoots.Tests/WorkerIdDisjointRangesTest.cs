@@ -1,13 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
-using StardewModdingAPI.Events;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -20,7 +15,11 @@ namespace LivingRoots.Tests
             var mockDataService = new Mock<IModDataService>();
             var mockMonitor = new Mock<IMonitor>();
             var mockFileNameSanitizationService = new Mock<IFileNameSanitizationService>();
-            var service = new SoilHealthService(mockDataService.Object, mockMonitor.Object, mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                mockDataService.Object,
+                mockMonitor.Object,
+                mockFileNameSanitizationService.Object
+            );
             var exceptions = new List<Exception>();
             var lockObj = new object();
             var accessedWorkerIds = new List<int>();
@@ -69,7 +68,9 @@ namespace LivingRoots.Tests
             var completedTask = await Task.WhenAny(whenAllTask, timeoutTask);
             if (completedTask == timeoutTask)
             {
-                Assert.Fail("ThreadSafety_WithDisjointTileRanges_VerifiesUniqueWorkerIds test timed out after 30 seconds");
+                Assert.Fail(
+                    "ThreadSafety_WithDisjointTileRanges_VerifiesUniqueWorkerIds test timed out after 30 seconds"
+                );
             }
 
             // Wait for the actual tasks to complete if they haven't already

@@ -1,5 +1,3 @@
-using StardewValley;
-
 namespace LivingRoots.Domain
 {
     /// <summary>

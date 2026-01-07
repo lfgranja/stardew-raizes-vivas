@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Text;
-
 namespace LivingRoots.Domain
 {
     /// <summary>
@@ -18,16 +12,40 @@ namespace LivingRoots.Domain
     /// 4. Control characters: Removed completely
     /// 5. Precomposed characters: Simplified to base forms (e.g., 'ø' → 'o')
     /// </remarks>
-    public class ReservedNameHandler(IUnicodeNormalizationService unicodeNormalizationService) : IReservedNameHandler
+    public class ReservedNameHandler(IUnicodeNormalizationService unicodeNormalizationService)
+        : IReservedNameHandler
     {
-        private static readonly HashSet<string> ReservedWindowsFileNames = new(StringComparer.OrdinalIgnoreCase)
+        private static readonly HashSet<string> ReservedWindowsFileNames = new(
+            StringComparer.OrdinalIgnoreCase
+        )
         {
-            "CON", "PRN", "AUX", "NUL",
-            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+            "CON",
+            "PRN",
+            "AUX",
+            "NUL",
+            "COM1",
+            "COM2",
+            "COM3",
+            "COM4",
+            "COM5",
+            "COM6",
+            "COM7",
+            "COM8",
+            "COM9",
+            "LPT1",
+            "LPT2",
+            "LPT3",
+            "LPT4",
+            "LPT5",
+            "LPT6",
+            "LPT7",
+            "LPT8",
+            "LPT9",
         };
 
-        private readonly IUnicodeNormalizationService _unicodeNormalizationService = unicodeNormalizationService ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
+        private readonly IUnicodeNormalizationService _unicodeNormalizationService =
+            unicodeNormalizationService
+            ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
 
         /// <summary>
         /// Handles reserved Windows filenames by appending an underscore to the base name if necessary.
@@ -38,14 +56,18 @@ namespace LivingRoots.Domain
         /// <returns>A filename or path with reserved names handled appropriately.</returns>
         public string? Handle(string? filename)
         {
-            if (string.IsNullOrEmpty(filename)) return filename;
+            if (string.IsNullOrEmpty(filename))
+                return filename;
 
             // First, normalize Unicode characters to handle diacritics and homoglyphs
             var normalizedInput = _unicodeNormalizationService?.Normalize(filename);
 
             // Security fix: Add null check for normalizedInput to prevent validation bypass
             if (normalizedInput == null)
-                throw new ArgumentException("Filename normalization returned null, validation cannot proceed", nameof(filename));
+                throw new ArgumentException(
+                    "Filename normalization returned null, validation cannot proceed",
+                    nameof(filename)
+                );
 
             // Check if this is a UNC path (starts with \\ or //)
             if (IsUncPath(normalizedInput))
@@ -74,17 +96,27 @@ namespace LivingRoots.Domain
             return HandleUncFilePath(normalizedInput, originalFilename, fileName);
         }
 
-        private static string? HandleUncDirectoryPath(string normalizedInput, string originalFilename)
+        private static string? HandleUncDirectoryPath(
+            string normalizedInput,
+            string originalFilename
+        )
         {
             var uncDirectoryPath = ExtractDirectoryPathFromUncPath(normalizedInput) ?? string.Empty;
             if (!string.IsNullOrEmpty(uncDirectoryPath))
             {
                 // Extract the last directory component from the directory path
-                var lastDirComponent = ExtractLastPathComponent(uncDirectoryPath, GetUncPathSeparator(uncDirectoryPath));
+                var lastDirComponent = ExtractLastPathComponent(
+                    uncDirectoryPath,
+                    GetUncPathSeparator(uncDirectoryPath)
+                );
                 if (!string.IsNullOrEmpty(lastDirComponent) && IsReservedName(lastDirComponent))
                 {
                     // If the last directory component is reserved, modify the directory path
-                    var modifiedDirPath = ModifyLastPathComponent(uncDirectoryPath, lastDirComponent, GetUncPathSeparator(uncDirectoryPath));
+                    var modifiedDirPath = ModifyLastPathComponent(
+                        uncDirectoryPath,
+                        lastDirComponent,
+                        GetUncPathSeparator(uncDirectoryPath)
+                    );
                     // Return the modified path with the separator still at the end
                     return modifiedDirPath + normalizedInput.Substring(uncDirectoryPath.Length);
                 }
@@ -93,7 +125,11 @@ namespace LivingRoots.Domain
             return originalFilename;
         }
 
-        private static string? HandleUncFilePath(string normalizedInput, string originalFilename, string fileName)
+        private static string? HandleUncFilePath(
+            string normalizedInput,
+            string originalFilename,
+            string fileName
+        )
         {
             // For UNC paths, extract directory path separately
             var uncDirectoryPath = ExtractDirectoryPathFromUncPath(normalizedInput) ?? string.Empty;
@@ -131,17 +167,27 @@ namespace LivingRoots.Domain
             return HandleRegularFilePath(normalizedInput, originalFilename, fileName);
         }
 
-        private static string? HandleRegularDirectoryPath(string normalizedInput, string originalFilename)
+        private static string? HandleRegularDirectoryPath(
+            string normalizedInput,
+            string originalFilename
+        )
         {
             var regDirectoryPath = Path.GetDirectoryName(normalizedInput) ?? string.Empty;
             if (!string.IsNullOrEmpty(regDirectoryPath))
             {
                 // Extract the last directory component from the directory path
-                var lastDirComponent = ExtractLastPathComponent(regDirectoryPath, Path.DirectorySeparatorChar);
+                var lastDirComponent = ExtractLastPathComponent(
+                    regDirectoryPath,
+                    Path.DirectorySeparatorChar
+                );
                 if (!string.IsNullOrEmpty(lastDirComponent) && IsReservedName(lastDirComponent))
                 {
                     // If the last directory component is reserved, modify the directory path
-                    var modifiedDirPath = ModifyLastPathComponent(regDirectoryPath, lastDirComponent, Path.DirectorySeparatorChar);
+                    var modifiedDirPath = ModifyLastPathComponent(
+                        regDirectoryPath,
+                        lastDirComponent,
+                        Path.DirectorySeparatorChar
+                    );
                     // Return the modified path with the separator still at the end
                     return modifiedDirPath + normalizedInput.Substring(regDirectoryPath.Length);
                 }
@@ -150,7 +196,11 @@ namespace LivingRoots.Domain
             return originalFilename;
         }
 
-        private static string? HandleRegularFilePath(string normalizedInput, string originalFilename, string fileName)
+        private static string? HandleRegularFilePath(
+            string normalizedInput,
+            string originalFilename,
+            string fileName
+        )
         {
             // Extract the directory path separately
             var regDirectoryPath = Path.GetDirectoryName(normalizedInput) ?? string.Empty;
@@ -179,7 +229,8 @@ namespace LivingRoots.Domain
         /// <returns>The last path component</returns>
         private static string ExtractLastPathComponent(string path, char separator)
         {
-            if (string.IsNullOrEmpty(path)) return string.Empty;
+            if (string.IsNullOrEmpty(path))
+                return string.Empty;
 
             // Find the last separator in the path
             var lastSeparatorIndex = -1;
@@ -225,9 +276,14 @@ namespace LivingRoots.Domain
         /// <param name="lastComponent">The last component to modify</param>
         /// <param name="separator">The path separator to use</param>
         /// <returns>The modified path with the last component changed</returns>
-        private static string ModifyLastPathComponent(string path, string lastComponent, char separator)
+        private static string ModifyLastPathComponent(
+            string path,
+            string lastComponent,
+            char separator
+        )
         {
-            if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(lastComponent)) return path;
+            if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(lastComponent))
+                return path;
 
             // Find the last occurrence of the last component in the path
             // We need to replace the last component with lastComponent + "_"
@@ -306,7 +362,13 @@ namespace LivingRoots.Domain
 
         private static int FindUncPrefixEnd(string uncPath)
         {
-            if (uncPath.Length >= 2 && ((uncPath[0] == '\\' && uncPath[1] == '\\') || (uncPath[0] == '/' && uncPath[1] == '/')))
+            if (
+                uncPath.Length >= 2
+                && (
+                    (uncPath[0] == '\\' && uncPath[1] == '\\')
+                    || (uncPath[0] == '/' && uncPath[1] == '/')
+                )
+            )
                 return 2;
             return -1;
         }
@@ -363,7 +425,7 @@ namespace LivingRoots.Domain
         /// </summary>
         /// <param name="filename">The filename to process</param>
         /// <returns>A filename with reserved names handled appropriately</returns>
-        static private string ProcessFileNameInternal(string filename)
+        private static string ProcessFileNameInternal(string filename)
         {
             // Check if the entire filename consists entirely of insignificant characters (dots, spaces, tabs)
             // This handles cases like " . " where the entire name is insignificant
@@ -435,7 +497,9 @@ namespace LivingRoots.Domain
 
                 // Combine everything back together with the extension
                 // Don't include trailing insignificant characters after the core name
-                var sanitizedExtensionForContext = SanitizeTrailingInsignificantChars(extensionPart);
+                var sanitizedExtensionForContext = SanitizeTrailingInsignificantChars(
+                    extensionPart
+                );
                 return leadingChars + modifiedCore + sanitizedExtensionForContext;
             }
 
@@ -530,7 +594,12 @@ namespace LivingRoots.Domain
                     var potentialBaseName = filename.Substring(0, i);
 
                     // If the potential base name is a reserved name, then this dot marks the start of extensions
-                    if (ReservedWindowsFileNames.Contains(potentialBaseName, StringComparer.OrdinalIgnoreCase))
+                    if (
+                        ReservedWindowsFileNames.Contains(
+                            potentialBaseName,
+                            StringComparer.OrdinalIgnoreCase
+                        )
+                    )
                     {
                         return i;
                     }
@@ -549,10 +618,13 @@ namespace LivingRoots.Domain
 
         private static bool IsReservedNameWithExtension(string potentialBaseName)
         {
-            var matchingReservedNames = ReservedWindowsFileNames
-                .Where(reservedName => potentialBaseName.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase));
+            var matchingReservedNames = ReservedWindowsFileNames.Where(reservedName =>
+                potentialBaseName.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase)
+            );
 
-            var reservedNameLengths = matchingReservedNames.Select(reservedName => reservedName.Length);
+            var reservedNameLengths = matchingReservedNames.Select(reservedName =>
+                reservedName.Length
+            );
             foreach (var reservedNameLength in reservedNameLengths)
             {
                 if (reservedNameLength < potentialBaseName.Length)
@@ -587,10 +659,13 @@ namespace LivingRoots.Domain
 
             // Then check if the name starts with a reserved name followed by non-alphanumeric characters
             // For example, "COM1.txt" - "COM1" is reserved, followed by ".txt"
-            var matchingReservedNames = ReservedWindowsFileNames
-                .Where(reservedName => name.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase));
+            var matchingReservedNames = ReservedWindowsFileNames.Where(reservedName =>
+                name.StartsWith(reservedName, StringComparison.OrdinalIgnoreCase)
+            );
 
-            var reservedNameLengths = matchingReservedNames.Select(reservedName => reservedName.Length);
+            var reservedNameLengths = matchingReservedNames.Select(reservedName =>
+                reservedName.Length
+            );
             foreach (var reservedNameLength in reservedNameLengths)
             {
                 if (reservedNameLength < name.Length)
@@ -623,8 +698,7 @@ namespace LivingRoots.Domain
             if (string.IsNullOrEmpty(path) || path.Length < 2)
                 return false;
 
-            return (path[0] == '\\' && path[1] == '\\') ||
-                   (path[0] == '/' && path[1] == '/');
+            return (path[0] == '\\' && path[1] == '\\') || (path[0] == '/' && path[1] == '/');
         }
     }
 }

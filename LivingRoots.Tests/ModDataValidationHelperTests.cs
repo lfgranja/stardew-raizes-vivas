@@ -1,9 +1,7 @@
-using System;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Moq;
 using StardewModdingAPI;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -18,10 +16,16 @@ namespace LivingRoots.Tests
             var mockModLogic = new Mock<IModLogic>();
 
             // Setup the mod logic to return the input for sanitization (for this test)
-            mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns<string>(s => s);
+            mockModLogic
+                .Setup(x => x.SanitizeFileName(It.IsAny<string>()))
+                .Returns<string>(s => s);
             mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Verifiable(); // Verify it's called
 
-            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            var service = new ModDataService(
+                mockHelper.Object,
+                mockMonitor.Object,
+                mockModLogic.Object
+            );
 
             // Act
             var result = GetValidatedAndSanitizedKeyTest(service, "valid_key");
@@ -39,10 +43,16 @@ namespace LivingRoots.Tests
             var mockMonitor = new Mock<IMonitor>();
             var mockModLogic = new Mock<IModLogic>();
 
-            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            var service = new ModDataService(
+                mockHelper.Object,
+                mockMonitor.Object,
+                mockModLogic.Object
+            );
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => GetValidatedAndSanitizedKeyTest(service, (string)null!));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                GetValidatedAndSanitizedKeyTest(service, (string)null!)
+            );
             Assert.Contains("Key cannot be null or empty", exception.Message);
         }
 
@@ -54,10 +64,16 @@ namespace LivingRoots.Tests
             var mockMonitor = new Mock<IMonitor>();
             var mockModLogic = new Mock<IModLogic>();
 
-            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            var service = new ModDataService(
+                mockHelper.Object,
+                mockMonitor.Object,
+                mockModLogic.Object
+            );
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => GetValidatedAndSanitizedKeyTest(service, ""));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                GetValidatedAndSanitizedKeyTest(service, "")
+            );
             Assert.Contains("Key cannot be null or empty", exception.Message);
         }
 
@@ -69,10 +85,16 @@ namespace LivingRoots.Tests
             var mockMonitor = new Mock<IMonitor>();
             var mockModLogic = new Mock<IModLogic>();
 
-            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            var service = new ModDataService(
+                mockHelper.Object,
+                mockMonitor.Object,
+                mockModLogic.Object
+            );
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => GetValidatedAndSanitizedKeyTest(service, "   "));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                GetValidatedAndSanitizedKeyTest(service, "   ")
+            );
             Assert.Contains("Key cannot be null or empty", exception.Message);
         }
 
@@ -85,20 +107,30 @@ namespace LivingRoots.Tests
             var mockModLogic = new Mock<IModLogic>();
 
             // Setup the mod logic to throw an exception when validating path
-            mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Throws(new ArgumentException("Invalid path"));
+            mockModLogic
+                .Setup(x => x.ValidatePath(It.IsAny<string>()))
+                .Throws(new ArgumentException("Invalid path"));
 
-            var service = new ModDataService(mockHelper.Object, mockMonitor.Object, mockModLogic.Object);
+            var service = new ModDataService(
+                mockHelper.Object,
+                mockMonitor.Object,
+                mockModLogic.Object
+            );
 
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => GetValidatedAndSanitizedKeyTest(service, "invalid_path"));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                GetValidatedAndSanitizedKeyTest(service, "invalid_path")
+            );
             Assert.Contains("path validation failed", exception.Message);
         }
 
         // Helper method to access the private GetValidatedAndSanitizedKey method via reflection
         private static string GetValidatedAndSanitizedKeyTest(ModDataService service, string key)
         {
-            var method = typeof(ModDataService).GetMethod("GetValidatedAndSanitizedKey",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var method = typeof(ModDataService).GetMethod(
+                "GetValidatedAndSanitizedKey",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             try
             {
                 var invokeResult = method!.Invoke(service, new object[] { key });

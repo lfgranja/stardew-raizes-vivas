@@ -19,12 +19,16 @@ namespace LivingRoots.Services
     public class TooltipRenderer(
         IMonitor monitor,
         IVisualizationConfig config,
-        IColorMapper colorMapper) : ITooltipRenderer
+        IColorMapper colorMapper
+    ) : ITooltipRenderer
     {
         // Dependencies
-        private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-        private readonly IVisualizationConfig _config = config ?? throw new ArgumentNullException(nameof(config));
-        private readonly IColorMapper _colorMapper = colorMapper ?? throw new ArgumentNullException(nameof(colorMapper));
+        private readonly IMonitor _monitor =
+            monitor ?? throw new ArgumentNullException(nameof(monitor));
+        private readonly IVisualizationConfig _config =
+            config ?? throw new ArgumentNullException(nameof(config));
+        private readonly IColorMapper _colorMapper =
+            colorMapper ?? throw new ArgumentNullException(nameof(colorMapper));
 
         // Tooltip styling constants
         private const int TooltipPadding = 8;
@@ -45,7 +49,11 @@ namespace LivingRoots.Services
         }
 
         /// <inheritdoc/>
-        public void RenderHoverTooltip(SpriteBatch spriteBatch, Vector2 cursorPosition, float health)
+        public void RenderHoverTooltip(
+            SpriteBatch spriteBatch,
+            Vector2 cursorPosition,
+            float health
+        )
         {
             try
             {
@@ -72,7 +80,7 @@ namespace LivingRoots.Services
                 var tooltipLines = new string[]
                 {
                     $"Soil Health: {health:F0}%",
-                    $"Status: {healthLevelText}"
+                    $"Status: {healthLevelText}",
                 };
 
                 // Get color for health value
@@ -90,7 +98,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error rendering hover tooltip: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -102,7 +113,10 @@ namespace LivingRoots.Services
                 // Validate parameters
                 if (spriteBatch == null)
                 {
-                    _monitor.Log("SpriteBatch is null, cannot render hoe feedback.", LogLevel.Trace);
+                    _monitor.Log(
+                        "SpriteBatch is null, cannot render hoe feedback.",
+                        LogLevel.Trace
+                    );
                     return;
                 }
 
@@ -119,15 +133,21 @@ namespace LivingRoots.Services
                 Color healthColor = _colorMapper.GetHealthColor(health);
 
                 // Render visual flash
-                RenderFlashEffect(spriteBatch, tilePosition, healthColor);
+                Vector2 worldPixelPosition = VisualizationHelpers.GetTileScreenPosition(
+                    tilePosition
+                );
+                RenderFlashEffect(spriteBatch, worldPixelPosition, healthColor);
 
                 // Render floating text
-                RenderFloatingText(spriteBatch, tilePosition, health, healthColor);
+                RenderFloatingText(spriteBatch, worldPixelPosition, health, healthColor);
             }
             catch (Exception ex)
             {
                 _monitor.Log($"Error rendering hoe feedback: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -137,7 +157,10 @@ namespace LivingRoots.Services
         /// <param name="cursorPosition">The current cursor position</param>
         /// <param name="tooltipLines">The lines of text in the tooltip</param>
         /// <returns>The calculated tooltip position</returns>
-        private static Vector2 CalculateTooltipPosition(Vector2 cursorPosition, string[] tooltipLines)
+        private static Vector2 CalculateTooltipPosition(
+            Vector2 cursorPosition,
+            string[] tooltipLines
+        )
         {
             // Calculate tooltip dimensions
             var maxLineWidth = 0;
@@ -171,7 +194,12 @@ namespace LivingRoots.Services
         /// <param name="position">The tooltip position</param>
         /// <param name="tooltipLines">The lines of text in the tooltip</param>
         /// <param name="borderColor">The color for the border</param>
-        private static void RenderTooltipBackground(SpriteBatch spriteBatch, Vector2 position, string[] tooltipLines, Color borderColor)
+        private static void RenderTooltipBackground(
+            SpriteBatch spriteBatch,
+            Vector2 position,
+            string[] tooltipLines,
+            Color borderColor
+        )
         {
             // Calculate tooltip dimensions
             var maxLineWidth = 0;
@@ -195,11 +223,12 @@ namespace LivingRoots.Services
 
             // Render semi-transparent black background
             var backgroundColor = new Color(0, 0, 0, 204); // 0.8 alpha
-            spriteBatch.Draw(
-                VisualizationHelpers.GetOrCreateOverlayTexture(),
-                backgroundRect,
-                backgroundColor
-            );
+            var texture = VisualizationHelpers.GetOrCreateOverlayTexture();
+            if (texture == null)
+            {
+                return;
+            }
+            spriteBatch.Draw(texture, backgroundRect, backgroundColor);
 
             // Render border with health color
             spriteBatch.Draw(
@@ -253,7 +282,11 @@ namespace LivingRoots.Services
         /// <param name="spriteBatch">The SpriteBatch for rendering</param>
         /// <param name="position">The tooltip position</param>
         /// <param name="tooltipLines">The lines of text to render</param>
-        private static void RenderTooltipText(SpriteBatch spriteBatch, Vector2 position, string[] tooltipLines)
+        private static void RenderTooltipText(
+            SpriteBatch spriteBatch,
+            Vector2 position,
+            string[] tooltipLines
+        )
         {
             Color textColor = Color.White;
             var lineHeight = GetLineHeight();
@@ -280,7 +313,11 @@ namespace LivingRoots.Services
         /// <param name="spriteBatch">The SpriteBatch for rendering</param>
         /// <param name="tilePosition">The tile position in world coordinates</param>
         /// <param name="color">The color for the flash</param>
-        private static void RenderFlashEffect(SpriteBatch spriteBatch, Vector2 tilePosition, Color color)
+        private static void RenderFlashEffect(
+            SpriteBatch spriteBatch,
+            Vector2 tilePosition,
+            Color color
+        )
         {
             // Create a bright version of the color for the flash
             var flashColor = new Color(
@@ -294,7 +331,7 @@ namespace LivingRoots.Services
             Rectangle viewport = VisualizationHelpers.GetViewportBounds();
 
             // Convert world coordinates to screen coordinates (same logic as tile overlays)
-            Vector2 screenPosition = new Vector2(
+            var screenPosition = new Vector2(
                 tilePosition.X - viewport.X,
                 tilePosition.Y - viewport.Y
             );
@@ -314,7 +351,12 @@ namespace LivingRoots.Services
         /// <param name="tilePosition">The tile position in world coordinates</param>
         /// <param name="health">The soil health value</param>
         /// <param name="color">The color for the text</param>
-        private static void RenderFloatingText(SpriteBatch spriteBatch, Vector2 tilePosition, float health, Color color)
+        private static void RenderFloatingText(
+            SpriteBatch spriteBatch,
+            Vector2 tilePosition,
+            float health,
+            Color color
+        )
         {
             // Format floating text
             var text = $"{health:F0}%";
@@ -323,7 +365,7 @@ namespace LivingRoots.Services
             Rectangle viewport = VisualizationHelpers.GetViewportBounds();
 
             // Convert world coordinates to screen coordinates (same logic as tile overlays)
-            Vector2 screenPosition = new Vector2(
+            var screenPosition = new Vector2(
                 tilePosition.X - viewport.X,
                 tilePosition.Y - viewport.Y
             );
@@ -342,12 +384,7 @@ namespace LivingRoots.Services
                 Color.Black
             ); // Shadow
 
-            spriteBatch.DrawString(
-                Game1.dialogueFont,
-                text,
-                textPosition,
-                color
-            ); // Main text
+            spriteBatch.DrawString(Game1.dialogueFont, text, textPosition, color); // Main text
         }
     }
 }

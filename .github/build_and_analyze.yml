@@ -56,9 +56,14 @@ jobs:
             - name: Restore dependencies
               run: dotnet restore
 
-            # 7. Verifica formatação (Linting no CI)
-            - name: Check Formatting
-              run: dotnet format --verify-no-changes
+            - name: Restore local tools (Lefthook, CSharpier)
+              run: dotnet tool restore
+
+            - name: Check Formatting (CSharpier)
+              run: dotnet csharpier --check .
+
+            - name: Build & Lint (Roslyn)
+              run: dotnet build --no-restore /p:TreatWarningsAsErrors=true
 
             # 8. Build do Projeto
             - name: Build

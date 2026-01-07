@@ -63,20 +63,26 @@ namespace LivingRoots.Services
             IColorMapper colorMapper,
             ITileOverlayRenderer tileOverlayRenderer,
             ITooltipRenderer tooltipRenderer,
-            IModHelper helper)
+            IModHelper helper
+        )
         {
             _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-            _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
+            _soilHealthService =
+                soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _colorMapper = colorMapper ?? throw new ArgumentNullException(nameof(colorMapper));
-            _tileOverlayRenderer = tileOverlayRenderer ?? throw new ArgumentNullException(nameof(tileOverlayRenderer));
-            _tooltipRenderer = tooltipRenderer ?? throw new ArgumentNullException(nameof(tooltipRenderer));
+            _tileOverlayRenderer =
+                tileOverlayRenderer ?? throw new ArgumentNullException(nameof(tileOverlayRenderer));
+            _tooltipRenderer =
+                tooltipRenderer ?? throw new ArgumentNullException(nameof(tooltipRenderer));
             _helper = helper ?? throw new ArgumentNullException(nameof(helper));
 
             _isEnabled = false;
 
             // Initialize performance monitoring
-            _performanceLogInterval = TimeSpan.FromMinutes(ModConstants.PerformanceLogIntervalMinutes);
+            _performanceLogInterval = TimeSpan.FromMinutes(
+                ModConstants.PerformanceLogIntervalMinutes
+            );
 
             _monitor.Log("SoilHealthVisualizationService initialized.", LogLevel.Trace);
         }
@@ -101,7 +107,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error enabling visualization: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -124,7 +133,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error disabling visualization: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -135,7 +147,10 @@ namespace LivingRoots.Services
             {
                 if (_eventsRegistered)
                 {
-                    _monitor.Log("Visualization events are already registered, skipping registration.", LogLevel.Trace);
+                    _monitor.Log(
+                        "Visualization events are already registered, skipping registration.",
+                        LogLevel.Trace
+                    );
                     return;
                 }
 
@@ -198,7 +213,10 @@ namespace LivingRoots.Services
         private void HandleRegistrationFailure(Exception ex, EventRegistrationResult result)
         {
             _monitor.Log($"Error registering visualization events: {ex.Message}", LogLevel.Error);
-            _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            _monitor.Log(
+                $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                LogLevel.Trace
+            );
 
             UnregisterPartialRegistrations(result);
             _eventsRegistered = false;
@@ -246,7 +264,10 @@ namespace LivingRoots.Services
             {
                 if (!_eventsRegistered)
                 {
-                    _monitor.Log("Visualization events are not registered, skipping unregistration.", LogLevel.Trace);
+                    _monitor.Log(
+                        "Visualization events are not registered, skipping unregistration.",
+                        LogLevel.Trace
+                    );
                     return;
                 }
 
@@ -286,8 +307,14 @@ namespace LivingRoots.Services
                 }
                 catch (Exception ex)
                 {
-                    _monitor.Log($"Error unregistering visualization events: {ex.Message}", LogLevel.Error);
-                    _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    _monitor.Log(
+                        $"Error unregistering visualization events: {ex.Message}",
+                        LogLevel.Error
+                    );
+                    _monitor.Log(
+                        $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                        LogLevel.Trace
+                    );
                 }
             }
         }
@@ -317,8 +344,14 @@ namespace LivingRoots.Services
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error getting soil health for tile {tile}: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Error getting soil health for tile {tile}: {ex.Message}",
+                    LogLevel.Error
+                );
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
                 return 0f;
             }
         }
@@ -340,8 +373,14 @@ namespace LivingRoots.Services
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error getting color for health {health}: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Error getting color for health {health}: {ex.Message}",
+                    LogLevel.Error
+                );
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
                 return Color.Gray;
             }
         }
@@ -353,7 +392,12 @@ namespace LivingRoots.Services
         /// <param name="location">The game location containing the tile</param>
         /// <param name="tile">The tile coordinates</param>
         /// <param name="health">The soil health value (0-100)</param>
-        public void RenderTileOverlay(SpriteBatch spriteBatch, GameLocation location, Vector2 tile, float health)
+        public void RenderTileOverlay(
+            SpriteBatch spriteBatch,
+            GameLocation location,
+            Vector2 tile,
+            float health
+        )
         {
             try
             {
@@ -369,7 +413,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error rendering tile overlay: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -394,7 +441,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error rendering all visible overlays: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -404,7 +454,11 @@ namespace LivingRoots.Services
         /// <param name="spriteBatch">The SpriteBatch for rendering</param>
         /// <param name="cursorPosition">The current cursor position in screen coordinates</param>
         /// <param name="health">The soil health value (0-100)</param>
-        public void RenderHoverTooltip(SpriteBatch spriteBatch, Vector2 cursorPosition, float health)
+        public void RenderHoverTooltip(
+            SpriteBatch spriteBatch,
+            Vector2 cursorPosition,
+            float health
+        )
         {
             try
             {
@@ -420,7 +474,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error rendering hover tooltip: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -446,7 +503,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error rendering hoe feedback: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -470,7 +530,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error updating hover tile: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -504,10 +567,12 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error recording hoe action: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
-
 
         /// <summary>
         /// Clears the current hover tile state.
@@ -528,24 +593,6 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
-        /// Gets the set of currently tilled tiles in the current location.
-        /// </summary>
-        /// <returns>A set of tile coordinates that are currently tilled</returns>
-        private static HashSet<Vector2> GetTilledTiles(GameLocation location)
-        {
-            if (location?.terrainFeatures == null)
-            {
-                return new HashSet<Vector2>();
-            }
-
-            return new HashSet<Vector2>(
-                location.terrainFeatures.Pairs
-                    .Where(pair => pair.Value is HoeDirt)
-                    .Select(pair => pair.Key)
-            );
-        }
-
-        /// <summary>
         /// Checks if a tile has a HoeDirt terrain feature (tilled soil).
         /// </summary>
         /// <param name="location">The game location containing the tile</param>
@@ -561,11 +608,15 @@ namespace LivingRoots.Services
                 }
 
                 // Check if the tile has a HoeDirt terrain feature
-                return location.terrainFeatures.TryGetValue(tile, out var feature) && feature is HoeDirt;
+                return location.terrainFeatures.TryGetValue(tile, out var feature)
+                    && feature is HoeDirt;
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error checking if tile {tile} is tilled: {ex.Message}", LogLevel.Trace);
+                _monitor.Log(
+                    $"Error checking if tile {tile} is tilled: {ex.Message}",
+                    LogLevel.Trace
+                );
                 return false;
             }
         }
@@ -598,7 +649,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error in OnCursorMoved: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -633,15 +687,24 @@ namespace LivingRoots.Services
                     return;
                 }
 
-                // Get the set of tilled tiles BEFORE the hoe action
-                var tilledTilesBefore = GetTilledTiles(location);
+                // Record the actual tile the player targeted with the hoe
+                var targetTile = e.Cursor.Tile;
 
-                // Get soil health for tiles and track them for feedback
+                // Only show feedback for the targeted tile (and only if it’s relevant)
                 var tilesWithHealth = new List<(Vector2 tile, float health)>();
-                foreach (var tile in tilledTilesBefore)
+                if (VisualizationHelpers.IsValidTile(targetTile))
                 {
-                    var health = _soilHealthService.GetSoilHealth(location.NameOrUniqueName, tile);
-                    tilesWithHealth.Add((tile, health));
+                    _hoeActionTile = targetTile;
+                    _hoeActionHealth = _soilHealthService.GetSoilHealth(
+                        location.NameOrUniqueName,
+                        targetTile
+                    );
+                    _hoeActionStartTime = DateTime.UtcNow;
+
+                    _monitor.Log(
+                        $"Hoe used on tile {_hoeActionTile} with soil health: {_hoeActionHealth}%",
+                        LogLevel.Debug
+                    );
                 }
 
                 // Set hoe action feedback for all tilled tiles
@@ -652,13 +715,19 @@ namespace LivingRoots.Services
                     _hoeActionHealth = tilesWithHealth[0].health;
                     _hoeActionStartTime = DateTime.UtcNow;
 
-                    _monitor.Log($"Hoe used on tile {_hoeActionTile} with soil health: {_hoeActionHealth}%", LogLevel.Debug);
+                    _monitor.Log(
+                        $"Hoe used on tile {_hoeActionTile} with soil health: {_hoeActionHealth}%",
+                        LogLevel.Debug
+                    );
                 }
             }
             catch (Exception ex)
             {
                 _monitor.Log($"Error in OnButtonPressed: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -671,18 +740,22 @@ namespace LivingRoots.Services
         {
             try
             {
-                _monitor.Log($"[RENDER] OnRenderedWorld called - IsEnabled: {_isEnabled}, ShowTileOverlays: {_config.ShowTileOverlays}", LogLevel.Debug);
-
                 if (!_isEnabled || !_config.ShowTileOverlays)
                 {
-                    _monitor.Log("[RENDER] OnRenderedWorld - Early exit due to disabled state", LogLevel.Trace);
+                    _monitor.Log(
+                        "[RENDER] OnRenderedWorld - Early exit due to disabled state",
+                        LogLevel.Trace
+                    );
                     return;
                 }
 
                 var location = Game1.currentLocation;
                 if (location == null)
                 {
-                    _monitor.Log("[RENDER] OnRenderedWorld - Current location is null", LogLevel.Trace);
+                    _monitor.Log(
+                        "[RENDER] OnRenderedWorld - Current location is null",
+                        LogLevel.Trace
+                    );
                     return;
                 }
 
@@ -700,7 +773,10 @@ namespace LivingRoots.Services
                 catch (Exception ex)
                 {
                     _monitor.Log($"Error rendering tile overlays: {ex.Message}", LogLevel.Error);
-                    _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    _monitor.Log(
+                        $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                        LogLevel.Trace
+                    );
                 }
 
                 // Render hoe feedback (flash effect and floating text) in world space
@@ -713,7 +789,11 @@ namespace LivingRoots.Services
                             _hoeActionTile.Value.X * 64f,
                             _hoeActionTile.Value.Y * 64f
                         );
-                        _tooltipRenderer.RenderHoeFeedback(e.SpriteBatch, worldPosition, _hoeActionHealth.Value);
+                        _tooltipRenderer.RenderHoeFeedback(
+                            e.SpriteBatch,
+                            worldPosition,
+                            _hoeActionHealth.Value
+                        );
                     }
                     catch (Exception ex)
                     {
@@ -727,7 +807,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error in OnRenderedWorld: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -756,20 +839,33 @@ namespace LivingRoots.Services
 
                         if (IsTileTilled(location, _currentHoverTile.Value))
                         {
-                            var health = _soilHealthService.GetSoilHealth(location.NameOrUniqueName, _currentHoverTile.Value);
-                            _tooltipRenderer.RenderHoverTooltip(e.SpriteBatch, cursorPosition, health);
+                            var health = _soilHealthService.GetSoilHealth(
+                                location.NameOrUniqueName,
+                                _currentHoverTile.Value
+                            );
+                            _tooltipRenderer.RenderHoverTooltip(
+                                e.SpriteBatch,
+                                cursorPosition,
+                                health
+                            );
                         }
                     }
                     catch (Exception ex)
                     {
-                        _monitor.Log($"Error rendering hover tooltip: {ex.Message}", LogLevel.Error);
+                        _monitor.Log(
+                            $"Error rendering hover tooltip: {ex.Message}",
+                            LogLevel.Error
+                        );
                     }
                 }
             }
             catch (Exception ex)
             {
                 _monitor.Log($"Error in OnRendered: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -782,15 +878,12 @@ namespace LivingRoots.Services
         {
             try
             {
-                _monitor.Log($"[UPDATE] OnUpdateTicked called - IsEnabled: {_isEnabled}", LogLevel.Trace);
-
                 // Clear hoe action feedback after duration
                 if (_hoeActionStartTime.HasValue)
                 {
                     var elapsed = (DateTime.UtcNow - _hoeActionStartTime.Value).TotalMilliseconds;
                     if (elapsed > _config.GetHoeFeedbackDuration())
                     {
-                        _monitor.Log("[UPDATE] Clearing hoe action feedback", LogLevel.Trace);
                         _hoeActionTile = null;
                         _hoeActionHealth = null;
                         _hoeActionStartTime = null;
@@ -806,7 +899,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log($"Error in OnUpdateTicked: {ex.Message}", LogLevel.Error);
-                _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -819,7 +915,10 @@ namespace LivingRoots.Services
             {
                 if (DateTime.UtcNow - _lastPerformanceLog > _performanceLogInterval)
                 {
-                    _monitor.Log($"Performance: {_renderedTilesLastFrame} tiles rendered in last interval", LogLevel.Trace);
+                    _monitor.Log(
+                        $"Performance: {_renderedTilesLastFrame} tiles rendered in last interval",
+                        LogLevel.Trace
+                    );
                     _renderedTilesLastFrame = 0;
                     _lastPerformanceLog = DateTime.UtcNow;
                 }

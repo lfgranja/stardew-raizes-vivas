@@ -1,13 +1,4 @@
-using System;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
 using LivingRoots.Domain;
-using LivingRoots.Services;
-using Moq;
-using StardewModdingAPI;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -26,8 +17,10 @@ namespace LivingRoots.Tests
         {
             // Test that the SecurityConfusables dictionary does not contain mappings
             // where a character maps to itself (redundant mappings)
-            var confusablesField = typeof(UnicodeNormalizationService)
-                .GetField("SecurityConfusables", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var confusablesField = typeof(UnicodeNormalizationService).GetField(
+                "SecurityConfusables",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
 
             if (confusablesField == null)
             {
@@ -35,7 +28,9 @@ namespace LivingRoots.Tests
                 return;
             }
 
-            var confusables = confusablesField.GetValue(null) as System.Collections.Generic.IDictionary<char, string>;
+            var confusables =
+                confusablesField.GetValue(null)
+                as System.Collections.Generic.IDictionary<char, string>;
 
             // Check for any mappings where the value is a single character and it's the same as the key
             if (confusables != null)
@@ -44,7 +39,9 @@ namespace LivingRoots.Tests
                 {
                     if (kvp.Value.Length == 1 && kvp.Value[0] == kvp.Key)
                     {
-                        Assert.Fail($"Found redundant mapping: {{ '{kvp.Key}', \"{kvp.Value}\" }} maps character to itself");
+                        Assert.Fail(
+                            $"Found redundant mapping: {{ '{kvp.Key}', \"{kvp.Value}\" }} maps character to itself"
+                        );
                     }
                 }
             }
@@ -285,13 +282,23 @@ namespace LivingRoots.Tests
         public void Normalize_WithVeryLongUnicodeString_HandlesProperly()
         {
             // Arrange
-            var input = new string('a', 100) + "café" + new string('b', 100) + "naïve" + new string('c', 100);
+            var input =
+                new string('a', 100)
+                + "café"
+                + new string('b', 100)
+                + "naïve"
+                + new string('c', 100);
 
             // Act
             var result = _unicodeNormalizationService.Normalize(input);
 
             // Assert
-            var expected = new string('a', 100) + "cafe" + new string('b', 100) + "naive" + new string('c', 100);
+            var expected =
+                new string('a', 100)
+                + "cafe"
+                + new string('b', 100)
+                + "naive"
+                + new string('c', 100);
             Assert.Equal(expected, result);
         }
 
