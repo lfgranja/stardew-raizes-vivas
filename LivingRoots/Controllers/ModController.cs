@@ -1,5 +1,4 @@
 using LivingRoots.Domain;
-using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -14,7 +13,8 @@ namespace LivingRoots.Controllers
         IManifest manifest,
         ISoilHealthService soilHealthService,
         ISaveIdProvider saveIdProvider,
-        ISoilHealthVisualizationService soilHealthVisualizationService) : IDisposable
+        ISoilHealthVisualizationService soilHealthVisualizationService
+    ) : IDisposable
     {
         // State flags for thread safety using atomic operations
         internal const int EventsRegisteredFlag = 1 << 0;
@@ -31,12 +31,19 @@ namespace LivingRoots.Controllers
         internal int _saveIdUnavailableWarningShownOnSaving = 0; // 0 = false, 1 = true
 
         // Dependencies
-        private readonly IModHelper _helper = helper ?? throw new ArgumentNullException(nameof(helper));
-        private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-        private readonly IManifest _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
-        private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
-        private readonly ISaveIdProvider _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
-        private readonly ISoilHealthVisualizationService _soilHealthVisualizationService = soilHealthVisualizationService ?? throw new ArgumentNullException(nameof(soilHealthVisualizationService));
+        private readonly IModHelper _helper =
+            helper ?? throw new ArgumentNullException(nameof(helper));
+        private readonly IMonitor _monitor =
+            monitor ?? throw new ArgumentNullException(nameof(monitor));
+        private readonly IManifest _manifest =
+            manifest ?? throw new ArgumentNullException(nameof(manifest));
+        private readonly ISoilHealthService _soilHealthService =
+            soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
+        private readonly ISaveIdProvider _saveIdProvider =
+            saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
+        private readonly ISoilHealthVisualizationService _soilHealthVisualizationService =
+            soilHealthVisualizationService
+            ?? throw new ArgumentNullException(nameof(soilHealthVisualizationService));
 
         // Event handlers - stored as fields to enable proper unsubscription
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
@@ -57,7 +64,7 @@ namespace LivingRoots.Controllers
             "/help:?",
             "-help:?",
             "/help-",
-            "-help-"
+            "-help-",
         };
 
         public void RegisterEvents()
@@ -65,7 +72,10 @@ namespace LivingRoots.Controllers
             // Early disposal check: check if controller is disposed before accessing dependencies
             if (IsDisposed())
             {
-                _monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
+                _monitor.Log(
+                    "Controller is disposed, skipping event registration.",
+                    LogLevel.Trace
+                );
                 return;
             }
 
@@ -76,7 +86,10 @@ namespace LivingRoots.Controllers
             var gameLoop = helperSnapshot?.Events?.GameLoop;
             if (gameLoop == null)
             {
-                monitorSnapshot.Log("Helper or Events or GameLoop is null, cannot register events.", LogLevel.Error);
+                monitorSnapshot.Log(
+                    "Helper or Events or GameLoop is null, cannot register events.",
+                    LogLevel.Error
+                );
                 return;
             }
 
@@ -100,7 +113,10 @@ namespace LivingRoots.Controllers
                 // Double-check disposed state after setting the flag but before subscribing to prevent race condition
                 if (IsDisposed())
                 {
-                    monitorSnapshot.Log("Controller disposed during registration. Skipping event subscription.", LogLevel.Trace);
+                    monitorSnapshot.Log(
+                        "Controller disposed during registration. Skipping event subscription.",
+                        LogLevel.Trace
+                    );
                     // Clear the flag since we didn't actually register anything
                     System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
                     return;
@@ -118,8 +134,14 @@ namespace LivingRoots.Controllers
                 }
                 catch (Exception ex)
                 {
-                    _monitor.Log($"Visualization event registration failed: {ex.Message}", LogLevel.Error);
-                    _monitor.Log($"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    _monitor.Log(
+                        $"Visualization event registration failed: {ex.Message}",
+                        LogLevel.Error
+                    );
+                    _monitor.Log(
+                        $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                        LogLevel.Trace
+                    );
                 }
                 // now that everything succeeded, publish the "registered" state
                 System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
@@ -127,15 +149,17 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                HandleRegistrationError(new RegistrationContext
-                {
-                    Exception = ex,
-                    GameLoop = gameLoop,
-                    LocalGameLaunchedHandler = localGameLaunchedHandler,
-                    LocalSaveLoadedHandler = localSaveLoadedHandler,
-                    LocalSavingHandler = localSavingHandler,
-                    Monitor = monitorSnapshot
-                });
+                HandleRegistrationError(
+                    new RegistrationContext
+                    {
+                        Exception = ex,
+                        GameLoop = gameLoop,
+                        LocalGameLaunchedHandler = localGameLaunchedHandler,
+                        LocalSaveLoadedHandler = localSaveLoadedHandler,
+                        LocalSavingHandler = localSavingHandler,
+                        Monitor = monitorSnapshot,
+                    }
+                );
             }
             finally
             {
@@ -146,28 +170,41 @@ namespace LivingRoots.Controllers
 
         private bool TryEnterRegisteringState(IMonitor monitor)
         {
-            int currentState, newState;
+            int currentState,
+                newState;
             do
             {
                 currentState = System.Threading.Volatile.Read(ref _state);
                 if ((currentState & DisposedFlag) != 0)
                 {
-                    monitor.Log("Controller is disposed, skipping event registration.", LogLevel.Trace);
+                    monitor.Log(
+                        "Controller is disposed, skipping event registration.",
+                        LogLevel.Trace
+                    );
                     return false;
                 }
                 if ((currentState & UnregisteringFlag) != 0)
                 {
-                    monitor.Log("Event unregistration in progress, skipping registration.", LogLevel.Trace);
+                    monitor.Log(
+                        "Event unregistration in progress, skipping registration.",
+                        LogLevel.Trace
+                    );
                     return false;
                 }
                 if ((currentState & (EventsRegisteredFlag | RegisteringFlag)) != 0)
                 {
-                    monitor.Log("Events are already registered or registering, skipping registration.", LogLevel.Trace);
+                    monitor.Log(
+                        "Events are already registered or registering, skipping registration.",
+                        LogLevel.Trace
+                    );
                     return false;
                 }
                 // claim "registering" to block concurrent attempts without lying about success
                 newState = currentState | RegisteringFlag;
-            } while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            } while (
+                System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState)
+                != currentState
+            );
 
             return true;
         }
@@ -178,9 +215,15 @@ namespace LivingRoots.Controllers
             _soilHealthVisualizationService?.UnregisterEvents();
 
             ctx.Monitor.Log("Error occurred while registering game events.", LogLevel.Error);
-            ctx.Monitor.Log($"RegisterEvents exception type: {ctx.Exception.GetType().FullName} (HResult: 0x{ctx.Exception.HResult:X8})", LogLevel.Trace);
+            ctx.Monitor.Log(
+                $"RegisterEvents exception type: {ctx.Exception.GetType().FullName} (HResult: 0x{ctx.Exception.HResult:X8})",
+                LogLevel.Trace
+            );
 #if DEBUG
-            ctx.Monitor.Log(ctx.Exception.StackTrace ?? "RegisterEvents stack trace unavailable.", LogLevel.Trace);
+            ctx.Monitor.Log(
+                ctx.Exception.StackTrace ?? "RegisterEvents stack trace unavailable.",
+                LogLevel.Trace
+            );
 #endif
 
             // Execute rollback safely; don't let rollback failures mask original error.
@@ -188,19 +231,22 @@ namespace LivingRoots.Controllers
                 ctx.Monitor,
                 h => ctx.GameLoop.GameLaunched -= h,
                 ctx.LocalGameLaunchedHandler,
-                "GameLaunched");
+                "GameLaunched"
+            );
 
             SafeUnsubscribe<SaveLoadedEventArgs>(
                 ctx.Monitor,
                 h => ctx.GameLoop.SaveLoaded -= h,
                 ctx.LocalSaveLoadedHandler,
-                "SaveLoaded");
+                "SaveLoaded"
+            );
 
             SafeUnsubscribe<SavingEventArgs>(
                 ctx.Monitor,
                 h => ctx.GameLoop.Saving -= h,
                 ctx.LocalSavingHandler,
-                "Saving");
+                "Saving"
+            );
 
             // Clear handler references to prevent memory leaks
             System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
@@ -244,8 +290,12 @@ namespace LivingRoots.Controllers
                 var gameLoop = helperSnapshot?.Events?.GameLoop;
                 if (gameLoop == null)
                 {
-                    mayStillBeSubscribed = eventUnregisterContext.WasRegistered || eventUnregisterContext.HasHandlers;
-                    monitorSnapshot.Log("Helper or Events or GameLoop is null, cannot unregister events.", LogLevel.Warn);
+                    mayStillBeSubscribed =
+                        eventUnregisterContext.WasRegistered || eventUnregisterContext.HasHandlers;
+                    monitorSnapshot.Log(
+                        "Helper or Events or GameLoop is null, cannot unregister events.",
+                        LogLevel.Warn
+                    );
 
                     // If we're disposing, clear handler references to avoid leaks even if we
                     // can't detach from SMAPI events.
@@ -260,7 +310,11 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                var unsubscribeResults = AttemptUnregistration(monitorSnapshot, gameLoop, eventUnregisterContext);
+                var unsubscribeResults = AttemptUnregistration(
+                    monitorSnapshot,
+                    gameLoop,
+                    eventUnregisterContext
+                );
 
                 var allUnsubscribed = unsubscribeResults.AllUnsubscribed;
 
@@ -271,13 +325,32 @@ namespace LivingRoots.Controllers
                 // and inconsistent state. Use CompareExchange to ensure we only nullify if the
                 // handler hasn't changed since we captured it.
                 if (unsubscribeResults.GameLaunchedRemoved)
-                    System.Threading.Interlocked.CompareExchange(ref _onGameLaunchedHandler, null, eventUnregisterContext.GameLaunchedHandler);
+                    System.Threading.Interlocked.CompareExchange(
+                        ref _onGameLaunchedHandler,
+                        null,
+                        eventUnregisterContext.GameLaunchedHandler
+                    );
                 if (unsubscribeResults.SaveLoadedRemoved)
-                    System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, null, eventUnregisterContext.SaveLoadedHandler);
+                    System.Threading.Interlocked.CompareExchange(
+                        ref _onSaveLoadedHandler,
+                        null,
+                        eventUnregisterContext.SaveLoadedHandler
+                    );
                 if (unsubscribeResults.SavingRemoved)
-                    System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, null, eventUnregisterContext.SavingHandler);
+                    System.Threading.Interlocked.CompareExchange(
+                        ref _onSavingHandler,
+                        null,
+                        eventUnregisterContext.SavingHandler
+                    );
 
-                HandleUnregistrationResult(monitorSnapshot, gameLoop, unsubscribeResults, eventUnregisterContext, allUnsubscribed, ref mayStillBeSubscribed);
+                HandleUnregistrationResult(
+                    monitorSnapshot,
+                    gameLoop,
+                    unsubscribeResults,
+                    eventUnregisterContext,
+                    allUnsubscribed,
+                    ref mayStillBeSubscribed
+                );
             }
             finally
             {
@@ -285,7 +358,14 @@ namespace LivingRoots.Controllers
             }
         }
 
-        private void HandleUnregistrationResult(IMonitor monitor, IGameLoopEvents gameLoop, UnsubscribeResults unsubscribeResults, EventUnregisterContext eventUnregisterContext, bool allUnsubscribed, ref bool mayStillBeSubscribed)
+        private void HandleUnregistrationResult(
+            IMonitor monitor,
+            IGameLoopEvents gameLoop,
+            UnsubscribeResults unsubscribeResults,
+            EventUnregisterContext eventUnregisterContext,
+            bool allUnsubscribed,
+            ref bool mayStillBeSubscribed
+        )
         {
             if (allUnsubscribed)
             {
@@ -293,12 +373,18 @@ namespace LivingRoots.Controllers
             }
             else
             {
-                monitor.Log("Event unregistration partially failed. Some handlers may remain subscribed.", LogLevel.Warn);
+                monitor.Log(
+                    "Event unregistration partially failed. Some handlers may remain subscribed.",
+                    LogLevel.Warn
+                );
 
                 // Check if the controller is disposed - if so, skip rollback to prevent resource leaks
                 if (IsDisposed())
                 {
-                    monitor.Log("Controller is disposed, skipping rollback of event handlers.", LogLevel.Trace);
+                    monitor.Log(
+                        "Controller is disposed, skipping rollback of event handlers.",
+                        LogLevel.Trace
+                    );
                     // When disposed, set mayStillBeSubscribed to false to indicate that cleanup is best-effort only
                     mayStillBeSubscribed = false;
                 }
@@ -315,7 +401,7 @@ namespace LivingRoots.Controllers
                         SaveLoadedRemoved = unsubscribeResults.SaveLoadedRemoved,
                         SaveLoadedHandler = eventUnregisterContext.SaveLoadedHandler,
                         SavingRemoved = unsubscribeResults.SavingRemoved,
-                        SavingHandler = eventUnregisterContext.SavingHandler
+                        SavingHandler = eventUnregisterContext.SavingHandler,
                     };
                     var rollbackSucceeded = ExecuteRollback(rollbackContext);
 
@@ -323,17 +409,27 @@ namespace LivingRoots.Controllers
                     {
                         // Restore the EventsRegisteredFlag since state is restored to the registered state
                         System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
-                        monitor.Log("Rollback completed successfully. State restored to registered.", LogLevel.Warn);
+                        monitor.Log(
+                            "Rollback completed successfully. State restored to registered.",
+                            LogLevel.Warn
+                        );
                     }
                     else
                     {
-                        monitor.Log("Rollback partially failed. State may be inconsistent.", LogLevel.Error);
+                        monitor.Log(
+                            "Rollback partially failed. State may be inconsistent.",
+                            LogLevel.Error
+                        );
                     }
                 }
             }
         }
 
-        private UnsubscribeResults AttemptUnregistration(IMonitor monitor, IGameLoopEvents gameLoop, EventUnregisterContext eventUnregisterContext)
+        private UnsubscribeResults AttemptUnregistration(
+            IMonitor monitor,
+            IGameLoopEvents gameLoop,
+            EventUnregisterContext eventUnregisterContext
+        )
         {
             var unsubscribeResults = PerformUnsubscribes(monitor, gameLoop, eventUnregisterContext);
             return unsubscribeResults;
@@ -348,7 +444,8 @@ namespace LivingRoots.Controllers
             var wasRegistered = (currentState & EventsRegisteredFlag) != 0;
 
             // Check if any handlers are non-null for best-effort cleanup
-            var hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
+            var hasHandlers =
+                gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
 
             return new EventUnregisterContext
             {
@@ -356,41 +453,67 @@ namespace LivingRoots.Controllers
                 SaveLoadedHandler = saveLoadedHandler,
                 SavingHandler = savingHandler,
                 WasRegistered = wasRegistered,
-                HasHandlers = hasHandlers
+                HasHandlers = hasHandlers,
             };
         }
 
-        private UnsubscribeResults PerformUnsubscribes(IMonitor monitor, IGameLoopEvents gameLoop, EventUnregisterContext context)
+        private UnsubscribeResults PerformUnsubscribes(
+            IMonitor monitor,
+            IGameLoopEvents gameLoop,
+            EventUnregisterContext context
+        )
         {
             // Track which events were successfully removed for rollback
-            var gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(monitor, h => gameLoop.GameLaunched -= h, context.GameLaunchedHandler, "GameLaunched");
-            var saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, context.SaveLoadedHandler, "SaveLoaded");
-            var savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, context.SavingHandler, "Saving");
+            var gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(
+                monitor,
+                h => gameLoop.GameLaunched -= h,
+                context.GameLaunchedHandler,
+                "GameLaunched"
+            );
+            var saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(
+                monitor,
+                h => gameLoop.SaveLoaded -= h,
+                context.SaveLoadedHandler,
+                "SaveLoaded"
+            );
+            var savingRemoved = SafeUnsubscribe<SavingEventArgs>(
+                monitor,
+                h => gameLoop.Saving -= h,
+                context.SavingHandler,
+                "Saving"
+            );
 
             // Be conservative: if we thought we were registered but lost handler references, assume we may still be subscribed.
             var missingHandlerWhileRegistered =
-                context.WasRegistered &&
-                (context.GameLaunchedHandler == null || context.SaveLoadedHandler == null || context.SavingHandler == null);
+                context.WasRegistered
+                && (
+                    context.GameLaunchedHandler == null
+                    || context.SaveLoadedHandler == null
+                    || context.SavingHandler == null
+                );
 
             // Handle wedged registered state: log warning but don't clear handler fields
             // This prevents resource leaks and potential crashes from callbacks on disposed objects
             if (missingHandlerWhileRegistered)
             {
-                monitor.Log("Event handlers are missing despite being registered. Assuming subscriptions may still exist to prevent resource leaks.", LogLevel.Warn);
+                monitor.Log(
+                    "Event handlers are missing despite being registered. Assuming subscriptions may still exist to prevent resource leaks.",
+                    LogLevel.Warn
+                );
             }
 
             var allUnsubscribed =
-                !missingHandlerWhileRegistered &&
-                (context.GameLaunchedHandler == null || gameLaunchedRemoved) &&
-                (context.SaveLoadedHandler == null || saveLoadedRemoved) &&
-                (context.SavingHandler == null || savingRemoved);
+                !missingHandlerWhileRegistered
+                && (context.GameLaunchedHandler == null || gameLaunchedRemoved)
+                && (context.SaveLoadedHandler == null || saveLoadedRemoved)
+                && (context.SavingHandler == null || savingRemoved);
 
             return new UnsubscribeResults
             {
                 GameLaunchedRemoved = gameLaunchedRemoved,
                 SaveLoadedRemoved = saveLoadedRemoved,
                 SavingRemoved = savingRemoved,
-                AllUnsubscribed = allUnsubscribed
+                AllUnsubscribed = allUnsubscribed,
             };
         }
 
@@ -410,13 +533,26 @@ namespace LivingRoots.Controllers
                 try
                 {
                     ctx.GameLoop.GameLaunched += ctx.GameLaunchedHandler;
-                    System.Threading.Interlocked.CompareExchange(ref _onGameLaunchedHandler, ctx.GameLaunchedHandler, null);
-                    ctx.Monitor.Log("GameLaunched handler re-subscribed during rollback.", LogLevel.Trace);
+                    System.Threading.Interlocked.CompareExchange(
+                        ref _onGameLaunchedHandler,
+                        ctx.GameLaunchedHandler,
+                        null
+                    );
+                    ctx.Monitor.Log(
+                        "GameLaunched handler re-subscribed during rollback.",
+                        LogLevel.Trace
+                    );
                 }
                 catch (Exception ex)
                 {
-                    ctx.Monitor.Log("Failed to re-subscribe GameLaunched handler during rollback.", LogLevel.Error);
-                    ctx.Monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    ctx.Monitor.Log(
+                        "Failed to re-subscribe GameLaunched handler during rollback.",
+                        LogLevel.Error
+                    );
+                    ctx.Monitor.Log(
+                        $"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                        LogLevel.Trace
+                    );
                     rollbackSucceeded = false;
                 }
             }
@@ -428,13 +564,26 @@ namespace LivingRoots.Controllers
                 try
                 {
                     ctx.GameLoop.SaveLoaded += ctx.SaveLoadedHandler;
-                    System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, ctx.SaveLoadedHandler, null);
-                    ctx.Monitor.Log("SaveLoaded handler re-subscribed during rollback.", LogLevel.Trace);
+                    System.Threading.Interlocked.CompareExchange(
+                        ref _onSaveLoadedHandler,
+                        ctx.SaveLoadedHandler,
+                        null
+                    );
+                    ctx.Monitor.Log(
+                        "SaveLoaded handler re-subscribed during rollback.",
+                        LogLevel.Trace
+                    );
                 }
                 catch (Exception ex)
                 {
-                    ctx.Monitor.Log("Failed to re-subscribe SaveLoaded handler during rollback.", LogLevel.Error);
-                    ctx.Monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    ctx.Monitor.Log(
+                        "Failed to re-subscribe SaveLoaded handler during rollback.",
+                        LogLevel.Error
+                    );
+                    ctx.Monitor.Log(
+                        $"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                        LogLevel.Trace
+                    );
                     rollbackSucceeded = false;
                 }
             }
@@ -446,13 +595,26 @@ namespace LivingRoots.Controllers
                 try
                 {
                     ctx.GameLoop.Saving += ctx.SavingHandler;
-                    System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, ctx.SavingHandler, null);
-                    ctx.Monitor.Log("Saving handler re-subscribed during rollback.", LogLevel.Trace);
+                    System.Threading.Interlocked.CompareExchange(
+                        ref _onSavingHandler,
+                        ctx.SavingHandler,
+                        null
+                    );
+                    ctx.Monitor.Log(
+                        "Saving handler re-subscribed during rollback.",
+                        LogLevel.Trace
+                    );
                 }
                 catch (Exception ex)
                 {
-                    ctx.Monitor.Log("Failed to re-subscribe Saving handler during rollback.", LogLevel.Error);
-                    ctx.Monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    ctx.Monitor.Log(
+                        "Failed to re-subscribe Saving handler during rollback.",
+                        LogLevel.Error
+                    );
+                    ctx.Monitor.Log(
+                        $"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                        LogLevel.Trace
+                    );
                     rollbackSucceeded = false;
                 }
             }
@@ -462,18 +624,33 @@ namespace LivingRoots.Controllers
 
         private bool ShouldAttemptUnregister()
         {
-            if ((System.Threading.Volatile.Read(ref _state) & (EventsRegisteredFlag | UnregisteringFlag)) == 0)
+            if (
+                (
+                    System.Threading.Volatile.Read(ref _state)
+                    & (EventsRegisteredFlag | UnregisteringFlag)
+                ) == 0
+            )
             {
                 // Check if any handlers are non-null for best-effort cleanup
-                var earlyGameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
-                var earlySaveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
+                var earlyGameLaunchedHandler = System.Threading.Volatile.Read(
+                    ref _onGameLaunchedHandler
+                );
+                var earlySaveLoadedHandler = System.Threading.Volatile.Read(
+                    ref _onSaveLoadedHandler
+                );
                 var earlySavingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
 
-                var earlyHasHandlers = earlyGameLaunchedHandler != null || earlySaveLoadedHandler != null || earlySavingHandler != null;
+                var earlyHasHandlers =
+                    earlyGameLaunchedHandler != null
+                    || earlySaveLoadedHandler != null
+                    || earlySavingHandler != null;
 
                 if (!earlyHasHandlers)
                 {
-                    _monitor.Log("Events were not registered or already unregistered, skipping unregistration.", LogLevel.Trace);
+                    _monitor.Log(
+                        "Events were not registered or already unregistered, skipping unregistration.",
+                        LogLevel.Trace
+                    );
                     return false;
                 }
             }
@@ -482,7 +659,8 @@ namespace LivingRoots.Controllers
 
         private bool TryEnterUnregisteringState()
         {
-            int currentState, newState;
+            int currentState,
+                newState;
             while (true)
             {
                 currentState = System.Threading.Volatile.Read(ref _state);
@@ -490,7 +668,10 @@ namespace LivingRoots.Controllers
                 // Avoid racing a registration in progress; otherwise state can become inconsistent.
                 if ((currentState & UnregisteringFlag) != 0)
                 {
-                    _monitor.Log("Event unregistration already in progress, skipping.", LogLevel.Trace);
+                    _monitor.Log(
+                        "Event unregistration already in progress, skipping.",
+                        LogLevel.Trace
+                    );
                     return false;
                 }
 
@@ -499,7 +680,10 @@ namespace LivingRoots.Controllers
                 // If disposing, prefer cleanup over avoiding the race with registration.
                 if (!isDisposing && (currentState & RegisteringFlag) != 0)
                 {
-                    _monitor.Log("Event registration in progress, skipping unregistration.", LogLevel.Trace);
+                    _monitor.Log(
+                        "Event registration in progress, skipping unregistration.",
+                        LogLevel.Trace
+                    );
                     return false;
                 }
 
@@ -508,7 +692,10 @@ namespace LivingRoots.Controllers
                 if (isDisposing)
                     newState &= ~RegisteringFlag;
 
-                if (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) == currentState)
+                if (
+                    System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState)
+                    == currentState
+                )
                     return true;
             }
         }
@@ -523,7 +710,10 @@ namespace LivingRoots.Controllers
             if (IsDisposed())
             {
                 // During disposal, force-clear all lifecycle flags.
-                System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag | CommandRegisteredFlag));
+                System.Threading.Interlocked.And(
+                    ref _state,
+                    ~(EventsRegisteredFlag | CommandRegisteredFlag)
+                );
             }
             else if (mayStillBeSubscribed)
             {
@@ -546,8 +736,13 @@ namespace LivingRoots.Controllers
         /// <param name="handler">The event handler to unsubscribe</param>
         /// <param name="eventName">The name of the event for logging purposes</param>
         /// <returns>True if unsubscription was attempted and succeeded, false if unsubscription failed</returns>
-
-        private static bool SafeUnsubscribe<T>(IMonitor monitor, Action<EventHandler<T>> unsubscribeAction, EventHandler<T>? handler, string eventName) where T : EventArgs
+        private static bool SafeUnsubscribe<T>(
+            IMonitor monitor,
+            Action<EventHandler<T>> unsubscribeAction,
+            EventHandler<T>? handler,
+            string eventName
+        )
+            where T : EventArgs
         {
             // No handler reference means there's nothing to detach from our perspective.
             // Treat as success to avoid incorrectly restoring "registered" state.
@@ -563,11 +758,20 @@ namespace LivingRoots.Controllers
             }
             catch (Exception ex)
             {
-                monitor.Log($"Error occurred while unsubscribing from {eventName} event.", LogLevel.Error);
-                monitor.Log($"{eventName} unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                monitor.Log(
+                    $"Error occurred while unsubscribing from {eventName} event.",
+                    LogLevel.Error
+                );
+                monitor.Log(
+                    $"{eventName} unsubscription exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
 
 #if DEBUG
-                monitor.Log(ex.StackTrace ?? $"{eventName} unsubscription stack trace unavailable.", LogLevel.Trace);
+                monitor.Log(
+                    ex.StackTrace ?? $"{eventName} unsubscription stack trace unavailable.",
+                    LogLevel.Trace
+                );
 #endif
 
                 return false;
@@ -598,71 +802,112 @@ namespace LivingRoots.Controllers
                 _monitor.Log("Error occurred in game launched event handler.", LogLevel.Error);
 
                 // Add trace-level exception details for debugging
-                _monitor.Log($"OnGameLaunched exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"OnGameLaunched exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
 #if DEBUG
-                _monitor.Log(ex.StackTrace ?? "OnGameLaunched stack trace unavailable.", LogLevel.Trace);
+                _monitor.Log(
+                    ex.StackTrace ?? "OnGameLaunched stack trace unavailable.",
+                    LogLevel.Trace
+                );
 #endif
             }
         }
 
         private void OnSaveLoaded(object? sender, SaveLoadedEventArgs e)
         {
-            ExecuteWithConcurrencyGuard(OnSaveLoadedExecutingFlag, "OnSaveLoaded", () =>
-            {
-                // Get the save ID using the abstraction (monitor is already available in the provider)
-                var saveId = _saveIdProvider.GetSaveId();
-
-                if (string.IsNullOrWhiteSpace(saveId))
+            ExecuteWithConcurrencyGuard(
+                OnSaveLoadedExecutingFlag,
+                "OnSaveLoaded",
+                () =>
                 {
-                    if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 1, 0) == 0)
+                    // Get the save ID using the abstraction (monitor is already available in the provider)
+                    var saveId = _saveIdProvider.GetSaveId();
+
+                    if (string.IsNullOrWhiteSpace(saveId))
                     {
-                        _monitor.Log("OnSaveLoaded: SaveFolderName unavailable; skipping load to prevent cross-save data leakage.", LogLevel.Warn);
+                        if (
+                            System.Threading.Interlocked.CompareExchange(
+                                ref _saveIdUnavailableWarningShownOnSaveLoaded,
+                                1,
+                                0
+                            ) == 0
+                        )
+                        {
+                            _monitor.Log(
+                                "OnSaveLoaded: SaveFolderName unavailable; skipping load to prevent cross-save data leakage.",
+                                LogLevel.Warn
+                            );
+                        }
+                        return;
                     }
-                    return;
+
+                    // Reset the warning flag when a valid save ID is found
+                    System.Threading.Interlocked.Exchange(
+                        ref _saveIdUnavailableWarningShownOnSaveLoaded,
+                        0
+                    );
+
+                    // Load data using the save folder name as unique ID
+                    _soilHealthService.LoadData(saveId);
+                    _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
+
+                    // Enable visualization after loading soil health data
+                    _soilHealthVisualizationService?.Enable();
                 }
-
-                // Reset the warning flag when a valid save ID is found
-                System.Threading.Interlocked.Exchange(ref _saveIdUnavailableWarningShownOnSaveLoaded, 0);
-
-                // Load data using the save folder name as unique ID
-                _soilHealthService.LoadData(saveId);
-                _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
-
-                // Enable visualization after loading soil health data
-                _soilHealthVisualizationService?.Enable();
-            });
+            );
         }
 
         private void OnSaving(object? sender, SavingEventArgs e)
         {
-            ExecuteWithConcurrencyGuard(OnSavingExecutingFlag, "OnSaving", () =>
-            {
-                // Get the save ID using the abstraction (monitor is already available in the provider)
-                var saveId = _saveIdProvider.GetSaveId();
-
-                if (string.IsNullOrWhiteSpace(saveId))
+            ExecuteWithConcurrencyGuard(
+                OnSavingExecutingFlag,
+                "OnSaving",
+                () =>
                 {
-                    if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 1, 0) == 0)
+                    // Get the save ID using the abstraction (monitor is already available in the provider)
+                    var saveId = _saveIdProvider.GetSaveId();
+
+                    if (string.IsNullOrWhiteSpace(saveId))
                     {
-                        // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
-                        _monitor.Log("OnSaving: SaveFolderName unavailable; skipping soil health save.", LogLevel.Warn);
+                        if (
+                            System.Threading.Interlocked.CompareExchange(
+                                ref _saveIdUnavailableWarningShownOnSaving,
+                                1,
+                                0
+                            ) == 0
+                        )
+                        {
+                            // The flag was previously 0 (false), so we set it to 1 (true) and show the warning
+                            _monitor.Log(
+                                "OnSaving: SaveFolderName unavailable; skipping soil health save.",
+                                LogLevel.Warn
+                            );
+                        }
+                        return;
                     }
-                    return;
-                }
 
-                // Reset the warning flag when a valid save ID is found
-                if (System.Threading.Interlocked.CompareExchange(ref _saveIdUnavailableWarningShownOnSaving, 0, 1) == 1)
-                {
-                    // The flag was previously set to 1 (true), so we reset it to 0 (false)
-                    // This means the warning was previously shown and is now being reset
-                }
+                    // Reset the warning flag when a valid save ID is found
+                    if (
+                        System.Threading.Interlocked.CompareExchange(
+                            ref _saveIdUnavailableWarningShownOnSaving,
+                            0,
+                            1
+                        ) == 1
+                    )
+                    {
+                        // The flag was previously set to 1 (true), so we reset it to 0 (false)
+                        // This means the warning was previously shown and is now being reset
+                    }
 
-                // Save data before the game saves/exits (using the saving event)
-                _soilHealthService.SaveData(saveId);
-                _monitor.Log("Soil health data saved successfully.", LogLevel.Trace);
-            });
+                    // Save data before the game saves/exits (using the saving event)
+                    _soilHealthService.SaveData(saveId);
+                    _monitor.Log("Soil health data saved successfully.", LogLevel.Trace);
+                }
+            );
         }
 
         /// <summary>
@@ -675,7 +920,8 @@ namespace LivingRoots.Controllers
         {
             // Use Interlocked.CompareExchange to implement a thread-safe re-entrancy guard
             // This ensures only one execution of the event handler can happen at a time
-            int currentState, newState;
+            int currentState,
+                newState;
             do
             {
                 currentState = System.Threading.Volatile.Read(ref _state);
@@ -683,21 +929,29 @@ namespace LivingRoots.Controllers
                 // If the flag is already set, this method is already running, so return
                 if ((currentState & flag) != 0)
                 {
-                    _monitor.Log($"{eventName} is already executing, skipping concurrent execution.", LogLevel.Trace);
+                    _monitor.Log(
+                        $"{eventName} is already executing, skipping concurrent execution.",
+                        LogLevel.Trace
+                    );
                     return;
                 }
 
                 // Calculate new state with the flag set
                 newState = currentState | flag;
-            }
-            while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            } while (
+                System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState)
+                != currentState
+            );
 
             try
             {
                 // Double-check locking pattern: check if controller is disposed after acquiring execution flag
                 if (IsDisposed())
                 {
-                    _monitor.Log($"Controller disposed after acquiring {eventName} execution flag, skipping execution.", LogLevel.Trace);
+                    _monitor.Log(
+                        $"Controller disposed after acquiring {eventName} execution flag, skipping execution.",
+                        LogLevel.Trace
+                    );
                     return;
                 }
 
@@ -707,14 +961,23 @@ namespace LivingRoots.Controllers
             catch (Exception ex)
             {
                 // Log error but don't expose raw exception message for security
-                _monitor.Log($"Error occurred while executing {eventName} event handler.", LogLevel.Error);
+                _monitor.Log(
+                    $"Error occurred while executing {eventName} event handler.",
+                    LogLevel.Error
+                );
 
                 // Add trace-level exception details for debugging
-                _monitor.Log($"{eventName} exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"{eventName} exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
 #if DEBUG
-                _monitor.Log(ex.StackTrace ?? $"{eventName} stack trace unavailable.", LogLevel.Trace);
+                _monitor.Log(
+                    ex.StackTrace ?? $"{eventName} stack trace unavailable.",
+                    LogLevel.Trace
+                );
 #endif
             }
             finally
@@ -729,7 +992,10 @@ namespace LivingRoots.Controllers
             // Early disposal check: prevent registration if controller is already disposed
             if (IsDisposed())
             {
-                _monitor.Log("Controller is disposed, skipping console command registration.", LogLevel.Trace);
+                _monitor.Log(
+                    "Controller is disposed, skipping console command registration.",
+                    LogLevel.Trace
+                );
                 return;
             }
 
@@ -745,7 +1011,10 @@ namespace LivingRoots.Controllers
                 // Double-check disposed state inside the lock to prevent race condition
                 if (IsDisposed())
                 {
-                    _monitor.Log("Controller disposed during command registration. Skipping command registration.", LogLevel.Trace);
+                    _monitor.Log(
+                        "Controller disposed during command registration. Skipping command registration.",
+                        LogLevel.Trace
+                    );
                     return;
                 }
 
@@ -754,23 +1023,66 @@ namespace LivingRoots.Controllers
                     // Add null check for _helper and _helper.ConsoleCommands to prevent NullReferenceException
                     if (_helper?.ConsoleCommands == null)
                     {
-                        _monitor.Log("ConsoleCommands is null, cannot register console command 'lr_version'.", LogLevel.Error);
+                        _monitor.Log(
+                            "ConsoleCommands is null, cannot register console command 'lr_version'.",
+                            LogLevel.Error
+                        );
                         return;
                     }
 
-                    _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
-                    _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
+                    _helper.ConsoleCommands.Add(
+                        "lr_version",
+                        "Shows the Living Roots version.",
+                        PrintVersion
+                    );
+                    _monitor.Log(
+                        "Console command 'lr_version' registered successfully.",
+                        LogLevel.Trace
+                    );
 
                     // Register soil health modification commands
                     // Use named methods instead of lambdas with float literals to avoid BadImageFormatException
-                    _helper.ConsoleCommands.Add("lr_health_up_1", "Increase soil health by 1 on current tile.", ModifySoilHealthUp1);
-                    _helper.ConsoleCommands.Add("lr_health_up_10", "Increase soil health by 10 on current tile.", ModifySoilHealthUp10);
-                    _helper.ConsoleCommands.Add("lr_health_up_max", "Set soil health to maximum (100) on current tile.", (cmd, args) => ModifySoilHealth(cmd, args, ModConstants.MaxSoilHealth, true, true));
-                    _helper.ConsoleCommands.Add("lr_health_down_1", "Decrease soil health by 1 on current tile.", ModifySoilHealthDown1);
-                    _helper.ConsoleCommands.Add("lr_health_down_10", "Decrease soil health by 10 on current tile.", ModifySoilHealthDown10);
-                    _helper.ConsoleCommands.Add("lr_health_down_min", "Set soil health to minimum (0) on current tile.", (cmd, args) => ModifySoilHealth(cmd, args, ModConstants.MinSoilHealth, false, true));
-                    _helper.ConsoleCommands.Add("lr_sethealth", "Set soil health to a specific value (0-100) on current tile.", SetSoilHealth);
-                    _monitor.Log("Soil health modification commands registered successfully.", LogLevel.Trace);
+                    _helper.ConsoleCommands.Add(
+                        "lr_health_up_1",
+                        "Increase soil health by 1 on current tile.",
+                        ModifySoilHealthUp1
+                    );
+                    _helper.ConsoleCommands.Add(
+                        "lr_health_up_10",
+                        "Increase soil health by 10 on current tile.",
+                        ModifySoilHealthUp10
+                    );
+                    _helper.ConsoleCommands.Add(
+                        "lr_health_up_max",
+                        "Set soil health to maximum (100) on current tile.",
+                        (cmd, args) =>
+                            ModifySoilHealth(cmd, args, ModConstants.MaxSoilHealth, true, true)
+                    );
+                    _helper.ConsoleCommands.Add(
+                        "lr_health_down_1",
+                        "Decrease soil health by 1 on current tile.",
+                        ModifySoilHealthDown1
+                    );
+                    _helper.ConsoleCommands.Add(
+                        "lr_health_down_10",
+                        "Decrease soil health by 10 on current tile.",
+                        ModifySoilHealthDown10
+                    );
+                    _helper.ConsoleCommands.Add(
+                        "lr_health_down_min",
+                        "Set soil health to minimum (0) on current tile.",
+                        (cmd, args) =>
+                            ModifySoilHealth(cmd, args, ModConstants.MinSoilHealth, false, true)
+                    );
+                    _helper.ConsoleCommands.Add(
+                        "lr_sethealth",
+                        "Set soil health to a specific value (0-100) on current tile.",
+                        SetSoilHealth
+                    );
+                    _monitor.Log(
+                        "Soil health modification commands registered successfully.",
+                        LogLevel.Trace
+                    );
 
                     // Set the command registered flag atomically only on successful registration
                     // This prevents repeated registration attempts and ensures the flag reflects actual registration state
@@ -779,14 +1091,23 @@ namespace LivingRoots.Controllers
                 catch (Exception ex)
                 {
                     // Log error but don't expose raw exception message for security
-                    _monitor.Log("Error occurred while registering console command 'lr_version'.", LogLevel.Error);
+                    _monitor.Log(
+                        "Error occurred while registering console command 'lr_version'.",
+                        LogLevel.Error
+                    );
 
                     // Add trace-level exception details for debugging
-                    _monitor.Log($"RegisterConsoleCommand exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    _monitor.Log(
+                        $"RegisterConsoleCommand exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                        LogLevel.Trace
+                    );
 
                     // Add stack trace logging for better diagnostics without exposing sensitive information
 #if DEBUG
-                    _monitor.Log(ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.", LogLevel.Trace);
+                    _monitor.Log(
+                        ex.StackTrace ?? "RegisterConsoleCommand stack trace unavailable.",
+                        LogLevel.Trace
+                    );
 #endif
                 }
             }
@@ -812,7 +1133,7 @@ namespace LivingRoots.Controllers
             ModifySoilHealth(command, args, 10f, false);
         }
 
-        private void SetSoilHealth(string command, string[] args)
+        private void SetSoilHealth(string arg1, string[] arg2)
         {
             if (IsDisposed())
                 return;
@@ -822,29 +1143,38 @@ namespace LivingRoots.Controllers
 
             try
             {
-                args = args ?? Array.Empty<string>();
+                arg2 ??= [];
 
                 // Check for help flag
-                if (IsHelpRequested(args))
+                if (IsHelpRequested(arg2))
                 {
                     monitorSnapshot?.Log("Usage: lr_sethealth <value>", LogLevel.Info);
-                    monitorSnapshot?.Log("Sets soil health to the specified value (0-100) on the tile you're standing on.", LogLevel.Info);
+                    monitorSnapshot?.Log(
+                        "Sets soil health to the specified value (0-100) on the tile you're standing on.",
+                        LogLevel.Info
+                    );
                     monitorSnapshot?.Log("Example: lr_sethealth 50", LogLevel.Info);
                     return;
                 }
 
                 // Validate that we have exactly one argument
-                if (args.Length != 1 || string.IsNullOrWhiteSpace(args[0]))
+                if (arg2.Length != 1 || string.IsNullOrWhiteSpace(arg2[0]))
                 {
-                    monitorSnapshot?.Log("Error: Please provide a value between 0 and 100.", LogLevel.Error);
+                    monitorSnapshot?.Log(
+                        "Error: Please provide a value between 0 and 100.",
+                        LogLevel.Error
+                    );
                     monitorSnapshot?.Log("Usage: lr_sethealth <value>", LogLevel.Info);
                     return;
                 }
 
                 // Parse the value
-                if (!float.TryParse(args[0], out var value))
+                if (!float.TryParse(arg2[0], out var value))
                 {
-                    monitorSnapshot?.Log($"Error: '{args[0]}' is not a valid number.", LogLevel.Error);
+                    monitorSnapshot?.Log(
+                        $"Error: '{arg2[0]}' is not a valid number.",
+                        LogLevel.Error
+                    );
                     monitorSnapshot?.Log("Usage: lr_sethealth <value>", LogLevel.Info);
                     return;
                 }
@@ -852,7 +1182,10 @@ namespace LivingRoots.Controllers
                 // Validate the value is within bounds
                 if (value < ModConstants.MinSoilHealth || value > ModConstants.MaxSoilHealth)
                 {
-                    monitorSnapshot?.Log($"Error: Value must be between {ModConstants.MinSoilHealth} and {ModConstants.MaxSoilHealth}.", LogLevel.Error);
+                    monitorSnapshot?.Log(
+                        $"Error: Value must be between {ModConstants.MinSoilHealth} and {ModConstants.MaxSoilHealth}.",
+                        LogLevel.Error
+                    );
                     monitorSnapshot?.Log($"You provided: {value}", LogLevel.Info);
                     return;
                 }
@@ -863,24 +1196,39 @@ namespace LivingRoots.Controllers
                     return;
 
                 var ctx = context.Value;
-                var currentHealth = soilHealthServiceSnapshot.GetSoilHealth(ctx.Location.Name, ctx.Tile);
+                var currentHealth = soilHealthServiceSnapshot.GetSoilHealth(
+                    ctx.Location.Name,
+                    ctx.Tile
+                );
                 var newHealth = value;
 
                 if (IsHealthUnchanged(currentHealth, newHealth))
                 {
-                    monitorSnapshot?.Log($"Soil health is already at the requested value ({newHealth:F1}).", LogLevel.Info);
+                    monitorSnapshot?.Log(
+                        $"Soil health is already at the requested value ({newHealth:F1}).",
+                        LogLevel.Info
+                    );
                     return;
                 }
 
                 soilHealthServiceSnapshot.SetSoilHealth(ctx.Location.Name, ctx.Tile, newHealth);
-                monitorSnapshot?.Log($"Soil health changed from {currentHealth:F1} to {newHealth:F1} on tile ({ctx.Tile.X}, {ctx.Tile.Y}) in {ctx.Location.Name}.", LogLevel.Info);
+                monitorSnapshot?.Log(
+                    $"Soil health changed from {currentHealth:F1} to {newHealth:F1} on tile ({ctx.Tile.X}, {ctx.Tile.Y}) in {ctx.Location.Name}.",
+                    LogLevel.Info
+                );
             }
             catch (Exception ex)
             {
                 monitorSnapshot?.Log("Error occurred while setting soil health.", LogLevel.Error);
-                monitorSnapshot?.Log($"SetSoilHealth exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                monitorSnapshot?.Log(
+                    $"SetSoilHealth exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
 #if DEBUG
-                monitorSnapshot?.Log(ex.StackTrace ?? "SetSoilHealth stack trace unavailable.", LogLevel.Trace);
+                monitorSnapshot?.Log(
+                    ex.StackTrace ?? "SetSoilHealth stack trace unavailable.",
+                    LogLevel.Trace
+                );
 #endif
             }
         }
@@ -898,14 +1246,21 @@ namespace LivingRoots.Controllers
             try
             {
                 // Add null check for args parameter and use case-insensitive comparison
-                args = args ?? Array.Empty<string>();
+                args ??= [];
 
                 // Check if any non-whitespace argument matches a help flag using LINQ Any()
                 // Trim arguments before matching to handle cases like " /help " or "-help "
-                if (args.Any(arg => !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg.Trim())))
+                if (
+                    args.Any(arg =>
+                        !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg.Trim())
+                    )
+                )
                 {
                     monitorSnapshot?.Log("Usage: lr_version", LogLevel.Info);
-                    monitorSnapshot?.Log("Shows the Living Roots version and UniqueID.", LogLevel.Info);
+                    monitorSnapshot?.Log(
+                        "Shows the Living Roots version and UniqueID.",
+                        LogLevel.Info
+                    );
                     return;
                 }
 
@@ -913,24 +1268,42 @@ namespace LivingRoots.Controllers
                 var version = manifestSnapshot?.Version;
                 var versionString = version?.ToString() ?? "unknown";
 
-                monitorSnapshot?.Log($"Living Roots Mod Version: {versionString} (UniqueID: {manifestSnapshot?.UniqueID ?? "unknown"})", LogLevel.Info);
+                monitorSnapshot?.Log(
+                    $"Living Roots Mod Version: {versionString} (UniqueID: {manifestSnapshot?.UniqueID ?? "unknown"})",
+                    LogLevel.Info
+                );
             }
             catch (Exception ex)
             {
                 // Log error but don't expose raw exception message for security
-                monitorSnapshot?.Log("Error occurred while executing version command.", LogLevel.Error);
+                monitorSnapshot?.Log(
+                    "Error occurred while executing version command.",
+                    LogLevel.Error
+                );
 
                 // Add trace level exception details for debugging
-                monitorSnapshot?.Log($"PrintVersion exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                monitorSnapshot?.Log(
+                    $"PrintVersion exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
 #if DEBUG
-                monitorSnapshot?.Log(ex.StackTrace ?? "PrintVersion stack trace unavailable.", LogLevel.Trace);
+                monitorSnapshot?.Log(
+                    ex.StackTrace ?? "PrintVersion stack trace unavailable.",
+                    LogLevel.Trace
+                );
 #endif
             }
         }
 
-        private void ModifySoilHealth(string command, string[] args, float amount, bool isIncrease, bool setToValue = false)
+        private void ModifySoilHealth(
+            string command,
+            string[] args,
+            float amount,
+            bool isIncrease,
+            bool setToValue = false
+        )
         {
             if (IsDisposed())
                 return;
@@ -940,7 +1313,7 @@ namespace LivingRoots.Controllers
 
             try
             {
-                args = args ?? Array.Empty<string>();
+                args ??= [];
 
                 if (IsHelpRequested(args))
                 {
@@ -953,7 +1326,10 @@ namespace LivingRoots.Controllers
                     return;
 
                 var ctx = context.Value;
-                var currentHealth = soilHealthServiceSnapshot.GetSoilHealth(ctx.Location.Name, ctx.Tile);
+                var currentHealth = soilHealthServiceSnapshot.GetSoilHealth(
+                    ctx.Location.Name,
+                    ctx.Tile
+                );
                 var newHealth = CalculateNewHealth(currentHealth, amount, isIncrease, setToValue);
                 newHealth = ValidateHealthBounds(newHealth, monitorSnapshot);
 
@@ -964,24 +1340,41 @@ namespace LivingRoots.Controllers
                 }
 
                 soilHealthServiceSnapshot.SetSoilHealth(ctx.Location.Name, ctx.Tile, newHealth);
-                monitorSnapshot?.Log($"Soil health changed from {currentHealth:F1} to {newHealth:F1} on tile ({ctx.Tile.X}, {ctx.Tile.Y}) in {ctx.Location.Name}.", LogLevel.Info);
+                monitorSnapshot?.Log(
+                    $"Soil health changed from {currentHealth:F1} to {newHealth:F1} on tile ({ctx.Tile.X}, {ctx.Tile.Y}) in {ctx.Location.Name}.",
+                    LogLevel.Info
+                );
             }
             catch (Exception ex)
             {
                 monitorSnapshot?.Log("Error occurred while modifying soil health.", LogLevel.Error);
-                monitorSnapshot?.Log($"ModifySoilHealth exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                monitorSnapshot?.Log(
+                    $"ModifySoilHealth exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
 #if DEBUG
-                monitorSnapshot?.Log(ex.StackTrace ?? "ModifySoilHealth stack trace unavailable.", LogLevel.Trace);
+                monitorSnapshot?.Log(
+                    ex.StackTrace ?? "ModifySoilHealth stack trace unavailable.",
+                    LogLevel.Trace
+                );
 #endif
             }
         }
 
         private static bool IsHelpRequested(string[] args)
         {
-            return args.Any(arg => !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg.Trim()));
+            return args.Any(arg =>
+                !string.IsNullOrWhiteSpace(arg) && HelpFlags.Contains(arg.Trim())
+            );
         }
 
-        private static void DisplayHelpMessage(string command, float amount, bool isIncrease, bool setToValue, IMonitor monitor)
+        private static void DisplayHelpMessage(
+            string command,
+            float amount,
+            bool isIncrease,
+            bool setToValue,
+            IMonitor monitor
+        )
         {
             monitor?.Log($"Usage: {command}", LogLevel.Info);
 
@@ -1018,30 +1411,41 @@ namespace LivingRoots.Controllers
             }
 
             var playerTile = player.Tile;
-            var terrainFeature = currentLocation.terrainFeatures.Pairs
-                .FirstOrDefault(tf => tf.Key == playerTile)
+            var terrainFeature = currentLocation
+                .terrainFeatures.Pairs.FirstOrDefault(tf => tf.Key == playerTile)
                 .Value;
 
             if (terrainFeature == null)
             {
-                monitor?.Log("No terrain feature found on this tile. Stand on tilled soil to use this command.", LogLevel.Warn);
+                monitor?.Log(
+                    "No terrain feature found on this tile. Stand on tilled soil to use this command.",
+                    LogLevel.Warn
+                );
                 return null;
             }
 
             if (terrainFeature is not HoeDirt)
             {
-                monitor?.Log("This tile is not tilled soil. Stand on tilled soil (tilled with a hoe) to use this command.", LogLevel.Warn);
+                monitor?.Log(
+                    "This tile is not tilled soil. Stand on tilled soil (tilled with a hoe) to use this command.",
+                    LogLevel.Warn
+                );
                 return null;
             }
 
             return new SoilHealthModificationContext
             {
                 Location = currentLocation,
-                Tile = playerTile
+                Tile = playerTile,
             };
         }
 
-        private static float CalculateNewHealth(float currentHealth, float amount, bool isIncrease, bool setToValue)
+        private static float CalculateNewHealth(
+            float currentHealth,
+            float amount,
+            bool isIncrease,
+            bool setToValue
+        )
         {
             if (setToValue)
             {
@@ -1055,13 +1459,19 @@ namespace LivingRoots.Controllers
         {
             if (health > ModConstants.MaxSoilHealth)
             {
-                monitor?.Log($"Soil health capped at maximum ({ModConstants.MaxSoilHealth}).", LogLevel.Info);
+                monitor?.Log(
+                    $"Soil health capped at maximum ({ModConstants.MaxSoilHealth}).",
+                    LogLevel.Info
+                );
                 return ModConstants.MaxSoilHealth;
             }
 
             if (health < ModConstants.MinSoilHealth)
             {
-                monitor?.Log($"Soil health capped at minimum ({ModConstants.MinSoilHealth}).", LogLevel.Info);
+                monitor?.Log(
+                    $"Soil health capped at minimum ({ModConstants.MinSoilHealth}).",
+                    LogLevel.Info
+                );
                 return ModConstants.MinSoilHealth;
             }
 
@@ -1073,7 +1483,12 @@ namespace LivingRoots.Controllers
             return Math.Abs(newHealth - currentHealth) < 0.0001f;
         }
 
-        private static void LogNoChangeMessage(bool setToValue, float newHealth, float currentHealth, IMonitor monitor)
+        private static void LogNoChangeMessage(
+            bool setToValue,
+            float newHealth,
+            float currentHealth,
+            IMonitor monitor
+        )
         {
             var message = setToValue
                 ? $"Soil health is already at the requested value ({newHealth:F1})."
@@ -1131,8 +1546,10 @@ namespace LivingRoots.Controllers
 
                 // Calculate new state with the flag set
                 newState = currentState | flag;
-
-            } while (System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState) != currentState);
+            } while (
+                System.Threading.Interlocked.CompareExchange(ref _state, newState, currentState)
+                != currentState
+            );
 
             return true; // Successfully set the flag
         }
