@@ -711,20 +711,6 @@ namespace LivingRoots.Services
                         LogLevel.Debug
                     );
                 }
-
-                // Set hoe action feedback for all tilled tiles
-                if (tilesWithHealth.Count > 0)
-                {
-                    // Use the first tilled tile for feedback (or could show feedback for all)
-                    _hoeActionTile = tilesWithHealth[0].tile;
-                    _hoeActionHealth = tilesWithHealth[0].health;
-                    _hoeActionStartTime = DateTime.UtcNow;
-
-                    _monitor.Log(
-                        $"Hoe used on tile {_hoeActionTile} with soil health: {_hoeActionHealth}%",
-                        LogLevel.Debug
-                    );
-                }
             }
             catch (Exception ex)
             {
