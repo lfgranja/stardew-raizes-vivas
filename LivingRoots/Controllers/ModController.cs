@@ -1091,6 +1091,11 @@ namespace LivingRoots.Controllers
                         "Set soil health to a specific value (0-100) on current tile.",
                         SetSoilHealth
                     );
+                    _helper.ConsoleCommands.Add(
+                        "lr_toggle_overlay",
+                        "Toggle soil health overlay visualization on/off.",
+                        ToggleOverlay
+                    );
                     _monitor.Log(
                         "Soil health modification commands registered successfully.",
                         LogLevel.Trace
@@ -1527,6 +1532,54 @@ namespace LivingRoots.Controllers
                 ? $"Soil health is already at the requested value ({newHealth:F1})."
                 : $"Soil health would not change from current value ({currentHealth:F1}).";
             monitor?.Log(message, LogLevel.Info);
+        }
+
+        private void ToggleOverlay(string command, string[] args)
+        {
+            if (IsDisposed())
+                return;
+
+            var monitorSnapshot = _monitor;
+            var configSnapshot = _soilHealthVisualizationService?.Config;
+
+            try
+            {
+                args ??= [];
+
+                // Check for help flag
+                if (IsHelpRequested(args))
+                {
+                    monitorSnapshot?.Log("Usage: lr_toggle_overlay", LogLevel.Info);
+                    monitorSnapshot?.Log(
+                        "Toggle soil health overlay visualization on/off.",
+                        LogLevel.Info
+                    );
+                    return;
+                }
+
+                if (configSnapshot == null)
+                {
+                    monitorSnapshot?.Log("Visualization config is not available.", LogLevel.Error);
+                    return;
+                }
+
+                // Toggle the overlay
+                var currentState = configSnapshot.ShowOverlay;
+                configSnapshot.ShowOverlay = !currentState;
+
+                monitorSnapshot?.Log(
+                    $"Soil health overlay {(configSnapshot.ShowOverlay ? "enabled" : "disabled")}.",
+                    LogLevel.Info
+                );
+            }
+            catch (Exception ex)
+            {
+                monitorSnapshot?.Log("Error occurred while toggling overlay.", LogLevel.Error);
+                monitorSnapshot?.Log(
+                    $"ToggleOverlay exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
+            }
         }
 
         public void Dispose()

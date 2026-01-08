@@ -37,7 +37,7 @@ namespace LivingRoots.Services
         // Event handler fields for proper unsubscription
         private EventHandler<CursorMovedEventArgs>? _onCursorMovedHandler;
         private EventHandler<ButtonPressedEventArgs>? _onButtonPressedHandler;
-        private EventHandler<RenderedWorldEventArgs>? _onRenderedWorldLayerHandler;
+        private EventHandler<RenderingWorldEventArgs>? _onRenderingWorldLayerHandler;
         private EventHandler<RenderedEventArgs>? _onRenderedHandler;
         private EventHandler<UpdateTickedEventArgs>? _onUpdateTickedHandler;
 
@@ -89,6 +89,9 @@ namespace LivingRoots.Services
 
         /// <inheritdoc/>
         public bool IsEnabled => _isEnabled;
+
+        /// <inheritdoc/>
+        public IVisualizationConfig Config => _config;
 
         /// <inheritdoc/>
         public void Enable()
@@ -178,7 +181,7 @@ namespace LivingRoots.Services
         {
             _onCursorMovedHandler ??= OnCursorMoved;
             _onButtonPressedHandler ??= OnButtonPressed;
-            _onRenderedWorldLayerHandler ??= OnRenderedWorld;
+            _onRenderingWorldLayerHandler ??= OnRenderingWorld;
             _onRenderedHandler ??= OnRendered;
             _onUpdateTickedHandler ??= OnUpdateTicked;
         }
@@ -195,8 +198,8 @@ namespace LivingRoots.Services
             _helper.Events.Input.CursorMoved += _onCursorMovedHandler;
             result.CursorMovedAdded = true;
 
-            _helper.Events.Display.RenderedWorld += _onRenderedWorldLayerHandler;
-            result.RenderedWorldAdded = true;
+            _helper.Events.Display.RenderingWorld += _onRenderingWorldLayerHandler;
+            result.RenderingWorldAdded = true;
 
             _helper.Events.Display.Rendered += _onRenderedHandler;
             result.RenderedAdded = true;
@@ -235,8 +238,8 @@ namespace LivingRoots.Services
             if (result.CursorMovedAdded && _onCursorMovedHandler != null)
                 _helper.Events.Input.CursorMoved -= _onCursorMovedHandler;
 
-            if (result.RenderedWorldAdded && _onRenderedWorldLayerHandler != null)
-                _helper.Events.Display.RenderedWorld -= _onRenderedWorldLayerHandler;
+            if (result.RenderingWorldAdded && _onRenderingWorldLayerHandler != null)
+                _helper.Events.Display.RenderingWorld -= _onRenderingWorldLayerHandler;
 
             if (result.RenderedAdded && _onRenderedHandler != null)
                 _helper.Events.Display.Rendered -= _onRenderedHandler;
@@ -252,7 +255,7 @@ namespace LivingRoots.Services
         {
             public bool ButtonPressedAdded { get; set; }
             public bool CursorMovedAdded { get; set; }
-            public bool RenderedWorldAdded { get; set; }
+            public bool RenderingWorldAdded { get; set; }
             public bool RenderedAdded { get; set; }
             public bool UpdateTickedAdded { get; set; }
         }
@@ -282,9 +285,9 @@ namespace LivingRoots.Services
                     {
                         _helper.Events.Input.CursorMoved -= _onCursorMovedHandler;
                     }
-                    if (_onRenderedWorldLayerHandler != null)
+                    if (_onRenderingWorldLayerHandler != null)
                     {
-                        _helper.Events.Display.RenderedWorld -= _onRenderedWorldLayerHandler;
+                        _helper.Events.Display.RenderingWorld -= _onRenderingWorldLayerHandler;
                     }
                     if (_onRenderedHandler != null)
                     {
@@ -301,7 +304,7 @@ namespace LivingRoots.Services
                     // Clear handler references
                     _onButtonPressedHandler = null;
                     _onCursorMovedHandler = null;
-                    _onRenderedWorldLayerHandler = null;
+                    _onRenderingWorldLayerHandler = null;
                     _onRenderedHandler = null;
                     _onUpdateTickedHandler = null;
                 }
@@ -723,18 +726,18 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
-        /// Handles rendered world events to render tile overlays and hoe feedback.
+        /// Handles rendering world events to render tile overlays and hoe feedback.
         /// </summary>
         /// <param name="sender">The event sender</param>
-        /// <param name="e">Rendered world event arguments</param>
-        private void OnRenderedWorld(object? sender, RenderedWorldEventArgs e)
+        /// <param name="e">Rendering world event arguments</param>
+        private void OnRenderingWorld(object? sender, RenderingWorldEventArgs e)
         {
             try
             {
                 if (!_isEnabled || !_config.ShowTileOverlays)
                 {
                     _monitor.Log(
-                        "[RENDER] OnRenderedWorld - Early exit due to disabled state",
+                        "[RENDER] OnRenderingWorld - Early exit due to disabled state",
                         LogLevel.Trace
                     );
                     return;
@@ -744,7 +747,7 @@ namespace LivingRoots.Services
                 if (location == null)
                 {
                     _monitor.Log(
-                        "[RENDER] OnRenderedWorld - Current location is null",
+                        "[RENDER] OnRenderingWorld - Current location is null",
                         LogLevel.Trace
                     );
                     return;
@@ -753,12 +756,14 @@ namespace LivingRoots.Services
                 var player = Game1.player;
                 if (player == null)
                 {
-                    _monitor.Log("[RENDER] OnRenderedWorld - Player is null", LogLevel.Trace);
+                    _monitor.Log("[RENDER] OnRenderingWorld - Player is null", LogLevel.Trace);
                     return;
                 }
 
                 try
                 {
+                    // Render overlays with proper layer depth to appear under characters
+                    // Use a depth value that places the overlay above ground but below characters
                     _tileOverlayRenderer.RenderAllVisibleOverlays(e.SpriteBatch, location);
                 }
                 catch (Exception ex)
@@ -797,7 +802,7 @@ namespace LivingRoots.Services
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Error in OnRenderedWorld: {ex.Message}", LogLevel.Error);
+                _monitor.Log($"Error in OnRenderingWorld: {ex.Message}", LogLevel.Error);
                 _monitor.Log(
                     $"Exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
                     LogLevel.Trace

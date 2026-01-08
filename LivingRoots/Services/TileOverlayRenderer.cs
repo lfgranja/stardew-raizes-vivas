@@ -192,6 +192,8 @@ namespace LivingRoots.Services
                             worldPosition.Y - Game1.viewport.Y
                         );
 
+                        // Draw overlay without layerDepth parameter to use XNA default depth
+                        // This matches DataLayers mod approach which renders overlays correctly between ground and characters
                         spriteBatch.Draw(
                             texture,
                             new Rectangle(
@@ -200,7 +202,7 @@ namespace LivingRoots.Services
                                 TileSize,
                                 TileSize
                             ),
-                            c
+                            c // color
                         );
                     }
 
@@ -210,10 +212,10 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
-        /// Gets the border color for a health category.
+        /// Gets border color for a health category.
         /// </summary>
         /// <param name="category">The health category</param>
-        /// <returns>The border color for the category</returns>
+        /// <returns>The border color for category</returns>
         private static Color GetCategoryBorderColor(SoilHealthCategory category)
         {
             return category switch
@@ -550,7 +552,7 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
-        /// Gets the tile range for the current viewport.
+        /// Gets tile range for current viewport.
         /// </summary>
         private static (int startX, int startY, int endX, int endY)? GetViewportTileRange()
         {
@@ -601,10 +603,12 @@ namespace LivingRoots.Services
                     position.Y - Game1.viewport.Y
                 );
 
+                // Draw overlay without layerDepth parameter to use XNA default depth
+                // This matches DataLayers mod approach which renders overlays correctly between ground and characters
                 spriteBatch.Draw(
                     texture,
                     new Rectangle((int)screenPosition.X, (int)screenPosition.Y, TileSize, TileSize),
-                    color
+                    color // color
                 );
             }
             else
@@ -617,7 +621,7 @@ namespace LivingRoots.Services
         /// Gets cached health value for a tile, or retrieves and caches it if not present.
         /// Uses LRU cache to prevent sudden cache flushes.
         /// </summary>
-        /// <param name="locationName">The name of the game location</param>
+        /// <param name="locationName">The name of game location</param>
         /// <param name="tile">The tile coordinates</param>
         /// <param name="getHealth">Function to retrieve health value if not cached</param>
         /// <returns>The cached or retrieved health value</returns>
@@ -644,7 +648,7 @@ namespace LivingRoots.Services
                 // Retrieve health value
                 var health = getHealth(tile);
 
-                // Cache the health value (thread-safe)
+                // Cache health value (thread-safe)
                 lock (_cacheLock)
                 {
                     _healthCache.Put(cacheKey, health);

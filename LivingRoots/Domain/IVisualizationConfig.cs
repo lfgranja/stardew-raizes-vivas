@@ -9,52 +9,57 @@ namespace LivingRoots.Domain
     public interface IVisualizationConfig
     {
         /// <summary>
-        /// Gets whether tile color overlays are enabled.
+        /// Gets or sets whether tile color overlays are enabled.
         /// </summary>
-        bool ShowTileOverlays { get; }
+        bool ShowTileOverlays { get; set; }
 
         /// <summary>
-        /// Gets whether hover tooltips are enabled.
+        /// Gets or sets whether hover tooltips are enabled.
         /// </summary>
-        bool ShowHoverTooltips { get; }
+        bool ShowHoverTooltips { get; set; }
 
         /// <summary>
-        /// Gets whether hoe action feedback is enabled.
+        /// Gets or sets whether hoe action feedback is enabled.
         /// </summary>
-        bool ShowHoeFeedback { get; }
+        bool ShowHoeFeedback { get; set; }
 
         /// <summary>
-        /// Gets the opacity of tile overlays (0.0 to 1.0).
+        /// Gets or sets opacity of tile overlays (0.0 to 1.0).
         /// </summary>
-        float OverlayOpacity { get; }
+        float OverlayOpacity { get; set; }
 
         /// <summary>
-        /// Gets whether to use custom colors.
+        /// Gets or sets whether to use custom colors.
         /// </summary>
-        bool UseCustomColors { get; }
+        bool UseCustomColors { get; set; }
 
         /// <summary>
-        /// Gets the color for poor soil health (0-33).
+        /// Gets or sets whether soil health overlay is enabled.
         /// </summary>
-        Color PoorHealthColor { get; }
+        bool ShowOverlay { get; set; }
 
         /// <summary>
-        /// Gets the color for moderate soil health (34-66).
+        /// Gets or sets color for poor soil health (0-33).
         /// </summary>
-        Color ModerateHealthColor { get; }
+        Color PoorHealthColor { get; set; }
 
         /// <summary>
-        /// Gets the color for healthy soil health (67-100).
+        /// Gets or sets color for moderate soil health (34-66).
         /// </summary>
-        Color HealthyHealthColor { get; }
+        Color ModerateHealthColor { get; set; }
 
         /// <summary>
-        /// Loads configuration from the config file.
+        /// Gets or sets color for healthy soil health (67-100).
+        /// </summary>
+        Color HealthyHealthColor { get; set; }
+
+        /// <summary>
+        /// Loads configuration from config file.
         /// </summary>
         void Load();
 
         /// <summary>
-        /// Saves configuration to the config file.
+        /// Saves configuration to config file.
         /// </summary>
         void Save();
 
@@ -64,7 +69,7 @@ namespace LivingRoots.Domain
         void ResetToDefaults();
 
         /// <summary>
-        /// Gets the duration for hoe action feedback display.
+        /// Gets duration for hoe action feedback display.
         /// </summary>
         /// <returns>Feedback duration in milliseconds</returns>
         long GetHoeFeedbackDuration();

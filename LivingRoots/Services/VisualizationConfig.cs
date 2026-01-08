@@ -18,14 +18,10 @@ namespace LivingRoots.Services
         private readonly IModDataService _modDataService;
 
         // Configuration values with defaults
-        private bool _showTileOverlays = true;
-        private bool _showHoverTooltips = true;
-        private bool _showHoeFeedback = true;
         private float _overlayOpacity = 0.3f;
-        private bool _useCustomColors = false;
-        private Color _poorHealthColor = new(139, 69, 19);  // SaddleBrown
-        private Color _moderateHealthColor = new(218, 165, 32);  // GoldenRod
-        private Color _healthyHealthColor = new(85, 107, 47);  // DarkOliveGreen
+        private Color _poorHealthColor = new(139, 69, 19); // SaddleBrown
+        private Color _moderateHealthColor = new(218, 165, 32); // GoldenRod
+        private Color _healthyHealthColor = new(85, 107, 47); // DarkOliveGreen
 
         /// <summary>
         /// Initializes a new instance of VisualizationConfig.
@@ -35,34 +31,54 @@ namespace LivingRoots.Services
         public VisualizationConfig(IMonitor monitor, IModDataService modDataService)
         {
             _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-            _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
+            _modDataService =
+                modDataService ?? throw new ArgumentNullException(nameof(modDataService));
 
             Load();
         }
 
         /// <inheritdoc/>
-        public bool ShowTileOverlays => _showTileOverlays;
+        public bool ShowTileOverlays { get; set; } = true;
 
         /// <inheritdoc/>
-        public bool ShowHoverTooltips => _showHoverTooltips;
+        public bool ShowOverlay { get; set; } = true;
 
         /// <inheritdoc/>
-        public bool ShowHoeFeedback => _showHoeFeedback;
+        public bool ShowHoverTooltips { get; set; } = true;
 
         /// <inheritdoc/>
-        public float OverlayOpacity => _overlayOpacity;
+        public bool ShowHoeFeedback { get; set; } = true;
 
         /// <inheritdoc/>
-        public bool UseCustomColors => _useCustomColors;
+        public float OverlayOpacity
+        {
+            get => _overlayOpacity;
+            set => _overlayOpacity = Math.Clamp(value, 0.0f, 1.0f);
+        }
 
         /// <inheritdoc/>
-        public Color PoorHealthColor => _poorHealthColor;
+        public bool UseCustomColors { get; set; } = false;
 
         /// <inheritdoc/>
-        public Color ModerateHealthColor => _moderateHealthColor;
+        public Color PoorHealthColor
+        {
+            get => _poorHealthColor;
+            set => _poorHealthColor = value;
+        }
 
         /// <inheritdoc/>
-        public Color HealthyHealthColor => _healthyHealthColor;
+        public Color ModerateHealthColor
+        {
+            get => _moderateHealthColor;
+            set => _moderateHealthColor = value;
+        }
+
+        /// <inheritdoc/>
+        public Color HealthyHealthColor
+        {
+            get => _healthyHealthColor;
+            set => _healthyHealthColor = value;
+        }
 
         /// <inheritdoc/>
         public void Load()
@@ -74,30 +90,52 @@ namespace LivingRoots.Services
                 if (configData == null)
                 {
                     _monitor.Log("No visualization config found, using defaults.", LogLevel.Trace);
-                    _monitor.Log($"[CONFIG] ShowTileOverlays: {_showTileOverlays}, ShowHoverTooltips: {_showHoverTooltips}, ShowHoeFeedback: {_showHoeFeedback}, OverlayOpacity: {_overlayOpacity}", LogLevel.Info);
+                    _monitor.Log(
+                        $"[CONFIG] ShowTileOverlays: {ShowTileOverlays}, ShowHoverTooltips: {ShowHoverTooltips}, ShowHoeFeedback: {ShowHoeFeedback}, OverlayOpacity: {_overlayOpacity}, ShowOverlay: {ShowOverlay}",
+                        LogLevel.Info
+                    );
                     return;
                 }
 
                 // Load and validate configuration values
-                _showTileOverlays = configData.ShowTileOverlays;
-                _showHoverTooltips = configData.ShowHoverTooltips;
-                _showHoeFeedback = configData.ShowHoeFeedback;
+                ShowTileOverlays = configData.ShowTileOverlays;
+                ShowHoverTooltips = configData.ShowHoverTooltips;
+                ShowHoeFeedback = configData.ShowHoeFeedback;
+                ShowOverlay = configData.ShowOverlay;
 
                 _overlayOpacity = ClampOpacity(configData.OverlayOpacity);
-                _useCustomColors = configData.UseCustomColors;
+                UseCustomColors = configData.UseCustomColors;
 
                 _poorHealthColor = ValidateColor(configData.PoorHealthColor, _poorHealthColor);
-                _moderateHealthColor = ValidateColor(configData.ModerateHealthColor, _moderateHealthColor);
-                _healthyHealthColor = ValidateColor(configData.HealthyHealthColor, _healthyHealthColor);
+                _moderateHealthColor = ValidateColor(
+                    configData.ModerateHealthColor,
+                    _moderateHealthColor
+                );
+                _healthyHealthColor = ValidateColor(
+                    configData.HealthyHealthColor,
+                    _healthyHealthColor
+                );
 
                 _monitor.Log("Visualization configuration loaded successfully.", LogLevel.Trace);
-                _monitor.Log($"[CONFIG] ShowTileOverlays: {_showTileOverlays}, ShowHoverTooltips: {_showHoverTooltips}, ShowHoeFeedback: {_showHoeFeedback}, OverlayOpacity: {_overlayOpacity}", LogLevel.Info);
+                _monitor.Log(
+                    $"[CONFIG] ShowTileOverlays: {ShowTileOverlays}, ShowHoverTooltips: {ShowHoverTooltips}, ShowHoeFeedback: {ShowHoeFeedback}, OverlayOpacity: {_overlayOpacity}, ShowOverlay: {ShowOverlay}",
+                    LogLevel.Info
+                );
             }
             catch (Exception ex)
             {
-                _monitor.Log("Error loading visualization configuration, using defaults.", LogLevel.Error);
-                _monitor.Log($"Load exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                _monitor.Log($"[CONFIG] ShowTileOverlays: {_showTileOverlays}, ShowHoverTooltips: {_showHoverTooltips}, ShowHoeFeedback: {_showHoeFeedback}, OverlayOpacity: {_overlayOpacity}", LogLevel.Info);
+                _monitor.Log(
+                    "Error loading visualization configuration, using defaults.",
+                    LogLevel.Error
+                );
+                _monitor.Log(
+                    $"Load exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
+                _monitor.Log(
+                    $"[CONFIG] ShowTileOverlays: {ShowTileOverlays}, ShowHoverTooltips: {ShowHoverTooltips}, ShowHoeFeedback: {ShowHoeFeedback}, OverlayOpacity: {_overlayOpacity}, ShowOverlay: {ShowOverlay}",
+                    LogLevel.Info
+                );
             }
         }
 
@@ -108,14 +146,15 @@ namespace LivingRoots.Services
             {
                 var configData = new VisualizationConfigData
                 {
-                    ShowTileOverlays = _showTileOverlays,
-                    ShowHoverTooltips = _showHoverTooltips,
-                    ShowHoeFeedback = _showHoeFeedback,
+                    ShowTileOverlays = ShowTileOverlays,
+                    ShowHoverTooltips = ShowHoverTooltips,
+                    ShowHoeFeedback = ShowHoeFeedback,
                     OverlayOpacity = _overlayOpacity,
-                    UseCustomColors = _useCustomColors,
+                    UseCustomColors = UseCustomColors,
+                    ShowOverlay = ShowOverlay,
                     PoorHealthColor = new ColorData(_poorHealthColor),
                     ModerateHealthColor = new ColorData(_moderateHealthColor),
-                    HealthyHealthColor = new ColorData(_healthyHealthColor)
+                    HealthyHealthColor = new ColorData(_healthyHealthColor),
                 };
 
                 _modDataService.SaveData(configData, ConfigKey);
@@ -124,7 +163,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log("Error saving visualization configuration.", LogLevel.Error);
-                _monitor.Log($"Save exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Save exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -133,14 +175,15 @@ namespace LivingRoots.Services
         {
             try
             {
-                _showTileOverlays = true;
-                _showHoverTooltips = true;
-                _showHoeFeedback = true;
+                ShowTileOverlays = true;
+                ShowHoverTooltips = true;
+                ShowHoeFeedback = true;
+                ShowOverlay = true;
                 _overlayOpacity = 0.3f;
-                _useCustomColors = false;
-                _poorHealthColor = new Color(139, 69, 19);  // SaddleBrown
-                _moderateHealthColor = new Color(218, 165, 32);  // GoldenRod
-                _healthyHealthColor = new Color(85, 107, 47);  // DarkOliveGreen
+                UseCustomColors = false;
+                _poorHealthColor = new Color(139, 69, 19); // SaddleBrown
+                _moderateHealthColor = new Color(218, 165, 32); // GoldenRod
+                _healthyHealthColor = new Color(85, 107, 47); // DarkOliveGreen
 
                 Save();
                 _monitor.Log("Visualization configuration reset to defaults.", LogLevel.Info);
@@ -148,7 +191,10 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 _monitor.Log("Error resetting visualization configuration.", LogLevel.Error);
-                _monitor.Log($"Reset exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log(
+                    $"Reset exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace
+                );
             }
         }
 
@@ -202,6 +248,7 @@ namespace LivingRoots.Services
         public bool ShowHoeFeedback { get; set; } = true;
         public float OverlayOpacity { get; set; } = 0.3f;
         public bool UseCustomColors { get; set; } = false;
+        public bool ShowOverlay { get; set; } = true;
         public ColorData? PoorHealthColor { get; set; }
         public ColorData? ModerateHealthColor { get; set; }
         public ColorData? HealthyHealthColor { get; set; }
@@ -229,4 +276,3 @@ namespace LivingRoots.Services
         }
     }
 }
-

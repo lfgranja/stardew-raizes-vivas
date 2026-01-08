@@ -30,5 +30,10 @@ namespace LivingRoots.Domain
         /// Gets whether visualization is currently enabled.
         /// </summary>
         bool IsEnabled { get; }
+
+        /// <summary>
+        /// Gets the visualization configuration.
+        /// </summary>
+        IVisualizationConfig Config { get; }
     }
 }
