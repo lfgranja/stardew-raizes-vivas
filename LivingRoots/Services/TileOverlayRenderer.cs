@@ -312,7 +312,8 @@ namespace LivingRoots.Services
 
             // Check if tile has HoeDirt (tilled soil)
             if (
-                !location.terrainFeatures.TryGetValue(tile, out var feature)
+                location.terrainFeatures == null
+                || !location.terrainFeatures.TryGetValue(tile, out var feature)
                 || feature is not HoeDirt
             )
             {
