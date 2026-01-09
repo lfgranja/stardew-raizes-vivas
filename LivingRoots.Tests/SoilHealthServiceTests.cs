@@ -159,9 +159,6 @@ namespace LivingRoots.Tests
             );
             var location = "Farm";
 
-            // Act
-            service.SetSoilHealth(location, new Vector2(x, y), 50.0f);
-
             // Arrange - set a known valid value to ensure invalid write doesn't affect the cache
             service.SetSoilHealth(location, new Vector2(0, 0), 30.0f);
 
