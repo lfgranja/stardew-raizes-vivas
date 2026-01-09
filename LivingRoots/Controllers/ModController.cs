@@ -1170,7 +1170,7 @@ namespace LivingRoots.Controllers
 
             try
             {
-                args ??= [];
+                args ??= Array.Empty<string>();
 
                 // Check for help flag
                 if (IsHelpRequested(args))
