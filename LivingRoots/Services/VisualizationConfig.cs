@@ -19,9 +19,6 @@ namespace LivingRoots.Services
 
         // Configuration values with defaults
         private float _overlayOpacity = 0.3f;
-        private Color _poorHealthColor = new(139, 69, 19); // SaddleBrown
-        private Color _moderateHealthColor = new(218, 165, 32); // GoldenRod
-        private Color _healthyHealthColor = new(85, 107, 47); // DarkOliveGreen
 
         /// <summary>
         /// Initializes a new instance of VisualizationConfig.
@@ -60,25 +57,13 @@ namespace LivingRoots.Services
         public bool UseCustomColors { get; set; } = false;
 
         /// <inheritdoc/>
-        public Color PoorHealthColor
-        {
-            get => _poorHealthColor;
-            set => _poorHealthColor = value;
-        }
+        public Color PoorHealthColor { get; set; } = new Color(139, 69, 19); // SaddleBrown
 
         /// <inheritdoc/>
-        public Color ModerateHealthColor
-        {
-            get => _moderateHealthColor;
-            set => _moderateHealthColor = value;
-        }
+        public Color ModerateHealthColor { get; set; } = new Color(218, 165, 32); // GoldenRod
 
         /// <inheritdoc/>
-        public Color HealthyHealthColor
-        {
-            get => _healthyHealthColor;
-            set => _healthyHealthColor = value;
-        }
+        public Color HealthyHealthColor { get; set; } = new Color(85, 107, 47); // DarkOliveGreen
 
         /// <inheritdoc/>
         public void Load()
@@ -106,14 +91,14 @@ namespace LivingRoots.Services
                 _overlayOpacity = ClampOpacity(configData.OverlayOpacity);
                 UseCustomColors = configData.UseCustomColors;
 
-                _poorHealthColor = ValidateColor(configData.PoorHealthColor, _poorHealthColor);
-                _moderateHealthColor = ValidateColor(
+                PoorHealthColor = ValidateColor(configData.PoorHealthColor, PoorHealthColor);
+                ModerateHealthColor = ValidateColor(
                     configData.ModerateHealthColor,
-                    _moderateHealthColor
+                    ModerateHealthColor
                 );
-                _healthyHealthColor = ValidateColor(
+                HealthyHealthColor = ValidateColor(
                     configData.HealthyHealthColor,
-                    _healthyHealthColor
+                    HealthyHealthColor
                 );
 
                 _monitor.Log("Visualization configuration loaded successfully.", LogLevel.Trace);
@@ -152,9 +137,9 @@ namespace LivingRoots.Services
                     OverlayOpacity = _overlayOpacity,
                     UseCustomColors = UseCustomColors,
                     ShowOverlay = ShowOverlay,
-                    PoorHealthColor = new ColorData(_poorHealthColor),
-                    ModerateHealthColor = new ColorData(_moderateHealthColor),
-                    HealthyHealthColor = new ColorData(_healthyHealthColor),
+                    PoorHealthColor = new ColorData(PoorHealthColor),
+                    ModerateHealthColor = new ColorData(ModerateHealthColor),
+                    HealthyHealthColor = new ColorData(HealthyHealthColor),
                 };
 
                 _modDataService.SaveData(configData, ConfigKey);
@@ -181,9 +166,9 @@ namespace LivingRoots.Services
                 ShowOverlay = true;
                 _overlayOpacity = 0.3f;
                 UseCustomColors = false;
-                _poorHealthColor = new Color(139, 69, 19); // SaddleBrown
-                _moderateHealthColor = new Color(218, 165, 32); // GoldenRod
-                _healthyHealthColor = new Color(85, 107, 47); // DarkOliveGreen
+                PoorHealthColor = new Color(139, 69, 19); // SaddleBrown
+                ModerateHealthColor = new Color(218, 165, 32); // GoldenRod
+                HealthyHealthColor = new Color(85, 107, 47); // DarkOliveGreen
 
                 Save();
                 _monitor.Log("Visualization configuration reset to defaults.", LogLevel.Info);
