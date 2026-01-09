@@ -32,8 +32,14 @@ namespace LivingRoots.Services
         // This avoids overwriting valid on-disk data with an empty or incomplete in-memory state
         private volatile bool _loadAbortedForLimits;
 
-        private static readonly RandomNumberGenerator _randomGenerator =
-            RandomNumberGenerator.Create();
+        // Soil health generation constants for weighted random distribution
+        private const int BaselineHealthChance = 50;
+        private const int PoorHealthChance = 70; // 50 + 20
+        private const float BaselineHealthValue = 30f;
+        private const float PoorHealthMinValue = 20f;
+        private const float PoorHealthRange = 10f; // Range for poor health [20, 30]
+        private const float GoodHealthMinValue = 30f;
+        private const float GoodHealthRange = 70f; // Range for good health [30, 100]
 
         public void LoadData(string saveId)
         {
@@ -641,6 +647,10 @@ namespace LivingRoots.Services
                 // Invalid requests should not return randomized values.
                 return 0f;
             }
+
+            // Pre-generate outside lock to minimize time spent holding `_lock`.
+            var generatedInitial = GenerateInitialSoilHealth();
+
             lock (_lock)
             {
                 if (
@@ -650,9 +660,8 @@ namespace LivingRoots.Services
                 {
                     return health;
                 }
-                // Cache-miss on a valid tile: generate once and persist to keep results stable.
-                var initial = GenerateInitialSoilHealth();
 
+                // Cache-miss on a valid tile: persist to keep results stable.
                 if (!_runtimeCache.TryGetValue(locationName, out tiles))
                 {
                     if (_runtimeCache.Count >= ModConstants.MaxLocationsPerSave)
@@ -665,8 +674,8 @@ namespace LivingRoots.Services
                 if (tiles.Count >= ModConstants.MaxTilesPerLocation)
                     return GenerateDeterministicInitialSoilHealth(locationName, tilePoint);
 
-                tiles[tilePoint] = initial;
-                return initial;
+                tiles[tilePoint] = generatedInitial;
+                return generatedInitial;
             }
         }
 
@@ -712,22 +721,22 @@ namespace LivingRoots.Services
             // Generate a random number between 0 and 99 to determine which distribution bucket to use
             var roll = RandomNumberGenerator.GetInt32(0, 100);
 
-            // 50% chance (0-49): Return exactly 30 (baseline health)
-            if (roll < 50)
+            // BaselineHealthChance% chance (0-49): Return exactly BaselineHealthValue (baseline health)
+            if (roll < BaselineHealthChance)
             {
-                return 30f;
+                return BaselineHealthValue;
             }
-            // 20% chance (50-69): Return a random value in the gradient range [20, 30]
-            else if (roll < 70)
+            // PoorHealthChance% chance (50-69): Return a random value in the gradient range [PoorHealthMinValue, BaselineHealthValue]
+            else if (roll < PoorHealthChance)
             {
-                // Generate a random float between 20 and 30
-                return 20f + GetRandomFloat() * 10f;
+                // Generate a random float between PoorHealthMinValue and BaselineHealthValue
+                return PoorHealthMinValue + GetRandomFloat() * PoorHealthRange;
             }
-            // 30% chance (70-99): Return a random value in the gradient range [30, 100]
+            // Remaining chance (70-99): Return a random value in the gradient range [GoodHealthMinValue, 100]
             else
             {
-                // Generate a random float between 30 and 100
-                return 30f + GetRandomFloat() * 70f;
+                // Generate a random float between GoodHealthMinValue and 100
+                return GoodHealthMinValue + GetRandomFloat() * GoodHealthRange;
             }
         }
 
@@ -737,9 +746,9 @@ namespace LivingRoots.Services
         /// <returns>A random float between 0.0 and 1.0</returns>
         private static float GetRandomFloat()
         {
-            var bytes = new byte[4];
-            _randomGenerator.GetBytes(bytes);
-            var randomInt = BitConverter.ToUInt32(bytes, 0);
+            Span<byte> bytes = stackalloc byte[4];
+            RandomNumberGenerator.Fill(bytes);
+            var randomInt = BitConverter.ToUInt32(bytes);
             return randomInt / (float)uint.MaxValue;
         }
 
