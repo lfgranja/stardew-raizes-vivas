@@ -7,14 +7,7 @@ using StardewValley.TerrainFeatures;
 
 namespace LivingRoots.Controllers
 {
-    public sealed class ModController(
-        IModHelper helper,
-        IMonitor monitor,
-        IManifest manifest,
-        ISoilHealthService soilHealthService,
-        ISaveIdProvider saveIdProvider,
-        ISoilHealthVisualizationService soilHealthVisualizationService
-    ) : IDisposable
+    public sealed class ModController : IDisposable
     {
         // State flags for thread safety using atomic operations
         internal const int EventsRegisteredFlag = 1 << 0;
@@ -31,19 +24,33 @@ namespace LivingRoots.Controllers
         internal int _saveIdUnavailableWarningShownOnSaving = 0; // 0 = false, 1 = true
 
         // Dependencies
-        private readonly IModHelper _helper =
-            helper ?? throw new ArgumentNullException(nameof(helper));
-        private readonly IMonitor _monitor =
-            monitor ?? throw new ArgumentNullException(nameof(monitor));
-        private readonly IManifest _manifest =
-            manifest ?? throw new ArgumentNullException(nameof(manifest));
-        private readonly ISoilHealthService _soilHealthService =
-            soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
-        private readonly ISaveIdProvider _saveIdProvider =
-            saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
-        private readonly ISoilHealthVisualizationService _soilHealthVisualizationService =
-            soilHealthVisualizationService
-            ?? throw new ArgumentNullException(nameof(soilHealthVisualizationService));
+        private readonly IModHelper _helper;
+        private readonly IMonitor _monitor;
+        private readonly IManifest _manifest;
+        private readonly ISoilHealthService _soilHealthService;
+        private readonly ISaveIdProvider _saveIdProvider;
+        private readonly ISoilHealthVisualizationService _soilHealthVisualizationService;
+
+        public ModController(
+            IModHelper helper,
+            IMonitor monitor,
+            IManifest manifest,
+            ISoilHealthService soilHealthService,
+            ISaveIdProvider saveIdProvider,
+            ISoilHealthVisualizationService soilHealthVisualizationService
+        )
+        {
+            _helper = helper ?? throw new ArgumentNullException(nameof(helper));
+            _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+            _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
+            _soilHealthService =
+                soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
+            _saveIdProvider =
+                saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
+            _soilHealthVisualizationService =
+                soilHealthVisualizationService
+                ?? throw new ArgumentNullException(nameof(soilHealthVisualizationService));
+        }
 
         // Event handlers - stored as fields to enable proper unsubscription
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
@@ -1280,7 +1287,7 @@ namespace LivingRoots.Controllers
             try
             {
                 // Add null check for args parameter and use case-insensitive comparison
-                args ??= [];
+                args ??= Array.Empty<string>();
 
                 // Check if any non-whitespace argument matches a help flag using LINQ Any()
                 // Trim arguments before matching to handle cases like " /help " or "-help "
@@ -1347,7 +1354,7 @@ namespace LivingRoots.Controllers
 
             try
             {
-                args ??= [];
+                args ??= Array.Empty<string>();
 
                 if (IsHelpRequested(args))
                 {
@@ -1544,7 +1551,7 @@ namespace LivingRoots.Controllers
 
             try
             {
-                args ??= [];
+                args ??= Array.Empty<string>();
 
                 // Check for help flag
                 if (IsHelpRequested(args))

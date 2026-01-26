@@ -7,19 +7,25 @@ using StardewModdingAPI;
 
 namespace LivingRoots.Services
 {
-    public class SoilHealthService(
-        IModDataService modDataService,
-        IMonitor monitor,
-        IFileNameSanitizationService fileNameSanitizationService
-    ) : ISoilHealthService
+    public class SoilHealthService : ISoilHealthService
     {
-        private readonly IModDataService _modDataService =
-            modDataService ?? throw new ArgumentNullException(nameof(modDataService));
-        private readonly IMonitor _monitor =
-            monitor ?? throw new ArgumentNullException(nameof(monitor));
-        private readonly IFileNameSanitizationService _fileNameSanitizationService =
-            fileNameSanitizationService
-            ?? throw new ArgumentNullException(nameof(fileNameSanitizationService));
+        private readonly IModDataService _modDataService;
+        private readonly IMonitor _monitor;
+        private readonly IFileNameSanitizationService _fileNameSanitizationService;
+
+        public SoilHealthService(
+            IModDataService modDataService,
+            IMonitor monitor,
+            IFileNameSanitizationService fileNameSanitizationService
+        )
+        {
+            _modDataService =
+                modDataService ?? throw new ArgumentNullException(nameof(modDataService));
+            _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+            _fileNameSanitizationService =
+                fileNameSanitizationService
+                ?? throw new ArgumentNullException(nameof(fileNameSanitizationService));
+        }
 
         // Runtime cache using Point directly as key for better performance and precision
         // Dictionary<LocationName, Dictionary<TileCoordinates, HealthValue>>
@@ -648,9 +654,6 @@ namespace LivingRoots.Services
                 return 0f;
             }
 
-            // Pre-generate outside lock to minimize time spent holding `_lock`.
-            var generatedInitial = GenerateInitialSoilHealth();
-
             lock (_lock)
             {
                 if (
@@ -674,6 +677,8 @@ namespace LivingRoots.Services
                 if (tiles.Count >= ModConstants.MaxTilesPerLocation)
                     return GenerateDeterministicInitialSoilHealth(locationName, tilePoint);
 
+                // Pre-generate inside lock only when needed.
+                var generatedInitial = GenerateInitialSoilHealth();
                 tiles[tilePoint] = generatedInitial;
                 return generatedInitial;
             }
