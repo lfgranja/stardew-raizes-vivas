@@ -50,22 +50,13 @@ namespace LivingRoots.Services
     /// <param name="config">Visualization configuration</param>
     /// <param name="colorMapper">Color mapper for health values</param>
     /// <param name="soilHealthService">Service for retrieving soil health data</param>
-    public class TileOverlayRenderer(
-        IMonitor monitor,
-        IVisualizationConfig config,
-        IColorMapper colorMapper,
-        ISoilHealthService soilHealthService
-    ) : ITileOverlayRenderer
+    public class TileOverlayRenderer : ITileOverlayRenderer
     {
         // Dependencies
-        private readonly IMonitor _monitor =
-            monitor ?? throw new ArgumentNullException(nameof(monitor));
-        private readonly IVisualizationConfig _config =
-            config ?? throw new ArgumentNullException(nameof(config));
-        private readonly IColorMapper _colorMapper =
-            colorMapper ?? throw new ArgumentNullException(nameof(colorMapper));
-        private readonly ISoilHealthService _soilHealthService =
-            soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
+        private readonly IMonitor _monitor;
+        private readonly IVisualizationConfig _config;
+        private readonly IColorMapper _colorMapper;
+        private readonly ISoilHealthService _soilHealthService;
 
         // Rendering constants
         private const int TileSize = 64; // Stardew Valley tile size in pixels
@@ -80,8 +71,30 @@ namespace LivingRoots.Services
         );
 
         // Aggregated tile data for batch rendering (from DataLayers)
-        private readonly Dictionary<Vector2, TileDrawData> _aggregatedTiles = [];
-        private readonly List<TileGroup> _tileGroups = [];
+        private readonly Dictionary<Vector2, TileDrawData> _aggregatedTiles = new();
+        private readonly List<TileGroup> _tileGroups = new();
+
+        /// <summary>
+        /// Implementation of tile overlay renderer for soil health visualization.
+        /// Renders colored rectangles over tiles based on soil health values with viewport culling.
+        /// </summary>
+        /// <param name="monitor">Monitor for logging</param>
+        /// <param name="config">Visualization configuration</param>
+        /// <param name="colorMapper">Color mapper for health values</param>
+        /// <param name="soilHealthService">Service for retrieving soil health data</param>
+        public TileOverlayRenderer(
+            IMonitor monitor,
+            IVisualizationConfig config,
+            IColorMapper colorMapper,
+            ISoilHealthService soilHealthService
+        )
+        {
+            _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _colorMapper = colorMapper ?? throw new ArgumentNullException(nameof(colorMapper));
+            _soilHealthService =
+                soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
+        }
 
         /// <inheritdoc/>
         public void RenderTileOverlay(
@@ -470,7 +483,7 @@ namespace LivingRoots.Services
         {
             if (!tilesByCategory.ContainsKey(category))
             {
-                tilesByCategory[category] = [];
+                tilesByCategory[category] = new List<Services.TileData>();
             }
             tilesByCategory[category].Add(tileData);
         }
@@ -503,7 +516,7 @@ namespace LivingRoots.Services
             foreach (TileGroup group in _tileGroups)
             {
                 var inGroupLazy = new Lazy<HashSet<Vector2>>(
-                    () => [.. group.Tiles.Select(p => p.TilePosition)],
+                    () => new HashSet<Vector2>(group.Tiles.Select(p => p.TilePosition)),
                     LazyThreadSafetyMode.ExecutionAndPublication
                 );
 
@@ -829,23 +842,30 @@ namespace LivingRoots.Services
     /// <param name="tile">The tile position.</param>
     /// <param name="color">The overlay color.</param>
     /// <param name="category">The soil health category (optional, for LivingRoots).</param>
-    internal class TileData(
-        Vector2 tile,
-        Color color,
-        SoilHealthCategory category = SoilHealthCategory.Healthy
-    )
+    internal class TileData
     {
+        public TileData(
+            Vector2 tile,
+            Color color,
+            SoilHealthCategory category = SoilHealthCategory.Healthy
+        )
+        {
+            TilePosition = tile;
+            Color = color;
+            Category = category;
+        }
+
         /// <summary>The tile position.</summary>
-        public Vector2 TilePosition { get; } = tile;
+        public Vector2 TilePosition { get; }
 
         /// <summary>The overlay color.</summary>
-        public Color Color { get; } = color;
+        public Color Color { get; }
 
         /// <summary>The pixel offset at which to draw this tile.</summary>
         public Point DrawOffset { get; } = Point.Zero;
 
         /// <summary>The soil health category (LivingRoots-specific).</summary>
-        public SoilHealthCategory Category { get; } = category;
+        public SoilHealthCategory Category { get; }
     }
 
     /// <summary>
@@ -860,19 +880,26 @@ namespace LivingRoots.Services
     /// <remarks>Construct an instance.</remarks>
     /// <param name="position">The tile position.</param>
     /// <param name="drawOffset">The pixel offset at which to draw this tile.</param>
-    internal class TileDrawData(Vector2 position, Point drawOffset)
+    internal class TileDrawData
     {
+        public TileDrawData(Vector2 position, Point drawOffset)
+        {
+            TilePosition = position;
+            DrawOffset = drawOffset;
+        }
+
         /// <summary>The tile position.</summary>
-        public Vector2 TilePosition { get; } = position;
+        public Vector2 TilePosition { get; }
 
         /// <summary>The overlay colors to draw.</summary>
-        public HashSet<Color> Colors { get; } = [];
+        public HashSet<Color> Colors { get; } = new HashSet<Color>();
 
         /// <summary>The border colors to draw.</summary>
-        public Dictionary<Color, TileEdges> BorderColors { get; } = [];
+        public Dictionary<Color, TileEdges> BorderColors { get; } =
+            new Dictionary<Color, TileEdges>();
 
         /// <summary>The pixel offset at which to draw this tile.</summary>
-        public Point DrawOffset { get; } = drawOffset;
+        public Point DrawOffset { get; }
     }
 
     /// <summary>
@@ -888,20 +915,27 @@ namespace LivingRoots.Services
     /// <param name="tiles">The tiles in the group.</param>
     /// <param name="outerBorderColor">A border color to draw along edges that aren't touching another tile in the group (if any).</param>
     /// <param name="shouldExport">Whether to include this tile group in data exports.</param>
-    internal class TileGroup(
-        IEnumerable<TileData> tiles,
-        Color? outerBorderColor = null,
-        bool shouldExport = true
-    )
+    internal class TileGroup
     {
+        public TileGroup(
+            IEnumerable<TileData> tiles,
+            Color? outerBorderColor = null,
+            bool shouldExport = true
+        )
+        {
+            Tiles = tiles.ToArray();
+            OuterBorderColor = outerBorderColor;
+            ShouldExport = shouldExport;
+        }
+
         /// <summary>The tiles in the group.</summary>
-        public TileData[] Tiles { get; } = tiles.ToArray();
+        public TileData[] Tiles { get; }
 
         /// <summary>A border color to draw along edges that aren't touching another tile in the group (if any).</summary>
-        public Color? OuterBorderColor { get; } = outerBorderColor;
+        public Color? OuterBorderColor { get; }
 
         /// <summary>Whether to include this tile group in data exports.</summary>
-        public bool ShouldExport { get; } = shouldExport;
+        public bool ShouldExport { get; }
     }
 
     #endregion
