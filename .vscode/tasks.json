@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CI: Verify All (Strict)",
+            "dependsOn": ["CI: Build (Strict)", "CI: Test", "CI: Format Check"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "CI: Build (Strict)",
+            "command": "dotnet",
+            "args": ["build", "--no-restore", "/p:TreatWarningsAsErrors=true"],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "CI: Test",
+            "command": "dotnet",
+            "args": ["test", "--no-build", "--verbosity", "normal"],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "CI: Format Check",
+            "command": "dotnet",
+            "args": ["csharpier", "--check", "."],
+            "problemMatcher": []
+        }
+    ]
+}

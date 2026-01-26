@@ -1,8 +1,9 @@
 {
-  "recommendations": [
-    "ms-dotnettools.csdevkit",
-    "csharpier.csharpier-vscode",
-    "esbenp.prettier-vscode",
-    "editorconfig.editorconfig"
-  ]
+    "recommendations": [
+        "ms-dotnettools.csdevkit",
+        "csharpier.csharpier-vscode",
+        "esbenp.prettier-vscode",
+        "editorconfig.editorconfig",
+        "sonarsource.sonarlint-vscode"
+    ]
 }

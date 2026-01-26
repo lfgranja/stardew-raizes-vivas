@@ -2,6 +2,7 @@
     "typescript.tsserver.watchOptions": "vscode",
     "dotnet.defaultSolution": "Stardew-LivingRoots.sln",
     "dotnet.server.useOmnisharp": true,
+    "omnisharp.useModernNet": true,
     "editor.formatOnSave": true,
     "[csharp]": {
         "editor.defaultFormatter": "csharpier.csharpier-vscode",
