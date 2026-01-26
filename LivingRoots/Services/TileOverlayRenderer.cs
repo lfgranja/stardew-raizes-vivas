@@ -71,7 +71,7 @@ namespace LivingRoots.Services
         );
 
         // Aggregated tile data for batch rendering (from DataLayers)
-        private readonly Dictionary<Vector2, TileDrawData> _aggregatedTiles = new();
+        private readonly Dictionary<Point, TileDrawData> _aggregatedTiles = new();
         private readonly List<TileGroup> _tileGroups = new();
 
         /// <summary>
@@ -536,9 +536,12 @@ namespace LivingRoots.Services
             Lazy<HashSet<Vector2>> inGroupLazy
         )
         {
-            Vector2 position = groupTile.TilePosition;
+            Point position = new((int)groupTile.TilePosition.X, (int)groupTile.TilePosition.Y);
             if (!_aggregatedTiles.TryGetValue(position, out TileDrawData? data))
-                data = _aggregatedTiles[position] = new TileDrawData(position, Point.Zero);
+                data = _aggregatedTiles[position] = new TileDrawData(
+                    groupTile.TilePosition,
+                    Point.Zero
+                );
 
             // Update data
             data.Colors.Add(groupTile.Color);
@@ -585,10 +588,10 @@ namespace LivingRoots.Services
         /// </summary>
         private void DetectCombinedBorders()
         {
-            foreach (Vector2 position in _aggregatedTiles.Keys.ToList())
+            foreach (Point position in _aggregatedTiles.Keys.ToList())
             {
-                var x = (int)position.X;
-                var y = (int)position.Y;
+                var x = position.X;
+                var y = position.Y;
                 TileDrawData data = _aggregatedTiles[position];
 
                 if (!data.BorderColors.Any())
@@ -609,10 +612,10 @@ namespace LivingRoots.Services
             TileDrawData? bottom
         ) GetTileNeighbors(int x, int y)
         {
-            _aggregatedTiles.TryGetValue(new Vector2(x - 1, y), out var left);
-            _aggregatedTiles.TryGetValue(new Vector2(x + 1, y), out var right);
-            _aggregatedTiles.TryGetValue(new Vector2(x, y - 1), out var top);
-            _aggregatedTiles.TryGetValue(new Vector2(x, y + 1), out var bottom);
+            _aggregatedTiles.TryGetValue(new Point(x - 1, y), out var left);
+            _aggregatedTiles.TryGetValue(new Point(x + 1, y), out var right);
+            _aggregatedTiles.TryGetValue(new Point(x, y - 1), out var top);
+            _aggregatedTiles.TryGetValue(new Point(x, y + 1), out var bottom);
 
             return (left, right, top, bottom);
         }
