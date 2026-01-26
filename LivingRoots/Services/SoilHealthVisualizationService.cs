@@ -222,8 +222,15 @@ namespace LivingRoots.Services
             );
 
             UnregisterPartialRegistrations(result);
+
+            // Force cleanup even though full registration didn't complete.
             _eventsRegistered = false;
-            UnregisterEvents();
+
+            _onButtonPressedHandler = null;
+            _onCursorMovedHandler = null;
+            _onRenderingWorldLayerHandler = null;
+            _onRenderedHandler = null;
+            _onUpdateTickedHandler = null;
         }
 
         /// <summary>
