@@ -61,13 +61,13 @@ jobs:
             - name: Check Formatting (CSharpier)
               run: dotnet csharpier --check .
 
-            # 8. Build do Projeto com tratamento de warnings como erros
             - name: Build
+              # 8. Build do Projeto com tratamento de warnings como erros
               run: dotnet build --no-restore --configuration Release /p:TreatWarningsAsErrors=true
 
             # 9. Testes com Cobertura de Código
-            # O formato opencover é necessário para o SonarCloud ler a cobertura no Linux
             - name: Test
+              # O formato opencover é necessário para o SonarCloud ler a cobertura no Linux
               run: |
                   dotnet test --no-build --configuration Release --verbosity normal \
                     --collect:"XPlat Code Coverage" \
