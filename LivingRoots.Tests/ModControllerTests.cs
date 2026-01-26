@@ -107,6 +107,21 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
+        public void Constructor_WithNullSoilHealthVisualizationService_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                new ModController(
+                    _mockHelper.Object,
+                    _mockMonitor.Object,
+                    _mockManifest.Object,
+                    _mockSoilHealthService.Object,
+                    _mockSaveIdProvider.Object,
+                    null!
+                )
+            );
+        }
+
+        [Fact]
         public void RegisterEvents_WithValidController_DoesNotThrow()
         {
             // Arrange
