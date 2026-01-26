@@ -970,7 +970,7 @@ namespace LivingRoots.Services
                 throw new ArgumentException("Capacity must be greater than 0", nameof(capacity));
 
             _capacity = capacity;
-            _cacheMap = [];
+            _cacheMap = new Dictionary<TKey, LinkedListNode<LruCacheItem>>();
             _lruList = new LinkedList<LruCacheItem>();
         }
 
@@ -1063,10 +1063,16 @@ namespace LivingRoots.Services
         /// <summary>
         /// Internal class representing a cache item.
         /// </summary>
-        private sealed class LruCacheItem(TKey key, TValue value)
+        private sealed class LruCacheItem
         {
-            public TKey Key { get; } = key;
-            public TValue Value { get; set; } = value;
+            public LruCacheItem(TKey key, TValue value)
+            {
+                Key = key;
+                Value = value;
+            }
+
+            public TKey Key { get; }
+            public TValue Value { get; set; }
         }
     }
 
