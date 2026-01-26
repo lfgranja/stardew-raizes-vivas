@@ -1,4 +1,3 @@
-using System.Threading;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
 using LivingRoots.Services;
@@ -14,7 +13,7 @@ namespace LivingRoots
     public sealed class ModEntry : Mod
     {
         private ModController? _controller;
-        private bool _disposed = false;  // Thread-safe visibility of disposed state - all access is protected by _disposeLock
+        private bool _disposed = false; // Thread-safe visibility of disposed state - all access is protected by _disposeLock
         private readonly object _disposeLock = new();
 
         /*********
@@ -27,7 +26,10 @@ namespace LivingRoots
             // Create domain services - Composition Root
             var unicodeNormalizationService = new UnicodeNormalizationService();
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
-            var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
+            var fileNameSanitizationService = new FileNameSanitizationService(
+                unicodeNormalizationService,
+                reservedNameHandler
+            );
             var pathValidationService = new PathValidationService(unicodeNormalizationService);
             var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
 
@@ -35,13 +37,48 @@ namespace LivingRoots
             var modDataService = new ModDataService(helper, this.Monitor, modLogic);
 
             // Create the soil health service with the required dependencies
-            var soilHealthService = new SoilHealthService(modDataService, this.Monitor, fileNameSanitizationService);
+            var soilHealthService = new SoilHealthService(
+                modDataService,
+                this.Monitor,
+                fileNameSanitizationService
+            );
 
             // Create the save ID provider with monitor for logging
             var saveIdProvider = new SaveIdProvider(this.Monitor);
 
+            // Create visualization components
+            var visualizationConfig = new VisualizationConfig(this.Monitor, modDataService);
+            var colorMapper = new ColorMapper(visualizationConfig);
+            var tileOverlayRenderer = new TileOverlayRenderer(
+                this.Monitor,
+                visualizationConfig,
+                colorMapper,
+                soilHealthService
+            );
+            var tooltipRenderer = new TooltipRenderer(
+                this.Monitor,
+                visualizationConfig,
+                colorMapper
+            );
+            var soilHealthVisualizationService = new SoilHealthVisualizationService(
+                this.Monitor,
+                soilHealthService,
+                visualizationConfig,
+                colorMapper,
+                tileOverlayRenderer,
+                tooltipRenderer,
+                helper
+            );
+
             // Create controller with dependency injection
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider);
+            _controller = new ModController(
+                helper,
+                this.Monitor,
+                this.ModManifest,
+                soilHealthService,
+                saveIdProvider,
+                soilHealthVisualizationService
+            );
 
             // Register events through the Controller
             _controller.RegisterEvents();

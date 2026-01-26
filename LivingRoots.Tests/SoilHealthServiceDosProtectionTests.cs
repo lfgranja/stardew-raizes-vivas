@@ -1,12 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -39,8 +35,8 @@ namespace LivingRoots.Tests
             {
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    ["Farm"] = locationEntries
-                }
+                    ["Farm"] = locationEntries,
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -52,25 +48,35 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act: Load the data - this should trigger DoS protection and abort the entire load
             service.LoadData("test_save");
 
             // Assert: Verify that the warning log appeared when exceeding the per-location tile limit
-            _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("Aborting load") &&
-                                   msg.Contains("'Farm'") &&
-                                   msg.Contains("exceeds tile count limit") &&
-                                   msg.Contains("To prevent data loss") &&
-                                   msg.Contains("entire load operation is being aborted")),
-                LogLevel.Alert),
-                Times.Once);
+            _mockMonitor.Verify(
+                x =>
+                    x.Log(
+                        It.Is<string>(msg =>
+                            msg.Contains("Aborting load")
+                            && msg.Contains("'Farm'")
+                            && msg.Contains("exceeds tile count limit")
+                            && msg.Contains("To prevent data loss")
+                            && msg.Contains("entire load operation is being aborted")
+                        ),
+                        LogLevel.Alert
+                    ),
+                Times.Once
+            );
 
             // Verify that no data from the exceeding location was added to the cache
             for (var i = 0; i < excessTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("Farm", new Vector2(i, 0)));
+                Assert.InRange(service.GetSoilHealth("Farm", new Vector2(i, 0)), 20f, 100f); // Returns value in [20, 100] when cache is cleared
             }
         }
 
@@ -93,9 +99,9 @@ namespace LivingRoots.Tests
             {
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    ["ExceedingLocation"] = locationEntriesExceeding,  // This will exceed the limit
-                    ["ValidLocation"] = locationEntriesValid           // This should NOT be processed
-                }
+                    ["ExceedingLocation"] = locationEntriesExceeding, // This will exceed the limit
+                    ["ValidLocation"] = locationEntriesValid, // This should NOT be processed
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -107,29 +113,47 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act: Load the data - this should abort the entire load when the first location exceeds the limit
             service.LoadData("test_save");
 
             // Assert: Verify that the warning log appeared for the exceeding location
-            _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("Aborting load") &&
-                                   msg.Contains("'ExceedingLocation'") &&
-                                   msg.Contains("exceeds tile count limit") &&
-                                   msg.Contains("To prevent data loss") &&
-                                   msg.Contains("entire load operation is being aborted")),
-                LogLevel.Alert),
-                Times.Once);
+            _mockMonitor.Verify(
+                x =>
+                    x.Log(
+                        It.Is<string>(msg =>
+                            msg.Contains("Aborting load")
+                            && msg.Contains("'ExceedingLocation'")
+                            && msg.Contains("exceeds tile count limit")
+                            && msg.Contains("To prevent data loss")
+                            && msg.Contains("entire load operation is being aborted")
+                        ),
+                        LogLevel.Alert
+                    ),
+                Times.Once
+            );
 
             // Verify that no data from the exceeding location was added to the cache
             for (var i = 0; i < excessTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)));
+                Assert.InRange(
+                    service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)),
+                    20f,
+                    100f
+                ); // Returns value in [20, 100] when cache is cleared
             }
 
             // The valid location should NOT be processed since the entire load is aborted
-            Assert.Equal(0.0f, service.GetSoilHealth("ValidLocation", new Vector2(100, 100)));
+            Assert.InRange(
+                service.GetSoilHealth("ValidLocation", new Vector2(100, 100)),
+                20f,
+                100f
+            ); // Returns value in [20, 100] when cache is cleared
         }
 
         [Fact]
@@ -157,9 +181,9 @@ namespace LivingRoots.Tests
             {
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    ["AtLimitLocation"] = locationEntriesAtLimit,      // Exactly at the limit - should be processed
-                    ["ExceedingLocation"] = locationEntriesExceeding   // This will exceed the limit and abort the entire load
-                }
+                    ["AtLimitLocation"] = locationEntriesAtLimit, // Exactly at the limit - should be processed
+                    ["ExceedingLocation"] = locationEntriesExceeding, // This will exceed the limit and abort the entire load
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -171,31 +195,49 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act: Load the data - should abort the entire load when the exceeding location is encountered
             service.LoadData("test_save");
 
             // Assert: Verify that the warning log appeared for the exceeding location
-            _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("Aborting load") &&
-                                   msg.Contains("'ExceedingLocation'") &&
-                                   msg.Contains("exceeds tile count limit") &&
-                                   msg.Contains("To prevent data loss") &&
-                                   msg.Contains("entire load operation is being aborted")),
-                LogLevel.Alert),
-                Times.Once);
+            _mockMonitor.Verify(
+                x =>
+                    x.Log(
+                        It.Is<string>(msg =>
+                            msg.Contains("Aborting load")
+                            && msg.Contains("'ExceedingLocation'")
+                            && msg.Contains("exceeds tile count limit")
+                            && msg.Contains("To prevent data loss")
+                            && msg.Contains("entire load operation is being aborted")
+                        ),
+                        LogLevel.Alert
+                    ),
+                Times.Once
+            );
 
             // Verify that the at-limit location was NOT processed since the entire load was aborted
             for (var i = 0; i < atLimitTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("AtLimitLocation", new Vector2(i, 0)));
+                Assert.InRange(
+                    service.GetSoilHealth("AtLimitLocation", new Vector2(i, 0)),
+                    20f,
+                    100f
+                ); // Returns value in [20, 100] when cache is cleared
             }
 
             // Verify that no data from the exceeding location was added to the cache
             for (var i = 0; i < excessTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)));
+                Assert.InRange(
+                    service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)),
+                    20f,
+                    100f
+                ); // Returns value in [20, 100] when cache is cleared
             }
         }
 
@@ -215,8 +257,8 @@ namespace LivingRoots.Tests
             {
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
-                    ["Farm"] = locationEntries
-                }
+                    ["Farm"] = locationEntries,
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -228,17 +270,27 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act: Load the data - this should NOT trigger DoS protection
             service.LoadData("test_save");
 
             // Assert: Verify that no critical error log appeared for tile limit exceeded
-            _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("Tile count limit") &&
-                                   msg.Contains("exceeded for location")),
-                LogLevel.Alert),
-                Times.Never);
+            _mockMonitor.Verify(
+                x =>
+                    x.Log(
+                        It.Is<string>(msg =>
+                            msg.Contains("Tile count limit")
+                            && msg.Contains("exceeded for location")
+                        ),
+                        LogLevel.Alert
+                    ),
+                Times.Never
+            );
 
             // Verify that the data was loaded successfully (up to the limit)
             for (var i = 0; i < atLimitTiles; i++)
@@ -271,8 +323,8 @@ namespace LivingRoots.Tests
                 LocationHealthData = new Dictionary<string, Dictionary<string, float>>
                 {
                     ["Farm"] = location1Entries,
-                    ["Town"] = location2Entries
-                }
+                    ["Town"] = location2Entries,
+                },
             };
 
             // Set up mock to return expected sanitized value
@@ -284,17 +336,27 @@ namespace LivingRoots.Tests
                 .Setup(x => x.LoadData<SoilHealthState>("soil_health_data_test_save"))
                 .Returns(saveData);
 
-            var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
+            var service = new SoilHealthService(
+                _mockDataService.Object,
+                _mockMonitor.Object,
+                _mockFileNameSanitizationService.Object
+            );
 
             // Act: Load the data - should process both locations since each is within the limit
             service.LoadData("test_save");
 
             // Assert: Verify that no critical error log appeared for tile limit exceeded
-            _mockMonitor.Verify(x => x.Log(
-                It.Is<string>(msg => msg.Contains("Tile count limit") &&
-                                   msg.Contains("exceeded for location")),
-                LogLevel.Alert),
-                Times.Never);
+            _mockMonitor.Verify(
+                x =>
+                    x.Log(
+                        It.Is<string>(msg =>
+                            msg.Contains("Tile count limit")
+                            && msg.Contains("exceeded for location")
+                        ),
+                        LogLevel.Alert
+                    ),
+                Times.Never
+            );
 
             // Verify that data from both locations was loaded successfully
             for (var i = 0; i < 100; i++)

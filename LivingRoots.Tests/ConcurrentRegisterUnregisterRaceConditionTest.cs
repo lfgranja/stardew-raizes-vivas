@@ -1,7 +1,6 @@
 using System.Reflection;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
-using LivingRoots.Services;
 using Moq;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -15,6 +14,7 @@ namespace LivingRoots.Tests
         private readonly Mock<IManifest> _mockManifest;
         private readonly Mock<ISoilHealthService> _mockSoilHealthService;
         private readonly Mock<ISaveIdProvider> _mockSaveIdProvider;
+        private readonly Mock<ISoilHealthVisualizationService> _mockSoilHealthVisualizationService;
 
         public ConcurrentRegisterUnregisterRaceConditionTest()
         {
@@ -23,10 +23,13 @@ namespace LivingRoots.Tests
             _mockManifest = new Mock<IManifest>();
             _mockSoilHealthService = new Mock<ISoilHealthService>();
             _mockSaveIdProvider = new Mock<ISaveIdProvider>();
+            _mockSoilHealthVisualizationService = new Mock<ISoilHealthVisualizationService>();
 
             // Add default setup for _mockManifest properties to prevent NullReferenceException
             _mockManifest.Setup(x => x.UniqueID).Returns("test.mod.id");
-            _mockManifest.Setup(x => x.Version).Returns(new StardewModdingAPI.SemanticVersion(1, 0, 0));
+            _mockManifest
+                .Setup(x => x.Version)
+                .Returns(new StardewModdingAPI.SemanticVersion(1, 0, 0));
         }
 
         [Fact]
@@ -42,8 +45,14 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Create a single ModController instance to be shared across all tasks
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object,
-                _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockManifest.Object,
+                _mockSoilHealthService.Object,
+                _mockSaveIdProvider.Object,
+                _mockSoilHealthVisualizationService.Object
+            );
 
             // First register events to set up the controller with handlers
             controller.RegisterEvents();
@@ -85,7 +94,9 @@ namespace LivingRoots.Tests
             var completedTask = await Task.WhenAny(whenAllTask, timeoutTask);
             if (completedTask == timeoutTask)
             {
-                Assert.Fail("UnregisterEvents_WhenConcurrentRegisterEventsOccurs_DoesNotLeakHandlers test timed out after 30 seconds");
+                Assert.Fail(
+                    "UnregisterEvents_WhenConcurrentRegisterEventsOccurs_DoesNotLeakHandlers test timed out after 30 seconds"
+                );
             }
 
             // Wait for the actual tasks to complete if they haven't already
@@ -99,14 +110,29 @@ namespace LivingRoots.Tests
 
             // Verify invariants rather than schedule-dependent exact counts:
             // 1) removals must never exceed adds
-            Assert.True(threadSafeGameLoopEvents.GameLaunchedRemoveCount <= threadSafeGameLoopEvents.GameLaunchedAddCount);
-            Assert.True(threadSafeGameLoopEvents.SaveLoadedRemoveCount <= threadSafeGameLoopEvents.SaveLoadedAddCount);
-            Assert.True(threadSafeGameLoopEvents.SavingRemoveCount <= threadSafeGameLoopEvents.SavingAddCount);
+            Assert.True(
+                threadSafeGameLoopEvents.GameLaunchedRemoveCount
+                    <= threadSafeGameLoopEvents.GameLaunchedAddCount
+            );
+            Assert.True(
+                threadSafeGameLoopEvents.SaveLoadedRemoveCount
+                    <= threadSafeGameLoopEvents.SaveLoadedAddCount
+            );
+            Assert.True(
+                threadSafeGameLoopEvents.SavingRemoveCount
+                    <= threadSafeGameLoopEvents.SavingAddCount
+            );
 
             // 2) net subscriptions must be either 0 (unregistered) or 1 (registered)
-            var netGameLaunched = threadSafeGameLoopEvents.GameLaunchedAddCount - threadSafeGameLoopEvents.GameLaunchedRemoveCount;
-            var netSaveLoaded = threadSafeGameLoopEvents.SaveLoadedAddCount - threadSafeGameLoopEvents.SaveLoadedRemoveCount;
-            var netSaving = threadSafeGameLoopEvents.SavingAddCount - threadSafeGameLoopEvents.SavingRemoveCount;
+            var netGameLaunched =
+                threadSafeGameLoopEvents.GameLaunchedAddCount
+                - threadSafeGameLoopEvents.GameLaunchedRemoveCount;
+            var netSaveLoaded =
+                threadSafeGameLoopEvents.SaveLoadedAddCount
+                - threadSafeGameLoopEvents.SaveLoadedRemoveCount;
+            var netSaving =
+                threadSafeGameLoopEvents.SavingAddCount
+                - threadSafeGameLoopEvents.SavingRemoveCount;
 
             Assert.InRange(netGameLaunched, 0, 1);
             Assert.InRange(netSaveLoaded, 0, 1);
@@ -115,14 +141,20 @@ namespace LivingRoots.Tests
             // Verify that the controller state is consistent
             // Use reflection to access the private _state field since it's not publicly accessible
             // This is necessary for testing internal state flags like UnregisteringFlag and EventsRegisteredFlag
-            var stateField = typeof(ModController).GetField("_state", BindingFlags.NonPublic | BindingFlags.Instance);
+            var stateField = typeof(ModController).GetField(
+                "_state",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
             var state = (int)(stateField?.GetValue(controller) ?? 0);
 
             var isUnregistering = (state & ModController.UnregisteringFlag) != 0; // UnregisteringFlag
 
             // After unregistration, EventsRegisteredFlag should be cleared
             // UnregisteringFlag should also be cleared after completion
-            Assert.False(isUnregistering, "UnregisteringFlag should be cleared after unregistration completes");
+            Assert.False(
+                isUnregistering,
+                "UnregisteringFlag should be cleared after unregistration completes"
+            );
 
             // The EventsRegisteredFlag might be set or cleared depending on the final state,
             // but the important thing is that handlers are properly managed
@@ -141,8 +173,14 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Create a single ModController instance to be shared across all tasks
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object,
-                _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockManifest.Object,
+                _mockSoilHealthService.Object,
+                _mockSaveIdProvider.Object,
+                _mockSoilHealthVisualizationService.Object
+            );
 
             // First register events to set up the controller with handlers
             controller.RegisterEvents();
@@ -185,7 +223,9 @@ namespace LivingRoots.Tests
             var completedTask = await Task.WhenAny(whenAllTask, timeoutTask);
             if (completedTask == timeoutTask)
             {
-                Assert.Fail("RegisterEvents_WhenConcurrentUnregisterEventsOccurs_DoesNotCauseRaceCondition test timed out after 30 seconds");
+                Assert.Fail(
+                    "RegisterEvents_WhenConcurrentUnregisterEventsOccurs_DoesNotCauseRaceCondition test timed out after 30 seconds"
+                );
             }
 
             // Wait for the actual tasks to complete if they haven't already
@@ -197,21 +237,32 @@ namespace LivingRoots.Tests
 
             // All tasks should complete without throwing exceptions
             // Event handlers should be properly managed
-            Assert.True(threadSafeGameLoopEvents.GameLaunchedAddCount >= 1,
-                "At least one GameLaunched registration should occur");
-            Assert.True(threadSafeGameLoopEvents.SaveLoadedAddCount >= 1,
-                "At least one SaveLoaded registration should occur");
-            Assert.True(threadSafeGameLoopEvents.SavingAddCount >= 1,
-                "At least one Saving registration should occur");
+            Assert.True(
+                threadSafeGameLoopEvents.GameLaunchedAddCount >= 1,
+                "At least one GameLaunched registration should occur"
+            );
+            Assert.True(
+                threadSafeGameLoopEvents.SaveLoadedAddCount >= 1,
+                "At least one SaveLoaded registration should occur"
+            );
+            Assert.True(
+                threadSafeGameLoopEvents.SavingAddCount >= 1,
+                "At least one Saving registration should occur"
+            );
 
             // The number of removals should match the number of successful unregistrations
-            Assert.True(threadSafeGameLoopEvents.GameLaunchedRemoveCount >= 0,
-                "GameLaunched should have been removed appropriately");
-            Assert.True(threadSafeGameLoopEvents.SaveLoadedRemoveCount >= 0,
-                "SaveLoaded should have been removed appropriately");
-            Assert.True(threadSafeGameLoopEvents.SavingRemoveCount >= 0,
-                "Saving should have been removed appropriately");
+            Assert.True(
+                threadSafeGameLoopEvents.GameLaunchedRemoveCount >= 0,
+                "GameLaunched should have been removed appropriately"
+            );
+            Assert.True(
+                threadSafeGameLoopEvents.SaveLoadedRemoveCount >= 0,
+                "SaveLoaded should have been removed appropriately"
+            );
+            Assert.True(
+                threadSafeGameLoopEvents.SavingRemoveCount >= 0,
+                "Saving should have been removed appropriately"
+            );
         }
-
     }
 }

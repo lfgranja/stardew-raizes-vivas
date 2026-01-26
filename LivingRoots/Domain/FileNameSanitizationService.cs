@@ -1,10 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace LivingRoots.Domain
 {
@@ -23,37 +17,106 @@ namespace LivingRoots.Domain
     /// - Comprehensive validation of all return values
     /// - Enhanced hidden-name core revalidation for additional security
     /// </summary>
-    public class FileNameSanitizationService(IUnicodeNormalizationService unicodeNormalizationService, IReservedNameHandler reservedNameHandler) : IFileNameSanitizationService
+    public class FileNameSanitizationService(
+        IUnicodeNormalizationService unicodeNormalizationService,
+        IReservedNameHandler reservedNameHandler
+    ) : IFileNameSanitizationService
     {
         private const int MaxFileNameLength = 240; // Maximum filename length for truncation tests
         private const string EmptyFilenameErrorMessage = "Filename sanitizes to an empty string.";
 
-        private readonly IUnicodeNormalizationService _unicodeNormalizationService = unicodeNormalizationService ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
-        private readonly IReservedNameHandler _reservedNameHandler = reservedNameHandler ?? throw new ArgumentNullException(nameof(reservedNameHandler));
+        private readonly IUnicodeNormalizationService _unicodeNormalizationService =
+            unicodeNormalizationService
+            ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
+        private readonly IReservedNameHandler _reservedNameHandler =
+            reservedNameHandler ?? throw new ArgumentNullException(nameof(reservedNameHandler));
 
         // Static readonly field to avoid rebuilding the blocked extensions set on every call
         // IMPROVEMENT: Refocused the blocked extensions list to include only truly dangerous executable and script file types
-        private static readonly HashSet<string> BlockedExtensions = new(StringComparer.OrdinalIgnoreCase)
+        private static readonly HashSet<string> BlockedExtensions = new(
+            StringComparer.OrdinalIgnoreCase
+        )
         {
             // Executable files
-            ".exe", ".dll", ".bat", ".com", ".scr", ".pif", ".lnk", ".msi", ".msp",
-            ".cpl", ".msc", ".sys", ".bin", ".drv", ".ocx", ".efi", ".app", ".apk", ".ipa",
-
+            ".exe",
+            ".dll",
+            ".bat",
+            ".com",
+            ".scr",
+            ".pif",
+            ".lnk",
+            ".msi",
+            ".msp",
+            ".cpl",
+            ".msc",
+            ".sys",
+            ".bin",
+            ".drv",
+            ".ocx",
+            ".efi",
+            ".app",
+            ".apk",
+            ".ipa",
             // Script files
-            ".sh", ".ps1", ".cmd", ".vbs", ".js", ".jse", ".wsf", ".wsh", ".hta",
-            ".py", ".rb", ".pl", ".php", ".asp", ".aspx", ".cgi", ".vbe", ".vbscript",
-            ".ws", ".wsc", ".scf", ".url", ".mof", ".sct", ".reg", ".inf",
-
+            ".sh",
+            ".ps1",
+            ".cmd",
+            ".vbs",
+            ".js",
+            ".jse",
+            ".wsf",
+            ".wsh",
+            ".hta",
+            ".py",
+            ".rb",
+            ".pl",
+            ".php",
+            ".asp",
+            ".aspx",
+            ".cgi",
+            ".vbe",
+            ".vbscript",
+            ".ws",
+            ".wsc",
+            ".scf",
+            ".url",
+            ".mof",
+            ".sct",
+            ".reg",
+            ".inf",
             // Installers and packages
-            ".jar", ".msix", ".appx", ".deb", ".rpm", ".pkg", ".dmg", ".iso", ".img",
-
+            ".jar",
+            ".msix",
+            ".appx",
+            ".deb",
+            ".rpm",
+            ".pkg",
+            ".dmg",
+            ".iso",
+            ".img",
             // Other potentially dangerous files
-            ".swf", ".flash", ".class", ".dex", ".jnlp", ".xap", ".action", ".workflow",
-            ".command", ".csh", ".tcsh", ".zsh", ".fish", ".ksh", ".bash"
+            ".swf",
+            ".flash",
+            ".class",
+            ".dex",
+            ".jnlp",
+            ".xap",
+            ".action",
+            ".workflow",
+            ".command",
+            ".csh",
+            ".tcsh",
+            ".zsh",
+            ".fish",
+            ".ksh",
+            ".bash",
         };
 
         // Static readonly field to cache invalid file name characters and avoid repeated array allocations
-        private static readonly HashSet<char> InvalidFileNameChars = new(Path.GetInvalidFileNameChars());
+        private static readonly HashSet<char> InvalidFileNameChars =
+        [
+            .. Path.GetInvalidFileNameChars(),
+        ];
 
         /// <summary>
         /// Sanitizes a filename by removing or replacing invalid characters and handling security concerns.
@@ -63,7 +126,8 @@ namespace LivingRoots.Domain
         /// <exception cref="ArgumentException">Thrown when filename sanitizes to an empty string or is too long.</exception>
         public string? Sanitize(string? filename)
         {
-            if (filename == null) return null;
+            if (filename == null)
+                return null;
             ValidateInput(filename);
 
             // Special handling for "." and ".." as these are special path components and should not be treated as filenames
@@ -72,8 +136,9 @@ namespace LivingRoots.Domain
                 throw new ArgumentException(EmptyFilenameErrorMessage, nameof(filename));
             }
 
-            var normalized = _unicodeNormalizationService.Normalize(filename)
-                             ?? throw new ArgumentException("Normalized filename is null.", nameof(filename));
+            var normalized =
+                _unicodeNormalizationService.Normalize(filename)
+                ?? throw new ArgumentException("Normalized filename is null.", nameof(filename));
 
             // Extract parts
             var extension = GetFileExtension(normalized);
@@ -86,14 +151,12 @@ namespace LivingRoots.Domain
             // Step 2: Sanitize characters and dots
             var processed = SanitizeBaseName(nameWithoutExtension);
 
-
             // Step 3: Hidden file logic
             var isHidden = DetermineHiddenFileStatus(processed);
             processed = ProcessHiddenFileLogic(processed, filename, isHidden);
 
             // Step 4: Truncate and clean
             var result = PerformFinalCleanup(TruncateToMaxLength(processed), isHidden);
-
 
             // IMPROVEMENT: Trim trailing fillers before extension appending
             result = result.TrimEnd('_', ' ', '.');
@@ -119,10 +182,16 @@ namespace LivingRoots.Domain
         private static void ValidateInput(string filename)
         {
             if (string.IsNullOrWhiteSpace(filename))
-                throw new ArgumentException("Filename cannot be empty or whitespace-only.", nameof(filename));
+                throw new ArgumentException(
+                    "Filename cannot be empty or whitespace-only.",
+                    nameof(filename)
+                );
 
             if (filename.Contains('\0'))
-                throw new ArgumentException("Filename cannot contain null characters.", nameof(filename));
+                throw new ArgumentException(
+                    "Filename cannot contain null characters.",
+                    nameof(filename)
+                );
         }
 
         /// <summary>
@@ -154,12 +223,17 @@ namespace LivingRoots.Domain
         /// <param name="originalFilename">The original filename</param>
         /// <param name="shouldBeHiddenFile">Whether this should be treated as a hidden file</param>
         /// <returns>The processed name</returns>
-        private static string ProcessHiddenFileLogic(string sanitized, string? originalFilename, bool shouldBeHiddenFile)
+        private static string ProcessHiddenFileLogic(
+            string sanitized,
+            string? originalFilename,
+            bool shouldBeHiddenFile
+        )
         {
             // Special handling for cases where the name part sanitizes to empty but there's a blocked extension
             if (ShouldHandleEmptyNameWithBlockedExtension(sanitized, originalFilename))
             {
-                var isHiddenFile = originalFilename?.StartsWith(".", StringComparison.Ordinal) == true;
+                var isHiddenFile =
+                    originalFilename?.StartsWith(".", StringComparison.Ordinal) == true;
                 return CreateAndValidateSafeBlockedFilename(isHiddenFile);
             }
 
@@ -173,15 +247,23 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Determines if we should handle an empty name with a blocked extension
         /// </summary>
-        private static bool ShouldHandleEmptyNameWithBlockedExtension(string sanitized, string? originalFilename)
+        private static bool ShouldHandleEmptyNameWithBlockedExtension(
+            string sanitized,
+            string? originalFilename
+        )
         {
-            return string.IsNullOrEmpty(sanitized) && IsBlockedExtension(GetFileExtension(originalFilename ?? string.Empty));
+            return string.IsNullOrEmpty(sanitized)
+                && IsBlockedExtension(GetFileExtension(originalFilename ?? string.Empty));
         }
 
         /// <summary>
         /// Trims the sanitized name, preserving hidden file dots as needed
         /// </summary>
-        private static string TrimSanitizedName(string sanitized, bool shouldBeHiddenFile, string? originalFilename)
+        private static string TrimSanitizedName(
+            string sanitized,
+            bool shouldBeHiddenFile,
+            string? originalFilename
+        )
         {
             if (shouldBeHiddenFile && sanitized.StartsWith(".", StringComparison.Ordinal))
             {
@@ -200,7 +282,11 @@ namespace LivingRoots.Domain
             var trimmedContent = contentAfterDot.TrimEnd('_', ' ', '.');
 
             // Remove leading underscore if it came from sanitizing an invalid character
-            trimmedContent = RemoveLeadingUnderscoreFromInvalidChar(trimmedContent, contentAfterDot, originalFilename);
+            trimmedContent = RemoveLeadingUnderscoreFromInvalidChar(
+                trimmedContent,
+                contentAfterDot,
+                originalFilename
+            );
 
             if (string.IsNullOrEmpty(trimmedContent))
                 throw new ArgumentException(EmptyFilenameErrorMessage, nameof(sanitized));
@@ -211,11 +297,20 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Removes leading underscore if it resulted from sanitizing an invalid character
         /// </summary>
-        private static string RemoveLeadingUnderscoreFromInvalidChar(string trimmedContent, string contentAfterDot, string? originalFilename)
+        private static string RemoveLeadingUnderscoreFromInvalidChar(
+            string trimmedContent,
+            string contentAfterDot,
+            string? originalFilename
+        )
         {
             // Only consider removing a leading underscore if it likely came from sanitizing
             // the original character right after the dot.
-            if (contentAfterDot.Length > 0 && contentAfterDot[0] == '_' && originalFilename != null && originalFilename.Length > 1)
+            if (
+                contentAfterDot.Length > 0
+                && contentAfterDot[0] == '_'
+                && originalFilename != null
+                && originalFilename.Length > 1
+            )
             {
                 var originalCharAfterDot = originalFilename[1];
 
@@ -237,7 +332,17 @@ namespace LivingRoots.Domain
         {
             // Additional problematic characters that should be replaced
             // These are checked first because they're the most common in path traversal attacks
-            if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|')
+            if (
+                c == '/'
+                || c == '\\'
+                || c == ':'
+                || c == '*'
+                || c == '?'
+                || c == '"'
+                || c == '<'
+                || c == '>'
+                || c == '|'
+            )
                 return true;
 
             // Control characters (except tab, carriage return, line feed which are whitespace) are invalid
@@ -267,12 +372,23 @@ namespace LivingRoots.Domain
         /// </summary>
         private static string EnsureHiddenFilePrefix(string trimmed, bool shouldBeHiddenFile)
         {
-            if (shouldBeHiddenFile && !trimmed.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(trimmed))
+            if (
+                shouldBeHiddenFile
+                && !trimmed.StartsWith(".", StringComparison.Ordinal)
+                && !string.IsNullOrEmpty(trimmed)
+            )
             {
                 var candidate = "." + trimmed;
                 var coreAfterDot = candidate.Substring(1).Trim('_', ' ', '.');
-                if (string.IsNullOrWhiteSpace(coreAfterDot) || coreAfterDot == "." || coreAfterDot == "..")
-                    throw new ArgumentException("Filename sanitizes to an empty or invalid hidden name.", nameof(trimmed));
+                if (
+                    string.IsNullOrWhiteSpace(coreAfterDot)
+                    || coreAfterDot == "."
+                    || coreAfterDot == ".."
+                )
+                    throw new ArgumentException(
+                        "Filename sanitizes to an empty or invalid hidden name.",
+                        nameof(trimmed)
+                    );
                 return candidate;
             }
             return trimmed;
@@ -292,9 +408,15 @@ namespace LivingRoots.Domain
 
             // Validate the result after extension blocking
             var baseAfterBlock = RemoveFileExtension(safeResult).Trim('_', ' ', '.');
-            if (string.IsNullOrWhiteSpace(baseAfterBlock) || baseAfterBlock == "." || baseAfterBlock == "..")
+            if (
+                string.IsNullOrWhiteSpace(baseAfterBlock)
+                || baseAfterBlock == "."
+                || baseAfterBlock == ".."
+            )
             {
-                throw new ArgumentException($"Filename sanitizes to an invalid state after extension blocking: '{safeResult}'.");
+                throw new ArgumentException(
+                    $"Filename sanitizes to an invalid state after extension blocking: '{safeResult}'."
+                );
             }
 
             // Perform final cleanup after all processing
@@ -323,21 +445,27 @@ namespace LivingRoots.Domain
             // Enhanced validation: Ensure that the result has the correct format based on hidden status
             if (isHidden && !safeResult.StartsWith(".", StringComparison.Ordinal))
             {
-                throw new ArgumentException($"Hidden file status not preserved after processing: '{safeResult}'.");
+                throw new ArgumentException(
+                    $"Hidden file status not preserved after processing: '{safeResult}'."
+                );
             }
 
             // Enhanced validation: Ensure that the blocked extension is still present after all processing
             var finalExtension = GetFileExtension(safeResult);
             if (!finalExtension.Equals(".blocked", StringComparison.OrdinalIgnoreCase))
             {
-                throw new ArgumentException($"Blocked extension not preserved after processing: '{safeResult}'.");
+                throw new ArgumentException(
+                    $"Blocked extension not preserved after processing: '{safeResult}'."
+                );
             }
 
             // Enhanced validation: Ensure that the base part of the filename is valid after all processing
             var finalBase = RemoveFileExtension(safeResult).Trim('_', ' ', '.');
             if (string.IsNullOrWhiteSpace(finalBase) || finalBase == "." || finalBase == "..")
             {
-                throw new ArgumentException($"Final result has invalid base after processing: '{safeResult}'.");
+                throw new ArgumentException(
+                    $"Final result has invalid base after processing: '{safeResult}'."
+                );
             }
 
             return safeResult;
@@ -352,13 +480,19 @@ namespace LivingRoots.Domain
             // Ensure that filename doesn't end with invalid characters except for extensions
             if (filename.EndsWith("..") && !filename.EndsWith("...")) // Allow triple dots to become single dots
             {
-                throw new ArgumentException($"Filename contains invalid pattern: '{filename}'", nameof(filename));
+                throw new ArgumentException(
+                    $"Filename contains invalid pattern: '{filename}'",
+                    nameof(filename)
+                );
             }
 
             // Validate that it doesn't contain path traversal sequences
             if (filename.Contains("../") || filename.Contains("..\\"))
             {
-                throw new ArgumentException($"Filename contains path traversal sequences: '{filename}'", nameof(filename));
+                throw new ArgumentException(
+                    $"Filename contains path traversal sequences: '{filename}'",
+                    nameof(filename)
+                );
             }
         }
 
@@ -401,7 +535,11 @@ namespace LivingRoots.Domain
             var postTruncationTrimmed = filename.TrimEnd('_', ' ', '.');
 
             // If it was a hidden file and we lost the dot, add it back
-            if (shouldBeHiddenFile && !postTruncationTrimmed.StartsWith(".", StringComparison.Ordinal) && !string.IsNullOrEmpty(postTruncationTrimmed))
+            if (
+                shouldBeHiddenFile
+                && !postTruncationTrimmed.StartsWith(".", StringComparison.Ordinal)
+                && !string.IsNullOrEmpty(postTruncationTrimmed)
+            )
             {
                 postTruncationTrimmed = "." + postTruncationTrimmed.TrimStart('.');
             }
@@ -470,14 +608,24 @@ namespace LivingRoots.Domain
         private static void ValidateBlockedExtensionResult(string result)
         {
             var baseAfterBlock = RemoveFileExtension(result).Trim('_', ' ', '.');
-            if (string.IsNullOrWhiteSpace(baseAfterBlock) || baseAfterBlock == "." || baseAfterBlock == "..")
+            if (
+                string.IsNullOrWhiteSpace(baseAfterBlock)
+                || baseAfterBlock == "."
+                || baseAfterBlock == ".."
+            )
             {
-                throw new ArgumentException($"Filename sanitizes to an invalid state after extension blocking: '{result}'.", nameof(result));
+                throw new ArgumentException(
+                    $"Filename sanitizes to an invalid state after extension blocking: '{result}'.",
+                    nameof(result)
+                );
             }
 
             if (!result.EndsWith(".blocked", StringComparison.OrdinalIgnoreCase))
             {
-                throw new ArgumentException($"Failed to properly apply blocked extension to: '{result}'", nameof(result));
+                throw new ArgumentException(
+                    $"Failed to properly apply blocked extension to: '{result}'",
+                    nameof(result)
+                );
             }
         }
 
@@ -525,7 +673,8 @@ namespace LivingRoots.Domain
             var extensionLength = System.Math.Max(0, MaxFileNameLength - finalExtension.Length);
             if (extensionLength > 0)
             {
-                return SafeSubstring("file", 0, System.Math.Max(1, extensionLength)) + finalExtension;
+                return SafeSubstring("file", 0, System.Math.Max(1, extensionLength))
+                    + finalExtension;
             }
 
             return ".f" + finalExtension;
@@ -576,14 +725,19 @@ namespace LivingRoots.Domain
             var extension = GetFileExtension(result);
 
             // If it's a blocked extension, ensure it was properly replaced
-            if (!string.IsNullOrEmpty(extension) &&
-                extension.Equals(".blocked", StringComparison.OrdinalIgnoreCase))
+            if (
+                !string.IsNullOrEmpty(extension)
+                && extension.Equals(".blocked", StringComparison.OrdinalIgnoreCase)
+            )
             {
                 // Validate that the base part is not empty
                 var basePart = RemoveFileExtension(result).Trim('_', ' ', '.');
                 if (string.IsNullOrWhiteSpace(basePart) || basePart == "." || basePart == "..")
                 {
-                    throw new ArgumentException($"Extension processing resulted in invalid filename: '{result}'", nameof(result));
+                    throw new ArgumentException(
+                        $"Extension processing resulted in invalid filename: '{result}'",
+                        nameof(result)
+                    );
                 }
             }
         }
@@ -596,7 +750,11 @@ namespace LivingRoots.Domain
         {
             var baseResult = RemoveFileExtension(result);
             var finalBaseTrimmed = baseResult.Trim('_', ' ', '.');
-            if (string.IsNullOrWhiteSpace(finalBaseTrimmed) || finalBaseTrimmed == "." || finalBaseTrimmed == "..")
+            if (
+                string.IsNullOrWhiteSpace(finalBaseTrimmed)
+                || finalBaseTrimmed == "."
+                || finalBaseTrimmed == ".."
+            )
             {
                 throw new ArgumentException(EmptyFilenameErrorMessage, nameof(result));
             }
@@ -634,12 +792,18 @@ namespace LivingRoots.Domain
             // This validation must happen before any trimming to prevent bypassing safeguards
             var processedTrimmed = processed.Trim('_', ' ', '.');
             if (processedTrimmed == "." || processedTrimmed == "..")
-                throw new ArgumentException(EmptyFilenameErrorMessage, nameof(nameWithoutExtension));
+                throw new ArgumentException(
+                    EmptyFilenameErrorMessage,
+                    nameof(nameWithoutExtension)
+                );
 
             // Check if the processed name is "." or ".." before trimming - these are invalid path components
             if (processed == "." || processed == "..")
             {
-                throw new ArgumentException(EmptyFilenameErrorMessage, nameof(nameWithoutExtension));
+                throw new ArgumentException(
+                    EmptyFilenameErrorMessage,
+                    nameof(nameWithoutExtension)
+                );
             }
 
             return processed;
@@ -653,7 +817,9 @@ namespace LivingRoots.Domain
         /// <returns>True if we should block empty name with blocked extension</returns>
         private static bool ShouldBlockEmptyName(string nameWithoutExtension, string extension)
         {
-            return string.IsNullOrEmpty(nameWithoutExtension) && !string.IsNullOrEmpty(extension) && IsBlockedExtension(extension);
+            return string.IsNullOrEmpty(nameWithoutExtension)
+                && !string.IsNullOrEmpty(extension)
+                && IsBlockedExtension(extension);
         }
 
         /// <summary>
@@ -702,9 +868,16 @@ namespace LivingRoots.Domain
                 var trimmedContent = contentAfterDot.Trim('_', ' ', '.');
 
                 // If the trimmed content is empty, contains only "." or "..", or is whitespace, it's invalid
-                if (string.IsNullOrWhiteSpace(trimmedContent) || trimmedContent == "." || trimmedContent == "..")
+                if (
+                    string.IsNullOrWhiteSpace(trimmedContent)
+                    || trimmedContent == "."
+                    || trimmedContent == ".."
+                )
                 {
-                    throw new ArgumentException("Hidden file has invalid content after sanitization.", nameof(result));
+                    throw new ArgumentException(
+                        "Hidden file has invalid content after sanitization.",
+                        nameof(result)
+                    );
                 }
             }
 
@@ -712,7 +885,10 @@ namespace LivingRoots.Domain
             var trimmedResult = result.Trim('_', ' ', '.');
             if (trimmedResult == "." || string.IsNullOrWhiteSpace(trimmedResult))
             {
-                throw new ArgumentException("Filename sanitizes to an invalid hidden file name.", nameof(result));
+                throw new ArgumentException(
+                    "Filename sanitizes to an invalid hidden file name.",
+                    nameof(result)
+                );
             }
 
             return result;
@@ -747,7 +923,12 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Processes a single character in the input string
         /// </summary>
-        private static int ProcessCharacter(string input, StringBuilder resultBuilder, int i, bool isHiddenFile)
+        private static int ProcessCharacter(
+            string input,
+            StringBuilder resultBuilder,
+            int i,
+            bool isHiddenFile
+        )
         {
             var c = input[i];
 
@@ -765,7 +946,9 @@ namespace LivingRoots.Domain
         /// </summary>
         private static bool IsSurrogatePair(string input, int i, char c)
         {
-            return char.IsHighSurrogate(c) && i + 1 < input.Length && char.IsLowSurrogate(input[i + 1]);
+            return char.IsHighSurrogate(c)
+                && i + 1 < input.Length
+                && char.IsLowSurrogate(input[i + 1]);
         }
 
         /// <summary>
@@ -783,7 +966,11 @@ namespace LivingRoots.Domain
         /// For hidden files (starting with '.'), only forward slash and backslash are replaced with underscores,
         /// while other invalid characters are removed entirely. Note that '.' is considered safe and is preserved.
         /// </summary>
-        private static void HandleRegularCharacter(StringBuilder resultBuilder, char c, bool isHiddenFile)
+        private static void HandleRegularCharacter(
+            StringBuilder resultBuilder,
+            char c,
+            bool isHiddenFile
+        )
         {
             if (IsSafeCharacter(c))
             {
@@ -936,7 +1123,8 @@ namespace LivingRoots.Domain
         /// </summary>
         private static bool EndsWithInvalidCharacter(string extNormalized)
         {
-            return char.IsWhiteSpace(extNormalized[extNormalized.Length - 1]) || extNormalized[extNormalized.Length - 1] == '.';
+            return char.IsWhiteSpace(extNormalized[extNormalized.Length - 1])
+                || extNormalized[extNormalized.Length - 1] == '.';
         }
 
         /// <summary>
@@ -953,9 +1141,11 @@ namespace LivingRoots.Domain
         /// </summary>
         private static bool ContainsInvalidCharacters(string extensionPart)
         {
-            return extensionPart.Any(ch => char.IsControl(ch) ||
-                                       (ch >= '\u202A' && ch <= '\u202E') ||
-                                       (ch >= '\u2066' && ch <= '\u2069'));
+            return extensionPart.Any(ch =>
+                char.IsControl(ch)
+                || (ch >= '\u202A' && ch <= '\u202E')
+                || (ch >= '\u2066' && ch <= '\u2069')
+            );
         }
 
         /// <summary>
@@ -963,7 +1153,13 @@ namespace LivingRoots.Domain
         /// </summary>
         private static bool HasValidExtensionCharacters(string extensionPart)
         {
-            return extensionPart.All(c => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || char.IsDigit(c) || c == '-' || c == '_');
+            return extensionPart.All(c =>
+                (c >= 'a' && c <= 'z')
+                || (c >= 'A' && c <= 'Z')
+                || char.IsDigit(c)
+                || c == '-'
+                || c == '_'
+            );
         }
 
         /// <summary>
@@ -1135,8 +1331,7 @@ namespace LivingRoots.Domain
         /// </summary>
         private static int AdjustStartIndexForSurrogatePair(string str, int startIndex)
         {
-            if (startIndex < str.Length && startIndex > 0 &&
-                char.IsLowSurrogate(str[startIndex]))
+            if (startIndex < str.Length && startIndex > 0 && char.IsLowSurrogate(str[startIndex]))
             {
                 // Check if the previous character is a high surrogate
                 // Note: startIndex > 0 is already guaranteed by the outer condition

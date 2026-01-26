@@ -1,9 +1,6 @@
-using System;
-using System.IO;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Moq;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -66,12 +63,12 @@ namespace LivingRoots.Tests
 
             // And "folder/./file" should be allowed (middle "." segments are safe)
             _validator.Validate("folder/./file"); // This should not throw
-            _validator.Validate("path/to/./file.txt");  // This should not throw
-            _validator.Validate("normal/.hidden");  // This should not throw
+            _validator.Validate("path/to/./file.txt"); // This should not throw
+            _validator.Validate("normal/.hidden"); // This should not throw
 
             // Test with backslash separators too
             _validator.Validate("folder\\.\\file"); // This should not throw
-            _validator.Validate("path\\to\\.\\file.txt");  // This should not throw
+            _validator.Validate("path\\to\\.\\file.txt"); // This should not throw
         }
 
         [Fact]
@@ -106,11 +103,15 @@ namespace LivingRoots.Tests
         public void Validate_PathWithPlatformSpecificSeparators_ShouldWorkCorrectly()
         {
             // Test that paths with platform-specific separators are handled correctly
-            var ex1 = Record.Exception(() => _validator.Validate(Path.Combine("path", "to", "file.txt")));
+            var ex1 = Record.Exception(() =>
+                _validator.Validate(Path.Combine("path", "to", "file.txt"))
+            );
             Assert.Null(ex1);
 
             // Test that paths with platform-specific separators for dot segments work correctly
-            var ex2 = Record.Exception(() => _validator.Validate(Path.Combine("path", ".", "file.txt")));
+            var ex2 = Record.Exception(() =>
+                _validator.Validate(Path.Combine("path", ".", "file.txt"))
+            );
             Assert.Null(ex2);
         }
     }

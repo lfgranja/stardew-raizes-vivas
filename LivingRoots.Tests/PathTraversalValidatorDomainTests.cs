@@ -1,8 +1,5 @@
-using System;
 using LivingRoots.Domain;
-using LivingRoots.Services;
 using Moq;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -40,7 +37,9 @@ namespace LivingRoots.Tests
         public void Validate_WithPathTraversal_DotDot_ThrowsArgumentException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("../file.txt"));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("../file.txt")
+            );
             Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
@@ -48,7 +47,9 @@ namespace LivingRoots.Tests
         public void Validate_WithPathTraversal_DotDotBackslash_ThrowsArgumentException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("..\\file.txt"));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("..\\file.txt")
+            );
             Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
 
@@ -56,7 +57,9 @@ namespace LivingRoots.Tests
         public void Validate_WithWindowsAbsolutePath_ThrowsArgumentException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("C:\\Windows\\file.txt"));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("C:\\Windows\\file.txt")
+            );
             Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
         }
 
@@ -64,7 +67,9 @@ namespace LivingRoots.Tests
         public void Validate_WithUnixAbsolutePath_ThrowsArgumentException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("/etc/file.txt"));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("/etc/file.txt")
+            );
             Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
         }
 
@@ -72,7 +77,9 @@ namespace LivingRoots.Tests
         public void Validate_WithHttpUrl_ThrowsArgumentException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("http://example.com/file.txt"));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("http://example.com/file.txt")
+            );
             Assert.Contains("Path cannot be an absolute path or URI", exception.Message);
         }
 
@@ -81,7 +88,10 @@ namespace LivingRoots.Tests
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Validate("%2e%2e%2f"));
-            Assert.Contains("Path cannot contain encoded path traversal patterns", exception.Message);
+            Assert.Contains(
+                "Path cannot contain encoded path traversal patterns",
+                exception.Message
+            );
         }
 
         [Fact]
@@ -113,7 +123,9 @@ namespace LivingRoots.Tests
         public void Validate_WithDotDotSlashAtStart_ThrowsArgumentException()
         {
             // Act & Assert
-            var exception = Assert.Throws<ArgumentException>(() => _service.Validate("./../file.txt"));
+            var exception = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("./../file.txt")
+            );
             Assert.Contains("Path cannot contain path traversal patterns", exception.Message);
         }
     }

@@ -1,8 +1,5 @@
-using System;
 using LivingRoots.Domain;
-using LivingRoots.Services;
 using Moq;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -23,11 +20,16 @@ namespace LivingRoots.Tests
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
 
-            _fileNameSanitizationService = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object, _mockReservedNameHandler.Object);
+            _fileNameSanitizationService = new FileNameSanitizationService(
+                _mockUnicodeNormalizationService.Object,
+                _mockReservedNameHandler.Object
+            );
 
             // Create mock Unicode service for PathValidationService
             var mockUnicodeForPathValidation = new Mock<IUnicodeNormalizationService>();
-            mockUnicodeForPathValidation.Setup(s => s.Normalize(It.IsAny<string>())).Returns<string>(s => s);
+            mockUnicodeForPathValidation
+                .Setup(s => s.Normalize(It.IsAny<string>()))
+                .Returns<string>(s => s);
 
             _pathValidationService = new PathValidationService(mockUnicodeForPathValidation.Object);
         }
@@ -39,9 +41,7 @@ namespace LivingRoots.Tests
             var input = "tеst.txt"; // Contains Cyrillic 'е' that should be normalized
             var normalized = "test.txt"; // Expected normalized output
 
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize(input))
-                .Returns(normalized);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
             var result = _fileNameSanitizationService.Sanitize(input);
@@ -58,9 +58,7 @@ namespace LivingRoots.Tests
             var fileName = "valid_filename.txt";
 
             // First, sanitize filename
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize(fileName))
-                .Returns(fileName);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileName)).Returns(fileName);
 
             var sanitized = _fileNameSanitizationService.Sanitize(fileName);
 
@@ -77,9 +75,7 @@ namespace LivingRoots.Tests
             var input = "malicious.exe";
             var normalized = "malicious.exe"; // No change expected from normalization
 
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize(input))
-                .Returns(normalized);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(normalized);
 
             // Act
             var result = _fileNameSanitizationService.Sanitize(input);
@@ -95,9 +91,7 @@ namespace LivingRoots.Tests
             var input = "../malicious_file.txt";
 
             // Setup mock to return a non-null value for path traversal input
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize(input))
-                .Returns(input);
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns(input);
 
             // Act - Path traversal should now pass through FileNameSanitizationService
             // and be caught by PathValidationService at a higher level

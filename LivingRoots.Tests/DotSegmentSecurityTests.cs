@@ -1,7 +1,5 @@
-using System;
 using LivingRoots.Domain;
 using Moq;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -21,16 +19,17 @@ namespace LivingRoots.Tests
                 .Setup(x => x.Handle(It.IsAny<string>()))
                 .Returns<string>(s => s);
 
-            _service = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object, _mockReservedNameHandler.Object);
+            _service = new FileNameSanitizationService(
+                _mockUnicodeNormalizationService.Object,
+                _mockReservedNameHandler.Object
+            );
         }
 
         [Fact]
         public void Sanitize_WithFilenameThatSanitizesToDot_ThrowsArgumentException()
         {
             // Arrange - filename that would sanitize to "."
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize("..."))
-                .Returns("...");
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize("...")).Returns("...");
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("..."));
@@ -41,9 +40,7 @@ namespace LivingRoots.Tests
         public void Sanitize_WithFilenameThatSanitizesToDotDot_ThrowsArgumentException()
         {
             // Arrange - filename that would sanitize to ".."
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize(".."))
-                .Returns("..");
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize("..")).Returns("..");
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".."));
@@ -54,9 +51,7 @@ namespace LivingRoots.Tests
         public void Sanitize_WithFilenameThatBecomesDotAfterCharacterSanitization_ThrowsArgumentException()
         {
             // Arrange - filename that becomes "." after invalid character removal
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize("<>"))
-                .Returns("<>");
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize("<>")).Returns("<>");
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("<>"));
@@ -67,9 +62,7 @@ namespace LivingRoots.Tests
         public void Sanitize_WithFilenameThatBecomesDotDotAfterCharacterSanitization_ThrowsArgumentException()
         {
             // Arrange - filename that becomes ".." after invalid character removal
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize("<..>"))
-                .Returns("<..>");
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize("<..>")).Returns("<..>");
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("<..>"));
@@ -80,9 +73,7 @@ namespace LivingRoots.Tests
         public void Sanitize_WithFilenameThatBecomesDotAfterTruncationAndCleanup_ThrowsArgumentException()
         {
             // Arrange - a complex case where the filename might become ".." after all processing
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize("...   "))
-                .Returns("...   ");
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize("...   ")).Returns("...   ");
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("...   "));
@@ -93,9 +84,7 @@ namespace LivingRoots.Tests
         public void Sanitize_WithHiddenFileThatBecomesDotAfterProcessing_ThrowsArgumentException()
         {
             // Arrange - hidden file that becomes "." after processing
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize(".<>"))
-                .Returns(".<>");
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(".<>")).Returns(".<>");
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize(".<>"));
@@ -106,9 +95,7 @@ namespace LivingRoots.Tests
         public void Sanitize_WithHiddenFileThatBecomesDotDotAfterProcessing_ThrowsArgumentException()
         {
             // Arrange - hidden file that becomes ".." after processing
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize("..<"))
-                .Returns("..<");
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize("..<")).Returns("..<");
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() => _service.Sanitize("..<"));
@@ -134,9 +121,7 @@ namespace LivingRoots.Tests
         public void Sanitize_WithValidHiddenFile_DoesNotThrow()
         {
             // Arrange - valid hidden file should pass
-            _mockUnicodeNormalizationService
-                .Setup(x => x.Normalize(".config"))
-                .Returns(".config");
+            _mockUnicodeNormalizationService.Setup(x => x.Normalize(".config")).Returns(".config");
 
             // Act
             var result = _service.Sanitize(".config");

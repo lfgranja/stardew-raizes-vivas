@@ -1,13 +1,6 @@
-using System;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Moq;
-using StardewModdingAPI;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -19,11 +12,15 @@ namespace LivingRoots.Tests
         public SecurityFileNameSanitizerTests()
         {
             _mockUnicodeNormalizer = new Mock<IUnicodeNormalizer>();
-            _mockUnicodeNormalizer.Setup(x => x.Normalize(It.IsAny<string?>())).Returns<string?>(input => input!);
+            _mockUnicodeNormalizer
+                .Setup(x => x.Normalize(It.IsAny<string?>()))
+                .Returns<string?>(input => input!);
 
             var unicodeNormalizationService = new UnicodeNormalizationService();
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
-            _fileNameSanitizer = new FileNameSanitizer(new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler));
+            _fileNameSanitizer = new FileNameSanitizer(
+                new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler)
+            );
         }
 
         // Test 1: Extension smuggling prevention - now blocks dangerous extensions
@@ -88,8 +85,8 @@ namespace LivingRoots.Tests
         public void Sanitize_WithHomoglyphs_AppliesContextAwareNormalization()
         {
             // Arrange - Using homoglyphs that should be converted for security
-            var input1 = "user";  // Normal Latin
-            var input2 = "usеr";  // Contains Cyrillic 'е'
+            var input1 = "user"; // Normal Latin
+            var input2 = "usеr"; // Contains Cyrillic 'е'
 
             // Setup mock to normalize the second input
             _mockUnicodeNormalizer.Setup(x => x.Normalize(input2)).Returns("user"!);
@@ -124,7 +121,9 @@ namespace LivingRoots.Tests
             // Now test with the filename sanitizer
             var unicodeNormalizationService = new UnicodeNormalizationService();
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
-            var realFileNameSanitizer = new FileNameSanitizer(new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler));
+            var realFileNameSanitizer = new FileNameSanitizer(
+                new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler)
+            );
             var sanitizedResult = realFileNameSanitizer.Sanitize(mixedInput)!;
 
             Assert.NotNull(sanitizedResult);
@@ -136,8 +135,8 @@ namespace LivingRoots.Tests
         public void Sanitize_WithDiacritics_RemovesForSecurity()
         {
             // Arrange - Diacritics that might be important for identity but removed for security
-            var input1 = "resume";  // English
-            var input2 = "résumé";  // French with diacritics
+            var input1 = "resume"; // English
+            var input2 = "résumé"; // French with diacritics
 
             // Setup mock to normalize the second input
             _mockUnicodeNormalizer.Setup(x => x.Normalize(input2)).Returns("resume"!);

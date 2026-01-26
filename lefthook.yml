@@ -1,16 +1,23 @@
 # lefthook.yml
+post-install:
+    - dotnet tool restore
+
 pre-commit:
-  parallel: true
-  commands:
-    linter:
-      run: dotnet format Stardew-LivingRoots.sln --verify-no-changes && echo "✔️ Formatação OK"
+    parallel: true
+    commands:
+        formatter:
+            glob: "*.cs"
+            run: dotnet csharpier format {staged_files} && git add {staged_files}
+
+        linter:
+            glob: "*.cs"
+            run: dotnet build --no-restore /p:TreatWarningsAsErrors=true
 
 pre-push:
-  parallel: true
-  commands:
-    tests:
-      run: dotnet test
-
+    parallel: true
+    commands:
+        tests:
+            run: dotnet test
 # EXAMPLE USAGE:
 #
 #   Refer for explanation to following link:

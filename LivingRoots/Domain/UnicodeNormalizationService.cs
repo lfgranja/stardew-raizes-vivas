@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
@@ -19,29 +18,103 @@ namespace LivingRoots.Domain
     /// </remarks>
     public class UnicodeNormalizationService : IUnicodeNormalizationService
     {
-        private static readonly ImmutableDictionary<char, string> SecurityConfusables = ImmutableDictionary.CreateRange<char, string>(new Dictionary<char, string>
-        {
-            // Characters that are commonly used in homoglyph attacks (always converted for security)
-            // Cyrillic lookalikes that can be used to disguise Latin text
-            { 'а', "a" }, { 'е', "e" }, { 'о', "o" }, { 'р', "p" }, { 'с', "c" }, { 'х', "x" }, { 'у', "y" }, // Cyrillic lowercase lookalikes
-            { 'А', "A" }, { 'Е', "E" }, { 'О', "O" }, { 'Р', "P" }, { 'С', "C" }, { 'Х', "X" }, { 'У', "Y" }, // Cyrillic uppercase lookalikes
-            { 'і', "i" }, { 'І', "I" }, // Additional Cyrillic lookalikes
-            // Extended Cyrillic lookalikes
-            { 'в', "b" }, { 'к', "k" }, { 'м', "m" }, { 'н', "n" }, { 'т', "t" }, // More Cyrillic lookalikes
-            { 'В', "B" }, { 'К', "K" }, { 'М', "M" }, { 'Н', "H" }, { 'Т', "T" }, // More Cyrillic lookalikes
-            // Greek lookalikes
-            { 'α', "a" }, { 'β', "b" }, { 'ε', "e" }, { 'ζ', "z" }, { 'η', "n" }, { 'ι', "i" }, { 'κ', "k" }, { 'μ', "m" }, { 'ν', "v" }, { 'ο', "o" }, { 'ρ', "p" }, { 'τ', "t" }, { 'υ', "y" }, { 'χ', "x" }, // Greek lowercase lookalikes
-            { 'Α', "A" }, { 'Β', "B" }, { 'Ε', "E" }, { 'Ζ', "Z" }, { 'Η', "N" }, { 'Ι', "I" }, { 'Κ', "K" }, { 'Μ', "M" }, { 'Ν', "N" }, { 'Ο', "O" }, { 'Ρ', "P" }, { 'Τ', "T" }, { 'Υ', "Y" }, { 'Χ', "X" }, // Greek uppercase lookalikes
-            // Other confusable characters
-            { '–', "-" }, { '—', "-" }, // Different types of dashes (en dash and em dash to regular hyphen)
-            { '‐', "-" }, { '‑', "-" }, // Hyphen and non-breaking hyphen to regular hyphen
-            { '′', "'" }, { '″', "\"" }, // Prime and double prime to regular quotes
-            { '‘', "'" }, { '’', "'" }, { '‚', "'" }, // Different single quotes to regular apostrophe
-            { '“', "\"" }, { '”', "\"" }, { '„', "\"" }, // Different double quotes to regular quotes
-            { '⁰', "0" }, { '¹', "1" }, { '²', "2" }, { '³', "3" }, { '⁴', "4" }, { '⁵', "5" }, { '⁶', "6" }, { '⁷', "7" }, { '⁸', "8" }, { '⁹', "9" }, // Superscript numbers
-            { '₀', "0" }, { '₁', "1" }, { '₂', "2" }, { '₃', "3" }, { '₄', "4" }, { '₅', "5" }, { '₆', "6" }, { '₇', "7" }, { '₈', "8" }, { '₉', "9" }, // Subscript numbers
-        });
-
+        private static readonly ImmutableDictionary<char, string> SecurityConfusables =
+            ImmutableDictionary.CreateRange<char, string>(
+                new Dictionary<char, string>
+                {
+                    // Characters that are commonly used in homoglyph attacks (always converted for security)
+                    // Cyrillic lookalikes that can be used to disguise Latin text
+                    { 'а', "a" },
+                    { 'е', "e" },
+                    { 'о', "o" },
+                    { 'р', "p" },
+                    { 'с', "c" },
+                    { 'х', "x" },
+                    { 'у', "y" }, // Cyrillic lowercase lookalikes
+                    { 'А', "A" },
+                    { 'Е', "E" },
+                    { 'О', "O" },
+                    { 'Р', "P" },
+                    { 'С', "C" },
+                    { 'Х', "X" },
+                    { 'У', "Y" }, // Cyrillic uppercase lookalikes
+                    { 'і', "i" },
+                    { 'І', "I" }, // Additional Cyrillic lookalikes
+                    // Extended Cyrillic lookalikes
+                    { 'в', "b" },
+                    { 'к', "k" },
+                    { 'м', "m" },
+                    { 'н', "n" },
+                    { 'т', "t" }, // More Cyrillic lookalikes
+                    { 'В', "B" },
+                    { 'К', "K" },
+                    { 'М', "M" },
+                    { 'Н', "H" },
+                    { 'Т', "T" }, // More Cyrillic lookalikes
+                    // Greek lookalikes
+                    { 'α', "a" },
+                    { 'β', "b" },
+                    { 'ε', "e" },
+                    { 'ζ', "z" },
+                    { 'η', "n" },
+                    { 'ι', "i" },
+                    { 'κ', "k" },
+                    { 'μ', "m" },
+                    { 'ν', "v" },
+                    { 'ο', "o" },
+                    { 'ρ', "p" },
+                    { 'τ', "t" },
+                    { 'υ', "y" },
+                    { 'χ', "x" }, // Greek lowercase lookalikes
+                    { 'Α', "A" },
+                    { 'Β', "B" },
+                    { 'Ε', "E" },
+                    { 'Ζ', "Z" },
+                    { 'Η', "N" },
+                    { 'Ι', "I" },
+                    { 'Κ', "K" },
+                    { 'Μ', "M" },
+                    { 'Ν', "N" },
+                    { 'Ο', "O" },
+                    { 'Ρ', "P" },
+                    { 'Τ', "T" },
+                    { 'Υ', "Y" },
+                    { 'Χ', "X" }, // Greek uppercase lookalikes
+                    // Other confusable characters
+                    { '–', "-" },
+                    { '—', "-" }, // Different types of dashes (en dash and em dash to regular hyphen)
+                    { '‐', "-" },
+                    { '‑', "-" }, // Hyphen and non-breaking hyphen to regular hyphen
+                    { '′', "'" },
+                    { '″', "\"" }, // Prime and double prime to regular quotes
+                    { '‘', "'" },
+                    { '’', "'" },
+                    { '‚', "'" }, // Different single quotes to regular apostrophe
+                    { '“', "\"" },
+                    { '”', "\"" },
+                    { '„', "\"" }, // Different double quotes to regular quotes
+                    { '⁰', "0" },
+                    { '¹', "1" },
+                    { '²', "2" },
+                    { '³', "3" },
+                    { '⁴', "4" },
+                    { '⁵', "5" },
+                    { '⁶', "6" },
+                    { '⁷', "7" },
+                    { '⁸', "8" },
+                    { '⁹', "9" }, // Superscript numbers
+                    { '₀', "0" },
+                    { '₁', "1" },
+                    { '₂', "2" },
+                    { '₃', "3" },
+                    { '₄', "4" },
+                    { '₅', "5" },
+                    { '₆', "6" },
+                    { '₇', "7" },
+                    { '₈', "8" },
+                    { '₉', "9" }, // Subscript numbers
+                }
+            );
 
         /// <summary>
         /// Normalizes Unicode characters by handling diacritics, homoglyphs, and other Unicode security concerns.
@@ -79,7 +152,12 @@ namespace LivingRoots.Domain
         /// <param name="resultBuilder">The string builder for the result.</param>
         /// <param name="lastBaseChar">The last base character encountered.</param>
         /// <returns>The new index to continue from (may be incremented for surrogate pairs).</returns>
-        private static int ProcessCharacter(string decomposed, int currentIndex, StringBuilder resultBuilder, ref char lastBaseChar)
+        private static int ProcessCharacter(
+            string decomposed,
+            int currentIndex,
+            StringBuilder resultBuilder,
+            ref char lastBaseChar
+        )
         {
             var c = decomposed[currentIndex];
 
@@ -94,7 +172,12 @@ namespace LivingRoots.Domain
                 return currentIndex;
             }
 
-            return ProcessNonSurrogateCharacter(decomposed, currentIndex, resultBuilder, ref lastBaseChar);
+            return ProcessNonSurrogateCharacter(
+                decomposed,
+                currentIndex,
+                resultBuilder,
+                ref lastBaseChar
+            );
         }
 
         /// <summary>
@@ -104,9 +187,16 @@ namespace LivingRoots.Domain
         /// <param name="currentIndex">The current index in the string.</param>
         /// <param name="resultBuilder">The string builder for the result.</param>
         /// <returns>The new index to continue from.</returns>
-        private static int ProcessHighSurrogate(string decomposed, int currentIndex, StringBuilder resultBuilder)
+        private static int ProcessHighSurrogate(
+            string decomposed,
+            int currentIndex,
+            StringBuilder resultBuilder
+        )
         {
-            if (currentIndex + 1 < decomposed.Length && char.IsLowSurrogate(decomposed[currentIndex + 1]))
+            if (
+                currentIndex + 1 < decomposed.Length
+                && char.IsLowSurrogate(decomposed[currentIndex + 1])
+            )
             {
                 resultBuilder.Append(decomposed[currentIndex]);
                 resultBuilder.Append(decomposed[currentIndex + 1]);
@@ -125,7 +215,12 @@ namespace LivingRoots.Domain
         /// <param name="resultBuilder">The string builder for the result.</param>
         /// <param name="lastBaseChar">The last base character encountered.</param>
         /// <returns>The same index (no increment needed).</returns>
-        private static int ProcessNonSurrogateCharacter(string decomposed, int currentIndex, StringBuilder resultBuilder, ref char lastBaseChar)
+        private static int ProcessNonSurrogateCharacter(
+            string decomposed,
+            int currentIndex,
+            StringBuilder resultBuilder,
+            ref char lastBaseChar
+        )
         {
             var c = decomposed[currentIndex];
             var category = CharUnicodeInfo.GetUnicodeCategory(c);
@@ -152,9 +247,14 @@ namespace LivingRoots.Domain
         /// <param name="c">The non-spacing mark character.</param>
         /// <param name="lastBaseChar">The last base character encountered.</param>
         /// <param name="resultBuilder">The string builder for the result.</param>
-        private static void ProcessNonSpacingMark(char c, char lastBaseChar, StringBuilder resultBuilder)
+        private static void ProcessNonSpacingMark(
+            char c,
+            char lastBaseChar,
+            StringBuilder resultBuilder
+        )
         {
-            var shouldRemoveDiacritic = lastBaseChar == '\0' || IsLatinLetter(lastBaseChar) || IsGreekLetter(lastBaseChar);
+            var shouldRemoveDiacritic =
+                lastBaseChar == '\0' || IsLatinLetter(lastBaseChar) || IsGreekLetter(lastBaseChar);
             if (!shouldRemoveDiacritic)
             {
                 resultBuilder.Append(c);
@@ -168,7 +268,12 @@ namespace LivingRoots.Domain
         /// <param name="decomposed">The decomposed string being processed.</param>
         /// <param name="index">The index of the character.</param>
         /// <param name="resultBuilder">The string builder for the result.</param>
-        private static void ProcessRegularCharacter(char c, string decomposed, int index, StringBuilder resultBuilder)
+        private static void ProcessRegularCharacter(
+            char c,
+            string decomposed,
+            int index,
+            StringBuilder resultBuilder
+        )
         {
             if (SecurityConfusables.TryGetValue(c, out var replacement))
             {
@@ -226,7 +331,11 @@ namespace LivingRoots.Domain
         /// <param name="currentIndex">The current index.</param>
         /// <param name="resultBuilder">The string builder for the result.</param>
         /// <returns>The new index to continue from.</returns>
-        private static int ProcessHighSurrogateInSanitization(string input, int currentIndex, StringBuilder resultBuilder)
+        private static int ProcessHighSurrogateInSanitization(
+            string input,
+            int currentIndex,
+            StringBuilder resultBuilder
+        )
         {
             if (currentIndex + 1 < input.Length && char.IsLowSurrogate(input[currentIndex + 1]))
             {
@@ -283,8 +392,9 @@ namespace LivingRoots.Domain
         /// <returns>True if the character is a Greek letter, false otherwise.</returns>
         private static bool IsGreekLetter(char c)
         {
-            return (c >= '\u0370' && c <= '\u03FF') || // Greek and Coptic block
-                   (c >= '\u1F00' && c <= '\u1FFF');   // Greek Extended block
+            return (c >= '\u0370' && c <= '\u03FF')
+                || // Greek and Coptic block
+                (c >= '\u1F00' && c <= '\u1FFF'); // Greek Extended block
         }
 
         /// <summary>
@@ -294,10 +404,13 @@ namespace LivingRoots.Domain
         /// <returns>True if the character is a Cyrillic letter, false otherwise.</returns>
         private static bool IsCyrillicLetter(char c)
         {
-            return (c >= '\u0400' && c <= '\u04FF') || // Cyrillic block
-                   (c >= '\u0500' && c <= '\u052F') || // Cyrillic Supplement block
-                   (c >= '\u2DE0' && c <= '\u2DFF') || // Cyrillic Extended-A block
-                   (c >= '\uA640' && c <= '\uA69F');   // Cyrillic Extended-B block
+            return (c >= '\u0400' && c <= '\u04FF')
+                || // Cyrillic block
+                (c >= '\u0500' && c <= '\u052F')
+                || // Cyrillic Supplement block
+                (c >= '\u2DE0' && c <= '\u2DFF')
+                || // Cyrillic Extended-A block
+                (c >= '\uA640' && c <= '\uA69F'); // Cyrillic Extended-B block
         }
 
         /// <summary>
@@ -349,12 +462,29 @@ namespace LivingRoots.Domain
             var isCyrillicConfusable = IsCyrillicLookalike(c);
             var isGreekConfusable = IsGreekLookalike(c);
 
-            if (ShouldPreserveAtBoundary(prevIndex, nextIndex, text, isCyrillicConfusable, isGreekConfusable))
+            if (
+                ShouldPreserveAtBoundary(
+                    prevIndex,
+                    nextIndex,
+                    text,
+                    isCyrillicConfusable,
+                    isGreekConfusable
+                )
+            )
             {
                 return false;
             }
 
-            if (ShouldPreserveInMiddle(prevIndex, nextIndex, text, isCyrillicConfusable, isGreekConfusable, index))
+            if (
+                ShouldPreserveInMiddle(
+                    prevIndex,
+                    nextIndex,
+                    text,
+                    isCyrillicConfusable,
+                    isGreekConfusable,
+                    index
+                )
+            )
             {
                 return false;
             }
@@ -370,16 +500,32 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Checks if a confusable character at a string boundary should be preserved.
         /// </summary>
-        private static bool ShouldPreserveAtBoundary(int prevIndex, int nextIndex, string text, bool isCyrillicConfusable, bool isGreekConfusable)
+        private static bool ShouldPreserveAtBoundary(
+            int prevIndex,
+            int nextIndex,
+            string text,
+            bool isCyrillicConfusable,
+            bool isGreekConfusable
+        )
         {
             if (prevIndex == -1)
             {
-                return ShouldPreserveAtStart(nextIndex, text, isCyrillicConfusable, isGreekConfusable);
+                return ShouldPreserveAtStart(
+                    nextIndex,
+                    text,
+                    isCyrillicConfusable,
+                    isGreekConfusable
+                );
             }
 
             if (nextIndex == -1)
             {
-                return ShouldPreserveAtEnd(prevIndex, text, isCyrillicConfusable, isGreekConfusable);
+                return ShouldPreserveAtEnd(
+                    prevIndex,
+                    text,
+                    isCyrillicConfusable,
+                    isGreekConfusable
+                );
             }
 
             return false;
@@ -388,7 +534,12 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Checks if a confusable character at the start of the string should be preserved.
         /// </summary>
-        private static bool ShouldPreserveAtStart(int nextIndex, string text, bool isCyrillicConfusable, bool isGreekConfusable)
+        private static bool ShouldPreserveAtStart(
+            int nextIndex,
+            string text,
+            bool isCyrillicConfusable,
+            bool isGreekConfusable
+        )
         {
             if (nextIndex == -1)
                 return false;
@@ -405,7 +556,12 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Checks if a confusable character at the end of the string should be preserved.
         /// </summary>
-        private static bool ShouldPreserveAtEnd(int prevIndex, string text, bool isCyrillicConfusable, bool isGreekConfusable)
+        private static bool ShouldPreserveAtEnd(
+            int prevIndex,
+            string text,
+            bool isCyrillicConfusable,
+            bool isGreekConfusable
+        )
         {
             if (isCyrillicConfusable && IsCyrillicLetter(text[prevIndex]))
                 return true;
@@ -419,10 +575,22 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Checks if a confusable character in the middle of the string should be preserved.
         /// </summary>
-        private static bool ShouldPreserveInMiddle(int prevIndex, int nextIndex, string text, bool isCyrillicConfusable, bool isGreekConfusable, int index)
+        private static bool ShouldPreserveInMiddle(
+            int prevIndex,
+            int nextIndex,
+            string text,
+            bool isCyrillicConfusable,
+            bool isGreekConfusable,
+            int index
+        )
         {
             // Guard against invalid indices
-            if (prevIndex < 0 || nextIndex < 0 || prevIndex >= text.Length || nextIndex >= text.Length)
+            if (
+                prevIndex < 0
+                || nextIndex < 0
+                || prevIndex >= text.Length
+                || nextIndex >= text.Length
+            )
                 return false;
 
             var prevIsCyrillic = IsCyrillicLetter(text[prevIndex]);
@@ -448,7 +616,12 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Checks if a Greek confusable character with at least one Greek neighbor should be preserved.
         /// </summary>
-        private static bool ShouldPreserveGreekWithNeighbor(int prevIndex, int nextIndex, string text, bool isGreekConfusable)
+        private static bool ShouldPreserveGreekWithNeighbor(
+            int prevIndex,
+            int nextIndex,
+            string text,
+            bool isGreekConfusable
+        )
         {
             if (!isGreekConfusable)
                 return false;
@@ -489,8 +662,8 @@ namespace LivingRoots.Domain
         /// <returns>True if the character is a Cyrillic lookalike</returns>
         private static bool IsCyrillicLookalike(char c)
         {
-            return SecurityConfusables.ContainsKey(c) &&
-                   (IsCyrillicLetter(c) || c == 'і' || c == 'І'); // Additional Cyrillic lookalikes
+            return SecurityConfusables.ContainsKey(c)
+                && (IsCyrillicLetter(c) || c == 'і' || c == 'І'); // Additional Cyrillic lookalikes
         }
 
         /// <summary>
@@ -514,9 +687,11 @@ namespace LivingRoots.Domain
             for (var i = startIndex - 1; i >= 0; i--)
             {
                 var category = CharUnicodeInfo.GetUnicodeCategory(text[i]);
-                if (category != UnicodeCategory.NonSpacingMark &&
-                    category != UnicodeCategory.SpacingCombiningMark &&
-                    category != UnicodeCategory.EnclosingMark)
+                if (
+                    category != UnicodeCategory.NonSpacingMark
+                    && category != UnicodeCategory.SpacingCombiningMark
+                    && category != UnicodeCategory.EnclosingMark
+                )
                 {
                     return i;
                 }
@@ -535,9 +710,11 @@ namespace LivingRoots.Domain
             for (var i = startIndex + 1; i < text.Length; i++)
             {
                 var category = CharUnicodeInfo.GetUnicodeCategory(text[i]);
-                if (category != UnicodeCategory.NonSpacingMark &&
-                    category != UnicodeCategory.SpacingCombiningMark &&
-                    category != UnicodeCategory.EnclosingMark)
+                if (
+                    category != UnicodeCategory.NonSpacingMark
+                    && category != UnicodeCategory.SpacingCombiningMark
+                    && category != UnicodeCategory.EnclosingMark
+                )
                 {
                     return i;
                 }

@@ -1,13 +1,6 @@
-using System;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
 using LivingRoots.Domain;
-using LivingRoots.Services;
 using Moq;
 using StardewModdingAPI;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -31,13 +24,20 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.Data).Returns(_mockDataHelper.Object);
 
             // Create real FileNameSanitizationService instance with mocked UnicodeNormalizationService dependency
-            _fileNameSanitizationService = new FileNameSanitizationService(_mockUnicodeNormalizationService.Object, _mockReservedNameHandler.Object);
+            _fileNameSanitizationService = new FileNameSanitizationService(
+                _mockUnicodeNormalizationService.Object,
+                _mockReservedNameHandler.Object
+            );
 
             // Configure the reserved name handler to return the input as-is for these tests
-            _mockReservedNameHandler.Setup(x => x.Handle(It.IsAny<string?>())).Returns<string?>(input => input);
+            _mockReservedNameHandler
+                .Setup(x => x.Handle(It.IsAny<string?>()))
+                .Returns<string?>(input => input);
 
             // Setup the mock UnicodeNormalizationService to return the input by default (for most tests)
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string?>())).Returns<string?>(input => input);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string?>()))
+                .Returns<string?>(input => input);
         }
 
         [Fact]
@@ -112,7 +112,9 @@ namespace LivingRoots.Tests
             var input = "test\u200Bzwsp\u200Czwnj\u200Dzwj";
 
             // Setup mock to return the same string (zero-width chars should be removed by UnicodeNormalizer)
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(input)).Returns("testzwspzwnjzwj");
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(input))
+                .Returns("testzwspzwnjzwj");
 
             // Act
             var result = _fileNameSanitizationService.Sanitize(input) ?? string.Empty;

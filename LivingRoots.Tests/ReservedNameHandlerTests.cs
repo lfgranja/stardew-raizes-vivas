@@ -1,10 +1,6 @@
-using System;
-using System.IO;
 using LivingRoots.Domain;
-using LivingRoots.Services;
 using Moq;
 using StardewModdingAPI;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -31,13 +27,17 @@ namespace LivingRoots.Tests
             _reservedNameHandler = new ReservedNameHandler(_mockUnicodeNormalizationService.Object);
 
             // Configure file name sanitizer to return the input as-is for these tests
-            _mockFileNameSanitizer.Setup(x => x.Sanitize(It.IsAny<string>())).Returns<string>(input => input);
+            _mockFileNameSanitizer
+                .Setup(x => x.Sanitize(It.IsAny<string>()))
+                .Returns<string>(input => input);
 
             // Configure path traversal validator to not throw for valid paths in these tests
             _mockPathTraversalValidator.Setup(x => x.Validate(It.IsAny<string>())).Verifiable();
 
             // Setup mock UnicodeNormalizationService to return the input by default
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(input => input);
         }
 
         [Theory]
@@ -49,11 +49,16 @@ namespace LivingRoots.Tests
         [InlineData("LPT1", "LPT1_")]
         [InlineData("con", "con_")]
         [InlineData("CoN", "CoN_")]
-        public void Handle_WithReservedWindowsName_AddsUnderscore(string reservedName, string expectedName)
+        public void Handle_WithReservedWindowsName_AddsUnderscore(
+            string reservedName,
+            string expectedName
+        )
         {
             // Arrange
             // Setup mock to return same string for normalization (no change for basic reserved names)
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(reservedName)).Returns(reservedName);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(reservedName))
+                .Returns(reservedName);
 
             // Act
             var result = _reservedNameHandler.Handle(reservedName);
@@ -66,11 +71,16 @@ namespace LivingRoots.Tests
         [InlineData("CON.log", "CON_.log")]
         [InlineData("PRN.log", "PRN_.log")]
         [InlineData("COM1.xml", "COM1_.xml")]
-        public void Handle_WithReservedNameAndExtension_HandlesCorrectly(string reservedName, string expectedName)
+        public void Handle_WithReservedNameAndExtension_HandlesCorrectly(
+            string reservedName,
+            string expectedName
+        )
         {
             // Arrange
             // Setup mock to return same string for normalization
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(input => input);
 
             // Act
             var result = _reservedNameHandler.Handle(reservedName);
@@ -267,7 +277,9 @@ namespace LivingRoots.Tests
             var input = "path/to/file.txt";
 
             // Setup mock to return same string for normalization
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(input => input);
 
             // Act
             var result = _reservedNameHandler.Handle(input);
@@ -284,7 +296,9 @@ namespace LivingRoots.Tests
             var fileNamePart = "CON";
 
             // Setup mock to return same string for normalization
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(fileNamePart))
+                .Returns(fileNamePart);
 
             // Act
             var result = _reservedNameHandler.Handle(input);
@@ -300,7 +314,9 @@ namespace LivingRoots.Tests
             var input = "path/to/CONSOLE.txt";
 
             // Setup mock to return same string for normalization
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(input => input);
 
             // Act
             var result = _reservedNameHandler.Handle(input);
@@ -450,7 +466,10 @@ namespace LivingRoots.Tests
         [InlineData("path/to/   ", "path/to/_")]
         [InlineData("path/to/...", "path/to/_")]
         [InlineData("path/to/ . ", "path/to/_")]
-        public void Handle_WithInsignificantName_ReplacesWithSafePlaceholder(string input, string expected)
+        public void Handle_WithInsignificantName_ReplacesWithSafePlaceholder(
+            string input,
+            string expected
+        )
         {
             // This test verifies that filenames and paths with filenames consisting only of insignificant characters
             // (dots/spaces) are replaced with a safe placeholder instead of returning the original
@@ -474,7 +493,9 @@ namespace LivingRoots.Tests
             var fileNamePart = "CON";
 
             // Setup mock to return same string for normalization
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(fileNamePart))
+                .Returns(fileNamePart);
 
             // Act
             var result = _reservedNameHandler.Handle(input);
@@ -493,7 +514,9 @@ namespace LivingRoots.Tests
             var fileNamePart = "COM1";
 
             // Setup mock to return same string for normalization
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(fileNamePart))
+                .Returns(fileNamePart);
 
             // Act
             var result = _reservedNameHandler.Handle(input);
@@ -514,7 +537,9 @@ namespace LivingRoots.Tests
             var fileNamePart = "PRN";
 
             // Setup mock to return same string for normalization
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(fileNamePart))
+                .Returns(fileNamePart);
 
             // Act
             var result = _reservedNameHandler.Handle(input);
@@ -533,7 +558,9 @@ namespace LivingRoots.Tests
             var input = Path.Combine("C:", "normal_file.txt"); // Rooted path with non-reserved name
 
             // Setup mock to return same string for normalization
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(input => input);
 
             // Act
             var result = _reservedNameHandler.Handle(input);
@@ -551,7 +578,9 @@ namespace LivingRoots.Tests
             var input = Path.Combine("C:", "CONSOLE.txt"); // Rooted path with name similar to reserved but not exact
 
             // Setup mock to return same string for normalization
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(It.IsAny<string>())).Returns<string>(input => input);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(It.IsAny<string>()))
+                .Returns<string>(input => input);
 
             // Act
             var result = _reservedNameHandler.Handle(input);
@@ -587,7 +616,9 @@ namespace LivingRoots.Tests
             var fileNamePart = "LPT1";
 
             // Setup mock to return same string for normalization
-            _mockUnicodeNormalizationService.Setup(x => x.Normalize(fileNamePart)).Returns(fileNamePart);
+            _mockUnicodeNormalizationService
+                .Setup(x => x.Normalize(fileNamePart))
+                .Returns(fileNamePart);
 
             // Act
             var result = _reservedNameHandler.Handle(input);

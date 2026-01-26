@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.Xna.Framework;
-using Xunit;
-
 namespace LivingRoots.Tests
 {
     public class TaskAwaitingTest
@@ -27,17 +21,19 @@ namespace LivingRoots.Tests
 
             // The problematic pattern: only adding the continuation task to be awaited
             // The original worker task is not awaited, so unobserved exceptions can occur
-            tasks.Add(task.ContinueWith(continuationTask =>
-            {
-                // Handle the exception from the original task to prevent unobserved exception
-                if (continuationTask.IsFaulted && continuationTask.Exception != null)
+            tasks.Add(
+                task.ContinueWith(continuationTask =>
                 {
-                    lock (lockObj)
+                    // Handle the exception from the original task to prevent unobserved exception
+                    if (continuationTask.IsFaulted && continuationTask.Exception != null)
                     {
-                        exceptions.AddRange(continuationTask.Exception.InnerExceptions);
+                        lock (lockObj)
+                        {
+                            exceptions.AddRange(continuationTask.Exception.InnerExceptions);
+                        }
                     }
-                }
-            }));
+                })
+            );
 
             // This should await all tasks, but the original task is not properly awaited
             await Task.WhenAll(tasks);
@@ -46,7 +42,10 @@ namespace LivingRoots.Tests
 
             // The test should detect the exception in the continuation handling
             Assert.NotEmpty(exceptions);
-            Assert.Contains(exceptions, ex => ex.Message.Contains("Worker task exception occurred!"));
+            Assert.Contains(
+                exceptions,
+                ex => ex.Message.Contains("Worker task exception occurred!")
+            );
         }
 
         [Fact]
@@ -84,11 +83,16 @@ namespace LivingRoots.Tests
 
             // This will properly await all tasks, ensuring exceptions are observed
             // We need to catch the exception that will be thrown when awaiting the faulted task
-            await Assert.ThrowsAsync<InvalidOperationException>(async () => await Task.WhenAll(tasks));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await Task.WhenAll(tasks)
+            );
 
             // The test should detect the exception in the worker task through proper exception handling
             // We also check that the continuation captured the exception
-            Assert.Contains(exceptions, ex => ex.Message.Contains("Worker task exception occurred!"));
+            Assert.Contains(
+                exceptions,
+                ex => ex.Message.Contains("Worker task exception occurred!")
+            );
         }
     }
 }

@@ -1,0 +1,17 @@
+<Project>
+    <PropertyGroup>
+        <!--
+      Match CI behavior: Treat warnings as errors.
+      This ensures 'Problems' tab shows red errors for anything that would fail the build pipeline.
+    -->
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+        <!--
+      Enable all .NET code quality rules (Analyzers) to catch issues early (similar to Sonar/CodeQL).
+      'latest-all' enables all rules in the current SDK.
+    -->
+        <AnalysisLevel>latest-all</AnalysisLevel>
+        <AnalysisMode>All</AnalysisMode>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    </PropertyGroup>
+</Project>

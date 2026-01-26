@@ -1,4 +1,3 @@
-using System;
 using LivingRoots.Domain;
 using StardewModdingAPI;
 
@@ -26,7 +25,10 @@ namespace LivingRoots.Services
 
                 if (saveId.Length > ModConstants.MaxSaveIdLength)
                 {
-                    _monitor?.Log($"GetSaveId: Save ID exceeded maximum length ({ModConstants.MaxSaveIdLength}); returning null.", LogLevel.Trace);
+                    _monitor?.Log(
+                        $"GetSaveId: Save ID exceeded maximum length ({ModConstants.MaxSaveIdLength}); returning null.",
+                        LogLevel.Trace
+                    );
                     return null;
                 }
 
@@ -35,10 +37,12 @@ namespace LivingRoots.Services
             }
             catch (Exception ex)
             {
-                _monitor!.Log($"GetSaveId: Exception occurred: {ex.GetType().Name}", LogLevel.Trace);
+                _monitor!.Log(
+                    $"GetSaveId: Exception occurred: {ex.GetType().Name}",
+                    LogLevel.Trace
+                );
                 return null;
             }
         }
-
     }
 }

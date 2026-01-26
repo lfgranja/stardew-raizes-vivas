@@ -1,11 +1,8 @@
-using System;
-using System.IO;
 using System.Reflection;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using Moq;
 using StardewModdingAPI;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -32,7 +29,9 @@ namespace LivingRoots.Tests
             // This replaces the complex lambda that re-implemented production logic
             // Each specific input is mapped to its expected output to avoid re-implementing
             // the sanitization logic in the test
-            _mockModLogic.Setup(x => x.SanitizeFileName("with:invalid|chars")).Returns("with_invalid_chars");
+            _mockModLogic
+                .Setup(x => x.SanitizeFileName("with:invalid|chars"))
+                .Returns("with_invalid_chars");
             _mockModLogic.Setup(x => x.SanitizeFileName("file....name")).Returns("file.name");
             _mockModLogic.Setup(x => x.SanitizeFileName("test_key")).Returns("test_key");
             _mockModLogic.Setup(x => x.SanitizeFileName("segment1")).Returns("segment1");
@@ -44,21 +43,43 @@ namespace LivingRoots.Tests
             _mockModLogic.Setup(x => x.SanitizeFileName("end")).Returns("end");
 
             // Configure exceptions for inputs that should throw
-            _mockModLogic.Setup(x => x.SanitizeFileName(It.Is<string>(s => string.IsNullOrEmpty(s) || s == "<>:\"|?*" || s == "........." || s == "___"))).Throws(new ArgumentException("Filename sanitizes to an empty string."));
-            _mockModLogic.Setup(x => x.SanitizeFileName("..")).Throws(new ArgumentException($"Filename sanitizes to invalid path component '..'."));
+            _mockModLogic
+                .Setup(x =>
+                    x.SanitizeFileName(
+                        It.Is<string>(s =>
+                            string.IsNullOrEmpty(s)
+                            || s == "<>:\"|?*"
+                            || s == "........."
+                            || s == "___"
+                        )
+                    )
+                )
+                .Throws(new ArgumentException("Filename sanitizes to an empty string."));
+            _mockModLogic
+                .Setup(x => x.SanitizeFileName(".."))
+                .Throws(
+                    new ArgumentException($"Filename sanitizes to invalid path component '..'.")
+                );
 
             // Configure path validation to not throw for valid paths in most tests
             // but throw for path traversal attempts
             _mockModLogic.Setup(x => x.ValidatePath(It.IsAny<string>())).Verifiable();
-            _mockModLogic.Setup(x => x.ValidatePath(It.Is<string>(s =>
-                s.Contains("../") ||
-                s.Contains("..\\") ||
-                s.Contains("../../../") ||
-                s.Contains("..\\..\\") ||
-                ContainsIgnoreCase(s, "http://") ||
-                ContainsIgnoreCase(s, "https://") ||
-                ContainsIgnoreCase(s, "ftp://") ||
-                ContainsIgnoreCase(s, "file://")))).Throws<ArgumentException>();
+            _mockModLogic
+                .Setup(x =>
+                    x.ValidatePath(
+                        It.Is<string>(s =>
+                            s.Contains("../")
+                            || s.Contains("..\\")
+                            || s.Contains("../../../")
+                            || s.Contains("..\\..\\")
+                            || ContainsIgnoreCase(s, "http://")
+                            || ContainsIgnoreCase(s, "https://")
+                            || ContainsIgnoreCase(s, "ftp://")
+                            || ContainsIgnoreCase(s, "file://")
+                        )
+                    )
+                )
+                .Throws<ArgumentException>();
         }
 
         // Helper method for case-insensitive string containment check
@@ -74,10 +95,15 @@ namespace LivingRoots.Tests
         public void SanitizePathSegments_WithDotSegments_SkipsDotSegmentsCorrectly()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var service = new ModDataService(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockModLogic.Object
+            );
 
             // Use reflection to access private SanitizePathSegments method
-            var method = service.GetType()
+            var method = service
+                .GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
 
             // Act - Test path with dot segments that should be skipped
@@ -91,28 +117,42 @@ namespace LivingRoots.Tests
         public void SanitizePathSegments_WithOnlyDotSegments_ThrowsArgumentException()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var service = new ModDataService(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockModLogic.Object
+            );
 
             // Use reflection to access private SanitizePathSegments method
-            var method = service.GetType()
+            var method = service
+                .GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
 
             // Act & Assert - Path with only dot segments should result in empty path and throw exception
             var exception = Assert.Throws<TargetInvocationException>(() =>
-                method?.Invoke(service, new object[] { "././." }));
+                method?.Invoke(service, new object[] { "././." })
+            );
 
             Assert.IsType<ArgumentException>(exception.InnerException);
-            Assert.Contains("Path sanitization resulted in empty path", exception.InnerException?.Message);
+            Assert.Contains(
+                "Path sanitization resulted in empty path",
+                exception.InnerException?.Message
+            );
         }
 
         [Fact]
         public void SanitizePathSegments_WithMixedDotAndValidSegments_SkipsOnlyDotSegments()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var service = new ModDataService(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockModLogic.Object
+            );
 
             // Use reflection to access private SanitizePathSegments method
-            var method = service.GetType()
+            var method = service
+                .GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
 
             // Act - Test path with mix of dot segments and valid segments
@@ -126,10 +166,15 @@ namespace LivingRoots.Tests
         public void SanitizePathSegments_WithDotSegmentAtBeginning_SkipsDotSegment()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var service = new ModDataService(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockModLogic.Object
+            );
 
             // Use reflection to access private SanitizePathSegments method
-            var method = service.GetType()
+            var method = service
+                .GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
 
             // Act - Test path starting with dot segment
@@ -143,10 +188,15 @@ namespace LivingRoots.Tests
         public void SanitizePathSegments_WithDotSegmentAtEnd_SkipsDotSegment()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var service = new ModDataService(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockModLogic.Object
+            );
 
             // Use reflection to access private SanitizePathSegments method
-            var method = service.GetType()
+            var method = service
+                .GetType()
                 .GetMethod("SanitizePathSegments", BindingFlags.NonPublic | BindingFlags.Instance);
 
             // Act - Test path ending with dot segment
@@ -160,10 +210,15 @@ namespace LivingRoots.Tests
         public void IsPathTraversalSegment_WithDotSegment_ReturnsFalse_AfterRemovalOfRedundantCheck()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var service = new ModDataService(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockModLogic.Object
+            );
 
             // Use reflection to access private IsPathTraversalSegment method
-            var method = service.GetType()
+            var method = service
+                .GetType()
                 .GetMethod("IsPathTraversalSegment", BindingFlags.NonPublic | BindingFlags.Static);
 
             // Act - Test IsPathTraversalSegment with a dot segment
@@ -179,10 +234,15 @@ namespace LivingRoots.Tests
         public void IsPathTraversalSegment_WithDotDotSegment_StillReturnsTrue()
         {
             // Arrange
-            var service = new ModDataService(_mockHelper.Object, _mockMonitor.Object, _mockModLogic.Object);
+            var service = new ModDataService(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockModLogic.Object
+            );
 
             // Use reflection to access private IsPathTraversalSegment method
-            var method = service.GetType()
+            var method = service
+                .GetType()
                 .GetMethod("IsPathTraversalSegment", BindingFlags.NonPublic | BindingFlags.Static);
 
             // Act - Test IsPathTraversalSegment with a dot-dot segment

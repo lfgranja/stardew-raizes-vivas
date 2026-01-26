@@ -1,5 +1,3 @@
-using StardewModdingAPI;
-
 namespace LivingRoots.Services
 {
     /// <summary>
@@ -14,7 +12,8 @@ namespace LivingRoots.Services
         /// <typeparam name="T">Type of data to save (must be a reference type)</typeparam>
         /// <param name="data">Data to save</param>
         /// <param name="key">Key to identify the data</param>
-        void SaveData<T>(T data, string key) where T : class;
+        void SaveData<T>(T data, string key)
+            where T : class;
 
         /// <summary>
         /// Load mod data from persistent storage
@@ -22,7 +21,8 @@ namespace LivingRoots.Services
         /// <typeparam name="T">Type of data to load (must be a reference type)</typeparam>
         /// <param name="key">Key to identify the data</param>
         /// <returns>Loaded data or default value if not found</returns>
-        T? LoadData<T>(string key) where T : class;
+        T? LoadData<T>(string key)
+            where T : class;
 
         /// <summary>
         /// Check if data exists for a given key

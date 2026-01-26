@@ -1,8 +1,5 @@
-using System;
 using LivingRoots.Domain;
-using LivingRoots.Services;
 using Moq;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -97,10 +94,14 @@ namespace LivingRoots.Tests
         public void Validate_PathTraversalWithDot_ShouldStillBeBlocked()
         {
             // These should still be blocked - path traversal with ".."
-            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("../file.txt"));
+            var exception1 = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("../file.txt")
+            );
             Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
 
-            var exception2 = Assert.Throws<ArgumentException>(() => _service.Validate("../../file.txt"));
+            var exception2 = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("../../file.txt")
+            );
             Assert.Contains("Path cannot contain path traversal patterns", exception2.Message);
 
             // This path should be allowed as it doesn't go above root level
@@ -112,7 +113,9 @@ namespace LivingRoots.Tests
         public void Validate_PathWithMixedDotAndDotDot_ShouldBeBlocked()
         {
             // This should still be blocked - "./../" goes above root level
-            var exception1 = Assert.Throws<ArgumentException>(() => _service.Validate("./../file.txt"));
+            var exception1 = Assert.Throws<ArgumentException>(() =>
+                _service.Validate("./../file.txt")
+            );
             Assert.Contains("Path cannot contain path traversal patterns", exception1.Message);
 
             // This path should be allowed - it doesn't go above root level: folder(1) -> .(1) -> ..(0) -> file(1)

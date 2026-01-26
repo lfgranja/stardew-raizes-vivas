@@ -2,15 +2,34 @@
     "typescript.tsserver.watchOptions": "vscode",
     "dotnet.defaultSolution": "Stardew-LivingRoots.sln",
     "dotnet.server.useOmnisharp": true,
+    "omnisharp.useModernNet": true,
     "editor.formatOnSave": true,
     "[csharp]": {
-        "editor.defaultFormatter": "ms-dotnettools.csharp",
+        "editor.defaultFormatter": "csharpier.csharpier-vscode",
         "editor.codeActionsOnSave": {
-            "source.fixAll": "always"
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
         }
     },
     "sonarlint.connectedMode.project": {
         "connectionId": "lfgranja",
         "projectKey": "lfgranja_stardew-raizes-vivas"
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+
+    "dotnet.backgroundAnalysis.analyzerDiagnosticsScope": "fullSolution",
+
+    // Integração com Roslyn
+    "dotnet.server.trace": "Trace",
+
+    // Opcional: Arquivos a excluir da visualização
+    "files.exclude": {
+        "**/bin": true,
+        "**/obj": true
     }
 }

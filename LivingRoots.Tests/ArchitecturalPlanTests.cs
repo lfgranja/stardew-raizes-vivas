@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using Xunit;
-
 namespace LivingRoots.Tests
 {
     public class ArchitecturalPlanTests
@@ -22,7 +15,10 @@ namespace LivingRoots.Tests
                 // Accept both Unix and Windows trailing newlines
                 var endsWithNewline = content.EndsWith('\n') || content.EndsWith("\r\n");
 
-                Assert.True(endsWithNewline, $"The file {filePath} should end with a trailing newline. Content ends with character {(int)content[content.Length - 1]}.");
+                Assert.True(
+                    endsWithNewline,
+                    $"The file {filePath} should end with a trailing newline. Content ends with character {(int)content[content.Length - 1]}."
+                );
             }
         }
 
@@ -45,19 +41,23 @@ namespace LivingRoots.Tests
                 // Can't find project root, so can't find docs.
                 return Enumerable.Empty<object[]>();
             }
-            var architecturalPlansDirectory = Path.Combine(projectRoot, "LivingRoots", "docs", "architectural_and_refactor_plans");
+            var architecturalPlansDirectory = Path.Combine(
+                projectRoot,
+                "LivingRoots",
+                "docs",
+                "architectural_and_refactor_plans"
+            );
 
             if (!Directory.Exists(architecturalPlansDirectory))
             {
                 return Enumerable.Empty<object[]>();
             }
 
-            var mdFiles = Directory.GetFiles(architecturalPlansDirectory, "*.md", SearchOption.AllDirectories)
-                                   .Select(filePath => new object[] { filePath });
+            var mdFiles = Directory
+                .GetFiles(architecturalPlansDirectory, "*.md", SearchOption.AllDirectories)
+                .Select(filePath => new object[] { filePath });
 
             return mdFiles;
         }
-
-
     }
 }

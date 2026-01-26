@@ -10,5 +10,6 @@ namespace LivingRoots.Domain
         void SetSoilHealth(string locationName, Vector2 tile, float value);
         void UpdateHealth(string locationName, Vector2 tile, float delta);
         void Reset();
+        float GenerateInitialSoilHealth();
     }
 }

@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace LivingRoots.Domain
 {
     /// <summary>
@@ -9,6 +7,6 @@ namespace LivingRoots.Domain
     /// </summary>
     public class SoilHealthState
     {
-        public Dictionary<string, Dictionary<string, float>> LocationHealthData { get; set; } = new();
+        public Dictionary<string, Dictionary<string, float>> LocationHealthData { get; set; } = [];
     }
 }

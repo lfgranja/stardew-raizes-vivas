@@ -1,4 +1,3 @@
-using System;
 using System.Text.RegularExpressions;
 
 namespace LivingRoots.Domain
@@ -7,16 +6,18 @@ namespace LivingRoots.Domain
     /// Implementation for validating file paths to prevent path traversal attacks and other security issues.
     /// All path validation logic is consolidated in this service to reduce redundancy.
     /// </summary>
-    public class PathValidationService : IPathValidationService
+    public class PathValidationService(IUnicodeNormalizationService unicodeNormalizationService)
+        : IPathValidationService
     {
-        private readonly IUnicodeNormalizationService _unicodeNormalizationService;
+        private readonly IUnicodeNormalizationService _unicodeNormalizationService =
+            unicodeNormalizationService
+            ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
 
         // Regex patterns for detecting absolute paths and URIs
         private static readonly Regex AbsolutePathPattern = new(
             @"^[a-zA-Z]:[/\\]|^[/\\]|[a-zA-Z][a-zA-Z0-9+.-]*://",
             RegexOptions.Compiled | RegexOptions.IgnoreCase
         );
-
 
         // Regex patterns for detecting encoded path traversal sequences
         // Enhanced to detect more path traversal attack variations including Unicode escapes, URL encoding variations, and hex encodings
@@ -25,12 +26,6 @@ namespace LivingRoots.Domain
             @"(?:%2e%2e%2[fF]|%2e%2e[/\\]|%2e%2e%0|%%32[eE]%%32[fF]|%25%32%65%25%32%65%25%32%66|%252[eE]%252[eE][/\\%3F%5C%2F]|%c0%ae%c0%ae|%e0%80%ae%e0%80%ae|%f0%80%80%ae%f0%80%80%ae|%c0%2e%c0%2e|%c0%2[fF]|%c0%5[cC]|%c0%af|%e2%80%a5%e2%80%a5%e2%80%a5|%ef%bc%8[fF]%ef%bc%8[eE]%ef%bc%8[eE]%ef%bc%8[fF]|%ef%bc%9[cC]%ef%bc%9[eE]%ef%bc%9[cC]%ef%bc%9[eE]|\.%252[eE]|%252[eE]\.|%252[eE]%252[eE]|\.%00\.|%00\.\.|%u02e%u02e%u002[fF]|%u02e%u002e%u005[cC]|%uff0[eE]%uff0[eE]|%u2024%u2024|%u2025%u2025|%u2026%u2026|%u302e%u3002|%uff0[fF]|%uff3[cC]|%u221[56])",
             RegexOptions.Compiled | RegexOptions.IgnoreCase
         );
-
-        public PathValidationService(
-            IUnicodeNormalizationService unicodeNormalizationService)
-        {
-            _unicodeNormalizationService = unicodeNormalizationService ?? throw new ArgumentNullException(nameof(unicodeNormalizationService));
-        }
 
         /// <summary>
         /// Validates a file path to ensure it doesn't contain path traversal patterns or absolute paths.
@@ -47,7 +42,10 @@ namespace LivingRoots.Domain
 
             // Security fix: Add null check for normalizedPath to prevent validation bypass
             if (normalizedPath == null)
-                throw new ArgumentException("Path normalization returned null, validation cannot proceed", nameof(path));
+                throw new ArgumentException(
+                    "Path normalization returned null, validation cannot proceed",
+                    nameof(path)
+                );
 
             // Apply dot-homoglyph normalization for comprehensive security
             var processedPath = NormalizePath(normalizedPath);
@@ -67,12 +65,12 @@ namespace LivingRoots.Domain
         {
             // Canonicalize separators - handle various Unicode separators and normalize them to forward slash
             var normalized = path.Replace('\\', '/')
-                                   .Replace('\u002f', '/')    // SOLIDUS (/)
-                                   .Replace('\u005c', '/')    // REVERSE SOLIDUS (\) - normalized to forward slash
-                                   .Replace('\u2044', '/')    // FRACTION SLASH
-                                   .Replace('\u2215', '/')    // DIVISION SLASH
-                                   .Replace('\ufe6f', '/')    // SMALL REVERSE SOLIDUS
-                                   .Replace('\uff0f', '/');   // FULLWIDTH SOLIDUS
+                .Replace('\u002f', '/') // SOLIDUS (/)
+                .Replace('\u005c', '/') // REVERSE SOLIDUS (\) - normalized to forward slash
+                .Replace('\u2044', '/') // FRACTION SLASH
+                .Replace('\u2215', '/') // DIVISION SLASH
+                .Replace('\ufe6f', '/') // SMALL REVERSE SOLIDUS
+                .Replace('\uff0f', '/'); // FULLWIDTH SOLIDUS
 
             // Map dot-homoglyphs used in traversal tricks to ASCII '.'
             // U+2024 (ONE DOT LEADER), U+2025 (TWO DOT LEADER), U+2026 (HORIZONTAL ELLIPSIS), U+FF0E (FULLWIDTH FULL STOP)
@@ -96,13 +94,19 @@ namespace LivingRoots.Domain
             // Check for standalone "." - this should still be blocked as it represents current directory traversal
             if (path.Equals(".", StringComparison.Ordinal))
             {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+                throw new ArgumentException(
+                    "Path cannot contain path traversal patterns",
+                    nameof(path)
+                );
             }
 
             // Check for standalone "./" - this should be blocked as it represents current directory navigation
             if (path.Equals("./", StringComparison.Ordinal))
             {
-                throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+                throw new ArgumentException(
+                    "Path cannot contain path traversal patterns",
+                    nameof(path)
+                );
             }
 
             // Split into segments ignoring empty parts from repeated separators
@@ -127,7 +131,10 @@ namespace LivingRoots.Domain
                     // If depth goes negative, it means we're trying to go above the intended root
                     if (depth < 0)
                     {
-                        throw new ArgumentException("Path cannot contain path traversal patterns", nameof(path));
+                        throw new ArgumentException(
+                            "Path cannot contain path traversal patterns",
+                            nameof(path)
+                        );
                     }
                 }
                 else if (!IsCurrentDirectorySegment(segment))
@@ -157,7 +164,10 @@ namespace LivingRoots.Domain
             // Check if the path starts with parent directory navigation patterns - removing redundant checks
             if (path.StartsWith("../") || path.StartsWith("..\\"))
             {
-                throw new ArgumentException("Path cannot start with parent directory navigation", nameof(path));
+                throw new ArgumentException(
+                    "Path cannot start with parent directory navigation",
+                    nameof(path)
+                );
             }
 
             // Additional containment validation: ensure the path doesn't contain patterns that could
@@ -176,7 +186,10 @@ namespace LivingRoots.Domain
                     // If parent directory count exceeds actual directory count, it's a containment violation
                     if (parentDirCount > actualDirCount)
                     {
-                        throw new ArgumentException("Path contains invalid containment pattern", nameof(path));
+                        throw new ArgumentException(
+                            "Path contains invalid containment pattern",
+                            nameof(path)
+                        );
                     }
                 }
                 else if (!IsCurrentDirectorySegment(segment))
@@ -196,7 +209,10 @@ namespace LivingRoots.Domain
             // the path would attempt to escape the intended root
             if (parentDirCount > actualDirCount)
             {
-                throw new ArgumentException("Path contains invalid containment pattern", nameof(path));
+                throw new ArgumentException(
+                    "Path contains invalid containment pattern",
+                    nameof(path)
+                );
             }
         }
 
@@ -208,15 +224,16 @@ namespace LivingRoots.Domain
         private static string[] SplitPathSegments(string path)
         {
             // Create a character array that includes all possible path separators
-            char[] separators = {
-                '/',                    // Forward slash
-                '\\',                   // Backslash
-                '\u002f',              // SOLIDUS
-                '\u005c',              // REVERSE SOLIDUS
-                '\u2044',              // FRACTION SLASH
-                '\u2215',              // DIVISION SLASH
-                '\ufe6f',              // SMALL REVERSE SOLIDUS
-                '\uff0f'               // FULLWIDTH SOLIDUS
+            char[] separators =
+            {
+                '/', // Forward slash
+                '\\', // Backslash
+                '\u002f', // SOLIDUS
+                '\u005c', // REVERSE SOLIDUS
+                '\u2044', // FRACTION SLASH
+                '\u2215', // DIVISION SLASH
+                '\ufe6f', // SMALL REVERSE SOLIDUS
+                '\uff0f', // FULLWIDTH SOLIDUS
             };
 
             return path.Split(separators, StringSplitOptions.RemoveEmptyEntries);
@@ -259,7 +276,10 @@ namespace LivingRoots.Domain
             // Check if path contains encoded traversal patterns
             if (EncodedTraversalPattern.IsMatch(path))
             {
-                throw new ArgumentException("Path cannot contain encoded path traversal patterns", nameof(path));
+                throw new ArgumentException(
+                    "Path cannot contain encoded path traversal patterns",
+                    nameof(path)
+                );
             }
         }
     }

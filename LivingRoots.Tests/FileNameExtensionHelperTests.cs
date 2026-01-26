@@ -1,8 +1,4 @@
-using System;
-using System.IO;
 using LivingRoots.Domain;
-using Moq;
-using Xunit;
 
 namespace LivingRoots.Tests
 {
@@ -12,7 +8,6 @@ namespace LivingRoots.Tests
         public void GetFileExtension_ValidExtension_ReturnsExtension()
         {
             // Arrange
-
 
             // Act & Assert - Test using reflection to access private method
             Assert.Equal(".txt", GetFileExtensionTest("file.txt"));
@@ -25,7 +20,6 @@ namespace LivingRoots.Tests
         {
             // Arrange
 
-
             // Act & Assert
             Assert.Equal("", GetFileExtensionTest("file"));
             Assert.Equal("", GetFileExtensionTest("file."));
@@ -37,7 +31,6 @@ namespace LivingRoots.Tests
         {
             // Arrange
 
-
             // Act & Assert
             Assert.Equal(".txt", GetFileExtensionTest("path/file.txt"));
             Assert.Equal(".txt", GetFileExtensionTest("path/to/file.txt"));
@@ -48,7 +41,6 @@ namespace LivingRoots.Tests
         {
             // Arrange
 
-
             // Act & Assert
             Assert.Equal("", GetFileExtensionTest("file.txt/extra"));
             Assert.Equal("", GetFileExtensionTest("file.txt\\extra"));
@@ -58,7 +50,6 @@ namespace LivingRoots.Tests
         public void RemoveFileExtension_ValidExtension_ReturnsNameWithoutExtension()
         {
             // Arrange
-
 
             // Act & Assert
             Assert.Equal("file", RemoveFileExtensionTest("file.txt"));
@@ -82,7 +73,6 @@ namespace LivingRoots.Tests
         {
             // Arrange
 
-
             // Act & Assert
             Assert.Equal("path/file", RemoveFileExtensionTest("path/file.txt"));
             Assert.Equal("path/to/file", RemoveFileExtensionTest("path/to/file.txt"));
@@ -92,7 +82,6 @@ namespace LivingRoots.Tests
         public void RemoveFileExtension_InvalidExtension_ReturnsOriginal()
         {
             // Arrange
-
 
             // Act & Assert
             Assert.Equal("file.txt/extra", RemoveFileExtensionTest("file.txt/extra"));
@@ -104,7 +93,6 @@ namespace LivingRoots.Tests
         {
             // This test verifies that the logic to find extension start index is consistent
             // between GetFileExtension and RemoveFileExtension methods after refactoring
-
 
             // Test cases where extension should be found
             var filename = "test.txt";
@@ -119,18 +107,22 @@ namespace LivingRoots.Tests
         }
 
         // Reflection helper methods to access private methods for testing
-        static private string GetFileExtensionTest(string filename)
+        private static string GetFileExtensionTest(string filename)
         {
-            var method = typeof(FileNameSanitizationService).GetMethod("GetFileExtension",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var method = typeof(FileNameSanitizationService).GetMethod(
+                "GetFileExtension",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
             var invokeResult = method!.Invoke(null, new object[] { filename });
             return (string)invokeResult!;
         }
 
-        static private string RemoveFileExtensionTest(string filename)
+        private static string RemoveFileExtensionTest(string filename)
         {
-            var method = typeof(FileNameSanitizationService).GetMethod("RemoveFileExtension",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var method = typeof(FileNameSanitizationService).GetMethod(
+                "RemoveFileExtension",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+            );
             var invokeResult = method!.Invoke(null, new object[] { filename });
             return (string)invokeResult!;
         }

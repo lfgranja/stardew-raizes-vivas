@@ -1,4 +1,3 @@
-using System;
 using LivingRoots.Domain;
 
 namespace LivingRoots.Services
@@ -13,9 +12,11 @@ namespace LivingRoots.Services
     /// - Eliminated code duplication and improved maintainability
     /// - Reduced cognitive load by consolidating validation logic in a single location
     /// </summary>
-    public class PathTraversalValidator(IPathValidationService pathValidationService) : IPathTraversalValidator
+    public class PathTraversalValidator(IPathValidationService pathValidationService)
+        : IPathTraversalValidator
     {
-        private readonly IPathValidationService _pathValidationService = pathValidationService ?? throw new ArgumentNullException(nameof(pathValidationService));
+        private readonly IPathValidationService _pathValidationService =
+            pathValidationService ?? throw new ArgumentNullException(nameof(pathValidationService));
 
         /// <summary>
         /// Validates that a path does not contain path traversal patterns.
