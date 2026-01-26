@@ -206,9 +206,108 @@ namespace LivingRoots.Services
                         );
                     }
 
-                    // (optional) border drawing could be added here using `data.BorderColors`
+                    // Draw borders
+                    foreach (var kvp in data.BorderColors)
+                    {
+                        Color borderColor = kvp.Key;
+                        TileEdges edges = kvp.Value;
+
+                        // Calculate world position
+                        Vector2 worldPosition = GetTileWorldPosition(data.TilePosition);
+                        Vector2 screenPosition = new Vector2(
+                            worldPosition.X - Game1.viewport.X,
+                            worldPosition.Y - Game1.viewport.Y
+                        );
+
+                        // Draw borders for each edge
+                        int borderSize = 2; // Thickness of the border
+
+                        if (edges.HasFlag(TileEdges.Left))
+                            DrawBorder(
+                                spriteBatch,
+                                screenPosition,
+                                TileEdges.Left,
+                                borderColor,
+                                borderSize
+                            );
+
+                        if (edges.HasFlag(TileEdges.Right))
+                            DrawBorder(
+                                spriteBatch,
+                                screenPosition,
+                                TileEdges.Right,
+                                borderColor,
+                                borderSize
+                            );
+
+                        if (edges.HasFlag(TileEdges.Top))
+                            DrawBorder(
+                                spriteBatch,
+                                screenPosition,
+                                TileEdges.Top,
+                                borderColor,
+                                borderSize
+                            );
+
+                        if (edges.HasFlag(TileEdges.Bottom))
+                            DrawBorder(
+                                spriteBatch,
+                                screenPosition,
+                                TileEdges.Bottom,
+                                borderColor,
+                                borderSize
+                            );
+                    }
                 }
             }
+        }
+
+        /// <summary>
+        /// Draws a border on a specific edge of a tile.
+        /// </summary>
+        private void DrawBorder(
+            SpriteBatch spriteBatch,
+            Vector2 position,
+            TileEdges edge,
+            Color color,
+            int width
+        )
+        {
+            Texture2D? texture = VisualizationHelpers.GetOrCreateOverlayTexture();
+            if (texture == null)
+                return;
+
+            Rectangle borderRect;
+
+            switch (edge)
+            {
+                case TileEdges.Left:
+                    borderRect = new Rectangle((int)position.X, (int)position.Y, width, TileSize);
+                    break;
+                case TileEdges.Right:
+                    borderRect = new Rectangle(
+                        (int)(position.X + TileSize - width),
+                        (int)position.Y,
+                        width,
+                        TileSize
+                    );
+                    break;
+                case TileEdges.Top:
+                    borderRect = new Rectangle((int)position.X, (int)position.Y, TileSize, width);
+                    break;
+                case TileEdges.Bottom:
+                    borderRect = new Rectangle(
+                        (int)position.X,
+                        (int)(position.Y + TileSize - width),
+                        TileSize,
+                        width
+                    );
+                    break;
+                default:
+                    return;
+            }
+
+            spriteBatch.Draw(texture, borderRect, color);
         }
 
         /// <summary>
