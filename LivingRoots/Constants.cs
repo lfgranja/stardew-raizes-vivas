@@ -1,4 +1,5 @@
 using System;
+using Microsoft.Xna.Framework;
 
 namespace LivingRoots
 {
@@ -25,5 +26,20 @@ namespace LivingRoots
         public const int MaxPathDepth = 10; // Maximum depth for path traversal to prevent DoS attacks
         public const int MaxFileNameLength = 255; // Standard maximum file name length to prevent OS issues
         public const int MaxDataValueSizeBytes = 1024 * 1024; // 1MB maximum size for data values to prevent memory exhaustion
+
+        // Visualization Constants
+        public static readonly Color PoorColor = new Color(255, 0, 0, 255);     // Red for Poor category (0-33)
+        public static readonly Color ModerateColor = new Color(255, 255, 0, 255);  // Yellow for Moderate category (34-66)
+        public static readonly Color HealthyColor = new Color(0, 255, 0, 255);   // Green for Healthy category (67-100)
+        public static readonly Color UnknownColor = new Color(128, 128, 128, 255);   // Gray for unknown/unavailable data
+        public const float DefaultOpacity = 0.5f;
+        public const float PatternMinOpacity = 0.7f;
+        public const int FlashDurationMs = 300;
+        public const int TextDurationMs = 1000;
+        public const double MaxRenderTimeMs = 16.67;
+        public const int TooltipDebounceMs = 50;
+        public const bool OverlaysEnabledDefault = true;
+        public const bool TooltipsEnabledDefault = true;
+        public const bool HoeFeedbackEnabledDefault = true;
     }
 }
