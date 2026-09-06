@@ -26,6 +26,12 @@ namespace LivingRoots.Services.Visualization
         // White texture for drawing rectangles (set via Initialize)
         private Texture2D? _whiteTexture;
 
+        // Pause state for save/load
+        private volatile bool _isPaused;
+
+        // Cursor tile position for tooltip tracking
+        private Point _cursorTile;
+
         /// <summary>
         /// Initializes the service with a texture for drawing rectangles.
         /// Called after SpriteBatch is available.
@@ -70,8 +76,29 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <inheritdoc />
+        public void PauseRendering()
+        {
+            _isPaused = true;
+        }
+
+        /// <inheritdoc />
+        public void ResumeRendering()
+        {
+            _isPaused = false;
+        }
+
+        /// <inheritdoc />
+        public void UpdateCursorTile(Point tilePosition)
+        {
+            _cursorTile = tilePosition;
+        }
+
+        /// <inheritdoc />
         public void RenderOverlays(SpriteBatch spriteBatch, Rectangle viewport, GameTime gameTime)
         {
+            if (_isPaused)
+                return;
+
             var config = _configService.GetConfiguration();
 
             // No draw calls when overlays disabled (FR-007)
@@ -126,7 +153,7 @@ namespace LivingRoots.Services.Visualization
             }
 
             // FR-015: throttle tooltip updates to minimum 50ms interval
-            var currentTime = gameTime.TotalGameTime.Ticks;
+            var currentTime = (long)gameTime.TotalGameTime.TotalMilliseconds;
             var tooltipText = FormatTooltipText(healthValue);
 
             if (tooltipText == _lastTooltipText && tilePos == _lastTooltipTile)
@@ -149,6 +176,9 @@ namespace LivingRoots.Services.Visualization
         /// <inheritdoc />
         public void RenderHoeFeedback(SpriteBatch spriteBatch, GameTime gameTime)
         {
+            if (_isPaused)
+                return;
+
             var config = _configService.GetConfiguration();
 
             if (!config.HoeFeedbackEnabled)
@@ -156,11 +186,13 @@ namespace LivingRoots.Services.Visualization
                 return;
             }
 
+            var currentTime = (long)gameTime.TotalGameTime.TotalMilliseconds;
+
             // Snapshot active feedbacks under lock, removing expired ones
             List<HoeFeedback> activeFeedbacks;
             lock (_feedbackLock)
             {
-                _activeFeedbacks.RemoveAll(f => f.IsExpired(gameTime.TotalGameTime.Ticks));
+                _activeFeedbacks.RemoveAll(f => f.IsExpired(currentTime));
                 activeFeedbacks = new List<HoeFeedback>(_activeFeedbacks);
             }
 
@@ -185,7 +217,7 @@ namespace LivingRoots.Services.Visualization
             var feedback = new HoeFeedback
             {
                 TilePosition = tilePosition,
-                StartTime = DateTime.UtcNow.Ticks,
+                StartTime = 0,
                 HealthValue = healthValue,
                 Category = category,
                 HealthText = healthText
@@ -313,8 +345,8 @@ namespace LivingRoots.Services.Visualization
         /// </summary>
         private void DrawHoeFeedback(SpriteBatch spriteBatch, HoeFeedback feedback, GameTime gameTime, VisualizationConfiguration config)
         {
-            var currentTime = gameTime.TotalGameTime.Ticks;
-            var elapsedMs = (double)(currentTime - feedback.StartTime) / TimeSpan.TicksPerMillisecond;
+            var currentTime = (long)gameTime.TotalGameTime.TotalMilliseconds;
+            var elapsedMs = currentTime - feedback.StartTime;
             var maxDuration = Math.Max(feedback.FlashDuration, feedback.TextDuration);
 
             if (elapsedMs >= maxDuration)
@@ -346,8 +378,6 @@ namespace LivingRoots.Services.Visualization
                     feedback.TilePosition.X * TileSize + TileSize / 2,
                     textY);
 
-                // Note: Text rendering would use Game1.smallFont or similar in a full implementation
-                // spriteBatch.DrawString(Game1.smallFont, feedback.HealthText, textPos, Color.White);
                 _monitor.Log($"Hoe feedback text: {feedback.HealthText} at ({textPos.X}, {textPos.Y})", LogLevel.Trace);
             }
         }

@@ -49,5 +49,24 @@ namespace LivingRoots.Domain
         /// Called when soil health data changes.
         /// </summary>
         void InvalidateCache();
+
+        /// <summary>
+        /// Pauses rendering to prevent state corruption during save operations.
+        /// Called before game save begins.
+        /// </summary>
+        void PauseRendering();
+
+        /// <summary>
+        /// Resumes rendering after save/load completes.
+        /// Called after game load finishes.
+        /// </summary>
+        void ResumeRendering();
+
+        /// <summary>
+        /// Updates the cursor tile position for tooltip tracking.
+        /// Called on input events.
+        /// </summary>
+        /// <param name="tilePosition">Current cursor tile position.</param>
+        void UpdateCursorTile(Point tilePosition);
     }
 }

@@ -12,5 +12,18 @@ namespace LivingRoots.Domain.Visualization
         public PatternType PatternType { get; set; }
         public float HealthValue { get; set; }
         public HealthCategory Category { get; set; }
+
+        public TileOverlay()
+        {
+        }
+
+        public TileOverlay(Point tilePosition, Color color, PatternType patternType, float healthValue, HealthCategory category)
+        {
+            TilePosition = tilePosition;
+            Color = color;
+            PatternType = patternType;
+            HealthValue = healthValue;
+            Category = category;
+        }
     }
 }
