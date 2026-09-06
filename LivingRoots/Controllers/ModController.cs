@@ -1,5 +1,7 @@
+using Microsoft.Xna.Framework;
 using LivingRoots.Domain;
 using LivingRoots.Services;
+using LivingRoots.Services.Visualization;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 
@@ -10,7 +12,9 @@ namespace LivingRoots.Controllers
         IMonitor monitor,
         IManifest manifest,
         ISoilHealthService soilHealthService,
-        ISaveIdProvider saveIdProvider) : IDisposable
+        ISaveIdProvider saveIdProvider,
+        IVisualizationService? visualizationService = null,
+        IVisualizationConfigurationService? visualizationConfigService = null) : IDisposable
     {
         // State flags for thread safety using atomic operations
         internal const int EventsRegisteredFlag = 1 << 0;
@@ -32,11 +36,19 @@ namespace LivingRoots.Controllers
         private readonly IManifest _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
         private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
         private readonly ISaveIdProvider _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
+        private readonly IVisualizationService? _visualizationService = visualizationService;
+        private readonly IVisualizationConfigurationService? _visualizationConfigService = visualizationConfigService;
 
         // Event handlers - stored as fields to enable proper unsubscription
         private EventHandler<GameLaunchedEventArgs>? _onGameLaunchedHandler;
         private EventHandler<SaveLoadedEventArgs>? _onSaveLoadedHandler;
         private EventHandler<SavingEventArgs>? _onSavingHandler;
+        private EventHandler<RenderedWorldEventArgs>? _onRenderedWorldHandler;
+        private EventHandler<ButtonReleasedEventArgs>? _onButtonReleasedHandler;
+        private EventHandler<UpdateTickedEventArgs>? _onUpdateTickedHandler;
+
+        // GameTime captured from UpdateTicked for use in render events
+        private GameTime _lastGameTime = new();
 
         // Console command registration state
         private readonly object _commandLock = new();
@@ -84,6 +96,8 @@ namespace LivingRoots.Controllers
             EventHandler<GameLaunchedEventArgs>? localGameLaunchedHandler = null;
             EventHandler<SaveLoadedEventArgs>? localSaveLoadedHandler = null;
             EventHandler<SavingEventArgs>? localSavingHandler = null;
+            EventHandler<RenderedWorldEventArgs>? localRenderedWorldHandler = null;
+            EventHandler<ButtonReleasedEventArgs>? localButtonReleasedHandler = null;
 
             try
             {
@@ -106,6 +120,18 @@ namespace LivingRoots.Controllers
                 gameLoop.SaveLoaded += localSaveLoadedHandler;
                 gameLoop.Saving += localSavingHandler;
 
+                // Subscribe to visualization events if services are available
+                if (_visualizationService != null)
+                {
+                    localRenderedWorldHandler = _onRenderedWorldHandler ??= OnRenderedWorld;
+                    localButtonReleasedHandler = _onButtonReleasedHandler ??= OnButtonReleased;
+                    _helper.Events.Display.RenderedWorld += localRenderedWorldHandler;
+                    _helper.Events.Input.ButtonReleased += localButtonReleasedHandler;
+
+                    _onUpdateTickedHandler = OnUpdateTicked;
+                    gameLoop.UpdateTicked += _onUpdateTickedHandler;
+                }
+
                 // now that everything succeeded, publish the "registered" state
                 System.Threading.Interlocked.Or(ref _state, EventsRegisteredFlag);
                 monitorSnapshot.Log("Events registered successfully.", LogLevel.Trace);
@@ -119,7 +145,10 @@ namespace LivingRoots.Controllers
                     LocalGameLaunchedHandler = localGameLaunchedHandler,
                     LocalSaveLoadedHandler = localSaveLoadedHandler,
                     LocalSavingHandler = localSavingHandler,
-                    Monitor = monitorSnapshot
+                    LocalRenderedWorldHandler = localRenderedWorldHandler,
+                    LocalButtonReleasedHandler = localButtonReleasedHandler,
+                    Monitor = monitorSnapshot,
+                    Helper = helperSnapshot
                 });
             }
             finally
@@ -184,10 +213,28 @@ namespace LivingRoots.Controllers
                 ctx.LocalSavingHandler,
                 "Saving");
 
+            if (ctx.Helper != null)
+            {
+                SafeUnsubscribe<RenderedWorldEventArgs>(
+                    ctx.Monitor,
+                    h => ctx.Helper.Events.Display.RenderedWorld -= h,
+                    ctx.LocalRenderedWorldHandler,
+                    "RenderedWorld");
+
+                SafeUnsubscribe<ButtonReleasedEventArgs>(
+                    ctx.Monitor,
+                    h => ctx.Helper.Events.Input.ButtonReleased -= h,
+                    ctx.LocalButtonReleasedHandler,
+                    "ButtonReleased");
+            }
+
             // Clear handler references to prevent memory leaks
             System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
             System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
             System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
+            System.Threading.Interlocked.Exchange(ref _onRenderedWorldHandler, null);
+            System.Threading.Interlocked.Exchange(ref _onButtonReleasedHandler, null);
+            System.Threading.Interlocked.Exchange(ref _onUpdateTickedHandler, null);
 
             System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
         }
@@ -323,17 +370,23 @@ namespace LivingRoots.Controllers
             var gameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
             var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
             var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
+            var renderedWorldHandler = System.Threading.Volatile.Read(ref _onRenderedWorldHandler);
+            var buttonReleasedHandler = System.Threading.Volatile.Read(ref _onButtonReleasedHandler);
+            var updateTickedHandler = System.Threading.Volatile.Read(ref _onUpdateTickedHandler);
             var currentState = System.Threading.Volatile.Read(ref _state);
             var wasRegistered = (currentState & EventsRegisteredFlag) != 0;
 
             // Check if any handlers are non-null for best-effort cleanup
-            var hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null;
+            var hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null
+                || renderedWorldHandler != null || buttonReleasedHandler != null || updateTickedHandler != null;
 
             return new EventUnregisterContext
             {
                 GameLaunchedHandler = gameLaunchedHandler,
                 SaveLoadedHandler = saveLoadedHandler,
                 SavingHandler = savingHandler,
+                RenderedWorldHandler = renderedWorldHandler,
+                ButtonReleasedHandler = buttonReleasedHandler,
                 WasRegistered = wasRegistered,
                 HasHandlers = hasHandlers
             };
@@ -345,6 +398,15 @@ namespace LivingRoots.Controllers
             var gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(monitor, h => gameLoop.GameLaunched -= h, context.GameLaunchedHandler, "GameLaunched");
             var saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, context.SaveLoadedHandler, "SaveLoaded");
             var savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, context.SavingHandler, "Saving");
+
+            // Unsubscribe from visualization events
+            var renderedWorldRemoved = false;
+            var buttonReleasedRemoved = false;
+            if (_helper != null)
+            {
+                renderedWorldRemoved = SafeUnsubscribe<RenderedWorldEventArgs>(monitor, h => _helper.Events.Display.RenderedWorld -= h, context.RenderedWorldHandler, "RenderedWorld");
+                buttonReleasedRemoved = SafeUnsubscribe<ButtonReleasedEventArgs>(monitor, h => _helper.Events.Input.ButtonReleased -= h, context.ButtonReleasedHandler, "ButtonReleased");
+            }
 
             // Be conservative: if we thought we were registered but lost handler references, assume we may still be subscribed.
             var missingHandlerWhileRegistered =
@@ -362,7 +424,9 @@ namespace LivingRoots.Controllers
                 !missingHandlerWhileRegistered &&
                 (context.GameLaunchedHandler == null || gameLaunchedRemoved) &&
                 (context.SaveLoadedHandler == null || saveLoadedRemoved) &&
-                (context.SavingHandler == null || savingRemoved);
+                (context.SavingHandler == null || savingRemoved) &&
+                (context.RenderedWorldHandler == null || renderedWorldRemoved) &&
+                (context.ButtonReleasedHandler == null || buttonReleasedRemoved);
 
             return new UnsubscribeResults
             {
@@ -607,6 +671,8 @@ namespace LivingRoots.Controllers
 
                 // Load data using the save folder name as unique ID
                 _soilHealthService.LoadData(saveId);
+                _visualizationConfigService?.LoadConfiguration(saveId);
+                _visualizationService?.ResumeRendering();
                 _monitor.Log("Soil health data loaded successfully.", LogLevel.Trace);
             });
         }
@@ -635,10 +701,61 @@ namespace LivingRoots.Controllers
                     // This means the warning was previously shown and is now being reset
                 }
 
+                // Pause rendering before save, save data, then resume after load
+                _visualizationService?.PauseRendering();
+
                 // Save data before the game saves/exits (using the saving event)
                 _soilHealthService.SaveData(saveId);
+                _visualizationConfigService?.SaveConfiguration(saveId);
                 _monitor.Log("Soil health data saved successfully.", LogLevel.Trace);
             });
+        }
+
+        private void OnRenderedWorld(object? sender, RenderedWorldEventArgs e)
+        {
+            if (IsDisposed() || _visualizationService == null) return;
+
+            try
+            {
+                if (Services.Visualization.VisualizationTextures.WhiteTexture == null)
+                {
+                    var texture = new Microsoft.Xna.Framework.Graphics.Texture2D(e.SpriteBatch.GraphicsDevice, 1, 1);
+                    texture.SetData(new[] { Microsoft.Xna.Framework.Color.White });
+                    Services.Visualization.VisualizationTextures.WhiteTexture = texture;
+                }
+
+                var viewport = new Microsoft.Xna.Framework.Rectangle(0, 0, 100, 100);
+                var gameTime = _lastGameTime;
+                _visualizationService.RenderOverlays(e.SpriteBatch, viewport, gameTime);
+                _visualizationService.RenderTooltip(e.SpriteBatch, new Microsoft.Xna.Framework.Vector2(0, 0), gameTime);
+                _visualizationService.RenderHoeFeedback(e.SpriteBatch, gameTime);
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Error in visualization rendering: {ex.Message}", LogLevel.Warn);
+            }
+        }
+
+        private void OnUpdateTicked(object? sender, UpdateTickedEventArgs e)
+        {
+            if (IsDisposed()) return;
+            _lastGameTime = new GameTime(System.TimeSpan.Zero, System.TimeSpan.FromMilliseconds(16.67));
+        }
+
+        private void OnButtonReleased(object? sender, ButtonReleasedEventArgs e)
+        {
+            if (IsDisposed() || _visualizationService == null) return;
+
+            try
+            {
+                var cursorPos = _helper?.Input.GetCursorPosition();
+                var cursorTile = cursorPos?.GrabTile.ToPoint() ?? Microsoft.Xna.Framework.Point.Zero;
+                _visualizationService.UpdateCursorTile(cursorTile);
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Error in visualization input handling: {ex.Message}", LogLevel.Warn);
+            }
         }
 
         /// <summary>
@@ -870,7 +987,10 @@ namespace LivingRoots.Controllers
         public EventHandler<GameLaunchedEventArgs>? LocalGameLaunchedHandler { get; init; }
         public EventHandler<SaveLoadedEventArgs>? LocalSaveLoadedHandler { get; init; }
         public EventHandler<SavingEventArgs>? LocalSavingHandler { get; init; }
+        public EventHandler<RenderedWorldEventArgs>? LocalRenderedWorldHandler { get; init; }
+        public EventHandler<ButtonReleasedEventArgs>? LocalButtonReleasedHandler { get; init; }
         public IMonitor Monitor { get; init; }
+        public IModHelper? Helper { get; init; }
     }
 
     /// <summary>
@@ -881,6 +1001,8 @@ namespace LivingRoots.Controllers
         public EventHandler<GameLaunchedEventArgs>? GameLaunchedHandler { get; init; }
         public EventHandler<SaveLoadedEventArgs>? SaveLoadedHandler { get; init; }
         public EventHandler<SavingEventArgs>? SavingHandler { get; init; }
+        public EventHandler<RenderedWorldEventArgs>? RenderedWorldHandler { get; init; }
+        public EventHandler<ButtonReleasedEventArgs>? ButtonReleasedHandler { get; init; }
         public bool WasRegistered { get; init; }
         public bool HasHandlers { get; init; }
     }
