@@ -134,7 +134,7 @@ namespace LivingRoots.Services.Visualization
 
         /// <summary>
         /// Checks whether the feedback is still within its active rendering window.
-        /// Delegates to <see cref="HoeFeedback.IsActive"/> using the game clock.
+        /// Delegates to <see cref="HoeFeedback.IsActive(long)"/> using the game clock.
         /// </summary>
         /// <param name="feedback">Feedback state to check.</param>
         /// <param name="gameTime">Current game time.</param>
