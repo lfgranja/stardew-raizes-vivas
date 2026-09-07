@@ -1,4 +1,5 @@
 using System;
+using Microsoft.Xna.Framework;
 
 namespace LivingRoots
 {
@@ -25,5 +26,39 @@ namespace LivingRoots
         public const int MaxPathDepth = 10; // Maximum depth for path traversal to prevent DoS attacks
         public const int MaxFileNameLength = 255; // Standard maximum file name length to prevent OS issues
         public const int MaxDataValueSizeBytes = 1024 * 1024; // 1MB maximum size for data values to prevent memory exhaustion
+
+        // Visualization Constants
+        public static readonly Color PoorColor = Color.Red; // #FF0000
+        public static readonly Color ModerateColor = Color.Yellow; // #FFFF00
+        public static readonly Color HealthyColor = Color.Green; // #00FF00
+        public static readonly Color UnknownColor = Color.Gray; // #808080
+        public const float DefaultOpacity = 0.5f;
+        public const float PatternMinOpacity = 0.7f;
+        public const int FlashDurationMs = 300;
+        public const int TextDurationMs = 1000;
+        public const double MaxRenderTimeMs = 16.67;
+        public const int TooltipDebounceMs = 50;
+        public const bool OverlaysEnabledDefault = true;
+        public const bool TooltipsEnabledDefault = true;
+        public const bool HoeFeedbackEnabledDefault = true;
+
+        // Decay & Compost Constants
+        public const string CompostingBinKeyPrefix = "composting_bins_";
+        public const float DailyDecayRate = 2f;
+        public const float RestorationAmount = 15f;
+        public const int ProcessingDurationMinutes = 2880; // 2 full days × 1440 min/day
+        public const int MaturationMaxLevel = 5;
+        public const int MaturationIdleResetDays = 14;
+        public const int MaturationIncrementDays = 7; // days of continuous operation per level
+        public const string CompostItemId = "LivingRoots.Compost";
+        public const string CompostingBinItemId = "LivingRoots.CompostingBin";
+        public const string CompostingBinRecipeId = "LivingRoots_CompostingBin";
+        public const string CompostCraftingTab = "Home";
+        public const int CompostingBinWoodCost = 50;
+        public const int CompostingBinStoneCost = 25;
+        public const int CompostingBinFiberCost = 15;
+        public const string CompostCraftingSound = "axe";
+        public const int CompostCategoryId = -26;
+        public const int CompostStackMax = 999;
     }
 }
