@@ -267,6 +267,7 @@ node_modules/
 
 # Agentic files
 .kilocode/*
+.commandcode/
 GEMINI.md
 QWEN.md
 .specify/
