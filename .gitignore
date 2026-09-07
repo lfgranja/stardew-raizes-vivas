@@ -1,6 +1,6 @@
 # Stardew Valley SMAPI Mod .gitignore
 # Based on Visual Studio template from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
-# 
+#
 # This file specifies intentionally untracked files that should be ignored by Git.
 # For more information about .gitignore patterns, see:
 # https://git-scm.com/docs/gitignore
@@ -269,6 +269,8 @@ node_modules/
 .kilocode/*
 GEMINI.md
 QWEN.md
+.specify/
+.dsh/
 
 # -----------------------------------------------------------------------------------
 # Additional Visual Studio Patterns
