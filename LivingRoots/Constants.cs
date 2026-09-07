@@ -28,10 +28,10 @@ namespace LivingRoots
         public const int MaxDataValueSizeBytes = 1024 * 1024; // 1MB maximum size for data values to prevent memory exhaustion
 
         // Visualization Constants
-        public static readonly Color PoorColor = new Color(255, 0, 0, 255);     // Red for Poor category (0-33)
-        public static readonly Color ModerateColor = new Color(255, 255, 0, 255);  // Yellow for Moderate category (34-66)
-        public static readonly Color HealthyColor = new Color(0, 255, 0, 255);   // Green for Healthy category (67-100)
-        public static readonly Color UnknownColor = new Color(128, 128, 128, 255);   // Gray for unknown/unavailable data
+        public static readonly Color PoorColor = Color.Red; // #FF0000
+        public static readonly Color ModerateColor = Color.Yellow; // #FFFF00
+        public static readonly Color HealthyColor = Color.Green; // #00FF00
+        public static readonly Color UnknownColor = Color.Gray; // #808080
         public const float DefaultOpacity = 0.5f;
         public const float PatternMinOpacity = 0.7f;
         public const int FlashDurationMs = 300;
@@ -41,5 +41,24 @@ namespace LivingRoots
         public const bool OverlaysEnabledDefault = true;
         public const bool TooltipsEnabledDefault = true;
         public const bool HoeFeedbackEnabledDefault = true;
+
+        // Decay & Compost Constants
+        public const string CompostingBinKeyPrefix = "composting_bins_";
+        public const float DailyDecayRate = 2f;
+        public const float RestorationAmount = 15f;
+        public const int ProcessingDurationMinutes = 2880; // 2 full days × 1440 min/day
+        public const int MaturationMaxLevel = 5;
+        public const int MaturationIdleResetDays = 14;
+        public const int MaturationIncrementDays = 7; // days of continuous operation per level
+        public const string CompostItemId = "LivingRoots.Compost";
+        public const string CompostingBinItemId = "LivingRoots.CompostingBin";
+        public const string CompostingBinRecipeId = "LivingRoots_CompostingBin";
+        public const string CompostCraftingTab = "Home";
+        public const int CompostingBinWoodCost = 50;
+        public const int CompostingBinStoneCost = 25;
+        public const int CompostingBinFiberCost = 15;
+        public const string CompostCraftingSound = "axe";
+        public const int CompostCategoryId = -26;
+        public const int CompostStackMax = 999;
     }
 }
