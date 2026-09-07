@@ -5,113 +5,66 @@ namespace LivingRoots.Tests.Visualization
 {
     public class HealthCategoryTests
     {
-        // ──────────────────────────────────────────────
-        // Enum Value Verification
-        // ──────────────────────────────────────────────
-
         [Fact]
-        public void Poor_ShouldHaveValueZero()
+        public void EnumValues_AreExplicitlyDefined()
         {
+            // Assert
             Assert.Equal(0, (int)HealthCategory.Poor);
-        }
-
-        [Fact]
-        public void Moderate_ShouldHaveValueOne()
-        {
             Assert.Equal(1, (int)HealthCategory.Moderate);
-        }
-
-        [Fact]
-        public void Healthy_ShouldHaveValueTwo()
-        {
             Assert.Equal(2, (int)HealthCategory.Healthy);
-        }
-
-        [Fact]
-        public void Unknown_ShouldHaveValueThree()
-        {
             Assert.Equal(3, (int)HealthCategory.Unknown);
         }
 
-        // ──────────────────────────────────────────────
-        // Helper: Map health value to category
-        // ──────────────────────────────────────────────
-
-        private static HealthCategory MapToCategory(int health)
+        [Theory]
+        [InlineData(0, HealthCategory.Poor)]
+        [InlineData(33, HealthCategory.Poor)]
+        [InlineData(34, HealthCategory.Moderate)]
+        [InlineData(66, HealthCategory.Moderate)]
+        [InlineData(67, HealthCategory.Healthy)]
+        [InlineData(100, HealthCategory.Healthy)]
+        public void FromHealthValue_ReturnsCorrectCategory(int healthValue, HealthCategory expected)
         {
-            if (health < 0)
-                return HealthCategory.Poor;
-            if (health > 100)
-                return HealthCategory.Healthy;
+            // Act
+            var result = HealthCategoryExtensions.FromHealthValue(healthValue);
 
-            // Half-open intervals: [0, 34) → Poor, [34, 67) → Moderate, [67, 100] → Healthy
-            if (health < 34)
-                return HealthCategory.Poor;
-            if (health < 67)
-                return HealthCategory.Moderate;
-            return HealthCategory.Healthy;
+            // Assert
+            Assert.Equal(expected, result);
         }
 
-        // ──────────────────────────────────────────────
-        // Boundary Tests
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void MapToCategory_33_ShouldBePoor()
+        [Theory]
+        [InlineData(-1)]
+        [InlineData(101)]
+        [InlineData(-100)]
+        [InlineData(1000)]
+        public void FromHealthValue_OutOfRange_ReturnsUnknown(int healthValue)
         {
-            Assert.Equal(HealthCategory.Poor, MapToCategory(33));
-        }
+            // Act
+            var result = HealthCategoryExtensions.FromHealthValue(healthValue);
 
-        [Fact]
-        public void MapToCategory_34_ShouldBeModerate()
-        {
-            Assert.Equal(HealthCategory.Moderate, MapToCategory(34));
+            // Assert
+            Assert.Equal(HealthCategory.Unknown, result);
         }
 
         [Fact]
-        public void MapToCategory_66_ShouldBeModerate()
+        public void FromHealthValue_NaN_ReturnsUnknown()
         {
-            Assert.Equal(HealthCategory.Moderate, MapToCategory(66));
+            // Act
+            var result = HealthCategoryExtensions.FromHealthValue(float.NaN);
+
+            // Assert
+            Assert.Equal(HealthCategory.Unknown, result);
         }
 
         [Fact]
-        public void MapToCategory_67_ShouldBeHealthy()
+        public void FromHealthValue_Infinity_ReturnsUnknown()
         {
-            Assert.Equal(HealthCategory.Healthy, MapToCategory(67));
-        }
+            // Act
+            var resultPositive = HealthCategoryExtensions.FromHealthValue(float.PositiveInfinity);
+            var resultNegative = HealthCategoryExtensions.FromHealthValue(float.NegativeInfinity);
 
-        // ──────────────────────────────────────────────
-        // Clamping Tests
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void MapToCategory_NegativeValue_ShouldClampToPoor()
-        {
-            Assert.Equal(HealthCategory.Poor, MapToCategory(-1));
-            Assert.Equal(HealthCategory.Poor, MapToCategory(-100));
-        }
-
-        [Fact]
-        public void MapToCategory_ValueAbove100_ShouldClampToHealthy()
-        {
-            Assert.Equal(HealthCategory.Healthy, MapToCategory(101));
-            Assert.Equal(HealthCategory.Healthy, MapToCategory(1000));
-        }
-
-        // ──────────────────────────────────────────────
-        // Additional Boundary Edge Cases
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void MapToCategory_Zero_ShouldBePoor()
-        {
-            Assert.Equal(HealthCategory.Poor, MapToCategory(0));
-        }
-
-        [Fact]
-        public void MapToCategory_100_ShouldBeHealthy()
-        {
-            Assert.Equal(HealthCategory.Healthy, MapToCategory(100));
+            // Assert
+            Assert.Equal(HealthCategory.Unknown, resultPositive);
+            Assert.Equal(HealthCategory.Unknown, resultNegative);
         }
     }
 }

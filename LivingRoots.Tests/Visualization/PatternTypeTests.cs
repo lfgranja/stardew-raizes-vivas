@@ -5,76 +5,28 @@ namespace LivingRoots.Tests.Visualization
 {
     public class PatternTypeTests
     {
-        // ──────────────────────────────────────────────
-        // Enum Value Verification
-        // ──────────────────────────────────────────────
-
         [Fact]
-        public void None_ShouldHaveValueZero()
+        public void EnumValues_AreExplicitlyDefined()
         {
+            // Assert
             Assert.Equal(0, (int)PatternType.None);
-        }
-
-        [Fact]
-        public void Stripes_ShouldHaveValueOne()
-        {
             Assert.Equal(1, (int)PatternType.Stripes);
-        }
-
-        [Fact]
-        public void Dots_ShouldHaveValueTwo()
-        {
             Assert.Equal(2, (int)PatternType.Dots);
-        }
-
-        [Fact]
-        public void Solid_ShouldHaveValueThree()
-        {
             Assert.Equal(3, (int)PatternType.Solid);
         }
 
-        // ──────────────────────────────────────────────
-        // Helper: Map HealthCategory to PatternType
-        // ──────────────────────────────────────────────
-
-        private static PatternType MapToPattern(HealthCategory category)
+        [Theory]
+        [InlineData(HealthCategory.Poor, PatternType.Stripes)]
+        [InlineData(HealthCategory.Moderate, PatternType.Dots)]
+        [InlineData(HealthCategory.Healthy, PatternType.Solid)]
+        [InlineData(HealthCategory.Unknown, PatternType.None)]
+        public void FromHealthCategory_ReturnsCorrectPattern(HealthCategory category, PatternType expected)
         {
-            return category switch
-            {
-                HealthCategory.Poor => PatternType.Stripes,
-                HealthCategory.Moderate => PatternType.Dots,
-                HealthCategory.Healthy => PatternType.Solid,
-                HealthCategory.Unknown => PatternType.None,
-                _ => PatternType.None
-            };
-        }
+            // Act
+            var result = PatternTypeExtensions.FromHealthCategory(category);
 
-        // ──────────────────────────────────────────────
-        // Accessibility Mapping Tests
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void MapToPattern_Poor_ShouldMapToStripes()
-        {
-            Assert.Equal(PatternType.Stripes, MapToPattern(HealthCategory.Poor));
-        }
-
-        [Fact]
-        public void MapToPattern_Moderate_ShouldMapToDots()
-        {
-            Assert.Equal(PatternType.Dots, MapToPattern(HealthCategory.Moderate));
-        }
-
-        [Fact]
-        public void MapToPattern_Healthy_ShouldMapToSolid()
-        {
-            Assert.Equal(PatternType.Solid, MapToPattern(HealthCategory.Healthy));
-        }
-
-        [Fact]
-        public void MapToPattern_Unknown_ShouldMapToNone()
-        {
-            Assert.Equal(PatternType.None, MapToPattern(HealthCategory.Unknown));
+            // Assert
+            Assert.Equal(expected, result);
         }
     }
 }

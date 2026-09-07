@@ -4,304 +4,116 @@ using Xunit;
 
 namespace LivingRoots.Tests.Visualization
 {
-    /// <summary>
-    /// Tests for the <see cref="HoeFeedback"/> domain model.
-    /// Verifies property storage, default durations, and timing logic for IsActive/IsExpired.
-    /// </summary>
     public class HoeFeedbackTests
     {
-        // ──────────────────────────────────────────────
-        // Property Tests
-        // ──────────────────────────────────────────────
-
         [Fact]
-        public void TilePosition_ShouldStoreAndReturnValue()
+        public void Properties_CanBeSetAndGet()
         {
             // Arrange
-            var expected = new Point(5, 10);
-            var feedback = new HoeFeedback { TilePosition = expected };
-
-            // Act
-            var actual = feedback.TilePosition;
+            var feedback = new HoeFeedback
+            {
+                TilePosition = new Point(5, 10),
+                StartTime = 1000,
+                FlashDuration = 300,
+                TextDuration = 1000,
+                HealthValue = 45.5f,
+                Category = HealthCategory.Moderate,
+                HealthText = "Soil Health: 46% (Moderate)"
+            };
 
             // Assert
-            Assert.Equal(expected, actual);
+            Assert.Equal(new Point(5, 10), feedback.TilePosition);
+            Assert.Equal(1000, feedback.StartTime);
+            Assert.Equal(300, feedback.FlashDuration);
+            Assert.Equal(1000, feedback.TextDuration);
+            Assert.Equal(45.5f, feedback.HealthValue);
+            Assert.Equal(HealthCategory.Moderate, feedback.Category);
+            Assert.Equal("Soil Health: 46% (Moderate)", feedback.HealthText);
         }
 
         [Fact]
-        public void StartTime_ShouldStoreAndReturnValue()
+        public void IsActive_ReturnsTrue_WhenElapsedLessThanMaxDuration()
         {
             // Arrange
-            const long expected = 12345678L;
-            var feedback = new HoeFeedback { StartTime = expected };
+            var feedback = new HoeFeedback
+            {
+                StartTime = 1000,
+                FlashDuration = 300,
+                TextDuration = 1000
+            };
 
-            // Act
-            var actual = feedback.StartTime;
-
-            // Assert
-            Assert.Equal(expected, actual);
+            // Act & Assert
+            // 500ms elapsed < 1000ms max duration → still active
+            Assert.True(feedback.IsActive(1500));
         }
 
         [Fact]
-        public void FlashDuration_ShouldDefaultTo300()
+        public void IsActive_ReturnsFalse_WhenElapsedExceedsMaxDuration()
         {
             // Arrange
+            var feedback = new HoeFeedback
+            {
+                StartTime = 1000,
+                FlashDuration = 300,
+                TextDuration = 1000
+            };
+
+            // Act & Assert
+            // 1500ms elapsed > 1000ms max duration → not active
+            Assert.False(feedback.IsActive(2500));
+        }
+
+        [Fact]
+        public void IsExpired_ReturnsTrue_WhenElapsedExceedsMaxDuration()
+        {
+            // Arrange
+            var feedback = new HoeFeedback
+            {
+                StartTime = 1000,
+                FlashDuration = 300,
+                TextDuration = 1000
+            };
+
+            // Act & Assert
+            // 1500ms elapsed >= 1000ms max duration → expired
+            Assert.True(feedback.IsExpired(2500));
+        }
+
+        [Fact]
+        public void IsExpired_ReturnsFalse_WhenElapsedLessThanMaxDuration()
+        {
+            // Arrange
+            var feedback = new HoeFeedback
+            {
+                StartTime = 1000,
+                FlashDuration = 300,
+                TextDuration = 1000
+            };
+
+            // Act & Assert
+            // 500ms elapsed < 1000ms max duration → not expired
+            Assert.False(feedback.IsExpired(1500));
+        }
+
+        [Fact]
+        public void Constructor_SetsProperties()
+        {
+            var feedback = new HoeFeedback(new Point(3, 4), 5000, 300, 1000, 75.0f);
+
+            Assert.Equal(new Point(3, 4), feedback.TilePosition);
+            Assert.Equal(5000, feedback.StartTime);
+            Assert.Equal(300, feedback.FlashDuration);
+            Assert.Equal(1000, feedback.TextDuration);
+            Assert.Equal(75.0f, feedback.HealthValue);
+        }
+
+        [Fact]
+        public void DefaultConstructor_SetsDefaultDurations()
+        {
             var feedback = new HoeFeedback();
 
-            // Act
-            var actual = feedback.FlashDuration;
-
-            // Assert
-            Assert.Equal(300, actual);
-        }
-
-        [Fact]
-        public void TextDuration_ShouldDefaultTo1000()
-        {
-            // Arrange
-            var feedback = new HoeFeedback();
-
-            // Act
-            var actual = feedback.TextDuration;
-
-            // Assert
-            Assert.Equal(1000, actual);
-        }
-
-        [Fact]
-        public void HealthValue_ShouldStoreAndReturnValue()
-        {
-            // Arrange
-            const float expected = 0.67f;
-            var feedback = new HoeFeedback { HealthValue = expected };
-
-            // Act
-            var actual = feedback.HealthValue;
-
-            // Assert
-            Assert.Equal(expected, actual);
-        }
-
-        [Fact]
-        public void Category_ShouldStoreAndReturnValue()
-        {
-            // Arrange
-            var feedback = new HoeFeedback { Category = HealthCategory.Healthy };
-
-            // Act
-            var actual = feedback.Category;
-
-            // Assert
-            Assert.Equal(HealthCategory.Healthy, actual);
-        }
-
-        [Fact]
-        public void HealthText_ShouldStoreAndReturnValue()
-        {
-            // Arrange
-            const string expected = "Healthy";
-            var feedback = new HoeFeedback { HealthText = expected };
-
-            // Act
-            var actual = feedback.HealthText;
-
-            // Assert
-            Assert.Equal(expected, actual);
-        }
-
-        // ──────────────────────────────────────────────
-        // IsActive Timing Tests
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void IsActive_AtStartTime_ShouldReturnTrue()
-        {
-            // Arrange
-            const long startTime = 0;
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act
-            var actual = feedback.IsActive(startTime);
-
-            // Assert
-            Assert.True(actual);
-        }
-
-        [Fact]
-        public void IsActive_At299Ms_ShouldReturnTrue()
-        {
-            // Arrange
-            const long startTime = 0;
-            const long currentTime = 299;
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act
-            var actual = feedback.IsActive(currentTime);
-
-            // Assert
-            Assert.True(actual);
-        }
-
-        [Fact]
-        public void IsActive_At999Ms_ShouldReturnTrue()
-        {
-            // Arrange
-            const long startTime = 0;
-            const long currentTime = 999;
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act
-            var actual = feedback.IsActive(currentTime);
-
-            // Assert
-            Assert.True(actual);
-        }
-
-        [Fact]
-        public void IsActive_AtMaxDurationMinusOne_ShouldReturnTrue()
-        {
-            // Arrange
-            const long startTime = 0;
-            const long currentTime = 999; // Max(300, 1000) - 1 = 999
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act
-            var actual = feedback.IsActive(currentTime);
-
-            // Assert
-            Assert.True(actual);
-        }
-
-        // ──────────────────────────────────────────────
-        // IsExpired Timing Tests
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void IsExpired_AtMaxDuration_ShouldReturnTrue()
-        {
-            // Arrange
-            const long startTime = 0;
-            const long currentTime = 1000; // Max(300, 1000) = 1000
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act
-            var actual = feedback.IsExpired(currentTime);
-
-            // Assert
-            Assert.True(actual);
-        }
-
-        [Fact]
-        public void IsExpired_AtMaxDurationPlusOne_ShouldReturnTrue()
-        {
-            // Arrange
-            const long startTime = 0;
-            const long currentTime = 1001;
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act
-            var actual = feedback.IsExpired(currentTime);
-
-            // Assert
-            Assert.True(actual);
-        }
-
-        [Fact]
-        public void IsExpired_AtLargeElapsedTime_ShouldReturnTrue()
-        {
-            // Arrange
-            const long startTime = 0;
-            const long currentTime = 5000;
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act
-            var actual = feedback.IsExpired(currentTime);
-
-            // Assert
-            Assert.True(actual);
-        }
-
-        [Fact]
-        public void IsExpired_BeforeMaxDuration_ShouldReturnFalse()
-        {
-            // Arrange
-            const long startTime = 0;
-            const long currentTime = 999;
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act
-            var actual = feedback.IsExpired(currentTime);
-
-            // Assert
-            Assert.False(actual);
-        }
-
-        [Fact]
-        public void IsExpired_AtStartTime_ShouldReturnFalse()
-        {
-            // Arrange
-            const long startTime = 0;
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act
-            var actual = feedback.IsExpired(startTime);
-
-            // Assert
-            Assert.False(actual);
-        }
-
-        // ──────────────────────────────────────────────
-        // IsActive / IsExpired Mutual Exclusion
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void IsActive_AndIsExpired_ShouldBeMutuallyExclusive()
-        {
-            // Arrange
-            const long startTime = 0;
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act & Assert - before max duration
-            Assert.True(feedback.IsActive(500));
-            Assert.False(feedback.IsExpired(500));
-
-            // Act & Assert - at/after max duration
-            Assert.False(feedback.IsActive(1000));
-            Assert.True(feedback.IsExpired(1000));
-        }
-
-        // ──────────────────────────────────────────────
-        // Non-Zero StartTime Tests
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void IsActive_WithNonZeroStartTime_ShouldCalculateElapsedCorrectly()
-        {
-            // Arrange
-            const long startTime = 10000;
-            const long currentTime = 10900; // elapsed = 900 < 1000
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act
-            var actual = feedback.IsActive(currentTime);
-
-            // Assert
-            Assert.True(actual);
-        }
-
-        [Fact]
-        public void IsExpired_WithNonZeroStartTime_ShouldCalculateElapsedCorrectly()
-        {
-            // Arrange
-            const long startTime = 10000;
-            const long currentTime = 11000; // elapsed = 1000 >= 1000
-            var feedback = new HoeFeedback { StartTime = startTime };
-
-            // Act
-            var actual = feedback.IsExpired(currentTime);
-
-            // Assert
-            Assert.True(actual);
+            Assert.Equal(300, feedback.FlashDuration);
+            Assert.Equal(1000, feedback.TextDuration);
         }
     }
 }

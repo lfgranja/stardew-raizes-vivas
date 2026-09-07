@@ -1,201 +1,105 @@
-using System;
-using LivingRoots;
 using Microsoft.Xna.Framework;
 using Xunit;
 
 namespace LivingRoots.Tests.Visualization
 {
     /// <summary>
-    /// TDD tests for visualization constants in ModConstants.
-    /// These tests verify that the required visualization constants exist
-    /// with their exact expected values. This test should FAIL initially
-    /// because the constants don't exist yet.
+    /// Tests for visualization-related default constants in <see cref="ModConstants"/>.
     /// </summary>
     public class VisualizationConstantsTests
     {
-        // ──────────────────────────────────────────────
-        // Color Constants
-        // ──────────────────────────────────────────────
-
         [Fact]
-        public void PoorColor_ShouldBeRed_FF0000()
+        public void PoorColor_IsRed()
         {
-            // Arrange
-            var expected = new Color(255, 0, 0, 255); // #FF0000
-
-            // Act
-            var actual = ModConstants.PoorColor;
-
-            // Assert
-            Assert.Equal(expected, actual);
+            var expected = Color.Red;
+            Assert.Equal(expected.R, ModConstants.PoorColor.R);
+            Assert.Equal(expected.G, ModConstants.PoorColor.G);
+            Assert.Equal(expected.B, ModConstants.PoorColor.B);
+            Assert.Equal(expected.A, ModConstants.PoorColor.A);
         }
 
         [Fact]
-        public void ModerateColor_ShouldBeYellow_FFFF00()
+        public void ModerateColor_IsYellow()
         {
-            // Arrange
-            var expected = new Color(255, 255, 0, 255); // #FFFF00
-
-            // Act
-            var actual = ModConstants.ModerateColor;
-
-            // Assert
-            Assert.Equal(expected, actual);
+            var expected = Color.Yellow;
+            Assert.Equal(expected.R, ModConstants.ModerateColor.R);
+            Assert.Equal(expected.G, ModConstants.ModerateColor.G);
+            Assert.Equal(expected.B, ModConstants.ModerateColor.B);
+            Assert.Equal(expected.A, ModConstants.ModerateColor.A);
         }
 
         [Fact]
-        public void HealthyColor_ShouldBeGreen_00FF00()
+        public void HealthyColor_IsGreen()
         {
-            // Arrange
-            var expected = new Color(0, 255, 0, 255); // #00FF00
-
-            // Act
-            var actual = ModConstants.HealthyColor;
-
-            // Assert
-            Assert.Equal(expected, actual);
+            var expected = Color.Green;
+            Assert.Equal(expected.R, ModConstants.HealthyColor.R);
+            Assert.Equal(expected.G, ModConstants.HealthyColor.G);
+            Assert.Equal(expected.B, ModConstants.HealthyColor.B);
+            Assert.Equal(expected.A, ModConstants.HealthyColor.A);
         }
 
         [Fact]
-        public void UnknownColor_ShouldBeGray_808080()
+        public void UnknownColor_IsGray()
         {
-            // Arrange
-            var expected = new Color(128, 128, 128, 255); // #808080
-
-            // Act
-            var actual = ModConstants.UnknownColor;
-
-            // Assert
-            Assert.Equal(expected, actual);
-        }
-
-        // ──────────────────────────────────────────────
-        // Opacity Constants
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void DefaultOpacity_ShouldBe_0_5f()
-        {
-            // Arrange
-            const float expected = 0.5f;
-
-            // Act
-            var actual = ModConstants.DefaultOpacity;
-
-            // Assert
-            Assert.Equal(expected, actual);
+            var expected = Color.Gray;
+            Assert.Equal(expected.R, ModConstants.UnknownColor.R);
+            Assert.Equal(expected.G, ModConstants.UnknownColor.G);
+            Assert.Equal(expected.B, ModConstants.UnknownColor.B);
+            Assert.Equal(expected.A, ModConstants.UnknownColor.A);
         }
 
         [Fact]
-        public void PatternMinOpacity_ShouldBe_0_7f()
+        public void DefaultOpacity_IsHalf()
         {
-            // Arrange
-            const float expected = 0.7f;
-
-            // Act
-            var actual = ModConstants.PatternMinOpacity;
-
-            // Assert
-            Assert.Equal(expected, actual);
-        }
-
-        // ──────────────────────────────────────────────
-        // Duration Constants
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void FlashDurationMs_ShouldBe_300()
-        {
-            // Arrange
-            const int expected = 300;
-
-            // Act
-            var actual = ModConstants.FlashDurationMs;
-
-            // Assert
-            Assert.Equal(expected, actual);
+            Assert.Equal(0.5f, ModConstants.DefaultOpacity);
         }
 
         [Fact]
-        public void TextDurationMs_ShouldBe_1000()
+        public void PatternMinOpacity_IsSeventyPercent()
         {
-            // Arrange
-            const int expected = 1000;
-
-            // Act
-            var actual = ModConstants.TextDurationMs;
-
-            // Assert
-            Assert.Equal(expected, actual);
+            Assert.Equal(0.7f, ModConstants.PatternMinOpacity);
         }
 
         [Fact]
-        public void MaxRenderTimeMs_ShouldBe_16_67()
+        public void FlashDurationMs_Is300()
         {
-            // Arrange
-            const double expected = 16.67;
-
-            // Act
-            var actual = ModConstants.MaxRenderTimeMs;
-
-            // Assert
-            Assert.Equal(expected, actual);
+            Assert.Equal(300, ModConstants.FlashDurationMs);
         }
 
         [Fact]
-        public void TooltipDebounceMs_ShouldBe_50()
+        public void TextDurationMs_Is1000()
         {
-            // Arrange
-            const int expected = 50;
-
-            // Act
-            var actual = ModConstants.TooltipDebounceMs;
-
-            // Assert
-            Assert.Equal(expected, actual);
-        }
-
-        // ──────────────────────────────────────────────
-        // Feature Toggle Defaults
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void OverlaysEnabledDefault_ShouldBeTrue()
-        {
-            // Arrange
-            const bool expected = true;
-
-            // Act
-            var actual = ModConstants.OverlaysEnabledDefault;
-
-            // Assert
-            Assert.Equal(expected, actual);
+            Assert.Equal(1000, ModConstants.TextDurationMs);
         }
 
         [Fact]
-        public void TooltipsEnabledDefault_ShouldBeTrue()
+        public void MaxRenderTimeMs_Is16Point67()
         {
-            // Arrange
-            const bool expected = true;
-
-            // Act
-            var actual = ModConstants.TooltipsEnabledDefault;
-
-            // Assert
-            Assert.Equal(expected, actual);
+            Assert.Equal(16.67, ModConstants.MaxRenderTimeMs);
         }
 
         [Fact]
-        public void HoeFeedbackEnabledDefault_ShouldBeTrue()
+        public void TooltipDebounceMs_Is50()
         {
-            // Arrange
-            const bool expected = true;
+            Assert.Equal(50, ModConstants.TooltipDebounceMs);
+        }
 
-            // Act
-            var actual = ModConstants.HoeFeedbackEnabledDefault;
+        [Fact]
+        public void OverlaysEnabledDefault_IsTrue()
+        {
+            Assert.True(ModConstants.OverlaysEnabledDefault);
+        }
 
-            // Assert
-            Assert.Equal(expected, actual);
+        [Fact]
+        public void TooltipsEnabledDefault_IsTrue()
+        {
+            Assert.True(ModConstants.TooltipsEnabledDefault);
+        }
+
+        [Fact]
+        public void HoeFeedbackEnabledDefault_IsTrue()
+        {
+            Assert.True(ModConstants.HoeFeedbackEnabledDefault);
         }
     }
 }

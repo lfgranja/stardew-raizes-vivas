@@ -1,319 +1,93 @@
-using LivingRoots;
 using LivingRoots.Domain.Visualization;
-using Microsoft.Xna.Framework;
 using Xunit;
 
 namespace LivingRoots.Tests.Visualization
 {
-    /// <summary>
-    /// Tests for the VisualizationConfiguration domain model.
-    /// Verifies default values, color mappings, property setters,
-    /// and AccessibilityDegradation options.
-    /// </summary>
     public class VisualizationConfigurationTests
     {
-        // ──────────────────────────────────────────────
-        // Default Values
-        // ──────────────────────────────────────────────
-
         [Fact]
-        public void OverlaysEnabled_ShouldDefaultToTrue()
+        public void DefaultValues_AreCorrect()
         {
-            // Arrange & Act
+            // Arrange
             var config = new VisualizationConfiguration();
 
             // Assert
             Assert.True(config.OverlaysEnabled);
-        }
-
-        [Fact]
-        public void TooltipsEnabled_ShouldDefaultToTrue()
-        {
-            // Arrange & Act
-            var config = new VisualizationConfiguration();
-
-            // Assert
             Assert.True(config.TooltipsEnabled);
-        }
-
-        [Fact]
-        public void HoeFeedbackEnabled_ShouldDefaultToTrue()
-        {
-            // Arrange & Act
-            var config = new VisualizationConfiguration();
-
-            // Assert
             Assert.True(config.HoeFeedbackEnabled);
-        }
-
-        [Fact]
-        public void Opacity_ShouldDefaultTo_0_5f()
-        {
-            // Arrange & Act
-            var config = new VisualizationConfiguration();
-
-            // Assert
             Assert.Equal(0.5f, config.Opacity);
-        }
-
-        [Fact]
-        public void ShowPatterns_ShouldDefaultToTrue()
-        {
-            // Arrange & Act
-            var config = new VisualizationConfiguration();
-
-            // Assert
             Assert.True(config.ShowPatterns);
-        }
-
-        [Fact]
-        public void AccessibilityDegradation_ShouldDefaultToAuto()
-        {
-            // Arrange & Act
-            var config = new VisualizationConfiguration();
-
-            // Assert
             Assert.Equal("auto", config.AccessibilityDegradation);
         }
 
-        // ──────────────────────────────────────────────
-        // Color Defaults Match ModConstants
-        // ──────────────────────────────────────────────
-
         [Fact]
-        public void PoorColor_ShouldDefaultToModConstantsValue_FF0000()
+        public void DefaultColors_MatchModConstantsValues()
         {
             // Arrange
             var config = new VisualizationConfiguration();
-            var expected = ModConstants.PoorColor;
 
-            // Act
-            var actual = config.PoorColor;
+            // Assert - PoorColor defaults to Red (#FF0000)
+            Assert.Equal(255, config.PoorColor.R);
+            Assert.Equal(0, config.PoorColor.G);
+            Assert.Equal(0, config.PoorColor.B);
+            Assert.Equal(255, config.PoorColor.A);
 
-            // Assert
-            Assert.Equal(expected.R, actual.R);
-            Assert.Equal(expected.G, actual.G);
-            Assert.Equal(expected.B, actual.B);
-            Assert.Equal(expected.A, actual.A);
+            // ModerateColor defaults to Yellow (#FFFF00)
+            Assert.Equal(255, config.ModerateColor.R);
+            Assert.Equal(255, config.ModerateColor.G);
+            Assert.Equal(0, config.ModerateColor.B);
+            Assert.Equal(255, config.ModerateColor.A);
+
+            // HealthyColor defaults to Green (#00FF00)
+            Assert.Equal(0, config.HealthyColor.R);
+            Assert.Equal(255, config.HealthyColor.G);
+            Assert.Equal(0, config.HealthyColor.B);
+            Assert.Equal(255, config.HealthyColor.A);
+
+            // UnknownColor defaults to Gray (#808080)
+            Assert.Equal(128, config.UnknownColor.R);
+            Assert.Equal(128, config.UnknownColor.G);
+            Assert.Equal(128, config.UnknownColor.B);
+            Assert.Equal(255, config.UnknownColor.A);
         }
 
         [Fact]
-        public void ModerateColor_ShouldDefaultToModConstantsValue_FFFF00()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-            var expected = ModConstants.ModerateColor;
-
-            // Act
-            var actual = config.ModerateColor;
-
-            // Assert
-            Assert.Equal(expected.R, actual.R);
-            Assert.Equal(expected.G, actual.G);
-            Assert.Equal(expected.B, actual.B);
-            Assert.Equal(expected.A, actual.A);
-        }
-
-        [Fact]
-        public void HealthyColor_ShouldDefaultToModConstantsValue_00FF00()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-            var expected = ModConstants.HealthyColor;
-
-            // Act
-            var actual = config.HealthyColor;
-
-            // Assert
-            Assert.Equal(expected.R, actual.R);
-            Assert.Equal(expected.G, actual.G);
-            Assert.Equal(expected.B, actual.B);
-            Assert.Equal(expected.A, actual.A);
-        }
-
-        [Fact]
-        public void UnknownColor_ShouldDefaultToModConstantsValue_808080()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-            var expected = ModConstants.UnknownColor;
-
-            // Act
-            var actual = config.UnknownColor;
-
-            // Assert
-            Assert.Equal(expected.R, actual.R);
-            Assert.Equal(expected.G, actual.G);
-            Assert.Equal(expected.B, actual.B);
-            Assert.Equal(expected.A, actual.A);
-        }
-
-        // ──────────────────────────────────────────────
-        // Property Setters
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void OverlaysEnabled_ShouldBeSettable()
+        public void PropertySetters_UpdateValues()
         {
             // Arrange
             var config = new VisualizationConfiguration();
 
             // Act
             config.OverlaysEnabled = false;
+            config.TooltipsEnabled = false;
+            config.HoeFeedbackEnabled = false;
+            config.Opacity = 0.8f;
+            config.ShowPatterns = false;
+            config.PoorColor = new ColorDTO { R = 100, G = 0, B = 0, A = 255 };
 
             // Assert
             Assert.False(config.OverlaysEnabled);
-        }
-
-        [Fact]
-        public void TooltipsEnabled_ShouldBeSettable()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-
-            // Act
-            config.TooltipsEnabled = false;
-
-            // Assert
             Assert.False(config.TooltipsEnabled);
-        }
-
-        [Fact]
-        public void HoeFeedbackEnabled_ShouldBeSettable()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-
-            // Act
-            config.HoeFeedbackEnabled = false;
-
-            // Assert
             Assert.False(config.HoeFeedbackEnabled);
-        }
-
-        [Fact]
-        public void Opacity_ShouldBeSettable()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-
-            // Act
-            config.Opacity = 0.75f;
-
-            // Assert
-            Assert.Equal(0.75f, config.Opacity);
-        }
-
-        [Fact]
-        public void ShowPatterns_ShouldBeSettable()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-
-            // Act
-            config.ShowPatterns = false;
-
-            // Assert
+            Assert.Equal(0.8f, config.Opacity);
             Assert.False(config.ShowPatterns);
+            Assert.Equal(100, config.PoorColor.R);
         }
 
-        [Fact]
-        public void PoorColor_ShouldBeSettable()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-            var newColor = new ColorDTO(100, 100, 100, 255);
-
-            // Act
-            config.PoorColor = newColor;
-
-            // Assert
-            Assert.Equal(newColor, config.PoorColor);
-        }
-
-        [Fact]
-        public void ModerateColor_ShouldBeSettable()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-            var newColor = new ColorDTO(100, 100, 100, 255);
-
-            // Act
-            config.ModerateColor = newColor;
-
-            // Assert
-            Assert.Equal(newColor, config.ModerateColor);
-        }
-
-        [Fact]
-        public void HealthyColor_ShouldBeSettable()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-            var newColor = new ColorDTO(100, 100, 100, 255);
-
-            // Act
-            config.HealthyColor = newColor;
-
-            // Assert
-            Assert.Equal(newColor, config.HealthyColor);
-        }
-
-        [Fact]
-        public void UnknownColor_ShouldBeSettable()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-            var newColor = new ColorDTO(100, 100, 100, 255);
-
-            // Act
-            config.UnknownColor = newColor;
-
-            // Assert
-            Assert.Equal(newColor, config.UnknownColor);
-        }
-
-        // ──────────────────────────────────────────────
-        // AccessibilityDegradation Options
-        // ──────────────────────────────────────────────
-
-        [Fact]
-        public void AccessibilityDegradation_ShouldAcceptAuto()
+        [Theory]
+        [InlineData("auto")]
+        [InlineData("never")]
+        [InlineData("notify")]
+        public void AccessibilityDegradation_AcceptsValidValues(string value)
         {
             // Arrange
             var config = new VisualizationConfiguration();
 
             // Act
-            config.AccessibilityDegradation = "auto";
+            config.AccessibilityDegradation = value;
 
             // Assert
-            Assert.Equal("auto", config.AccessibilityDegradation);
-        }
-
-        [Fact]
-        public void AccessibilityDegradation_ShouldAcceptNever()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-
-            // Act
-            config.AccessibilityDegradation = "never";
-
-            // Assert
-            Assert.Equal("never", config.AccessibilityDegradation);
-        }
-
-        [Fact]
-        public void AccessibilityDegradation_ShouldAcceptNotify()
-        {
-            // Arrange
-            var config = new VisualizationConfiguration();
-
-            // Act
-            config.AccessibilityDegradation = "notify";
-
-            // Assert
-            Assert.Equal("notify", config.AccessibilityDegradation);
+            Assert.Equal(value, config.AccessibilityDegradation);
         }
     }
 }
