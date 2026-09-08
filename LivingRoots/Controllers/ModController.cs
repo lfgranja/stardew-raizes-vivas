@@ -13,6 +13,8 @@ namespace LivingRoots.Controllers
         IManifest manifest,
         ISoilHealthService soilHealthService,
         ISaveIdProvider saveIdProvider,
+        ICompostingBinService compostingBinService,
+        ISoilDecayService soilDecayService,
         IVisualizationService? visualizationService = null,
         IVisualizationConfigurationService? visualizationConfigService = null) : IDisposable
     {
@@ -36,6 +38,8 @@ namespace LivingRoots.Controllers
         private readonly IManifest _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
         private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
         private readonly ISaveIdProvider _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
+        private readonly ICompostingBinService _compostingBinService = compostingBinService ?? throw new ArgumentNullException(nameof(compostingBinService));
+        private readonly ISoilDecayService _soilDecayService = soilDecayService ?? throw new ArgumentNullException(nameof(soilDecayService));
         private readonly IVisualizationService? _visualizationService = visualizationService;
         private readonly IVisualizationConfigurationService? _visualizationConfigService = visualizationConfigService;
 
@@ -46,6 +50,8 @@ namespace LivingRoots.Controllers
         private EventHandler<RenderedWorldEventArgs>? _onRenderedWorldHandler;
         private EventHandler<ButtonReleasedEventArgs>? _onButtonReleasedHandler;
         private EventHandler<UpdateTickedEventArgs>? _onUpdateTickedHandler;
+        private EventHandler<DayStartedEventArgs>? _onDayStartedHandler;
+        private EventHandler<ButtonPressedEventArgs>? _onButtonPressedHandler;
 
         // GameTime captured from UpdateTicked for use in render events
         private GameTime _lastGameTime = new();
@@ -98,6 +104,8 @@ namespace LivingRoots.Controllers
             EventHandler<SavingEventArgs>? localSavingHandler = null;
             EventHandler<RenderedWorldEventArgs>? localRenderedWorldHandler = null;
             EventHandler<ButtonReleasedEventArgs>? localButtonReleasedHandler = null;
+            EventHandler<DayStartedEventArgs>? localDayStartedHandler = null;
+            EventHandler<ButtonPressedEventArgs>? localButtonPressedHandler = null;
 
             try
             {
@@ -105,6 +113,7 @@ namespace LivingRoots.Controllers
                 localGameLaunchedHandler = _onGameLaunchedHandler ??= OnGameLaunched;
                 localSaveLoadedHandler = _onSaveLoadedHandler ??= OnSaveLoaded;
                 localSavingHandler = _onSavingHandler ??= OnSaving;
+                localDayStartedHandler = _onDayStartedHandler ??= OnDayStarted;
 
                 // Double-check disposed state after setting the flag but before subscribing to prevent race condition
                 if (IsDisposed())
@@ -119,6 +128,11 @@ namespace LivingRoots.Controllers
                 gameLoop.GameLaunched += localGameLaunchedHandler;
                 gameLoop.SaveLoaded += localSaveLoadedHandler;
                 gameLoop.Saving += localSavingHandler;
+                gameLoop.DayStarted += localDayStartedHandler;
+
+                // Subscribe to composting bin right-click input
+                localButtonPressedHandler = _onButtonPressedHandler ??= OnButtonPressed;
+                _helper.Events.Input.ButtonPressed += localButtonPressedHandler;
 
                 // Subscribe to visualization events if services are available
                 if (_visualizationService != null)
@@ -147,6 +161,8 @@ namespace LivingRoots.Controllers
                     LocalSavingHandler = localSavingHandler,
                     LocalRenderedWorldHandler = localRenderedWorldHandler,
                     LocalButtonReleasedHandler = localButtonReleasedHandler,
+                    LocalDayStartedHandler = localDayStartedHandler,
+                    LocalButtonPressedHandler = localButtonPressedHandler,
                     Monitor = monitorSnapshot,
                     Helper = helperSnapshot
                 });
@@ -213,6 +229,12 @@ namespace LivingRoots.Controllers
                 ctx.LocalSavingHandler,
                 "Saving");
 
+            SafeUnsubscribe<DayStartedEventArgs>(
+                ctx.Monitor,
+                h => ctx.GameLoop.DayStarted -= h,
+                ctx.LocalDayStartedHandler,
+                "DayStarted");
+
             if (ctx.Helper != null)
             {
                 SafeUnsubscribe<RenderedWorldEventArgs>(
@@ -226,6 +248,12 @@ namespace LivingRoots.Controllers
                     h => ctx.Helper.Events.Input.ButtonReleased -= h,
                     ctx.LocalButtonReleasedHandler,
                     "ButtonReleased");
+
+                SafeUnsubscribe<ButtonPressedEventArgs>(
+                    ctx.Monitor,
+                    h => ctx.Helper.Events.Input.ButtonPressed -= h,
+                    ctx.LocalButtonPressedHandler,
+                    "ButtonPressed");
             }
 
             // Clear handler references to prevent memory leaks
@@ -235,6 +263,8 @@ namespace LivingRoots.Controllers
             System.Threading.Interlocked.Exchange(ref _onRenderedWorldHandler, null);
             System.Threading.Interlocked.Exchange(ref _onButtonReleasedHandler, null);
             System.Threading.Interlocked.Exchange(ref _onUpdateTickedHandler, null);
+            System.Threading.Interlocked.Exchange(ref _onDayStartedHandler, null);
+            System.Threading.Interlocked.Exchange(ref _onButtonPressedHandler, null);
 
             System.Threading.Interlocked.And(ref _state, ~(EventsRegisteredFlag));
         }
@@ -280,6 +310,8 @@ namespace LivingRoots.Controllers
                         System.Threading.Interlocked.Exchange(ref _onGameLaunchedHandler, null);
                         System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
                         System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
+                        System.Threading.Interlocked.Exchange(ref _onDayStartedHandler, null);
+                        System.Threading.Interlocked.Exchange(ref _onButtonPressedHandler, null);
                         mayStillBeSubscribed = false;
                     }
 
@@ -302,6 +334,12 @@ namespace LivingRoots.Controllers
                     System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, null, eventUnregisterContext.SaveLoadedHandler);
                 if (unsubscribeResults.SavingRemoved)
                     System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, null, eventUnregisterContext.SavingHandler);
+                // DayStarted and ButtonPressed handlers are not tracked in UnsubscribeResults for rollback,
+                // but we nullify them on successful unsubscription to prevent leaks.
+                if (eventUnregisterContext.DayStartedHandler != null)
+                    System.Threading.Interlocked.CompareExchange(ref _onDayStartedHandler, null, eventUnregisterContext.DayStartedHandler);
+                if (eventUnregisterContext.ButtonPressedHandler != null)
+                    System.Threading.Interlocked.CompareExchange(ref _onButtonPressedHandler, null, eventUnregisterContext.ButtonPressedHandler);
 
                 HandleUnregistrationResult(monitorSnapshot, gameLoop, unsubscribeResults, eventUnregisterContext, allUnsubscribed, ref mayStillBeSubscribed);
             }
@@ -373,12 +411,15 @@ namespace LivingRoots.Controllers
             var renderedWorldHandler = System.Threading.Volatile.Read(ref _onRenderedWorldHandler);
             var buttonReleasedHandler = System.Threading.Volatile.Read(ref _onButtonReleasedHandler);
             var updateTickedHandler = System.Threading.Volatile.Read(ref _onUpdateTickedHandler);
+            var dayStartedHandler = System.Threading.Volatile.Read(ref _onDayStartedHandler);
+            var buttonPressedHandler = System.Threading.Volatile.Read(ref _onButtonPressedHandler);
             var currentState = System.Threading.Volatile.Read(ref _state);
             var wasRegistered = (currentState & EventsRegisteredFlag) != 0;
 
             // Check if any handlers are non-null for best-effort cleanup
             var hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null
-                || renderedWorldHandler != null || buttonReleasedHandler != null || updateTickedHandler != null;
+                || renderedWorldHandler != null || buttonReleasedHandler != null || updateTickedHandler != null
+                || dayStartedHandler != null || buttonPressedHandler != null;
 
             return new EventUnregisterContext
             {
@@ -387,6 +428,8 @@ namespace LivingRoots.Controllers
                 SavingHandler = savingHandler,
                 RenderedWorldHandler = renderedWorldHandler,
                 ButtonReleasedHandler = buttonReleasedHandler,
+                DayStartedHandler = dayStartedHandler,
+                ButtonPressedHandler = buttonPressedHandler,
                 WasRegistered = wasRegistered,
                 HasHandlers = hasHandlers
             };
@@ -398,20 +441,24 @@ namespace LivingRoots.Controllers
             var gameLaunchedRemoved = SafeUnsubscribe<GameLaunchedEventArgs>(monitor, h => gameLoop.GameLaunched -= h, context.GameLaunchedHandler, "GameLaunched");
             var saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, context.SaveLoadedHandler, "SaveLoaded");
             var savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, context.SavingHandler, "Saving");
+            var dayStartedRemoved = SafeUnsubscribe<DayStartedEventArgs>(monitor, h => gameLoop.DayStarted -= h, context.DayStartedHandler, "DayStarted");
 
             // Unsubscribe from visualization events
             var renderedWorldRemoved = false;
             var buttonReleasedRemoved = false;
+            var buttonPressedRemoved = false;
             if (_helper != null)
             {
                 renderedWorldRemoved = SafeUnsubscribe<RenderedWorldEventArgs>(monitor, h => _helper.Events.Display.RenderedWorld -= h, context.RenderedWorldHandler, "RenderedWorld");
                 buttonReleasedRemoved = SafeUnsubscribe<ButtonReleasedEventArgs>(monitor, h => _helper.Events.Input.ButtonReleased -= h, context.ButtonReleasedHandler, "ButtonReleased");
+                buttonPressedRemoved = SafeUnsubscribe<ButtonPressedEventArgs>(monitor, h => _helper.Events.Input.ButtonPressed -= h, context.ButtonPressedHandler, "ButtonPressed");
             }
 
             // Be conservative: if we thought we were registered but lost handler references, assume we may still be subscribed.
             var missingHandlerWhileRegistered =
                 context.WasRegistered &&
-                (context.GameLaunchedHandler == null || context.SaveLoadedHandler == null || context.SavingHandler == null);
+                (context.GameLaunchedHandler == null || context.SaveLoadedHandler == null || context.SavingHandler == null
+                    || context.DayStartedHandler == null || context.ButtonPressedHandler == null);
 
             // Handle wedged registered state: log warning but don't clear handler fields
             // This prevents resource leaks and potential crashes from callbacks on disposed objects
@@ -426,7 +473,9 @@ namespace LivingRoots.Controllers
                 (context.SaveLoadedHandler == null || saveLoadedRemoved) &&
                 (context.SavingHandler == null || savingRemoved) &&
                 (context.RenderedWorldHandler == null || renderedWorldRemoved) &&
-                (context.ButtonReleasedHandler == null || buttonReleasedRemoved);
+                (context.ButtonReleasedHandler == null || buttonReleasedRemoved) &&
+                (context.DayStartedHandler == null || dayStartedRemoved) &&
+                (context.ButtonPressedHandler == null || buttonPressedRemoved);
 
             return new UnsubscribeResults
             {
@@ -511,8 +560,11 @@ namespace LivingRoots.Controllers
                 var earlyGameLaunchedHandler = System.Threading.Volatile.Read(ref _onGameLaunchedHandler);
                 var earlySaveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
                 var earlySavingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
+                var earlyDayStartedHandler = System.Threading.Volatile.Read(ref _onDayStartedHandler);
+                var earlyButtonPressedHandler = System.Threading.Volatile.Read(ref _onButtonPressedHandler);
 
-                var earlyHasHandlers = earlyGameLaunchedHandler != null || earlySaveLoadedHandler != null || earlySavingHandler != null;
+                var earlyHasHandlers = earlyGameLaunchedHandler != null || earlySaveLoadedHandler != null || earlySavingHandler != null
+                    || earlyDayStartedHandler != null || earlyButtonPressedHandler != null;
 
                 if (!earlyHasHandlers)
                 {
@@ -758,6 +810,77 @@ namespace LivingRoots.Controllers
             }
         }
 
+        private void OnDayStarted(object? sender, DayStartedEventArgs e)
+        {
+            if (IsDisposed()) return;
+
+            try
+            {
+                foreach (var location in StardewValley.Game1.locations)
+                {
+                    var locationName = location.Name;
+                    if (string.IsNullOrWhiteSpace(locationName))
+                    {
+                        continue;
+                    }
+                    _compostingBinService.ProcessDayStart(locationName);
+                    _soilDecayService.ProcessDayStart(locationName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log("Error occurred in day started event handler.", LogLevel.Error);
+                _monitor.Log($"OnDayStarted exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+#if DEBUG
+                _monitor.Log(ex.StackTrace ?? "OnDayStarted stack trace unavailable.", LogLevel.Trace);
+#endif
+            }
+        }
+
+        private void OnButtonPressed(object? sender, ButtonPressedEventArgs e)
+        {
+            if (IsDisposed()) return;
+
+            try
+            {
+                if (e.Button != StardewModdingAPI.SButton.MouseRight)
+                {
+                    return;
+                }
+
+                var cursorPos = _helper.Input.GetCursorPosition();
+                var tile = cursorPos.GrabTile;
+                var location = StardewValley.Game1.currentLocation;
+                if (location == null)
+                {
+                    return;
+                }
+
+                var state = _compostingBinService.GetBinState(location.Name, tile);
+                var heldItem = StardewValley.Game1.player.CurrentItem;
+
+                if (heldItem != null)
+                {
+                    if (state == CompostingBinState.Empty)
+                    {
+                        _compostingBinService.AddWaste(location.Name, tile, heldItem);
+                    }
+                }
+                else if (state == CompostingBinState.Ready)
+                {
+                    _compostingBinService.CollectCompost(location.Name, tile, StardewValley.Game1.player);
+                }
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log("Error occurred in button pressed event handler.", LogLevel.Error);
+                _monitor.Log($"OnButtonPressed exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+#if DEBUG
+                _monitor.Log(ex.StackTrace ?? "OnButtonPressed stack trace unavailable.", LogLevel.Trace);
+#endif
+            }
+        }
+
         /// <summary>
         /// Executes the provided action with a concurrency guard using the specified flag
         /// </summary>
@@ -989,6 +1112,8 @@ namespace LivingRoots.Controllers
         public EventHandler<SavingEventArgs>? LocalSavingHandler { get; init; }
         public EventHandler<RenderedWorldEventArgs>? LocalRenderedWorldHandler { get; init; }
         public EventHandler<ButtonReleasedEventArgs>? LocalButtonReleasedHandler { get; init; }
+        public EventHandler<DayStartedEventArgs>? LocalDayStartedHandler { get; init; }
+        public EventHandler<ButtonPressedEventArgs>? LocalButtonPressedHandler { get; init; }
         public IMonitor Monitor { get; init; }
         public IModHelper? Helper { get; init; }
     }
@@ -1003,6 +1128,8 @@ namespace LivingRoots.Controllers
         public EventHandler<SavingEventArgs>? SavingHandler { get; init; }
         public EventHandler<RenderedWorldEventArgs>? RenderedWorldHandler { get; init; }
         public EventHandler<ButtonReleasedEventArgs>? ButtonReleasedHandler { get; init; }
+        public EventHandler<DayStartedEventArgs>? DayStartedHandler { get; init; }
+        public EventHandler<ButtonPressedEventArgs>? ButtonPressedHandler { get; init; }
         public bool WasRegistered { get; init; }
         public bool HasHandlers { get; init; }
     }
