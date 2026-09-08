@@ -8,9 +8,11 @@ namespace LivingRoots.Services;
 
 public class CompostApplicationService(
     ISoilHealthService soilHealthService,
+    IPlayerProvider playerProvider,
     IMonitor monitor) : ICompostApplicationService
 {
     private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
+    private readonly IPlayerProvider _playerProvider = playerProvider ?? throw new ArgumentNullException(nameof(playerProvider));
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
 
     public bool TryApplyCompost(GameLocation location, Vector2 tile)
@@ -40,7 +42,7 @@ public class CompostApplicationService(
             return false;
         }
 
-        var heldItem = Game1.player.CurrentItem;
+        var heldItem = _playerProvider.CurrentItem;
         if (heldItem == null || heldItem.QualifiedItemId != ModConstants.CompostItemId)
         {
             _monitor.Log("Compost rejected: player not holding compost.", LogLevel.Trace);
