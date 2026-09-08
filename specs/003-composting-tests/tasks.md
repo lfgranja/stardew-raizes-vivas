@@ -331,3 +331,18 @@ With multiple developers:
 - [X] T109 Verify every test has at least one assertion per Success Criterion 4 (`missing`): grep test files for `Assert.` calls, confirm count matches test count
 - [X] T110 Verify tests do not use reflection to access private state per NFR-4 (`missing`): grep test files for `BindingFlags.NonPublic|GetField|GetMethod` — only allowed in `SaveIdProviderTests` for `Constants.SaveFolderName`
 - [X] T111 Run full test suite per NFR-1 (`missing`): `dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal` — all tests pass, execution under 5 seconds
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Implementation exists on PR branches but not merged to `dev` — merge PRs to complete feature
+
+### PR Merge Tasks
+
+- [X] T112 Merge PR #155 (docs/003-01-spec-composting-tests) to `dev` per spec (`missing`): spec.md, plan.md, tasks.md, checklists/requirements.md
+- [X] T113 Merge PR #156 (feat/003-02-interfaces-composting-tests) to `dev` per Fix-4 (`missing`): ITimeProvider, ISeasonProvider, IPlayerProvider interfaces
+- [X] T114 Merge PR #157 (feat/003-03-providers-composting-tests) to `dev` per Fix-4 (`missing`): TimeProvider, SeasonProvider, PlayerProvider production impls
+- [X] T115 Merge PR #158 (feat/003-04-fixes-composting-tests) to `dev` per Fix-1,2,3,5 (`missing`): prerequisite fixes to Constants, models, services, controllers
+- [X] T116 Merge PR #159 (test/003-05-stubs-composting-tests) to `dev` per plan: Phase 1 (`missing`): TimeProviderStub, SeasonProviderStub, PlayerProviderStub, GameLocationFixture, ItemFactory
+- [X] T117 Merge PR #160 (test/003-06-tests-composting-tests) to `dev` per FR-1–FR-7 (`missing`): 7 test files with ~51 test methods
