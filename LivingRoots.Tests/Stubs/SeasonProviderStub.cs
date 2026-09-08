@@ -1,17 +1,13 @@
 using LivingRoots.Domain;
 
-namespace LivingRoots.Tests.Stubs
+namespace LivingRoots.Tests.Stubs;
+
+/// <summary>
+/// Stub implementation of ISeasonProvider for season-dependent tests.
+/// Allows tests to control the current season by setting CurrentSeason.
+/// </summary>
+public class SeasonProviderStub : ISeasonProvider
 {
-    /// <summary>
-    /// Stub implementation of <see cref="ISeasonProvider"/> for unit testing.
-    /// Provides a settable <see cref="CurrentSeason"/> so tests can control the simulated season.
-    /// </summary>
-    public class SeasonProviderStub : ISeasonProvider
-    {
-        /// <summary>
-        /// Gets or sets the current season name.
-        /// Defaults to "spring".
-        /// </summary>
-        public string CurrentSeason { get; set; } = "spring";
-    }
+    /// <summary>Gets or sets the current season for testing.</summary>
+    public string CurrentSeason { get; set; } = "spring";
 }
