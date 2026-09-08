@@ -115,9 +115,8 @@ public class CompostingBinService(
                 {
                     if (bin.InputTimestamp.HasValue)
                     {
-                        var currentDay = _timeProvider.TotalDays;
-                        var recordedDay = bin.InputTimestamp.Value;
-                        if (currentDay - recordedDay >= ModConstants.MaturationDays)
+                        var elapsed = _timeProvider.TotalDays - bin.InputTimestamp.Value;
+                        if (elapsed >= ModConstants.MaturationDays)
                         {
                             bin.State = CompostingBinState.Ready;
                             Game1.playSound("Ship");
@@ -195,7 +194,7 @@ public class CompostingBinService(
                             InputTimestamp = bin.Value.InputTimestamp,
                             MaturationLevel = Math.Clamp(bin.Value.MaturationLevel, 1, ModConstants.MaturationMaxLevel),
                             ConsecutiveIdleDays = Math.Clamp(bin.Value.ConsecutiveIdleDays, 0, ModConstants.MaturationIdleResetDays),
-                            ConsecutiveActiveDays = Math.Clamp(bin.Value.ConsecutiveActiveDays, 0, ModConstants.MaturationIncrementDays)
+                            ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays
                         };
                         _runtimeCache[loc.Key][bin.Key] = state;
                     }
@@ -224,8 +223,7 @@ public class CompostingBinService(
                     {
                         if (bin.Value.State == CompostingBinState.Empty &&
                             bin.Value.MaturationLevel == 1 &&
-                            bin.Value.ConsecutiveIdleDays == 0 &&
-                            bin.Value.ConsecutiveActiveDays == 0)
+                            bin.Value.ConsecutiveIdleDays == 0)
                             continue;
 
                         data.LocationBinData[loc.Key][bin.Key] = new CompostingBinStateData
