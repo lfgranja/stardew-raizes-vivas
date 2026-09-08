@@ -60,8 +60,12 @@ public class SoilDecayService(
                     var tile = kvp.Key;
                     var currentHealth = _soilHealthService.GetSoilHealth(locationName, tile);
                     var newHealth = Math.Max(currentHealth - decayAmount, 0f);
-                    _soilHealthService.UpdateHealth(locationName, tile, -decayAmount);
-                    totalHealthLost += (currentHealth - newHealth);
+                    var actualDecay = currentHealth - newHealth;
+                    if (actualDecay > 0f)
+                    {
+                        _soilHealthService.UpdateHealth(locationName, tile, -actualDecay);
+                    }
+                    totalHealthLost += actualDecay;
                     tilesProcessed++;
                 }
             }
