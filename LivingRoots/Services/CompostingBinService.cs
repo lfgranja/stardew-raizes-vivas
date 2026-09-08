@@ -12,12 +12,16 @@ public class CompostingBinService(
     IModDataService modDataService,
     ISaveIdProvider saveIdProvider,
     IOrganicWasteValidator organicWasteValidator,
-    IMonitor monitor) : ICompostingBinService
+    IMonitor monitor,
+    ITimeProvider timeProvider,
+    CompostingBinFactory factory) : ICompostingBinService
 {
     private readonly IModDataService _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
     private readonly ISaveIdProvider _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
     private readonly IOrganicWasteValidator _organicWasteValidator = organicWasteValidator ?? throw new ArgumentNullException(nameof(organicWasteValidator));
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+    private readonly ITimeProvider _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    private readonly CompostingBinFactory _factory = factory ?? throw new ArgumentNullException(nameof(factory));
 
     private readonly Dictionary<string, Dictionary<string, CompostingBinStateModel>> _runtimeCache = new();
     private readonly object _lock = new();
@@ -33,14 +37,7 @@ public class CompostingBinService(
             var bins = _runtimeCache[locationName];
             if (!bins.TryGetValue(key, out var bin))
             {
-                bin = new CompostingBinStateModel
-                {
-                    TileX = (int)tile.X,
-                    TileY = (int)tile.Y,
-                    State = CompostingBinState.Empty,
-                    MaturationLevel = 1,
-                    ConsecutiveIdleDays = 0
-                };
+                bin = _factory.CreateBin((int)tile.X, (int)tile.Y);
                 bins[key] = bin;
             }
 
@@ -49,7 +46,7 @@ public class CompostingBinService(
 
             bin.State = CompostingBinState.Processing;
             bin.InputItemId = item.QualifiedItemId;
-            bin.InputTimestamp = Game1.timeOfDay;
+            bin.InputTimestamp = _timeProvider.TotalDays;
             bin.ConsecutiveIdleDays = 0;
 
             _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Empty → Processing, item: {item.QualifiedItemId}",
@@ -118,8 +115,8 @@ public class CompostingBinService(
                 {
                     if (bin.InputTimestamp.HasValue)
                     {
-                        var elapsed = Game1.timeOfDay - bin.InputTimestamp.Value;
-                        if (elapsed >= ModConstants.ProcessingDurationMinutes)
+                        var elapsed = _timeProvider.TotalDays - bin.InputTimestamp.Value;
+                        if (elapsed >= ModConstants.MaturationDays)
                         {
                             bin.State = CompostingBinState.Ready;
                             Game1.playSound("Ship");
@@ -196,7 +193,8 @@ public class CompostingBinService(
                             InputItemId = bin.Value.InputItemId,
                             InputTimestamp = bin.Value.InputTimestamp,
                             MaturationLevel = Math.Clamp(bin.Value.MaturationLevel, 1, ModConstants.MaturationMaxLevel),
-                            ConsecutiveIdleDays = Math.Clamp(bin.Value.ConsecutiveIdleDays, 0, ModConstants.MaturationIdleResetDays)
+                            ConsecutiveIdleDays = Math.Clamp(bin.Value.ConsecutiveIdleDays, 0, ModConstants.MaturationIdleResetDays),
+                            ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays
                         };
                         _runtimeCache[loc.Key][bin.Key] = state;
                     }
@@ -234,7 +232,8 @@ public class CompostingBinService(
                             InputItemId = bin.Value.InputItemId,
                             InputTimestamp = bin.Value.InputTimestamp,
                             MaturationLevel = bin.Value.MaturationLevel,
-                            ConsecutiveIdleDays = bin.Value.ConsecutiveIdleDays
+                            ConsecutiveIdleDays = bin.Value.ConsecutiveIdleDays,
+                            ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays
                         };
                     }
                 }
