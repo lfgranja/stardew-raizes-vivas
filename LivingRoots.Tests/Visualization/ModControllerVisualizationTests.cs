@@ -18,6 +18,8 @@ namespace LivingRoots.Tests.Visualization
             var mockManifest = new Mock<IManifest>();
             var mockSoilService = new Mock<ISoilHealthService>();
             var mockSaveIdProvider = new Mock<ISaveIdProvider>();
+            var mockCompostingBinService = new Mock<ICompostingBinService>();
+            var mockSoilDecayService = new Mock<ISoilDecayService>();
             var mockVisService = new Mock<IVisualizationService>();
             var mockConfigService = new Mock<IVisualizationConfigurationService>();
 
@@ -28,6 +30,7 @@ namespace LivingRoots.Tests.Visualization
             var controller = new Controllers.ModController(
                 mockHelper.Object, mockMonitor.Object, mockManifest.Object,
                 mockSoilService.Object, mockSaveIdProvider.Object,
+                mockCompostingBinService.Object, mockSoilDecayService.Object,
                 mockVisService.Object, mockConfigService.Object);
         }
     }
