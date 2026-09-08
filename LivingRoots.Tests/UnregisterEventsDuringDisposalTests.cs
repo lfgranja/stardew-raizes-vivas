@@ -73,7 +73,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, new Mock<ICompostingBinService>().Object, new Mock<ISoilDecayService>().Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -138,7 +138,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, new Mock<ICompostingBinService>().Object, new Mock<ISoilDecayService>().Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -204,7 +204,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, new Mock<ICompostingBinService>().Object, new Mock<ISoilDecayService>().Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
