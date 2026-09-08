@@ -18,7 +18,7 @@ public class CompostingBinStateModel
     /// <summary>Qualified item ID of the input waste item (null if empty).</summary>
     public string? InputItemId { get; set; }
 
-    /// <summary>Game day when waste was added (null if empty).</summary>
+    /// <summary>Game day when waste was added via ITimeProvider.TotalDays (null if empty).</summary>
     public int? InputTimestamp { get; set; }
 
     /// <summary>Current maturation level (1-5), determines output multiplier.</summary>

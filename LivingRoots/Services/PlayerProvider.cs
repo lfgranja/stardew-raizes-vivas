@@ -4,13 +4,14 @@ using StardewValley;
 namespace LivingRoots.Services;
 
 /// <summary>
-/// Production implementation of <see cref="IPlayerProvider"/> that wraps <see cref="Game1"/>.
+/// Production implementation of IPlayerProvider.
+/// Wraps Game1.player for player-dependent logic.
 /// </summary>
 public class PlayerProvider : IPlayerProvider
 {
-    /// <inheritdoc />
+    /// <summary>Gets the current player (Farmer).</summary>
     public Farmer CurrentPlayer => Game1.player;
 
-    /// <inheritdoc />
-    public Item? CurrentItem => Game1.player?.CurrentItem;
+    /// <summary>Gets the player's currently held item, or null if none.</summary>
+    public Item? CurrentItem => Game1.player.CurrentItem;
 }

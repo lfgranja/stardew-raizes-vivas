@@ -4,13 +4,11 @@ using StardewValley;
 namespace LivingRoots.Services;
 
 /// <summary>
-/// Production implementation of <see cref="ITimeProvider"/>
-/// that wraps <see cref="Game1.Date.TotalDays"/>.
+/// Production implementation of ITimeProvider.
+/// Wraps Game1.Date.TotalDays for whole-day granularity.
 /// </summary>
 public class TimeProvider : ITimeProvider
 {
-    /// <summary>
-    /// Gets the total number of days elapsed in the current save.
-    /// </summary>
+    /// <summary>Gets the current total days from the game clock.</summary>
     public int TotalDays => Game1.Date.TotalDays;
 }

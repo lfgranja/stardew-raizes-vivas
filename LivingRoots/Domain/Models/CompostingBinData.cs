@@ -26,7 +26,7 @@ public class CompostingBinStateData
     /// <summary>Qualified item ID of input waste, or null.</summary>
     public string? InputItemId { get; set; }
 
-    /// <summary>Game day when waste was added, or null.</summary>
+    /// <summary>Game day when waste was added via ITimeProvider.TotalDays, or null.</summary>
     public int? InputTimestamp { get; set; }
 
     /// <summary>Maturation level (1-5).</summary>
@@ -35,6 +35,6 @@ public class CompostingBinStateData
     /// <summary>Consecutive idle days since last activity (0-14).</summary>
     public int ConsecutiveIdleDays { get; set; } = 0;
 
-    /// <summary>Days of continuous operation, used for maturation increment.</summary>
+    /// <summary>Consecutive active days (Processing state) for maturation increment.</summary>
     public int ConsecutiveActiveDays { get; set; } = 0;
 }
