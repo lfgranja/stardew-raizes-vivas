@@ -14,11 +14,13 @@ namespace LivingRoots.Services;
 public class SoilDecayService(
     ISoilHealthService soilHealthService,
     IMonitor monitor,
-    SeasonalDecayMultiplier seasonalDecayMultiplier) : ISoilDecayService
+    SeasonalDecayMultiplier seasonalDecayMultiplier,
+    ISeasonProvider seasonProvider) : ISoilDecayService
 {
     private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
     private readonly SeasonalDecayMultiplier _seasonalDecayMultiplier = seasonalDecayMultiplier ?? throw new ArgumentNullException(nameof(seasonalDecayMultiplier));
+    private readonly ISeasonProvider _seasonProvider = seasonProvider ?? throw new ArgumentNullException(nameof(seasonProvider));
 
     public void ProcessDayStart(string locationName)
     {
@@ -35,7 +37,7 @@ public class SoilDecayService(
             return;
         }
 
-        var season = Game1.currentSeason.ToLowerInvariant();
+        var season = _seasonProvider.CurrentSeason.ToLowerInvariant();
         var multiplier = _seasonalDecayMultiplier.GetMultiplier(season);
 
         if (multiplier == 0f)
@@ -58,8 +60,12 @@ public class SoilDecayService(
                     var tile = kvp.Key;
                     var currentHealth = _soilHealthService.GetSoilHealth(locationName, tile);
                     var newHealth = Math.Max(currentHealth - decayAmount, 0f);
-                    _soilHealthService.UpdateHealth(locationName, tile, -decayAmount);
-                    totalHealthLost += (currentHealth - newHealth);
+                    var actualDecay = currentHealth - newHealth;
+                    if (actualDecay > 0f)
+                    {
+                        _soilHealthService.UpdateHealth(locationName, tile, -actualDecay);
+                    }
+                    totalHealthLost += actualDecay;
                     tilesProcessed++;
                 }
             }

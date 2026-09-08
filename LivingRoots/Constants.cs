@@ -46,7 +46,8 @@ namespace LivingRoots
         public const string CompostingBinKeyPrefix = "composting_bins_";
         public const float DailyDecayRate = 2f;
         public const float RestorationAmount = 15f;
-        public const int ProcessingDurationMinutes = 2880; // 2 full days × 1440 min/day
+        /// <summary>Whole days required for compost to mature (Processing → Ready).</summary>
+        public const int MaturationDays = 2;
         public const int MaturationMaxLevel = 5;
         public const int MaturationIdleResetDays = 14;
         public const int MaturationIncrementDays = 7; // days of continuous operation per level
