@@ -270,8 +270,11 @@ node_modules/
 .commandcode/
 GEMINI.md
 QWEN.md
-.specify/
+.specify/templates/
+.specify/integrations/dsh.manifest.json
 .dsh/
+.omo/
+.specify/feature.json
 
 # -----------------------------------------------------------------------------------
 # Additional Visual Studio Patterns
