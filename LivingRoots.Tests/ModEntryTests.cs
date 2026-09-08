@@ -72,7 +72,9 @@ namespace LivingRoots.Tests
                 mockMonitor.Object,
                 mockManifest.Object,
                 mockSoilHealthService.Object,
-                mockSaveIdProvider.Object);
+                mockSaveIdProvider.Object,
+                new Mock<ICompostingBinService>().Object,
+                new Mock<ISoilDecayService>().Object);
 
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -109,7 +111,9 @@ namespace LivingRoots.Tests
                 mockMonitor.Object,
                 mockManifest.Object,
                 mockSoilHealthService.Object,
-                mockSaveIdProvider.Object);
+                mockSaveIdProvider.Object,
+                new Mock<ICompostingBinService>().Object,
+                new Mock<ISoilDecayService>().Object);
 
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -145,7 +149,9 @@ namespace LivingRoots.Tests
                 mockMonitor.Object,
                 mockManifest.Object,
                 mockSoilHealthService.Object,
-                mockSaveIdProvider.Object);
+                mockSaveIdProvider.Object,
+                new Mock<ICompostingBinService>().Object,
+                new Mock<ISoilDecayService>().Object);
 
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -216,7 +222,9 @@ namespace LivingRoots.Tests
                 mockMonitor.Object,
                 mockManifest.Object,
                 mockSoilHealthService.Object,
-                mockSaveIdProvider.Object);
+                mockSaveIdProvider.Object,
+                new Mock<ICompostingBinService>().Object,
+                new Mock<ISoilDecayService>().Object);
 
             // Set the controller field directly using reflection
             var controllerField = typeof(ModEntry).GetField("_controller", BindingFlags.NonPublic | BindingFlags.Instance);
