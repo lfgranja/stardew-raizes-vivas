@@ -28,6 +28,8 @@ namespace LivingRoots.Tests.Visualization
             var controller = new Controllers.ModController(
                 mockHelper.Object, mockMonitor.Object, mockManifest.Object,
                 mockSoilService.Object, mockSaveIdProvider.Object,
+                new Mock<ICompostingBinService>().Object,
+                new Mock<ISoilDecayService>().Object,
                 mockVisService.Object, mockConfigService.Object);
         }
     }
