@@ -43,7 +43,7 @@ namespace LivingRoots.Tests
 
             // Create a single ModController instance to be shared across all tasks
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object,
-                _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+                _mockSoilHealthService.Object, _mockSaveIdProvider.Object, new Mock<ICompostingBinService>().Object, new Mock<ISoilDecayService>().Object);
 
             // First register events to set up the controller with handlers
             controller.RegisterEvents();
@@ -131,7 +131,7 @@ namespace LivingRoots.Tests
 
             // Create a single ModController instance to be shared across all tasks
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object,
-                _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+                _mockSoilHealthService.Object, _mockSaveIdProvider.Object, new Mock<ICompostingBinService>().Object, new Mock<ISoilDecayService>().Object);
 
             // Act: Simulate multiple concurrent registration attempts
             // This should reveal the race condition where multiple threads pass the
