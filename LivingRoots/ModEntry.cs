@@ -41,26 +41,20 @@ namespace LivingRoots
             // Create the save ID provider with monitor for logging
             var saveIdProvider = new SaveIdProvider(this.Monitor);
 
-            // Create composting bin domain services
-            var organicWasteValidator = new OrganicWasteValidator(this.Monitor);
-            var compostingBinFactory = new CompostingBinFactory();
+            // Create testable interface implementations (Fix-4)
             var timeProvider = new TimeProvider();
-
-            // Create composting bin application service
-            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory);
-
-            // Create soil decay domain service
-            var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
-
-            // Create soil decay application service
             var seasonProvider = new SeasonProvider();
-            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider);
-
-            // Create player provider for services that need held-item access
             var playerProvider = new PlayerProvider();
 
-            // Create compost application service
+            // Create composting services
+            var organicWasteValidator = new OrganicWasteValidator(this.Monitor);
+            var compostingBinFactory = new CompostingBinFactory();
+            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory);
             var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor);
+
+            // Create soil decay service
+            var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
+            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider);
 
             // Create controller with dependency injection
             _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService);
