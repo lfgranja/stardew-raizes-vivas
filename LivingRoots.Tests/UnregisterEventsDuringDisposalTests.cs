@@ -19,6 +19,8 @@ namespace LivingRoots.Tests
         private readonly Mock<IManifest> _mockManifest;
         private readonly Mock<ISoilHealthService> _mockSoilHealthService;
         private readonly Mock<ISaveIdProvider> _mockSaveIdProvider;
+        private readonly Mock<ICompostingBinService> _mockCompostingBinService;
+        private readonly Mock<ISoilDecayService> _mockSoilDecayService;
 
         public UnregisterEventsDuringDisposalTests()
         {
@@ -27,6 +29,8 @@ namespace LivingRoots.Tests
             _mockManifest = new Mock<IManifest>();
             _mockSoilHealthService = new Mock<ISoilHealthService>();
             _mockSaveIdProvider = new Mock<ISaveIdProvider>();
+            _mockCompostingBinService = new Mock<ICompostingBinService>();
+            _mockSoilDecayService = new Mock<ISoilDecayService>();
 
             // Add default setup for _mockManifest properties to prevent NullReferenceException
             _mockManifest.Setup(x => x.UniqueID).Returns("test.mod.id");
@@ -73,7 +77,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -138,7 +142,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
@@ -204,7 +208,7 @@ namespace LivingRoots.Tests
             mockGameLoopEvents.SetupAdd(x => x.Saving += It.IsAny<EventHandler<SavingEventArgs>>())
                 .Callback<EventHandler<SavingEventArgs>>(h => { });
 
-            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object);
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
 
             // Register events first to set up the controller
             controller.RegisterEvents();
