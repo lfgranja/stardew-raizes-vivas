@@ -1,6 +1,7 @@
 using System.Threading;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
+using LivingRoots.Domain.Services;
 using LivingRoots.Services;
 using StardewModdingAPI;
 
@@ -40,8 +41,23 @@ namespace LivingRoots
             // Create the save ID provider with monitor for logging
             var saveIdProvider = new SaveIdProvider(this.Monitor);
 
+            // Create testable interface implementations (Fix-4)
+            var timeProvider = new TimeProvider();
+            var seasonProvider = new SeasonProvider();
+            var playerProvider = new PlayerProvider();
+
+            // Create composting services
+            var organicWasteValidator = new OrganicWasteValidator(this.Monitor);
+            var compostingBinFactory = new CompostingBinFactory();
+            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory);
+            var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor);
+
+            // Create soil decay service
+            var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
+            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider);
+
             // Create controller with dependency injection
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider);
+            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService);
 
             // Register events through the Controller
             _controller.RegisterEvents();
