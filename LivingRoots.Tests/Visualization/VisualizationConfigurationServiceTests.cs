@@ -9,6 +9,8 @@ using Moq;
 using StardewModdingAPI;
 using Xunit;
 
+// ModConstants (namespace LivingRoots) resolves from the enclosing LivingRoots.Tests namespace.
+
 namespace LivingRoots.Tests.Visualization
 {
     /// <summary>
@@ -57,10 +59,10 @@ namespace LivingRoots.Tests.Visualization
             Assert.Equal(0.5f, config.Opacity);
             Assert.True(config.ShowPatterns);
             Assert.Equal("auto", config.AccessibilityDegradation);
-            Assert.Equal(new ColorDTO(255, 0, 0, 255), config.PoorColor);
-            Assert.Equal(new ColorDTO(255, 255, 0, 255), config.ModerateColor);
-            Assert.Equal(new ColorDTO(0, 255, 0, 255), config.HealthyColor);
-            Assert.Equal(new ColorDTO(128, 128, 128, 255), config.UnknownColor);
+            Assert.Equal(new ColorDTO(ModConstants.PoorColor.R, ModConstants.PoorColor.G, ModConstants.PoorColor.B, ModConstants.PoorColor.A), config.PoorColor);
+            Assert.Equal(new ColorDTO(ModConstants.ModerateColor.R, ModConstants.ModerateColor.G, ModConstants.ModerateColor.B, ModConstants.ModerateColor.A), config.ModerateColor);
+            Assert.Equal(new ColorDTO(ModConstants.HealthyColor.R, ModConstants.HealthyColor.G, ModConstants.HealthyColor.B, ModConstants.HealthyColor.A), config.HealthyColor);
+            Assert.Equal(new ColorDTO(ModConstants.UnknownColor.R, ModConstants.UnknownColor.G, ModConstants.UnknownColor.B, ModConstants.UnknownColor.A), config.UnknownColor);
         }
 
         // ──────────────────────────────────────────────
@@ -190,7 +192,7 @@ namespace LivingRoots.Tests.Visualization
             // Arrange
             _mockModDataService
                 .Setup(x => x.LoadData<VisualizationConfiguration>(It.IsAny<string>()))
-                .Returns((VisualizationConfiguration)null);
+                .Returns((VisualizationConfiguration?)null);
 
             // Act
             _service.LoadConfiguration("test_save");
@@ -280,10 +282,10 @@ namespace LivingRoots.Tests.Visualization
             Assert.Equal(0.5f, config.Opacity);
             Assert.True(config.ShowPatterns);
             Assert.Equal("auto", config.AccessibilityDegradation);
-            Assert.Equal(new ColorDTO(255, 0, 0, 255), config.PoorColor);
-            Assert.Equal(new ColorDTO(255, 255, 0, 255), config.ModerateColor);
-            Assert.Equal(new ColorDTO(0, 255, 0, 255), config.HealthyColor);
-            Assert.Equal(new ColorDTO(128, 128, 128, 255), config.UnknownColor);
+            Assert.Equal(new ColorDTO(ModConstants.PoorColor.R, ModConstants.PoorColor.G, ModConstants.PoorColor.B, ModConstants.PoorColor.A), config.PoorColor);
+            Assert.Equal(new ColorDTO(ModConstants.ModerateColor.R, ModConstants.ModerateColor.G, ModConstants.ModerateColor.B, ModConstants.ModerateColor.A), config.ModerateColor);
+            Assert.Equal(new ColorDTO(ModConstants.HealthyColor.R, ModConstants.HealthyColor.G, ModConstants.HealthyColor.B, ModConstants.HealthyColor.A), config.HealthyColor);
+            Assert.Equal(new ColorDTO(ModConstants.UnknownColor.R, ModConstants.UnknownColor.G, ModConstants.UnknownColor.B, ModConstants.UnknownColor.A), config.UnknownColor);
         }
 
         // ──────────────────────────────────────────────
@@ -294,7 +296,7 @@ namespace LivingRoots.Tests.Visualization
         public void UpdateConfiguration_WithNull_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => _service.UpdateConfiguration(null));
+            Assert.Throws<ArgumentNullException>(() => _service.UpdateConfiguration(null!));
         }
 
         // ──────────────────────────────────────────────
@@ -302,7 +304,7 @@ namespace LivingRoots.Tests.Visualization
         // ──────────────────────────────────────────────
 
         [Fact]
-        public void GetConfiguration_ConcurrentReads_ShouldNotThrow()
+        public async Task GetConfiguration_ConcurrentReads_ShouldNotThrow()
         {
             // Arrange
             var tasks = new List<Task>();
@@ -332,14 +334,14 @@ namespace LivingRoots.Tests.Visualization
                 }));
             }
 
-            Task.WaitAll(tasks.ToArray());
+            await Task.WhenAll(tasks);
 
             // Assert
             Assert.Empty(exceptions);
         }
 
         [Fact]
-        public void LoadConfiguration_ConcurrentWithGetConfiguration_ShouldNotThrow()
+        public async Task LoadConfiguration_ConcurrentWithGetConfiguration_ShouldNotThrow()
         {
             // Arrange
             var validConfig = new VisualizationConfiguration { Opacity = 0.75f };
@@ -380,7 +382,7 @@ namespace LivingRoots.Tests.Visualization
                 }));
             }
 
-            Task.WaitAll(tasks.ToArray());
+            await Task.WhenAll(tasks);
 
             // Assert
             Assert.Empty(exceptions);
