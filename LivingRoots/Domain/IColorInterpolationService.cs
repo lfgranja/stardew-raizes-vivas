@@ -1,5 +1,5 @@
-using Microsoft.Xna.Framework;
 using LivingRoots.Domain.Visualization;
+using Microsoft.Xna.Framework;
 
 namespace LivingRoots.Domain
 {
