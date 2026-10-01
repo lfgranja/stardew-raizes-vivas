@@ -5,20 +5,43 @@ using StardewModdingAPI;
 namespace LivingRoots.Services
 {
     /// <summary>
-    /// Provides the save ID for data persistence operations by accessing Stardew Valley's Game1 class.
-    /// This implementation uses SMAPI's Constants to access the save folder name.
+    /// Provides the save ID for data persistence operations.
+    /// SMAPI exposes the save folder through <c>Constants.SaveFolderName</c>, which is a
+    /// computed property backed by live game state and cannot be assigned. The lookup is
+    /// therefore injected so tests can supply a value without a running game.
     /// </summary>
-    public class SaveIdProvider(IMonitor? monitor = null) : ISaveIdProvider
+    public class SaveIdProvider : ISaveIdProvider
     {
-        private readonly IMonitor? _monitor = monitor;
+        private readonly Func<string?> _saveFolderNameAccessor;
+        private readonly IMonitor? _monitor;
 
+        /// <summary>
+        /// Initializes the provider using SMAPI's save folder name.
+        /// </summary>
+        /// <param name="monitor">Optional monitor for diagnostic output.</param>
+        public SaveIdProvider(IMonitor? monitor = null)
+            : this(() => Constants.SaveFolderName, monitor)
+        {
+        }
+
+        /// <summary>
+        /// Initializes the provider with an explicit save folder name accessor.
+        /// </summary>
+        /// <param name="saveFolderNameAccessor">Accessor returning the current save folder name.</param>
+        /// <param name="monitor">Optional monitor for diagnostic output.</param>
+        public SaveIdProvider(Func<string?> saveFolderNameAccessor, IMonitor? monitor = null)
+        {
+            _saveFolderNameAccessor = saveFolderNameAccessor ?? throw new ArgumentNullException(nameof(saveFolderNameAccessor));
+            _monitor = monitor;
+        }
+
+        /// <inheritdoc />
         public string? GetSaveId()
         {
             try
             {
-                var saveId = Constants.SaveFolderName;
+                var saveId = _saveFolderNameAccessor();
 
-                // Combine validation checks to eliminate null reference issues
                 if (string.IsNullOrWhiteSpace(saveId))
                 {
                     return null;
@@ -30,15 +53,14 @@ namespace LivingRoots.Services
                     return null;
                 }
 
-                // At this point, saveId is guaranteed non-null and within length limit
                 return saveId;
             }
             catch (Exception ex)
             {
-                _monitor!.Log($"GetSaveId: Exception occurred: {ex.GetType().Name}", LogLevel.Trace);
+                // Never surface the raw exception message; type name only.
+                _monitor?.Log($"GetSaveId: Exception occurred: {ex.GetType().Name}", LogLevel.Trace);
                 return null;
             }
         }
-
     }
 }
