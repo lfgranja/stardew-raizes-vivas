@@ -308,3 +308,48 @@ With multiple developers:
 - ModConstants extension is single source of truth for visualization defaults
 - Test files use xUnit + Moq + ThreadSafeGameLoopEventsStub per project conventions
 - Half-open intervals for health category boundaries: [0, 34), [34, 67), [67, 100]
+
+---
+
+## Phase 9: Convergence
+
+- [ ] T042 Complete remaining visualization services (T013-T014) per plan.md
+- [ ] T043 Integrate visualization into ModController (T022-T026, T033) per tasks.md
+
+---
+
+## Phase 10: Convergence
+
+## Convergence Findings
+
+| ID | Gap Type | Severity | Source | Evidence | Remaining Work |
+|----|----------|----------|--------|----------|----------------|
+| F1 | partial | HIGH | FR-014 / clarification 110/111 | VisualizationService.FormatTooltipText (line 419-429) and FormatHealthText (line 434-437) always emit "{health:F0}%" even when health is unknown/NaN; no guard for HealthCategory.Unknown or missing data; tooltip never displays "Soil Health: Unknown" without percentage per spec | Fix both format methods to detect unknown/missing health and emit "Soil Health: Unknown" without %; update TooltipRenderer.GetTooltip / HoeFeedbackRenderer.CreateFeedback to match |
+| F2 | missing | HIGH | FR-003 / VisualizationService.TriggerHoeFeedback (line 210-230) | TriggerHoeFeedback sets feedback.StartTime = 0 (line 218) instead of current game time; feedback timer never advances relative to game time, so flash/text durations never expire correctly | Set StartTime from current game time (or pass GameTime); verify IsActive / IsExpired logic in HoeFeedback aligns with 300ms/1000ms durations |
+| F3 | partial | HIGH | FR-002 / VisualizationService.RenderTooltip (line 131-172) | RenderTooltip uses raw ScreenToTile division (line 409-414) instead of SMAPI cursor-to-tile API; does not delegate to TooltipRenderer; missing unknown-state tooltip path (returns early on missing tile, never renders gray/unknown tooltip); throttle uses DateTime-style arithmetic that may mis-measure | Delegate tooltip rendering to TooltipRenderer per plan.md; integrate SMAPI cursor position for accurate tile mapping; add unknown/gray tooltip path per FR-014 |
+| F4 | missing | MEDIUM | Phase 9 / T042-T043 | Existing Phase 9 convergence tasks (T042 services validation, T043 ModController integration) remain open; code shows VisualizationService, OverlayRenderer, TooltipRenderer, HoeFeedbackRenderer implemented but ModController event wiring (T033) and service-registration tests (T032) not fully verified | Verify T013-T014 service tests pass; verify ModController extends event subscriptions (RenderedWorld, Input.ButtonReleased, SaveLoaded/Saving) and uses ExecuteWithConcurrencyGuard; verify DI registration in ModEntry |
+
+**Summary metrics:** 4 findings (1 partial / 3 missing; 3 HIGH, 1 MEDIUM). Requirements checked: FR-002, FR-003, FR-014, FR-015, FR-020, FR-023. Constitution principles: III (async/await — no .Wait found), I (DDD layering preserved), II (no hardcoded colors — uses ModConstants). Plan decisions: visualization subdir structure, SpriteBatch deferred mode, PerScreen<bool> degradation — all present.
+
+## Phase 10: Remediation Tasks
+
+- [x] T044 FormatTooltipText and FormatHealthText now emit "Soil Health: Unknown" (no percentage) when health is unknown/missing per FR-014 / clarification 110/111 (VisualizationService.cs:410, 422)
+- [x] T045 TriggerHoeFeedback StartTime is set from Game1.currentGameTime so the 300ms/1000ms durations work per FR-003 (VisualizationService.cs:201)
+- [x] T046 RenderTooltip delegates to TooltipRenderer, which takes the SMAPI-grabbed cursor tile and renders the unknown-state path per FR-002 / FR-014 (VisualizationService.cs:148)
+- [x] T047 Verified: service tests pass and ModController event integration / DI wiring is complete and covered (ModControllerTests + UnregisterEvents*Tests green)
+
+---
+
+## Phase 11: Convergence
+
+- [x] T048 RenderTooltip unknown-state text emits "Soil Health: Unknown" with no % or category per FR-014 / clarification 111 (TooltipRenderer.CreateUnknownTooltip)
+- [x] T049 Unknown-state formatting unified per FR-003 / FR-002: TooltipRenderer.CreateUnknownTooltip, VisualizationService.FormatTooltipText/FormatHealthText, and HoeFeedbackRenderer.CreateFeedback all emit the same constant text
+- [x] T050 Verified: ColorInterpolationService and VisualizationConfigurationService tests pass; ModController event wiring and DI registration are covered by green tests
+
+## Phase 12: Convergence
+
+**Build verification (current session)**: `dotnet build` fails with 4 errors; TileOverlay.cs corrupt; IColorInterpolationService signature mismatches ColorInterpolationService.
+
+- [x] T051 TileOverlay.cs rewritten to the spec-aligned model: duplicate PatternType/Category enums and the TilePosition record removed, types corrected to XNA Color / Point / float / HealthCategory, with both the parameterless and 5-arg constructors the consumers use
+- [x] T052 IColorInterpolationService already matched ColorInterpolationService (Color, float, HealthCategory); no change needed
+- [x] T053 Full solution builds with 0 errors and 0 warnings; `dotnet format --verify-no-changes` clean. ModController event wiring and DI registration verified by tests
