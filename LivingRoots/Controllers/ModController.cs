@@ -1,7 +1,7 @@
-using Microsoft.Xna.Framework;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using LivingRoots.Services.Visualization;
+using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 
@@ -326,6 +326,8 @@ namespace LivingRoots.Controllers
                     System.Threading.Interlocked.CompareExchange(ref _onSaveLoadedHandler, null, eventUnregisterContext.SaveLoadedHandler);
                 if (unsubscribeResults.SavingRemoved)
                     System.Threading.Interlocked.CompareExchange(ref _onSavingHandler, null, eventUnregisterContext.SavingHandler);
+                if (unsubscribeResults.UpdateTickedRemoved)
+                    System.Threading.Interlocked.CompareExchange(ref _onUpdateTickedHandler, null, eventUnregisterContext.UpdateTickedHandler);
 
                 HandleUnregistrationResult(monitorSnapshot, gameLoop, unsubscribeResults, eventUnregisterContext, allUnsubscribed, ref mayStillBeSubscribed);
             }
@@ -419,6 +421,7 @@ namespace LivingRoots.Controllers
                 ButtonPressedHandler = buttonPressedHandler,
                 RenderedWorldHandler = renderedWorldHandler,
                 ButtonReleasedHandler = buttonReleasedHandler,
+                UpdateTickedHandler = updateTickedHandler,
                 WasRegistered = wasRegistered,
                 HasHandlers = hasHandlers
             };
@@ -431,6 +434,7 @@ namespace LivingRoots.Controllers
             var saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, context.SaveLoadedHandler, "SaveLoaded");
             var savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, context.SavingHandler, "Saving");
             var dayStartedRemoved = SafeUnsubscribe<DayStartedEventArgs>(monitor, h => gameLoop.DayStarted -= h, context.DayStartedHandler, "DayStarted");
+            var updateTickedRemoved = SafeUnsubscribe<UpdateTickedEventArgs>(monitor, h => gameLoop.UpdateTicked -= h, context.UpdateTickedHandler, "UpdateTicked");
 
             // Unsubscribe from input/display events
             var buttonPressedRemoved = false;
@@ -463,7 +467,8 @@ namespace LivingRoots.Controllers
                 (context.DayStartedHandler == null || dayStartedRemoved) &&
                 (context.ButtonPressedHandler == null || buttonPressedRemoved) &&
                 (context.RenderedWorldHandler == null || renderedWorldRemoved) &&
-                (context.ButtonReleasedHandler == null || buttonReleasedRemoved);
+                (context.ButtonReleasedHandler == null || buttonReleasedRemoved) &&
+                (context.UpdateTickedHandler == null || updateTickedRemoved);
 
             return new UnsubscribeResults
             {
@@ -472,6 +477,7 @@ namespace LivingRoots.Controllers
                 SavingRemoved = savingRemoved,
                 DayStartedRemoved = dayStartedRemoved,
                 ButtonPressedRemoved = buttonPressedRemoved,
+                UpdateTickedRemoved = updateTickedRemoved,
                 AllUnsubscribed = allUnsubscribed
             };
         }
@@ -842,24 +848,26 @@ namespace LivingRoots.Controllers
             try
             {
                 var cursorPos = _helper?.Input.GetCursorPosition();
-                var tile = cursorPos.GrabTile;
+                var tile = cursorPos?.GrabTile;
                 var location = StardewValley.Game1.currentLocation;
 
-                if (location == null) return;
+                if (!tile.HasValue || location == null) return;
 
-                var state = _compostingBinService.GetBinState(location.Name, tile);
+                var binTile = tile.Value;
+
+                var state = _compostingBinService.GetBinState(location.Name, binTile);
                 var heldItem = StardewValley.Game1.player.CurrentItem;
 
                 if (heldItem != null)
                 {
                     if (state == Domain.CompostingBinState.Empty)
                     {
-                        _compostingBinService.AddWaste(location.Name, tile, heldItem);
+                        _compostingBinService.AddWaste(location.Name, binTile, heldItem);
                     }
                 }
                 else if (state == Domain.CompostingBinState.Ready)
                 {
-                    _compostingBinService.CollectCompost(location.Name, tile, StardewValley.Game1.player);
+                    _compostingBinService.CollectCompost(location.Name, binTile);
                 }
             }
             catch (Exception ex)
@@ -1117,6 +1125,7 @@ namespace LivingRoots.Controllers
         public EventHandler<ButtonPressedEventArgs>? ButtonPressedHandler { get; init; }
         public EventHandler<RenderedWorldEventArgs>? RenderedWorldHandler { get; init; }
         public EventHandler<ButtonReleasedEventArgs>? ButtonReleasedHandler { get; init; }
+        public EventHandler<UpdateTickedEventArgs>? UpdateTickedHandler { get; init; }
         public bool WasRegistered { get; init; }
         public bool HasHandlers { get; init; }
     }
@@ -1131,6 +1140,7 @@ namespace LivingRoots.Controllers
         public bool SavingRemoved { get; init; }
         public bool DayStartedRemoved { get; init; }
         public bool ButtonPressedRemoved { get; init; }
+        public bool UpdateTickedRemoved { get; init; }
         public bool AllUnsubscribed { get; init; }
     }
 
