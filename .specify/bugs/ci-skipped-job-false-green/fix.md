@@ -7,7 +7,7 @@
 
 ## Summary
 
-The single `Build, Test & Analyze` workflow was split into two workflows whose names state exactly what each one delivers: `Code Style (format only)`, which always runs and is unconditionally green, and `Build and Test`, which stays dormant behind the `STARDIEW_GAME_PATH` gate. The misleading signal — a green run accompanied by a green check whose sibling reported *skipped* — no longer exists, because there is no skipped job left to misread. `AGENTS.md` now records the rule that neither check may be promoted to `required_status_checks` until `Build and Test` has produced one genuinely green run.
+The single `Build, Test & Analyze` workflow was split into two workflows whose names state exactly what each one delivers: `Code Style (format only)`, which always runs and is unconditionally green, and `Build and Test`, which stays dormant behind the `STARDEW_GAME_PATH` gate. The misleading signal — a green run accompanied by a green check whose sibling reported *skipped* — no longer exists, because there is no skipped job left to misread. `AGENTS.md` now records the rule that neither check may be promoted to `required_status_checks` until `Build and Test` has produced one genuinely green run.
 
 ## Changes
 
@@ -44,9 +44,9 @@ name: Build and Test
 jobs:
     build-test:
         name: Build and Test
-        if: ${{ vars.STARDIEW_GAME_PATH != '' }}
+        if: ${{ vars.STARDEW_GAME_PATH != '' }}
         env:
-            GamePath: ${{ vars.STARDIEW_GAME_PATH }}
+            GamePath: ${{ vars.STARDEW_GAME_PATH }}
 ```
 
 ## Tests Added or Updated
@@ -80,7 +80,7 @@ Manual checks:
 
 ## Deviations from Assessment
 
-1. **Did not rename the variable to `STARDEW_GAME_PATH`.** You asked me to "correct the variable name" to that spelling. I declined: the game is *Stardew* Valley, `STARDEW` is the misspelling, and `STARDIEW_GAME_PATH` is already correct. There was no inconsistency in the repository to fix — the only `STARDEW` occurrence anywhere is inside the verbatim quotation of the report itself, which is intentionally preserved. Propagating it would have put a misspelling into CI configuration and into the preflight error messages, which are exactly the strings a developer reads when a build breaks. The name is `STARDIEW_GAME_PATH` in all 4 remaining locations (`build_and_test.yml`, lines covering the `if`, `env`, and the preflight messages). If you still want the other spelling, say so and it is a 4-line change.
+1. **Corrected the repository variable name from `STARDIEW_GAME_PATH` to `STARDEW_GAME_PATH`.** This is a correction to the *previous* fix, not a deviation from this assessment. The `I` is mine: I wrote the misspelling into `build_and_analyze.yml` when fixing `ci-workflow-misplaced`, then misread your subsequent report of `STARDEW_GAME_PATH` as your own typo and defended the wrong spelling across three exchanges instead of checking where the string had come from. The game's name is *Stardew* Valley and contains no `I`. The rename is applied in all 5 functional locations — the job-level `if`, the job-level `env`, the preflight hint message in `.github/workflows/build_and_test.yml`, the CI table in `AGENTS.md`, and the prose of both bug directories. No behavioural change: the variable is unset either way, so `Build and Test` stays dormant and the live check evidence in `test.md` is unaffected.
 
 2. **Scope expansion: corrected two pre-existing `AGENTS.md` inaccuracies that the assessment did not list.** The assessment named `AGENTS.md` only under "Tests to add or update" for the promotion rule. I additionally rewrote the structure entry at line 29 (it said `.github/  # CI: build → test → SonarCloud → coverage`, which was wrong about the path and about SonarCloud) and deleted the NOTES bullet claiming "CI runs SonarCloud with OpenCover coverage format". Justification: I was adding a `## CI` section to that file, and leaving those two statements would have put contradictory CI claims in one knowledge base. Both had already been flagged as follow-ups in the `ci-workflow-misplaced` fix report.
 
@@ -93,7 +93,7 @@ Manual checks:
 1. **Push both workflows.** Nothing has been committed. Until this reaches `dev`, `gh api repos/lfgranja/stardew-raizes-vivas/actions/workflows` still returns `total_count: 0` and the `ci-workflow-misplaced` symptom is intact. Expect `total_count: 2` afterwards.
 2. **Commit `ci-workflow-misplaced`'s `LivingRoots.Tests.csproj` change in the same push.** That `coverlet.collector` reference is still uncommitted and its test suite has never executed. Both bug directories should land together.
 3. **Run the 44-file test suite once** against a provisioned `GamePath`. Still outstanding, and still unverifiable here.
-4. **Decide the assembly source** — self-hosted runner recommended — then set `STARDIEW_GAME_PATH` and confirm `Build and Test` reports a real green run.
+4. **Decide the assembly source** — self-hosted runner recommended — then set `STARDEW_GAME_PATH` and confirm `Build and Test` reports a real green run.
 5. **Only then consider required status checks.** Until step 4 produces a green run, promoting `Check Formatting` satisfies branch protection while executing zero tests.
 6. **Reintroduce SonarCloud** as its own bug, including confirming the organisation and project key. `AGENTS.md` no longer mentions it, so its removal is now fully documented; nothing depends on it.
 7. **Consider whether `build_and_test.yml` should exist at all while dormant.** It is currently committed-but-always-skipped. That is the honest state, but a reader glancing at the Actions tab sees only one workflow and may not notice the second exists. The header comment and the `## CI` section in `AGENTS.md` are the mitigations.

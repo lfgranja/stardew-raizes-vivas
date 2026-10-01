@@ -10,15 +10,15 @@
 
 > Enquanto STARDEW_GAME_PATH estiver vazia, Build and Test reporta skipped — workflow verde não significa que testes rodaram.
 
-Note on the variable name: the report spells it `STARDEW_GAME_PATH`; the repository uses `STARDIEW_GAME_PATH` (4 occurrences in `.github/workflows/build_and_analyze.yml`). Treated as a typo in the report, not a second variable.
+Note on the variable name: the report spells it `STARDEW_GAME_PATH`. At the time of this assessment the repository instead carried `STARDIEW_GAME_PATH`, an `I` that does not belong in the game's name — introduced by mistake when the `ci-workflow-misplaced` fix first wrote the workflow, not inherited from the report. Corrected in the fix below; see Deviations.
 
 ## Symptom
 
-The `build-test` job is gated by `if: ${{ vars.STARDIEW_GAME_PATH != '' }}`. While that repository variable is unset, GitHub reports the job as **skipped** and the enclosing workflow as **successful**. A run therefore shows a green workflow and a green `Check Formatting` check next to a `Build and Test` check that never executed, so the run is indistinguishable at a glance from a run in which all tests passed. Expected: a CI run's status should never overstate what it actually verified.
+The `build-test` job is gated by `if: ${{ vars.STARDEW_GAME_PATH != '' }}`. While that repository variable is unset, GitHub reports the job as **skipped** and the enclosing workflow as **successful**. A run therefore shows a green workflow and a green `Check Formatting` check next to a `Build and Test` check that never executed, so the run is indistinguishable at a glance from a run in which all tests passed. Expected: a CI run's status should never overstate what it actually verified.
 
 ## Reproduction
 
-1. Ensure the `STARDIEW_GAME_PATH` repository variable is unset (it is unset today; `gh api repos/lfgranja/stardew-raizes-vivas/actions/variables` returns none).
+1. Ensure the `STARDEW_GAME_PATH` repository variable is unset (it is unset today; `gh api repos/lfgranja/stardew-raizes-vivas/actions/variables` returns none).
 2. Push any code change to `dev`, or open a pull request against `dev`.
 3. Observe the run summary: workflow `Build, Test & Analyze` concludes **green/success**.
 4. Observe the checks list: `Check Formatting` is green; `Build and Test` is reported as **skipped**, not as failed.
@@ -28,7 +28,7 @@ Steps 3–5 are not directly observable yet, because the workflow has not been p
 
 ## Suspected Code Paths
 
-- `.github/workflows/build_and_analyze.yml:57-60` — the `build-test` job definition and its job-level `if: ${{ vars.STARDIEW_GAME_PATH != '' }}`. This is the entire mechanism: a skipped job is a success, not a failure.
+- `.github/workflows/build_and_analyze.yml:57-60` — the `build-test` job definition and its job-level `if: ${{ vars.STARDEW_GAME_PATH != '' }}`. This is the entire mechanism: a skipped job is a success, not a failure.
 - `.github/workflows/build_and_analyze.yml:1` — workflow name is `Build, Test & Analyze`, which advertises build, test **and** analysis while only formatting actually executes. The name overclaims relative to the green-run behaviour.
 - `.github/workflows/build_and_analyze.yml:32-33` — the `format` job, whose `Check Formatting` check is the only one that genuinely runs. Its green result is what a reader will take as the workflow's verdict.
 - `.github/workflows/build_and_analyze.yml:52-56` — the `paths-ignore` filter on both triggers. Interacts badly with this bug: if a check is ever promoted to `required_status_checks`, a docs-only PR is filtered out entirely and then blocks forever waiting for a check that never reports.
@@ -50,7 +50,7 @@ There is also a compounding factor: with `paths-ignore` in place, the same requi
 **Preferred**: split into two workflows whose names encode exactly what each one does, and remove the conditional job from the always-running one. This makes the green signal truthful by construction rather than by decoration.
 
 - `.github/workflows/code-style.yml` — new workflow, name `Code Style (format only)`. Contains the existing `format` job, unchanged: checkout, `setup-dotnet`, restore, `dotnet format --verify-no-changes`. It has no game-assembly dependency and no conditional jobs, so it is unconditionally green and unambiguously means "formatting passed".
-- `.github/workflows/build_and_test.yml` — the existing `build-test` job, moved out. Name `Build and Test`. It carries the same `if: ${{ vars.STARDIEW_GAME_PATH != '' }}` gate, plus the `GamePath` env plumbing and the preflight step, so it stays dormant until assemblies are provisioned — but now its dormancy is visible as *a workflow that does not exist yet*, which is honest and cannot be misread as a passing test run.
+- `.github/workflows/build_and_test.yml` — the existing `build-test` job, moved out. Name `Build and Test`. It carries the same `if: ${{ vars.STARDEW_GAME_PATH != '' }}` gate, plus the `GamePath` env plumbing and the preflight step, so it stays dormant until assemblies are provisioned — but now its dormancy is visible as *a workflow that does not exist yet*, which is honest and cannot be misread as a passing test run.
 - Delete `.github/workflows/build_and_analyze.yml` once its contents are redistributed. Also resolves the stale "Analyze" in the name, since SonarCloud was already removed.
 - Do **not** promote either check to `required_status_checks` until `Build and Test` has produced at least one genuinely green run. While it is dormant, promoting `Code Style (format only)` alone would legally satisfy branch protection while running zero tests — the same false green, one level up.
 - Decide the `paths-ignore` question at the same time. With the build/test job split into its own workflow, the cost model changes: docs-only PRs no longer need the code workflow at all, so `paths-ignore` on `code-style.yml` is optional rather than necessary. Leaving it off is simpler and avoids the required-check hang entirely.
@@ -65,7 +65,7 @@ The net effect: a green run means precisely "formatting passed, and nothing else
 - `.github/workflows/code-style.yml` — new workflow containing the format gate
 - `.github/workflows/build_and_test.yml` — new workflow containing the build/test job
 - `.github/workflows/build_and_analyze.yml` — deleted after redistribution (the only deletion this assessment authorises)
-- Repository settings (not a file) — `STARDIEW_GAME_PATH` variable, branch protection required checks
+- Repository settings (not a file) — `STARDEW_GAME_PATH` variable, branch protection required checks
 
 **Tests to add or update**:
 - No unit test applies; the regression surface is CI configuration. The project convention of one `{Subject}Tests.cs` file per subject does not have an analogue here.

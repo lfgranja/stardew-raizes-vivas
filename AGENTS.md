@@ -114,7 +114,7 @@ Two workflows under `.github/workflows/`, deliberately separate so a green run n
 | Workflow | Runs | Checks |
 |----------|------|--------|
 | `Code Style (format only)` | every change | formatting only |
-| `Build and Test` | only once `STARDIEW_GAME_PATH` is set | build + tests + coverage |
+| `Build and Test` | only once `STARDEW_GAME_PATH` is set | build + tests + coverage |
 
 `Build and Test` is **dormant** because `Pathoschild.Stardew.ModBuildConfig` hard-fails without a Stardew Valley + SMAPI install, and those assemblies cannot be downloaded on a GitHub-hosted runner. While dormant there is no test check at all — this is intentional; see `.specify/bugs/ci-skipped-job-false-green/`.
 
