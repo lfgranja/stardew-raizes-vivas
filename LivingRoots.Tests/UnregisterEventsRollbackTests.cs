@@ -37,16 +37,38 @@ namespace LivingRoots.Tests
             _mockManifest.Setup(x => x.Version).Returns(new StardewModdingAPI.SemanticVersion(1, 0, 0));
         }
 
+        /// <summary>
+        /// Creates an <see cref="IModEvents"/> mock with every event source that
+        /// <c>ModController.RegisterEvents</c> subscribes to already wired: the game loop,
+        /// <see cref="IInputEvents"/> and <see cref="IDisplayEvents"/>.
+        /// </summary>
+        /// <param name="gameLoop">The game loop events source to expose on the returned mock.</param>
+        /// <returns>A fully wired <see cref="IModEvents"/> mock.</returns>
+        /// <remarks>
+        /// A loose <see cref="Mock{T}"/> returns <c>null</c> for an unstubbed member, so leaving
+        /// <c>Events.Input</c> or <c>Events.Display</c> unset makes the controller's
+        /// <c>ButtonPressed</c> subscription throw, get swallowed by
+        /// <c>HandleRegistrationError</c> and roll back — leaving no handlers attached and every
+        /// downstream assertion silently unmet. Routing every test through this factory keeps that
+        /// regression from coming back one arrange block at a time.
+        /// </remarks>
+        private static Mock<IModEvents> CreateModEventsMock(IGameLoopEvents gameLoop)
+        {
+            var mockEvents = new Mock<IModEvents>();
+            mockEvents.Setup(x => x.GameLoop).Returns(gameLoop);
+            mockEvents.Setup(x => x.Input).Returns(new Mock<IInputEvents>().Object);
+            mockEvents.Setup(x => x.Display).Returns(new Mock<IDisplayEvents>().Object);
+            return mockEvents;
+        }
+
         [Fact]
         public void UnregisterEvents_WhenSaveLoadedUnsubscribeFails_RollsBackSuccessfully()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Setup successful subscriptions
@@ -119,12 +141,10 @@ namespace LivingRoots.Tests
         public void UnregisterEvents_WhenMultipleUnsubscribesFail_RollsBackSuccessfully()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Setup successful subscriptions
@@ -173,12 +193,10 @@ namespace LivingRoots.Tests
         public void UnregisterEvents_WhenRollbackPartiallyFails_StillMaintainsConsistentState()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Setup successful subscriptions
@@ -225,12 +243,10 @@ namespace LivingRoots.Tests
         public void UnregisterEvents_WhenAllUnsubscribesSucceed_DoesNotAttemptRollback()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Setup successful subscriptions
