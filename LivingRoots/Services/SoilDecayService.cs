@@ -15,12 +15,14 @@ public class SoilDecayService(
     ISoilHealthService soilHealthService,
     IMonitor monitor,
     SeasonalDecayMultiplier seasonalDecayMultiplier,
-    ISeasonProvider seasonProvider) : ISoilDecayService
+    ISeasonProvider seasonProvider,
+    ILocationProvider locationProvider) : ISoilDecayService
 {
     private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
     private readonly SeasonalDecayMultiplier _seasonalDecayMultiplier = seasonalDecayMultiplier ?? throw new ArgumentNullException(nameof(seasonalDecayMultiplier));
     private readonly ISeasonProvider _seasonProvider = seasonProvider ?? throw new ArgumentNullException(nameof(seasonProvider));
+    private readonly ILocationProvider _locationProvider = locationProvider ?? throw new ArgumentNullException(nameof(locationProvider));
 
     public void ProcessDayStart(string locationName)
     {
@@ -30,7 +32,7 @@ public class SoilDecayService(
             return;
         }
 
-        var location = GetLocationByName(locationName);
+        var location = _locationProvider.GetLocationByName(locationName);
         if (location == null)
         {
             _monitor.Log($"SoilDecay: Location '{locationName}' not found, skipping.", LogLevel.Trace);
@@ -75,15 +77,5 @@ public class SoilDecayService(
                      $"total health lost: {totalHealthLost:F1}, season: {season}, " +
                      $"multiplier: {multiplier}, decayAmount: {decayAmount:F1}",
                      LogLevel.Trace);
-    }
-
-    private static GameLocation? GetLocationByName(string locationName)
-    {
-        foreach (var loc in Game1.locations)
-        {
-            if (loc.Name == locationName)
-                return loc;
-        }
-        return null;
     }
 }
