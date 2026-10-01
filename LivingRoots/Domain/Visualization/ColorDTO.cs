@@ -20,6 +20,28 @@ namespace LivingRoots.Domain.Visualization
         [JsonProperty("a")]
         public byte A { get; set; }
 
+        /// <summary>Initializes a new instance of the <see cref="ColorDTO"/> struct.</summary>
+        /// <param name="r">Red channel.</param>
+        /// <param name="g">Green channel.</param>
+        /// <param name="b">Blue channel.</param>
+        /// <param name="a">Alpha channel.</param>
+        public ColorDTO(byte r, byte g, byte b, byte a)
+        {
+            R = r;
+            G = g;
+            B = b;
+            A = a;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ColorDTO"/> struct from an XNA color.
+        /// </summary>
+        /// <param name="color">XNA color to copy.</param>
+        public ColorDTO(Microsoft.Xna.Framework.Color color)
+            : this(color.R, color.G, color.B, color.A)
+        {
+        }
+
         public bool Equals(ColorDTO other)
         {
             return R == other.R && G == other.G && B == other.B && A == other.A;
