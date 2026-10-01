@@ -56,11 +56,17 @@ namespace LivingRoots.Tests.Visualization
             // Arrange
             var tooltip = new TooltipData();
 
+            // Spec defaults (data-model.md, "TooltipData" section):
+            // BackgroundColor = dark translucent #000000 at alpha 0.85 (>= 4.5:1 contrast),
+            // which lands on alpha 217; TextColor = #FFFFFF for maximum readability.
+            var expectedBackground = new Color(0, 0, 0, 217);
+            var expectedText = new Color(255, 255, 255, 255);
+
             // Assert
             Assert.Null(tooltip.Text);
             Assert.Equal(default(Vector2), tooltip.Position);
-            Assert.Equal(default(Color), tooltip.BackgroundColor);
-            Assert.Equal(default(Color), tooltip.TextColor);
+            Assert.Equal(expectedBackground, tooltip.BackgroundColor);
+            Assert.Equal(expectedText, tooltip.TextColor);
         }
     }
 }

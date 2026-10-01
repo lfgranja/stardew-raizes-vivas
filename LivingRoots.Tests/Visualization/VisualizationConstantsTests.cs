@@ -1,51 +1,54 @@
-using Microsoft.Xna.Framework;
 using Xunit;
 
 namespace LivingRoots.Tests.Visualization
 {
     /// <summary>
     /// Tests for visualization-related default constants in <see cref="ModConstants"/>.
+    /// Pins the canonical palette to the earth tones declared in
+    /// <c>specs/001-soil-health-visualization/spec.md</c> (clarification 127, 2026-09-13)
+    /// and <c>data-model.md</c> ("Palette authority" header). This is the only place the
+    /// hex values are written down, so an accidental palette change fails here.
     /// </summary>
     public class VisualizationConstantsTests
     {
         [Fact]
-        public void PoorColor_IsRed()
+        public void PoorColor_IsEarthToneRed()
         {
-            var expected = Color.Red;
-            Assert.Equal(expected.R, ModConstants.PoorColor.R);
-            Assert.Equal(expected.G, ModConstants.PoorColor.G);
-            Assert.Equal(expected.B, ModConstants.PoorColor.B);
-            Assert.Equal(expected.A, ModConstants.PoorColor.A);
+            // Spec palette (clarification 127): #B91C1C, opaque.
+            Assert.Equal(185, ModConstants.PoorColor.R);
+            Assert.Equal(28, ModConstants.PoorColor.G);
+            Assert.Equal(28, ModConstants.PoorColor.B);
+            Assert.Equal(255, ModConstants.PoorColor.A);
         }
 
         [Fact]
-        public void ModerateColor_IsYellow()
+        public void ModerateColor_IsEarthToneAmber()
         {
-            var expected = Color.Yellow;
-            Assert.Equal(expected.R, ModConstants.ModerateColor.R);
-            Assert.Equal(expected.G, ModConstants.ModerateColor.G);
-            Assert.Equal(expected.B, ModConstants.ModerateColor.B);
-            Assert.Equal(expected.A, ModConstants.ModerateColor.A);
+            // Spec palette (clarification 127): #D97706, opaque.
+            Assert.Equal(217, ModConstants.ModerateColor.R);
+            Assert.Equal(119, ModConstants.ModerateColor.G);
+            Assert.Equal(6, ModConstants.ModerateColor.B);
+            Assert.Equal(255, ModConstants.ModerateColor.A);
         }
 
         [Fact]
-        public void HealthyColor_IsGreen()
+        public void HealthyColor_IsEarthToneForestGreen()
         {
-            var expected = Color.Green;
-            Assert.Equal(expected.R, ModConstants.HealthyColor.R);
-            Assert.Equal(expected.G, ModConstants.HealthyColor.G);
-            Assert.Equal(expected.B, ModConstants.HealthyColor.B);
-            Assert.Equal(expected.A, ModConstants.HealthyColor.A);
+            // Spec palette (clarification 127): #15803D, opaque.
+            Assert.Equal(21, ModConstants.HealthyColor.R);
+            Assert.Equal(128, ModConstants.HealthyColor.G);
+            Assert.Equal(61, ModConstants.HealthyColor.B);
+            Assert.Equal(255, ModConstants.HealthyColor.A);
         }
 
         [Fact]
-        public void UnknownColor_IsGray()
+        public void UnknownColor_IsEarthToneSlateGray()
         {
-            var expected = Color.Gray;
-            Assert.Equal(expected.R, ModConstants.UnknownColor.R);
-            Assert.Equal(expected.G, ModConstants.UnknownColor.G);
-            Assert.Equal(expected.B, ModConstants.UnknownColor.B);
-            Assert.Equal(expected.A, ModConstants.UnknownColor.A);
+            // Spec palette (clarification 127): #6B7280, opaque.
+            Assert.Equal(107, ModConstants.UnknownColor.R);
+            Assert.Equal(114, ModConstants.UnknownColor.G);
+            Assert.Equal(128, ModConstants.UnknownColor.B);
+            Assert.Equal(255, ModConstants.UnknownColor.A);
         }
 
         [Fact]

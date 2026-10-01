@@ -15,11 +15,6 @@ namespace LivingRoots.Services.Visualization
     /// </summary>
     public class HoeFeedbackRenderer
     {
-        private const int TileSize = 64;
-        private const int FlashDurationMs = 300;
-        private const int TextDurationMs = 1000;
-        private const float FullOpacity = 1.0f;
-
         private readonly IVisualizationConfigurationService _configService;
         private readonly IMonitor _monitor;
         private readonly IColorInterpolationService _colorInterpolationService;
@@ -59,8 +54,8 @@ namespace LivingRoots.Services.Visualization
 
             float progress = feedback.FlashDuration > 0
                 ? elapsedMs / (float)feedback.FlashDuration
-                : FullOpacity;
-            float opacity = FullOpacity - progress;
+                : 1.0f;
+            float opacity = 1.0f - progress;
 
             Color flashColor = _colorInterpolationService.GetColorForHealth(feedback.HealthValue, opacity);
             Vector2 screenPos = TileToScreenPosition(feedback.TilePosition);
@@ -68,8 +63,8 @@ namespace LivingRoots.Services.Visualization
             var destination = new Rectangle(
                 (int)screenPos.X,
                 (int)screenPos.Y,
-                TileSize,
-                TileSize);
+                ModConstants.TileSize,
+                ModConstants.TileSize);
 
             spriteBatch.Draw(WhiteTexture, destination, flashColor);
         }
@@ -92,8 +87,8 @@ namespace LivingRoots.Services.Visualization
 
             float progress = feedback.TextDuration > 0
                 ? elapsedMs / (float)feedback.TextDuration
-                : FullOpacity;
-            float opacity = FullOpacity - progress;
+                : 1.0f;
+            float opacity = 1.0f - progress;
 
             Color textColor = _colorInterpolationService.GetColorForHealth(feedback.HealthValue, opacity);
             Vector2 screenPos = TileToScreenPosition(feedback.TilePosition);
@@ -101,7 +96,7 @@ namespace LivingRoots.Services.Visualization
             // Center text horizontally above the tile
             Vector2 textSize = Game1.smallFont.MeasureString(feedback.HealthText);
             Vector2 textPos = new Vector2(
-                screenPos.X + (TileSize / 2) - (textSize.X / 2),
+                screenPos.X + (ModConstants.TileSize / 2) - (textSize.X / 2),
                 screenPos.Y - textSize.Y - 4);
 
             spriteBatch.DrawString(Game1.smallFont, feedback.HealthText, textPos, textColor);
@@ -118,14 +113,29 @@ namespace LivingRoots.Services.Visualization
         public HoeFeedback CreateFeedback(Point tilePosition, float healthValue, GameTime gameTime)
         {
             HealthCategory category = _colorInterpolationService.GetCategoryForHealth(healthValue);
+
+            if (category == HealthCategory.Unknown || float.IsNaN(healthValue) || float.IsInfinity(healthValue))
+            {
+                return new HoeFeedback
+                {
+                    TilePosition = tilePosition,
+                    StartTime = (long)gameTime.TotalGameTime.TotalMilliseconds,
+                    FlashDuration = ModConstants.FlashDurationMs,
+                    TextDuration = ModConstants.TextDurationMs,
+                    HealthValue = healthValue,
+                    Category = category,
+                    HealthText = "Soil Health: Unknown"
+                };
+            }
+
             int percentage = (int)Math.Clamp(Math.Round(healthValue), 0f, 100f);
 
             return new HoeFeedback
             {
                 TilePosition = tilePosition,
                 StartTime = (long)gameTime.TotalGameTime.TotalMilliseconds,
-                FlashDuration = FlashDurationMs,
-                TextDuration = TextDurationMs,
+                FlashDuration = ModConstants.FlashDurationMs,
+                TextDuration = ModConstants.TextDurationMs,
                 HealthValue = healthValue,
                 Category = category,
                 HealthText = $"Soil Health: {percentage}% ({category})"
@@ -162,7 +172,7 @@ namespace LivingRoots.Services.Visualization
         /// </summary>
         private static Vector2 TileToScreenPosition(Point tilePosition)
         {
-            return new Vector2(tilePosition.X * TileSize, tilePosition.Y * TileSize);
+            return new Vector2(tilePosition.X * ModConstants.TileSize, tilePosition.Y * ModConstants.TileSize);
         }
 
         /// <summary>

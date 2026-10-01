@@ -14,7 +14,8 @@ namespace LivingRoots.Services.Visualization
         private Color _poorColor = ModConstants.PoorColor;
         private Color _moderateColor = ModConstants.ModerateColor;
         private Color _healthyColor = ModConstants.HealthyColor;
-        private readonly Dictionary<int, Color> _cache = new();
+        private readonly Dictionary<(int health, int opacity), Color> _cache = new();
+        private readonly object _cacheLock = new();
 
         /// <inheritdoc />
         public Color GetColorForHealth(float healthValue)
@@ -33,14 +34,17 @@ namespace LivingRoots.Services.Visualization
             }
 
             var clamped = Math.Clamp(healthValue, 0f, 100f);
-            var key = ((int)(clamped * 100)) | ((int)(opacity * 100) << 17);
+            var key = ((int)(clamped * 100), (int)(opacity * 100));
 
-            if (_cache.TryGetValue(key, out var cached))
-                return cached;
+            lock (_cacheLock)
+            {
+                if (_cache.TryGetValue(key, out var cached))
+                    return cached;
 
-            var color = InterpolateColor(clamped, opacity);
-            _cache[key] = color;
-            return color;
+                var color = InterpolateColor(clamped, opacity);
+                _cache[key] = color;
+                return color;
+            }
         }
 
         /// <inheritdoc />
@@ -61,16 +65,23 @@ namespace LivingRoots.Services.Visualization
         /// <inheritdoc />
         public void SetCategoryColors(Color poorColor, Color moderateColor, Color healthyColor)
         {
-            _poorColor = poorColor;
-            _moderateColor = moderateColor;
-            _healthyColor = healthyColor;
+            lock (_cacheLock)
+            {
+                _poorColor = poorColor;
+                _moderateColor = moderateColor;
+                _healthyColor = healthyColor;
+            }
+
             InvalidateCache();
         }
 
         /// <inheritdoc />
         public void InvalidateCache()
         {
-            _cache.Clear();
+            lock (_cacheLock)
+            {
+                _cache.Clear();
+            }
         }
 
         private Color InterpolateColor(float healthValue, float opacity)

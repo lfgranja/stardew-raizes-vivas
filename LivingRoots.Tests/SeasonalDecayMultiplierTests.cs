@@ -1,5 +1,5 @@
-using Xunit;
 using LivingRoots.Domain.Services;
+using Xunit;
 
 namespace LivingRoots.Tests;
 
