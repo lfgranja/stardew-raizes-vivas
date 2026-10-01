@@ -18,12 +18,20 @@ namespace LivingRoots.Tests.Visualization
     /// </summary>
     public class VisualizationThreadSafetyTests
     {
+        /// <summary>
+        /// Concurrent lookups must not throw and must not return a torn colour.
+        /// </summary>
+        /// <remarks>
+        /// Asserts the result rather than only observing the absence of an exception: a
+        /// cached entry written by one thread and read by another must still be fully
+        /// opaque, so an alpha below 255 would expose a partially initialised entry.
+        /// </remarks>
         [Fact]
         public async Task ColorInterpolationService_ConcurrentAccess_NoDeadlocks()
         {
             // Arrange
             var service = new ColorInterpolationService();
-            var tasks = new Task[100];
+            var tasks = new Task<Color>[100];
 
             // Act
             for (int i = 0; i < 100; i++)
@@ -32,7 +40,10 @@ namespace LivingRoots.Tests.Visualization
                 tasks[i] = Task.Run(() => service.GetColorForHealth(health));
             }
 
-            await Task.WhenAll(tasks);
+            Color[] results = await Task.WhenAll(tasks);
+
+            // Assert — every lookup returned a fully opaque colour.
+            Assert.All(results, color => Assert.Equal(255, color.A));
         }
 
         [Fact]
