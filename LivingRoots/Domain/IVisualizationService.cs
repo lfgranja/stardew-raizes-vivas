@@ -68,5 +68,11 @@ namespace LivingRoots.Domain
         /// </summary>
         /// <param name="tilePosition">Current cursor tile position.</param>
         void UpdateCursorTile(Point tilePosition);
+
+        /// <summary>
+        /// Clears the tracked cursor tile so the next hover is treated as a new tile.
+        /// Called when the cursor leaves the world or a location change occurs.
+        /// </summary>
+        void ClearCursorTile();
     }
 }

@@ -1,8 +1,10 @@
 using System;
+using LivingRoots;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Visualization;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
+using StardewValley;
 
 namespace LivingRoots.Services.Visualization
 {
@@ -17,11 +19,6 @@ namespace LivingRoots.Services.Visualization
         private readonly IVisualizationConfigurationService _configService;
         private readonly IMonitor _monitor;
         private readonly IColorInterpolationService _colorService;
-
-        /// <summary>
-        /// Standard Stardew Valley tile size in pixels (1x zoom).
-        /// </summary>
-        private const int TileSize = 64;
 
         /// <summary>
         /// Minimum interval between tooltip updates per FR-015.
@@ -42,8 +39,10 @@ namespace LivingRoots.Services.Visualization
         /// <summary>
         /// Tracks the game time of the last tooltip update.
         /// Used for throttle enforcement per FR-015.
+        /// Null until the first update, so the first hover is never throttled
+        /// and never subtracts from <see cref="TimeSpan.MinValue"/>.
         /// </summary>
-        private TimeSpan _lastUpdateTime = TimeSpan.MinValue;
+        private TimeSpan? _lastUpdateTime;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TooltipRenderer"/> class.
@@ -67,11 +66,11 @@ namespace LivingRoots.Services.Visualization
         /// Returns null when tooltips are disabled, cursor is outside tile bounds,
         /// no health data exists for the tile, or the update is throttled per FR-015.
         /// </summary>
-        /// <param name="cursorPosition">Cursor position in screen coordinates.</param>
+        /// <param name="cursorTile">Tile under cursor from SMAPI cursor-to-tile API (GrabTile).</param>
         /// <param name="tileHealthData">Dictionary mapping tile coordinates to health values.</param>
         /// <param name="gameTime">Current game time for throttle tracking.</param>
         /// <returns>TooltipData for rendering, or null.</returns>
-        public TooltipData? GetTooltip(Vector2 cursorPosition, Dictionary<Point, float> tileHealthData, GameTime gameTime)
+        public TooltipData? GetTooltip(Vector2 cursorPosition, Point cursorTile, Dictionary<Point, float> tileHealthData, GameTime gameTime)
         {
             ArgumentNullException.ThrowIfNull(tileHealthData);
             ArgumentNullException.ThrowIfNull(gameTime);
@@ -81,31 +80,40 @@ namespace LivingRoots.Services.Visualization
                 return null;
             }
 
-            var tile = CursorToTile(cursorPosition);
-
-            // Reset throttle state when leaving all tiles
-            if (!tileHealthData.ContainsKey(tile))
+            if (cursorTile.X < 0 || cursorTile.Y < 0)
             {
-                _lastTooltipTile = UninitializedTile;
                 return null;
             }
 
-            // Throttle logic per FR-015
-            var elapsed = gameTime.TotalGameTime - _lastUpdateTime;
-            var isNewTile = tile != _lastTooltipTile;
+            var isNewTile = cursorTile != _lastTooltipTile;
 
-            if (!isNewTile && elapsed < MinUpdateInterval)
+            // TimeSpan subtraction is checked in .NET 6, so the first call must not
+            // compute a delta against a sentinel. Only an existing timestamp can throttle.
+            if (!isNewTile && _lastUpdateTime.HasValue)
             {
-                // Same tile, within throttle window — suppress update
-                return null;
+                var elapsed = gameTime.TotalGameTime - _lastUpdateTime.Value;
+                if (elapsed < MinUpdateInterval)
+                {
+                    return null;
+                }
             }
 
-            // Update throttle state (leading-edge on new tile, or 50ms elapsed on same tile)
-            _lastTooltipTile = tile;
+            _lastTooltipTile = cursorTile;
             _lastUpdateTime = gameTime.TotalGameTime;
 
-            var healthValue = tileHealthData[tile];
+            float healthValue = tileHealthData.ContainsKey(cursorTile) ? tileHealthData[cursorTile] : float.NaN;
+
+            if (float.IsNaN(healthValue) || float.IsInfinity(healthValue))
+            {
+                return CreateUnknownTooltip(cursorPosition, cursorTile);
+            }
+
             var category = _colorService.GetCategoryForHealth(healthValue);
+            if (category == HealthCategory.Unknown)
+            {
+                return CreateUnknownTooltip(cursorPosition, cursorTile);
+            }
+
             var percentage = Math.Clamp(healthValue, 0f, 100f);
             var color = _colorService.GetColorForHealth(healthValue);
 
@@ -117,9 +125,34 @@ namespace LivingRoots.Services.Visualization
                 TextColor = Color.White
             };
 
-            _monitor.Log($"Tooltip generated for tile ({tile.X}, {tile.Y}): {tooltip.Text}", LogLevel.Trace);
+            _monitor.Log($"Tooltip generated for tile ({cursorTile.X}, {cursorTile.Y}): {tooltip.Text}", LogLevel.Trace);
 
             return tooltip;
+        }
+
+        /// <summary>
+        /// Builds the "Soil Health: Unknown" tooltip used when no health data is
+        /// available for the hovered tile (FR-014).
+        /// </summary>
+        /// <param name="cursorPosition">Tooltip anchor in screen coordinates.</param>
+        /// <param name="cursorTile">Tile under cursor, used for the trace log.</param>
+        /// <returns>TooltipData rendering the unknown state without a percentage.</returns>
+        private TooltipData CreateUnknownTooltip(Vector2 cursorPosition, Point cursorTile)
+        {
+            var unknownColor = new Color(
+                ModConstants.UnknownColor.R,
+                ModConstants.UnknownColor.G,
+                ModConstants.UnknownColor.B);
+
+            _monitor.Log($"Tooltip unknown for tile ({cursorTile.X}, {cursorTile.Y})", LogLevel.Trace);
+
+            return new TooltipData
+            {
+                Text = "Soil Health: Unknown",
+                Position = cursorPosition,
+                BackgroundColor = unknownColor,
+                TextColor = Color.White
+            };
         }
 
         /// <summary>
@@ -143,8 +176,9 @@ namespace LivingRoots.Services.Visualization
         /// <returns>Tile coordinate as a Point.</returns>
         private static Point CursorToTile(Vector2 cursorPosition)
         {
-            var tileX = (int)(cursorPosition.X / TileSize);
-            var tileY = (int)(cursorPosition.Y / TileSize);
+            var scaled = Utility.ModifyCoordinatesForUIScale(cursorPosition);
+            var tileX = (int)(scaled.X / Game1.tileSize);
+            var tileY = (int)(scaled.Y / Game1.tileSize);
             return new Point(tileX, tileY);
         }
     }

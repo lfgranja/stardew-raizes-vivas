@@ -1,3 +1,4 @@
+using LivingRoots.Domain;
 using LivingRoots.Domain.Visualization;
 using LivingRoots.Services;
 using LivingRoots.Services.Visualization;
@@ -15,7 +16,15 @@ namespace LivingRoots.Tests.Visualization
         {
             var mockDataService = new Moq.Mock<IModDataService>();
             var mockMonitor = new Moq.Mock<IMonitor>();
-            _service = new Services.Visualization.VisualizationConfigurationService(mockDataService.Object, mockMonitor.Object);
+            var mockSanitizationService = new Moq.Mock<IFileNameSanitizationService>();
+            mockSanitizationService
+                .Setup(s => s.Sanitize(It.IsAny<string?>()))
+                .Returns<string?>(input => input);
+
+            _service = new Services.Visualization.VisualizationConfigurationService(
+                mockDataService.Object,
+                mockMonitor.Object,
+                mockSanitizationService.Object);
         }
 
         [Fact]

@@ -3,6 +3,7 @@ using LivingRoots.Domain.Visualization;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
+using StardewValley;
 
 namespace LivingRoots.Services.Visualization
 {
@@ -16,9 +17,6 @@ namespace LivingRoots.Services.Visualization
         IVisualizationConfigurationService configService,
         IMonitor monitor) : IVisualizationService
     {
-        /// <summary>Standard Stardew Valley tile size in pixels.</summary>
-        public const int TileSize = 64;
-
         private readonly IColorInterpolationService _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
         private readonly IVisualizationConfigurationService _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
@@ -46,17 +44,14 @@ namespace LivingRoots.Services.Visualization
             return _whiteTexture ?? throw new InvalidOperationException("VisualizationService not initialized. Call Initialize() first.");
         }
 
+        private readonly TooltipRenderer _tooltipRenderer = new(configService, monitor, colorService);
+
         // Overlay renderer for computing visible tile overlays
         private readonly OverlayRenderer _overlayRenderer = new(colorService, configService, monitor);
 
         // Tile health data snapshot for current frame
         private Dictionary<Point, float> _tileHealthData = new();
         private readonly object _dataLock = new();
-
-        // Tooltip state for throttling (FR-015)
-        private string _lastTooltipText = string.Empty;
-        private Point _lastTooltipTile;
-        private long _lastTooltipTime;
 
         // Hoe feedback state
         private readonly List<HoeFeedback> _activeFeedbacks = new();
@@ -91,6 +86,12 @@ namespace LivingRoots.Services.Visualization
         public void UpdateCursorTile(Point tilePosition)
         {
             _cursorTile = tilePosition;
+        }
+
+        /// <inheritdoc />
+        public void ClearCursorTile()
+        {
+            _cursorTile = new Point(-1, -1);
         }
 
         /// <inheritdoc />
@@ -133,44 +134,25 @@ namespace LivingRoots.Services.Visualization
         public void RenderTooltip(SpriteBatch spriteBatch, Vector2 cursorPosition, GameTime gameTime)
         {
             var config = _configService.GetConfiguration();
-
             if (!config.TooltipsEnabled)
-            {
                 return;
-            }
 
-            // Convert screen position to tile coordinates
-            var tilePos = ScreenToTile(cursorPosition);
-
-            // Look up health data for the tile under cursor
-            float healthValue;
+            // Snapshot tile health data under lock for thread safety
+            Dictionary<Point, float> snapshot;
             lock (_dataLock)
             {
-                if (!_tileHealthData.TryGetValue(tilePos, out healthValue))
-                {
-                    return; // No data for this tile, no tooltip
-                }
+                snapshot = new Dictionary<Point, float>(_tileHealthData);
             }
 
-            // FR-015: throttle tooltip updates to minimum 50ms interval
-            var currentTime = (long)gameTime.TotalGameTime.TotalMilliseconds;
-            var tooltipText = FormatTooltipText(healthValue);
+            // Delegate rendering computation to TooltipRenderer (FR-002, FR-015)
+            // Pass SMAPI cursor tile (from ModController via UpdateCursorTile / GrabTile) instead of raw division.
+            var tooltipData = _tooltipRenderer.GetTooltip(cursorPosition, _cursorTile, snapshot, gameTime);
 
-            if (tooltipText == _lastTooltipText && tilePos == _lastTooltipTile)
-            {
-                var elapsedMs = (double)(currentTime - _lastTooltipTime) / TimeSpan.TicksPerMillisecond;
-                if (elapsedMs < ModConstants.TooltipDebounceMs)
-                {
-                    return; // Throttled
-                }
-            }
+            // TooltipRenderer handles unknown-state path (missing/NaN/Unknown) per FR-014.
+            if (tooltipData == null)
+                return;
 
-            _lastTooltipText = tooltipText;
-            _lastTooltipTile = tilePos;
-            _lastTooltipTime = currentTime;
-
-            // Draw tooltip at cursor position
-            DrawTooltip(spriteBatch, tooltipText, cursorPosition, config);
+            DrawTooltip(spriteBatch, tooltipData);
         }
 
         /// <inheritdoc />
@@ -217,7 +199,7 @@ namespace LivingRoots.Services.Visualization
             var feedback = new HoeFeedback
             {
                 TilePosition = tilePosition,
-                StartTime = 0,
+                StartTime = (long)Game1.currentGameTime.TotalGameTime.TotalMilliseconds,
                 HealthValue = healthValue,
                 Category = category,
                 HealthText = healthText
@@ -243,10 +225,10 @@ namespace LivingRoots.Services.Visualization
         private void DrawOverlay(SpriteBatch spriteBatch, TileOverlay overlay, VisualizationConfiguration config, Rectangle viewport)
         {
             // Convert tile position to screen coordinates relative to viewport
-            var screenX = (overlay.TilePosition.X - viewport.X) * TileSize;
-            var screenY = (overlay.TilePosition.Y - viewport.Y) * TileSize;
+            var screenX = (overlay.TilePosition.X - viewport.X) * ModConstants.TileSize;
+            var screenY = (overlay.TilePosition.Y - viewport.Y) * ModConstants.TileSize;
 
-            var destRect = new Rectangle(screenX, screenY, TileSize, TileSize);
+            var destRect = new Rectangle(screenX, screenY, ModConstants.TileSize, ModConstants.TileSize);
 
             // Draw the base color overlay with configured opacity
             spriteBatch.Draw(GetTexture(), destRect, overlay.Color);
@@ -314,30 +296,58 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <summary>
-        /// Draws a tooltip at the specified screen position.
+        /// Draws a tooltip at the specified screen position using the game's native tooltip renderer.
+        /// Measures the string, draws a background rectangle with padding, draws text with a 1px drop shadow,
+        /// and handles edge cases where the tooltip would go off-screen.
         /// </summary>
-        private void DrawTooltip(SpriteBatch spriteBatch, string text, Vector2 position, VisualizationConfiguration config)
+        private void DrawTooltip(SpriteBatch spriteBatch, TooltipData tooltipData)
         {
-            // Tooltip background
-            var bgColor = new Color(0, 0, 0, 200);
-            var textColor = Color.White;
+            var text = tooltipData.Text;
+            var position = tooltipData.Position;
+            var bgColor = tooltipData.BackgroundColor;
+            bgColor.A = 200; // opaque background
 
-            // Position tooltip offset from cursor
+            var textSize = Game1.smallFont.MeasureString(text);
+
+            var paddingX = 8;
+            var paddingY = 4;
+
             var tooltipX = (int)position.X + 16;
             var tooltipY = (int)position.Y + 16;
 
-            // Estimate text dimensions (approximate without font measurement)
-            var textWidth = text.Length * 8 + 16;
-            var textHeight = 24;
+            var bgWidth = (int)textSize.X + paddingX * 2;
+            var bgHeight = (int)textSize.Y + paddingY * 2;
 
-            var tooltipRect = new Rectangle(tooltipX, tooltipY, textWidth, textHeight);
+            // Handle edge cases: keep tooltip within viewport bounds
+            if (tooltipX + bgWidth > Game1.viewport.Width)
+            {
+                tooltipX = Game1.viewport.Width - bgWidth;
+            }
+            if (tooltipY + bgHeight > Game1.viewport.Height)
+            {
+                tooltipY = Game1.viewport.Height - bgHeight;
+            }
+            if (tooltipX < 0)
+            {
+                tooltipX = 0;
+            }
+            if (tooltipY < 0)
+            {
+                tooltipY = 0;
+            }
 
-            // Draw background
+            var tooltipRect = new Rectangle(tooltipX, tooltipY, bgWidth, bgHeight);
+
+            // Draw background using tooltip color (gray for unknown per FR-014)
             spriteBatch.Draw(GetTexture(), tooltipRect, bgColor);
 
-            // Note: Text rendering would use Game1.smallFont or similar in a full implementation
-            // spriteBatch.DrawString(Game1.smallFont, text, new Vector2(tooltipX + 8, tooltipY + 4), textColor);
-            _monitor.Log($"Tooltip rendered: {text}", LogLevel.Trace);
+            // Draw text with 1px drop shadow using tooltip text color
+            var shadowColor = new Color(0, 0, 0, 128);
+            var textColor = tooltipData.TextColor;
+            var textPosX = tooltipX + paddingX;
+            var textPosY = tooltipY + paddingY;
+            spriteBatch.DrawString(Game1.smallFont, text, new Vector2(textPosX + 1, textPosY + 1), shadowColor);
+            spriteBatch.DrawString(Game1.smallFont, text, new Vector2(textPosX, textPosY), textColor);
         }
 
         /// <summary>
@@ -358,10 +368,10 @@ namespace LivingRoots.Services.Visualization
             if (elapsedMs < feedback.FlashDuration)
             {
                 var flashRect = new Rectangle(
-                    feedback.TilePosition.X * TileSize,
-                    feedback.TilePosition.Y * TileSize,
-                    TileSize,
-                    TileSize);
+                    feedback.TilePosition.X * ModConstants.TileSize,
+                    feedback.TilePosition.Y * ModConstants.TileSize,
+                    ModConstants.TileSize,
+                    ModConstants.TileSize);
 
                 var flashColor = _colorService.GetColorForHealth(feedback.HealthValue, config.Opacity);
                 var alpha = (byte)(255f * (1f - (float)elapsedMs / feedback.FlashDuration));
@@ -373,9 +383,9 @@ namespace LivingRoots.Services.Visualization
             // FR-003: floating text showing health status
             if (elapsedMs < feedback.TextDuration)
             {
-                var textY = feedback.TilePosition.Y * TileSize - (float)elapsedMs * 0.02f;
+                var textY = feedback.TilePosition.Y * ModConstants.TileSize - (float)elapsedMs * 0.02f;
                 var textPos = new Vector2(
-                    feedback.TilePosition.X * TileSize + TileSize / 2,
+                    feedback.TilePosition.X * ModConstants.TileSize + ModConstants.TileSize / 2,
                     textY);
 
                 _monitor.Log($"Hoe feedback text: {feedback.HealthText} at ({textPos.X}, {textPos.Y})", LogLevel.Trace);
@@ -383,27 +393,25 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <summary>
-        /// Converts screen pixel coordinates to tile coordinates.
+        /// Converts screen pixel coordinates to tile coordinates using SMAPI mapping (FR-002).
         /// </summary>
-        private static Point ScreenToTile(Vector2 screenPos)
+        private static Point CursorToTile(Vector2 screenPos)
         {
-            var tileX = (int)(screenPos.X / TileSize);
-            var tileY = (int)(screenPos.Y / TileSize);
+            var scaled = Utility.ModifyCoordinatesForUIScale(screenPos);
+            var tileX = (int)(scaled.X / Game1.tileSize);
+            var tileY = (int)(scaled.Y / Game1.tileSize);
             return new Point(tileX, tileY);
         }
 
         /// <summary>
         /// Formats tooltip text per spec: "Soil Health: {percentage}% ({category})".
         /// </summary>
-        private static string FormatTooltipText(float healthValue)
+        private static string FormatTooltipText(float healthValue, HealthCategory category)
         {
-            var category = healthValue switch
+            if (category == HealthCategory.Unknown || float.IsNaN(healthValue) || float.IsInfinity(healthValue))
             {
-                >= 0 and < 34 => "Poor",
-                >= 34 and < 67 => "Moderate",
-                >= 67 and <= 100 => "Healthy",
-                _ => "Unknown"
-            };
+                return "Soil Health: Unknown";
+            }
             return $"Soil Health: {healthValue:F0}% ({category})";
         }
 
@@ -412,6 +420,10 @@ namespace LivingRoots.Services.Visualization
         /// </summary>
         private static string FormatHealthText(float healthValue, HealthCategory category)
         {
+            if (category == HealthCategory.Unknown || float.IsNaN(healthValue) || float.IsInfinity(healthValue))
+            {
+                return "Soil Health: Unknown";
+            }
             return $"Soil Health: {healthValue:F0}% ({category})";
         }
     }

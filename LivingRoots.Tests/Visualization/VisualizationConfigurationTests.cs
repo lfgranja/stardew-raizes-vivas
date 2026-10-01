@@ -26,29 +26,27 @@ namespace LivingRoots.Tests.Visualization
             // Arrange
             var config = new VisualizationConfiguration();
 
-            // Assert - PoorColor defaults to Red (#FF0000)
-            Assert.Equal(255, config.PoorColor.R);
-            Assert.Equal(0, config.PoorColor.G);
-            Assert.Equal(0, config.PoorColor.B);
-            Assert.Equal(255, config.PoorColor.A);
+            // Assert - configuration defaults are the earth-tone palette from
+            // ModConstants (spec clarification 127): #B91C1C / #D97706 / #15803D / #6B7280.
+            Assert.Equal(ModConstants.PoorColor.R, config.PoorColor.R);
+            Assert.Equal(ModConstants.PoorColor.G, config.PoorColor.G);
+            Assert.Equal(ModConstants.PoorColor.B, config.PoorColor.B);
+            Assert.Equal(ModConstants.PoorColor.A, config.PoorColor.A);
 
-            // ModerateColor defaults to Yellow (#FFFF00)
-            Assert.Equal(255, config.ModerateColor.R);
-            Assert.Equal(255, config.ModerateColor.G);
-            Assert.Equal(0, config.ModerateColor.B);
-            Assert.Equal(255, config.ModerateColor.A);
+            Assert.Equal(ModConstants.ModerateColor.R, config.ModerateColor.R);
+            Assert.Equal(ModConstants.ModerateColor.G, config.ModerateColor.G);
+            Assert.Equal(ModConstants.ModerateColor.B, config.ModerateColor.B);
+            Assert.Equal(ModConstants.ModerateColor.A, config.ModerateColor.A);
 
-            // HealthyColor defaults to Green (#00FF00)
-            Assert.Equal(0, config.HealthyColor.R);
-            Assert.Equal(255, config.HealthyColor.G);
-            Assert.Equal(0, config.HealthyColor.B);
-            Assert.Equal(255, config.HealthyColor.A);
+            Assert.Equal(ModConstants.HealthyColor.R, config.HealthyColor.R);
+            Assert.Equal(ModConstants.HealthyColor.G, config.HealthyColor.G);
+            Assert.Equal(ModConstants.HealthyColor.B, config.HealthyColor.B);
+            Assert.Equal(ModConstants.HealthyColor.A, config.HealthyColor.A);
 
-            // UnknownColor defaults to Gray (#808080)
-            Assert.Equal(128, config.UnknownColor.R);
-            Assert.Equal(128, config.UnknownColor.G);
-            Assert.Equal(128, config.UnknownColor.B);
-            Assert.Equal(255, config.UnknownColor.A);
+            Assert.Equal(ModConstants.UnknownColor.R, config.UnknownColor.R);
+            Assert.Equal(ModConstants.UnknownColor.G, config.UnknownColor.G);
+            Assert.Equal(ModConstants.UnknownColor.B, config.UnknownColor.B);
+            Assert.Equal(ModConstants.UnknownColor.A, config.UnknownColor.A);
         }
 
         [Fact]
