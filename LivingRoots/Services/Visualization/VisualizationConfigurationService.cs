@@ -145,14 +145,14 @@ namespace LivingRoots.Services.Visualization
                 UnknownColor = configuration.UnknownColor
             };
 
-            if (configuration.Opacity != result.Opacity)
+            if (!IsValidOpacity(configuration.Opacity))
             {
                 _monitor.Log(
                     $"VisualizationConfigurationService: invalid opacity {configuration.Opacity} replaced with default {result.Opacity}.",
                     LogLevel.Warn);
             }
 
-            if (!string.Equals(configuration.AccessibilityDegradation, result.AccessibilityDegradation, StringComparison.Ordinal))
+            if (!IsValidDegradationMode(configuration.AccessibilityDegradation))
             {
                 _monitor.Log(
                     $"VisualizationConfigurationService: invalid accessibility degradation '{configuration.AccessibilityDegradation}' replaced with default '{result.AccessibilityDegradation}'.",
