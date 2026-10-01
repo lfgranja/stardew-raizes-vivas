@@ -1,0 +1,99 @@
+name: Build and Test
+
+on:
+    push:
+        branches:
+            - main
+            - dev
+        paths-ignore:
+            - '**.md'
+            - 'docs/**'
+            - 'research/**'
+            - 'specs/**'
+            - '.specify/**'
+            - '.github/ISSUE_TEMPLATE/**'
+            - '.github/pull_request_template.md'
+            - 'lefthook.yml'
+    pull_request:
+        types: [opened, synchronize, reopened]
+        paths-ignore:
+            - '**.md'
+            - 'docs/**'
+            - 'research/**'
+            - 'specs/**'
+            - '.specify/**'
+            - '.github/ISSUE_TEMPLATE/**'
+            - '.github/pull_request_template.md'
+            - 'lefthook.yml'
+
+# This workflow is dormant until the STARDIEW_GAME_PATH repository variable is set. While it
+# is dormant there is no check named "Build and Test" anywhere, rather than a check that
+# reports green without having run anything — see .specify/bugs/ci-skipped-job-false-green/.
+#
+# Two rules govern this workflow. First, do NOT add either this workflow or
+# "Check Formatting" to required_status_checks until this workflow has produced at least one
+# genuinely green run; promoting a formatting-only check satisfies branch protection while
+# executing zero tests. Second, the paths-ignore filter above means this workflow cannot
+# report on a documentation-only pull request, so if it is ever made required, drop the
+# filter first or documentation-only pull requests will block forever.
+jobs:
+    build-test:
+        name: Build and Test
+        runs-on: ubuntu-latest
+        if: ${{ vars.STARDIEW_GAME_PATH != '' }}
+        env:
+            # MSBuild promotes environment variables to properties, so setting GamePath here
+            # suppresses the package's local Steam/GOG autodetection (find-game-folder.targets
+            # only assigns GamePath when it does not already exist).
+            GamePath: ${{ vars.STARDIEW_GAME_PATH }}
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: '10.0.x'
+
+            - name: Preflight - game assemblies
+              run: |
+                  set -euo pipefail
+                  missing=0
+                  for required in \
+                      "Stardew Valley.dll" \
+                      "StardewModdingAPI.dll" \
+                      "StardewValley.GameData.dll" \
+                      "MonoGame.Framework.dll" \
+                      "xTile.dll" \
+                      "smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll"
+                  do
+                      if [ ! -f "${GamePath}/${required}" ]; then
+                          echo "::error::missing ${required} under GamePath (${GamePath})"
+                          missing=1
+                      fi
+                  done
+                  if [ "${missing}" -ne 0 ]; then
+                      echo "::error::GamePath does not contain a usable Stardew Valley + SMAPI install."
+                      echo "::error::Fix STARDIEW_GAME_PATH in repository settings, or unset it to skip this job."
+                      exit 1
+                  fi
+                  echo "GamePath (${GamePath}) looks complete."
+
+            - name: Restore dependencies
+              run: dotnet restore
+
+            - name: Build
+              run: dotnet build --no-restore --configuration Release
+
+            - name: Test
+              run: >
+                dotnet test --no-build --verbosity normal
+                --collect:"XPlat Code Coverage"
+                -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+            - name: Upload coverage report
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage-opencover
+                  path: '**/coverage.opencover.xml'
+                  if-no-files-found: error

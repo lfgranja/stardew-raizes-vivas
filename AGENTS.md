@@ -26,7 +26,7 @@ Stardew Valley agroecological mod (.NET 6 / C# latest) implementing soil health,
 │       └── *.cs               # CompostingBinService, SoilHealthService, etc.
 ├── LivingRoots.Tests/         # xUnit + Moq, one-file-per-subject
 ├── .specify/                  # Spec-kit SDD workflows
-├── .github/                   # CI: build → test → SonarCloud → coverage
+├── .github/workflows/         # CI: code-style (always runs) + build-and-test (dormant)
 └── .editorconfig              # .NET formatting rules (space indent, expression-bodied OFF)
 ```
 
@@ -105,5 +105,17 @@ dotnet format Stardew-LivingRoots.sln --verify-no-changes
 - `LivingRoots.csproj` has `AppendTargetFrameworkToOutputPath=false` → output goes to `bin/` not `bin/net6.0/`
 - Test project references ModBuildConfig with `EnableModDeploy=false` — SMAPI assemblies copied via custom MSBUILD target
 - `InternalsVisibleTo("LivingRoots.Tests")` allows testing internal members
-- CI runs SonarCloud with OpenCover coverage format
 - lefthook pre-commit: `dotnet format --verify-no-changes`; pre-push: `dotnet test`
+
+## CI
+
+Two workflows under `.github/workflows/`, deliberately separate so a green run never overstates what it checked:
+
+| Workflow | Runs | Checks |
+|----------|------|--------|
+| `Code Style (format only)` | every change | formatting only |
+| `Build and Test` | only once `STARDIEW_GAME_PATH` is set | build + tests + coverage |
+
+`Build and Test` is **dormant** because `Pathoschild.Stardew.ModBuildConfig` hard-fails without a Stardew Valley + SMAPI install, and those assemblies cannot be downloaded on a GitHub-hosted runner. While dormant there is no test check at all — this is intentional; see `.specify/bugs/ci-skipped-job-false-green/`.
+
+**Do NOT add either check to `required_status_checks` until `Build and Test` has produced one genuinely green run.** Promoting `Check Formatting` alone would satisfy branch protection while executing zero tests. If `Build and Test` is ever made required, first remove its `paths-ignore` filter, or documentation-only pull requests will block forever waiting for a check that cannot report.
