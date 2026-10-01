@@ -26,9 +26,19 @@ on:
             - '.github/pull_request_template.md'
             - 'lefthook.yml'
 
-# This workflow is dormant until the STARDEW_GAME_PATH repository variable is set. While it
-# is dormant there is no check named "Build and Test" anywhere, rather than a check that
-# reports green without having run anything — see .specify/bugs/ci-skipped-job-false-green/.
+# This workflow runs the real build and the full test suite. It stays dormant until the
+# BUILDDEPS_TOKEN secret is set, so that there is no check named "Build and Test" anywhere
+# rather than a check that reports green without having run anything — see
+# .specify/bugs/ci-skipped-job-false-green/.
+#
+# Pathoschild.Stardew.ModBuildConfig refuses to build unless a GamePath folder holds the
+# game's managed assemblies, and that check is unconditional. Those assemblies are
+# proprietary, too large for a GitHub secret (48 KB cap vs a ~5.2 MB base64 payload), and
+# cannot be downloaded on a hosted runner. They are instead published as a release asset in
+# the PRIVATE repository lfgranja/stardew-raizes-vivas-builddeps and materialised here.
+#
+# BUILDDEPS_TOKEN must be a credential with read access to that private repo only. The
+# built-in GITHUB_TOKEN cannot be used: it is scoped to this repository.
 #
 # Two rules govern this workflow. First, do NOT add either this workflow or
 # "Check Formatting" to required_status_checks until this workflow has produced at least one
@@ -40,12 +50,15 @@ jobs:
     build-test:
         name: Build and Test
         runs-on: ubuntu-latest
-        if: ${{ vars.STARDEW_GAME_PATH != '' }}
+        if: ${{ vars.BUILDDEPS_ENABLED == 'true' }}
         env:
             # MSBuild promotes environment variables to properties, so setting GamePath here
             # suppresses the package's local Steam/GOG autodetection (find-game-folder.targets
             # only assigns GamePath when it does not already exist).
-            GamePath: ${{ vars.STARDEW_GAME_PATH }}
+            GamePath: ${{ github.workspace }}/.gamepath
+            BUILDDEPS_REPO: lfgranja/stardew-raizes-vivas-builddeps
+            BUILDDEPS_TAG: gamepath-v1
+            BUILDDEPS_ASSET: gamepath.zip
 
         steps:
             - uses: actions/checkout@v4
@@ -54,6 +67,22 @@ jobs:
               uses: actions/setup-dotnet@v4
               with:
                   dotnet-version: '10.0.x'
+
+            - name: Fetch game assemblies
+              env:
+                  GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  mkdir -p "${GamePath}"
+                  gh release download "${BUILDDEPS_TAG}" \
+                      --repo "${BUILDDEPS_REPO}" \
+                      --pattern "${BUILDDEPS_ASSET}" \
+                      --dir "${GamePath}"
+                  unzip -o "${GamePath}/${BUILDDEPS_ASSET}" -d "${GamePath}"
+                  rm -f "${GamePath}/${BUILDDEPS_ASSET}"
+                  mkdir -p "${GamePath}/smapi-internal"
+                  mv -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" \
+                        "${GamePath}/smapi-internal/"
 
             - name: Preflight - game assemblies
               run: |
@@ -74,7 +103,7 @@ jobs:
                   done
                   if [ "${missing}" -ne 0 ]; then
                       echo "::error::GamePath does not contain a usable Stardew Valley + SMAPI install."
-                      echo "::error::Fix STARDEW_GAME_PATH in repository settings, or unset it to skip this job."
+                      echo "::error::Check the ${BUILDDEPS_TAG} release asset in ${BUILDDEPS_REPO}."
                       exit 1
                   fi
                   echo "GamePath (${GamePath}) looks complete."
@@ -87,7 +116,7 @@ jobs:
 
             - name: Test
               run: >
-                dotnet test --no-build --verbosity normal
+                dotnet test --no-build --configuration Release --verbosity normal
                 --collect:"XPlat Code Coverage"
                 -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
