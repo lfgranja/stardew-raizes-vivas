@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using System;
 using Microsoft.Xna.Framework;
 using StardewValley;
 using StardewValley.TerrainFeatures;
@@ -6,35 +6,67 @@ using StardewValley.TerrainFeatures;
 namespace LivingRoots.Tests.Fixtures;
 
 /// <summary>
-/// Helper class to create real GameLocation instances with HoeDirt tiles.
-/// Uses correct constructor signature: GameLocation(string mapPath, string name).
+/// Creates real <see cref="GameLocation"/> instances for unit tests.
 /// </summary>
+/// <remarks>
+/// <para>
+/// The map-backed <c>GameLocation(string mapPath, string name)</c> constructor cannot be used in a
+/// unit-test host: it calls <c>reloadMap</c>, which resolves the map loader through the
+/// <c>Game1</c> singleton and throws <see cref="NullReferenceException"/>. The parameterless
+/// constructor does no loading and yields a location with an initialised <c>terrainFeatures</c>
+/// and <c>TemporarySprites</c> dictionary.
+/// </para>
+/// <para>
+/// <c>GameLocation.Name</c> and <c>GameLocation.IsFarm</c> expose no public setter in 1.6, but the
+/// backing <c>NetString</c> / <c>NetBool</c> fields are public and their <c>Value</c> property is
+/// publicly settable, so both are populated that way without reflection into private state.
+/// </para>
+/// </remarks>
 public class GameLocationFixture
 {
-    /// <summary>The game location with tilled tiles.</summary>
+    /// <summary>The game location under construction.</summary>
     public GameLocation Location { get; }
 
-    /// <summary>List of all tilled tile coordinates for cleanup/reference.</summary>
+    /// <summary>Coordinates of every tilled tile added through this fixture.</summary>
     public List<Vector2> TilledTiles { get; } = new();
 
-    /// <summary>Creates a new game location with the specified map path and name.</summary>
-    public GameLocationFixture(string mapPath = "Maps\\Farm", string name = "Farm")
+    /// <summary>
+    /// Creates a location with the given name, flagged as a farm when <paramref name="isFarm"/> is set.
+    /// </summary>
+    /// <param name="name">Location name, matching the key services use to look it up.</param>
+    /// <param name="isFarm">Whether <see cref="GameLocation.IsFarm"/> should report <c>true</c>.</param>
+    public GameLocationFixture(string name = "Farm", bool isFarm = true)
     {
-        Location = new GameLocation(mapPath, name);
+        GameStateFixture.Install();
+
+        Location = new GameLocation();
+#pragma warning disable AvoidNetField
+        // GameLocation.Name and GameLocation.IsFarm expose no public setter in 1.6, so these
+        // public NetField backing values are the only way to populate them from a test.
+        Location.name.Value = name;
+        Location.isFarm.Value = isFarm;
+#pragma warning restore AvoidNetField
     }
 
-    /// <summary>Adds a HoeDirt tile at the specified coordinates.</summary>
+    /// <summary>
+    /// Registers a tilled tile at the given coordinates.
+    /// </summary>
+    /// <remarks>
+    /// Requires <see cref="GameStateFixture.Install"/> to have run, which this constructor does.
+    /// </remarks>
     /// <param name="x">X tile coordinate.</param>
     /// <param name="y">Y tile coordinate.</param>
-    /// <param name="bare">If true, tile has no crop (bare). If false, tile has a crop.</param>
-    public void AddHoeDirtTile(int x, int y, bool bare = true)
+    /// <param name="hasCrop">When <c>true</c> the tile is covered by a crop.</param>
+    public void AddHoeDirtTile(int x, int y, bool hasCrop = false)
     {
         var tile = new Vector2(x, y);
-        var hoeDirt = new HoeDirt(0, Location);
-        if (!bare)
+        var hoeDirt = new HoeDirt();
+
+        if (hasCrop)
         {
-            hoeDirt.crop = new Crop("0", x, y, Location);
+            hoeDirt.crop = new StardewValley.Crop();
         }
+
         Location.terrainFeatures.Add(tile, hoeDirt);
         TilledTiles.Add(tile);
     }

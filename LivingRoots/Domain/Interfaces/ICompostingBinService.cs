@@ -18,12 +18,12 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Collects finished compost from the specified bin if it is ready.
+        /// The compost is granted through the injected <see cref="IPlayerInventory"/>.
         /// </summary>
         /// <param name="locationName">The location containing the bin.</param>
         /// <param name="tile">The tile coordinates of the bin.</param>
-        /// <param name="player">The player collecting the compost.</param>
         /// <returns>The number of compost items produced (equal to maturation level).</returns>
-        int CollectCompost(string locationName, Vector2 tile, StardewValley.Farmer player);
+        int CollectCompost(string locationName, Vector2 tile);
 
         /// <summary>
         /// Gets the current state of the composting bin at the specified tile.

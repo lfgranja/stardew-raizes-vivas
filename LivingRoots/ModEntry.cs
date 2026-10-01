@@ -3,6 +3,7 @@ using LivingRoots.Controllers;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Services;
 using LivingRoots.Services;
+using LivingRoots.Services.Visualization;
 using StardewModdingAPI;
 
 namespace LivingRoots
@@ -49,15 +50,22 @@ namespace LivingRoots
             // Create composting services
             var organicWasteValidator = new OrganicWasteValidator(this.Monitor);
             var compostingBinFactory = new CompostingBinFactory();
-            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory);
+            var playerInventory = new PlayerInventory();
+            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory);
             var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor);
 
             // Create soil decay service
             var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
-            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider);
+            var locationProvider = new LocationProvider();
+            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider);
+
+            // Create visualization services (F4 — DI wiring per Phase 9/10)
+            var colorInterpolationService = new ColorInterpolationService();
+            var visualizationConfigService = new VisualizationConfigurationService(modDataService, this.Monitor, fileNameSanitizationService);
+            var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor);
 
             // Create controller with dependency injection
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService);
+            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, visualizationService, visualizationConfigService);
 
             // Register events through the Controller
             _controller.RegisterEvents();
