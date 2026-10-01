@@ -1,8 +1,6 @@
 using LivingRoots.Domain.Visualization;
 using LivingRoots.Services.Visualization;
 using Microsoft.Xna.Framework;
-using Moq;
-using StardewModdingAPI;
 using Xunit;
 
 namespace LivingRoots.Tests.Visualization
@@ -11,22 +9,16 @@ namespace LivingRoots.Tests.Visualization
     /// Tests for <see cref="ColorInterpolationService"/>.
     /// Verifies linear RGB interpolation (FR-008), category boundaries,
     /// caching, cache invalidation, clamping, and NaN/Infinity handling.
+    /// Base colors are never hardcoded here — they are read from
+    /// <see cref="ModConstants"/> (earth-tone palette, spec clarification 127).
     /// </summary>
     public class ColorInterpolationServiceTests
     {
-        private readonly Mock<IMonitor> _mockMonitor;
         private readonly ColorInterpolationService _service;
-
-        // Expected base colors (defaults from the service constructor)
-        private static readonly Color PoorColor = new Color(255, 0, 0, 255);
-        private static readonly Color ModerateColor = new Color(255, 255, 0, 255);
-        private static readonly Color HealthyColor = new Color(0, 255, 0, 255);
-        private static readonly Color UnknownColor = new Color(128, 128, 128, 255);
 
         public ColorInterpolationServiceTests()
         {
-            _mockMonitor = new Mock<IMonitor>();
-            _service = new ColorInterpolationService(_mockMonitor.Object);
+            _service = new ColorInterpolationService();
         }
 
         // ──────────────────────────────────────────────
@@ -40,7 +32,7 @@ namespace LivingRoots.Tests.Visualization
             var result = _service.GetColorForHealth(0f);
 
             // Assert
-            Assert.Equal(PoorColor, result);
+            Assert.Equal(ModConstants.PoorColor, result);
         }
 
         [Fact]
@@ -50,20 +42,21 @@ namespace LivingRoots.Tests.Visualization
             var result = _service.GetColorForHealth(100f);
 
             // Assert
-            Assert.Equal(HealthyColor, result);
+            Assert.Equal(ModConstants.HealthyColor, result);
         }
 
         [Fact]
         public void GetColorForHealth_HealthFifty_ReturnsMidpointBetweenModerateAndHealthy()
         {
             // Arrange
-            // health=50 falls in Moderate range [34, 67).
-            // t = (50 - 34) / (67 - 34) = 16/33
-            // r = Lerp(255, 0, 16/33) = 255 + (0 - 255) * 16/33 ≈ 131
-            // g = Lerp(255, 255, 16/33) = 255
-            // b = Lerp(0, 0, 16/33) = 0
-            // a = 255
-            var expected = new Color(131, 255, 0, 255);
+            // Earth-tone palette (spec clarification 127): Moderate #D97706 (217,119,6),
+            // Healthy #15803D (21,128,61). health=50 falls in Moderate range [34, 67).
+            // t = (50 - 34) / 33 = 16/33
+            // r = Lerp(217, 21, 16/33)  = 217 + (21 - 217) * 16/33 = 217 - 95.03 = 121.97 -> 121
+            // g = Lerp(119, 128, 16/33) = 119 + (128 - 119) * 16/33 = 119 + 4.36  = 123.36 -> 123
+            // b = Lerp(6, 61, 16/33)    = 6 + (61 - 6) * 16/33    = 6 + 26.67   = 32.67  -> 32
+            // a = opacity 1.0 * 255 = 255
+            var expected = new Color(121, 123, 32, 255);
 
             // Act
             var result = _service.GetColorForHealth(50f);
@@ -162,18 +155,19 @@ namespace LivingRoots.Tests.Visualization
         // ──────────────────────────────────────────────
 
         [Fact]
-        public void InvalidateCache_ClearsCache_AndLogsMessage()
+        public void InvalidateCache_ClearsCache_StaleColorsAreRecomputed()
         {
-            // Arrange — populate the cache
-            _service.GetColorForHealth(50f);
+            // Arrange — populate the cache, then change the palette. SetCategoryColors
+            // invalidates the cache, so the next lookup must not serve the stale color.
+            var before = _service.GetColorForHealth(50f);
+            _service.SetCategoryColors(Color.Black, Color.Black, Color.Black);
 
             // Act
-            _service.InvalidateCache();
+            var after = _service.GetColorForHealth(50f);
 
-            // Assert — verify the log message was emitted
-            _mockMonitor.Verify(
-                m => m.Log("Color interpolation cache invalidated.", LogLevel.Trace),
-                Times.Once);
+            // Assert — the cached value was discarded, not replayed
+            Assert.NotEqual(before, after);
+            Assert.Equal(new Color(0, 0, 0, 255), after);
         }
 
         [Fact]
@@ -201,7 +195,7 @@ namespace LivingRoots.Tests.Visualization
             var result = _service.GetColorForHealth(-10f);
 
             // Assert
-            Assert.Equal(PoorColor, result);
+            Assert.Equal(ModConstants.PoorColor, result);
         }
 
         [Fact]
@@ -211,27 +205,31 @@ namespace LivingRoots.Tests.Visualization
             var result = _service.GetColorForHealth(150f);
 
             // Assert
-            Assert.Equal(HealthyColor, result);
+            Assert.Equal(ModConstants.HealthyColor, result);
         }
 
         [Fact]
-        public void GetCategoryForHealth_NegativeValue_ClampedToZero_ReturnsPoor()
+        public void GetCategoryForHealth_NegativeValue_OutOfRange_ReturnsUnknown()
         {
             // Act
             var result = _service.GetCategoryForHealth(-25f);
 
-            // Assert
-            Assert.Equal(HealthCategory.Poor, result);
+            // Assert — out-of-range health is invalid data, not "Poor".
+            // Matches HealthCategoryExtensions.FromHealthValue and
+            // HealthCategoryTests.FromHealthValue_OutOfRange_ReturnsUnknown.
+            Assert.Equal(HealthCategory.Unknown, result);
         }
 
         [Fact]
-        public void GetCategoryForHealth_ValueAboveHundred_ClampedToHundred_ReturnsHealthy()
+        public void GetCategoryForHealth_ValueAboveHundred_OutOfRange_ReturnsUnknown()
         {
             // Act
             var result = _service.GetCategoryForHealth(999f);
 
-            // Assert
-            Assert.Equal(HealthCategory.Healthy, result);
+            // Assert — out-of-range health is invalid data, not "Healthy".
+            // Matches HealthCategoryExtensions.FromHealthValue and
+            // HealthCategoryTests.FromHealthValue_OutOfRange_ReturnsUnknown.
+            Assert.Equal(HealthCategory.Unknown, result);
         }
 
         // ──────────────────────────────────────────────
@@ -245,7 +243,7 @@ namespace LivingRoots.Tests.Visualization
             var result = _service.GetColorForHealth(float.NaN);
 
             // Assert
-            Assert.Equal(UnknownColor, result);
+            Assert.Equal(ModConstants.UnknownColor, result);
         }
 
         [Fact]
@@ -255,7 +253,7 @@ namespace LivingRoots.Tests.Visualization
             var result = _service.GetColorForHealth(float.PositiveInfinity);
 
             // Assert
-            Assert.Equal(UnknownColor, result);
+            Assert.Equal(ModConstants.UnknownColor, result);
         }
 
         [Fact]
@@ -265,7 +263,7 @@ namespace LivingRoots.Tests.Visualization
             var result = _service.GetColorForHealth(float.NegativeInfinity);
 
             // Assert
-            Assert.Equal(UnknownColor, result);
+            Assert.Equal(ModConstants.UnknownColor, result);
         }
 
         [Fact]
