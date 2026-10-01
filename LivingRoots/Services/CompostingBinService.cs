@@ -14,7 +14,8 @@ public class CompostingBinService(
     IOrganicWasteValidator organicWasteValidator,
     IMonitor monitor,
     ITimeProvider timeProvider,
-    CompostingBinFactory factory) : ICompostingBinService
+    CompostingBinFactory factory,
+    IPlayerInventory playerInventory) : ICompostingBinService
 {
     private readonly IModDataService _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
     private readonly ISaveIdProvider _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
@@ -22,6 +23,7 @@ public class CompostingBinService(
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
     private readonly ITimeProvider _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly CompostingBinFactory _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+    private readonly IPlayerInventory _playerInventory = playerInventory ?? throw new ArgumentNullException(nameof(playerInventory));
 
     private readonly Dictionary<string, Dictionary<string, CompostingBinStateModel>> _runtimeCache = new();
     private readonly object _lock = new();
@@ -54,7 +56,7 @@ public class CompostingBinService(
         }
     }
 
-    public int CollectCompost(string locationName, Vector2 tile, Farmer player)
+    public int CollectCompost(string locationName, Vector2 tile)
     {
         var key = GetTileKey(tile);
         lock (_lock)
@@ -70,14 +72,16 @@ public class CompostingBinService(
             for (int i = 0; i < outputCount; i++)
             {
                 var compost = new StardewValley.Object(ModConstants.CompostItemId, 1);
-                player.addItemToInventoryBool(compost);
+                if (!_playerInventory.TryAddItem(compost))
+                {
+                    _monitor.Log($"CompostingBin: inventory refused compost at ({tile.X}, {tile.Y}); bin still consumed.", LogLevel.Warn);
+                }
             }
 
             bin.State = CompostingBinState.Empty;
             bin.InputItemId = null;
             bin.InputTimestamp = null;
             bin.ConsecutiveIdleDays = 0;
-            bin.ConsecutiveActiveDays = 0;
 
             if (bin.MaturationLevel < ModConstants.MaturationMaxLevel)
             {
