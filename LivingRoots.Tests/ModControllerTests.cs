@@ -39,6 +39,30 @@ namespace LivingRoots.Tests
             _mockManifest.Setup(x => x.Version).Returns(new StardewModdingAPI.SemanticVersion(1, 0, 0));
         }
 
+        /// <summary>
+        /// Creates an <see cref="IModEvents"/> mock with every event source that
+        /// <c>ModController.RegisterEvents</c> subscribes to already wired: the game loop,
+        /// <see cref="IInputEvents"/> and <see cref="IDisplayEvents"/>.
+        /// </summary>
+        /// <param name="gameLoop">The game loop events source to expose on the returned mock.</param>
+        /// <returns>A fully wired <see cref="IModEvents"/> mock.</returns>
+        /// <remarks>
+        /// A loose <see cref="Mock{T}"/> returns <c>null</c> for an unstubbed member, so leaving
+        /// <c>Events.Input</c> or <c>Events.Display</c> unset makes the controller's
+        /// <c>ButtonPressed</c> subscription throw, get swallowed by
+        /// <c>HandleRegistrationError</c> and roll back — leaving no handlers attached and every
+        /// downstream assertion silently unmet. Routing every test through this factory keeps that
+        /// regression from coming back one arrange block at a time.
+        /// </remarks>
+        private static Mock<IModEvents> CreateModEventsMock(IGameLoopEvents gameLoop)
+        {
+            var mockEvents = new Mock<IModEvents>();
+            mockEvents.Setup(x => x.GameLoop).Returns(gameLoop);
+            mockEvents.Setup(x => x.Input).Returns(new Mock<IInputEvents>().Object);
+            mockEvents.Setup(x => x.Display).Returns(new Mock<IDisplayEvents>().Object);
+            return mockEvents;
+        }
+
         [Fact]
         public void Constructor_WithNullHelper_ThrowsArgumentNullException()
         {
@@ -85,12 +109,10 @@ namespace LivingRoots.Tests
         public void RegisterEvents_WithValidController_DoesNotThrow()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
@@ -120,11 +142,17 @@ namespace LivingRoots.Tests
         public void RegisterEvents_WithNullGameLoop_DoesNotThrow()
         {
             // Arrange
+            // GameLoop is deliberately null; Input and Display stay wired so this test exercises
+            // the null-GameLoop guard and nothing else.
             var mockEvents = new Mock<IModEvents>();
+            var mockInputEvents = new Mock<IInputEvents>();
+            var mockDisplayEvents = new Mock<IDisplayEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
             _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
             mockEvents.Setup(x => x.GameLoop).Returns((IGameLoopEvents)null!); // Return null for GameLoop
+            mockEvents.Setup(x => x.Input).Returns(mockInputEvents.Object);
+            mockEvents.Setup(x => x.Display).Returns(mockDisplayEvents.Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
@@ -138,12 +166,10 @@ namespace LivingRoots.Tests
         public async System.Threading.Tasks.Task RegisterEvents_IsThreadSafe()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var threadSafeGameLoopEvents = new ThreadSafeGameLoopEventsStub();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(threadSafeGameLoopEvents);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(threadSafeGameLoopEvents).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Create a single ModController instance to be shared across all tasks
@@ -174,12 +200,10 @@ namespace LivingRoots.Tests
         public void RegisterEvents_WhenExceptionOccurs_HandlingIsSecure()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Setup to throw an exception when trying to add an event
@@ -198,12 +222,10 @@ namespace LivingRoots.Tests
         public void UnregisterEvents_RemovesAllEvents()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // SetupAdd and SetupRemove for events to ensure VerifyRemove works reliably
@@ -233,12 +255,10 @@ namespace LivingRoots.Tests
         public void UnregisterEvents_WhenNotRegistered_DoesNotUnsubscribe()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
@@ -257,12 +277,10 @@ namespace LivingRoots.Tests
         public async System.Threading.Tasks.Task UnregisterEvents_IsThreadSafe()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var threadSafeGameLoopEvents = new ThreadSafeGameLoopEventsStub();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(threadSafeGameLoopEvents);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(threadSafeGameLoopEvents).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
@@ -295,12 +313,10 @@ namespace LivingRoots.Tests
         public void Dispose_IsIdempotent_CanBeCalledMultipleTimes()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Add explicit SetupAdd and SetupRemove for all events to ensure Moq reliably tracks event subscriptions and unsubscriptions
@@ -334,12 +350,10 @@ namespace LivingRoots.Tests
         public async System.Threading.Tasks.Task Dispose_IsThreadSafe_WithConcurrentDisposal()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Add explicit SetupAdd and SetupRemove for all events to ensure Moq reliably tracks event subscriptions and unsubscriptions
@@ -378,12 +392,10 @@ namespace LivingRoots.Tests
         public void RegisterConsoleCommand_AddsCommandSuccessfully()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
@@ -402,12 +414,10 @@ namespace LivingRoots.Tests
         public void PrintVersion_ExecutesWithoutErrors()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
@@ -437,12 +447,10 @@ namespace LivingRoots.Tests
         public void PrintVersion_WithHelpArguments_PrintsUsage()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
@@ -472,12 +480,10 @@ namespace LivingRoots.Tests
         public void OnSaveLoaded_WithValidSaveId_LoadsData()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Mock the save ID provider to return a valid save ID
@@ -499,12 +505,10 @@ namespace LivingRoots.Tests
         public void OnSaving_WithValidSaveId_SavesData()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Mock the save ID provider to return a valid save ID
@@ -527,13 +531,11 @@ namespace LivingRoots.Tests
         public void IsDisposed_ReturnsCorrectState()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
 
@@ -592,12 +594,10 @@ namespace LivingRoots.Tests
         public void TrySetStateFlag_WhenDisposed_ReturnsFalseForOtherFlags()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
@@ -619,12 +619,10 @@ namespace LivingRoots.Tests
         public void SaveIdUnavailableWarning_ShownOnlyOncePerEvent()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Mock SaveIdProvider to return null (simulating unavailable save folder)
@@ -648,12 +646,10 @@ namespace LivingRoots.Tests
         public void SaveIdUnavailableWarning_ShownOnlyOncePerSavingEvent()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Mock SaveIdProvider to return null (simulating unavailable save folder)
@@ -687,12 +683,10 @@ namespace LivingRoots.Tests
         public void Integration_SaveLoadedEvent_CallsSaveIdProviderAndLoadData()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             const string expectedSaveId = "test_save_12345";
@@ -729,12 +723,10 @@ namespace LivingRoots.Tests
         public void Integration_SavingEvent_CallsSaveIdProviderAndSaveData()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             const string expectedSaveId = "test_save_67890";
@@ -772,12 +764,10 @@ namespace LivingRoots.Tests
         public void Integration_SaveLoadedAndSavingEvents_CorrectlyCallLoadDataAndSaveData()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             const string expectedSaveId = "test_save_complete_flow";
@@ -815,12 +805,10 @@ namespace LivingRoots.Tests
         public void Integration_SaveLoadedEvent_WithNullSaveId_DoesNotCallLoadData()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Mock SaveIdProvider to return null (simulating unavailable save folder)
@@ -855,12 +843,10 @@ namespace LivingRoots.Tests
         public void Integration_SavingEvent_WithEmptySaveId_DoesNotCallSaveData()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Mock SaveIdProvider to return empty string (simulating unavailable save folder)
@@ -895,12 +881,10 @@ namespace LivingRoots.Tests
         public void Integration_SaveIdFromProvider_IsCorrectlyPassedToService()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             // Use a complex saveId with special characters to ensure no transformation occurs
@@ -937,12 +921,10 @@ namespace LivingRoots.Tests
         public void Integration_MultipleSaveLoadedEvents_CorrectlyCallLoadDataEachTime()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             const string expectedSaveId = "test_save_multiple";
@@ -977,12 +959,10 @@ namespace LivingRoots.Tests
         public void Integration_MultipleSavingEvents_CorrectlyCallSaveDataEachTime()
         {
             // Arrange
-            var mockEvents = new Mock<IModEvents>();
             var mockGameLoopEvents = new Mock<IGameLoopEvents>();
             var mockCommandHelper = new Mock<ICommandHelper>();
 
-            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
-            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
 
             const string expectedSaveId = "test_save_multiple_saves";
