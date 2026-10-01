@@ -20,9 +20,6 @@ namespace LivingRoots.Services.Visualization
         private readonly IVisualizationConfigurationService _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
 
-        // Threshold at which graceful degradation activates (FR-009)
-        private const int DegradationTileThreshold = 1000;
-
         // Overlay list cache (FR-010)
         private List<TileOverlay>? _cachedOverlays;
         private Rectangle _cachedViewport;
@@ -30,6 +27,51 @@ namespace LivingRoots.Services.Visualization
 
         // Tracks whether degradation notification has been sent (one-time per degradation event)
         private bool _degradationNotificationSent;
+
+        /// <summary>
+        /// Indicates whether the overlay cache currently holds no entries.
+        /// Exposed for diagnostics and tests verifying cache invalidation (FR-010).
+        /// </summary>
+        public bool IsCacheEmpty
+        {
+            get
+            {
+                lock (_cacheLock)
+                {
+                    return _cachedOverlays == null || _cachedOverlays.Count == 0;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Determines whether accessibility patterns should be suppressed for the
+        /// given visible tile count and degradation mode (FR-009).
+        /// </summary>
+        /// <param name="visibleCount">Number of tiles visible in the viewport.</param>
+        /// <param name="mode">Configured degradation mode ("auto", "never", or "notify").</param>
+        /// <returns>True when patterns must be disabled due to degradation.</returns>
+        public static bool CheckDegradation(int visibleCount, string? mode)
+        {
+            if (!string.Equals(mode, "auto", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return visibleCount > ModConstants.DegradationTileThreshold;
+        }
+
+        /// <summary>
+        /// Discards the cached overlay list without logging. Alias for
+        /// <see cref="InvalidateCache"/> used when callers know the cache is already warm.
+        /// </summary>
+        public void ForceRefresh()
+        {
+            lock (_cacheLock)
+            {
+                _cachedOverlays = null;
+                _cachedViewport = Rectangle.Empty;
+            }
+        }
 
         /// <summary>
         /// Gets overlays for tiles visible in the specified viewport.
@@ -69,20 +111,20 @@ namespace LivingRoots.Services.Visualization
             var degradationMode = config.AccessibilityDegradation ?? "auto";
             var showPatterns = config.ShowPatterns;
 
-            if (visibleCount > DegradationTileThreshold &&
+            if (visibleCount > ModConstants.DegradationTileThreshold &&
                 string.Equals(degradationMode, "auto", StringComparison.OrdinalIgnoreCase))
             {
                 if (!_degradationNotificationSent)
                 {
                     _monitor.Log(
-                        $"Performance degradation activated: {visibleCount} visible tiles exceeds {DegradationTileThreshold} threshold. " +
+                        $"Performance degradation activated: {visibleCount} visible tiles exceeds {ModConstants.DegradationTileThreshold} threshold. " +
                         "Disabling accessibility patterns per FR-009.",
                         LogLevel.Warn);
                     _degradationNotificationSent = true;
                 }
                 showPatterns = false;
             }
-            else if (_degradationNotificationSent && visibleCount <= DegradationTileThreshold)
+            else if (_degradationNotificationSent && visibleCount <= ModConstants.DegradationTileThreshold)
             {
                 // Reset notification flag when tile count drops back within threshold
                 _degradationNotificationSent = false;
