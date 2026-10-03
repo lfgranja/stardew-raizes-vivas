@@ -858,7 +858,10 @@ namespace LivingRoots.Controllers
                 var binTile = tile.Value;
                 var heldItem = StardewValley.Game1.player.CurrentItem;
 
-                if (heldItem != null && heldItem.QualifiedItemId == ModConstants.CompostItemId)
+                if (heldItem != null &&
+                    (heldItem.QualifiedItemId == ModConstants.CompostItemId ||
+                     heldItem.QualifiedItemId == ModConstants.QualifiedCompostItemId ||
+                     heldItem.ItemId == ModConstants.CompostItemId))
                 {
                     if (_compostApplicationService?.TryApplyCompost(location, binTile) == true)
                     {
