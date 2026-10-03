@@ -115,8 +115,8 @@
 - [ ] T027 [US3] Implement `CompostingBinService` in `LivingRoots/Services/CompostingBinService.cs` (`AddWaste`, `CollectCompost`, `GetBinState`, `ProcessDayStart`, thread-safe cache, save/load persistence via `IModDataService` with key `composting_bins_{saveId}_{locationName}` per FR-008, FR-009, FR-013, FR-014)
 - [ ] T028 [US3] Wire `CompostingBinService` right-click interactions (`AddWaste` and `CollectCompost`) in `LivingRoots/Controllers/ModController.cs` under `OnButtonPressed`
 - [ ] T029 [US3] Wire `CompostingBinService.ProcessDayStart` in `LivingRoots/Controllers/ModController.cs` under `OnDayStarted`
-- [ ] T030 [US3] Register Composting Bin crafting recipe (50 Wood, 25 Stone, 15 Fiber) in `LivingRoots/ModEntry.cs` via SMAPI `AssetRequested` event (`Data/CraftingRecipes`) per FR-018
-- [ ] T031 [US3] Register Composting Bin machine data and hover tooltip in `LivingRoots/ModEntry.cs` via SMAPI `AssetRequested` event (`Data/Machines`) per FR-019
+- [x] T030 [US3] Register Composting Bin crafting recipe (50 Wood, 25 Stone, 15 Fiber) in `LivingRoots/ModEntry.cs` via SMAPI `AssetRequested` event (`Data/CraftingRecipes`) per FR-018
+- [x] T031 [US3] Register Composting Bin machine data and hover tooltip in `LivingRoots/ModEntry.cs` via SMAPI `AssetRequested` event (`Data/Machines`) per FR-019
 
 **Checkpoint**: All user stories implemented.
 

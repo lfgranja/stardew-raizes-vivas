@@ -31,7 +31,8 @@ namespace LivingRoots.Tests.Visualization
                 mockHelper.Object, mockMonitor.Object, mockManifest.Object,
                 mockSoilService.Object, mockSaveIdProvider.Object,
                 mockCompostingBinService.Object, mockSoilDecayService.Object,
-                mockVisService.Object, mockConfigService.Object);
+                visualizationService: mockVisService.Object,
+                visualizationConfigService: mockConfigService.Object);
         }
     }
 }
