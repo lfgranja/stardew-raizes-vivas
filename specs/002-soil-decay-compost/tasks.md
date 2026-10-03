@@ -126,7 +126,7 @@
 
 **Purpose**: Cross-cutting resources, localization, and assets
 
-- [ ] T032 [P] Create i18n localization file `LivingRoots/i18n/default.json` and `LivingRoots/i18n/en.json` (compost name/description, bin name/description, maturity tooltip, restoration text per FR-021)
+- [x] T032 [P] Create i18n localization file `LivingRoots/i18n/default.json` and `LivingRoots/i18n/en.json` (compost name/description, bin name/description, maturity tooltip, restoration text per FR-021)
 - [ ] T033 [P] Add placeholder textures in `LivingRoots/Assets/` (`compost.png`, `composting_bin_empty.png`, `composting_bin_processing.png`, `composting_bin_ready.png`) and register via SMAPI `AssetRequested` per FR-019
 - [ ] T034 [P] Add placeholder audio cues in `LivingRoots/Assets/Audio/` (`composting_bin_processing.ogg`, `composting_bin_ready.ogg`) and register via SMAPI `AssetRequested` per FR-020
 
