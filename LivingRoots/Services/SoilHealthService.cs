@@ -626,7 +626,6 @@ namespace LivingRoots.Services
             }
         }
 
-#if DEBUG
         /// <summary>
         /// Test-only method to directly inject raw soil health data into the runtime cache.
         /// This bypasses validation and is intended for testing corruption scenarios.
@@ -647,7 +646,6 @@ namespace LivingRoots.Services
                 tiles[tilePoint] = value;
             }
         }
-#endif
 
         /// <summary>
         /// Internal helper method to set soil health value in the cache.
