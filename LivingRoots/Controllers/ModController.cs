@@ -15,6 +15,7 @@ namespace LivingRoots.Controllers
         ISaveIdProvider saveIdProvider,
         ICompostingBinService compostingBinService,
         ISoilDecayService soilDecayService,
+        ICompostApplicationService? compostApplicationService = null,
         IVisualizationService? visualizationService = null,
         IVisualizationConfigurationService? visualizationConfigService = null) : IDisposable
     {
@@ -40,6 +41,7 @@ namespace LivingRoots.Controllers
         private readonly ISaveIdProvider _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
         private readonly ICompostingBinService _compostingBinService = compostingBinService ?? throw new ArgumentNullException(nameof(compostingBinService));
         private readonly ISoilDecayService _soilDecayService = soilDecayService ?? throw new ArgumentNullException(nameof(soilDecayService));
+        private readonly ICompostApplicationService? _compostApplicationService = compostApplicationService;
         private readonly IVisualizationService? _visualizationService = visualizationService;
         private readonly IVisualizationConfigurationService? _visualizationConfigService = visualizationConfigService;
 
@@ -854,9 +856,17 @@ namespace LivingRoots.Controllers
                 if (!tile.HasValue || location == null) return;
 
                 var binTile = tile.Value;
+                var heldItem = StardewValley.Game1.player.CurrentItem;
+
+                if (heldItem != null && heldItem.QualifiedItemId == ModConstants.CompostItemId)
+                {
+                    if (_compostApplicationService?.TryApplyCompost(location, binTile) == true)
+                    {
+                        return;
+                    }
+                }
 
                 var state = _compostingBinService.GetBinState(location.Name, binTile);
-                var heldItem = StardewValley.Game1.player.CurrentItem;
 
                 if (heldItem != null)
                 {

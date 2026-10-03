@@ -65,7 +65,7 @@ namespace LivingRoots
             var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor);
 
             // Create controller with dependency injection
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, visualizationService, visualizationConfigService);
+            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService);
 
             // Register events through the Controller
             _controller.RegisterEvents();
