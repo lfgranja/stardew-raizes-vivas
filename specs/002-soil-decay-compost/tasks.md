@@ -33,16 +33,16 @@
 
 **Purpose**: Constants, test abstractions, and domain interfaces
 
-- [ ] T001 Add decay and compost constants to `LivingRoots/Constants.cs` (`DailyDecayRate = 2f`, `RestorationAmount = 15f`, `MaturationDays = 2`, `MaturationMaxLevel = 5`, `MaturationIdleResetDays = 14`, `CompostItemId = "LivingRoots.Compost"`, `CompostingBinItemId = "LivingRoots.CompostingBin"`, `CompostingBinRecipeId = "LivingRoots.CompostingBinRecipe"`, `CompostingBinKeyPrefix = "composting_bins_"`)
-- [ ] T002 [P] Create `ITimeProvider` interface in `LivingRoots/Domain/ITimeProvider.cs` (`int TotalDays { get; }`) and `TimeProviderStub` in `LivingRoots.Tests/Stubs/TimeProviderStub.cs`
-- [ ] T003 [P] Create `ISeasonProvider` interface in `LivingRoots/Domain/ISeasonProvider.cs` (`string CurrentSeason { get; }`) and `SeasonProviderStub` in `LivingRoots.Tests/Stubs/SeasonProviderStub.cs`
-- [ ] T004 [P] Create `IPlayerProvider` interface in `LivingRoots/Domain/IPlayerProvider.cs` (`Farmer CurrentPlayer { get; }`, `Item? CurrentItem { get; }`) and `PlayerProviderStub` in `LivingRoots.Tests/Stubs/PlayerProviderStub.cs`
-- [ ] T005 [P] Create `ILocationProvider` interface in `LivingRoots/Domain/ILocationProvider.cs` (`GameLocation? GetLocationByName(string name)`)
-- [ ] T006 [P] Create `IPlayerInventory` interface in `LivingRoots/Domain/IPlayerInventory.cs` (`bool TryAddItem(Item item)`)
-- [ ] T007 [P] Create `ISoilDecayService` interface in `LivingRoots/Domain/ISoilDecayService.cs` (`void ProcessDayStart(string locationName)`)
-- [ ] T008 [P] Create `ICompostingBinService` interface in `LivingRoots/Domain/ICompostingBinService.cs` (`void AddWaste`, `int CollectCompost`, `CompostingBinState GetBinState`, `void ProcessDayStart`)
-- [ ] T009 [P] Create `ICompostApplicationService` interface in `LivingRoots/Domain/ICompostApplicationService.cs` (`bool TryApplyCompost(GameLocation location, Vector2 tile)`)
-- [ ] T010 [P] Create `IOrganicWasteValidator` interface in `LivingRoots/Domain/IOrganicWasteValidator.cs` (`bool IsValidOrganicWaste(Item item)`)
+- [x] T001 Add decay and compost constants to `LivingRoots/Constants.cs` (`DailyDecayRate = 2f`, `RestorationAmount = 15f`, `MaturationDays = 2`, `MaturationMaxLevel = 5`, `MaturationIdleResetDays = 14`, `CompostItemId = "LivingRoots.Compost"`, `CompostingBinItemId = "LivingRoots.CompostingBin"`, `CompostingBinRecipeId = "LivingRoots.CompostingBinRecipe"`, `CompostingBinKeyPrefix = "composting_bins_"`)
+- [x] T002 [P] Create `ITimeProvider` interface in `LivingRoots/Domain/ITimeProvider.cs` (`int TotalDays { get; }`) and `TimeProviderStub` in `LivingRoots.Tests/Stubs/TimeProviderStub.cs`
+- [x] T003 [P] Create `ISeasonProvider` interface in `LivingRoots/Domain/ISeasonProvider.cs` (`string CurrentSeason { get; }`) and `SeasonProviderStub` in `LivingRoots.Tests/Stubs/SeasonProviderStub.cs`
+- [x] T004 [P] Create `IPlayerProvider` interface in `LivingRoots/Domain/IPlayerProvider.cs` (`Farmer CurrentPlayer { get; }`, `Item? CurrentItem { get; }`) and `PlayerProviderStub` in `LivingRoots.Tests/Stubs/PlayerProviderStub.cs`
+- [x] T005 [P] Create `ILocationProvider` interface in `LivingRoots/Domain/ILocationProvider.cs` (`GameLocation? GetLocationByName(string name)`)
+- [x] T006 [P] Create `IPlayerInventory` interface in `LivingRoots/Domain/IPlayerInventory.cs` (`bool TryAddItem(Item item)`)
+- [x] T007 [P] Create `ISoilDecayService` interface in `LivingRoots/Domain/ISoilDecayService.cs` (`void ProcessDayStart(string locationName)`)
+- [x] T008 [P] Create `ICompostingBinService` interface in `LivingRoots/Domain/ICompostingBinService.cs` (`void AddWaste`, `int CollectCompost`, `CompostingBinState GetBinState`, `void ProcessDayStart`)
+- [x] T009 [P] Create `ICompostApplicationService` interface in `LivingRoots/Domain/ICompostApplicationService.cs` (`bool TryApplyCompost(GameLocation location, Vector2 tile)`)
+- [x] T010 [P] Create `IOrganicWasteValidator` interface in `LivingRoots/Domain/IOrganicWasteValidator.cs` (`bool IsValidOrganicWaste(Item item)`)
 
 ---
 
@@ -54,20 +54,20 @@
 
 ### TDD Unit Tests (Wave 1 - Blocking)
 
-- [ ] T011 [P] Create `OrganicWasteValidatorTests` in `LivingRoots.Tests/OrganicWasteValidatorTests.cs` (assert categories -74, -75, -79, -80, -81 and `compostable_item` tag return true; assert `not_compostable` tag returns false; assert null input returns false)
-- [ ] T012 [P] Create `SeasonalDecayMultiplierTests` in `LivingRoots.Tests/SeasonalDecayMultiplierTests.cs` (assert spring=0.5f, summer=1.5f, fall=0.5f, winter=0.0f, unknown defaults to 0.5f)
-- [ ] T013 [P] Create `SoilDecayServiceTests` in `LivingRoots.Tests/SoilDecayServiceTests.cs` (assert bare tilled tile loses `DailyDecayRate * multiplier`; assert health floor at 0; assert crop and dead crop mulch prevent decay; assert Greenhouse exempt)
-- [ ] T014 [P] Create `CompostApplicationServiceTests` in `LivingRoots.Tests/CompostApplicationServiceTests.cs` (assert +15 restoration; assert health ceiling at 100; assert 1 compost consumed; assert invalid target or full health rejected with cancel sound and no consumption)
-- [ ] T015 [P] Create `CompostingBinServiceTests` in `LivingRoots.Tests/CompostingBinServiceTests.cs` (assert state machine Empty→Processing→Ready→Empty; assert 2-day maturation; assert output multiplier 1x to 5x; assert 14-day idle reset)
+- [x] T011 [P] Create `OrganicWasteValidatorTests` in `LivingRoots.Tests/OrganicWasteValidatorTests.cs` (assert categories -74, -75, -79, -80, -81 and `compostable_item` tag return true; assert `not_compostable` tag returns false; assert null input returns false)
+- [x] T012 [P] Create `SeasonalDecayMultiplierTests` in `LivingRoots.Tests/SeasonalDecayMultiplierTests.cs` (assert spring=0.5f, summer=1.5f, fall=0.5f, winter=0.0f, unknown defaults to 0.5f)
+- [x] T013 [P] Create `SoilDecayServiceTests` in `LivingRoots.Tests/SoilDecayServiceTests.cs` (assert bare tilled tile loses `DailyDecayRate * multiplier`; assert health floor at 0; assert crop and dead crop mulch prevent decay; assert Greenhouse exempt)
+- [x] T014 [P] Create `CompostApplicationServiceTests` in `LivingRoots.Tests/CompostApplicationServiceTests.cs` (assert +15 restoration; assert health ceiling at 100; assert 1 compost consumed; assert invalid target or full health rejected with cancel sound and no consumption)
+- [x] T015 [P] Create `CompostingBinServiceTests` in `LivingRoots.Tests/CompostingBinServiceTests.cs` (assert state machine Empty→Processing→Ready→Empty; assert 2-day maturation; assert output multiplier 1x to 5x; assert 14-day idle reset)
 
 ### Domain Entities & Providers (Wave 2)
 
-- [ ] T016 [P] Create `CompostingBinState` enum in `LivingRoots/Domain/CompostingBinState.cs` (`Empty`, `Processing`, `Ready`)
-- [ ] T017 [P] Create `CompostingBinStateModel` in `LivingRoots/Domain/Models/CompostingBinStateModel.cs` and `CompostingBinStateData` persistence DTO in `LivingRoots/Domain/Models/CompostingBinStateData.cs` (`TileX`, `TileY`, `State`, `InputItemId`, `InputTimestamp`, `MaturationLevel`, `ConsecutiveIdleDays`, `ConsecutiveActiveDays`)
-- [ ] T018 [P] Implement `OrganicWasteValidator` in `LivingRoots/Domain/Services/OrganicWasteValidator.cs` satisfying T011
-- [ ] T019 [P] Implement `SeasonalDecayMultiplier` in `LivingRoots/Domain/Services/SeasonalDecayMultiplier.cs` satisfying T012
-- [ ] T020 [P] Implement `CompostingBinFactory` in `LivingRoots/Services/CompostingBinFactory.cs` (creates default bin state model at specified tile coordinates)
-- [ ] T021 [P] Implement `TimeProvider`, `SeasonProvider`, `PlayerProvider`, `LocationProvider`, and `PlayerInventory` wrappers in `LivingRoots/Services/`
+- [x] T016 [P] Create `CompostingBinState` enum in `LivingRoots/Domain/CompostingBinState.cs` (`Empty`, `Processing`, `Ready`)
+- [x] T017 [P] Create `CompostingBinStateModel` in `LivingRoots/Domain/Models/CompostingBinStateModel.cs` and `CompostingBinStateData` persistence DTO in `LivingRoots/Domain/Models/CompostingBinStateData.cs` (`TileX`, `TileY`, `State`, `InputItemId`, `InputTimestamp`, `MaturationLevel`, `ConsecutiveIdleDays`, `ConsecutiveActiveDays`)
+- [x] T018 [P] Implement `OrganicWasteValidator` in `LivingRoots/Domain/Services/OrganicWasteValidator.cs` satisfying T011
+- [x] T019 [P] Implement `SeasonalDecayMultiplier` in `LivingRoots/Domain/Services/SeasonalDecayMultiplier.cs` satisfying T012
+- [x] T020 [P] Implement `CompostingBinFactory` in `LivingRoots/Services/CompostingBinFactory.cs` (creates default bin state model at specified tile coordinates)
+- [x] T021 [P] Implement `TimeProvider`, `SeasonProvider`, `PlayerProvider`, `LocationProvider`, and `PlayerInventory` wrappers in `LivingRoots/Services/`
 
 **Checkpoint**: Foundation and unit test harnesses ready. Implementation of user stories can proceed.
 
@@ -81,8 +81,8 @@
 
 ### Implementation for User Story 1 (Wave 2 & Wave 3)
 
-- [ ] T022 [US1] Implement `SoilDecayService` in `LivingRoots/Services/SoilDecayService.cs` (iterates `location.terrainFeatures`, checks `HoeDirt.crop == null` for bare, `crop.dead` for residue, applies seasonal multiplier, clamps floor to 0, logs trace summary per FR-001, FR-002, FR-003, FR-022)
-- [ ] T023 [US1] Wire `SoilDecayService.ProcessDayStart` in `LivingRoots/Controllers/ModController.cs` on `DayStarted` event under concurrency guard
+- [x] T022 [US1] Implement `SoilDecayService` in `LivingRoots/Services/SoilDecayService.cs` (iterates `location.terrainFeatures`, checks `HoeDirt.crop == null` for bare, `crop.dead` for residue, applies seasonal multiplier, clamps floor to 0, logs trace summary per FR-001, FR-002, FR-003, FR-022)
+- [x] T023 [US1] Wire `SoilDecayService.ProcessDayStart` in `LivingRoots/Controllers/ModController.cs` on `DayStarted` event under concurrency guard
 
 **Checkpoint**: User Story 1 is functional and verifiable via unit tests.
 
@@ -96,9 +96,9 @@
 
 ### Implementation for User Story 2 (Wave 3)
 
-- [ ] T024 [US2] Implement `CompostApplicationService` in `LivingRoots/Services/CompostApplicationService.cs` (validates farm/Greenhouse location, `HoeDirt` presence, health < 100, player holding `LivingRoots.Compost`; updates health via `ISoilHealthService`, decrements stack, spawns `TemporaryAnimatedSprite` with text "+15", plays "cancel" on failure per FR-004 to FR-007, FR-012, FR-015, FR-017)
-- [ ] T025 [US2] Inject `ICompostApplicationService` into `LivingRoots/Controllers/ModController.cs` and wire `TryApplyCompost` in `OnButtonPressed` on right-click when holding compost
-- [ ] T026 [US2] Wire `ICompostApplicationService` in `LivingRoots/ModEntry.cs` composition root
+- [x] T024 [US2] Implement `CompostApplicationService` in `LivingRoots/Services/CompostApplicationService.cs` (validates farm/Greenhouse location, `HoeDirt` presence, health < 100, player holding `LivingRoots.Compost`; updates health via `ISoilHealthService`, decrements stack, spawns `TemporaryAnimatedSprite` with text "+15", plays "cancel" on failure per FR-004 to FR-007, FR-012, FR-015, FR-017)
+- [x] T025 [US2] Inject `ICompostApplicationService` into `LivingRoots/Controllers/ModController.cs` and wire `TryApplyCompost` in `OnButtonPressed` on right-click when holding compost
+- [x] T026 [US2] Wire `ICompostApplicationService` in `LivingRoots/ModEntry.cs` composition root
 
 **Checkpoint**: User Stories 1 and 2 complete the soil decay and restoration loop.
 
@@ -112,9 +112,9 @@
 
 ### Implementation for User Story 3 (Wave 3)
 
-- [ ] T027 [US3] Implement `CompostingBinService` in `LivingRoots/Services/CompostingBinService.cs` (`AddWaste`, `CollectCompost`, `GetBinState`, `ProcessDayStart`, thread-safe cache, save/load persistence via `IModDataService` with key `composting_bins_{saveId}_{locationName}` per FR-008, FR-009, FR-013, FR-014)
-- [ ] T028 [US3] Wire `CompostingBinService` right-click interactions (`AddWaste` and `CollectCompost`) in `LivingRoots/Controllers/ModController.cs` under `OnButtonPressed`
-- [ ] T029 [US3] Wire `CompostingBinService.ProcessDayStart` in `LivingRoots/Controllers/ModController.cs` under `OnDayStarted`
+- [x] T027 [US3] Implement `CompostingBinService` in `LivingRoots/Services/CompostingBinService.cs` (`AddWaste`, `CollectCompost`, `GetBinState`, `ProcessDayStart`, thread-safe cache, save/load persistence via `IModDataService` with key `composting_bins_{saveId}_{locationName}` per FR-008, FR-009, FR-013, FR-014)
+- [x] T028 [US3] Wire `CompostingBinService` right-click interactions (`AddWaste` and `CollectCompost`) in `LivingRoots/Controllers/ModController.cs` under `OnButtonPressed`
+- [x] T029 [US3] Wire `CompostingBinService.ProcessDayStart` in `LivingRoots/Controllers/ModController.cs` under `OnDayStarted`
 - [x] T030 [US3] Register Composting Bin crafting recipe (50 Wood, 25 Stone, 15 Fiber) in `LivingRoots/ModEntry.cs` via SMAPI `AssetRequested` event (`Data/CraftingRecipes`) per FR-018
 - [x] T031 [US3] Register Composting Bin machine data and hover tooltip in `LivingRoots/ModEntry.cs` via SMAPI `AssetRequested` event (`Data/Machines`) per FR-019
 
@@ -127,8 +127,8 @@
 **Purpose**: Cross-cutting resources, localization, and assets
 
 - [x] T032 [P] Create i18n localization file `LivingRoots/i18n/default.json` and `LivingRoots/i18n/en.json` (compost name/description, bin name/description, maturity tooltip, restoration text per FR-021)
-- [ ] T033 [P] Add placeholder textures in `LivingRoots/Assets/` (`compost.png`, `composting_bin_empty.png`, `composting_bin_processing.png`, `composting_bin_ready.png`) and register via SMAPI `AssetRequested` per FR-019
-- [ ] T034 [P] Add placeholder audio cues in `LivingRoots/Assets/Audio/` (`composting_bin_processing.ogg`, `composting_bin_ready.ogg`) and register via SMAPI `AssetRequested` per FR-020
+- [x] T033 [P] Add placeholder textures in `LivingRoots/Assets/` (`compost.png`, `composting_bin_empty.png`, `composting_bin_processing.png`, `composting_bin_ready.png`) and register via SMAPI `AssetRequested` per FR-019
+- [x] T034 [P] Add placeholder audio cues in `LivingRoots/Assets/Audio/` (`composting_bin_processing.ogg`, `composting_bin_ready.ogg`) and register via SMAPI `AssetRequested` per FR-020
 
 ---
 
