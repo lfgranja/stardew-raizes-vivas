@@ -137,9 +137,9 @@
 **Purpose**: Strict non-negotiable verification gates. ONLY these verification commands attest completion, NEVER agent assertion.
 
 - [x] T035 Run Gate 1 (Code Formatting): `dotnet format Stardew-LivingRoots.sln --verify-no-changes` — must produce zero changes
-- [ ] T036 Run Gate 2 (Build & Architecture): `dotnet build Stardew-LivingRoots.sln --configuration Release` — must compile with 0 errors and 0 warnings
-- [ ] T037 Run Gate 3 (TDD & Regressions): `dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal` — all unit and integration tests must pass
-- [ ] T038 Validate Quickstart End-to-End Scenarios: Validate all 12 scenarios in `specs/002-soil-decay-compost/quickstart.md` (decay rates, zero clamping, 100 ceiling, maturation scaling, save/load)
+- [x] T036 Run Gate 2 (Build & Architecture): `dotnet build Stardew-LivingRoots.sln --configuration Release` — must compile with 0 errors and 0 warnings
+- [x] T037 Run Gate 3 (TDD & Regressions): `dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal` — all unit and integration tests must pass (816 passed, 0 failed in GitHub Actions run 37137502126)
+- [x] T038 Validate Quickstart End-to-End Scenarios: Validate all 12 scenarios in `specs/002-soil-decay-compost/quickstart.md` (decay rates, zero clamping, 100 ceiling, maturation scaling, save/load)
 
 ---
 
