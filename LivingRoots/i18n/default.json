@@ -1,0 +1,9 @@
+{
+  "compost.name": "Compost",
+  "compost.description": "Organic compost rich in microbial life. Restores 15 soil health to tilled tiles.",
+  "composting-bin.name": "Composting Bin",
+  "composting-bin.description": "Converts organic waste into rich compost over 2 days. Output increases with continuous use.",
+  "floating-text": "+15",
+  "restoration-text": "+15",
+  "maturity-tooltip": "Maturity: {0}x"
+}

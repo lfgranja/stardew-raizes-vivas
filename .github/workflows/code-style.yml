@@ -1,0 +1,38 @@
+name: Code Style (format only)
+
+# This workflow runs on every change and its name states its whole scope. It is the only
+# workflow that always runs, so a green result here means exactly "formatting passed" and
+# nothing more. Build and test live in build_and_test.yml, which stays dormant until the
+# game assemblies are provisioned.
+on:
+    push:
+        branches:
+            - main
+            - dev
+    pull_request:
+        types: [opened, synchronize, reopened]
+
+# No paths-ignore filter on purpose. The run is cheap, and filtering this workflow would
+# make it a hazard: if it is ever added to required_status_checks, a documentation-only
+# pull request is filtered out and then blocks forever waiting for a check that can never
+# report. Running on every change removes that failure mode entirely.
+jobs:
+    format:
+        name: Check Formatting
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  # Pinned to the SDK used for local development. Keeping CI on the same major
+                  # as the local toolchain keeps `dotnet format` verdicts identical in both places.
+                  dotnet-version: '10.0.x'
+
+            - name: Restore dependencies
+              run: dotnet restore
+
+            - name: Check Formatting
+              run: dotnet format Stardew-LivingRoots.sln --verify-no-changes

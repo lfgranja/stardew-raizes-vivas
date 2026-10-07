@@ -5,6 +5,7 @@ using LivingRoots.Domain.Services;
 using LivingRoots.Services;
 using LivingRoots.Services.Visualization;
 using StardewModdingAPI;
+using StardewModdingAPI.Events;
 
 namespace LivingRoots
 {
@@ -26,6 +27,9 @@ namespace LivingRoots
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
+            // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031)
+            helper.Events.Content.AssetRequested += OnAssetRequested;
+
             // Create domain services - Composition Root
             var unicodeNormalizationService = new UnicodeNormalizationService();
             var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
@@ -65,7 +69,7 @@ namespace LivingRoots
             var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor);
 
             // Create controller with dependency injection
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, visualizationService, visualizationConfigService);
+            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService);
 
             // Register events through the Controller
             _controller.RegisterEvents();
@@ -98,6 +102,31 @@ namespace LivingRoots
 
             // Call base.Dispose after releasing the lock to prevent potential deadlocks
             base.Dispose(disposing);
+        }
+
+        /*********
+        ** Private methods
+        *********/
+
+        /// <summary>Raised when an asset is requested from the content pipeline.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        internal void OnAssetRequested(object? sender, AssetRequestedEventArgs e)
+        {
+            if (e.NameWithoutLocale.IsEquivalentTo("Data/CraftingRecipes"))
+            {
+                e.Edit(editor =>
+                {
+                    var data = editor.AsDictionary<string, string>().Data;
+                    data[ModConstants.CompostingBinRecipeId] = $"{ModConstants.CompostingBinWoodCost} 388 {ModConstants.CompostingBinStoneCost} 390 {ModConstants.CompostingBinFiberCost} 771/Home/{ModConstants.CompostingBinItemId}/true/default/";
+                });
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Data/Machines"))
+            {
+                // Machine processing and state transitions are handled programmatically by CompostingBinService
+                // (Empty -> Processing -> Ready) and ModController event hooks per FR-008 through FR-014.
+                // Standard Data/Machines registration hook ensures safe handling and compatibility.
+            }
         }
     }
 }

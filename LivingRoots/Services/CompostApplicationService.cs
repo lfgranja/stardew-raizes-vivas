@@ -43,7 +43,10 @@ public class CompostApplicationService(
         }
 
         var heldItem = _playerProvider.CurrentItem;
-        if (heldItem == null || heldItem.QualifiedItemId != ModConstants.CompostItemId)
+        if (heldItem == null ||
+            (heldItem.QualifiedItemId != ModConstants.CompostItemId &&
+             heldItem.QualifiedItemId != ModConstants.QualifiedCompostItemId &&
+             heldItem.ItemId != ModConstants.CompostItemId))
         {
             _monitor.Log("Compost rejected: player not holding compost.", LogLevel.Trace);
             Game1.playSound("cancel");

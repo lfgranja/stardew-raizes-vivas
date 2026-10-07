@@ -61,6 +61,7 @@ namespace LivingRoots
         public const int MaturationIdleResetDays = 14;
         public const int MaturationIncrementDays = 7; // days of continuous operation per level
         public const string CompostItemId = "LivingRoots.Compost";
+        public const string QualifiedCompostItemId = "(O)LivingRoots.Compost";
         public const string CompostingBinItemId = "LivingRoots.CompostingBin";
         public const string CompostingBinRecipeId = "LivingRoots.CompostingBinRecipe";
         public const string CompostCraftingTab = "Home";
