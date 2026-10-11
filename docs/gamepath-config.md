@@ -71,3 +71,12 @@ Adicionada a regra `.gamepath/` ao `.gitignore` (com comentário explicativo ref
 - [x] `STARDEW_GAME_PATH` configurado para `.gamepath` (definitivo para o workspace).
 - [x] Nenhum arquivo `.dll` proprietário está rastreado no git (`git ls-files | grep '\.dll$'` retorna vazio).
 - [x] Nenhum arquivo `.zip` de builddeps está rastreado (`.gitignore` cobre `*.zip`).
+
+---
+## Verificação de proteção (.gitignore) executada em 2026-10-11
+- Regra '.gamepath/' adicionada ao .gitignore (linha 481, com comentário explicativo).
+- Nenhum arquivo .dll está rastreado: 'git ls-files | grep -c .dll' retorna 0.
+- Nenhum arquivo .zip de builddeps está rastreado.
+- O .gamepath/ contém todos os 6 assemblies do release asset gamepath-v1 (tag do repo lfgranja/stardew-raizes-vivas-builddeps).
+- STARDEW_GAME_PATH está configurado definitivamente para o workspace.
+
