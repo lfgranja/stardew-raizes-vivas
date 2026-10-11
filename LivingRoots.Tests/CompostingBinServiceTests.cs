@@ -1515,4 +1515,28 @@ public class CompostingBinServiceTests
         {
         }
     }
+
+    /// <summary>T119 [P] [US2] RED — FR-005b (partial): exactly one compost (no double payout).</summary>
+    [Property]
+    public void T119_ExactlyOneCompost_NoDoublePayout()
+    {
+        // RED: native Data/Machines output + interception harvest not reconciled → may double-pay.
+        Assert.True(false, "RED T119: batch may yield >1 compost (native + interception unreconciled, FR-005b).");
+    }
+
+    /// <summary>T121 [P] [US2] RED — FR-005b/FR-008a (partial): translated refusal text.</summary>
+    [Fact]
+    public void T121_FullInventoryHarvest_ShowsTranslatedRedText()
+    {
+        // RED: falls back to raw key when _helper?.Translation is null.
+        Assert.True(false, "RED T121: refusal message may show raw translation key instead of translated text (FR-008a).");
+    }
+
+    /// <summary>T124 [P] [US3] RED — FR-008a (missing): invalid drop-in shakes machine.</summary>
+    [Fact]
+    public void T124_InvalidDropIn_ShakesMachine_PlusCancelCue()
+    {
+        // RED: machine shake not implemented for invalid drop-in.
+        Assert.True(false, "RED T124: invalid drop-in does not trigger machine shake (FR-008a missing).");
+    }
 }
