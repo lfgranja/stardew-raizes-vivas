@@ -1260,5 +1260,29 @@ public class MultiplayerConcurrencyTests
         // translated text here is the true failure that drives the fix.
         Assert.Equal(BinConflictTranslationMarker + ModConstants.TranslationKeyCompostActionConflict, refusals[0]);
     }
+
+    /// <summary>T115 [P] [US2] RED — FR-019 (contradicts): fail-closed with absent lock.</summary>
+    [Fact]
+    public void T115_TryInteractWithBin_AbsentLock_Refuses_ZeroMutation()
+    {
+        // RED: ?? true on mutating path allows mutation when IHostAtomicLockService is null.
+        Assert.True(false, "RED T115: mutation allowed with null lock service (FR-019 contradicts fail-closed).");
+    }
+
+    /// <summary>T122 [P] [US3] RED — FR-008a (partial): translated text at both conflict sites.</summary>
+    [Fact]
+    public void T122_ConflictSites_RenderTranslatedText()
+    {
+        // RED: raw key leaks at conflict sites instead of translated message.
+        Assert.True(false, "RED T122: conflict messages show raw key, not translated text (FR-008a partial).");
+    }
+
+    /// <summary>T125 [P] [US2] RED — FR-019 (partial): SC-010 headline uses production lock/app service.</summary>
+    [Fact]
+    public void T125_SC010_Headline_DrivesProductionLockAndAppService()
+    {
+        // RED: headline test uses inline stub instead of production TryApplyCompostWithLock / CompostApplicationService.
+        Assert.True(false, "RED T125: SC-010 headline does not drive production lock/app service (FR-019 partial).");
+    }
 }
 
