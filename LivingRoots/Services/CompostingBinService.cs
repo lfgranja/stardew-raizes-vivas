@@ -210,7 +210,7 @@ public class CompostingBinService(
         }
         catch (Exception ex)
         {
-            _monitor.Log($"Failed to load composting bin data: {ex.GetType().Name}", LogLevel.Warn);
+            _monitor.Log($"Failed to load composting bin data: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Trace);
         }
     }
 
@@ -249,7 +249,7 @@ public class CompostingBinService(
         }
         catch (Exception ex)
         {
-            _monitor.Log($"Failed to save composting bin data: {ex.GetType().Name}", LogLevel.Warn);
+            _monitor.Log($"Failed to save composting bin data: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Trace);
         }
     }
 
