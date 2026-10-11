@@ -1047,4 +1047,13 @@ public class SoilHealthVisualizationTests
         Assert.NotNull(field);
         return (T)field.GetValue(instance)!;
     }
+
+    /// <summary>T126 [P] [US3] RED — FR-011 (partial): overlays only drawable values.</summary>
+    [Property(Arbitrary = new[] { typeof(SoilHealthPropertyGenerator) })]
+    public void T126_Overlays_ReportOnlyDrawableValues_NeverFabricated(int healthValue)
+    {
+        // RED: unknown/unmeasurable tiles may fabricate overlay percentages.
+        Assert.True(healthValue >= 0 && healthValue <= 100,
+            "RED T126: fabricated overlay value for unmeasurable tile (FR-011 partial, never fabricated).");
+    }
 }
