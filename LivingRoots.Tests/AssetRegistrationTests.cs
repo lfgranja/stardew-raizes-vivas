@@ -1,3 +1,5 @@
+using FsCheck;
+using FsCheck.Xunit;
 using LivingRoots; // access ModConstants / asset keys
 using LivingRoots.Domain.Services; // OrganicWasteValidator-owned set reference
 using Xunit;
@@ -14,16 +16,15 @@ namespace LivingRoots.Tests
     public class AssetRegistrationTests
     {
         /// <summary>T120 [P] [US2] RED — FR-003 (partial): RequiredTags derived from validator set.</summary>
-        [Fact]
-        public void T120_RequiredTags_ExactlyOrganicWasteValidatorSet()
+        [Property(MaxTest = 100)]
+        public bool T120_RequiredTags_ExactlyOrganicWasteValidatorSet(string tag, int category)
         {
             // RED: Data/Machines RequiredTags diverge from the single validator-owned waste set.
             // Per specs/004-playable-compost-loop FR-003 (partial): the qualifying set stays
             // owned by the soil decay and compost specification; this feature MUST NOT restate,
-            // extend, narrow, or contradict that set.
-            Assert.True(false,
-                "RED T120: RequiredTags do not match OrganicWasteValidator-owned set (FR-003 partial, specs/004-playable-compost-loop). " +
-                "No restatement drift permitted — parity not yet attested.");
+            // extend, narrow, or contradict that set. Property-based over arbitrary tag/category
+            // inputs to prove zero restatement drift — fails until parity attested.
+            return false; // RED phase — parity not yet attested for any input domain
         }
     }
 }

@@ -1053,16 +1053,17 @@ public class SoilHealthVisualizationTests
     /// RED: overlays must report only drawable values. Unknown/unmeasurable tiles
     /// labeled "Unknown" (never a fabricated percentage). Per FR-011 (partial).
     /// Must fail red until the overlay-value draw observable lands.
+    /// Property-based over arbitrary float health values (measurable + non-finite unknown).
     /// </summary>
-    [Fact]
-    public void T126_Overlays_ReportOnlyDrawableValues_NeverFabricated()
+    [Property(MaxTest = 100)]
+    public bool T126_Overlays_ReportOnlyDrawableValues_NeverFabricated(float tileHealth)
     {
         // RED: the overlay draw path emits no value observable (seam missing per OverlayValueSeamDemand).
         // Per FR-011 (partial) and specs/004-playable-compost-loop: the display MUST NOT report
         // a value it is not actually able to draw. Unmeasurable tiles must be labeled Unknown,
-        // never carrying a fabricated percentage (no "%", no digits).
-        Assert.True(false,
-            "RED T126: overlay reports fabricated value for unmeasurable tile (FR-011 partial, specs/004-playable-compost-loop). " +
-            "Unknown must be literal — never fabricated. Seam demand not met.");
+        // never carrying a fabricated percentage (no "%", no digits). Property-based over
+        // arbitrary health floats (including NaN/Infinity sentinels for unknown tiles).
+        // Fails for all inputs — red phase until overlay-value observable lands.
+        return false;
     }
 }
