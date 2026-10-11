@@ -756,24 +756,16 @@ public class MultiplayerConcurrencyTests
     // =========================================================================
 
     /// <summary>
-    /// T115 (FR-019, contradicts T106's permissive bin site): a bin
+    /// T115 (FR-019, reconciled with T106 / Constitution III): a bin
     /// interaction on a placed, empty bin must refuse fail-closed —
     /// zero mutation (no waste deposited, no held stack consumed, no
     /// compost collected) and the refusal handler receives the
     /// action-conflict key — when the controller carries no host atomic
     /// lock service, because tile contention cannot be arbitrated
-    /// without the registry. The production code under test currently
-    /// takes the opposite path: T106 deliberately kept
-    /// <see cref="ModController.TryInteractWithBin"/> permissive (the
-    /// <c>?? true</c> acquisition at the lock call site), so this test
-    /// is RED — the deposit succeeds, the bin leaves
-    /// <see cref="CompostingBinState.Empty"/>, the held stack is
-    /// consumed and the refusal handler never fires. It drives the
-    /// reconciliation of T115 with T106: the fail-closed guard
-    /// <see cref="ModController.TryApplyCompostWithLock"/> already
-    /// carries (T106) extended to the bin interaction site, which T106
-    /// left permissive only because ModControllerTests pins that
-    /// outcome for headless doubles.
+    /// without the registry. The permissive <c>?? true</c> acquisition at
+    /// the lock call site (T106) was removed (FR-019 / T169); the
+    /// fail-closed guard now extends to this bin interaction site, so
+    /// this test asserts refusal, not the old permissive deposit.
     /// </summary>
     [Fact]
     public void TryInteractWithBin_AbsentLockService_FailsClosedWithZeroMutation()
@@ -1233,7 +1225,8 @@ public class MultiplayerConcurrencyTests
             sourcePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", sourcePath);
         }
         var source = File.ReadAllText(sourcePath);
-        Assert.DoesNotContain("?? true", source); // guard removed
+        Assert.DoesNotContain("?? true", source); // T106 removed
+        Assert.DoesNotContain("?? 0L", source);   // farmer-id collapse guarded (T169 / T175)
 
         // Arrange — placed empty bin, controller with NO lock service, farmer with waste
         var service = CreateBinService();

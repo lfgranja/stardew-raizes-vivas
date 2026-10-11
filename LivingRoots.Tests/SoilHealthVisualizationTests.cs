@@ -545,6 +545,55 @@ public class SoilHealthVisualizationTests
     }
 
     /// <summary>
+    /// T143 RED-FIRST (blocking T159): drawable-only overlay invariant.
+    /// Overlays must suppress fabricated values for unknown/unmeasurable tiles,
+    /// floor Poor interval at 1 (sub-floor not clamped/fabricated), and react
+    /// within <=16.67ms via OnTileHealthChanged (FR-010/FR-011).
+    /// Must FAIL red until overlay value observable and reaction wiring land.
+    /// </summary>
+    [Fact]
+    public void T143_OverlayDrawableOnly_SuppressesFabricated_UnknownFloorAt1_ReactsWithinFrameBudget()
+    {
+        // Arrange — unmeasurable (unknown) tile and sub-floor measurable
+        var messages = new List<string>();
+        var service = BuildDrawableValueFrameService(messages);
+        var unknownTile = new Point(DrawnValueTile.X, DrawnValueTile.Y);
+
+        // Unknown / unmeasurable tile must not report a fabricated percentage
+        service.SetTileHealthData(new Dictionary<Point, float>
+        {
+            { unknownTile, float.NaN }
+        });
+        string unknownReported = RenderOneDrawableValueFrame(service, messages);
+        Assert.Equal("Unknown", unknownReported);
+        Assert.DoesNotContain('%', unknownReported);
+
+        // Poor interval floor at 1: sub-floor measurable (0.5) must NOT be clamped to 1
+        service.SetTileHealthData(new Dictionary<Point, float>
+        {
+            { unknownTile, 0.5f }
+        });
+        string subFloorReported = RenderOneDrawableValueFrame(service, messages);
+        float drawnSub;
+        Assert.True(float.TryParse(subFloorReported, NumberStyles.Float, CultureInfo.CurrentCulture, out drawnSub));
+        Assert.NotEqual(1f, drawnSub); // floor at 1 must not fabricate/clamp
+
+        // React via OnTileHealthChanged within <=16.67ms (FR-010)
+        var stopwatch = Stopwatch.StartNew();
+        Action<string, Vector2, float> handler = (loc, tile, health) =>
+        {
+            service.SetTileHealthData(new Dictionary<Point, float>
+            {
+                { unknownTile, 75f }
+            });
+        };
+        handler("Farm", new Vector2(unknownTile.X, unknownTile.Y), 75f);
+        stopwatch.Stop();
+        Assert.True(stopwatch.Elapsed.TotalMilliseconds <= ModConstants.MaxRenderTimeMs,
+            $"Reactive overlay update exceeded {ModConstants.MaxRenderTimeMs}ms (FR-010)");
+    }
+
+    /// <summary>
     /// T126 (FR-011): every non-finite health float — the
     /// unknown sentinel (NaN) and both infinities — is
     /// reported as the literal Unknown label, with no

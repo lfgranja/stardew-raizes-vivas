@@ -2226,7 +2226,14 @@ namespace LivingRoots.Controllers
             // keeps the cache and the world object in
             // lockstep — vanilla placement would place the
             // machine without either. Three fixes land at
-            // this intercept: (1) the previous HoeDirt-only
+            // T166 / FR-002: allow farm / Greenhouse with HoeDirt; relax invalid-terrain refusal
+            var validLocation = location is StardewValley.GameLocation farm
+                && (farm.Name == "Farm" || farm.Name.Contains("Greenhouse") || farm.Name.Contains("Greenhouse"));
+            if (!validLocation)
+            {
+                // refusal preserved — invalid terrain refused with zero objects / zero state
+                return false;
+            }
             // requirement contradicted FR-002 (farm land is
             // placeable land, tilled or not — only water,
             // buildings and non-farm interiors are invalid

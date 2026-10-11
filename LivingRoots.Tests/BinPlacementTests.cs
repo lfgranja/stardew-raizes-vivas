@@ -1055,4 +1055,219 @@ public class BinPlacementTests
         Assert.True(placedObject.IsBigCraftable,
             $"FR-002: placed object must be a big craftable to fall under Data/BigCraftables stack-1 definition — identity guard missing.");
     }
+
+    /// <summary>
+    /// T142 [P] [US1] RED-FIRST — bin identity (BC)LivingRoots.CompostingBin,
+    /// progress-modData carried (FR-005c), max stack 1 enforced (FR-002), and
+    /// building-footprint refusal (FR-002). Must FAIL against current
+    /// controller/registration (identity guard incomplete, progress not preserved
+    /// through placement, definition lacks MaxStackSize=1, footprint not read).
+    /// Only test; production fix deferred to T158.
+    /// </summary>
+    [Fact]
+    public void T142_BinIdentityProgressStackAndFootprintRefusal()
+    {
+        var controller = CreateController();
+        var fixture = new GameLocationFixture("Farm", isFarm: true);
+
+        // --- Identity + progress + stack invariant (placement path) ---
+        var tile = new Vector2(10, 10);
+        fixture.AddHoeDirtTile(10, 10);
+
+        var binItem = CreateBinItem(stack: 1);
+        binItem.modData = new Dictionary<string, string>
+        {
+            [ModConstants.ModDataInputIdKey] = "(O)42",
+            [ModConstants.ModDataDaysRemainingKey] = "3"
+        };
+        var inventory = new List<Item?> { binItem };
+
+        bool placed = controller.TryPlaceBin(fixture.Location, tile, binItem, inventory);
+        Assert.True(placed, "T142: placement on clear farm tile must succeed.");
+
+        var placedObject = fixture.Location.Objects[tile];
+
+        // (1) Identity resolves as (BC)LivingRoots.CompostingBin
+        Assert.True(placedObject.IsBigCraftable,
+            "T142 FR-001/FR-002: placed bin must be big craftable for (BC) identity.");
+        Assert.Equal("(BC)" + ModConstants.CompostingBinItemId, placedObject.QualifiedItemId,
+            "T142 FR-002: placed bin must resolve as (BC)LivingRoots.CompostingBin, not (O).");
+
+        // (2) Progress-modData carried (FR-005c)
+        Assert.NotNull(placedObject.modData);
+        Assert.True(placedObject.modData.ContainsKey(ModConstants.ModDataInputIdKey),
+            "T142 FR-005c: progress InputId missing.");
+        Assert.Equal("(O)42", placedObject.modData[ModConstants.ModDataInputIdKey],
+            "T142 FR-005c: carried InputId must match.");
+        Assert.True(placedObject.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey),
+            "T142 FR-005c: progress DaysRemaining missing.");
+        Assert.Equal("3", placedObject.modData[ModConstants.ModDataDaysRemainingKey],
+            "T142 FR-005c: carried DaysRemaining must match.");
+
+        // (3) Max stack 1 enforced
+        Assert.Equal(1, placedObject.Stack,
+            "T142 FR-002: placed bin stack must be 1.");
+
+        // --- Building-footprint refusal (FR-002) ---
+        var footprintFixture = new GameLocationFixture("Farm", isFarm: true);
+        int fx = 7, fy = 7, fw = 2, fh = 3; // arbitrary footprint
+        AddBuildingFootprint(footprintFixture.Location, fx, fy, fw, fh);
+        // Far corner of footprint must refuse
+        var footprintTile = new Vector2(fx + fw - 1, fy + fh - 1);
+
+        var footprintBin = CreateBinItem(stack: 1);
+        var footprintInv = new List<Item?> { footprintBin };
+
+        bool footprintRefused = !controller.TryPlaceBin(footprintFixture.Location, footprintTile, footprintBin, footprintInv);
+        Assert.True(footprintRefused,
+            "T142 FR-002: bin placement on a building-footprint tile must be refused.");
+        Assert.False(footprintFixture.Location.Objects.ContainsKey(footprintTile),
+            "T142 FR-002: refused footprint placement must leave zero ghost objects.");
+        Assert.Equal(1, footprintBin.Stack,
+            "T142 FR-002: refused footprint placement must not deduct inventory.");
+        _mockCompostingBinService.Verify(
+            s => s.OnBinPlaced(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<Item>()),
+            Times.Never,
+            "T142 FR-002: footprint refusal must create zero service state.");
+    }
+
+    /// <summary>
+    /// T161 [P] [US1] RED-FIRST (blocks T166): BigCraftable identity (BC),
+    /// progress modData preserved (FR-005c / T158), max stack 1 enforced
+    /// (FR-002), building-footprint refusal (FR-002), farm/Greenhouse
+    /// accepted (FR-002 / FR-005c). Must FAIL red against current
+    /// ModController.TryPlaceBin (HoeDirt-only / footprint-check
+    /// mis-ordered at ~L1479 / L1990 / L2279–2296 — unconditionally
+    /// returns false, never sets bigCraftable, does not carry
+    /// modData to placed object, never reads buildings for valid
+    /// locations, and does not enforce stack-1 definition guard).
+    /// Only test file edited — production fix deferred to T166.
+    /// </summary>
+    [Property(MaxTest = 100)]
+    public void T161_BigCraftableIdentityProgressStackFootprintRefusal(
+        PositiveInt arbitraryX,
+        PositiveInt arbitraryY,
+        PositiveInt arbitraryInputId,
+        PositiveInt arbitraryDays)
+    {
+        int x = arbitraryX.Get % 21;
+        int y = arbitraryY.Get % 21;
+        int inputNum = arbitraryInputId.Get % 10000;
+        int daysRemaining = (arbitraryDays.Get % 30) + 1;
+
+        var controller = CreateController();
+
+        // --- Farm accepted (FR-002) ---
+        var farmFixture = new GameLocationFixture("Farm", isFarm: true);
+        var farmTile = new Vector2(x, y);
+        farmFixture.AddHoeDirtTile(x, y);
+        var farmBin = CreateBinItem(stack: 1);
+        farmBin.modData = new Dictionary<string, string>
+        {
+            [ModConstants.ModDataInputIdKey] = "(O)" + inputNum,
+            [ModConstants.ModDataDaysRemainingKey] = daysRemaining.ToString()
+        };
+        bool farmPlaced = controller.TryPlaceBin(
+            farmFixture.Location, farmTile, farmBin, new List<Item?> { farmBin });
+        Assert.True(farmPlaced,
+            "T161 FR-002: farm placement must be accepted (current code fails — invalid-terrain return false).");
+        Assert.True(farmFixture.Location.Objects.ContainsKey(farmTile),
+            "T161: placed object must exist at farm tile.");
+        var farmPlacedObj = farmFixture.Location.Objects[farmTile];
+
+        // (1) BigCraftable identity guard (FR-001 / T158)
+        Assert.True(farmPlacedObj.IsBigCraftable,
+            "T161 FR-001: placed bin must set bigCraftable flag for (BC) identity.");
+        Assert.Equal("(BC)" + ModConstants.CompostingBinItemId, farmPlacedObj.QualifiedItemId,
+            "T161 FR-002: identity must resolve as (BC)LivingRoots.CompostingBin, not (O).");
+
+        // (2) Progress modData preserved through placement (FR-005c / T158)
+        Assert.NotNull(farmPlacedObj.modData,
+            "T161 FR-005c: placed bin must carry modData dictionary.");
+        Assert.True(farmPlacedObj.modData.ContainsKey(ModConstants.ModDataInputIdKey),
+            "T161 FR-005c: InputId key missing.");
+        Assert.Equal("(O)" + inputNum, farmPlacedObj.modData[ModConstants.ModDataInputIdKey],
+            "T161 FR-005c: carried InputId must match original.");
+        Assert.True(farmPlacedObj.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey),
+            "T161 FR-005c: DaysRemaining key missing.");
+        Assert.Equal(daysRemaining.ToString(), farmPlacedObj.modData[ModConstants.ModDataDaysRemainingKey],
+            "T161 FR-005c: carried DaysRemaining must match original.");
+
+        // (3) Max stack 1 enforced (FR-002 / definition guard)
+        Assert.Equal(1, farmPlacedObj.Stack,
+            "T161 FR-002: placed bin stack must be 1.");
+
+        // --- Greenhouse accepted (FR-002) ---
+        var greenhouse = new GameLocationFixture("Greenhouse", isFarm: false);
+        greenhouse.AddHoeDirtTile(x, y);
+        var ghBin = CreateBinItem(stack: 1);
+        bool ghPlaced = controller.TryPlaceBin(
+            greenhouse.Location, farmTile, ghBin, new List<Item?> { ghBin });
+        Assert.True(ghPlaced,
+            "T161 FR-002: Greenhouse placement must be accepted.");
+
+        // --- Building-footprint refusal invariant (FR-002 / T158) ---
+        var footprintFixture = new GameLocationFixture("Farm", isFarm: true);
+        int fx = (x % 10) + 1, fy = (y % 10) + 1, fw = 2, fh = 3;
+        AddBuildingFootprint(footprintFixture.Location, fx, fy, fw, fh);
+        var footprintTile = new Vector2(fx + fw - 1, fy + fh - 1);
+        var fpBin = CreateBinItem(stack: 1);
+        var fpInv = new List<Item?> { fpBin };
+        bool fpRefused = !controller.TryPlaceBin(
+            footprintFixture.Location, footprintTile, fpBin, fpInv);
+        Assert.True(fpRefused,
+            "T161 FR-002: building-footprint tile must refuse placement (current footprint check only runs when !validLocation, so valid farm tiles skip refusal).");
+        Assert.False(footprintFixture.Location.Objects.ContainsKey(footprintTile),
+            "T161: refused footprint must leave zero ghost objects.");
+        Assert.Equal(1, fpBin.Stack,
+            "T161 FR-002: footprint refusal must not deduct inventory.");
+        _mockCompostingBinService.Verify(
+            s => s.OnBinPlaced(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<Item>()),
+            Times.Never,
+            "T161 FR-002: footprint refusal must create zero service state.");
+    }
+
+    /// <summary>
+    /// T114 [P] [US1] RED — FR-005c (contradicts): tool/explosion removal of progress-carrying bin.
+    /// Must fail: dislodged bin does not fully reconstruct Item.modData (InputId, DaysRemaining).
+    /// </summary>
+    [Property(Arbitrary = new[] { typeof(ModDataPropertyGenerator) })]
+    public void T114_DislogProgressModData_Preserved(bool hasInputId, int daysRemaining)
+    {
+        // Arrange: progress-carrying bin item with serialized modData
+        var item = new StardewValley.Object(Vector2.Zero, 0);
+        item.modData["LivingRoots.InputId"] = "batch-001";
+        item.modData["LivingRoots.DaysRemaining"] = daysRemaining.ToString();
+
+        // Act: dislodge via tool removal simulation (stubbed, does not fully reconstruct)
+        var reconstructed = SimulateDislodgeWithModData(item);
+
+        // Assert (will FAIL — production does not reconstruct both fields on dislodge):
+        Assert.NotNull(reconstructed.modData);
+        Assert.Equal("batch-001", reconstructed.modData.Get("LivingRoots.InputId"));
+        Assert.Equal(daysRemaining.ToString(), reconstructed.modData.Get("LivingRoots.DaysRemaining"));
+    }
+
+    /// <summary>
+    /// T116 [P] [US1] RED — FR-002 (partial): placement refused on building-footprint tile.
+    /// Must fail: current guard skips footprint refusal for valid farm tiles.
+    /// </summary>
+    [Fact]
+    public void T116_PlacementOnBuildingFootprint_Refused_ZeroGhost_ZeroState()
+    {
+        var footprintFixture = new GameLocationFixture("Farm", isFarm: true);
+        int bx = 5, by = 6, bw = 2, bh = 2;
+        AddBuildingFootprint(footprintFixture.Location, bx, by, bw, bh);
+        var footprintTile = new Vector2(bx + bw - 1, by + bh - 1);
+        var binInv = new List<Item?> { CreateBinItem(stack: 1) };
+
+        // Act
+        bool refused = !ModController.TryPlaceBin(
+            footprintFixture.Location, footprintTile, binInv[0]!, binInv);
+
+        // ASSERT (FAIL for correct reason — footprint not fully refused):
+        Assert.True(refused, "FR-002: footprint tile must refuse placement.");
+        Assert.False(footprintFixture.Location.Objects.ContainsKey(footprintTile),
+            "FR-002: zero ghost objects after refusal.");
+    }
 }

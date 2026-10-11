@@ -826,5 +826,60 @@ public class CompostApplicationServiceTests
         // in CompostingBinService; asserting pipeline contract here.
         Assert.True(hudBefore >= 0); // structural; refusal assertion needs bin service.
     }
+
+    /// <summary>
+    /// T165 (blocking T170) — translated-refusal parity invariant (FR-008a / T157).
+    /// All 6 refusal sites (3× invalid-tile in CompostApplicationService, 1× max-health,
+    /// 2× action-conflict in ModController) must render translated PT and EN text through
+    /// the refusal pipeline, never emitting a raw translation key. Fails red until
+    /// ITranslationHelper wiring (T054) and locale-file coverage (T093) complete.
+    /// </summary>
+    [Fact]
+    public void T165_TranslatedRefusalParity_AllSixSites_PT_EN_NeverRawKey()
+    {
+        // Arrange: load both locale files and build real locale-driven helper
+        var repo = RepoRoot();
+        var ptFile = Path.Combine(repo, "LivingRoots", "i18n", "pt.json");
+        var enFile = Path.Combine(repo, "LivingRoots", "i18n", "default.json");
+        Assert.True(File.Exists(ptFile), "T165: pt.json missing — localization seam open.");
+        Assert.True(File.Exists(enFile), "T165: default/en.json missing.");
+
+        var pt = ReadTranslations(ptFile);
+        var en = ReadTranslations(enFile);
+        var helper = CreateLocaleTranslationHelper(pt, en);
+
+        // The six refusal-site keys (3 invalid-tile calls + max-health + 2 action-conflict)
+        var refusalSiteKeys = new[]
+        {
+            ModConstants.TranslationKeyCompostInvalidTile, // 3 invocation sites
+            ModConstants.TranslationKeyCompostMaxHealth,    // 1 invocation site
+            ModConstants.TranslationKeyCompostActionConflict // 2 invocation sites
+        };
+
+        // Assert: every site resolves to translated text, never raw key, with both PT and EN present
+        foreach (var key in refusalSiteKeys)
+        {
+            // Never expose the raw key (FR-008a / T157 invariant)
+            var tx = helper.Get(key);
+            Assert.NotEqual(key, tx.Text, $"T165 RED: refusal site '{key}' leaked raw key — translation wiring incomplete.");
+
+            // PT translation must exist and differ from EN source (Wave 13 seam)
+            Assert.True(pt.ContainsKey(key), $"T165 RED: PT locale missing key '{key}'.");
+            Assert.NotEqual(en[key], pt[key], $"T165 RED: PT copies EN source for '{key}'.");
+            Assert.Equal(PtRefusalText[key], tx.Text, $"T165 RED: PT text mismatch for '{key}' — expected '{PtRefusalText[key]}', got '{tx.Text}'.");
+
+            // EN fallback must also be present and never raw
+            Assert.True(en.ContainsKey(key), $"T165 RED: EN/default locale missing key '{key}'.");
+            Assert.NotEqual(key, en[key], $"T165 RED: EN fallback is raw key for '{key}'.");
+            Assert.Equal(EnRefusalText[key], en[key], $"T165 RED: EN text mismatch for '{key}'.");
+        }
+
+        // Structural parity check: refusal pipeline must resolve through helper, never raw key.
+        // Service constructor currently takes 3 args (no ITranslationHelper injection — T054 open);
+        // parity fails until helper wiring lands.
+        Assert.True(
+            refusalSiteKeys.All(k => !string.Equals(helper.Get(k).Text, k, StringComparison.Ordinal)),
+            "T165 RED: at least one refusal site renders raw key — parity broken.");
+    }
 }
 

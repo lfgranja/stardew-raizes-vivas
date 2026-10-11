@@ -489,6 +489,68 @@ public class CompostingBinServiceTests
     }
 
     /// <summary>
+    /// T141 (red-first, blocking T156): single-batch payout invariant.
+    /// Exactly 1 compost yielded per finished batch; native Data/Machines
+    /// output disabled (no declared-output grant); CollectCompost is sole
+    /// credit. Fails red against current line 70 (outputCount = bin.MaturationLevel)
+    /// when MaturationLevel &gt; 1 — load with level 3 to expose the bug.
+    /// </summary>
+    [Property(MaxTest = 100)]
+    public bool CollectCompost_SingleBatchPayout_ExactlyOne_NativeDisabled(
+        NonNull<string> arbitraryItemId,
+        int arbitraryCategory)
+    {
+        string itemId = arbitraryItemId.Get;
+        if (string.IsNullOrWhiteSpace(itemId))
+        {
+            itemId = "(O)24";
+        }
+
+        var item = ItemFactory.CreateItem(itemId, arbitraryCategory);
+        var wasteValidator = new OrganicWasteValidator();
+        if (!wasteValidator.IsValidOrganicWaste(item))
+        {
+            return true; // premise not met — vacuous pass
+        }
+
+        var inventory = new RecordingPlayerInventory();
+        var timeStub = new TimeProviderStub();
+
+        // Force finished batch with MaturationLevel > 1 so line 70 yields > 1.
+        var data = new CompostingBinData();
+        data.LocationBinData["Farm"] = new Dictionary<string, CompostingBinStateData>();
+        data.LocationBinData["Farm"]["10,10"] = new CompostingBinStateData
+        {
+            State = "Ready",
+            InputItemId = item.QualifiedItemId,
+            InputTimestamp = 1,
+            MaturationLevel = 3 // bug trigger: current code outputs 3, invariant demands 1
+        };
+
+        var loadMock = new Mock<IModDataService>();
+        loadMock.Setup(x => x.LoadData<CompostingBinData>(It.IsAny<string>())).Returns(data);
+
+        var serviceWithLoad = new CompostingBinService(
+            loadMock.Object,
+            new Mock<ISaveIdProvider>().Object,
+            wasteValidator,
+            new Mock<IMonitor>().Object,
+            timeStub,
+            new CompostingBinFactory(),
+            inventory);
+
+        serviceWithLoad.LoadData("t141");
+        Assert.Equal(CompostingBinState.Ready, serviceWithLoad.GetBinState("Farm", new Vector2(10, 10)));
+
+        // Native Data/Machines output DISABLED: do NOT add declared-output item.
+        var result = serviceWithLoad.CollectCompost("Farm", new Vector2(10, 10));
+
+        // CollectCompost sole credit — only this call grants compost.
+        // Invariant: exactly 1 compost regardless of MaturationLevel.
+        return result == 1 && inventory.AddedItems.Count == 1;
+    }
+
+    /// <summary>
     /// Reads the native <c>Data/Machines</c> entry <see cref="ModEntry"/>
     /// registers for the composting bin — the native output declaration the
     /// game's own machine machinery pays when a finished machine is

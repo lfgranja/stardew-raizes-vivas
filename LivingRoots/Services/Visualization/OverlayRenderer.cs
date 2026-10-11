@@ -192,11 +192,14 @@ namespace LivingRoots.Services.Visualization
 
                 // FR-011 / T148: drawable-only reporting — suppress fabricated values
                 // for unknown/unmeasurable tiles; floor Poor interval at 1 (not 0).
-                if (float.IsNaN(healthValue) || float.IsInfinity(healthValue)
-                    || healthValue < 1f)
+                if (float.IsNaN(healthValue) || float.IsInfinity(healthValue))
                 {
                     // Unknown / unmeasurable: suppress overlay (do not fabricate)
                     continue;
+                }
+                if (healthValue < 1f)
+                {
+                    healthValue = 1f; // FR-011 / T178: floor Poor at 1
                 }
 
                 // FR-009: Poor interval floored at 1 (was [0,34)); never render 0.

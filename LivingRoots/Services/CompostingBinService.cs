@@ -67,7 +67,7 @@ public class CompostingBinService(
 
             if (bin.State != CompostingBinState.Ready) return 0;
 
-            int outputCount = bin.MaturationLevel;
+            int outputCount = 1; // FR-005a / T156: exactly-one batch yield, native Data/Machines disabled
             // FR-005a / T146: consume batch atomically so no second path (harvest/intercept) can double-payout
             bin.State = CompostingBinState.Empty;
 
@@ -76,7 +76,7 @@ public class CompostingBinService(
                 var compost = new StardewValley.Object(ModConstants.CompostItemId, 1);
                 if (!_playerInventory.TryAddItem(compost))
                 {
-                    Game1.showRedMessage("Inventory full — compost refused."); // T149 FR-008a
+                    Game1.showRedMessage(TranslateRefusalMessage("message.compost.inventory-full")); // T157 FR-008a
                     _monitor.Log($"CompostingBin: inventory refused compost at ({tile.X}, {tile.Y}); bin still consumed.", LogLevel.Warn);
                 }
             }

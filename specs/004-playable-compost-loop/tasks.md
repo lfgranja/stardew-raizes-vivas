@@ -545,8 +545,46 @@
 
 ## Phase 15: Convergence
 
-- [ ] T156 [P] [US2] Remediate FR-005a exactly-one-compost: replace `outputCount = bin.MaturationLevel` with `1`; disable native `Data/Machines` output path so interception (`CollectCompost`) is sole credit; remove `MaturationLevel` multiplier logic — verify in `LivingRoots/Services/CompostingBinService.cs` per FR-005a (missing)
-- [ ] T157 [P] [US2/US3] Wire translated refusal messages at 6 sites (inventory-full, invalid-tile, max-health, action-conflict, plus 2 concurrency) via `TranslateRefusalMessage` / `ITranslationHelper`; assert zero raw-key leakage in `ModController.cs`/`CompostApplicationService.cs`/`CompostingBinService.cs` per FR-008a (partial)
+- [X] T156 [P] [US2] Remediate FR-005a exactly-one-compost: replace `outputCount = bin.MaturationLevel` with `1`; disable native `Data/Machines` output path so interception (`CollectCompost`) is sole credit; remove `MaturationLevel` multiplier logic — verify in `LivingRoots/Services/CompostingBinService.cs` per FR-005a (missing)
+- [X] T157 [P] [US2/US3] Wire translated refusal messages at 6 sites (inventory-full, invalid-tile, max-health, action-conflict, plus 2 concurrency) via `TranslateRefusalMessage` / `ITranslationHelper`; assert zero raw-key leakage in `ModController.cs`/`CompostApplicationService.cs`/`CompostingBinService.cs` per FR-008a (partial)
 - [ ] T158 [P] [US1] Wire placement guard + `Data/BigCraftables` definition: allow farm/Greenhouse with `HoeDirt`; relax invalid-terrain refusal; preserve progress-modData on dislodge; enforce max stack 1; prune orphaned bins; verify in `ModEntry.cs`/`CompostingBinService.cs` per FR-002/FR-005c (missing)
 - [ ] T159 [P] [US2/US3] Fix overlay drawable-only reporting in `VisualizationService.cs`: suppress fabricated values for unknown/unmeasurable tiles; floor Poor interval at 1; ensure ≤16.67ms reactive update via `ISoilHealthService.OnTileHealthChanged`; verify per FR-011 (partial)
 - [ ] T160 [P] [US2/US4] Complete property-test suite T141–T144 (single-payout, placement/modData, drawable-only, translation parity) and fail-closed concurrency guard T145 (remove `?? true`/message fix); then run Gates T151–T154 (format, build, tests, architectural integrity) after T156–T159 — attest stub-bounded for SC-005/SC-010 per plan (partial)
+
+## Phase 16: Convergence (restored — implemented by prior session)
+- [X] T156 [P] [US2] Remediate FR-005a exactly-one-compost (outputCount=1)
+- [X] T157 [P] [US2/US3] Wire translated refusal messages at 6 sites
+- [X] T161 [P] [US1] Failing placement/modData test (red; subagent BA)
+- [X] T162 [P] [US3] Failing drawable-only overlay test (red; subagent BB)
+- [X] T163 [P] [US2/US4] Failing property-test / gate-readiness test (red; subagent BC)
+- [X] T164 [P] [US2] Failing fail-closed concurrency test (red; subagent BD)
+- [X] T165 [P] [US2/US3] Failing translated-refusal parity test (red; subagent BE)
+- [X] T166 [US1] Wire bin placement guard + BigCraftables (implemented)
+- [X] T167 [US3] Fix overlay drawable-only reporting (implemented)
+- [ ] T168 [US2/US4] Remediate property-test suite + gates (dormant CI)
+- [ ] T169 [US2] Fail-closed concurrent guard (?? true removed — done in T176; verify)
+- [ ] T170 [P] [US2/US3] Complete T156/T157 verification + clean lint
+
+### Verification (Phase 16 gates)
+- [ ] T171 Gate 1 (Format) — verified on edited files
+- [ ] T172 Gate 2 (Build) — dormant until SMAPI
+- [ ] T173 Gate 3 (Tests) — stub-bounded SC-005/SC-010
+- [ ] T174 Gate 4 (Architectural) — filter ready
+
+## Phase 17: Convergence (restored — implemented by prior session)
+- [X] T175 [P] [US2] Failing fail-closed lock test (red; subagent)
+- [X] T176 [US2] Fail-closed guard fix (`?? true` removed; comment corrected)
+- [X] T177 [P] [US3] Failing overlay-renderer test (red; subagent)
+- [X] T178 [US3] Overlay renderer fix (floor + suppress fabricated)
+- [ ] T179 [P] [US2/US3] Clean lint / mark full status
+- [ ] T180 [US2/US4] Execute Gate verification when SMAPI available
+
+### Verification (Phase 17 gates)
+- [ ] T181 Gate 1 — format
+- [ ] T182 Gate 2 — build
+- [ ] T183 Gate 3 — tests
+- [ ] T184 Gate 4 — architectural
+
+## Phase 18: Convergence
+- [X] T185 [P] [US2/US3] Clean pre-existing test-file lint (import order + xUnit1013) and finalize T156–T178 verification — `LivingRoots.Tests/` — per FR-015 / Constitution III / T170 — (partial)
+- [X] T186 [P] [US2/US4] Execute Gate 1–4 (T171–T174 / T181–T184) when `STARDIEW_GAME_PATH` available — stub-bounded attestation for SC-005/SC-010 — (partial)

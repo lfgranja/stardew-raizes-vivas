@@ -408,6 +408,11 @@ namespace LivingRoots.Services.Visualization
         /// </summary>
         private static string FormatTooltipText(float healthValue, HealthCategory category)
         {
+            // T159 / FR-011: floor Poor at 1; suppress fabricated values for NaN/Unknown
+            if (category == HealthCategory.Poor && healthValue < 1f)
+            {
+                healthValue = 1f;
+            }
             if (category == HealthCategory.Unknown || float.IsNaN(healthValue) || float.IsInfinity(healthValue))
             {
                 return "Soil Health: Unknown";
