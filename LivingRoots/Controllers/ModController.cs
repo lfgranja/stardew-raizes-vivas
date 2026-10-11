@@ -2283,7 +2283,7 @@ namespace LivingRoots.Controllers
             bool locationValid = location.IsFarm || IsGreenhouseLikeLocation(location);
 
             // T129 (FR-002): refuse placement on building footprint tiles
-            if (!locationValid)
+            if (locationValid)
             {
                 foreach (var building in location.buildings)
                 {
@@ -2297,8 +2297,9 @@ namespace LivingRoots.Controllers
                 }
             }
 
-            // invalid terrain
+            if (!locationValid)
             {
+                // Non-farm/non-greenhouse locations are refused
                 return false;
             }
 
