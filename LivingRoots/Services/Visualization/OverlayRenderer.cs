@@ -190,17 +190,17 @@ namespace LivingRoots.Services.Visualization
                 var tilePos = kvp.Key;
                 var healthValue = kvp.Value;
 
-                // FR-014: render Unknown color when health data is unavailable
-                if (float.IsNaN(healthValue) || float.IsInfinity(healthValue))
+                // FR-011 / T148: drawable-only reporting — suppress fabricated values
+                // for unknown/unmeasurable tiles; floor Poor interval at 1 (not 0).
+                if (float.IsNaN(healthValue) || float.IsInfinity(healthValue)
+                    || healthValue < 1f)
                 {
-                    var unknownColor = new Color(
-                        ModConstants.UnknownColor.R,
-                        ModConstants.UnknownColor.G,
-                        ModConstants.UnknownColor.B,
-                        (byte)(opacity * 255f));
-                    overlays.Add(new TileOverlay(tilePos, unknownColor, PatternType.None, healthValue, HealthCategory.Unknown));
+                    // Unknown / unmeasurable: suppress overlay (do not fabricate)
                     continue;
                 }
+
+                // FR-009: Poor interval floored at 1 (was [0,34)); never render 0.
+                healthValue = Math.Max(healthValue, 1f);
 
                 var category = _colorService.GetCategoryForHealth(healthValue);
                 var color = _colorService.GetColorForHealth(healthValue, opacity);

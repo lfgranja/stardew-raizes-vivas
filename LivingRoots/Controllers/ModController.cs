@@ -867,6 +867,7 @@ namespace LivingRoots.Controllers
                 }
                 else if (state == Domain.CompostingBinState.Ready)
                 {
+                    // FR-005a / T146: CollectCompost is the sole credit — no automatic harvest/intercept payout
                     _compostingBinService.CollectCompost(location.Name, binTile);
                 }
             }

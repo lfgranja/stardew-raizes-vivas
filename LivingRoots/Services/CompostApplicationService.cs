@@ -21,6 +21,7 @@ public class CompostApplicationService(
 
         if (!location.IsFarm && locationName != "Greenhouse")
         {
+            Game1.showRedMessage("Compost only on farm or Greenhouse.");
             _monitor.Log($"Compost rejected: {locationName} is not farm or Greenhouse.", LogLevel.Trace);
             Game1.playSound("cancel");
             return false;
@@ -29,6 +30,7 @@ public class CompostApplicationService(
         if (!location.terrainFeatures.TryGetValue(tile, out var terrainFeature)
             || terrainFeature is not HoeDirt)
         {
+            Game1.showRedMessage("Tile not tilled.");
             _monitor.Log("Compost rejected: target tile is not tilled soil.", LogLevel.Trace);
             Game1.playSound("cancel");
             return false;
@@ -37,6 +39,7 @@ public class CompostApplicationService(
         var currentHealth = _soilHealthService.GetSoilHealth(locationName, tile);
         if (currentHealth >= ModConstants.MaxSoilHealth)
         {
+            Game1.showRedMessage("Soil at max health.");
             _monitor.Log("Compost rejected: tile already at maximum health.", LogLevel.Trace);
             Game1.playSound("cancel");
             return false;
@@ -45,6 +48,7 @@ public class CompostApplicationService(
         var heldItem = _playerProvider.CurrentItem;
         if (heldItem == null || heldItem.QualifiedItemId != ModConstants.CompostItemId)
         {
+            Game1.showRedMessage("Not holding compost.");
             _monitor.Log("Compost rejected: player not holding compost.", LogLevel.Trace);
             Game1.playSound("cancel");
             return false;
