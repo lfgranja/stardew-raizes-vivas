@@ -1,7 +1,7 @@
 using System;
-using System.IO;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -1288,8 +1288,8 @@ public class MultiplayerConcurrencyTests
         // RED-phase: production currently allows mutation via the permissive ?? true acquisition
         // (contradicts FR-019). The refusal message also leaks the raw translation key at the
         // controller boundary instead of translated text (FR-008a, T122). This assertion drives
-        // removal of the permissive path and wired translation.
-        Assert.True(false, "RED T115 [P] [US2]: mutation permitted with null lock service; raw refusal key leaks (FR-019 contradicts, FR-008a partial). Task IDs: T115 / specs/004-playable-compost-loop.");
+        // removal of the permissive path and wired translation. Confirmed red: fails for right reason.
+        Assert.Fail("RED T115 [P] [US2]: mutation permitted with null lock service; raw refusal key leaks (FR-019 contradicts, FR-008a partial). Task IDs: T115 / specs/004-playable-compost-loop.");
     }
 
     /// <summary>T122 [P] [US3] RED — specs/004-playable-compost-loop. FR-008a (partial): both ModController conflict sites render translated text (never raw key).</summary>
@@ -1305,7 +1305,7 @@ public class MultiplayerConcurrencyTests
         // delivers raw translation keys (not translated) through the refusal handler,
         // and TryApplyCompostWithLock does not invoke the refusal handler at all when
         // the lock service is null, so zero HUD messages are rendered.
-        Assert.True(false, "RED T122 [P] [US3]: both ModController conflict sites (compost + bin) render raw translation keys instead of translated text (FR-008a partial). Task IDs: T122 / specs/004-playable-compost-loop. References: FR-019 (T115), FR-008a.");
+        Assert.Fail("RED T122 [P] [US3]: both ModController conflict sites (compost + bin) render raw translation keys instead of translated text (FR-008a partial). Task IDs: T122 / specs/004-playable-compost-loop. References: FR-019 (T115), FR-008a.");
     }
 
     /// <summary>T125 [P] [US2] RED — specs/004-playable-compost-loop. FR-019 (partial): SC-010 headline test drives production TryApplyCompostWithLock / CompostApplicationService.</summary>
@@ -1316,7 +1316,7 @@ public class MultiplayerConcurrencyTests
         // must pin production TryApplyCompostWithLock and CompostApplicationService behaviour,
         // not an inline lock/app simulation. Current headline passes but relies on the
         // inline stub; the RED assertion drives full production-path verification.
-        Assert.True(false, "RED T125 [P] [US2]: SC-010 headline does not fully drive production TryApplyCompostWithLock / CompostApplicationService (FR-019 partial). Task IDs: T125 / specs/004-playable-compost-loop. References: FR-019 (T106 reconciliation), SC-010.");
+        Assert.Fail("RED T125 [P] [US2]: SC-010 headline does not fully drive production TryApplyCompostWithLock / CompostApplicationService (FR-019 partial). Task IDs: T125 / specs/004-playable-compost-loop. References: FR-019 (T106 reconciliation), SC-010.");
     }
 
 }
