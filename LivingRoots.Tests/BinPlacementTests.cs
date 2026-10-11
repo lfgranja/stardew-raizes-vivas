@@ -1228,46 +1228,109 @@ public class BinPlacementTests
     }
 
     /// <summary>
-    /// T114 [P] [US1] RED — FR-005c (contradicts): tool/explosion removal of progress-carrying bin.
-    /// Must fail: dislodged bin does not fully reconstruct Item.modData (InputId, DaysRemaining).
+    /// T114 [P] [US1] RED — FR-005c (contradicts): tool/explosion removal of a progress-carrying bin.
+    /// Must fail for the right reason — current implementation does not preserve batch
+    /// modData (InputId, DaysRemaining) on removal; OnObjectListChanged only prunes
+    /// the service record and never calls <see cref="ICompostingBinService.CreateDislodgedBinItem"/>
+    /// to reconstruct the dislodged item, destroying the batch contents/progress.
     /// </summary>
-    [Property(Arbitrary = new[] { typeof(ModDataPropertyGenerator) })]
-    public void T114_DislogProgressModData_Preserved(bool hasInputId, int daysRemaining)
+    [Property(MaxTest = 100)]
+    public void T114_ToolOrExplosionRemovesProgressBin_PreservesBatchModData(
+        PositiveInt arbitraryX,
+        PositiveInt arbitraryY,
+        NonNull<string> arbitraryInput,
+        PositiveInt arbitraryDays)
     {
-        // Arrange: progress-carrying bin item with serialized modData
-        var item = new StardewValley.Object(Vector2.Zero, 0);
-        item.modData["LivingRoots.InputId"] = "batch-001";
-        item.modData["LivingRoots.DaysRemaining"] = daysRemaining.ToString();
+        int x = arbitraryX.Get % 21;
+        int y = arbitraryY.Get % 21;
+        string inputId = "batch_" + (arbitraryInput.Get.Length > 0
+            ? arbitraryInput.Get.Substring(0, Math.Min(8, arbitraryInput.Get.Length))
+            : "def");
+        int daysRemaining = (arbitraryDays.Get % 30) + 1;
 
-        // Act: dislodge via tool removal simulation (stubbed, does not fully reconstruct)
-        var reconstructed = SimulateDislodgeWithModData(item);
+        var worldEvents = WireControllerEventSubscriptionsWithWorld().World;
+        var controller = CreateController();
+        controller.RegisterEvents();
 
-        // Assert (will FAIL — production does not reconstruct both fields on dislodge):
-        Assert.NotNull(reconstructed.modData);
-        Assert.Equal("batch-001", reconstructed.modData.Get("LivingRoots.InputId"));
-        Assert.Equal(daysRemaining.ToString(), reconstructed.modData.Get("LivingRoots.DaysRemaining"));
+        var fixture = new GameLocationFixture("Farm", isFarm: true);
+        var tile = new Vector2(x, y);
+        var binItem = CreateBinItem(stack: 1);
+        binItem.modData[ModConstants.ModDataInputIdKey] = inputId;
+        binItem.modData[ModConstants.ModDataDaysRemainingKey] = daysRemaining.ToString();
+        var inventory = new List<Item?> { binItem };
+
+        Assert.True(
+            controller.TryPlaceBin(fixture.Location, tile, binItem, inventory),
+            "Precondition: placement of a progress-carrying bin must succeed so a batch record exists to preserve (FR-005c / T114).");
+        _mockCompostingBinService.Verify(
+            x => x.OnBinPlaced("Farm", tile, It.Is<Item>(i =>
+                i.modData.ContainsKey(ModConstants.ModDataInputIdKey) &&
+                i.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey))),
+            Times.Once,
+            "Precondition: placement must seed the service record with batch progress (FR-005c).");
+
+        // Simulate the game removing the object (axe/pickaxe/hoe hit or explosion).
+        fixture.Location.Objects.Remove(tile);
+        var removed = new List<KeyValuePair<Vector2, StardewValley.Object>>
+        {
+            new KeyValuePair<Vector2, StardewValley.Object>(
+                tile,
+                new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId }),
+        };
+        worldEvents.Raise(
+            x => x.ObjectListChanged += null,
+            CreateObjectListChangedEventArgs(fixture.Location, removed));
+
+        // RED (fails): current code never reconstructs the dislodged item,
+        // so the batch (modData) is destroyed rather than preserved.
+        _mockCompostingBinService.Verify(
+            x => x.CreateDislodgedBinItem("Farm", tile),
+            Times.Once,
+            "FR-005c (T114): removal of a progress-carrying bin must reconstruct the dislodged item from the service record — the batch modData (InputId/DaysRemaining) must survive removal, not be destroyed with the pruned record.");
+
+        _mockCompostingBinService.Verify(
+            x => x.OnObjectRemoved("Farm", tile),
+            Times.Once,
+            "FR-002 / FR-005c (T114): the stale service record must still be pruned so no orphaned state survives, but the batch must be preserved through reconstruction.");
+
+        Assert.False(
+            fixture.Location.Objects.ContainsKey(tile),
+            "Precondition: the game-side removal must leave no world object at the tile (FR-002 / T114).");
     }
 
     /// <summary>
-    /// T116 [P] [US1] RED — FR-002 (partial): placement refused on building-footprint tile.
-    /// Must fail: current guard skips footprint refusal for valid farm tiles.
+    /// T116 [P] [US1] RED — FR-002 (partial): bin placement on building-footprint tiles is refused
+    /// with zero objects added and zero service state. Must fail because the current guard
+    /// skips footprint refusal for valid farm tiles (only checks footprint when location
+    /// is already invalid), so a footprint-covered tile on farm land is accepted.
     /// </summary>
     [Fact]
     public void T116_PlacementOnBuildingFootprint_Refused_ZeroGhost_ZeroState()
     {
+        var controller = CreateController();
         var footprintFixture = new GameLocationFixture("Farm", isFarm: true);
         int bx = 5, by = 6, bw = 2, bh = 2;
         AddBuildingFootprint(footprintFixture.Location, bx, by, bw, bh);
         var footprintTile = new Vector2(bx + bw - 1, by + bh - 1);
-        var binInv = new List<Item?> { CreateBinItem(stack: 1) };
+        var binItem = CreateBinItem(stack: 1);
+        var inventory = new List<Item?> { binItem };
 
-        // Act
-        bool refused = !ModController.TryPlaceBin(
-            footprintFixture.Location, footprintTile, binInv[0]!, binInv);
+        bool refused = controller.TryPlaceBin(
+            footprintFixture.Location, footprintTile, binItem, inventory);
 
-        // ASSERT (FAIL for correct reason — footprint not fully refused):
-        Assert.True(refused, "FR-002: footprint tile must refuse placement.");
-        Assert.False(footprintFixture.Location.Objects.ContainsKey(footprintTile),
-            "FR-002: zero ghost objects after refusal.");
+        Assert.False(
+            refused,
+            "FR-002 (T116): bin placement on a building-footprint tile must be refused — buildings are invalid terrain.");
+        Assert.False(
+            footprintFixture.Location.Objects.ContainsKey(footprintTile),
+            "FR-002 (T116): refused footprint placement must leave zero ghost objects.");
+        Assert.Equal(
+            1,
+            binItem.Stack,
+            "FR-002 (T116): refused footprint placement must not deduct the bin from inventory.");
+        _mockCompostingBinService.Verify(
+            s => s.OnBinPlaced(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<Item>()),
+            Times.Never,
+            "FR-002 (T116): refused footprint placement must create zero service state.");
     }
 }

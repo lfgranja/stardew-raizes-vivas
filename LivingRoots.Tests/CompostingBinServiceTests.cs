@@ -1516,27 +1516,112 @@ public class CompostingBinServiceTests
         }
     }
 
-    /// <summary>T119 [P] [US2] RED — FR-005b (partial): exactly one compost (no double payout).</summary>
+    /// <summary>T119 [P] [US2] RED — FR-005b (partial): exactly one compost across both drivers.</summary>
     [Property]
     public void T119_ExactlyOneCompost_NoDoublePayout()
     {
-        // RED: native Data/Machines output + interception harvest not reconciled → may double-pay.
-        Assert.True(false, "RED T119: batch may yield >1 compost (native + interception unreconciled, FR-005b).");
+        // Fixed finished batch — invariant is per-batch exactly-once;
+        // no generated input domain (property premise always met).
+        var item = CreateValidItem();
+        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
+        _timeStub.TotalDays = 1;
+        _service.AddWaste("Farm", new Vector2(10, 10), item);
+        _timeStub.TotalDays = 3;
+        _service.ProcessDayStart("Farm");
+
+        var tile = new Vector2(10, 10);
+        var location = CreateLocationWithPlacedBin(tile);
+        var controller = CreateInteractionController();
+
+        // Driver 1 — interception harvest.
+        controller.TryInteractWithBin(location, tile, 1L, null);
+
+        // Driver 2 — native Data/Machines output declaration.
+        var machineData = ReadRegisteredBinMachineData();
+        var declaredOutput = machineData?.OutputRules?
+            .SelectMany(rule => rule.OutputItem ?? new List<MachineItemOutput>())
+            .FirstOrDefault();
+        if (declaredOutput != null)
+        {
+            var nativeOutput = new StardewValley.Object { ItemId = declaredOutput.ItemId };
+            _inventory.TryAddItem(nativeOutput);
+        }
+
+        // FR-005b: exactly one compost total across both drivers.
+        // RED: unreconciled native + interception yields 2, so count != 1.
+        Assert.Equal(1, _inventory.AddedItems.Count);
     }
 
-    /// <summary>T121 [P] [US2] RED — FR-005b/FR-008a (partial): translated refusal text.</summary>
+    /// <summary>T121 [P] [US2] RED — FR-005b/FR-008a (partial): translated refusal HUD text.</summary>
     [Fact]
     public void T121_FullInventoryHarvest_ShowsTranslatedRedText()
     {
-        // RED: falls back to raw key when _helper?.Translation is null.
-        Assert.True(false, "RED T121: refusal message may show raw translation key instead of translated text (FR-008a).");
+        var item = CreateValidItem();
+        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
+        _inventory.AcceptsItems = false;
+
+        _timeStub.TotalDays = 1;
+        _service.AddWaste("Farm", new Vector2(10, 10), item);
+        _timeStub.TotalDays = 3;
+        _service.ProcessDayStart("Farm");
+
+        int hudBefore = Game1.hudMessages.Count;
+        var result = _service.CollectCompost("Farm", new Vector2(10, 10));
+
+        Assert.Equal(0, result);
+        Assert.Empty(_inventory.AddedItems);
+        Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", new Vector2(10, 10)));
+
+        // RED (FR-005b/FR-008a): refusal must render translated red HUD
+        // text — never the raw translation key. Currently falls back
+        // to raw key (or missing), so assertion fails.
+        Assert.Equal(hudBefore + 1, Game1.hudMessages.Count);
+        string refusalText = Game1.hudMessages[Game1.hudMessages.Count - 1].message;
+        Assert.NotEqual(ModConstants.TranslationKeyHarvestInventoryFull, refusalText);
+        Assert.Contains("inventory", refusalText, System.StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>T124 [P] [US3] RED — FR-008a (missing): invalid drop-in shakes machine.</summary>
+    /// <summary>T124 [P] [US2] RED — FR-008a (missing): invalid drop-in shakes machine.</summary>
     [Fact]
     public void T124_InvalidDropIn_ShakesMachine_PlusCancelCue()
     {
-        // RED: machine shake not implemented for invalid drop-in.
-        Assert.True(false, "RED T124: invalid drop-in does not trigger machine shake (FR-008a missing).");
+        var tile = new Vector2(10, 10);
+        var item = ItemFactory.CreateItem("Object.Stone", StoneCategory);
+
+        var location = CreateLocationWithPlacedBin(tile);
+        var locationProvider = new Mock<ILocationProvider>();
+        locationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(location);
+
+        var inventory = new RecordingPlayerInventory();
+        var service = new CompostingBinService(
+            new Mock<IModDataService>().Object,
+            new Mock<ISaveIdProvider>().Object,
+            new OrganicWasteValidator(),
+            new Mock<IMonitor>().Object,
+            new TimeProviderStub(),
+            new CompostingBinFactory(),
+            inventory,
+            locationProvider.Object);
+
+        var sounds = new RecordingSoundsHelper();
+        var previousSounds = Game1.sounds;
+        Game1.sounds = sounds;
+        try
+        {
+            service.AddWaste("Farm", tile, item);
+        }
+        finally
+        {
+            Game1.sounds = previousSounds;
+        }
+
+        // Vanilla audio cancel cue is present (existing behavior).
+        Assert.Contains(CancelCueName, sounds.Cues);
+
+        // RED (FR-008a missing): machine shake must trigger.
+        // Currently shakeTimer remains 0, so assertion fails.
+        var worldObject = location.Objects[tile];
+        Assert.True(worldObject.shakeTimer > 0,
+            "Invalid drop-in must shake the machine in addition to cancel cue (FR-008a).");
     }
 }

@@ -1048,12 +1048,21 @@ public class SoilHealthVisualizationTests
         return (T)field.GetValue(instance)!;
     }
 
-    /// <summary>T126 [P] [US3] RED — FR-011 (partial): overlays only drawable values.</summary>
-    [Property(Arbitrary = new[] { typeof(SoilHealthPropertyGenerator) })]
-    public void T126_Overlays_ReportOnlyDrawableValues_NeverFabricated(int healthValue)
+    /// <summary>
+    /// T126 [P] [US3] — specs/004-playable-compost-loop
+    /// RED: overlays must report only drawable values. Unknown/unmeasurable tiles
+    /// labeled "Unknown" (never a fabricated percentage). Per FR-011 (partial).
+    /// Must fail red until the overlay-value draw observable lands.
+    /// </summary>
+    [Fact]
+    public void T126_Overlays_ReportOnlyDrawableValues_NeverFabricated()
     {
-        // RED: unknown/unmeasurable tiles may fabricate overlay percentages.
-        Assert.True(healthValue >= 0 && healthValue <= 100,
-            "RED T126: fabricated overlay value for unmeasurable tile (FR-011 partial, never fabricated).");
+        // RED: the overlay draw path emits no value observable (seam missing per OverlayValueSeamDemand).
+        // Per FR-011 (partial) and specs/004-playable-compost-loop: the display MUST NOT report
+        // a value it is not actually able to draw. Unmeasurable tiles must be labeled Unknown,
+        // never carrying a fabricated percentage (no "%", no digits).
+        Assert.True(false,
+            "RED T126: overlay reports fabricated value for unmeasurable tile (FR-011 partial, specs/004-playable-compost-loop). " +
+            "Unknown must be literal — never fabricated. Seam demand not met.");
     }
 }

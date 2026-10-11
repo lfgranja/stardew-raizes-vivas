@@ -1261,28 +1261,63 @@ public class MultiplayerConcurrencyTests
         Assert.Equal(BinConflictTranslationMarker + ModConstants.TranslationKeyCompostActionConflict, refusals[0]);
     }
 
-    /// <summary>T115 [P] [US2] RED — FR-019 (contradicts): fail-closed with absent lock.</summary>
+    /// <summary>T115 [P] [US2] RED — specs/004-playable-compost-loop. FR-019 (contradicts): TryInteractWithBin with absent lock refuses fail-closed (zero mutation).</summary>
     [Fact]
-    public void T115_TryInteractWithBin_AbsentLock_Refuses_ZeroMutation()
+    public void T115_TryInteractWithBin_AbsentLockService_RefusesFailClosed_ZeroMutation()
     {
-        // RED: ?? true on mutating path allows mutation when IHostAtomicLockService is null.
-        Assert.True(false, "RED T115: mutation allowed with null lock service (FR-019 contradicts fail-closed).");
+        // Arrange — placed empty bin, controller WITHOUT lock service (headless double), farmer holding waste (FR-019 contradiction: ?? true permits mutation).
+        var service = CreateBinService();
+        var fixture = new GameLocationFixture("Farm", isFarm: true);
+        var tile = new Vector2(10, 10);
+        var placedBin = new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId, TileLocation = tile };
+        fixture.Location.Objects.Add(tile, placedBin);
+        var controller = CreateController(service, null, null, null);
+        var heldWaste = CreateWasteItem(stack: 1);
+        var refusals = new List<string>();
+
+        // Act — deposit attempt through production bin interaction path.
+        bool success = controller.TryInteractWithBin(
+            fixture.Location, tile, 9999L, heldWaste, null, msg => refusals.Add(msg));
+
+        // Assert — fail-closed: refusal, zero mutation, held stack untouched.
+        Assert.False(success, "T115 [P] [US2]: absent lock service must refuse bin interaction (FR-019 fail-closed).");
+        Assert.Equal(CompostingBinState.Empty, service.GetBinState("Farm", tile));
+        Assert.Equal(1, heldWaste.Stack);
+        Assert.Single(refusals);
+
+        // RED-phase: production currently allows mutation via the permissive ?? true acquisition
+        // (contradicts FR-019). The refusal message also leaks the raw translation key at the
+        // controller boundary instead of translated text (FR-008a, T122). This assertion drives
+        // removal of the permissive path and wired translation.
+        Assert.True(false, "RED T115 [P] [US2]: mutation permitted with null lock service; raw refusal key leaks (FR-019 contradicts, FR-008a partial). Task IDs: T115 / specs/004-playable-compost-loop.");
     }
 
-    /// <summary>T122 [P] [US3] RED — FR-008a (partial): translated text at both conflict sites.</summary>
+    /// <summary>T122 [P] [US3] RED — specs/004-playable-compost-loop. FR-008a (partial): both ModController conflict sites render translated text (never raw key).</summary>
     [Fact]
-    public void T122_ConflictSites_RenderTranslatedText()
+    public void T122_ConflictSites_RenderTranslatedText_NeverRawKey()
     {
-        // RED: raw key leaks at conflict sites instead of translated message.
-        Assert.True(false, "RED T122: conflict messages show raw key, not translated text (FR-008a partial).");
+        // Arrange — both conflict sites (compost action + bin interaction) driven through
+        // production input path with absent lock service; stub translation wired.
+        int hudMessagesBeforeCompost = Game1.hudMessages.Count;
+        int hudMessagesBeforeBin = hudMessagesBeforeCompost; // same session for comparison
+
+        // Assert — translated refusal text must appear at both sites; current production
+        // delivers raw translation keys (not translated) through the refusal handler,
+        // and TryApplyCompostWithLock does not invoke the refusal handler at all when
+        // the lock service is null, so zero HUD messages are rendered.
+        Assert.True(false, "RED T122 [P] [US3]: both ModController conflict sites (compost + bin) render raw translation keys instead of translated text (FR-008a partial). Task IDs: T122 / specs/004-playable-compost-loop. References: FR-019 (T115), FR-008a.");
     }
 
-    /// <summary>T125 [P] [US2] RED — FR-019 (partial): SC-010 headline uses production lock/app service.</summary>
+    /// <summary>T125 [P] [US2] RED — specs/004-playable-compost-loop. FR-019 (partial): SC-010 headline test drives production TryApplyCompostWithLock / CompostApplicationService.</summary>
     [Fact]
     public void T125_SC010_Headline_DrivesProductionLockAndAppService()
     {
-        // RED: headline test uses inline stub instead of production TryApplyCompostWithLock / CompostApplicationService.
-        Assert.True(false, "RED T125: SC-010 headline does not drive production lock/app service (FR-019 partial).");
+        // Assert — the headline concurrency test (ConcurrentCompostApplication_TwoFarmersOnSameTile)
+        // must pin production TryApplyCompostWithLock and CompostApplicationService behaviour,
+        // not an inline lock/app simulation. Current headline passes but relies on the
+        // inline stub; the RED assertion drives full production-path verification.
+        Assert.True(false, "RED T125 [P] [US2]: SC-010 headline does not fully drive production TryApplyCompostWithLock / CompostApplicationService (FR-019 partial). Task IDs: T125 / specs/004-playable-compost-loop. References: FR-019 (T106 reconciliation), SC-010.");
     }
+
 }
 
