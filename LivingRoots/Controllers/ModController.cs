@@ -2521,21 +2521,12 @@ namespace LivingRoots.Controllers
                 return false;
             }
 
-            // T081b (Constitution V, FR-019) + T106:
-            // a controller built without a
-            // lock service has no contention
-            // to resolve, so acquisition
-            // trivially succeeds and the
-            // release is a no-op — never a
-            // second, disjoint lock registry.
-            // T106 keeps this permissive site
-            // on purpose: ModControllerTests
-            // constructs 7-arg controllers
-            // (null lock) and pins the
-            // (T115 T118 FR-019) Fail-closed: absent lock service refuses interaction
-            // rather than silently proceeding. The state-mutating compost application
-            // path (TryApplyCompostWithLock) below is the primary fail-closed gate;
-            // this path guards the conflict-messaging branch.
+            // T128 (FR-019, contradicts): fail-closed guard — if no host-authoritative
+            // atomic lock service is injected, interaction is refused (not silently
+            // allowed) and the refusal handler is invoked with the conflict key.
+            // The ?? 0L collapse on farmerId in the caller is safe because the
+            // lock service treats 0 as a valid (anonymous) farmer identifier; it
+            // never causes a null-reference or silent bypass.
             if (_hostAtomicLockService == null ||
                 !_hostAtomicLockService.TryAcquireLock(location.Name, tile, farmerId))
             {
