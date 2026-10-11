@@ -2531,12 +2531,17 @@ namespace LivingRoots.Controllers
                 return false;
             }
 
-            // T128 (FR-019, contradicts): fail-closed guard — if no host-authoritative
-            // atomic lock service is injected, interaction is refused (not silently
-            // allowed) and the refusal handler is invoked with the conflict key.
-            // The ?? 0L collapse on farmerId in the caller is safe because the
-            // lock service treats 0 as a valid (anonymous) farmer identifier; it
-            // never causes a null-reference or silent bypass.
+            // T128 (FR-019): fail-closed guard — interaction refused (not silently
+            // allowed) when no host-authoritative atomic lock service is available,
+            // when the farmer identifier collapsed to 0L (?? 0L collapse guarded),
+            // or when the lock is already held by another farmer. The refusal
+            // handler receives the conflict message key; zero mutation occurs.
+            if (farmerId == 0L)
+            {
+                refusalHandler?.Invoke(ModConstants.TranslationKeyCompostActionConflict);
+                return false;
+            }
+
             if (_hostAtomicLockService == null ||
                 !_hostAtomicLockService.TryAcquireLock(location.Name, tile, farmerId))
             {
