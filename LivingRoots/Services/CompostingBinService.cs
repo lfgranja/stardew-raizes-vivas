@@ -264,12 +264,74 @@ public class CompostingBinService(
     // Stub methods for interface compliance (T127, T194, FR-005c, FR-002)
     public StardewValley.Item? CreateDislodgedBinItem(string locationName, Vector2 tile)
     {
-        // Stub: reconstruct dislodged bin with progress preserved
-        return null; // Production should return non-null with modData preserved
+        var key = GetTileKey(tile);
+        lock (_lock)
+        {
+            if (!_runtimeCache.ContainsKey(locationName) ||
+                !_runtimeCache[locationName].TryGetValue(key, out var bin))
+            {
+                return null;
+            }
+
+            var item = new StardewValley.Object(ModConstants.CompostingBinItemId, 1);
+            item.bigCraftable.Value = true;
+            item.modData = new Dictionary<string, string>();
+
+            if (!string.IsNullOrEmpty(bin.InputItemId))
+            {
+                item.modData[ModConstants.ModDataInputIdKey] = bin.InputItemId;
+            }
+
+            if (bin.State == CompostingBinState.Processing && bin.InputTimestamp.HasValue)
+            {
+                var remaining = Math.Max(0, ModConstants.MaturationDays - (_timeProvider.TotalDays - bin.InputTimestamp.Value));
+                item.modData[ModConstants.ModDataDaysRemainingKey] = remaining.ToString();
+            }
+            else if (bin.State == CompostingBinState.Ready)
+            {
+                item.modData[ModConstants.ModDataDaysRemainingKey] = "0";
+            }
+
+            return item;
+        }
     }
 
-    public void OnBinPlaced(string locationName, Vector2 tile)
+    public void OnBinPlaced(string locationName, Vector2 tile, StardewValley.Item? binItem = null)
     {
-        // Stub: register placed bin in runtime cache
+        var key = GetTileKey(tile);
+        lock (_lock)
+        {
+            if (!_runtimeCache.ContainsKey(locationName))
+                _runtimeCache[locationName] = new Dictionary<string, CompostingBinStateModel>();
+
+            var bins = _runtimeCache[locationName];
+            if (!bins.TryGetValue(key, out var bin))
+            {
+                bin = _factory.CreateBin((int)tile.X, (int)tile.Y);
+                bins[key] = bin;
+            }
+
+            if (binItem != null && binItem.modData != null)
+            {
+                if (binItem.modData.ContainsKey(ModConstants.ModDataInputIdKey))
+                {
+                    bin.InputItemId = binItem.modData[ModConstants.ModDataInputIdKey];
+                }
+                if (binItem.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey)
+                    && int.TryParse(binItem.modData[ModConstants.ModDataDaysRemainingKey], out var remaining))
+                {
+                    if (remaining <= 0 && !string.IsNullOrEmpty(bin.InputItemId))
+                    {
+                        bin.State = CompostingBinState.Ready;
+                        bin.InputTimestamp = null;
+                    }
+                    else if (remaining > 0 && !string.IsNullOrEmpty(bin.InputItemId))
+                    {
+                        bin.State = CompostingBinState.Processing;
+                        bin.InputTimestamp = _timeProvider.TotalDays - (ModConstants.MaturationDays - remaining);
+                    }
+                }
+            }
+        }
     }
 }

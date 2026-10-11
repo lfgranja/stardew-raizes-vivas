@@ -62,10 +62,12 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Called when a composting bin is placed in the world, registering it in the runtime cache.
+        /// If the item carries progress modData, restores the batch progress.
         /// </summary>
         /// <param name="locationName">The location where the bin was placed.</param>
         /// <param name="tile">The tile coordinates of the placed bin.</param>
-        void OnBinPlaced(string locationName, Vector2 tile);
+        /// <param name="binItem">The bin item being placed, which may carry progress modData.</param>
+        void OnBinPlaced(string locationName, Vector2 tile, StardewValley.Item? binItem = null);
 
         /// <summary>
         /// Saves composting bin data to persistent storage.

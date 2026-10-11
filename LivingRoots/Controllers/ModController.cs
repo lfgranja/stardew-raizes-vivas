@@ -1794,11 +1794,20 @@ namespace LivingRoots.Controllers
                 {
                     if (removed.Value.ItemId == ModConstants.CompostingBinItemId)
                     {
-                        // (T127 FR-005c) Reconstruct dislodged bin carrying batch modData
-                        // when removed by tool or explosion, so InputId/DaysRemaining survives
-                        // rather than being lost with the pruned runtime record.
-                        _compostingBinService.CreateDislodgedBinItem(e.Location.Name, removed.Key);
+                        // T127 (FR-005c): reconstruct dislodged bin carrying progress modData.
+                        // If inventory space were available the item would return there;
+                        // for world-level removal (tool/explosion) the reconstructed item
+                        // is dropped as floating debris retaining its modData.
+                        var dislodgedItem = _compostingBinService.CreateDislodgedBinItem(e.Location.Name, removed.Key);
                         _compostingBinService.OnObjectRemoved(e.Location.Name, removed.Key);
+                        if (dislodgedItem != null && StardewValley.Game1.currentLocation != null)
+                        {
+                            StardewValley.Game1.createItemDebris(
+                                dislodgedItem,
+                                removed.Key * (float)ModConstants.TileSize,
+                                -1,
+                                e.Location);
+                        }
                     }
                 }
             }
