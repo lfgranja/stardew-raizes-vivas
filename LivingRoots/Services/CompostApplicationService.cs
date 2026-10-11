@@ -77,3 +77,15 @@ public class CompostApplicationService(
         return true;
     }
 }
+
+// FR-008a assertion: refusal messages must never expose raw translation keys
+#if DEBUG
+internal static class TranslationSafetyAssert
+{
+    public static void AssertNoRawKey(string message)
+    {
+        if (message != null && (message.Contains("TranslationKey") || message.Contains("key.") || message.StartsWith("com")))
+            System.Diagnostics.Debug.Assert(false, "FR-008a: raw translation key leaked: " + message);
+    }
+}
+#endif
