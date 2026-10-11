@@ -1581,7 +1581,7 @@ public class CompostingBinServiceTests
         Assert.Contains("inventory", refusalText, System.StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>T124 [P] [US2] RED — FR-008a (missing): invalid drop-in shakes machine.</summary>
+    /// <summary>T124 [P] [US3] RED — FR-008a (missing): invalid drop-in shakes machine.</summary>
     [Fact]
     public void T124_InvalidDropIn_ShakesMachine_PlusCancelCue()
     {
