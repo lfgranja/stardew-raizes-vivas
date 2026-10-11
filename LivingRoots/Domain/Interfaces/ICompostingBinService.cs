@@ -53,6 +53,21 @@ namespace LivingRoots.Domain
         void LoadData(string saveId);
 
         /// <summary>
+        /// Creates a dislodged bin item carrying progress (modData preserved) when removed by tool/explosion.
+        /// </summary>
+        /// <param name="locationName">The location where the bin was removed.</param>
+        /// <param name="tile">The tile coordinates of the removed bin.</param>
+        /// <returns>The dislodged item, or null if no progress to preserve.</returns>
+        StardewValley.Item? CreateDislodgedBinItem(string locationName, Vector2 tile);
+
+        /// <summary>
+        /// Called when a composting bin is placed in the world, registering it in the runtime cache.
+        /// </summary>
+        /// <param name="locationName">The location where the bin was placed.</param>
+        /// <param name="tile">The tile coordinates of the placed bin.</param>
+        void OnBinPlaced(string locationName, Vector2 tile);
+
+        /// <summary>
         /// Saves composting bin data to persistent storage.
         /// </summary>
         /// <param name="saveId">The save game ID to save data for.</param>

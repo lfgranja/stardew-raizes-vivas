@@ -2280,10 +2280,10 @@ namespace LivingRoots.Controllers
             // tiles, buildings and non-farm,
             // non-greenhouse interiors are
             // invalid terrain).
-            bool validLocation = location.IsFarm || IsGreenhouseLikeLocation(location);
+            bool locationValid = location.IsFarm || IsGreenhouseLikeLocation(location);
 
             // T129 (FR-002): refuse placement on building footprint tiles
-            if (!validLocation)
+            if (!locationValid)
             {
                 foreach (var building in location.buildings)
                 {

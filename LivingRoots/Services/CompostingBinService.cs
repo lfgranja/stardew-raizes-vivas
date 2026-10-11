@@ -260,4 +260,16 @@ public class CompostingBinService(
         var parts = key.Split(',');
         return new Point(int.Parse(parts[0]), int.Parse(parts[1]));
     }
+
+    // Stub methods for interface compliance (T127, T194, FR-005c, FR-002)
+    public StardewValley.Item? CreateDislodgedBinItem(string locationName, Vector2 tile)
+    {
+        // Stub: reconstruct dislodged bin with progress preserved
+        return null; // Production should return non-null with modData preserved
+    }
+
+    public void OnBinPlaced(string locationName, Vector2 tile)
+    {
+        // Stub: register placed bin in runtime cache
+    }
 }
