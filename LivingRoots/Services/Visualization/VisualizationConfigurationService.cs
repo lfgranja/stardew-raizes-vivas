@@ -127,8 +127,6 @@ namespace LivingRoots.Services.Visualization
             _configurationDirty = true;
         }
 
-        private bool _configurationDirty;
-
         /// <summary>
         /// Builds the persistence key for a save, sanitizing the save identifier first.
         /// </summary>

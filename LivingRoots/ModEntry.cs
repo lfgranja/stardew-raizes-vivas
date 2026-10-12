@@ -80,7 +80,9 @@ namespace LivingRoots
             var hostAtomicLockService = new HostAtomicLockService();
 
             // Create composting services
-            var organicWasteValidator = new OrganicWasteValidator();
+            // T141: OrganicWasteValidator takes the monitor for trace
+            // diagnostics of accepted/rejected waste (IOrganicWasteValidator).
+            var organicWasteValidator = new OrganicWasteValidator(this.Monitor);
             var compostingBinFactory = new CompostingBinFactory();
             var playerInventory = new PlayerInventory();
             // T054 (FR-008a): SMAPI's translation helper, injected
@@ -88,7 +90,7 @@ namespace LivingRoots
             // Game1.showRedMessage shows the player's language.
             var translationHelper = helper.Translation;
             var locationProvider = new LocationProvider();
-            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, hostAtomicLockService: hostAtomicLockService, translationHelper: translationHelper);
+            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, translationHelper: translationHelper);
             var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
 
             // Create soil decay service

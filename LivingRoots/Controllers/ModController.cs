@@ -2511,7 +2511,7 @@ namespace LivingRoots.Controllers
                 throw new ArgumentNullException(nameof(farmer));
             }
 
-            return TryDislodgeBin(location, tile, farmer.Items, null);
+            return TryDislodgeBin(location, tile, new FarmerInventoryAdapter(farmer), null);
         }
 
         /// <summary>
