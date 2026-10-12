@@ -73,5 +73,28 @@ namespace LivingRoots
         public const string CompostCraftingSound = "axe";
         public const int CompostCategoryId = -26;
         public const int CompostStackMax = 999;
+
+        // T007 (FR-005c): the Item.modData keys a held bin serializes its
+        // batch progress into. Progressing through them is the only way a
+        // picked-up bin can carry InputId/DaysRemaining, so placement restores
+        // the batch instead of resetting it.
+        public const string ModDataInputIdKey = "LivingRoots.InputId";
+        public const string ModDataDaysRemainingKey = "LivingRoots.DaysRemaining";
+
+        // T078/T099 (FR-001a, FR-005): asset names under the mod's unique ID
+        // (manifest.json UniqueID). Asset names under Mods/ have no locale
+        // variants, so NameWithoutLocale identifies each asset exactly.
+        // The Data/Objects, Data/BigCraftables and Data/Machines entries point
+        // Texture at the bin asset; the processing/ready sprites are the
+        // progress sprites the native machine interface renders.
+        public const string CompostTextureAssetName = "Mods/lfgranja.LivingRoots/CompostTexture";
+        public const string CompostingBinTextureAssetName = "Mods/lfgranja.LivingRoots/CompostingBinTexture";
+        public const string CompostingBinProcessingSpriteAssetName = "Mods/lfgranja.LivingRoots/CompostingBinProcessingSprite";
+        public const string CompostingBinReadySpriteAssetName = "Mods/lfgranja.LivingRoots/CompostingBinReadySprite";
+
+        // T136 (FR-008a): the native machine rejection cue for an invalid
+        // drop-in — vanilla audio cancel cue plus machine shake. Keys off the
+        // Data/Machines ShakeDuration field so no second shake path exists.
+        public const float BinInvalidDropInShakeSeconds = 1.0f;
     }
 }
