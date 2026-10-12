@@ -1746,8 +1746,20 @@ namespace LivingRoots.Controllers
 
                 foreach (var locationName in farmLocationNames)
                 {
-                    _compostingBinService.ProcessDayStart(locationName);
-                    _soilDecayService.ProcessDayStart(locationName);
+                    // T134 (FR-012/FR-014): narrow the day-start try per location,
+                    // so a corrupt record in one location cannot abort the day
+                    // tick for the others — the Greenhouse still matures when
+                    // the Farm's tick throws.
+                    try
+                    {
+                        _compostingBinService.ProcessDayStart(locationName);
+                        _soilDecayService.ProcessDayStart(locationName);
+                    }
+                    catch (Exception ex)
+                    {
+                        _monitor.Log($"Error processing day start for location '{locationName}'.", LogLevel.Error);
+                        _monitor.Log($"Day start exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    }
                 }
             }
             catch (Exception ex)
@@ -1794,14 +1806,41 @@ namespace LivingRoots.Controllers
                 {
                     if (removed.Value.ItemId == ModConstants.CompostingBinItemId)
                     {
-                        // T127 (FR-005c): reconstruct dislodged bin carrying progress modData.
-                        // If inventory space were available the item would return there;
-                        // for world-level removal (tool/explosion) the reconstructed item
-                        // is dropped as floating debris retaining its modData.
+                        // T127 (FR-005c): reconstruct dislodged bin carrying progress
+                        // modData BEFORE the record is pruned, so the batch
+                        // (InputId/DaysRemaining) survives removal instead of being
+                        // destroyed with the pruned record.
                         var dislodgedItem = _compostingBinService.CreateDislodgedBinItem(e.Location.Name, removed.Key);
                         _compostingBinService.OnObjectRemoved(e.Location.Name, removed.Key);
-                        if (dislodgedItem != null && StardewValley.Game1.currentLocation != null)
+                        if (dislodgedItem == null)
                         {
+                            continue;
+                        }
+
+                        // T131 (FR-005c): route the reconstructed bin back into the
+                        // player's inventory when there is space, and drop debris
+                        // only when the inventory refused it. A removed bin is never
+                        // silently destroyed.
+                        bool addedToInventory = false;
+                        try
+                        {
+                            var player = StardewValley.Game1.player;
+                            if (player != null)
+                            {
+                                addedToInventory = player.addItemToInventoryBool(dislodgedItem);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            // Headless hosts (Game1.player unallocated) take the debris
+                            // path below. Sanitized per FR-015.
+                            _monitor.Log($"Dislodged bin inventory return unavailable: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Trace);
+                        }
+
+                        if (!addedToInventory && StardewValley.Game1.currentLocation != null)
+                        {
+                            // Inventory full (or unavailable): floating debris retains
+                            // the item's modData (FR-005c), so progress is not lost.
                             StardewValley.Game1.createItemDebris(
                                 dislodgedItem,
                                 removed.Key * (float)ModConstants.TileSize,
@@ -2236,24 +2275,6 @@ namespace LivingRoots.Controllers
             // lockstep — vanilla placement would place the
             // machine without either. Three fixes land at
             // T166 / FR-002: allow farm / Greenhouse with HoeDirt; relax invalid-terrain refusal
-            var validLocation = location is StardewValley.GameLocation farm
-                && (farm.Name == "Farm" || farm.Name.Contains("Greenhouse") || farm.Name.Contains("Greenhouse"));
-            if (!validLocation)
-            {
-                // refusal preserved — invalid terrain refused with zero objects / zero state
-                return false;
-            }
-            // requirement contradicted FR-002 (farm land is
-            // placeable land, tilled or not — only water,
-            // buildings and non-farm interiors are invalid
-            // terrain), so the terrain check is relaxed to an
-            // explicit water refusal below; (2) the deposit
-            // path (TryInteractWithBin) gates on the world
-            // object being the bin big craftable, so a stale
-            // cache record can never act as a ghost bin;
-            // (3) a deposit the bin accepts consumes one unit
-            // of the held stack, ending the infinite-waste
-            // loop of re-depositing a never-consumed item.
             if (IsDisposed())
             {
                 return false;
@@ -2476,6 +2497,13 @@ namespace LivingRoots.Controllers
         /// <param name="tile">The tile coordinate of the bin.</param>
         /// <param name="farmer">The farmer performing the dislodgement.</param>
         /// <returns>True if bin was dislodged; false if no bin existed at tile.</returns>
+        /// <summary>
+        /// Validates terrain and map criteria and dislodges a composting bin at
+        /// the target tile on behalf of a farmer. T131 (FR-005c): the
+        /// reconstructed bin is routed into the farmer's inventory whenever
+        /// there is space, and only drops as floating debris when the inventory
+        /// refused it — so a removed bin is never silently destroyed.
+        /// </summary>
         public bool TryDislodgeBin(StardewValley.GameLocation location, Microsoft.Xna.Framework.Vector2 tile, StardewValley.Farmer farmer)
         {
             if (farmer == null)
@@ -2483,7 +2511,7 @@ namespace LivingRoots.Controllers
                 throw new ArgumentNullException(nameof(farmer));
             }
 
-            return TryDislodgeBin(location, tile, null, null);
+            return TryDislodgeBin(location, tile, farmer.Items, null);
         }
 
         /// <summary>
