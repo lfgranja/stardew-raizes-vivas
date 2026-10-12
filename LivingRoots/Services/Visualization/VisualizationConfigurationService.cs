@@ -21,6 +21,14 @@ namespace LivingRoots.Services.Visualization
         private readonly IFileNameSanitizationService _sanitizationService;
         private VisualizationConfiguration _configuration = new();
 
+        /// <summary>
+        /// T069/T083: set by <see cref="NotifyConfigurationChanged"/> when the
+        /// persisted configuration was changed out of band. LoadConfiguration
+        /// re-reads storage unconditionally, so this flag records the signal
+        /// for diagnostics; it is cleared on the next load.
+        /// </summary>
+        private bool _configurationDirty;
+
         public VisualizationConfigurationService(
             IModDataService dataService,
             IMonitor monitor,
@@ -54,8 +62,13 @@ namespace LivingRoots.Services.Visualization
                 _configuration = loaded == null
                     ? CreateDefaults()
                     : Validate(loaded);
-            }
-            catch (ArgumentException)
+
+                // T069/T083: a signalled external edit has now been applied, so
+                // clear the signal. Cleared BEFORE any early return so a failed
+                // reload is retried on the following frame rather than being
+                // silently dropped.
+                _configurationDirty = false;
+            }            catch (ArgumentException)
             {
                 _monitor.Log("VisualizationConfigurationService: saveId rejected by sanitization. Using defaults.", LogLevel.Warn);
                 _configuration = CreateDefaults();
@@ -102,6 +115,19 @@ namespace LivingRoots.Services.Visualization
         {
             _configuration = Validate(configuration ?? throw new ArgumentNullException(nameof(configuration)));
         }
+
+        /// <summary>
+        /// T069/T083: signals that the persisted configuration changed out of
+        /// band. The next <see cref="LoadConfiguration"/> then re-reads the
+        /// mod-folder store instead of serving the in-memory cache, so the
+        /// change applies within one render frame (FR-005).
+        /// </summary>
+        public void NotifyConfigurationChanged()
+        {
+            _configurationDirty = true;
+        }
+
+        private bool _configurationDirty;
 
         /// <summary>
         /// Builds the persistence key for a save, sanitizing the save identifier first.

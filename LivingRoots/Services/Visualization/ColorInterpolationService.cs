@@ -14,6 +14,7 @@ namespace LivingRoots.Services.Visualization
         private Color _poorColor = ModConstants.PoorColor;
         private Color _moderateColor = ModConstants.ModerateColor;
         private Color _healthyColor = ModConstants.HealthyColor;
+        private Color _unknownColor = ModConstants.UnknownColor;
         private readonly Dictionary<(int health, int opacity), Color> _cache = new();
         private readonly object _cacheLock = new();
 
@@ -28,7 +29,7 @@ namespace LivingRoots.Services.Visualization
         {
             if (float.IsNaN(healthValue) || float.IsInfinity(healthValue))
             {
-                var unknown = ModConstants.UnknownColor;
+                var unknown = _unknownColor;
                 unknown.A = (byte)(opacity * 255f);
                 return unknown;
             }
@@ -63,13 +64,17 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <inheritdoc />
-        public void SetCategoryColors(Color poorColor, Color moderateColor, Color healthyColor)
+        public void SetCategoryColors(Color poorColor, Color moderateColor, Color healthyColor, Color unknownColor)
         {
             lock (_cacheLock)
             {
                 _poorColor = poorColor;
                 _moderateColor = moderateColor;
                 _healthyColor = healthyColor;
+                // T165 (FR-003/FR-014): the configured unknown color reaches
+                // the interpolator too, so an unmeasurable tile renders in the
+                // player's chosen unknown color rather than the default.
+                _unknownColor = unknownColor;
             }
 
             InvalidateCache();
