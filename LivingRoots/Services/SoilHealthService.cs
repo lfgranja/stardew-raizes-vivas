@@ -19,6 +19,40 @@ namespace LivingRoots.Services
         // Lock object for thread safety
         private readonly object _lock = new();
 
+        // T034/T104 (FR-010): reactive notification so the visualization
+        // service invalidates its overlay cache on the SAME frame the health
+        // changed — zero polling lag. Raised outside the lock (never while
+        // _lock is held) so a slow subscriber cannot stall mutations.
+        public event Action<string, Vector2, float>? OnTileHealthChanged;
+
+        /// <summary>
+        /// Raises <see cref="OnTileHealthChanged"/> for a tile whose health was
+        /// mutated (FR-010). The value is re-read from the cache under the lock
+        /// so subscribers always receive the post-mutation value, including the
+        /// clamped one. Safe to call from any thread; a null subscriber list is
+        /// a no-op.
+        /// </summary>
+        /// <param name="locationName">Location whose tile changed.</param>
+        /// <param name="tile">Tile that changed.</param>
+        private void RaiseTileHealthChanged(string locationName, Vector2 tile)
+        {
+            var handler = OnTileHealthChanged;
+            if (handler == null)
+                return;
+
+            var currentHealth = GetSoilHealth(locationName, tile);
+            try
+            {
+                handler(locationName, tile, currentHealth);
+            }
+            catch (Exception ex)
+            {
+                // FR-011: a failing subscriber must never break the mutation
+                // or bubble into game loop code. Sanitized per FR-015.
+                _monitor.Log($"Tile health change subscriber failed: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Warn);
+            }
+        }
+
         // Flag to prevent SaveData from executing if LoadData was aborted due to limits
         // This avoids overwriting valid on-disk data with an empty or incomplete in-memory state
         private volatile bool _loadAbortedForLimits;
@@ -560,6 +594,11 @@ namespace LivingRoots.Services
 
             // Log messages outside the lock to avoid blocking other threads
             LogOperationResult(operationResult, locationName);
+
+            // T034/T104 (FR-010): notify subscribers AFTER the mutation and
+            // AFTER the lock is released, so the overlay cache invalidates on
+            // this same frame without ever being raised mid-mutation.
+            RaiseTileHealthChanged(locationName, tile);
         }
 
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
@@ -597,6 +636,10 @@ namespace LivingRoots.Services
 
             // Log messages outside the lock to avoid blocking other threads
             LogOperationResult(operationResult, locationName);
+
+            // T034/T104 (FR-010): notify subscribers after the mutation, outside
+            // the lock — reactive invalidation within the same frame.
+            RaiseTileHealthChanged(locationName, tile);
         }
 
         private void LogOperationResult(SoilHealthOperationResult operationResult, string locationName)
