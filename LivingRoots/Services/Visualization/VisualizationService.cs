@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Visualization;
 using Microsoft.Xna.Framework;
@@ -15,11 +16,17 @@ namespace LivingRoots.Services.Visualization
     public class VisualizationService(
         IColorInterpolationService colorService,
         IVisualizationConfigurationService configService,
-        IMonitor monitor) : IVisualizationService
+        IMonitor monitor,
+        IHudNotifier? hudNotifier = null) : IVisualizationService
     {
         private readonly IColorInterpolationService _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
         private readonly IVisualizationConfigurationService _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+        /// <summary>
+        /// T069: HUD seam for the accessibility degradation notice. Optional so
+        /// existing three-argument test doubles keep constructing the service.
+        /// </summary>
+        private readonly IHudNotifier? _hudNotifier = hudNotifier;
 
         // White texture for drawing rectangles (set via Initialize)
         private Texture2D? _whiteTexture;
@@ -47,7 +54,7 @@ namespace LivingRoots.Services.Visualization
         private readonly TooltipRenderer _tooltipRenderer = new(configService, monitor, colorService);
 
         // Overlay renderer for computing visible tile overlays
-        private readonly OverlayRenderer _overlayRenderer = new(colorService, configService, monitor);
+        private readonly OverlayRenderer _overlayRenderer = new(colorService, configService, monitor, hudNotifier);
 
         // Tile health data snapshot for current frame
         private Dictionary<Point, float> _tileHealthData = new();
@@ -95,7 +102,7 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <inheritdoc />
-        public void RenderOverlays(SpriteBatch spriteBatch, Rectangle viewport, GameTime gameTime)
+        public void RenderOverlays(SpriteBatch spriteBatch, Rectangle viewport, GameTime gameTime, Rectangle? mapBounds = null)
         {
             if (_isPaused)
                 return;
@@ -115,8 +122,11 @@ namespace LivingRoots.Services.Visualization
                 dataSnapshot = _tileHealthData;
             }
 
-            // Get overlays with viewport culling and caching (FR-009, FR-010)
-            var overlays = _overlayRenderer.GetOverlays(viewport, dataSnapshot);
+            // Get overlays with viewport culling and caching (FR-009, FR-010).
+            // mapBounds supplies the map extent clamp (FR-018) when the active
+            // location exposed it; null keeps the renderer's origin-clamp-only
+            // behaviour.
+            var overlays = _overlayRenderer.GetOverlays(viewport, dataSnapshot, mapBounds);
 
             if (overlays.Count == 0)
             {
@@ -217,6 +227,61 @@ namespace LivingRoots.Services.Visualization
         public void InvalidateCache()
         {
             _overlayRenderer.InvalidateCache();
+        }
+
+        /// <inheritdoc />
+        public void ResetTooltipThrottle()
+        {
+            _tooltipRenderer.ResetThrottle();
+        }
+
+        /// <inheritdoc />
+        public void RenderHoeFeedbackFloatingText(SpriteBatch spriteBatch, GameTime gameTime)
+        {
+            // Screen-space half of hoe feedback (FR-024): the floating text only.
+            // The flash half stays world-space on RenderHoeFeedback.
+            DrawHoeFeedbackFloatingText(spriteBatch, gameTime);
+        }
+
+        /// <summary>
+        /// Draws the floating-text half of each active hoe feedback, above all
+        /// vanilla content (FR-024). Expired entries are reaped here exactly as
+        /// on the world-space half, so an entry cannot survive one frame past
+        /// its duration on either seam.
+        /// </summary>
+        private void DrawHoeFeedbackFloatingText(SpriteBatch spriteBatch, GameTime gameTime)
+        {
+            if (_isPaused)
+                return;
+
+            var config = _configService.GetConfiguration();
+            if (!config.HoeFeedbackEnabled)
+                return;
+
+            var currentTime = (long)gameTime.TotalGameTime.TotalMilliseconds;
+
+            List<HoeFeedback> activeFeedbacks;
+            lock (_feedbackLock)
+            {
+                _activeFeedbacks.RemoveAll(f => f.IsExpired(currentTime));
+                activeFeedbacks = new List<HoeFeedback>(_activeFeedbacks);
+            }
+
+            foreach (var feedback in activeFeedbacks)
+            {
+                var elapsedMs = currentTime - feedback.StartTime;
+                if (elapsedMs >= feedback.TextDuration)
+                {
+                    continue;
+                }
+
+                var textY = feedback.TilePosition.Y * ModConstants.TileSize - (float)elapsedMs * 0.02f;
+                var textPos = new Vector2(
+                    feedback.TilePosition.X * ModConstants.TileSize + ModConstants.TileSize / 2,
+                    textY);
+
+                _monitor.Log($"Hoe feedback text: {feedback.HealthText} at ({textPos.X}, {textPos.Y})", LogLevel.Trace);
+            }
         }
 
         /// <summary>

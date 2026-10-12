@@ -14,11 +14,18 @@ namespace LivingRoots.Services.Visualization
     public class OverlayRenderer(
         IColorInterpolationService colorService,
         IVisualizationConfigurationService configService,
-        IMonitor monitor)
+        IMonitor monitor,
+        IHudNotifier? hudNotifier = null)
     {
         private readonly IColorInterpolationService _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
         private readonly IVisualizationConfigurationService _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+        /// <summary>
+        /// T069: seam through which the one-time accessibility degradation
+        /// notice (FR-009) reaches the player. Optional so existing test
+        /// doubles keep constructing the renderer with three arguments.
+        /// </summary>
+        private readonly IHudNotifier? _hudNotifier = hudNotifier;
 
         // Overlay list cache (FR-010)
         private List<TileOverlay>? _cachedOverlays;
@@ -82,8 +89,13 @@ namespace LivingRoots.Services.Visualization
         /// </summary>
         /// <param name="viewport">Current viewport bounds in tile coordinates.</param>
         /// <param name="tileHealthData">Dictionary mapping tile positions to health values.</param>
+        /// <param name="mapBounds">
+        /// Optional map extent in tile units (FR-018). When supplied, culling is
+        /// clamped to the map so tiles outside it are never overlaid; when null,
+        /// the renderer keeps its origin-clamp-only behaviour.
+        /// </param>
         /// <returns>List of tile overlays for visible tiles, or empty list if no tiles.</returns>
-        public List<TileOverlay> GetOverlays(Rectangle viewport, Dictionary<Point, float> tileHealthData)
+        public List<TileOverlay> GetOverlays(Rectangle viewport, Dictionary<Point, float> tileHealthData, Rectangle? mapBounds = null)
         {
             // FR-021: zero tiles = no-op with minimal resource usage, no cache allocation
             if (tileHealthData == null || tileHealthData.Count == 0)
@@ -100,8 +112,10 @@ namespace LivingRoots.Services.Visualization
                 }
             }
 
-            // Viewport culling (FR-009): filter to tiles within viewport bounds
-            var visibleTiles = CullToViewport(tileHealthData, viewport);
+            // Viewport culling (FR-009): filter to tiles within viewport bounds,
+            // clamped to the map extent when one was supplied (FR-018).
+            var cullBounds = ComputeCullingBounds(viewport, mapBounds);
+            var visibleTiles = CullToViewport(tileHealthData, cullBounds);
             var visibleCount = visibleTiles.Count;
 
             // Read configuration for opacity and pattern settings
@@ -120,6 +134,10 @@ namespace LivingRoots.Services.Visualization
                         $"Performance degradation activated: {visibleCount} visible tiles exceeds {ModConstants.DegradationTileThreshold} threshold. " +
                         "Disabling accessibility patterns per FR-009.",
                         LogLevel.Warn);
+
+                    // FR-009: the player gets one native notice per degradation
+                    // event, through the injected seam — no bespoke UI (FR-008a).
+                    _hudNotifier?.NotifyAccessibilityPatternsDegraded(visibleCount);
                     _degradationNotificationSent = true;
                 }
                 showPatterns = false;
@@ -159,16 +177,38 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <summary>
-        /// Filters tile health data to only include tiles within the viewport bounds.
+        /// Computes the effective culling rectangle: the viewport, one-tile
+        /// margin on all four edges, origin-clamped at zero, and clamped to the
+        /// map extent when one was supplied (FR-018). A null or empty map extent
+        /// leaves the rectangle margin-extended only.
+        /// </summary>
+        private static Rectangle ComputeCullingBounds(Rectangle viewport, Rectangle? mapBounds)
+        {
+            // End bounds widen to long before the addition so an extreme
+            // viewport cannot trip the project-wide overflow check.
+            var startX = Math.Max(0, viewport.X - 1);
+            var startY = Math.Max(0, viewport.Y - 1);
+            var endX = Math.Min((long)viewport.X + viewport.Width + 1, mapBounds?.Right ?? long.MaxValue);
+            var endY = Math.Min((long)viewport.Y + viewport.Height + 1, mapBounds?.Bottom ?? long.MaxValue);
+
+            return new Rectangle(
+                startX,
+                startY,
+                (int)Math.Max(0, endX - startX),
+                (int)Math.Max(0, endY - startY));
+        }
+
+        /// <summary>
+        /// Filters tile health data to only include tiles within the culling bounds.
         /// Implements viewport culling per FR-009.
         /// </summary>
         private static List<KeyValuePair<Point, float>> CullToViewport(
-            Dictionary<Point, float> tileHealthData, Rectangle viewport)
+            Dictionary<Point, float> tileHealthData, Rectangle bounds)
         {
             var result = new List<KeyValuePair<Point, float>>();
             foreach (var kvp in tileHealthData)
             {
-                if (viewport.Contains(kvp.Key))
+                if (bounds.Contains(kvp.Key))
                 {
                     result.Add(kvp);
                 }

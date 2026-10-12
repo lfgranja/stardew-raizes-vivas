@@ -62,6 +62,18 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <summary>
+        /// Resets the FR-015 throttle window so the leading-edge rule applies
+        /// fresh on the next hover. Called when a menu open/close cycle ends:
+        /// the window must not survive it, or the first hover after a menu
+        /// closes would be suppressed as though it were a rapid re-entry.
+        /// </summary>
+        public void ResetThrottle()
+        {
+            _lastTooltipTile = UninitializedTile;
+            _lastUpdateTime = null;
+        }
+
+        /// <summary>
         /// Gets the tooltip data for the current cursor position, or null if no tooltip should be shown.
         /// Returns null when tooltips are disabled, cursor is outside tile bounds,
         /// no health data exists for the tile, or the update is throttled per FR-015.

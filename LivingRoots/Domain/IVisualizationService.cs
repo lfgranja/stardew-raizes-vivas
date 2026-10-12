@@ -17,7 +17,8 @@ namespace LivingRoots.Domain
         /// <param name="spriteBatch">SpriteBatch for drawing</param>
         /// <param name="viewport">Current viewport bounds in tile coordinates</param>
         /// <param name="gameTime">Current game time for animation</param>
-        void RenderOverlays(SpriteBatch spriteBatch, Rectangle viewport, GameTime gameTime);
+        /// <param name="mapBounds">Active map extent in tile units, or null when unavailable; clamps culling to the map.</param>
+        void RenderOverlays(SpriteBatch spriteBatch, Rectangle viewport, GameTime gameTime, Rectangle? mapBounds = null);
 
         /// <summary>
         /// Renders hover tooltip if cursor is over a tilled soil tile.
@@ -74,5 +75,33 @@ namespace LivingRoots.Domain
         /// Called when the cursor leaves the world or a location change occurs.
         /// </summary>
         void ClearCursorTile();
+
+        /// <summary>
+        /// Installs the shared white texture the draw calls run through. Called
+        /// from the render frame once a SpriteBatch exists.
+        /// </summary>
+        /// <param name="whiteTexture">1x1 white texture used for rectangle drawing.</param>
+        void Initialize(Texture2D whiteTexture);
+
+        /// <summary>
+        /// Supplies the soil-health snapshot the overlay pipeline renders from.
+        /// </summary>
+        /// <param name="tileHealthData">Tile position to health value map.</param>
+        void SetTileHealthData(Dictionary<Point, float> tileHealthData);
+
+        /// <summary>
+        /// Resets the FR-015 tooltip throttle window, so the leading-edge rule
+        /// applies fresh after a menu open/close cycle.
+        /// </summary>
+        void ResetTooltipThrottle();
+
+        /// <summary>
+        /// Renders the screen-space half of hoe feedback: the floating text that
+        /// must draw above all vanilla content. The flash half stays world-space
+        /// on <see cref="RenderHoeFeedback"/>.
+        /// </summary>
+        /// <param name="spriteBatch">SpriteBatch for drawing.</param>
+        /// <param name="gameTime">Current game time for animation.</param>
+        void RenderHoeFeedbackFloatingText(SpriteBatch spriteBatch, GameTime gameTime);
     }
 }
