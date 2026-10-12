@@ -9,11 +9,36 @@ namespace LivingRoots.Services;
 public class CompostApplicationService(
     ISoilHealthService soilHealthService,
     IPlayerProvider playerProvider,
-    IMonitor monitor) : ICompostApplicationService
+    IMonitor monitor,
+    ITranslationHelper? translationHelper = null) : ICompostApplicationService
 {
     private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
     private readonly IPlayerProvider _playerProvider = playerProvider ?? throw new ArgumentNullException(nameof(playerProvider));
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+    /// <summary>
+    /// T054/T149 (FR-008a): SMAPI's translation helper. Null only when a
+    /// caller constructs the service without it (legacy test doubles);
+    /// <see cref="TranslateRefusalMessage"/> then falls back to the key so
+    /// no refusal site ever silently drops its message.
+    /// </summary>
+    private readonly ITranslationHelper? _translationHelper = translationHelper;
+
+    /// <summary>
+    /// Resolves a refusal message through SMAPI's translation helper so the
+    /// player sees their own language (FR-008a). The helper is resolved per
+    /// call, never cached, because the locale can change mid-session.
+    /// </summary>
+    /// <param name="messageKey">Translation key registered in i18n/default.json.</param>
+    /// <returns>The localized text, or the key itself when no helper is wired.</returns>
+    private string TranslateRefusalMessage(string messageKey)
+    {
+        if (_translationHelper == null)
+        {
+            return messageKey;
+        }
+
+        return _translationHelper.Get(messageKey);
+    }
 
     public bool TryApplyCompost(GameLocation location, Vector2 tile)
     {
