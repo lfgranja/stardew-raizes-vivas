@@ -44,6 +44,11 @@
     </PackageReference>
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- T001 (spec 004 Phase 1): property-based invariant testing over arbitrary
+         inputs (bin lifecycle, soil health bounds, concurrency) — required by the
+         strict TDD blocker for Fases 10-15. -->
+    <PackageReference Include="FsCheck" Version="2.16.6" />
+    <PackageReference Include="FsCheck.Xunit" Version="2.16.6" />
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
 
 
