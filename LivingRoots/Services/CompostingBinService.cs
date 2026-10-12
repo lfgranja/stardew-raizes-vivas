@@ -15,7 +15,9 @@ public class CompostingBinService(
     IMonitor monitor,
     ITimeProvider timeProvider,
     CompostingBinFactory factory,
-    IPlayerInventory playerInventory) : ICompostingBinService
+    IPlayerInventory playerInventory,
+    ILocationProvider? locationProvider = null,
+    ITranslationHelper? translationHelper = null) : ICompostingBinService
 {
     private readonly IModDataService _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
     private readonly ISaveIdProvider _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
@@ -24,9 +26,40 @@ public class CompostingBinService(
     private readonly ITimeProvider _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly CompostingBinFactory _factory = factory ?? throw new ArgumentNullException(nameof(factory));
     private readonly IPlayerInventory _playerInventory = playerInventory ?? throw new ArgumentNullException(nameof(playerInventory));
+    /// <summary>
+    /// T134 (FR-012): resolves a persisted location name against the live
+    /// world. Used by <see cref="PruneOrphanedLocations"/> so a location with
+    /// no physical bin is dropped only when the location itself is also
+    /// absent — an absent-from-provider location is RETAINED, never pruned,
+    /// because the provider cannot prove the world lacks the bin.
+    /// </summary>
+    private readonly ILocationProvider? _locationProvider = locationProvider;
+    /// <summary>
+    /// T054/T157 (FR-008a): SMAPI's translation helper, so the
+    /// full-inventory refusal at collection renders in the player's language
+    /// instead of the raw key.
+    /// </summary>
+    private readonly ITranslationHelper? _translationHelper = translationHelper;
 
     private readonly Dictionary<string, Dictionary<string, CompostingBinStateModel>> _runtimeCache = new();
     private readonly object _lock = new();
+
+    /// <summary>
+    /// Resolves a refusal message through SMAPI's translation helper (FR-008a).
+    /// Resolved per call — the locale can change mid-session. Falls back to the
+    /// key when no helper is wired, so a refusal never loses its message.
+    /// </summary>
+    /// <param name="messageKey">Translation key registered in i18n/default.json.</param>
+    /// <returns>The localized text, or the key itself when no helper is wired.</returns>
+    private string TranslateRefusalMessage(string messageKey)
+    {
+        if (_translationHelper == null)
+        {
+            return messageKey;
+        }
+
+        return _translationHelper.Get(messageKey);
+    }
 
     public void AddWaste(string locationName, Vector2 tile, Item item)
     {
@@ -182,12 +215,27 @@ public class CompostingBinService(
                 return;
             }
 
-            lock (_lock)
+            // T134 (FR-012/FR-014): per-location fault isolation. A null
+            // location payload — or any malformed entry inside one location —
+            // skips ONLY that location; every other location still loads, and
+            // the save load never aborts. The outer try/catch remains the last
+            // resort for whole-save corruption.
+            var tempCache = new Dictionary<string, Dictionary<string, CompostingBinStateModel>>();
+
+            foreach (var loc in data.LocationBinData ?? new Dictionary<string, Dictionary<string, CompostingBinStateData>>())
             {
-                _runtimeCache.Clear();
-                foreach (var loc in data.LocationBinData)
+                if (loc.Value == null)
                 {
-                    _runtimeCache[loc.Key] = new Dictionary<string, CompostingBinStateModel>();
+                    // T134/FR-012: null payload for THIS location only. The
+                    // location is skipped — it is NOT treated as "no bins" and
+                    // the rest of the save loads normally.
+                    _monitor.Log($"Skipping composting bin data for location '{loc.Key}': payload was null.", LogLevel.Warn);
+                    continue;
+                }
+
+                try
+                {
+                    var locationBins = new Dictionary<string, CompostingBinStateModel>();
                     foreach (var bin in loc.Value)
                     {
                         var coords = ParseTileKey(bin.Key);
@@ -202,15 +250,104 @@ public class CompostingBinService(
                             ConsecutiveIdleDays = Math.Clamp(bin.Value.ConsecutiveIdleDays, 0, ModConstants.MaturationIdleResetDays),
                             ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays
                         };
-                        _runtimeCache[loc.Key][bin.Key] = state;
+                        locationBins[bin.Key] = state;
+                    }
+
+                    // T070 (FR-012): an empty location after quarantine is not
+                    // registered, so no phantom location dictionary exists.
+                    if (locationBins.Count > 0)
+                    {
+                        tempCache[loc.Key] = locationBins;
                     }
                 }
+                catch (Exception ex)
+                {
+                    // T134/FR-012/FR-015: quarantine this location only, with
+                    // sanitized diagnostics (type + HResult, never the message).
+                    _monitor.Log(
+                        $"Quarantining composting bin data for location '{loc.Key}': {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8}).",
+                        LogLevel.Warn);
+                }
             }
+
+            lock (_lock)
+            {
+                _runtimeCache.Clear();
+                foreach (var location in tempCache)
+                {
+                    _runtimeCache[location.Key] = location.Value;
+                }
+            }
+
+            PruneOrphanedLocations();
             _monitor.Log($"Loaded composting bin data for save '{saveId}'.", LogLevel.Trace);
         }
         catch (Exception ex)
         {
+            // T140 (FR-015): sanitized logging — exception type and HResult
+            // only, at Trace. Never the raw message or stack trace.
             _monitor.Log($"Failed to load composting bin data: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Trace);
+        }
+    }
+
+    /// <summary>
+    /// T134 (FR-012): prunes records whose physical bin no longer exists in
+    /// the world (orphaned state, FR-002), so no phantom machine duplication
+    /// survives a save/reload cycle. A location is pruned only when the
+    /// provider can prove BOTH that the location is unknown AND that none of
+    /// its persisted records still has a matching world object. An
+    /// absent-from-provider location is RETAINED rather than pruned (T070):
+    /// the provider cannot prove the bin is gone, and pruning on that basis
+    /// would destroy live state on any provider gap.
+    /// </summary>
+    private void PruneOrphanedLocations()
+    {
+        if (_locationProvider == null)
+        {
+            // Without a provider the world cannot be inspected, so nothing is
+            // provably orphaned — retain everything (T070/FR-012).
+            return;
+        }
+
+        List<string> locationsToPrune;
+        lock (_lock)
+        {
+            locationsToPrune = new List<string>();
+            foreach (var location in _runtimeCache)
+            {
+                var gameLocation = _locationProvider.GetLocationByName(location.Key);
+                var survivors = new Dictionary<string, CompostingBinStateModel>();
+                foreach (var bin in location.Value)
+                {
+                    var coords = ParseTileKey(bin.Key);
+                    var worldTile = new Vector2(coords.X, coords.Y);
+                    var binExistsInWorld = gameLocation?.Objects?.ContainsKey(worldTile) ?? false;
+                    if (binExistsInWorld || gameLocation == null)
+                    {
+                        survivors[bin.Key] = bin.Value;
+                    }
+                }
+
+                if (survivors.Count == 0)
+                {
+                    locationsToPrune.Add(location.Key);
+                }
+                else
+                {
+                    _runtimeCache[location.Key] = survivors;
+                }
+            }
+        }
+
+        lock (_lock)
+        {
+            foreach (var locationName in locationsToPrune)
+            {
+                _runtimeCache.Remove(locationName);
+                _monitor.Log(
+                    $"Pruned orphaned composting bin state for location '{locationName}': no physical bin exists in the world.",
+                    LogLevel.Trace);
+            }
         }
     }
 
@@ -219,37 +356,60 @@ public class CompostingBinService(
         var key = ModConstants.CompostingBinKeyPrefix + saveId;
         try
         {
-            lock (_lock)
-            {
-                var data = new CompostingBinData();
-                foreach (var loc in _runtimeCache)
-                {
-                    data.LocationBinData[loc.Key] = new Dictionary<string, CompostingBinStateData>();
-                    foreach (var bin in loc.Value)
-                    {
-                        if (bin.Value.State == CompostingBinState.Empty &&
-                            bin.Value.MaturationLevel == 1 &&
-                            bin.Value.ConsecutiveIdleDays == 0)
-                            continue;
-
-                        data.LocationBinData[loc.Key][bin.Key] = new CompostingBinStateData
-                        {
-                            State = bin.Value.State.ToString(),
-                            InputItemId = bin.Value.InputItemId,
-                            InputTimestamp = bin.Value.InputTimestamp,
-                            MaturationLevel = bin.Value.MaturationLevel,
-                            ConsecutiveIdleDays = bin.Value.ConsecutiveIdleDays,
-                            ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays
-                        };
-                    }
-                }
-                _modDataService.SaveData(data, key);
-            }
+            // T135 (Constitution III): snapshot under the lock, perform the I/O
+            // outside it — the SoilHealthService pattern. Holding _lock across
+            // _modDataService.SaveData serializes every bin mutation behind a
+            // disk write.
+            var snapshot = CreateSaveSnapshot();
+            _modDataService.SaveData(snapshot, key);
             _monitor.Log($"Saved composting bin data for save '{saveId}'.", LogLevel.Trace);
         }
         catch (Exception ex)
         {
+            // T140 (FR-015): sanitized logging — type + HResult only.
             _monitor.Log($"Failed to save composting bin data: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Trace);
+        }
+    }
+
+    /// <summary>
+    /// T135 (Constitution III): builds the persistence snapshot under the lock
+    /// and releases it immediately, so the caller performs the I/O unlocked.
+    /// </summary>
+    /// <returns>A DTO populated from the current runtime cache.</returns>
+    private CompostingBinData CreateSaveSnapshot()
+    {
+        lock (_lock)
+        {
+            var data = new CompostingBinData();
+            foreach (var loc in _runtimeCache)
+            {
+                var locationData = new Dictionary<string, CompostingBinStateData>();
+                foreach (var bin in loc.Value)
+                {
+                    if (bin.Value.State == CompostingBinState.Empty &&
+                        bin.Value.MaturationLevel == 1 &&
+                        bin.Value.ConsecutiveIdleDays == 0)
+                        continue;
+
+                    locationData[bin.Key] = new CompostingBinStateData
+                    {
+                        State = bin.Value.State.ToString(),
+                        InputItemId = bin.Value.InputItemId,
+                        InputTimestamp = bin.Value.InputTimestamp,
+                        MaturationLevel = bin.Value.MaturationLevel,
+                        ConsecutiveIdleDays = bin.Value.ConsecutiveIdleDays,
+                        ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays
+                    };
+                }
+
+                // Sparse save: omit locations with nothing worth persisting.
+                if (locationData.Count > 0)
+                {
+                    data.LocationBinData[loc.Key] = locationData;
+                }
+            }
+
+            return data;
         }
     }
 
@@ -275,8 +435,12 @@ public class CompostingBinService(
 
             var item = new StardewValley.Object(ModConstants.CompostingBinItemId, 1);
             item.bigCraftable.Value = true;
-            item.modData = new Dictionary<string, string>();
 
+            // T007/T127 (FR-005c): Item.modData is a read-only property in
+            // Stardew 1.6, so the dictionary is mutated through its indexer
+            // rather than reassigned. Progress written here is exactly what
+            // OnBinPlaced reads back on re-placement, so a moved bin cannot
+            // be used to reset or shortcut processing.
             if (!string.IsNullOrEmpty(bin.InputItemId))
             {
                 item.modData[ModConstants.ModDataInputIdKey] = bin.InputItemId;
