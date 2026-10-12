@@ -109,7 +109,7 @@ public class CompostingBinService(
                 var compost = new StardewValley.Object(ModConstants.CompostItemId, 1);
                 if (!_playerInventory.TryAddItem(compost))
                 {
-                    Game1.showRedMessage(TranslateRefusalMessage("message.compost.inventory-full")); // T157 FR-008a
+                    Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyHarvestInventoryFull)); // T157 FR-008a
                     _monitor.Log($"CompostingBin: inventory refused compost at ({tile.X}, {tile.Y}); bin still consumed.", LogLevel.Warn);
                 }
             }

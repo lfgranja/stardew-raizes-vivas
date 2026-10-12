@@ -64,6 +64,9 @@ namespace LivingRoots
         public const string QualifiedCompostItemId = "(O)LivingRoots.Compost";
         public const string MachineCompostingBinId = "(BC)LivingRoots.CompostingBin";
         public const string TranslationKeyCompostActionConflict = "message.compost.action-conflict";
+        public const string TranslationKeyCompostInvalidTile = "message.compost.invalid-tile";
+        public const string TranslationKeyCompostMaxHealth = "message.compost.max-health";
+        public const string TranslationKeyHarvestInventoryFull = "message.harvest.inventory-full";
         public const string CompostingBinItemId = "LivingRoots.CompostingBin";
         public const string CompostingBinRecipeId = "LivingRoots.CompostingBinRecipe";
         public const string CompostCraftingTab = "Home";
