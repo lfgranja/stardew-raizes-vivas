@@ -207,14 +207,17 @@ namespace LivingRoots.Tests.Stubs
             }
 
             // Clone the barrier each run so a context can be reused across acts
-            // within one test while still rendezvousing every act.
+            // within one test while still rendezvousing every act. The timeout
+            // turns a participant that never arrives (an action that threw
+            // before the rendezvous) into a failure instead of hanging the
+            // whole run forever.
             var barrier = new Barrier(_farmers.Length);
             var tasks = _farmers.Select(async farmer =>
             {
                 // Rendezvous: every participant reaches this point before any
                 // of them enters the action, so the actions overlap.
                 await Task.Yield();
-                barrier.SignalAndWait();
+                barrier.SignalAndWait(TimeSpan.FromSeconds(30));
 
                 return await action(farmer);
             });
@@ -239,7 +242,7 @@ namespace LivingRoots.Tests.Stubs
             var tasks = _farmers.Select(async farmer =>
             {
                 await Task.Yield();
-                barrier.SignalAndWait();
+                barrier.SignalAndWait(TimeSpan.FromSeconds(30));
 
                 await action(farmer);
             });

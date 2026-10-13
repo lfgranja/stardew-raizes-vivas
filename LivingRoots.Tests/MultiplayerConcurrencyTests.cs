@@ -879,7 +879,7 @@ public class MultiplayerConcurrencyTests
                 // The production service updates soil health while still holding the
                 // host-authoritative lock — hold the lock open until the losing
                 // farmer's attempt has been refused.
-                contentionBarrier.SignalAndWait();
+                contentionBarrier.SignalAndWait(TimeSpan.FromSeconds(30));
                 sharedHealth += delta;
             });
 
@@ -898,7 +898,7 @@ public class MultiplayerConcurrencyTests
                     // The loser is guaranteed to arrive while the winner still
                     // holds the lock: the winner only releases after its soil
                     // health update, which waits for this signal.
-                    contentionBarrier.SignalAndWait();
+                    contentionBarrier.SignalAndWait(TimeSpan.FromSeconds(30));
                 });
 
             if (success)
