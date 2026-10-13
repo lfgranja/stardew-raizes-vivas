@@ -2502,6 +2502,12 @@ namespace LivingRoots.Controllers
             location.Objects.Remove(tile);
             _compostingBinService.OnObjectRemoved(location.Name, tile);
 
+            if (dislodgedItem == null)
+            {
+                // No progress record to preserve — nothing to reconstruct.
+                return true;
+            }
+
             bool added = false;
             if (inventory != null)
             {
