@@ -187,7 +187,7 @@ Each assumption includes a validation mechanism to confirm correctness before an
 ## Out of Scope
 
 - Soil health value modification through visualization (visualization is read-only)
-- Multiplayer synchronization of visualization settings
+- Multiplayer synchronization of visualization settings — the overlay itself stays local-rendered and read-only (a display concern that generates no network traffic of its own). **Validation**: Confirmed by design — the underlying farm state it displays is host-authoritative and farm-scoped per Principle VI. Single-player is the degenerate case of multiplayer (a host with no connected clients), so multiplayer is not out of scope.
 - In-game legend or tutorial explaining the color coding
 - Historical trend visualization (only current values shown)
 - Integration with other mods' soil systems

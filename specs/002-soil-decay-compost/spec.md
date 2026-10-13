@@ -211,7 +211,7 @@ Each assumption includes a validation mechanism to confirm correctness before an
 - The existing constants structure will be extended with decay/compost default values. **Validation**: Confirmed by code review — constants class is designed for extension.
 - Organic waste categorization maps to existing Stardew Valley item category flags. **Validation**: Verify by inspecting item data definitions for seeds and vegetables.
 - Composting Bin can be implemented as a custom building using existing building placement patterns. **Validation**: Research Stardew Valley building implementation during Phase 0.
-- Single-player game context only (no multiplayer sync required). **Validation**: Confirmed by design — all state is local per save file.
+- Farm state is host-authoritative and farm-scoped per Principle VI (no cross-farm or cross-location writes); single-player is the degenerate case of multiplayer (a host with no clients), not a separate mode outside multiplayer scope. **Validation**: Confirmed by design — all state is local per save file and scoped to the host's own farm.
 
 ## Dependencies
 
