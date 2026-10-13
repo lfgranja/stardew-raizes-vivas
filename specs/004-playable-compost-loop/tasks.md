@@ -763,12 +763,12 @@
 
 ### Convergence Implementation (clean session — only after T206–T210 are written and red) 🆕
 
-- [ ] T211 Record the ratified v2.0.0 amendment with Principle VI (Multiplayer As A First-Class Requirement) in `.specify/memory/constitution.md` per Governance (documented rationale + HUMAN approval — the agent prepares the amendment only; it merges solely after human ratification; no application code changes) per Constitution / FR-017 / FR-018 / FR-019 (F1, contradicts)
-- [ ] T212 [P] Wording-correct the "Multiplayer synchronization of visualization settings" bullet in `specs/001-soil-health-visualization/spec.md` (scope wording only, no redesign of settled requirements) per FR-017 (F2, contradicts)
-- [ ] T213 [P] Wording-correct the "Single-player game context only (no multiplayer sync required)" assumption in `specs/002-soil-decay-compost/spec.md` to carry the Principle VI host-authoritative reconciliation (scope wording only) per FR-017 (F3, contradicts)
-- [ ] T214 [P] Add the Principle VI host-authoritative farm-state pointer to both `docs/design-system/REALITY-CHECK-EVALUATION.md` and `docs/design-system/LIVING-ROOTS-UI-UX-DESIGN-SYSTEM.md` without redesigning threading advice per FR-017 / T102 (F4, partial)
-- [ ] T215 [P] Re-run the T210 source scan; if any `ex.StackTrace` occurrence surfaces, replace it with `GetType().FullName` + `HResult` at LogLevel.Trace per FR-015 (F5, partial)
-- [ ] T216 [P] Remove the leftover debug probe `LivingRoots.Tests/TempProbe4.cs` (or document its justification) per Constitution V (F6, unrequested)
+- [X] T211 Record the ratified v2.0.0 amendment with Principle VI (Multiplayer As A First-Class Requirement) in `.specify/memory/constitution.md` per Governance (documented rationale + HUMAN approval — the agent prepares the amendment only; it merges solely after human ratification; no application code changes) per Constitution / FR-017 / FR-018 / FR-019 (F1, contradicts)
+- [X] T212 [P] Wording-correct the "Multiplayer synchronization of visualization settings" bullet in `specs/001-soil-health-visualization/spec.md` (scope wording only, no redesign of settled requirements) per FR-017 (F2, contradicts)
+- [X] T213 [P] Wording-correct the "Single-player game context only (no multiplayer sync required)" assumption in `specs/002-soil-decay-compost/spec.md` to carry the Principle VI host-authoritative reconciliation (scope wording only) per FR-017 (F3, contradicts)
+- [X] T214 [P] Add the Principle VI host-authoritative farm-state pointer to both `docs/design-system/REALITY-CHECK-EVALUATION.md` and `docs/design-system/LIVING-ROOTS-UI-UX-DESIGN-SYSTEM.md` without redesigning threading advice per FR-017 / T102 (F4, partial)
+- [X] T215 [P] Re-run the T210 source scan; if any `ex.StackTrace` occurrence surfaces, replace it with `GetType().FullName` + `HResult` at LogLevel.Trace per FR-015 (F5, partial)
+- [X] T216 [P] Remove the leftover debug probe `LivingRoots.Tests/TempProbe4.cs` (or document its justification) per Constitution V (F6, unrequested)
 
 ### Convergence Verification (ONLY these attest — run LAST)
 
