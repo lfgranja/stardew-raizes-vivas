@@ -131,10 +131,6 @@ namespace LivingRoots.Services
                 // Add trace-level exception details for debugging without leaking message content
                 _monitor.Log($"LoadData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
 
-#if DEBUG
-                _monitor.Log(ex.StackTrace ?? "LoadData stack trace unavailable.", LogLevel.Trace);
-#endif
-
                 // Ensure we don't leak/serve stale state after a failed load.
                 lock (_lock)
                 {
@@ -546,9 +542,6 @@ namespace LivingRoots.Services
                 _monitor.Log($"SaveData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
-#if DEBUG
-                _monitor.Log(ex.StackTrace ?? "SaveData stack trace unavailable.", LogLevel.Trace);
-#endif
             }
         }
 
