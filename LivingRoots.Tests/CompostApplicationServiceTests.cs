@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using LivingRoots.Domain;
 using FsCheck;
 using FsCheck.Xunit;
@@ -880,6 +881,134 @@ public class CompostApplicationServiceTests
         Assert.True(
             refusalSiteKeys.All(k => !string.Equals(helper.Get(k).ToString(), k, StringComparison.Ordinal)),
             "T165 RED: at least one refusal site renders raw key — parity broken.");
+    }
+    // ------------------------------------------------------------------
+    // T197 (FR-002, partial) — the application gate must accept every
+    // greenhouse-like location the PLACEMENT gate accepts. Placement
+    // (ModController.TryPlaceBin, T105) accepts any location whose name
+    // contains "Greenhouse" under a case-insensitive comparison; the
+    // application gate (this service) compared the literal "Greenhouse",
+    // so a bin could be placed in a modded greenhouse but the compost
+    // it holds could never be applied there.
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Reduces an arbitrary generated string to an alphanumeric
+    /// location-name fragment, falling back to <paramref name="fallback"/>
+    /// when the generated value carries no such characters (so the
+    /// fragment is never empty). Mirrors the fragment reducer
+    /// <c>BinPlacementTests</c> generates its placement names with.
+    /// </summary>
+    /// <param name="raw">The generated string to reduce.</param>
+    /// <param name="fallback">The fragment used when nothing survives.</param>
+    /// <returns>A non-empty alphanumeric fragment.</returns>
+    private static string SanitizeLocationNameFragment(string? raw, string fallback)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return fallback;
+        }
+
+        var builder = new StringBuilder();
+        foreach (char character in raw)
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                builder.Append(character);
+            }
+        }
+
+        return builder.Length == 0 ? fallback : builder.ToString();
+    }
+
+    /// <summary>
+    /// T197 (FR-002, partial): for ANY location name the compost
+    /// application gate accepts exactly the locations the placement gate
+    /// accepts — the farm and every greenhouse-like name — and refuses
+    /// every other non-farm interior with the invalid-tile refusal.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// RED today: the service gates on the literal <c>"Greenhouse"</c>, so
+    /// every greenhouse-like non-farm location ("Modded Greenhouse…") is
+    /// refused even though <c>TryPlaceBin</c> accepted a bin there. The
+    /// generated greenhouse-like name is never exactly "Greenhouse" (both
+    /// fragments are non-empty), so the property cannot pass vacuously
+    /// against the literal comparison.
+    /// </para>
+    /// <para>
+    /// The second direction pins the invariant against a blanket
+    /// acceptance: a non-farm interior without the fragment is refused
+    /// with the invalid-tile refusal — the red HUD message built from
+    /// <see cref="ModConstants.TranslationKeyCompostInvalidTile"/>, not the
+    /// max-health one — and consumes no compost, so the refusal cannot be
+    /// mistaken for a later gate.
+    /// </para>
+    /// </remarks>
+    [Property(MaxTest = 100)]
+    public void TryApplyCompost_ForAnyGreenhouseLikeOrNonGreenhouseLocationName_AcceptsOnlyGreenhouseLikeMaps(
+        NonNull<string> arbitraryPrefix,
+        NonNull<string> arbitrarySuffix,
+        NonNull<string> arbitraryInteriorName)
+    {
+        string prefix = SanitizeLocationNameFragment(arbitraryPrefix.Get, "Modded");
+        string suffix = SanitizeLocationNameFragment(arbitrarySuffix.Get, "Island");
+        string greenhouseLikeName = prefix + "Greenhouse" + suffix;
+        string interiorName = SanitizeLocationNameFragment(arbitraryInteriorName.Get, "Sewer")
+            .Replace("Greenhouse", "Cellar", StringComparison.OrdinalIgnoreCase);
+
+        var tile = new Vector2(10, 10);
+
+        // Both gates are driven over one soil-health reading, so the only
+        // difference the service observes is the location name.
+        _mockSoilHealthService
+            .Setup(x => x.GetSoilHealth(It.IsAny<string>(), It.IsAny<Vector2>()))
+            .Returns(50f);
+
+        // Greenhouse-like, non-farm: the application gate must accept it,
+        // exactly as the placement gate does (T105).
+        var greenhouse = new GameLocationFixture(greenhouseLikeName, isFarm: false);
+        greenhouse.AddHoeDirtTile((int)tile.X, (int)tile.Y);
+        var greenhouseCompost = ItemFactory.CreateItem(ModConstants.CompostItemId);
+        greenhouseCompost.Stack = 3;
+        _playerStub.CurrentItem = greenhouseCompost;
+
+        bool greenhouseAccepted = _service.TryApplyCompost(greenhouse.Location, tile);
+
+        Assert.True(
+            greenhouseAccepted,
+            $"FR-002: greenhouse-like location '{greenhouseLikeName}' must accept compost application — " +
+            "the placement gate accepts a bin there (T105), so an application gate keyed on the literal " +
+            "\"Greenhouse\" leaves that bin unusable.");
+        Assert.Equal(
+            2,
+            greenhouseCompost.Stack);
+
+        // Every other non-farm interior stays refused with the invalid-tile refusal.
+        var interior = new GameLocationFixture(interiorName, isFarm: false);
+        interior.AddHoeDirtTile((int)tile.X, (int)tile.Y);
+        var interiorCompost = ItemFactory.CreateItem(ModConstants.CompostItemId);
+        interiorCompost.Stack = 2;
+        _playerStub.CurrentItem = interiorCompost;
+
+        // A per-case marker keeps the rendered refusal unique, so the
+        // game's HUD de-duplication cannot collapse it into another
+        // entry and the assertion cannot pass vacuously.
+        string interiorMarker = "T197:" + interiorName + ":";
+        string interiorRefusalText = interiorMarker + ModConstants.TranslationKeyCompostInvalidTile;
+        var interiorService = new CompostApplicationService(
+            _mockSoilHealthService.Object,
+            _playerStub,
+            _mockMonitor.Object,
+            CreateStubTranslationHelper(interiorMarker));
+
+        bool interiorRefused = !interiorService.TryApplyCompost(interior.Location, tile);
+
+        Assert.True(interiorRefused);
+        Assert.Equal(2, interiorCompost.Stack);
+        Assert.Contains(
+            Game1.hudMessages,
+            message => message.message == interiorRefusalText);
     }
 }
 
