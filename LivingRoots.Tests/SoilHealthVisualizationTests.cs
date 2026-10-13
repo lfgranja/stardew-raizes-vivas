@@ -1058,12 +1058,31 @@ public class SoilHealthVisualizationTests
     [Property(MaxTest = 100)]
     public bool T126_Overlays_ReportOnlyDrawableValues_NeverFabricated(float tileHealth)
     {
-        // RED: the overlay draw path emits no value observable (seam missing per OverlayValueSeamDemand).
-        // Per FR-011 (partial) and specs/004-playable-compost-loop: the display MUST NOT report
-        // a value it is not actually able to draw. Unmeasurable tiles must be labeled Unknown,
-        // never carrying a fabricated percentage (no "%", no digits). Property-based over
-        // arbitrary health floats (including NaN/Infinity sentinels for unknown tiles).
-        // Fails for all inputs — red phase until overlay-value observable lands.
-        return false;
+        var messages = new List<string>();
+        var service = BuildDrawableValueFrameService(messages);
+        service.SetTileHealthData(new Dictionary<Point, float>
+        {
+            { DrawnValueTile, tileHealth }
+        });
+
+        string reported = RenderOneDrawableValueFrame(service, messages);
+
+        // Unmeasurable (NaN/inf): the literal Unknown label — no percentage, no digits.
+        if (float.IsNaN(tileHealth) || float.IsInfinity(tileHealth))
+        {
+            return reported == "Unknown" && !reported.Contains('%') && !reported.Any(char.IsDigit);
+        }
+
+        // Zero is the FR-009 neutral-dirt baseline: no overlay is drawn, so the
+        // frame owes no value — distinct from the unknown sentinel.
+        if (tileHealth == 0f)
+        {
+            return true;
+        }
+
+        // Measurable: the exact drawable value, never a fabricated percentage.
+        return !reported.Contains('%')
+            && float.TryParse(reported, NumberStyles.Float, CultureInfo.CurrentCulture, out var drawn)
+            && drawn == tileHealth;
     }
 }

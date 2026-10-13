@@ -1,64 +1,136 @@
 using System.Collections.Generic;
 using FsCheck;
 using FsCheck.Xunit;
-using LivingRoots;
+using LivingRoots.Controllers;
 using LivingRoots.Domain;
+using LivingRoots.Domain.Models;
+using LivingRoots.Domain.Services;
 using LivingRoots.Services;
+using LivingRoots.Tests.Fixtures;
+using LivingRoots.Tests.Stubs;
+using Microsoft.Xna.Framework;
+using Moq;
+using StardewModdingAPI;
 using StardewValley;
 using Xunit;
 
 namespace LivingRoots.Tests
 {
     /// <summary>
-    /// Bin pickup / dislodgement tests for User Story 1 (US1).
     /// Covers T117 and T118 from specs/004-playable-compost-loop/tasks.md.
     /// </summary>
     public class BinPickupTests
     {
-        /// <summary>
-        /// T117 [P] [US1] RED — FR-005c (partial): property-based invariant asserting
-        /// max stack 1 for progress-carrying bins through the production
-        /// Data/BigCraftables path.
-        /// Per spec: the bin carrying batch progress must be unstackable
-        /// (max stack 1) enforced by the native BigCraftableData definition.
-        /// Production currently does not enforce this guard properly.
-        /// </summary>
-        /// <remarks>
-        /// References: specs/004-playable-compost-loop/tasks.md (T117 / T130 / T142);
-        /// FR-005c (progress retention + max stack 1); FR-002 (BigCraftable identity).
-        /// </remarks>
-        [Property(Arbitrary = new[] { typeof(StackSizeGenerator) })]
-        public void T117_ProgressBin_EnforcesMaxStack1_ProductionPath(int stack)
+        private readonly Mock<IModHelper> _mockHelper;
+        private readonly Mock<IMonitor> _mockMonitor;
+        private readonly Mock<IManifest> _mockManifest;
+        private readonly Mock<ISoilHealthService> _mockSoilHealthService;
+        private readonly Mock<ISaveIdProvider> _mockSaveIdProvider;
+        private readonly Mock<ISoilDecayService> _mockSoilDecayService;
+        private readonly TimeProviderStub _timeStub;
+
+        public BinPickupTests()
         {
-            // Production path: Data/BigCraftables definition must cap progress-carrying
-            // bin stacks at 1. The generated stack simulates an arbitrary carried item.
-            // RED: production does not enforce max stack 1 properly for bins that carry
-            // progress (InputId / DaysRemaining in Item.modData).
-            Assert.True(
-                stack <= 1,
-                $"RED (T117 / FR-005c): production Data/BigCraftables path allows stack > 1 for progress-carrying bins. Generated stack={stack}; max stack must be 1 while progress is carried.");
+            GameStateFixture.Install();
+
+            _mockHelper = new Mock<IModHelper>();
+            _mockMonitor = new Mock<IMonitor>();
+            _mockManifest = new Mock<IManifest>();
+            _mockSoilHealthService = new Mock<ISoilHealthService>();
+            _mockSaveIdProvider = new Mock<ISaveIdProvider>();
+            _mockSoilDecayService = new Mock<ISoilDecayService>();
+
+            _mockManifest.Setup(x => x.UniqueID).Returns("test.mod.id");
+            _mockManifest.Setup(x => x.Version).Returns(new SemanticVersion(1, 0, 0));
+
+            _timeStub = new TimeProviderStub { TotalDays = 1 };
+        }
+
+        private CompostingBinService CreateService()
+        {
+            var dataService = new Mock<IModDataService>();
+            dataService.Setup(x => x.LoadData<CompostingBinData>(It.IsAny<string>())).Returns((CompostingBinData?)null);
+
+            return new CompostingBinService(
+                dataService.Object,
+                _mockSaveIdProvider.Object,
+                new OrganicWasteValidator(_mockMonitor.Object),
+                _mockMonitor.Object,
+                _timeStub,
+                new CompostingBinFactory(),
+                new RecordingPlayerInventory());
+        }
+
+        private ModController CreateController()
+        {
+            return new ModController(
+                _mockHelper.Object,
+                _mockMonitor.Object,
+                _mockManifest.Object,
+                _mockSoilHealthService.Object,
+                _mockSaveIdProvider.Object,
+                CreateService(),
+                _mockSoilDecayService.Object);
         }
 
         /// <summary>
-        /// T118 [P] [US1] RED — FR-005c (partial): unit test asserting that a
-        /// dislodged bin (via tool / explosion removal) with available inventory
-        /// space returns to inventory instead of becoming floating debris.
-        /// Per FR-005c: inventory-full is the only case that should produce debris.
+        /// T117 [P] [US1] — FR-005c: property-based invariant asserting that a
+        /// progress-carrying bin, reconstructed through the production
+        /// CreateDislodgedBinItem path, is unstackable (max stack 1), carries its
+        /// batch modData, and resolves as the (BC) big craftable.
         /// </summary>
-        /// <remarks>
-        /// References: specs/004-playable-compost-loop/tasks.md (T118 / T131);
-        /// FR-005c (dislodged bin with inventory space routes to inventory);
-        /// LivingRoots/Controllers/ModController.cs dislodge path.
-        /// </remarks>
+        [Property(MaxTest = 100)]
+        public void T117_ProgressBin_EnforcesMaxStack1_ProductionPath(
+            PositiveInt arbitraryTileX,
+            PositiveInt arbitraryTileY)
+        {
+            var service = CreateService();
+            var tile = new Vector2(arbitraryTileX.Get % 20, arbitraryTileY.Get % 20);
+
+            // A batch is loaded and mid-processing, so the record carries progress.
+            service.AddWaste("Farm", tile, ItemFactory.CreateValidWasteItem());
+            Assert.Equal(CompostingBinState.Processing, service.GetBinState("Farm", tile));
+
+            var dislodged = service.CreateDislodgedBinItem("Farm", tile);
+            var dislodgedObject = Assert.IsAssignableFrom<StardewValley.Object>(dislodged);
+
+            Assert.NotNull(dislodged);
+            Assert.Equal(1, dislodged.Stack);                                          // FR-005c: max stack 1 while carrying progress
+            Assert.True(dislodgedObject.bigCraftable.Value);                           // FR-002: resolves as (BC)LivingRoots.CompostingBin
+            Assert.True(dislodged.modData.ContainsKey(ModConstants.ModDataInputIdKey));        // FR-005c: progress serialized
+            Assert.True(dislodged.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey));
+        }
+
+        /// <summary>
+        /// T118 [P] [US1] — FR-005c: a dislodged bin with available inventory
+        /// space returns to inventory through the production ModController
+        /// dislodge path; debris is the full-inventory fallback only.
+        /// </summary>
         [Fact]
         public void T118_DislodgedBin_WithInventorySpace_ReturnsToInventory()
         {
-            // RED: production dislodge path does not route the reconstructed bin
-            // (carrying progress via Item.modData) back into the player's inventory
-            // when space is available; it either drops debris unconditionally or
-            // fails to reconstruct the dislodged item at all.
-            Assert.Fail(
-                "RED (T118 / FR-005c): dislodged bin with available inventory space does not return to inventory (routes to debris / not reconstructed) through the production ModController dislodge path.");
+            var controller = CreateController();
+            var fixture = new GameLocationFixture("Farm", isFarm: true);
+            var tile = new Vector2(7, 7);
+
+            var binItem = ItemFactory.CreateItem(ModConstants.CompostingBinItemId);
+            var inventory = new List<Item?> { binItem };
+            controller.TryPlaceBin(fixture.Location, tile, binItem, inventory);
+            Assert.True(fixture.Location.Objects.ContainsKey(tile), "Precondition: placement must succeed.");
+
+            var recordingInventory = new RecordingPlayerInventory();
+            bool debrisDropped = false;
+
+            var dislodged = controller.TryDislodgeBin(
+                fixture.Location,
+                tile,
+                recordingInventory,
+                (_, _, _) => debrisDropped = true);
+
+            Assert.True(dislodged, "FR-005c (T118): dislodge must succeed for a placed bin.");
+            Assert.False(debrisDropped, "FR-005c (T118): debris is only for a full inventory — space was available.");
+            Assert.True(recordingInventory.AddedItems.Count == 1, "FR-005c (T118): the reconstructed bin returned to the player's inventory.");
+            Assert.False(fixture.Location.Objects.ContainsKey(tile), "FR-002: the world object is gone after dislodge.");
         }
     }
 }
