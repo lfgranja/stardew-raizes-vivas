@@ -20,5 +20,12 @@
     <Content Include="manifest.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- T003/T103 (FR-008a): translation files ship with the mod so SMAPI
+         serves the refusal messages in the player's language; the tests read
+         them from the source tree to assert PT/EN parity and zero raw-key
+         leakage. -->
+    <Content Include="i18n/*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 </Project>
