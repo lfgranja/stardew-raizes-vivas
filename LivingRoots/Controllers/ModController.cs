@@ -1,5 +1,6 @@
 using LivingRoots.Domain;
 using LivingRoots.Domain.Interfaces;
+using LivingRoots.Domain.Services;
 using LivingRoots.Domain.Visualization;
 using LivingRoots.Services;
 using LivingRoots.Services.Visualization;
@@ -2458,12 +2459,20 @@ namespace LivingRoots.Controllers
         /// not a greenhouse, so non-farm
         /// interiors without it stay refused.
         /// </summary>
+        /// <remarks>
+        /// T197 (FR-002): the rule itself lives
+        /// in <see cref="GreenhouseLocationRule"/>
+        /// so the placement gate and the compost
+        /// application gate cannot disagree —
+        /// a bin placed here must have its
+        /// compost applicable here too. Only the
+        /// game-type seam is kept here.
+        /// </remarks>
         /// <param name="location">The location to classify.</param>
         /// <returns>True when the location name is greenhouse-like.</returns>
         private static bool IsGreenhouseLikeLocation(StardewValley.GameLocation location)
         {
-            return location.Name != null &&
-                location.Name.Contains("Greenhouse", StringComparison.OrdinalIgnoreCase);
+            return GreenhouseLocationRule.IsGreenhouseLike(location);
         }
 
         /// <summary>

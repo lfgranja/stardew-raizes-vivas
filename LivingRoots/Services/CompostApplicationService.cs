@@ -1,4 +1,5 @@
 using LivingRoots.Domain;
+using LivingRoots.Domain.Services;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewValley;
@@ -56,15 +57,44 @@ public class CompostApplicationService(
             || heldItem.ItemId == ModConstants.QualifiedCompostItemId;
     }
 
+    /// <summary>
+    /// T197 (FR-002): the location gate for compost application, using the same
+    /// greenhouse-like acceptance rule <c>ModController.TryPlaceBin</c> accepts
+    /// placement with (T105) — a modded greenhouse is a greenhouse too. The farm
+    /// always accepts, a greenhouse-like location accepts, and every other
+    /// location is refused with the invalid-tile refusal.
+    /// </summary>
+    /// <remarks>
+    /// The rule itself lives in <see cref="GreenhouseLocationRule"/> so placement
+    /// and application can never disagree: a bin placed in a modded greenhouse
+    /// must have its compost applicable there too.
+    /// </remarks>
+    /// <param name="location">The location compost is being applied in.</param>
+    /// <param name="locationName">The resolved name used in the refusal text.</param>
+    /// <returns>
+    /// <c>false</c> when the location refuses application and the invalid-tile
+    /// refusal has been rendered, sounded and logged — <c>true</c> when the caller
+    /// may proceed.
+    /// </returns>
+    private bool ValidateLocation(GameLocation location, string locationName)
+    {
+        if (!location.IsFarm && !GreenhouseLocationRule.IsGreenhouseLike(location))
+        {
+            Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyCompostInvalidTile));
+            _monitor.Log($"Compost rejected: {locationName} is not farm or greenhouse-like.", LogLevel.Trace);
+            Game1.playSound("cancel");
+            return false;
+        }
+
+        return true;
+    }
+
     public bool TryApplyCompost(GameLocation location, Vector2 tile)
     {
         var locationName = location.Name ?? "Unknown";
 
-        if (!location.IsFarm && locationName != "Greenhouse")
+        if (!ValidateLocation(location, locationName))
         {
-            Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyCompostInvalidTile));
-            _monitor.Log($"Compost rejected: {locationName} is not farm or Greenhouse.", LogLevel.Trace);
-            Game1.playSound("cancel");
             return false;
         }
 
