@@ -1013,12 +1013,11 @@ public class BinPlacementTests
         var tile = new Vector2(x, y);
 
         var binItem = CreateBinItem(stack: 1);
-        // FR-005c progress-modData: InputId + DaysRemaining (T065 / T057 patterns)
-        binItem.modData = new Dictionary<string, string>
-        {
-            [ModConstants.ModDataInputIdKey] = inputId,
-            [ModConstants.ModDataDaysRemainingKey] = daysRemaining.ToString()
-        };
+        // FR-005c progress-modData: InputId + DaysRemaining (T065 / T057 patterns).
+        // Item.modData is a read-only property in Stardew 1.6 — write through its
+        // mutable dictionary indexer instead of assigning a new dictionary.
+        binItem.modData[ModConstants.ModDataInputIdKey] = inputId;
+        binItem.modData[ModConstants.ModDataDaysRemainingKey] = daysRemaining.ToString();
 
         var inventory = new List<Item?> { binItem };
         bool placed = controller.TryPlaceBin(fixture.Location, tile, binItem, inventory);
@@ -1031,29 +1030,29 @@ public class BinPlacementTests
         var placedObject = fixture.Location.Objects[tile];
 
         // FR-002 identity guard: must resolve as big-craftable (BC), not raw (O)
-        Assert.Equal("(BC)" + ModConstants.CompostingBinItemId, placedObject.ItemId,
-            $"FR-002 (T057): placed bin identity guard missing/incomplete — expected (BC){ModConstants.CompostingBinItemId} but got {placedObject.ItemId}.");
+        Assert.Equal("(BC)" + ModConstants.CompostingBinItemId, placedObject.ItemId);
 
         // FR-005c progress retention: placed object must carry InputId/DaysRemaining
-        Assert.NotNull(placedObject.modData,
-            $"FR-005c (T065): placed bin must preserve modData dictionary — progress lost during placement.");
+        Assert.True(placedObject.modData != null,
+            "FR-005c (T065): placed bin must preserve modData dictionary — progress lost during placement.");
         Assert.True(placedObject.modData.ContainsKey(ModConstants.ModDataInputIdKey),
             $"FR-005c: progress InputId key missing after placement (inputId={inputId}).");
-        Assert.Equal(inputId, placedObject.modData[ModConstants.ModDataInputIdKey],
-            $"FR-005c: placed bin InputId must match original progress.");
+        Assert.Equal(inputId, placedObject.modData[ModConstants.ModDataInputIdKey]);
         Assert.True(placedObject.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey),
             $"FR-005c: progress DaysRemaining key missing after placement (days={daysRemaining}).");
-        Assert.Equal(daysRemaining.ToString(), placedObject.modData[ModConstants.ModDataDaysRemainingKey],
-            $"FR-005c: placed bin DaysRemaining must match original progress.");
+        Assert.Equal(daysRemaining.ToString(), placedObject.modData[ModConstants.ModDataDaysRemainingKey]);
 
         // Max stack 1 enforced through production Data/BigCraftables definition
-        Assert.Equal(1, placedObject.Stack,
-            $"FR-002 / FR-005c: bin must be placed at stack 1 (input stack=1, definition should cap at 1).");
+        Assert.Equal(1, placedObject.Stack);
         // Definition-level guard: BigCraftableData should enforce max 1; assertion targets the production definition
         // (red because definition currently does not set MaxStackSize = 1 explicitly — guard missing).
         // We assert the identity is BC so the definition applies; combined with above this covers the stack-1 contract.
-        Assert.True(placedObject.IsBigCraftable,
-            $"FR-002: placed object must be a big craftable to fall under Data/BigCraftables stack-1 definition — identity guard missing.");
+#pragma warning disable AvoidNetField
+        // Stardew 1.6 exposes the machine flag through the bigCraftable NetBool
+        // field (no IsBigCraftable member/extension exists on Object).
+        Assert.True(placedObject.bigCraftable.Value,
+            "FR-002: placed object must be a big craftable to fall under Data/BigCraftables stack-1 definition — identity guard missing.");
+#pragma warning restore AvoidNetField
     }
 
     /// <summary>
@@ -1075,11 +1074,9 @@ public class BinPlacementTests
         fixture.AddHoeDirtTile(10, 10);
 
         var binItem = CreateBinItem(stack: 1);
-        binItem.modData = new Dictionary<string, string>
-        {
-            [ModConstants.ModDataInputIdKey] = "(O)42",
-            [ModConstants.ModDataDaysRemainingKey] = "3"
-        };
+        // Item.modData is read-only in Stardew 1.6 — write through its mutable indexer.
+        binItem.modData[ModConstants.ModDataInputIdKey] = "(O)42";
+        binItem.modData[ModConstants.ModDataDaysRemainingKey] = "3";
         var inventory = new List<Item?> { binItem };
 
         bool placed = controller.TryPlaceBin(fixture.Location, tile, binItem, inventory);
@@ -1088,25 +1085,23 @@ public class BinPlacementTests
         var placedObject = fixture.Location.Objects[tile];
 
         // (1) Identity resolves as (BC)LivingRoots.CompostingBin
-        Assert.True(placedObject.IsBigCraftable,
+#pragma warning disable AvoidNetField
+        Assert.True(placedObject.bigCraftable.Value,
             "T142 FR-001/FR-002: placed bin must be big craftable for (BC) identity.");
-        Assert.Equal("(BC)" + ModConstants.CompostingBinItemId, placedObject.QualifiedItemId,
-            "T142 FR-002: placed bin must resolve as (BC)LivingRoots.CompostingBin, not (O).");
+#pragma warning restore AvoidNetField
+        Assert.Equal("(BC)" + ModConstants.CompostingBinItemId, placedObject.QualifiedItemId);
 
         // (2) Progress-modData carried (FR-005c)
         Assert.NotNull(placedObject.modData);
         Assert.True(placedObject.modData.ContainsKey(ModConstants.ModDataInputIdKey),
             "T142 FR-005c: progress InputId missing.");
-        Assert.Equal("(O)42", placedObject.modData[ModConstants.ModDataInputIdKey],
-            "T142 FR-005c: carried InputId must match.");
+        Assert.Equal("(O)42", placedObject.modData[ModConstants.ModDataInputIdKey]);
         Assert.True(placedObject.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey),
             "T142 FR-005c: progress DaysRemaining missing.");
-        Assert.Equal("3", placedObject.modData[ModConstants.ModDataDaysRemainingKey],
-            "T142 FR-005c: carried DaysRemaining must match.");
+        Assert.Equal("3", placedObject.modData[ModConstants.ModDataDaysRemainingKey]);
 
         // (3) Max stack 1 enforced
-        Assert.Equal(1, placedObject.Stack,
-            "T142 FR-002: placed bin stack must be 1.");
+        Assert.Equal(1, placedObject.Stack);
 
         // --- Building-footprint refusal (FR-002) ---
         var footprintFixture = new GameLocationFixture("Farm", isFarm: true);
@@ -1123,8 +1118,7 @@ public class BinPlacementTests
             "T142 FR-002: bin placement on a building-footprint tile must be refused.");
         Assert.False(footprintFixture.Location.Objects.ContainsKey(footprintTile),
             "T142 FR-002: refused footprint placement must leave zero ghost objects.");
-        Assert.Equal(1, footprintBin.Stack,
-            "T142 FR-002: refused footprint placement must not deduct inventory.");
+        Assert.Equal(1, footprintBin.Stack);
         _mockCompostingBinService.Verify(
             s => s.OnBinPlaced(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<Item>()),
             Times.Never,
@@ -1162,11 +1156,9 @@ public class BinPlacementTests
         var farmTile = new Vector2(x, y);
         farmFixture.AddHoeDirtTile(x, y);
         var farmBin = CreateBinItem(stack: 1);
-        farmBin.modData = new Dictionary<string, string>
-        {
-            [ModConstants.ModDataInputIdKey] = "(O)" + inputNum,
-            [ModConstants.ModDataDaysRemainingKey] = daysRemaining.ToString()
-        };
+        // Item.modData is read-only in Stardew 1.6 — write through its mutable indexer.
+        farmBin.modData[ModConstants.ModDataInputIdKey] = "(O)" + inputNum;
+        farmBin.modData[ModConstants.ModDataDaysRemainingKey] = daysRemaining.ToString();
         bool farmPlaced = controller.TryPlaceBin(
             farmFixture.Location, farmTile, farmBin, new List<Item?> { farmBin });
         Assert.True(farmPlaced,
@@ -1176,26 +1168,24 @@ public class BinPlacementTests
         var farmPlacedObj = farmFixture.Location.Objects[farmTile];
 
         // (1) BigCraftable identity guard (FR-001 / T158)
-        Assert.True(farmPlacedObj.IsBigCraftable,
+#pragma warning disable AvoidNetField
+        Assert.True(farmPlacedObj.bigCraftable.Value,
             "T161 FR-001: placed bin must set bigCraftable flag for (BC) identity.");
-        Assert.Equal("(BC)" + ModConstants.CompostingBinItemId, farmPlacedObj.QualifiedItemId,
-            "T161 FR-002: identity must resolve as (BC)LivingRoots.CompostingBin, not (O).");
+#pragma warning restore AvoidNetField
+        Assert.Equal("(BC)" + ModConstants.CompostingBinItemId, farmPlacedObj.QualifiedItemId);
 
         // (2) Progress modData preserved through placement (FR-005c / T158)
-        Assert.NotNull(farmPlacedObj.modData,
+        Assert.True(farmPlacedObj.modData != null,
             "T161 FR-005c: placed bin must carry modData dictionary.");
         Assert.True(farmPlacedObj.modData.ContainsKey(ModConstants.ModDataInputIdKey),
             "T161 FR-005c: InputId key missing.");
-        Assert.Equal("(O)" + inputNum, farmPlacedObj.modData[ModConstants.ModDataInputIdKey],
-            "T161 FR-005c: carried InputId must match original.");
+        Assert.Equal("(O)" + inputNum, farmPlacedObj.modData[ModConstants.ModDataInputIdKey]);
         Assert.True(farmPlacedObj.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey),
             "T161 FR-005c: DaysRemaining key missing.");
-        Assert.Equal(daysRemaining.ToString(), farmPlacedObj.modData[ModConstants.ModDataDaysRemainingKey],
-            "T161 FR-005c: carried DaysRemaining must match original.");
+        Assert.Equal(daysRemaining.ToString(), farmPlacedObj.modData[ModConstants.ModDataDaysRemainingKey]);
 
         // (3) Max stack 1 enforced (FR-002 / definition guard)
-        Assert.Equal(1, farmPlacedObj.Stack,
-            "T161 FR-002: placed bin stack must be 1.");
+        Assert.Equal(1, farmPlacedObj.Stack);
 
         // --- Greenhouse accepted (FR-002) ---
         var greenhouse = new GameLocationFixture("Greenhouse", isFarm: false);
@@ -1219,8 +1209,7 @@ public class BinPlacementTests
             "T161 FR-002: building-footprint tile must refuse placement (current footprint check only runs when !validLocation, so valid farm tiles skip refusal).");
         Assert.False(footprintFixture.Location.Objects.ContainsKey(footprintTile),
             "T161: refused footprint must leave zero ghost objects.");
-        Assert.Equal(1, fpBin.Stack,
-            "T161 FR-002: footprint refusal must not deduct inventory.");
+        Assert.Equal(1, fpBin.Stack);
         _mockCompostingBinService.Verify(
             s => s.OnBinPlaced(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<Item>()),
             Times.Never,
@@ -1324,10 +1313,7 @@ public class BinPlacementTests
         Assert.False(
             footprintFixture.Location.Objects.ContainsKey(footprintTile),
             "FR-002 (T116): refused footprint placement must leave zero ghost objects.");
-        Assert.Equal(
-            1,
-            binItem.Stack,
-            "FR-002 (T116): refused footprint placement must not deduct the bin from inventory.");
+        Assert.Equal(1, binItem.Stack);
         _mockCompostingBinService.Verify(
             s => s.OnBinPlaced(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<Item>()),
             Times.Never,
