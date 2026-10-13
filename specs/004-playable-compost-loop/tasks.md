@@ -755,11 +755,11 @@
 
 ### Convergence Tests (TDD Red Phase — BLOCKS T211–T216) ⚠️
 
-- [ ] T206 [P] Add failing architectural test asserting `.specify/memory/constitution.md` records v2.0.0 and a Principle VI multiplayer-first clause in a new `LivingRoots.Tests/ConstitutionGovernanceTests.cs` per Constitution / FR-017 (F1, contradicts). Fixed document assertion — property-based N/A.
-- [ ] T207 [P] Add failing FR-017 markdown assertion that `specs/001-soil-health-visualization/spec.md` `## Out of Scope` contains no multiplayer exclusion bullet in `LivingRoots.Tests/ArchitecturalPlanTests.cs` per FR-017 (F2, contradicts). Fixed literal — property-based N/A.
-- [ ] T208 [P] Add failing FR-017 markdown assertion that `specs/002-soil-decay-compost/spec.md`'s single-player assumption carries the Principle VI host-authoritative reconciliation wording in `LivingRoots.Tests/ArchitecturalPlanTests.cs` per FR-017 (F3, contradicts). Shares file with T207 — same subagent, serial within the wave.
-- [ ] T209 [P] Add failing architectural test asserting both `docs/design-system/*.md` reference Principle VI host-authoritative farm state in `LivingRoots.Tests/ArchitecturalPlanTests.cs` per FR-017 / T092 (F4, partial). Shares file with T207/T208 — same subagent, serial within the wave.
-- [ ] T210 [P] Add failing production source-scan asserting zero `ex.StackTrace` occurrences under `LivingRoots/**.cs` in a new `LivingRoots.Tests/ProductionSourceGuardTests.cs` per FR-015 / T200 (F5, partial). The generated set is the production source tree itself; property-based N/A.
+- [X] T206 [P] Add failing architectural test asserting `.specify/memory/constitution.md` records v2.0.0 and a Principle VI multiplayer-first clause in a new `LivingRoots.Tests/ConstitutionGovernanceTests.cs` per Constitution / FR-017 (F1, contradicts). Fixed document assertion — property-based N/A.
+- [X] T207 [P] Add failing FR-017 markdown assertion that `specs/001-soil-health-visualization/spec.md` `## Out of Scope` contains no multiplayer exclusion bullet in `LivingRoots.Tests/ArchitecturalPlanTests.cs` per FR-017 (F2, contradicts). Fixed literal — property-based N/A.
+- [X] T208 [P] Add failing FR-017 markdown assertion that `specs/002-soil-decay-compost/spec.md`'s single-player assumption carries the Principle VI host-authoritative reconciliation wording in `LivingRoots.Tests/ArchitecturalPlanTests.cs` per FR-017 (F3, contradicts). Shares file with T207 — same subagent, serial within the wave.
+- [X] T209 [P] Add failing architectural test asserting both `docs/design-system/*.md` reference Principle VI host-authoritative farm state in `LivingRoots.Tests/ArchitecturalPlanTests.cs` per FR-017 / T092 (F4, partial). Shares file with T207/T208 — same subagent, serial within the wave.
+- [X] T210 [P] Add failing production source-scan asserting zero `ex.StackTrace` occurrences under `LivingRoots/**.cs` in a new `LivingRoots.Tests/ProductionSourceGuardTests.cs` per FR-015 / T200 (F5, partial). The generated set is the production source tree itself; property-based N/A.
 
 ### Convergence Implementation (clean session — only after T206–T210 are written and red) 🆕
 
