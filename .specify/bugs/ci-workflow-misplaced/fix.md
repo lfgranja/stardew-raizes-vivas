@@ -33,15 +33,15 @@ jobs:
     # Needs the game assemblies. Dormant until the variable is set.
     build-test:
         runs-on: ubuntu-latest
-        if: ${{ vars.STARDIEW_GAME_PATH != '' }}
+        if: ${{ vars.STARDEW_GAME_PATH != '' }}
         env:
-            GamePath: ${{ vars.STARDIEW_GAME_PATH }}
+            GamePath: ${{ vars.STARDEW_GAME_PATH }}
         # preflight (6 required files) -> restore -> build -> test -> upload artifact
 ```
 
 Key decisions:
 
-- **`if: ${{ vars.STARDIEW_GAME_PATH != '' }}` on the job.** Rather than shipping a job that is guaranteed to fail, `build-test` reports as *skipped* (neutral) until you configure the variable. Set it and the job activates with **no further edits to the workflow**.
+- **`if: ${{ vars.STARDEW_GAME_PATH != '' }}` on the job.** Rather than shipping a job that is guaranteed to fail, `build-test` reports as *skipped* (neutral) until you configure the variable. Set it and the job activates with **no further edits to the workflow**.
 - **`env: GamePath:`** is the officially supported escape hatch: `find-game-folder.targets` only assigns `GamePath` when it does not already exist, and MSBuild promotes environment variables to properties. This suppresses local Steam/GOG autodetection deterministically.
 - **Preflight step** converts ModBuildConfig's opaque `the mod build package can't find your game folder` into six specific `::error::missing <filename>` lines naming what to configure.
 - **`paths-ignore` on both triggers** so documentation-only changes (`.specify/**`, `docs/**`, `research/**`, `**/*.md`, `specs/**`) skip the gate — the assessment's step 5.
@@ -94,14 +94,14 @@ Manual checks:
 
 - **`paths-ignore` + required status checks is a known GitHub trap.** If you later add `Check Formatting` to `required_status_checks`, a **docs-only PR will hang forever** waiting for a check that never reports, because the workflow is filtered out and GitHub still expects it. If you want the gate required, drop the `paths-ignore` on the `pull_request` trigger, or keep docs PRs unfiltered. Decide this *before* promoting the check. This is the same latent-blocking risk the assessment raised, now with a second edge to it.
 - **`build-test` will silently stay dormant.** A skipped job looks like nothing happened, so a green workflow does **not** mean tests ran. Anyone auditing CI health must check that `Build and Test` actually reports, not just that the workflow is green. This is a real gap and the reason the status here is `partial`.
-- **Commercial binaries.** Whoever provisions `STARDIEW_GAME_PATH` must not push Stardew Valley assemblies into this **public** repository. A secret-backed zip or a private artifact both transit GitHub infrastructure. A self-hosted runner with the game installed avoids that entirely, and also sidesteps GitHub's public-repo rate limits for self-hosted runners — but it requires the runner to be registered and online before the job can run. I did not pick one for you.
+- **Commercial binaries.** Whoever provisions `STARDEW_GAME_PATH` must not push Stardew Valley assemblies into this **public** repository. A secret-backed zip or a private artifact both transit GitHub infrastructure. A self-hosted runner with the game installed avoids that entirely, and also sidesteps GitHub's public-repo rate limits for self-hosted runners — but it requires the runner to be registered and online before the job can run. I did not pick one for you.
 - **SDK 10 against `net6.0`.** `net6.0` is out of support; SDK 10 will build it but emits EOL diagnostics. It does not affect `dotnet format`, and it is a pre-existing condition of the project, not introduced here.
 - **Windows path separators.** ModBuildConfig validates with `$(GamePath)\Stardew Valley.dll`. MSBuild normalises this on Linux and my preflight uses forward slashes, but the actual `Build` step's behaviour under a provisioned `GamePath` is **untested on Linux**.
 
 ## Follow-ups
 
-1. **Decide where the game assemblies come from** — self-hosted runner (recommended: no licensing transit, no binary in GitHub) vs. secret-backed provisioning (needs a format and raises the licensing question above). Then either register the runner and set `runs-on`, or point `STARDIEW_GAME_PATH` at a provisioned path.
-2. **Set `STARDIEW_GAME_PATH`** (or the equivalent) and confirm `Build and Test` reports green — this is the step that converts this fix from `partial` to `applied`.
+1. **Decide where the game assemblies come from** — self-hosted runner (recommended: no licensing transit, no binary in GitHub) vs. secret-backed provisioning (needs a format and raises the licensing question above). Then either register the runner and set `runs-on`, or point `STARDEW_GAME_PATH` at a provisioned path.
+2. **Set `STARDEW_GAME_PATH`** (or the equivalent) and confirm `Build and Test` reports green — this is the step that converts this fix from `partial` to `applied`.
 3. **Decide the `paths-ignore` + required-checks question before promoting the gate** (see Risks).
 4. **Reintroduce SonarCloud** as a separate bug: provision `SONAR_TOKEN`, confirm the organisation and project key exist, and re-add the scanner steps. Kept out of scope here by your instruction.
 5. **Verify after pushing**: `gh api repos/lfgranja/stardew-raizes-vivas/actions/workflows` must return `total_count: 1`. That is the direct confirmation that the root cause is gone.

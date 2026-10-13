@@ -26,7 +26,7 @@ on:
             - '.github/pull_request_template.md'
             - 'lefthook.yml'
 
-# This workflow is dormant until the STARDIEW_GAME_PATH repository variable is set. While it
+# This workflow is dormant until the STARDEW_GAME_PATH repository variable is set. While it
 # is dormant there is no check named "Build and Test" anywhere, rather than a check that
 # reports green without having run anything — see .specify/bugs/ci-skipped-job-false-green/.
 #
@@ -40,12 +40,12 @@ jobs:
     build-test:
         name: Build and Test
         runs-on: ubuntu-latest
-        if: ${{ vars.STARDIEW_GAME_PATH != '' }}
+        if: ${{ vars.STARDEW_GAME_PATH != '' }}
         env:
             # MSBuild promotes environment variables to properties, so setting GamePath here
             # suppresses the package's local Steam/GOG autodetection (find-game-folder.targets
             # only assigns GamePath when it does not already exist).
-            GamePath: ${{ vars.STARDIEW_GAME_PATH }}
+            GamePath: ${{ vars.STARDEW_GAME_PATH }}
 
         steps:
             - uses: actions/checkout@v4
@@ -74,7 +74,7 @@ jobs:
                   done
                   if [ "${missing}" -ne 0 ]; then
                       echo "::error::GamePath does not contain a usable Stardew Valley + SMAPI install."
-                      echo "::error::Fix STARDIEW_GAME_PATH in repository settings, or unset it to skip this job."
+                      echo "::error::Fix STARDEW_GAME_PATH in repository settings, or unset it to skip this job."
                       exit 1
                   fi
                   echo "GamePath (${GamePath}) looks complete."

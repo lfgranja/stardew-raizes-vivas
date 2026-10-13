@@ -19,7 +19,7 @@
 | **Reproduction (post-fix, run history)** | `gh run list --repo lfgranja/stardew-raizes-vivas` | **fail** | Still empty; 0 runs, same as before the fix |
 | **Remote branch state** | `git ls-tree -r --name-only origin/dev -- .github/` | **fail** | `origin/dev` still has `.github/build_and_analyze.yml`; fix never pushed |
 | Working-tree state | `git status --porcelain` | — | `RM .github/… -> .github/workflows/…` and ` M LivingRoots.Tests.csproj`, both unstaged-to-origin |
-| Workflow structure (27 assertions) | `python3` + `yaml.safe_load` assertions | pass | Triggers, 8 `paths-ignore` per trigger, jobs `format`/`build-test`, job-level `if` on `vars.STARDIEW_GAME_PATH`, job-level `env`, every step has exactly one of `uses`/`run`, zero `sonar` references |
+| Workflow structure (27 assertions) | `python3` + `yaml.safe_load` assertions | pass | Triggers, 8 `paths-ignore` per trigger, jobs `format`/`build-test`, job-level `if` on `vars.STARDEW_GAME_PATH`, job-level `env`, every step has exactly one of `uses`/`run`, zero `sonar` references |
 | Preflight script (new code) | `GamePath=<empty>` / `GamePath=<complete>` | pass | exit 1 with 6 `::error::missing` lines / exit 0 |
 | Format gate (the gate the fix relies on) | `dotnet format Stardew-LivingRoots.sln --verify-no-changes` | pass | exit 0, empty output |
 | Restore after csproj change | `dotnet restore` | pass | `coverlet.collector/6.0.0` resolved into `project.assets.json` |
@@ -84,7 +84,7 @@ exit=0
 
 - **The original symptom is fully intact on GitHub.** Until the commit lands on `dev`, the bug is exactly as reported: 0 runs, `total_count: 0`. Everything verified so far proves the *remediation is correct*, not that it is *live*.
 - **The regression suite has never been run — not now, not in this workspace.** I modified `LivingRoots.Tests.csproj` by adding a `PackageReference`. Restore succeeds and the package resolves, which is meaningful but not sufficient evidence: nothing has confirmed that the 44-file suite still compiles and passes with the new collector referenced. On `net6.0` with `copyLocalLockFileAssemblies=true`, a new build asset is a plausible (if unlikely) source of assembly conflicts.
-- **`build-test` remains dormant.** Even after pushing, the workflow will report green while `Build and Test` is *skipped*, because `STARDIEW_GAME_PATH` is unset. A green check must not be read as "tests ran".
+- **`build-test` remains dormant.** Even after pushing, the workflow will report green while `Build and Test` is *skipped*, because `STARDEW_GAME_PATH` is unset. A green check must not be read as "tests ran".
 - **The workflow has never been validated by GitHub's own parser.** YAML structure and Actions-context usage were asserted offline, but only a real push can confirm the file is accepted. `actionlint` would have narrowed this gap and was not run.
 - **`paths-ignore` + future required status checks** remains an unaddressed trap: a docs-only PR would hang waiting for a filtered-out check. Not exercised here.
 - **`Build` step behaviour under a provisioned `GamePath` is untested on Linux.** ModBuildConfig validates with Windows-style separators (`$(GamePath)\Stardew Valley.dll`); MSBuild normally normalises this, but my preflight used forward slashes and the real build step never ran.
