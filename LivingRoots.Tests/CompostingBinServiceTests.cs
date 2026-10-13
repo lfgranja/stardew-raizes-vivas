@@ -608,11 +608,95 @@ public class CompostingBinServiceTests
         var machinesDict = new Dictionary<string, MachineData>();
         ApplyEditOperation(editOperations[0]!, machinesDict);
 
-        return machinesDict.TryGetValue("(BC)" + ModConstants.MachineCompostingBinId, out var machineData)
+        // T193 (FR-001a/FR-001b): the EXACT key the world object resolves as —
+        // ModConstants.MachineCompostingBinId is already the fully qualified
+        // "(BC)LivingRoots.CompostingBin" id, so there is no second shape to
+        // accept. An OR-fallback here is what let a double-prefixed registration
+        // pass while no placed bin could ever match its machine rules.
+        return machinesDict.TryGetValue(ModConstants.MachineCompostingBinId, out var machineData)
             ? machineData
-            : machinesDict.TryGetValue(ModConstants.MachineCompostingBinId, out machineData)
-                ? machineData
-                : null;
+            : null;
+    }
+
+    /// <summary>
+    /// T193 (FR-001a/FR-001b) — the key <see cref="ReadRegisteredBinMachineData"/>
+    /// must be the one and only key the handler registers. RED until the
+    /// double-prefixed registration is removed from ModEntry.
+    /// </summary>
+    [Fact]
+    public void T193_RegistersMachineData_UnderSingleQualifiedKey()
+    {
+        var modEntry = new ModEntry();
+        var args = CreateAssetRequestedEventArgs("Data/Machines");
+        modEntry.OnAssetRequested(null, args);
+
+        var editOperations = GetEditOperations(args);
+        Assert.Single(editOperations);
+
+        var machinesDict = new Dictionary<string, MachineData>();
+        ApplyEditOperation(editOperations[0]!, machinesDict);
+
+        // Exactly one registration, under the fully qualified bin id — and
+        // nothing under a double-prefixed variant.
+        Assert.Single(machinesDict.Keys);
+        Assert.True(
+            machinesDict.ContainsKey(ModConstants.MachineCompostingBinId),
+            $"Data/Machines must be keyed by the fully qualified bin id '{ModConstants.MachineCompostingBinId}'.");
+        Assert.DoesNotContain("(BC)(BC)", machinesDict.Keys);
+    }
+
+    /// <summary>
+    /// T194 (FR-005c) — property-based invariant: a bin carrying batch progress
+    /// is unstackable through the production path, for ARBITRARY progress modData.
+    /// RED until production enforces max stack 1 on the progress-carrying path.
+    /// </summary>
+    [Property(MaxTest = 100)]
+    public bool T194_ProgressCarryingBin_IsUnstackable_ProductionPath(
+        NonNull<string> arbitraryInputId,
+        PositiveInt arbitraryDaysRemaining)
+    {
+        var binA = CreateProgressCarryingBin("Farm", arbitraryInputId.Get, arbitraryDaysRemaining.Get);
+        var binB = CreateProgressCarryingBin("Farm", arbitraryInputId.Get + "-other", arbitraryDaysRemaining.Get);
+
+        return !binA.canStackWith(binB);
+    }
+
+    /// <summary>
+    /// T194 (FR-005c) — a bin WITHOUT progress keeps vanilla stack behaviour, so
+    /// the unstackability rule is scoped to progress-carrying bins and does not
+    /// change the base item.
+    /// </summary>
+    [Fact]
+    public void T194_BinWithoutProgress_KeepsVanillaStackBehaviour()
+    {
+        var binA = (StardewValley.Object)ItemFactory.CreateItem(ModConstants.CompostingBinItemId);
+        var binB = (StardewValley.Object)ItemFactory.CreateItem(ModConstants.CompostingBinItemId);
+
+        Assert.True(
+            binA.canStackWith(binB),
+            "A progress-free bin must keep vanilla stack behaviour — the max-stack-1 rule is scoped to progress-carrying bins.");
+    }
+
+    /// <summary>
+    /// Builds a bin item through the PRODUCTION reconstruction path
+    /// (CreateDislodgedBinItem) carrying arbitrary batch progress.
+    /// </summary>
+    private StardewValley.Object CreateProgressCarryingBin(string locationName, string inputId, int daysRemaining)
+    {
+        var tile = new Vector2(1, 1);
+
+        var waste = ItemFactory.CreateValidWasteItem();
+        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(waste)).Returns(true);
+        _timeStub.TotalDays = 1;
+        _service.AddWaste("Farm", tile, waste);
+        _timeStub.TotalDays = 3;
+        _service.ProcessDayStart("Farm");
+
+        var item = _service.CreateDislodgedBinItem("Farm", tile);
+        Assert.NotNull(item);
+        var asObject = Assert.IsAssignableFrom<StardewValley.Object>(item);
+        Assert.Contains(ModConstants.ModDataInputIdKey, asObject.modData.Pairs.Select(p => p.Key));
+        return asObject;
     }
 
     /// <summary>Fabricates the SMAPI event args the registration handler reads.</summary>
