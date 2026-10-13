@@ -57,7 +57,39 @@ public class CompostingBinServiceTests
             _mockMonitor.Object,
             _timeStub,
             _factory,
-            _inventory);
+            _inventory,
+            translationHelper: CreateStubTranslationHelper());
+    }
+
+    /// <summary>
+    /// Stub <see cref="ITranslationHelper"/> standing in for SMAPI's: resolves
+    /// each refusal key to a fixed English message that carries the key's
+    /// semantic, so translated-text assertions (T121/T144) observe a TRANSLATED
+    /// string rather than a raw key — a raw key is therefore always detectable
+    /// as a leak.
+    /// </summary>
+    private static ITranslationHelper CreateStubTranslationHelper()
+    {
+        var mock = new Mock<ITranslationHelper>();
+        mock
+            .Setup(x => x.Get(It.IsAny<string>()))
+            .Returns((string key) => CreateTranslation(
+                key,
+                $"Refused: {key} (localized {Guid.NewGuid():N})"));
+        return mock.Object;
+    }
+
+    /// <summary>
+    /// Creates a <see cref="Translation"/> carrying the given text. SMAPI's
+    /// (locale, key, text) constructor is internal, so the test reaches it by
+    /// reflection — the same technique MultiplayerConcurrencyTests and
+    /// AssetRegistrationTests use for SMAPI internals.
+    /// </summary>
+    private static Translation CreateTranslation(string key, string text)
+    {
+        var ctor = typeof(Translation).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
+            .First(c => c.GetParameters().Length == 3);
+        return (Translation)ctor.Invoke(new object[] { "en", key, text });
     }
 
     /// <summary>Creates an item the validator accepts (Seeds category).</summary>
@@ -390,7 +422,7 @@ public class CompostingBinServiceTests
 
         var tile = new Vector2(10, 10);
         var location = CreateLocationWithPlacedBin(tile);
-        var controller = CreateInteractionController();
+        var controller = CreateInteractionController(new Services.HostAtomicLockService());
 
         // Driver 1 — the interception harvest: the controller collects
         // the finished batch through CompostingBinService.CollectCompost,
@@ -1116,13 +1148,23 @@ public class CompostingBinServiceTests
     /// </summary>
     private ModController CreateInteractionController(IHostAtomicLockService? lockService = null)
     {
+        return CreateInteractionController(_service, lockService);
+    }
+
+    /// <summary>
+    /// Builds a controller over a specific bin service for the
+    /// interaction-path tests. The lock service is injectable so a
+    /// test can pre-hold a tile lock and stage a genuine collision.
+    /// </summary>
+    private ModController CreateInteractionController(ICompostingBinService service, IHostAtomicLockService? lockService = null)
+    {
         return new ModController(
             new Mock<IModHelper>().Object,
             _mockMonitor.Object,
             new Mock<IManifest>().Object,
             new Mock<ISoilHealthService>().Object,
             _mockSaveIdProvider.Object,
-            _service,
+            service,
             new Mock<ISoilDecayService>().Object,
             hostAtomicLockService: lockService);
     }
@@ -1154,7 +1196,7 @@ public class CompostingBinServiceTests
         Assert.Equal(CompostingBinState.Processing, _service.GetBinState("Farm", tile));
 
         var location = CreateLocationWithPlacedBin(tile);
-        var controller = CreateInteractionController();
+        var controller = CreateInteractionController(new Services.HostAtomicLockService());
         var refusalKeys = new List<string>();
         var heldItem = CreateValidItem();
 
@@ -1188,7 +1230,7 @@ public class CompostingBinServiceTests
         Assert.Equal(binState, _service.GetBinState("Farm", tile));
 
         var location = CreateLocationWithPlacedBin(tile);
-        var controller = CreateInteractionController();
+        var controller = CreateInteractionController(new Services.HostAtomicLockService());
         var refusalKeys = new List<string>();
 
         var result = controller.TryInteractWithBin(location, tile, 1L, null, null, key => refusalKeys.Add(key));
@@ -1516,40 +1558,56 @@ public class CompostingBinServiceTests
         }
     }
 
-    /// <summary>T119 [P] [US2] RED — FR-005b (partial): exactly one compost across both drivers.</summary>
-    [Property]
-    public void T119_ExactlyOneCompost_NoDoublePayout()
+    /// <summary>T119 [P] [US2] — FR-005b: exactly one compost across both drivers.</summary>
+    [Property(MaxTest = 20)]
+    public bool T119_ExactlyOneCompost_NoDoublePayout(PositiveInt arbitraryTile)
     {
-        // Fixed finished batch — invariant is per-batch exactly-once;
-        // no generated input domain (property premise always met).
+        // Per-iteration isolation: the invariant is per-batch exactly-once, so
+        // any state carried between iterations would turn the test into a
+        // count of iterations rather than of payouts. A fresh service,
+        // inventory and time provider per run makes the payout observable.
+        var tile = new Vector2(arbitraryTile.Get % 20, 10);
+        var inventory = new RecordingPlayerInventory();
+        var timeStub = new TimeProviderStub { TotalDays = 1 };
+        var service = new CompostingBinService(
+            _mockModDataService.Object,
+            _mockSaveIdProvider.Object,
+            new OrganicWasteValidator(_mockMonitor.Object),
+            _mockMonitor.Object,
+            timeStub,
+            _factory,
+            inventory,
+            translationHelper: CreateStubTranslationHelper());
+
         var item = CreateValidItem();
         _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
-        _timeStub.TotalDays = 1;
-        _service.AddWaste("Farm", new Vector2(10, 10), item);
-        _timeStub.TotalDays = 3;
-        _service.ProcessDayStart("Farm");
+        service.AddWaste("Farm", tile, item);
+        timeStub.TotalDays = 3;
+        service.ProcessDayStart("Farm");
+        Assert.Equal(CompostingBinState.Ready, service.GetBinState("Farm", tile));
 
-        var tile = new Vector2(10, 10);
         var location = CreateLocationWithPlacedBin(tile);
-        var controller = CreateInteractionController();
+        var controller = CreateInteractionController(service, new Services.HostAtomicLockService());
 
         // Driver 1 — interception harvest.
         controller.TryInteractWithBin(location, tile, 1L, null);
 
-        // Driver 2 — native Data/Machines output declaration.
+        // Driver 2 — native Data/Machines output declaration. Production
+        // registers NO OutputItem for the bin (native payout disabled per
+        // T132/FR-005b), so the native driver grants nothing; a regression that
+        // re-enables it would surface here as a second item.
         var machineData = ReadRegisteredBinMachineData();
         var declaredOutput = machineData?.OutputRules?
             .SelectMany(rule => rule.OutputItem ?? new List<MachineItemOutput>())
             .FirstOrDefault();
         if (declaredOutput != null)
         {
-            var nativeOutput = new StardewValley.Object { ItemId = declaredOutput.ItemId };
-            _inventory.TryAddItem(nativeOutput);
+            inventory.TryAddItem(new StardewValley.Object { ItemId = declaredOutput.ItemId });
         }
 
-        // FR-005b: exactly one compost total across both drivers.
-        // RED: unreconciled native + interception yields 2, so count != 1.
-        Assert.Single(_inventory.AddedItems);
+        // FR-005b/FR-005a: exactly one compost in total across both drivers.
+        return inventory.AddedItems.Count == 1
+            && service.GetBinState("Farm", tile) == CompostingBinState.Empty;
     }
 
     /// <summary>T121 [P] [US2] RED — FR-005b/FR-008a (partial): translated refusal HUD text.</summary>
