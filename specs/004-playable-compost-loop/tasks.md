@@ -726,3 +726,80 @@
 - **Recommendation**: run `/speckit.implement` on T193–T201 in the wave order above (tests first, clean sessions, `[P]` delegation), then T202–T205 attests. A follow-up `/speckit.converge` will find fewer or no remaining items.
 - T052 (live multi-player, D1) and T086 (manual playtest, SC-001) remain deferred per spec Assumptions and must NOT be treated as Phase 20 blockers; they are tracked separately.
 - Note for the implementer: Phase 14's duplicate-ID tasks (T141–T150, T151–T155) are already satisfied in code — treat them as bookkeeping only (T201), never as reimplementation work.
+
+---
+
+## Phase 21: Convergence
+
+**Purpose**: Close the residual governance and truthfulness gaps found by the fifth `/speckit.converge` pass without renumbering T001–T205. Phase 20's findings F1–F9 (T193–T201) were re-verified against the code this pass and all stand genuinely complete. T052 (live 2-player, D1) and T086 (SC-001 manual playtest) stay open and are NOT duplicated below; all tasks are stub-bounded for SC-005/SC-010 until D1.
+
+**Binding execution rules (maintainer-mandated)**:
+0. Template/scaffold first: any generatable boilerplate MUST be generated that way BEFORE hand-writing.
+1. Strict TDD blocker: test tasks T206–T210 MUST be written first (property-based with FsCheck wherever an input domain exists; fixed-literal/markdown assertions document N/A) and MUST BLOCK implementation tasks T211–T216 until every test is written and observed failing for the right reason.
+2. Clean-session implementation: T211–T216 MUST run in a new session with clean context, never the session that wrote the tests.
+3. [P] delegation: tasks marked [P] MUST be delegated across parallel agents/subagents at maximum viable fan-out; tasks sharing a file reuse one subagent serially.
+4. Waves: tasks sharing file context batch into one subagent; gate tasks run LAST.
+5. Verification attests: gate tasks T217–T220 run LAST; ONLY their results attest Phase 21 — never the implementing agent.
+6. Deterministic commit hook: after finishing edits to a file, one atomic conventional commit (`test(...)` / `feat(...)` / `fix(...)` / `docs(...)`) with a detailed multi-line body.
+
+### Convergence Findings (assessed 2026-10-13)
+
+| ID | Gap Type | Severity | Source | Evidence | Remaining Work |
+|----|----------|----------|--------|----------|----------------|
+| F1 | contradicts | CRITICAL | Constitution / FR-017 / FR-018 / FR-019 | `.specify/memory/constitution.md` on disk is v1.1.0 and declares "Scope: Single-player only—multiplayer sync is architecturally out of scope", while the ratified v2.0.0 amendment adding Principle VI (Multiplayer As A First-Class Requirement) — recorded in `.specify/assessments/next-feature-80-20/research.md:8` ("constitution was amended to v2.0.0 mid-assessment, adding Principle VI") and referenced by `docs/GDD-living-roots.md:7`, `plan.md`'s Constitution Check and FR-017/FR-018/FR-019 — is absent from the governing file | Record the v2.0.0 amendment / Principle VI in the constitution file per Governance (documented amendment + human approval) so FR-017 reconciliations have a stable referent |
+| F2 | contradicts | HIGH | FR-017 | `specs/001-soil-health-visualization/spec.md:190` still lists "Multiplayer synchronization of visualization settings" under `## Out of Scope`, contradicting Principle VI; T195 reconciled line 178 but missed this bullet | Wording-correct the bullet (scope wording only, no redesign) |
+| F3 | contradicts | HIGH | FR-017 | `specs/002-soil-decay-compost/spec.md:214` still reads "Single-player game context only (no multiplayer sync required)"; the matching `plan.md:30` was reconciled (T196) but this assumption was not | Wording-correct the assumption (scope wording only) |
+| F4 | partial | MEDIUM | T092/T102 (FR-017) | Neither `docs/design-system/*.md` carries the required Principle VI host-authoritative pointer and `ArchitecturalPlanTests.cs` contains no test asserting it, although both tasks are checkbox [X] | Add the red-first architectural test, then the Principle VI wording to both docs |
+| F5 | partial | LOW | T200 (FR-015) | Production code verified free of `ex.StackTrace` (zero occurrences across `LivingRoots/`), but the production source-scan guard test asserted by T200/T087 does not exist, so the invariant is unguarded | Add the source-scan guard (red-first); fix any occurrence it surfaces |
+| F6 | unrequested | LOW | Constitution V / YAGNI | `LivingRoots.Tests/TempProbe4.cs` is a leftover debug probe dumping `StardewValley.LocationContexts` fields; called for by no artifact | Remove the probe (or justify retention) |
+
+### Convergence Tests (TDD Red Phase — BLOCKS T211–T216) ⚠️
+
+- [ ] T206 [P] Add failing architectural test asserting `.specify/memory/constitution.md` records v2.0.0 and a Principle VI multiplayer-first clause in a new `LivingRoots.Tests/ConstitutionGovernanceTests.cs` per Constitution / FR-017 (F1, contradicts). Fixed document assertion — property-based N/A.
+- [ ] T207 [P] Add failing FR-017 markdown assertion that `specs/001-soil-health-visualization/spec.md` `## Out of Scope` contains no multiplayer exclusion bullet in `LivingRoots.Tests/ArchitecturalPlanTests.cs` per FR-017 (F2, contradicts). Fixed literal — property-based N/A.
+- [ ] T208 [P] Add failing FR-017 markdown assertion that `specs/002-soil-decay-compost/spec.md`'s single-player assumption carries the Principle VI host-authoritative reconciliation wording in `LivingRoots.Tests/ArchitecturalPlanTests.cs` per FR-017 (F3, contradicts). Shares file with T207 — same subagent, serial within the wave.
+- [ ] T209 [P] Add failing architectural test asserting both `docs/design-system/*.md` reference Principle VI host-authoritative farm state in `LivingRoots.Tests/ArchitecturalPlanTests.cs` per FR-017 / T092 (F4, partial). Shares file with T207/T208 — same subagent, serial within the wave.
+- [ ] T210 [P] Add failing production source-scan asserting zero `ex.StackTrace` occurrences under `LivingRoots/**.cs` in a new `LivingRoots.Tests/ProductionSourceGuardTests.cs` per FR-015 / T200 (F5, partial). The generated set is the production source tree itself; property-based N/A.
+
+### Convergence Implementation (clean session — only after T206–T210 are written and red) 🆕
+
+- [ ] T211 Record the ratified v2.0.0 amendment with Principle VI (Multiplayer As A First-Class Requirement) in `.specify/memory/constitution.md` per Governance (documented rationale + HUMAN approval — the agent prepares the amendment only; it merges solely after human ratification; no application code changes) per Constitution / FR-017 / FR-018 / FR-019 (F1, contradicts)
+- [ ] T212 [P] Wording-correct the "Multiplayer synchronization of visualization settings" bullet in `specs/001-soil-health-visualization/spec.md` (scope wording only, no redesign of settled requirements) per FR-017 (F2, contradicts)
+- [ ] T213 [P] Wording-correct the "Single-player game context only (no multiplayer sync required)" assumption in `specs/002-soil-decay-compost/spec.md` to carry the Principle VI host-authoritative reconciliation (scope wording only) per FR-017 (F3, contradicts)
+- [ ] T214 [P] Add the Principle VI host-authoritative farm-state pointer to both `docs/design-system/REALITY-CHECK-EVALUATION.md` and `docs/design-system/LIVING-ROOTS-UI-UX-DESIGN-SYSTEM.md` without redesigning threading advice per FR-017 / T102 (F4, partial)
+- [ ] T215 [P] Re-run the T210 source scan; if any `ex.StackTrace` occurrence surfaces, replace it with `GetType().FullName` + `HResult` at LogLevel.Trace per FR-015 (F5, partial)
+- [ ] T216 [P] Remove the leftover debug probe `LivingRoots.Tests/TempProbe4.cs` (or document its justification) per Constitution V (F6, unrequested)
+
+### Convergence Verification (ONLY these attest — run LAST)
+
+- [ ] T217 **Gate 1 (Format Check)**: `dotnet format Stardew-LivingRoots.sln --verify-no-changes` exit 0 — after T211–T216; T052/T086 excluded (D1/maintainer); re-baseline this pass: exit 0
+- [ ] T218 **Gate 2 (Compilation & Build)**: `GamePath=$GP dotnet build Stardew-LivingRoots.sln --configuration Release` zero errors/warnings — after T211–T216; requires `STARDEW_GAME_PATH`; if unavailable the gate stays deferred (dormant-CI precedent, AGENTS.md); T052/T086 excluded
+- [ ] T219 **Gate 3 (Test Suite Execution)**: `GamePath=$GP dotnet test --no-build --configuration Release` 100% passing including T206–T210 — after T211–T216; T052/T086 excluded; attestation stub-bounded for SC-005/SC-010
+- [ ] T220 **Gate 4 (Architectural & Markdown Integrity)**: run `ConstitutionGovernanceTests`, the FR-017 assertions in `ArchitecturalPlanTests`, and `ProductionSourceGuardTests` — verify the constitution records v2.0.0/Principle VI, zero multiplayer-exclusion wording across the 8 FR-017 documents, zero production `ex.StackTrace`, trailing-newline integrity, and this appended Phase 21 — T052/T086 excluded
+
+### Convergence Waves & Subagent Dispatch Plan (Phase 21)
+
+- **Wave 24 (convergence tests — [P] tasks red-first, BLOCKS T211–T216)**:
+  - Subagent CA: T206 (`ConstitutionGovernanceTests.cs`)
+  - Subagent CB: T207 → T208 → T209 in order (`ArchitecturalPlanTests.cs` — one subagent, shared file context, serial within)
+  - Subagent CC: T210 (`ProductionSourceGuardTests.cs`)
+- **Wave 25 (convergence implementation — clean session per rule 2)**:
+  - Subagent CD: T211 (constitution amendment — prepares for human ratification only)
+  - Subagent CE: T212 → T213 (FR-017 wording corrections — two disjoint documents, parallel-safe)
+  - Subagent CF: T214 (`docs/design-system/*.md`)
+  - Subagent CG: T215 (conditional production fix) + T216 (probe removal)
+- **Wave 26 (convergence verification — ONLY attestation per rule 5)**: T217 → T218 → T219 → T220 in gate order; T052/T086 remain D1/maintainer-executed, never agent-attested.
+
+**Summary metrics:**
+- Requirements / acceptance criteria checked: FR-001–FR-019 (all 19), SC-001–SC-010 (all 10), all 14 acceptance scenarios across US1–US4
+- Plan decisions checked: native machine registration (FR-001a/b), 2-day maturation, one-output yield (FR-005a), progress retention (FR-005c), reactive ≤16.67ms overlay (FR-010), drawable-only reporting (FR-011), tolerant reader (FR-012), README taxonomy (FR-016), 8-document FR-017 reconciliation, multiplayer-first (FR-018/019); Phase 20's T193–T201 re-verified complete against the code (registration key, stack-1 enforcement, greenhouse-like gate, README, SC-004 matrix, StackTrace removal, parity pinning)
+- Constitution principles checked: I–V on disk — and the discovered v1.1.0-on-disk vs ratified-v2.0.0/Principle-VI conflict (F1); Gate 1 re-executed this pass (format exit 0); Gates 2–3 not runnable here (no `STARDEW_GAME_PATH`), consistent with recorded dormancy
+- Findings by gap type: contradicts (F1, F2, F3), partial (F4, F5), unrequested (F6)
+- Findings by severity: CRITICAL (F1), HIGH (F2, F3), MEDIUM (F4), LOW (F5, F6)
+- Existing task IDs preserved: T001–T205; no rewrites; Phase 21 appended at bottom
+
+### Next Actions
+
+- **Tasks appended**: 15 tasks (T206–T220) under Phase 21 — 5 red-first tests (T206–T210) blocking 6 implementation tasks (T211–T216), then 4 gates (T217–T220); Constitution finding (F1) emitted first.
+- **Recommendation**: run `/speckit.implement` on T206–T210 (red-first, wave dispatch above), then T211–T216 in a clean session; T211 requires human ratification per Governance before it counts. T217–T220 attests last. A follow-up `/speckit.converge` will find fewer or no remaining items.
+- T052 (live multi-player, D1) and T086 (manual playtest, SC-001) remain deferred per spec Assumptions and must NOT be treated as Phase 21 blockers; they are tracked separately.
