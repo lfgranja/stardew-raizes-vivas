@@ -110,6 +110,26 @@ public class CompostingBinService(
     }
 
     /// <summary>
+    /// T194 (FR-005c): a bin carrying batch progress MUST be unstackable
+    /// (maximum stack size 1). <c>Item.canStackWith</c> consults
+    /// <c>maximumStackSize()</c>, which for an unregistered modded item resolves
+    /// to the 999 default — so two progress-carrying bins would stack and their
+    /// batches would merge, the exact data-loss and shortcut hazard FR-005c
+    /// forbids. No definition field is available to lean on
+    /// (<c>BigCraftableData</c> exposes no stack-size member), so the rule is
+    /// carried by the item type itself (<see cref="ProgressCarryingBinItem"/>),
+    /// and this helper keeps the one-batch invariant explicit at the seam.
+    /// </summary>
+    /// <param name="item">The reconstructed bin, which carries progress.</param>
+    private static void EnforceUnstackableWhileCarryingProgress(ProgressCarryingBinItem item)
+    {
+        // Defense in depth: the type already answers maximumStackSize() with 1,
+        // and the stack itself is normalised here so an existing item can never
+        // be reconstructed with more than one batch's worth in it.
+        item.Stack = 1;
+    }
+
+    /// <summary>
     /// T136 (FR-008a): the vanilla machine rejection for an invalid drop-in —
     /// the audio cancel cue, plus a machine shake so the refusal is visible
     /// without any text. The shake is applied to the world object when the
@@ -513,12 +533,18 @@ public class CompostingBinService(
             // so it throws in a unit-test host. Assigning ItemId makes
             // QualifiedItemId report the bin without needing a registered
             // definition; bigCraftable then resolves it as (BC)LivingRoots.CompostingBin.
-            var item = new StardewValley.Object
+            // T194 (FR-005c): the reconstructed bin is the unstackable
+            // progress-carrying variant, so two batches can never merge into one
+            // stack. The parameterless constructor + ItemId assignment (not the
+            // named ctor) keeps it constructible in a unit-test host, where
+            // ItemRegistry has no registered definition to resolve through.
+            var item = new ProgressCarryingBinItem
             {
                 ItemId = ModConstants.CompostingBinItemId,
                 Stack = 1
             };
             item.bigCraftable.Value = true;
+            EnforceUnstackableWhileCarryingProgress(item);
 
             // T007/T127 (FR-005c): Item.modData is a read-only property in
             // Stardew 1.6, so the dictionary is mutated through its indexer

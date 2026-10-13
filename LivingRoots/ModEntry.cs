@@ -365,7 +365,14 @@ namespace LivingRoots
                 e.Edit(asset =>
                 {
                     var data = asset.AsDictionary<string, StardewValley.GameData.Machines.MachineData>().Data;
-                    var binId = $"(BC){ModConstants.MachineCompostingBinId}";
+
+                    // T193 (FR-001a/FR-001b): the key is the bin's fully qualified
+                    // item id — ModConstants.MachineCompostingBinId ALREADY carries
+                    // the "(BC)" prefix, so it must be used verbatim. Prefixing it
+                    // again produced "(BC)(BC)LivingRoots.CompostingBin", which no
+                    // placed bin resolves to, leaving DaysUntilReady and every other
+                    // native machine rule unreachable.
+                    var binId = ModConstants.MachineCompostingBinId; // "(BC)LivingRoots.CompostingBin"
                     data[binId] = new StardewValley.GameData.Machines.MachineData
                     {
                         // T053 (FR-001b): fairy dust would accelerate the
