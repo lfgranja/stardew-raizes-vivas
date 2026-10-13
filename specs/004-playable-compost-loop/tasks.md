@@ -772,10 +772,10 @@
 
 ### Convergence Verification (ONLY these attest — run LAST)
 
-- [ ] T217 **Gate 1 (Format Check)**: `dotnet format Stardew-LivingRoots.sln --verify-no-changes` exit 0 — after T211–T216; T052/T086 excluded (D1/maintainer); re-baseline this pass: exit 0
-- [ ] T218 **Gate 2 (Compilation & Build)**: `GamePath=$GP dotnet build Stardew-LivingRoots.sln --configuration Release` zero errors/warnings — after T211–T216; requires `STARDEW_GAME_PATH`; if unavailable the gate stays deferred (dormant-CI precedent, AGENTS.md); T052/T086 excluded
-- [ ] T219 **Gate 3 (Test Suite Execution)**: `GamePath=$GP dotnet test --no-build --configuration Release` 100% passing including T206–T210 — after T211–T216; T052/T086 excluded; attestation stub-bounded for SC-005/SC-010
-- [ ] T220 **Gate 4 (Architectural & Markdown Integrity)**: run `ConstitutionGovernanceTests`, the FR-017 assertions in `ArchitecturalPlanTests`, and `ProductionSourceGuardTests` — verify the constitution records v2.0.0/Principle VI, zero multiplayer-exclusion wording across the 8 FR-017 documents, zero production `ex.StackTrace`, trailing-newline integrity, and this appended Phase 21 — T052/T086 excluded
+- [X] T217 **Gate 1 (Format Check)**: `dotnet format Stardew-LivingRoots.sln --verify-no-changes` exit 0 — after T211–T216; T052/T086 excluded (D1/maintainer); re-baseline this pass: exit 0
+- [X] T218 **Gate 2 (Compilation & Build)**: `GamePath=$GP dotnet build Stardew-LivingRoots.sln --configuration Release` zero errors/warnings — after T211–T216; requires `STARDEW_GAME_PATH`; if unavailable the gate stays deferred (dormant-CI precedent, AGENTS.md); T052/T086 excluded
+- [X] T219 **Gate 3 (Test Suite Execution)**: `GamePath=$GP dotnet test --no-build --configuration Release` 100% passing including T206–T210 — after T211–T216; T052/T086 excluded; attestation stub-bounded for SC-005/SC-010
+- [X] T220 **Gate 4 (Architectural & Markdown Integrity)**: run `ConstitutionGovernanceTests`, the FR-017 assertions in `ArchitecturalPlanTests`, and `ProductionSourceGuardTests` — verify the constitution records v2.0.0/Principle VI, zero multiplayer-exclusion wording across the 8 FR-017 documents, zero production `ex.StackTrace`, trailing-newline integrity, and this appended Phase 21 — T052/T086 excluded
 
 ### Convergence Waves & Subagent Dispatch Plan (Phase 21)
 
