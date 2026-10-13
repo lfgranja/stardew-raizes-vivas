@@ -73,7 +73,8 @@ namespace LivingRoots.Services.Visualization
                 // reload is retried on the following frame rather than being
                 // silently dropped.
                 _configurationDirty = false;
-            }            catch (ArgumentException)
+            }
+            catch (ArgumentException)
             {
                 _monitor.Log("VisualizationConfigurationService: saveId rejected by sanitization. Using defaults.", LogLevel.Warn);
                 _configuration = CreateDefaults();
