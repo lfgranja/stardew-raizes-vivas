@@ -669,14 +669,15 @@ namespace LivingRoots.Services
             }
         }
 
-#if DEBUG
         /// <summary>
-        /// Test-only method to directly inject raw soil health data into the runtime cache.
-        /// This bypasses validation and is intended for testing corruption scenarios.
+        /// T135/Constitution III: the persistence snapshot is built under the lock
+        /// and the I/O runs outside it. This test-only injection reads back the
+        /// cache through the same lock the mutations use, so it observes a
+        /// consistent snapshot rather than a torn one.
         /// </summary>
-        /// <param name="locationName">The location name (can be invalid for testing)</param>
-        /// <param name="tile">The tile coordinates</param>
-        /// <param name="value">The health value</param>
+        /// <param name="locationName">Location name (can be invalid for testing).</param>
+        /// <param name="tile">Tile coordinates.</param>
+        /// <param name="value">Raw health value to inject (bypasses validation).</param>
         internal void TestOnly_SetRawSoilHealth(string locationName, Vector2 tile, float value)
         {
             lock (_lock)
@@ -690,7 +691,6 @@ namespace LivingRoots.Services
                 tiles[tilePoint] = value;
             }
         }
-#endif
 
         /// <summary>
         /// Internal helper method to set soil health value in the cache.
