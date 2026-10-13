@@ -106,7 +106,14 @@ public class CompostingBinService(
 
             for (int i = 0; i < outputCount; i++)
             {
-                var compost = new StardewValley.Object(ModConstants.CompostItemId, 1);
+                // Parameterless ctor + ItemId (see CreateDislodgedBinItem): the
+                // named ctor resolves through ItemRegistry, which is only
+                // populated once the game has booted.
+                var compost = new StardewValley.Object
+                {
+                    ItemId = ModConstants.CompostItemId,
+                    Stack = 1
+                };
                 if (!_playerInventory.TryAddItem(compost))
                 {
                     Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyHarvestInventoryFull)); // T157 FR-008a
@@ -433,7 +440,17 @@ public class CompostingBinService(
                 return null;
             }
 
-            var item = new StardewValley.Object(ModConstants.CompostingBinItemId, 1);
+            // Parameterless constructor + ItemId assignment (not the named
+            // constructor): the named ctor resolves its type definition through
+            // ItemRegistry, which is only populated once the game has booted —
+            // so it throws in a unit-test host. Assigning ItemId makes
+            // QualifiedItemId report the bin without needing a registered
+            // definition; bigCraftable then resolves it as (BC)LivingRoots.CompostingBin.
+            var item = new StardewValley.Object
+            {
+                ItemId = ModConstants.CompostingBinItemId,
+                Stack = 1
+            };
             item.bigCraftable.Value = true;
 
             // T007/T127 (FR-005c): Item.modData is a read-only property in
