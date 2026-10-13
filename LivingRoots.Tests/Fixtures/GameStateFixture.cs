@@ -43,12 +43,46 @@ internal sealed class MinimalContentManager : LocalizedContentManager
     /// <inheritdoc />
     public override T Load<T>(string assetName)
     {
-        return CreateEmptyAsset<T>();
+        return LoadAsset<T>(assetName);
     }
 
     /// <inheritdoc />
     public override T Load<T>(string assetName, LanguageCode languageCode)
     {
+        return LoadAsset<T>(assetName);
+    }
+
+    /// <summary>
+    /// Serves the two assets a terrain-feature-bearing location needs — the
+    /// location-context registry and the object-data registry — with the
+    /// vanilla entries present, so <c>HoeDirt</c>'s constructor (which resolves
+    /// the location's season) and season-derived reads succeed instead of
+    /// throwing on an empty game. Everything else keeps the empty-asset
+    /// behaviour.
+    /// </summary>
+    /// <typeparam name="T">Requested asset type.</typeparam>
+    /// <param name="assetName">Asset name the game asked for.</param>
+    /// <returns>The seeded entry for those two assets; the empty default otherwise.</returns>
+    private static T LoadAsset<T>(string assetName)
+    {
+        if (typeof(T) == typeof(Dictionary<string, StardewValley.GameData.LocationContexts.LocationContextData>)
+            && string.Equals(assetName, "Data/LocationContexts", StringComparison.OrdinalIgnoreCase))
+        {
+            var contexts = new Dictionary<string, StardewValley.GameData.LocationContexts.LocationContextData>();
+            foreach (var id in new[] { "Valley", "Island" })
+            {
+                // The context data is allocated without running its constructor:
+                // it is only ever read for its identity here, and the real
+                // constructor's parameter shape is game-version specific.
+                var data = (StardewValley.GameData.LocationContexts.LocationContextData)
+                    System.Runtime.Serialization.FormatterServices.GetUninitializedObject(
+                        typeof(StardewValley.GameData.LocationContexts.LocationContextData));
+                contexts[id] = data;
+            }
+
+            return (T)(object)contexts;
+        }
+
         return CreateEmptyAsset<T>();
     }
 
