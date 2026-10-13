@@ -99,5 +99,6 @@ namespace LivingRoots
         // drop-in — vanilla audio cancel cue plus machine shake. Keys off the
         // Data/Machines ShakeDuration field so no second shake path exists.
         public const float BinInvalidDropInShakeSeconds = 1.0f;
+        public const int BinInvalidDropInShakeTimerMs = 750;
     }
 }

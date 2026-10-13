@@ -77,7 +77,17 @@ public class CompostingBinService(
             }
 
             if (bin.State != CompostingBinState.Empty) return;
-            if (!_organicWasteValidator.IsValidOrganicWaste(item)) return;
+            if (!_organicWasteValidator.IsValidOrganicWaste(item))
+            {
+                // T059/T124/T136 (FR-003, FR-008a clarification 2026-10-04):
+                // a non-qualifying item is refused the way a native machine
+                // refuses an input — the vanilla audio cancel cue plus the
+                // machine shake. No red HUD text (FR-008a scopes text to tile
+                // application, full-inventory harvest and concurrency
+                // collisions), nothing consumed or granted, bin left empty.
+                RejectAsNativeMachineWould(locationName, tile);
+                return;
+            }
 
             bin.State = CompostingBinState.Processing;
             bin.InputItemId = item.QualifiedItemId;
@@ -87,6 +97,31 @@ public class CompostingBinService(
             _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Empty → Processing, item: {item.QualifiedItemId}",
                 LogLevel.Trace);
         }
+    }
+
+    /// <summary>
+    /// T136 (FR-008a): the vanilla machine rejection for an invalid drop-in —
+    /// the audio cancel cue, plus a machine shake so the refusal is visible
+    /// without any text. The shake is applied to the world object when the
+    /// location can be resolved through the provider; without a provider (or
+    /// without the object) the cue alone still fires, so a refusal is never
+    /// silent.
+    /// </summary>
+    /// <param name="locationName">Location holding the bin.</param>
+    /// <param name="tile">Tile of the bin.</param>
+    private void RejectAsNativeMachineWould(string locationName, Vector2 tile)
+    {
+        Game1.playSound("cancel");
+
+        var worldObject = _locationProvider?.GetLocationByName(locationName)?.Objects?
+            .GetValueOrDefault(tile);
+        if (worldObject != null)
+        {
+            worldObject.shakeTimer = ModConstants.BinInvalidDropInShakeTimerMs;
+        }
+
+        _monitor.Log($"Bin at ({tile.X}, {tile.Y}): rejected invalid drop-in (native cancel cue + machine shake).",
+            LogLevel.Trace);
     }
 
     public int CollectCompost(string locationName, Vector2 tile)
@@ -101,25 +136,32 @@ public class CompostingBinService(
             if (bin.State != CompostingBinState.Ready) return 0;
 
             int outputCount = 1; // FR-005a / T156: exactly-one batch yield, native Data/Machines disabled
-            // FR-005a / T146: consume batch atomically so no second path (harvest/intercept) can double-payout
-            bin.State = CompostingBinState.Empty;
 
-            for (int i = 0; i < outputCount; i++)
+            // Parameterless ctor + ItemId (see CreateDislodgedBinItem): the
+            // named ctor resolves through ItemRegistry, which is only
+            // populated once the game has booted.
+            var compost = new StardewValley.Object
             {
-                // Parameterless ctor + ItemId (see CreateDislodgedBinItem): the
-                // named ctor resolves through ItemRegistry, which is only
-                // populated once the game has booted.
-                var compost = new StardewValley.Object
-                {
-                    ItemId = ModConstants.CompostItemId,
-                    Stack = 1
-                };
-                if (!_playerInventory.TryAddItem(compost))
-                {
-                    Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyHarvestInventoryFull)); // T157 FR-008a
-                    _monitor.Log($"CompostingBin: inventory refused compost at ({tile.X}, {tile.Y}); bin still consumed.", LogLevel.Warn);
-                }
+                ItemId = ModConstants.CompostItemId,
+                Stack = 1
+            };
+
+            // FR-005b / T121: the batch is consumed ONLY once the compost has
+            // actually been granted. Granting first and consuming after — or
+            // consuming unconditionally — silently destroys finished compost
+            // when the inventory refuses it (a full inventory is the ordinary
+            // cause), which the spec forbids: the item must remain in the bin,
+            // be delivered in full on a later attempt, and never be partially
+            // lost. The player is told why at the moment collection did not
+            // complete, in their own language (FR-008a).
+            if (!_playerInventory.TryAddItem(compost))
+            {
+                Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyHarvestInventoryFull));
+                _monitor.Log($"CompostingBin: inventory full — compost retained in bin at ({tile.X}, {tile.Y}).", LogLevel.Warn);
+                return 0;
             }
+
+            bin.State = CompostingBinState.Empty;
 
             bin.InputItemId = null;
             bin.InputTimestamp = null;
@@ -245,6 +287,21 @@ public class CompostingBinService(
                     var locationBins = new Dictionary<string, CompostingBinStateModel>();
                     foreach (var bin in loc.Value)
                     {
+                        // T058/FR-006/FR-012: a persisted record can only
+                        // attest progress for a batch that actually has an
+                        // input. A "Ready" record with no InputItemId is a
+                        // save-injection artefact — it would grant a compost
+                        // item that the bin never produced — so it is
+                        // quarantined rather than registered.
+                        if (string.Equals(bin.Value.State, nameof(CompostingBinState.Ready), StringComparison.Ordinal)
+                            && string.IsNullOrEmpty(bin.Value.InputItemId))
+                        {
+                            _monitor.Log(
+                                $"Quarantining composting bin record '{bin.Key}' in '{loc.Key}': Ready with no input is not a producible batch (FR-006).",
+                                LogLevel.Warn);
+                            continue;
+                        }
+
                         var coords = ParseTileKey(bin.Key);
                         var state = new CompostingBinStateModel
                         {
