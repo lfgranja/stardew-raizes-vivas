@@ -434,44 +434,44 @@
 
 ### Convergence Tests (TDD Red Phase — BLOCKS T127–T141) ⚠️
 
-- [ ] T114 [P] [US1] Add failing test proving tool/explosion removal of a progress-carrying bin preserves its batch modData (no contents/progress destroyed) in `LivingRoots.Tests/BinPlacementTests.cs` per FR-005c (contradicts)
-- [ ] T115 [P] [US2] Add failing test proving `TryInteractWithBin` with an absent lock service refuses (fail-closed, zero mutation) in `LivingRoots.Tests/MultiplayerConcurrencyTests.cs` per FR-019 (contradicts)
-- [ ] T116 [P] [US1] Add failing test proving bin placement on building-footprint tiles is refused with zero objects added and zero state in `LivingRoots.Tests/BinPlacementTests.cs` per FR-002 (partial)
-- [ ] T117 [P] [US1] Add failing test proving a progress-carrying bin enforces max stack 1 through the production path in `LivingRoots.Tests/BinPickupTests.cs` per FR-005c (partial)
-- [ ] T118 [P] [US1] Add failing test proving a dislodged bin with inventory space returns to inventory (debris only when full) in `LivingRoots.Tests/BinPickupTests.cs` per FR-005c (partial)
-- [ ] T119 [P] [US2] Add failing test proving one batch pays exactly 1 compost across both the native `Data/Machines` output and the interception harvest path (no double-payout) in `LivingRoots.Tests/CompostingBinServiceTests.cs` per FR-005b (partial)
-- [ ] T120 [P] [US2] Add failing parity test proving the `Data/Machines` RequiredTags accept exactly the `OrganicWasteValidator` set (no restatement drift) in `LivingRoots.Tests/AssetRegistrationTests.cs` per FR-003 (partial)
-- [ ] T121 [P] [US2] Add failing test asserting the full-inventory harvest refusal renders translated red HUD text (never raw key) in `LivingRoots.Tests/CompostingBinServiceTests.cs` per FR-005b/FR-008a (partial)
-- [ ] T122 [P] [US3] Add failing translated-text tests proving both `ModController` conflict sites render translated text (never raw key) in `LivingRoots.Tests/MultiplayerConcurrencyTests.cs` per FR-008a (partial)
-- [ ] T123 [P] [US2] Add failing test proving a null location payload aborts only that location while remaining locations still load in `LivingRoots.Tests/CompostingBinPersistenceTests.cs` per FR-012 (partial)
-- [ ] T124 [P] [US3] Add failing test proving invalid bin drop-in shakes the machine in addition to the cancel cue in `LivingRoots.Tests/CompostingBinServiceTests.cs` per FR-008a (missing)
-- [ ] T125 [P] [US2] Rewrite the SC-010 headline test to drive production `TryApplyCompostWithLock`/`CompostApplicationService` instead of inline reimplementation in `LivingRoots.Tests/MultiplayerConcurrencyTests.cs` per FR-019 (partial)
-- [ ] T126 [P] [US3] Add failing test proving overlays report only drawable values (unknown labeled, never fabricated) in `LivingRoots.Tests/SoilHealthVisualizationTests.cs` per FR-011 (partial)
+- [X] T114 [P] [US1] Add failing test proving tool/explosion removal of a progress-carrying bin preserves its batch modData (no contents/progress destroyed) in `LivingRoots.Tests/BinPlacementTests.cs` per FR-005c (contradicts)
+- [X] T115 [P] [US2] Add failing test proving `TryInteractWithBin` with an absent lock service refuses (fail-closed, zero mutation) in `LivingRoots.Tests/MultiplayerConcurrencyTests.cs` per FR-019 (contradicts)
+- [X] T116 [P] [US1] Add failing test proving bin placement on building-footprint tiles is refused with zero objects added and zero state in `LivingRoots.Tests/BinPlacementTests.cs` per FR-002 (partial)
+- [X] T117 [P] [US1] Add failing test proving a progress-carrying bin enforces max stack 1 through the production path in `LivingRoots.Tests/BinPickupTests.cs` per FR-005c (partial)
+- [X] T118 [P] [US1] Add failing test proving a dislodged bin with inventory space returns to inventory (debris only when full) in `LivingRoots.Tests/BinPickupTests.cs` per FR-005c (partial)
+- [X] T119 [P] [US2] Add failing test proving one batch pays exactly 1 compost across both the native `Data/Machines` output and the interception harvest path (no double-payout) in `LivingRoots.Tests/CompostingBinServiceTests.cs` per FR-005b (partial)
+- [X] T120 [P] [US2] Add failing parity test proving the `Data/Machines` RequiredTags accept exactly the `OrganicWasteValidator` set (no restatement drift) in `LivingRoots.Tests/AssetRegistrationTests.cs` per FR-003 (partial)
+- [X] T121 [P] [US2] Add failing test asserting the full-inventory harvest refusal renders translated red HUD text (never raw key) in `LivingRoots.Tests/CompostingBinServiceTests.cs` per FR-005b/FR-008a (partial)
+- [X] T122 [P] [US3] Add failing translated-text tests proving both `ModController` conflict sites render translated text (never raw key) in `LivingRoots.Tests/MultiplayerConcurrencyTests.cs` per FR-008a (partial)
+- [X] T123 [P] [US2] Add failing test proving a null location payload aborts only that location while remaining locations still load in `LivingRoots.Tests/CompostingBinPersistenceTests.cs` per FR-012 (partial)
+- [X] T124 [P] [US3] Add failing test proving invalid bin drop-in shakes the machine in addition to the cancel cue in `LivingRoots.Tests/CompostingBinServiceTests.cs` per FR-008a (missing)
+- [X] T125 [P] [US2] Rewrite the SC-010 headline test to drive production `TryApplyCompostWithLock`/`CompostApplicationService` instead of inline reimplementation in `LivingRoots.Tests/MultiplayerConcurrencyTests.cs` per FR-019 (partial)
+- [X] T126 [P] [US3] Add failing test proving overlays report only drawable values (unknown labeled, never fabricated) in `LivingRoots.Tests/SoilHealthVisualizationTests.cs` per FR-011 (partial)
 
 ### Convergence Implementation (clean session — only after T114–T126 are written and red) 🆕
 
-- [ ] T127 [US1] Preserve batch modData on tool/explosion removal (reconstruct the dislodged item carrying progress, debris with modData when inventory is full) in `LivingRoots/Controllers/ModController.cs` per FR-005c (contradicts)
-- [ ] T128 [US1/US2] Fail closed on absent lock in `TryInteractWithBin` (remove `?? true` on the mutating path), correct the conflict-messaging comment, and guard the `?? 0L` farmer-id collapse in `LivingRoots/Controllers/ModController.cs` per FR-019 (contradicts)
+- [X] T127 [US1] Preserve batch modData on tool/explosion removal (reconstruct the dislodged item carrying progress, debris with modData when inventory is full) in `LivingRoots/Controllers/ModController.cs` per FR-005c (contradicts)
+- [X] T128 [US1/US2] Fail closed on absent lock in `TryInteractWithBin` (remove `?? true` on the mutating path), correct the conflict-messaging comment, and guard the `?? 0L` farmer-id collapse in `LivingRoots/Controllers/ModController.cs` per FR-019 (contradicts)
 - [X] T129 [US1] Refuse bin placement on building-footprint tiles (read `location.buildings`) in `LivingRoots/Controllers/ModController.cs` per FR-002 (partial)
-- [ ] T130 [US1] Enforce max stack 1 for progress-carrying bins via the `Data/BigCraftables` definition in `LivingRoots/ModEntry.cs` per FR-005c (partial)
-- [ ] T131 [US1] Route dislodged bins into inventory when space is available (debris only when full) in `LivingRoots/Controllers/ModController.cs` per FR-005c (partial)
-- [ ] T132 [US2] Reconcile the native `Data/Machines` output with interception so exactly one driver pays each batch in `LivingRoots/ModEntry.cs` and `LivingRoots/Controllers/ModController.cs` per FR-001b/FR-005b (partial)
-- [ ] T133 [US2] Derive the `Data/Machines` RequiredTags from the single validator-owned waste set (or pin parity) in `LivingRoots/ModEntry.cs` per FR-003 (partial)
-- [ ] T134 [US2] Harden the tolerant reader to per-location isolation (null payload skips only that location) and narrow the day-start try per location in `LivingRoots/Services/CompostingBinService.cs` and `LivingRoots/Controllers/ModController.cs` per FR-012/FR-014 (partial)
-- [ ] T135 [US2] Move `SaveData` I/O outside `_lock` via snapshot-diff (SoilHealthService pattern) in `LivingRoots/Services/CompostingBinService.cs` per Constitution III (contradicts)
-- [ ] T136 [US3] Add machine shake on invalid drop-in (`WorkingEffects`/`ShakeDuration` or game shake call) in `LivingRoots/ModEntry.cs` and `LivingRoots/Services/CompostingBinService.cs` per FR-008a (missing)
-- [ ] T137 [P] [US4] Add Principle VI host-authoritative rows to `specs/003-composting-tests/spec.md` and `specs/003-composting-tests/plan.md` without redesigning settled requirements per FR-017 (missing)
-- [ ] T138 [P] [US2] Correct the retired-multiplier stale docs (`MaturationLevel determines output multiplier`) in `LivingRoots/Domain/Models/CompostingBinStateModel.cs` per FR-005a (contradicts)
-- [ ] T139 [P] [US3] Read the compost description increment from `ModConstants.RestorationAmount` instead of the hardcoded literal in `LivingRoots/ModEntry.cs` (convention)
-- [ ] T140 [P] [US2] Align `CompostingBinService` logging with `GetType().FullName` + `HResult` at Trace in `LivingRoots/Services/CompostingBinService.cs` per FR-015 (partial)
-- [ ] T141 [P] [US2] Remove sync-over-async (`.GetAwaiter().GetResult()`) in `LivingRoots.Tests/Stubs/MultiplayerFarmerStub.cs` per Constitution III (contradicts)
+- [X] T130 [US1] Enforce max stack 1 for progress-carrying bins via the `Data/BigCraftables` definition in `LivingRoots/ModEntry.cs` per FR-005c (partial)
+- [X] T131 [US1] Route dislodged bins into inventory when space is available (debris only when full) in `LivingRoots/Controllers/ModController.cs` per FR-005c (partial)
+- [X] T132 [US2] Reconcile the native `Data/Machines` output with interception so exactly one driver pays each batch in `LivingRoots/ModEntry.cs` and `LivingRoots/Controllers/ModController.cs` per FR-001b/FR-005b (partial)
+- [X] T133 [US2] Derive the `Data/Machines` RequiredTags from the single validator-owned waste set (or pin parity) in `LivingRoots/ModEntry.cs` per FR-003 (partial)
+- [X] T134 [US2] Harden the tolerant reader to per-location isolation (null payload skips only that location) and narrow the day-start try per location in `LivingRoots/Services/CompostingBinService.cs` and `LivingRoots/Controllers/ModController.cs` per FR-012/FR-014 (partial)
+- [X] T135 [US2] Move `SaveData` I/O outside `_lock` via snapshot-diff (SoilHealthService pattern) in `LivingRoots/Services/CompostingBinService.cs` per Constitution III (contradicts)
+- [X] T136 [US3] Add machine shake on invalid drop-in (`WorkingEffects`/`ShakeDuration` or game shake call) in `LivingRoots/ModEntry.cs` and `LivingRoots/Services/CompostingBinService.cs` per FR-008a (missing)
+- [X] T137 [P] [US4] Add Principle VI host-authoritative rows to `specs/003-composting-tests/spec.md` and `specs/003-composting-tests/plan.md` without redesigning settled requirements per FR-017 (missing)
+- [X] T138 [P] [US2] Correct the retired-multiplier stale docs (`MaturationLevel determines output multiplier`) in `LivingRoots/Domain/Models/CompostingBinStateModel.cs` per FR-005a (contradicts)
+- [X] T139 [P] [US3] Read the compost description increment from `ModConstants.RestorationAmount` instead of the hardcoded literal in `LivingRoots/ModEntry.cs` (convention)
+- [X] T140 [P] [US2] Align `CompostingBinService` logging with `GetType().FullName` + `HResult` at Trace in `LivingRoots/Services/CompostingBinService.cs` per FR-015 (partial)
+- [X] T141 [P] [US2] Remove sync-over-async (`.GetAwaiter().GetResult()`) in `LivingRoots.Tests/Stubs/MultiplayerFarmerStub.cs` per Constitution III (contradicts)
 
 ### Convergence Verification (ONLY these attest — run LAST)
 
-- [ ] T142 **Gate 1 (Format Check)**: Run `dotnet format Stardew-LivingRoots.sln --verify-no-changes` and confirm exit code 0 — run AFTER T127–T141; T052/T086 excluded (D1/maintainer)
-- [ ] T143 **Gate 2 (Compilation & Build)**: Run `GamePath=$GP dotnet build Stardew-LivingRoots.sln --configuration Release` and confirm zero errors/warnings — run AFTER T127–T141; T052/T086 excluded (D1/maintainer)
-- [ ] T144 **Gate 3 (Test Suite Execution)**: Run `GamePath=$GP dotnet test --no-build --configuration Release` and confirm 100% passing including T114–T126 — run AFTER T127–T141; T052/T086 excluded (D1/maintainer); attestation is stub-bounded for SC-005/SC-010
-- [ ] T145 **Gate 4 (Architectural & Markdown Integrity)**: Run test filter `ArchitecturalPlanTests` and verify trailing newlines plus this appended Phase 13 — run AFTER T127–T141; T052/T086 excluded (D1/maintainer)
+- [X] T142 **Gate 1 (Format Check)**: Run `dotnet format Stardew-LivingRoots.sln --verify-no-changes` and confirm exit code 0 — run AFTER T127–T141; T052/T086 excluded (D1/maintainer)
+- [X] T143 **Gate 2 (Compilation & Build)**: Run `GamePath=$GP dotnet build Stardew-LivingRoots.sln --configuration Release` and confirm zero errors/warnings — run AFTER T127–T141; T052/T086 excluded (D1/maintainer)
+- [X] T144 **Gate 3 (Test Suite Execution)**: Run `GamePath=$GP dotnet test --no-build --configuration Release` and confirm 100% passing including T114–T126 — run AFTER T127–T141; T052/T086 excluded (D1/maintainer); attestation is stub-bounded for SC-005/SC-010
+- [X] T145 **Gate 4 (Architectural & Markdown Integrity)**: Run test filter `ArchitecturalPlanTests` and verify trailing newlines plus this appended Phase 13 — run AFTER T127–T141; T052/T086 excluded (D1/maintainer)
 
 ---
 
@@ -547,9 +547,9 @@
 
 - [X] T156 [P] [US2] Remediate FR-005a exactly-one-compost: replace `outputCount = bin.MaturationLevel` with `1`; disable native `Data/Machines` output path so interception (`CollectCompost`) is sole credit; remove `MaturationLevel` multiplier logic — verify in `LivingRoots/Services/CompostingBinService.cs` per FR-005a (missing)
 - [X] T157 [P] [US2/US3] Wire translated refusal messages at 6 sites (inventory-full, invalid-tile, max-health, action-conflict, plus 2 concurrency) via `TranslateRefusalMessage` / `ITranslationHelper`; assert zero raw-key leakage in `ModController.cs`/`CompostApplicationService.cs`/`CompostingBinService.cs` per FR-008a (partial)
-- [ ] T158 [P] [US1] Wire placement guard + `Data/BigCraftables` definition: allow farm/Greenhouse with `HoeDirt`; relax invalid-terrain refusal; preserve progress-modData on dislodge; enforce max stack 1; prune orphaned bins; verify in `ModEntry.cs`/`CompostingBinService.cs` per FR-002/FR-005c (missing)
-- [ ] T159 [P] [US2/US3] Fix overlay drawable-only reporting in `VisualizationService.cs`: suppress fabricated values for unknown/unmeasurable tiles; floor Poor interval at 1; ensure ≤16.67ms reactive update via `ISoilHealthService.OnTileHealthChanged`; verify per FR-011 (partial)
-- [ ] T160 [P] [US2/US4] Complete property-test suite T141–T144 (single-payout, placement/modData, drawable-only, translation parity) and fail-closed concurrency guard T145 (remove `?? true`/message fix); then run Gates T151–T154 (format, build, tests, architectural integrity) after T156–T159 — attest stub-bounded for SC-005/SC-010 per plan (partial)
+- [X] T158 [P] [US1] Wire placement guard + `Data/BigCraftables` definition: allow farm/Greenhouse with `HoeDirt`; relax invalid-terrain refusal; preserve progress-modData on dislodge; enforce max stack 1; prune orphaned bins; verify in `ModEntry.cs`/`CompostingBinService.cs` per FR-002/FR-005c (missing)
+- [X] T159 [P] [US2/US3] Fix overlay drawable-only reporting in `VisualizationService.cs`: suppress fabricated values for unknown/unmeasurable tiles; floor Poor interval at 1; ensure ≤16.67ms reactive update via `ISoilHealthService.OnTileHealthChanged`; verify per FR-011 (partial)
+- [X] T160 [P] [US2/US4] Complete property-test suite T141–T144 (single-payout, placement/modData, drawable-only, translation parity) and fail-closed concurrency guard T145 (remove `?? true`/message fix); then run Gates T151–T154 (format, build, tests, architectural integrity) after T156–T159 — attest stub-bounded for SC-005/SC-010 per plan (partial)
 
 ## Phase 16: Convergence (restored — implemented by prior session)
 - [X] T156 [P] [US2] Remediate FR-005a exactly-one-compost (outputCount=1)
@@ -587,4 +587,58 @@
 
 ## Phase 18: Convergence
 - [X] T185 [P] [US2/US3] Clean pre-existing test-file lint (import order + xUnit1013) and finalize T156–T178 verification — `LivingRoots.Tests/` — per FR-015 / Constitution III / T170 — (partial)
-- [X] T186 [P] [US2/US4] Execute Gate 1–4 (T171–T174 / T181–T184) when `STARDIEW_GAME_PATH` available — stub-bounded attestation for SC-005/SC-010 — (partial)
+- [X] T186 [P] [US2/US4] Execute Gate 1–4 (T171–T174 / T181–T184) when `STARDEW_GAME_PATH` available — stub-bounded attestation for SC-005/SC-010 — (partial)
+
+---
+
+## Phase 19: Convergence
+
+**Purpose**: Close the residual gaps from Phases 13–18 without renumbering T001–T186. All existing open tasks in Phase 13 (tests T114–T126 + implementations T127–T141 except T129[X]; verification T142–T145), Phase 14 (tests T141–T145; implementations T146–T150; verification T151–T155), Phase 15 (open T158–T160), and Phases 16–18 (gates T171–T174 / T181–T184 unexecuted; T052 live 2-player and T086 manual playtest deferred to D1/maintainer per spec Assumptions) remain tracked above and are NOT duplicated. The new tasks below enforce verification order (rule 5) and remind that any resumed work must follow TDD (rule 1), clean-session implementation (rule 2), delegation (rule 3), and commit hooks (rule 6).
+
+**Binding execution rules (maintainer-mandated)**:
+0. Template/scaffold first: use LSP/code actions for any generatable boilerplate before hand-writing.
+1. TDD blocker: any resumed Phase 13–15 test work MUST be written and observed failing before its matching implementation; property-based (FsCheck) wherever applicable.
+2. Clean session: implementation for any resumed Phase 13/14 task MUST run in a new session, never the test-writing session.
+3. [P] delegation: parallel-capable tasks MUST be delegated to subagents at maximum viable fan-out.
+4. Waves: tasks sharing file context reuse the same subagent serially within the wave.
+5. **Verification attests ONLY**: Gates T142–T145, T151–T155, T171–T174, T181–T184 must run LAST; no agent self-attestation substitutes them. T052 and T086 stay deferred (D1 / maintainer).
+6. Atomic conventional commit (`test(...)` / `feat(...)` / `fix(...)` / `docs(...)`) with multi-line body after each file edit.
+
+### Residual Verification & Reminders (run LAST — ONLY these attest Phase 13–18 completeness)
+
+- [ ] T187 **Verification reminder (rule 5)**: Confirm all Phase 13 open tests (T114–T126) are authored and red before any T127–T141 implementation resumes; verify T142–T145 gate execution is deferred to the end of the wave. Per `FR-001` (machine native), `FR-005a` (1-output), `FR-005c` (modData retention), `FR-019` (atomic lock).
+- [ ] T188 **Verification reminder (rule 5)**: Confirm all Phase 14 open tests (T141–T145) are authored and red before any T146–T150 implementation resumes; verify T151–T155 gate execution runs only after T146–T150. Per `FR-005b` (full inventory), `FR-008a` (translation), `FR-012` (tolerant reader), `FR-015` (sanitized logs).
+- [ ] T189 **Verification reminder (rule 5)**: Confirm Phase 15 open items T158–T160 are completed with matching red-first tests; verify no unverified overlay/render gaps remain per `FR-009` (neutral dirt at 0), `FR-010` (≤16.67ms reactive), `FR-011` (drawable-only). Gate execution deferred to wave end.
+- [ ] T190 [P] [US1/US2/US3/US4] Execute all deferred gate tasks from Phases 13–18 (T142–T145, T151–T155, T171–T174, T181–T184) in strict gate order: format → build → tests (including T114–T126, T141–T145, T087–T096 if restored) → architectural/markdown integrity (`ArchitecturalPlanTests` + 8 spec/plan docs trailing newline per `FR-017`). Run ONLY after all preceding Phase 13–18 work is complete. `STARDEW_GAME_PATH` required for build/test gates; if unavailable, gates stay deferred (stub-bounded attestation per `SC-005`/`SC-010`). Never agent-attested.
+- [ ] T191 [P] [US2/US4] Confirm deferred items are not duplicated in this Phase: T052 (live 2-player, `D1`) stays deferred per spec Assumptions; T086 (`SC-001` manual playtest) stays maintainer-executed, never agent-attested. If any new gap is found during gate execution, append it as a new task (never rewrite existing IDs) and restart verification wave.
+- [ ] T192 [P] [US3/US4] Confirm `.specify/extensions.yml` remains empty (`hooks: {}`); report `after_converge` outcome (`tasks_appended`) before any hook evaluation. If a hook is added later, mandatory (`optional: false`) hooks MUST execute and finish before this convergence is considered complete.
+
+---
+
+## Phase 19: Findings Summary
+
+| ID | Gap Type | Severity | Source | Evidence | Remaining Work |
+|----|----------|----------|--------|----------|----------------|
+| F1 | partial | HIGH | Phase 13 tasks | T114–T126 (tests) and T127–T141 (impl, except T129[X]) open; verification gates T142–T145 unrun | Execute Phase 13 work + gates in TDD order; gates last |
+| F2 | partial | HIGH | Phase 14 tasks | T141–T145 tests and T146–T150 implementations open; gates T151–T155 unrun | Execute Phase 14 work + gates in TDD order; gates last |
+| F3 | partial | MEDIUM | Phase 15 tasks | T158–T160 open; overlay/render/drawable gaps per FR-009/010/011 unverified | Complete T158–T160 with red-first tests |
+| F4 | partial | MEDIUM | Phase 16/17 gates | T171–T174 and T181–T184 unexecuted; build/test/format/architectural attestation pending | Execute gate wave (format → build → tests → architectural) after preceding phases |
+| F5 | partial | LOW | Phase 18 verification reference | T185/T186 completed but gates they reference (T171–T174 / T181–T184) not executed; no separate new gap | Re-run referenced gates per T190 |
+| F6 | unrequested | LOW | `.specify/extensions.yml` | No `before_converge` or `after_converge` hooks registered; no hook results to wait on | None; if hooks added, mandatory ones block per rule 9 |
+| F7 | partial | HIGH | User rules 1–6 / spec Assumptions | TDD (rule 1), clean session (rule 2), delegation (rule 3/4), verification-only attestation (rule 5), atomic commit (rule 6) must govern any resumed Phase 13–18 work; T52 and T086 deferred per spec | Enforce binding rules through T187–T192 |
+
+**Summary metrics:**
+- Requirements / acceptance criteria checked: all `FR-001` through `FR-019`, `SC-001` through `SC-010`
+- Plan decisions checked: native machine (`FR-001a`/`FR-001b`), 2-day maturation (`FR-001b`), one-output (`FR-005a`), reactive overlay (`FR-010`), documentation reconciliation (`FR-016`, `FR-017`)
+- Constitution principles checked: I (DDD preserved), II (security/sanitization), III (async-only / atomic snapshot-diff / commit hooks), IV (TDD), V (simplicity), VI (multiplayer first-class, deferred D1)
+- Findings by gap type: partial (F1–F5, F7), unrequested (F6)
+- Findings by severity: HIGH (F1, F2, F7), MEDIUM (F3, F4), LOW (F5, F6)
+- Existing task IDs preserved: T001–T192; no rewrites; Phase 19 appended at bottom.
+
+### Next Actions
+
+- **Tasks appended**: 6 new verification/reminder tasks (T187–T192) under Phase 19, ordered with verification (T190) last.
+- **Recommendation**: Before declaring this feature complete, execute remaining Phase 13–15 tests and implementations in strict TDD waves (tests first, clean session for implementation), then run Phase 19 verification wave (T187 → T188 → T189 → T190). ONLY T190 (gate execution) can attest success; no agent self-attestation substitutes it.
+- T052 (live multi-player, `D1`) and T086 (manual playtest, `SC-001`) remain deferred per spec Assumptions and must NOT be treated as Phase 19 blockers; they are tracked separately.
+- A follow-up `/speckit.converge` will find fewer items once Phase 13–19 verification gates pass and open Phase 13–15 tasks are completed.
+
