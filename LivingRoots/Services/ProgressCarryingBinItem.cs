@@ -14,7 +14,7 @@ namespace LivingRoots.Services
     /// Enforcement lives here because this is the only place the rule can live:
     /// <c>Item.canStackWith</c> consults <c>maximumStackSize()</c>, and for a
     /// modded item with no registered definition that method resolves to the
-   /// 999 default — so two progress-carrying bins would stack even though both
+    /// 999 default — so two progress-carrying bins would stack even though both
     /// carry the big-craftable flag. <c>BigCraftableData</c> exposes no
     /// stack-size member to configure, so the definition route cannot carry the
     /// rule; the virtual seam can.

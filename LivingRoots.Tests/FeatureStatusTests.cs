@@ -10,15 +10,30 @@ namespace LivingRoots.Tests
     /// </summary>
     public class FeatureStatusTests
     {
+        /// <summary>
+        /// T198 (FR-016/SC-006): the README's `## Features` section must label
+        /// only the capabilities the player CANNOT observe with `(Planned)` —
+        /// and, symmetrically, must not label observable capabilities that way.
+        /// The soil-health capabilities below became observable when Feature 004
+        /// shipped the loop, so they are asserted present WITHOUT the label.
+        /// </summary>
         [Fact]
-        public void Readme_FeaturesMarkedAsPlanned_ContainsPlannedPrefix()
+        public void Readme_ObservableFeatures_AreNotLabelledPlanned()
         {
             // Arrange
-            var expectedPlannedFeatures = new[]
+            var expectedObservableFeatures = new[]
             {
-                "Visual indicators show soil health status (Planned)",
-                "Health degrades over time when soil is left bare (Planned)",
-                "Health improves with compost application (Planned)"
+                "Visual indicators show soil health status",
+                "Health degrades over time when soil is left bare",
+                "Health improves with compost application",
+                "Composting bin: craft, place, load with organic waste, harvest compost after 2 in-game days"
+            };
+
+            // Arrange — capabilities with no in-game behaviour must carry the label.
+            var expectedUnbuiltFeatures = new[]
+            {
+                "Learn about real-world soil management (Planned)",
+                "Enhance your farming experience with educational elements (Planned)"
             };
 
             // Read README.md from embedded resource for reliable test access across all environments
@@ -35,11 +50,21 @@ namespace LivingRoots.Tests
             using var reader = new StreamReader(stream);
             var readmeContent = reader.ReadToEnd();
 
-            // Assert - This should fail initially since the features are not marked as planned yet
-            foreach (var feature in expectedPlannedFeatures)
+            // Assert — observable capabilities claim no label...
+            foreach (var feature in expectedObservableFeatures)
+            {
+                Assert.Contains(feature, readmeContent);
+                Assert.DoesNotContain(feature + " (Planned)", readmeContent);
+            }
+
+            // ...and unbuilt ones carry it (FR-016 zero false claims).
+            foreach (var feature in expectedUnbuiltFeatures)
             {
                 Assert.Contains(feature, readmeContent);
             }
+
+            // The retired-multiplier claim must not survive (FR-005a supersedes it).
+            Assert.DoesNotContain("Different materials provide different benefits", readmeContent);
         }
     }
 }
