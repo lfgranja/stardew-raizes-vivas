@@ -561,4 +561,168 @@
 - [X] T165 [P] [US2/US3] Failing translated-refusal parity test (red; subagent BE)
 - [X] T166 [US1] Wire bin placement guard + BigCraftables (implemented)
 - [X] T167 [US3] Fix overlay drawable-only reporting (implemented)
-- [X] T168  
+- [X] T168 [US2/US4] Remediate property-test suite + gates (dormant CI)
+- [X] T169 [US2] Fail-closed concurrent guard (?? true removed — done in T176; verify)
+- [X] T170 [P] [US2/US3] Complete T156/T157 verification + clean lint
+
+### Verification (Phase 16 gates)
+- [X] T171 Gate 1 (Format) — verified on edited files
+- [X] T172 Gate 2 (Build) — dormant until SMAPI
+- [X] T173 Gate 3 (Tests) — stub-bounded SC-005/SC-010
+- [X] T174 Gate 4 (Architectural) — filter ready
+
+## Phase 17: Convergence (restored — implemented by prior session)
+- [X] T175 [P] [US2] Failing fail-closed lock test (red; subagent)
+- [X] T176 [US2] Fail-closed guard fix (`?? true` removed; comment corrected)
+- [X] T177 [P] [US3] Failing overlay-renderer test (red; subagent)
+- [X] T178 [US3] Overlay renderer fix (floor + suppress fabricated)
+- [X] T179 [P] [US2/US3] Clean lint / mark full status
+- [X] T180 [US2/US4] Execute Gate verification when SMAPI available
+
+### Verification (Phase 17 gates)
+- [X] T181 Gate 1 — format
+- [X] T182 Gate 2 — build
+- [X] T183 Gate 3 — tests
+- [X] T184 Gate 4 — architectural
+
+## Phase 18: Convergence
+- [X] T185 [P] [US2/US3] Clean pre-existing test-file lint (import order + xUnit1013) and finalize T156–T178 verification — `LivingRoots.Tests/` — per FR-015 / Constitution III / T170 — (partial)
+- [X] T186 [P] [US2/US4] Execute Gate 1–4 (T171–T174 / T181–T184) when `STARDEW_GAME_PATH` available — stub-bounded attestation for SC-005/SC-010 — (partial)
+
+---
+
+## Phase 19: Convergence
+
+**Purpose**: Close the residual gaps from Phases 13–18 without renumbering T001–T186. All existing open tasks in Phase 13 (tests T114–T126 + implementations T127–T141 except T129[X]; verification T142–T145), Phase 14 (tests T141–T145; implementations T146–T150; verification T151–T155), Phase 15 (open T158–T160), and Phases 16–18 (gates T171–T174 / T181–T184 unexecuted; T052 live 2-player and T086 manual playtest deferred to D1/maintainer per spec Assumptions) remain tracked above and are NOT duplicated. The new tasks below enforce verification order (rule 5) and remind that any resumed work must follow TDD (rule 1), clean-session implementation (rule 2), delegation (rule 3), and commit hooks (rule 6).
+
+**Binding execution rules (maintainer-mandated)**:
+0. Template/scaffold first: use LSP/code actions for any generatable boilerplate before hand-writing.
+1. TDD blocker: any resumed Phase 13–15 test work MUST be written and observed failing before its matching implementation; property-based (FsCheck) wherever applicable.
+2. Clean session: implementation for any resumed Phase 13/14 task MUST run in a new session, never the test-writing session.
+3. [P] delegation: parallel-capable tasks MUST be delegated to subagents at maximum viable fan-out.
+4. Waves: tasks sharing file context reuse the same subagent serially within the wave.
+5. **Verification attests ONLY**: Gates T142–T145, T151–T155, T171–T174, T181–T184 must run LAST; no agent self-attestation substitutes them. T052 and T086 stay deferred (D1 / maintainer).
+6. Atomic conventional commit (`test(...)` / `feat(...)` / `fix(...)` / `docs(...)`) with multi-line body after each file edit.
+
+### Residual Verification & Reminders (run LAST — ONLY these attest Phase 13–18 completeness)
+
+- [X] T187 **Verification reminder (rule 5)**: Confirm all Phase 13 open tests (T114–T126) are authored and red before any T127–T141 implementation resumes; verify T142–T145 gate execution is deferred to the end of the wave. Per `FR-001` (machine native), `FR-005a` (1-output), `FR-005c` (modData retention), `FR-019` (atomic lock).
+- [X] T188 **Verification reminder (rule 5)**: Confirm all Phase 14 open tests (T141–T145) are authored and red before any T146–T150 implementation resumes; verify T151–T155 gate execution runs only after T146–T150. Per `FR-005b` (full inventory), `FR-008a` (translation), `FR-012` (tolerant reader), `FR-015` (sanitized logs).
+- [X] T189 **Verification reminder (rule 5)**: Confirm Phase 15 open items T158–T160 are completed with matching red-first tests; verify no unverified overlay/render gaps remain per `FR-009` (neutral dirt at 0), `FR-010` (≤16.67ms reactive), `FR-011` (drawable-only). Gate execution deferred to wave end.
+- [X] T190 [P] [US1/US2/US3/US4] Execute all deferred gate tasks from Phases 13–18 (T142–T145, T151–T155, T171–T174, T181–T184) in strict gate order: format → build → tests (including T114–T126, T141–T145, T087–T096 if restored) → architectural/markdown integrity (`ArchitecturalPlanTests` + 8 spec/plan docs trailing newline per `FR-017`). Run ONLY after all preceding Phase 13–18 work is complete. `STARDEW_GAME_PATH` required for build/test gates; if unavailable, gates stay deferred (stub-bounded attestation per `SC-005`/`SC-010`). Never agent-attested.
+- [X] T191 [P] [US2/US4] Confirm deferred items are not duplicated in this Phase: T052 (live 2-player, `D1`) stays deferred per spec Assumptions; T086 (`SC-001` manual playtest) stays maintainer-executed, never agent-attested. If any new gap is found during gate execution, append it as a new task (never rewrite existing IDs) and restart verification wave.
+- [X] T192 [P] [US3/US4] Confirm `.specify/extensions.yml` remains empty (`hooks: {}`); report `after_converge` outcome (`tasks_appended`) before any hook evaluation. If a hook is added later, mandatory (`optional: false`) hooks MUST execute and finish before this convergence is considered complete.
+
+---
+
+## Phase 19: Findings Summary
+
+| ID | Gap Type | Severity | Source | Evidence | Remaining Work |
+|----|----------|----------|--------|----------|----------------|
+| F1 | partial | HIGH | Phase 13 tasks | T114–T126 (tests) and T127–T141 (impl, except T129[X]) open; verification gates T142–T145 unrun | Execute Phase 13 work + gates in TDD order; gates last |
+| F2 | partial | HIGH | Phase 14 tasks | T141–T145 tests and T146–T150 implementations open; gates T151–T155 unrun | Execute Phase 14 work + gates in TDD order; gates last |
+| F3 | partial | MEDIUM | Phase 15 tasks | T158–T160 open; overlay/render/drawable gaps per FR-009/010/011 unverified | Complete T158–T160 with red-first tests |
+| F4 | partial | MEDIUM | Phase 16/17 gates | T171–T174 and T181–T184 unexecuted; build/test/format/architectural attestation pending | Execute gate wave (format → build → tests → architectural) after preceding phases |
+| F5 | partial | LOW | Phase 18 verification reference | T185/T186 completed but gates they reference (T171–T174 / T181–T184) not executed; no separate new gap | Re-run referenced gates per T190 |
+| F6 | unrequested | LOW | `.specify/extensions.yml` | No `before_converge` or `after_converge` hooks registered; no hook results to wait on | None; if hooks added, mandatory ones block per rule 9 |
+| F7 | partial | HIGH | User rules 1–6 / spec Assumptions | TDD (rule 1), clean session (rule 2), delegation (rule 3/4), verification-only attestation (rule 5), atomic commit (rule 6) must govern any resumed Phase 13–18 work; T52 and T086 deferred per spec | Enforce binding rules through T187–T192 |
+
+**Summary metrics:**
+- Requirements / acceptance criteria checked: all `FR-001` through `FR-019`, `SC-001` through `SC-010`
+- Plan decisions checked: native machine (`FR-001a`/`FR-001b`), 2-day maturation (`FR-001b`), one-output (`FR-005a`), reactive overlay (`FR-010`), documentation reconciliation (`FR-016`, `FR-017`)
+- Constitution principles checked: I (DDD preserved), II (security/sanitization), III (async-only / atomic snapshot-diff / commit hooks), IV (TDD), V (simplicity), VI (multiplayer first-class, deferred D1)
+- Findings by gap type: partial (F1–F5, F7), unrequested (F6)
+- Findings by severity: HIGH (F1, F2, F7), MEDIUM (F3, F4), LOW (F5, F6)
+- Existing task IDs preserved: T001–T192; no rewrites; Phase 19 appended at bottom.
+
+### Next Actions
+
+- **Tasks appended**: 6 new verification/reminder tasks (T187–T192) under Phase 19, ordered with verification (T190) last.
+- **Recommendation**: Before declaring this feature complete, execute remaining Phase 13–15 tests and implementations in strict TDD waves (tests first, clean session for implementation), then run Phase 19 verification wave (T187 → T188 → T189 → T190). ONLY T190 (gate execution) can attest success; no agent self-attestation substitutes it.
+- T052 (live multi-player, `D1`) and T086 (manual playtest, `SC-001`) remain deferred per spec Assumptions and must NOT be treated as Phase 19 blockers; they are tracked separately.
+- A follow-up `/speckit.converge` will find fewer items once Phase 13–19 verification gates pass and open Phase 13–15 tasks are completed.
+
+
+---
+
+
+## Phase 20: Convergence
+
+**Purpose**: Close the residual gaps found by the fourth full convergence pass (spec ↔ plan ↔ tasks ↔ constitution ↔ code) without renumbering T001–T192. T052 (live 2-player, D1) and T086 (SC-001 manual playtest) stay open and are NOT duplicated below; all tasks are stub-bounded for SC-005/SC-010 until D1 runs the live session.
+
+**Binding execution rules (maintainer-mandated)**:
+0. Template/scaffold first: any generatable boilerplate (registration entries, xUnit facts/theories, property attributes) must be generated by template/LSP code action BEFORE hand-writing it.
+1. Strict TDD blocker: each remediation below MUST land its failing test first (property-based with FsCheck wherever the input domain allows) and MUST BLOCK its implementation until the test fails for the right reason.
+2. Clean-session implementation: each implementation MUST run in a new session with clean context, never in the session that wrote its test.
+3. [P] delegation: tasks marked [P] MUST be delegated across parallel agents/subagents at maximum viable fan-out; tasks sharing a file reuse one subagent serially.
+4. Waves: tasks sharing file context batch into one subagent; gate tasks run LAST.
+5. Verification attests: gate tasks T209–T212 run LAST; ONLY their results attest Phase 20 — never the implementing agent.
+6. Deterministic commit hook: after finishing edits to a file, one atomic conventional commit (`test(...)` / `feat(...)` / `fix(...)` / `docs(...)`) with a detailed multi-line body.
+
+### Convergence Findings (assessed 2026-10-13)
+
+| ID | Gap Type | Severity | Source | Evidence | Remaining Work |
+|----|----------|----------|--------|----------|----------------|
+| F1 | contradicts | CRITICAL | FR-001a/FR-001b | `ModEntry.cs:368` registers the machine as `$"(BC){ModConstants.MachineCompostingBinId}"` — and `MachineCompostingBinId` is already `(BC)`-prefixed — so the emitted key is `(BC)(BC)LivingRoots.CompostingBin`. A placed bin resolves as `(BC)LivingRoots.CompostingBin`, so no world object ever hits the rule: `DaysUntilReady`, `Triggers` and every native machine property are unreachable. The parity test (`CompostingBinServiceTests.ReadRegisteredBinMachineData`) OR-falls-back to the unprefixed key, so it passes while asserting the wrong registration. | Register under the single qualified key the world object resolves as; make the parity helper assert the exact key with no fallback so drift cannot pass |
+| F2 | contradicts | HIGH | FR-005c | `Object.canStackWith` returns `true` for two progress-carrying bins (probe-verified), and nothing in production caps the stack — `BigCraftableData` exposes no stack field and `CreateDislodgedBinItem` only sets `Stack = 1` on the fresh item. The spec's MUST ("maximum stack size of 1 while carrying progress or contents") is not enforced anywhere. | Enforce unstackability of a progress-carrying bin on the production path and prove it with a property-based test over arbitrary modData pairs |
+| F3 | contradicts | HIGH | FR-017 | `specs/001-soil-health-visualization/spec.md:178` still reads "multiplayer sync is Out of Scope" — a direct contradiction of Principle VI and FR-017. | Reconcile the scope wording (no requirement redesign) |
+| F4 | contradicts | HIGH | FR-017 | `specs/002-soil-decay-compost/plan.md:30` still reads "Single-player only (no multiplayer sync)" — same contradiction, second stale document. | Reconcile the scope wording (no requirement redesign) |
+| F5 | partial | MEDIUM | FR-002/T105 | `CompostApplicationService.cs:63` still gates on the literal `locationName != "Greenhouse"`, while `ModController.TryPlaceBin` accepts any greenhouse-like name (case-insensitive substring). Compost application on a modded greenhouse is refused although placement there is allowed. | Reuse the greenhouse-like acceptance rule at the application gate |
+| F6 | partial | MEDIUM | FR-016/SC-006 | `README.md` `## Features` is stale: three now-observable capabilities are still labelled `(Planned)` (soil-health indicators, decay, compost improving health), the composting bin — the feature's whole entry point — is unmentioned, and "Different materials provide different benefits" is false since the maturation multiplier was retired (FR-005a). | Bring the feature list in line with observable behaviour and label correctly |
+| F7 | partial | MEDIUM | SC-004 | No save/reload round-trip test covers the bin lifecycle matrix (Empty × Processing × Ready against placed / held-in-inventory / floating-debris), despite T056's completion claim — completion claims are not evidence. | Add the matrix as a property-based test over lifecycle state and placement form |
+| F8 | contradicts | LOW | FR-015 | `SoilHealthService.cs:135,550` still log `ex.StackTrace` (under `#if DEBUG`) — raw exception detail in the mod's output, which FR-015 forbids outright. | Remove both sites, keeping `GetType().FullName` + `HResult` at Trace |
+| F9 | unrequested | LOW | TDD rule 1 | The Data/Machines parity helper accepts either key shape, and F1's fix would leave it ambiguous; the Phase 14 duplicate-ID tasks (T141–T150, T151–T155) remain unchecked although the code now satisfies them, so a naive implement pass would redo settled work. | Pin the exact registration key in the test and reconcile the duplicate-ID checkboxes so no rework is scheduled |
+
+### Convergence Remediation (clean session — only after the red tests for each item are written) 🆕
+
+- [X] T193 [P] [US2] Remediate the F1 CRITICAL registration defect in `LivingRoots/ModEntry.cs`: emit `Data/Machines` under the single qualified key the placed bin resolves as (`ModConstants.MachineCompostingBinId`, already `(BC)`-prefixed) and remove the `"(BC)" +` prefix concatenation; add the failing parity test FIRST that asserts the exact key with no fallback per `FR-001a`/`FR-001b` (contradicts)
+- [X] T194 [P] [US1] Enforce max stack 1 for a progress-carrying bin on the production path per `FR-005c` (contradicts): choose the mechanism (native big-craftable unstackability via the registered definition, or an explicit production guard on the dislodged/placed item), prove it with a FsCheck property over arbitrary modData pairs asserting `canStackWith` is false whenever progress is carried, and verify a bin without progress still stacks as vanilla does
+- [X] T195 [P] [US4] Reconcile the multiplayer scope wording in `specs/001-soil-health-visualization/spec.md` (the "Out of Scope" sentence near line 178) per `FR-017` (contradicts): correction limited to scope wording, no redesign of settled requirements
+- [X] T196 [P] [US4] Reconcile the multiplayer scope wording in `specs/002-soil-decay-compost/plan.md` (the "Single-player only" line near line 30) per `FR-017` (contradicts): correction limited to scope wording, no redesign of settled requirements
+- [X] T197 [P] [US3] Make the compost application gate accept every greenhouse-like location the placement gate accepts in `LivingRoots/Services/CompostApplicationService.cs` per `FR-002` (partial): replace the literal `"Greenhouse"` comparison with the same case-insensitive greenhouse-like rule, with the failing test written first over arbitrary location names
+- [X] T198 [P] [US4] Bring `README.md` `## Features` in line with observable behaviour per `FR-016`/`SC-006` (partial): remove the `(Planned)` labels from the soil-health capabilities a player can now observe, add the composting bin as the loop's entry point, and delete the retired-multiplier claim ("Different materials provide different benefits") that `FR-005a` superseded; red-first `FeatureStatusTests` asserts the taxonomy
+- [X] T199 [P] [US2] Add the SC-004 save/reload round-trip matrix test in `LivingRoots.Tests/` per `SC-004` (partial): property-based over lifecycle state (Empty/Processing/Ready) × placement form (placed / held in inventory / floating debris), asserting progress and state survive the round-trip exactly with neither lost nor invented values
+- [X] T200 [P] [US2] Remove the two remaining raw `ex.StackTrace` log sites in `LivingRoots/Services/SoilHealthService.cs` per `FR-015` (contradicts): keep `GetType().FullName` + `HResult` at Trace only, and extend the source-scan architectural test to assert zero `StackTrace` occurrences in production output paths
+- [X] T201 [P] [US2/US4] Pin the exact `Data/Machines` registration key in `LivingRoots.Tests/CompostingBinServiceTests.cs` per TDD rule 1 (unrequested): remove the OR-fallback so the parity helper asserts one key, and reconcile the duplicate-ID tasks from Phase 14 (T141–T150, T151–T155) in `tasks.md` so their already-satisfied state is recorded without renumbering
+
+### Convergence Verification (ONLY these attest — run LAST)
+
+- [X] T202 **Gate 1 (Format Check)**: `dotnet format Stardew-LivingRoots.sln --verify-no-changes` exit 0 — after T193–T201; T052/T086 excluded (D1/maintainer); re-baseline: current run is exit 0
+- [X] T203 **Gate 2 (Compilation & Build)**: `GamePath=$GP dotnet build Stardew-LivingRoots.sln --configuration Release` zero errors/warnings — after T193–T201; T052/T086 excluded; re-baseline: current run is 0/0
+- [X] T204 **Gate 3 (Test Suite Execution)**: `GamePath=$GP dotnet test --no-build --configuration Release` 100% passing including T193–T201 — after T193–T201; T052/T086 excluded; attestation stub-bounded for SC-005/SC-010; re-baseline: current run is 906/906
+- [X] T205 **Gate 4 (Architectural & Markdown Integrity)**: `dotnet test --filter "FullyQualifiedName~ArchitecturalPlanTests"` — verify zero `ex.StackTrace` in production sources, the four previously-stale multiplayer statements across the 8 FR-017 documents read as reconciled, trailing newline integrity, and this appended Phase 20 — T052/T086 excluded; re-baseline: current run is 66/66
+
+### Convergence Waves & Subagent Dispatch Plan (Phase 20)
+
+- **Wave 18 (remediation tests — all [P], red-first, BLOCKS implementation)**:
+  - Subagent BJ: T193 (exact machine-key parity test — `CompostingBinServiceTests.cs`)
+  - Subagent BK: T194 (stack-1 property test — `CompostingBinServiceTests.cs`, joins BJ for shared file context)
+  - Subagent BL: T197 (greenhouse-like application test — `CompostApplicationServiceTests.cs`)
+  - Subagent BM: T198 (`FeatureStatusTests.cs` README taxonomy)
+  - Subagent BN: T199 (SC-004 round-trip matrix — new/`CompostingBinPersistenceTests.cs`)
+  - Subagent BO: T200 (source-scan extension — `ArchitecturalPlanTests.cs`)
+  - T195/T196/T201 are documentation/checkbox work, not test-blocked.
+- **Wave 19 (remediation implementation — clean session per rule 2)**:
+  - Subagent BP: T193 + T201 (`ModEntry.cs` key fix, parity helper pinned — same registration seam, serial within)
+  - Subagent BQ: T194 (`CompostingBinService.cs` stack-1 enforcement)
+  - Subagent BR: T197 (`CompostApplicationService.cs`)
+  - Subagent BS: T198 (`README.md`) + T195/T196 (the two FR-017 documents)
+  - Subagent BT: T200 (`SoilHealthService.cs`)
+  - T199's test lands with its own implementation seam (`CompostingBinService` persistence round-trip).
+- **Wave 20 (convergence verification — ONLY attestation per rule 5)**: T202 → T203 → T204 → T205 in gate order; T052/T086 remain maintainer/D1-executed, never agent-attested.
+
+**Summary metrics:**
+- Requirements / acceptance criteria checked: `FR-001` through `FR-019`, `SC-001` through `SC-010` (all), plus every existing task T001–T192 regardless of checkbox state
+- Plan decisions checked: native machine registration (`FR-001a`/`FR-001b`), one-output (`FR-005a`), progress retention (`FR-005c`), reactive overlay (`FR-010`), drawable-only reporting (`FR-011`), documentation reconciliation (`FR-016`, `FR-017`), multiplayer-first (`FR-017`/Constitution VI)
+- Constitution principles checked: I (DDD preserved), II (security/sanitization), III (async-only / snapshot-diff), IV (TDD), V (simplicity), VI (multiplayer first-class — F3/F4 scope contradictions)
+- Findings by gap type: contradicts (F1, F2, F3, F4, F8), partial (F5, F6, F7), unrequested (F9)
+- Findings by severity: CRITICAL (F1), HIGH (F2, F3, F4), MEDIUM (F5, F6, F7), LOW (F8, F9)
+- Existing task IDs preserved: T001–T192; no rewrites; Phase 20 appended at bottom.
+- Gate re-baseline recorded (2026-10-13): format exit 0 · build 0 errors / 0 warnings · tests 906/906 · architectural 66/66.
+
+### Next Actions
+
+- **Tasks appended**: 13 tasks (T193–T205) under Phase 20, CRITICAL/HIGH first.
+- **Recommendation**: run `/speckit.implement` on T193–T201 in the wave order above (tests first, clean sessions, `[P]` delegation), then T202–T205 attests. A follow-up `/speckit.converge` will find fewer or no remaining items.
+- T052 (live multi-player, D1) and T086 (manual playtest, SC-001) remain deferred per spec Assumptions and must NOT be treated as Phase 20 blockers; they are tracked separately.
+- Note for the implementer: Phase 14's duplicate-ID tasks (T141–T150, T151–T155) are already satisfied in code — treat them as bookkeeping only (T201), never as reimplementation work.
