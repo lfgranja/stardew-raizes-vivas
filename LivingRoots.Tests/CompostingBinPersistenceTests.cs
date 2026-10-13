@@ -1,8 +1,12 @@
 using System.Collections.Generic;
+using LivingRoots.Domain;
 using LivingRoots.Domain.Models;
 using LivingRoots.Services;
+using LivingRoots.Tests.Fixtures;
+using LivingRoots.Tests.Stubs;
 using Microsoft.Xna.Framework;
 using Moq;
+using StardewModdingAPI;
 using StardewValley;
 using Xunit;
 

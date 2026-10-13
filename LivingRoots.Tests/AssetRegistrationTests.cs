@@ -1,7 +1,12 @@
 using FsCheck;
 using FsCheck.Xunit;
-using LivingRoots; // access ModConstants / asset keys
-using LivingRoots.Domain.Services; // OrganicWasteValidator-owned set reference
+using LivingRoots;
+using LivingRoots.Domain;
+using LivingRoots.Domain.Models;
+using LivingRoots.Domain.Services;
+using Microsoft.Xna.Framework;
+using Moq;
+using StardewModdingAPI;
 using StardewValley;
 using Xunit;
 
@@ -23,7 +28,7 @@ namespace LivingRoots.Tests
         {
             // The item under test carries a context tag and a category drawn
             // from arbitrary inputs, including both validator-owned tags.
-            var item = new Object("1", 1);
+            var item = new StardewValley.Object("1", 1);
             var tagText = tag.Get;
             item.modData["ContextTags"] = tagText;
 

@@ -432,7 +432,7 @@ public class CompostingBinServiceTests
         }
 
         var item = ItemFactory.CreateItem(itemId, arbitraryCategory);
-        var wasteValidator = new OrganicWasteValidator();
+        var wasteValidator = new OrganicWasteValidator(new Mock<IMonitor>().Object);
 
         // Property premise: only test over qualifying waste batches.
         if (!wasteValidator.IsValidOrganicWaste(item))
@@ -507,7 +507,7 @@ public class CompostingBinServiceTests
         }
 
         var item = ItemFactory.CreateItem(itemId, arbitraryCategory);
-        var wasteValidator = new OrganicWasteValidator();
+        var wasteValidator = new OrganicWasteValidator(new Mock<IMonitor>().Object);
         if (!wasteValidator.IsValidOrganicWaste(item))
         {
             return true; // premise not met — vacuous pass
@@ -872,7 +872,7 @@ public class CompostingBinServiceTests
         var service = new CompostingBinService(
             new Mock<IModDataService>().Object,
             new Mock<ISaveIdProvider>().Object,
-            new OrganicWasteValidator(),
+            new OrganicWasteValidator(new Mock<IMonitor>().Object),
             new Mock<IMonitor>().Object,
             new TimeProviderStub(),
             new CompostingBinFactory(),
@@ -918,7 +918,7 @@ public class CompostingBinServiceTests
         }
 
         var item = ItemFactory.CreateItem(itemId, arbitraryCategory);
-        var wasteValidator = new OrganicWasteValidator();
+        var wasteValidator = new OrganicWasteValidator(new Mock<IMonitor>().Object);
 
         // Property premise: the generated item is non-qualifying waste.
         if (wasteValidator.IsValidOrganicWaste(item))
@@ -992,7 +992,7 @@ public class CompostingBinServiceTests
         var service = new CompostingBinService(
             new Mock<IModDataService>().Object,
             new Mock<ISaveIdProvider>().Object,
-            new OrganicWasteValidator(),
+            new OrganicWasteValidator(new Mock<IMonitor>().Object),
             new Mock<IMonitor>().Object,
             new TimeProviderStub(),
             new CompostingBinFactory(),
@@ -1042,7 +1042,7 @@ public class CompostingBinServiceTests
         }
 
         var item = ItemFactory.CreateItem(itemId, arbitraryCategory);
-        var wasteValidator = new OrganicWasteValidator();
+        var wasteValidator = new OrganicWasteValidator(new Mock<IMonitor>().Object);
 
         // Property premise: the generated item is non-qualifying waste.
         if (wasteValidator.IsValidOrganicWaste(item))
@@ -1549,7 +1549,7 @@ public class CompostingBinServiceTests
 
         // FR-005b: exactly one compost total across both drivers.
         // RED: unreconciled native + interception yields 2, so count != 1.
-        Assert.Equal(1, _inventory.AddedItems.Count);
+        Assert.Single(_inventory.AddedItems);
     }
 
     /// <summary>T121 [P] [US2] RED — FR-005b/FR-008a (partial): translated refusal HUD text.</summary>
@@ -1596,7 +1596,7 @@ public class CompostingBinServiceTests
         var service = new CompostingBinService(
             new Mock<IModDataService>().Object,
             new Mock<ISaveIdProvider>().Object,
-            new OrganicWasteValidator(),
+            new OrganicWasteValidator(new Mock<IMonitor>().Object),
             new Mock<IMonitor>().Object,
             new TimeProviderStub(),
             new CompostingBinFactory(),
