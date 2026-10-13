@@ -4,6 +4,7 @@ using LivingRoots;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Models;
 using LivingRoots.Domain.Services;
+using LivingRoots.Tests.Fixtures;
 using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
@@ -26,11 +27,14 @@ namespace LivingRoots.Tests
         [Property(MaxTest = 200)]
         public bool T120_RequiredTags_ExactlyOrganicWasteValidatorSet(NonEmptyString tag, int category)
         {
-            // The item under test carries a context tag and a category drawn
-            // from arbitrary inputs, including both validator-owned tags.
-            var item = new StardewValley.Object("1", 1);
-            var tagText = tag.Get;
-            item.modData["ContextTags"] = tagText;
+            // Context-tag queries resolve through ItemRegistry, which is only
+            // populated once the game has booted; the fixture installs the
+            // minimum registry state the query needs.
+            Fixtures.GameStateFixture.Install();
+
+            var item = ItemFactory.CreateItem("Object.Sap");
+            item.Category = category;
+            item.modData["ContextTags"] = tag.Get;
 
             // Property under test: the machine tag rule and the validator
             // agree for every item, so the Data/Machines triggers (derived from
