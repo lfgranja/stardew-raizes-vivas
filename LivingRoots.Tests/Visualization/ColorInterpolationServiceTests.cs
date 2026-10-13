@@ -160,7 +160,7 @@ namespace LivingRoots.Tests.Visualization
             // Arrange — populate the cache, then change the palette. SetCategoryColors
             // invalidates the cache, so the next lookup must not serve the stale color.
             var before = _service.GetColorForHealth(50f);
-            _service.SetCategoryColors(Color.Black, Color.Black, Color.Black);
+            _service.SetCategoryColors(Color.Black, Color.Black, Color.Black, Color.Black);
 
             // Act
             var after = _service.GetColorForHealth(50f);
