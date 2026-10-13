@@ -40,6 +40,22 @@ public class CompostApplicationService(
         return _translationHelper.Get(messageKey);
     }
 
+    /// <summary>
+    /// T057/FR-007: the player is holding compost when the held item resolves
+    /// to it in any of the forms the item takes — the qualified id the game
+    /// composes while a type definition is registered ("(O)LivingRoots.Compost"),
+    /// the fully qualified constant, or the bare ItemId a test host (or an
+    /// item created without a registry) reports. Checking one form only
+    /// silently refuses a legitimately held compost.
+    /// </summary>
+    private static bool HoldsCompost(Item heldItem)
+    {
+        return heldItem.QualifiedItemId == ModConstants.CompostItemId
+            || heldItem.QualifiedItemId == ModConstants.QualifiedCompostItemId
+            || heldItem.ItemId == ModConstants.CompostItemId
+            || heldItem.ItemId == ModConstants.QualifiedCompostItemId;
+    }
+
     public bool TryApplyCompost(GameLocation location, Vector2 tile)
     {
         var locationName = location.Name ?? "Unknown";
@@ -71,7 +87,7 @@ public class CompostApplicationService(
         }
 
         var heldItem = _playerProvider.CurrentItem;
-        if (heldItem == null || heldItem.QualifiedItemId != ModConstants.CompostItemId)
+        if (heldItem == null || !HoldsCompost(heldItem))
         {
             Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyCompostInvalidTile));
             _monitor.Log("Compost rejected: player not holding compost.", LogLevel.Trace);
