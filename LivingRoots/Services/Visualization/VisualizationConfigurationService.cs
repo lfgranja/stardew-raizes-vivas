@@ -1,3 +1,4 @@
+using System.Threading;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Visualization;
 using StardewModdingAPI;
@@ -25,9 +26,13 @@ namespace LivingRoots.Services.Visualization
         /// T069/T083: set by <see cref="NotifyConfigurationChanged"/> when the
         /// persisted configuration was changed out of band. LoadConfiguration
         /// re-reads storage unconditionally, so this flag records the signal
-        /// for diagnostics; it is cleared on the next load.
+        /// for observability and for callers that need to know a reload was
+        /// pending; it is cleared on the next load.
         /// </summary>
         private bool _configurationDirty;
+
+        /// <summary>Whether a signal from <see cref="NotifyConfigurationChanged"/> is still pending.</summary>
+        public bool HasPendingConfigurationChange => Volatile.Read(ref _configurationDirty);
 
         public VisualizationConfigurationService(
             IModDataService dataService,
