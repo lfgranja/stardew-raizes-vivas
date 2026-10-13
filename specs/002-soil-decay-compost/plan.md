@@ -27,7 +27,7 @@ This feature implements the core agroecology gameplay loop: tilled soil decays w
 **Constraints**:
 - Async-only concurrency (no `.Result` or `.Wait()`)
 - All constants from ModConstants (no hardcoded values)
-- Single-player only (no multiplayer sync)
+- Farm state is host-authoritative and farm-scoped per Principle VI (no cross-farm or cross-location writes); single-player is the degenerate case of multiplayer (a host with no clients), not a separate mode outside multiplayer scope
 - Bounds checking: soil health clamped 0-100
 - Security-first: tile ownership validation, input sanitization
 
