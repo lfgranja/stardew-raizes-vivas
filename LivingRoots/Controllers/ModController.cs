@@ -2376,6 +2376,24 @@ namespace LivingRoots.Controllers
             // object would read as a different item.
             var placedObject = new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId, TileLocation = tile };
             placedObject.bigCraftable.Value = true;
+
+            // T142/T005c-1 (FR-005c): the world object carries the batch
+            // progress the held item serialized, so the placement is itself
+            // evidence of the batch — the dislodge path reads the service
+            // record, but the world object is what the game persists, and a
+            // placed bin whose record disagrees with its object is the
+            // duplication hazard FR-002 exists to prevent.
+            if (binItem.modData != null)
+            {
+                // T142/FR-005c: Item.modData is a KeyValuePair-shaped map in
+                // Stardew 1.6, so read it through Pairs and write each entry
+                // through the placed object's indexer.
+                foreach (var entry in binItem.modData.Pairs)
+                {
+                    placedObject.modData[entry.Key] = entry.Value;
+                }
+            }
+
             location.Objects.Add(tile, placedObject);
 
             _compostingBinService.OnBinPlaced(location.Name, tile, binItem);
