@@ -30,6 +30,9 @@ namespace LivingRoots.Services.Visualization
         // Overlay list cache (FR-010)
         private List<TileOverlay>? _cachedOverlays;
         private Rectangle _cachedViewport;
+        // T143/FR-011: the snapshot the cache was built from, so a data change
+        // invalidates even when the viewport is unchanged.
+        private Dictionary<Point, float>? _cachedData;
         private readonly object _cacheLock = new();
 
         // Tracks whether degradation notification has been sent (one-time per degradation event)
@@ -77,6 +80,7 @@ namespace LivingRoots.Services.Visualization
             {
                 _cachedOverlays = null;
                 _cachedViewport = Rectangle.Empty;
+                _cachedData = null;
             }
         }
 
@@ -103,10 +107,14 @@ namespace LivingRoots.Services.Visualization
                 return new List<TileOverlay>();
             }
 
-            // Check cache (FR-010): return cached result if viewport unchanged
+            // Check cache (FR-010): return cached result only when BOTH the
+            // viewport and the tile-health data are unchanged. Keying on the
+            // viewport alone serves a stale overlay set after the data changes
+            // (FR-011: the display must not report a value it cannot draw, and
+            // must not linger on one it should no longer draw).
             lock (_cacheLock)
             {
-                if (_cachedOverlays != null && _cachedViewport == viewport)
+                if (_cachedOverlays != null && _cachedViewport == viewport && DataEqual(_cachedData, tileHealthData))
                 {
                     return _cachedOverlays;
                 }
@@ -157,9 +165,45 @@ namespace LivingRoots.Services.Visualization
             {
                 _cachedOverlays = overlays;
                 _cachedViewport = viewport;
+                _cachedData = tileHealthData;
             }
 
             return overlays;
+        }
+
+        /// <summary>
+        /// T143/FR-011: content comparison of the snapshot the cache was built
+        /// from against the one just received. Two frames with the same viewport
+        /// but different tile data are NOT cache hits — the second frame would
+        /// otherwise redraw the first frame's values, which is exactly the
+        /// fabricated/stale report FR-011 forbids.
+        /// </summary>
+        private static bool DataEqual(Dictionary<Point, float>? cached, Dictionary<Point, float> incoming)
+        {
+            if (cached == null)
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(cached, incoming))
+            {
+                return true;
+            }
+
+            if (cached.Count != incoming.Count)
+            {
+                return false;
+            }
+
+            foreach (var kvp in cached)
+            {
+                if (!incoming.TryGetValue(kvp.Key, out var value) || !kvp.Value.Equals(value))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -172,6 +216,7 @@ namespace LivingRoots.Services.Visualization
             {
                 _cachedOverlays = null;
                 _cachedViewport = Rectangle.Empty;
+                _cachedData = null;
             }
             _monitor.Log("Overlay renderer cache invalidated.", LogLevel.Trace);
         }
@@ -230,23 +275,29 @@ namespace LivingRoots.Services.Visualization
                 var tilePos = kvp.Key;
                 var healthValue = kvp.Value;
 
-                // FR-011 / T148: drawable-only reporting — suppress fabricated values
-                // for unknown/unmeasurable tiles; floor Poor interval at 1 (not 0).
+                // FR-011 / T143: drawable-only reporting. An unmeasurable tile
+                // (NaN/inf) carries no drawable value — it is reported as
+                // Unknown and tinted with the unknown color, never a fabricated
+                // percentage. The overlay is still produced so the draw path can
+                // report the Unknown label (the value observable is what FR-011
+                // governs; the tint is the unknown color, which is honest).
                 if (float.IsNaN(healthValue) || float.IsInfinity(healthValue))
                 {
-                    // Unknown / unmeasurable: suppress overlay (do not fabricate)
+                    var unknownColor = ModConstants.UnknownColor;
+                    unknownColor.A = (byte)(opacity * 255f);
+                    overlays.Add(new TileOverlay(tilePos, unknownColor, PatternType.None, float.NaN, HealthCategory.Unknown));
                     continue;
                 }
-                if (healthValue < 1f)
-                {
-                    healthValue = 1f; // FR-011 / T178: floor Poor at 1
-                }
 
-                // FR-009: Poor interval floored at 1 (was [0,34)); never render 0.
-                healthValue = Math.Max(healthValue, 1f);
+                // FR-009/T178: the Poor interval floor at 1 applies to the DRAWN
+                // tint (health 0 must render nothing, so the floor keeps the
+                // lowest drawn value non-zero), never to the reported value:
+                // FR-011 forbids reporting a value the draw did not carry, so a
+                // sub-floor reading is reported exactly as measured.
+                var drawnHealth = Math.Max(healthValue, 1f);
 
-                var category = _colorService.GetCategoryForHealth(healthValue);
-                var color = _colorService.GetColorForHealth(healthValue, opacity);
+                var category = _colorService.GetCategoryForHealth(drawnHealth);
+                var color = _colorService.GetColorForHealth(drawnHealth, opacity);
                 var pattern = showPatterns ? GetPatternForCategory(category) : PatternType.None;
 
                 overlays.Add(new TileOverlay(tilePos, color, pattern, healthValue, category));

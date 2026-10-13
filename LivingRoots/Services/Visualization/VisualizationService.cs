@@ -295,8 +295,36 @@ namespace LivingRoots.Services.Visualization
 
             var destRect = new Rectangle(screenX, screenY, ModConstants.TileSize, ModConstants.TileSize);
 
+            // T143/T159 (FR-011): the value this draw carries, reported before the
+            // draw lands. FR-011 requires the display never report a value it
+            // cannot draw, so the observable is the value the draw actually
+            // consumed: the measured value for a measurable tile, and the
+            // literal Unknown for an unmeasurable one — never a fabricated
+            // percentage.
+            _monitor.Log(
+                "Overlay value drawn: " + (float.IsNaN(overlay.HealthValue) || float.IsInfinity(overlay.HealthValue)
+                    ? "Unknown"
+                    : overlay.HealthValue.ToString("R", System.Globalization.CultureInfo.CurrentCulture)),
+                LogLevel.Trace);
+            _monitor.Log(
+                "Overlay drawn: " + (float.IsNaN(overlay.HealthValue) || float.IsInfinity(overlay.HealthValue)
+                    ? "Unknown"
+                    : overlay.HealthValue.ToString("R", System.Globalization.CultureInfo.CurrentCulture)),
+                LogLevel.Trace);
+
+            // T101 (FR-010): the overlay blends under the ambient lighting pass
+            // instead of rendering at full strength over a darkened world. The
+            // resolved tint is multiplied by the game's ambient light, so the
+            // overlay stays readable at night, in rain and in winter without
+            // clipping or washing out. Full daylight is the identity blend
+            // (white ambient), which is why the day tint is the unlit tint.
+            var blendedColor = BlendUnderAmbientLight(overlay.Color);
+            _monitor.Log(
+                $"Overlay tint drawn: RGBA({blendedColor.R}, {blendedColor.G}, {blendedColor.B}, {blendedColor.A})",
+                LogLevel.Trace);
+
             // Draw the base color overlay with configured opacity
-            spriteBatch.Draw(GetTexture(), destRect, overlay.Color);
+            spriteBatch.Draw(GetTexture(), destRect, blendedColor);
 
             // FR-001: draw pattern overlay when ShowPatterns is enabled
             if (overlay.PatternType != PatternType.None && config.ShowPatterns)
@@ -455,6 +483,32 @@ namespace LivingRoots.Services.Visualization
 
                 _monitor.Log($"Hoe feedback text: {feedback.HealthText} at ({textPos.X}, {textPos.Y})", LogLevel.Trace);
             }
+        }
+
+        /// <summary>
+        /// T101 (FR-010): multiplies the overlay tint by the game's ambient light
+        /// so the overlay blends under the lighting pass instead of rendering at
+        /// full strength over a darkened world. White ambient (full daylight) is
+        /// the identity, so the day tint is the unlit tint exactly; a darkened
+        /// ambient darkens the tint proportionally. Alpha is preserved: a
+        /// zero-alpha overlay would be invisible in both cases.
+        /// </summary>
+        /// <param name="color">The unlit tint the palette resolved.</param>
+        /// <returns>The ambient-blended tint.</returns>
+        private static Color BlendUnderAmbientLight(Color color)
+        {
+            var ambient = StardewValley.Game1.ambientLight;
+            if (ambient == default)
+            {
+                // A host without the game booted has no ambient light installed;
+                // the unlit tint is then the honest answer (identity blend).
+                return color;
+            }
+
+            var r = (byte)Math.Clamp((int)color.R * ambient.R / 255, 0, 255);
+            var g = (byte)Math.Clamp((int)color.G * ambient.G / 255, 0, 255);
+            var b = (byte)Math.Clamp((int)color.B * ambient.B / 255, 0, 255);
+            return new Color(r, g, b, color.A);
         }
 
         /// <summary>
