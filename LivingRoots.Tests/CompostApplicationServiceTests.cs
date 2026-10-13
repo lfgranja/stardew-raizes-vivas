@@ -700,7 +700,7 @@ public class CompostApplicationServiceTests
         {
             // The refusal pipeline resolves through the helper.
             var pt = helper.Get(key);
-            var text = pt.Text ?? key;
+            var text = pt.ToString();
 
             // Must NOT be the raw key.
             if (string.Equals(text, key, StringComparison.Ordinal))
@@ -816,8 +816,8 @@ public class CompostApplicationServiceTests
         var helper = CreateLocaleTranslationHelper(localized, fallback);
 
         var tx = helper.Get(ModConstants.TranslationKeyHarvestInventoryFull);
-        Assert.NotEqual(ModConstants.TranslationKeyHarvestInventoryFull, tx.Text); // never raw
-        Assert.Equal(PtRefusalText[ModConstants.TranslationKeyHarvestInventoryFull], tx.Text); // PT
+        Assert.NotEqual(ModConstants.TranslationKeyHarvestInventoryFull, tx.ToString()); // never raw
+        Assert.Equal(PtRefusalText[ModConstants.TranslationKeyHarvestInventoryFull], tx.ToString()); // PT
 
         // Demand that the refusal site (CompostingBinService harvest bucket)
         // uses this translation, not the raw key.
@@ -861,24 +861,24 @@ public class CompostApplicationServiceTests
         {
             // Never expose the raw key (FR-008a / T157 invariant)
             var tx = helper.Get(key);
-            Assert.NotEqual(key, tx.Text, $"T165 RED: refusal site '{key}' leaked raw key — translation wiring incomplete.");
+            Assert.NotEqual(key, tx.ToString());
 
             // PT translation must exist and differ from EN source (Wave 13 seam)
             Assert.True(pt.ContainsKey(key), $"T165 RED: PT locale missing key '{key}'.");
-            Assert.NotEqual(en[key], pt[key], $"T165 RED: PT copies EN source for '{key}'.");
-            Assert.Equal(PtRefusalText[key], tx.Text, $"T165 RED: PT text mismatch for '{key}' — expected '{PtRefusalText[key]}', got '{tx.Text}'.");
+            Assert.NotEqual(en[key], pt[key]);
+            Assert.Equal(PtRefusalText[key], tx.ToString());
 
             // EN fallback must also be present and never raw
             Assert.True(en.ContainsKey(key), $"T165 RED: EN/default locale missing key '{key}'.");
-            Assert.NotEqual(key, en[key], $"T165 RED: EN fallback is raw key for '{key}'.");
-            Assert.Equal(EnRefusalText[key], en[key], $"T165 RED: EN text mismatch for '{key}'.");
+            Assert.NotEqual(key, en[key]);
+            Assert.Equal(EnRefusalText[key], en[key]);
         }
 
         // Structural parity check: refusal pipeline must resolve through helper, never raw key.
         // Service constructor currently takes 3 args (no ITranslationHelper injection — T054 open);
         // parity fails until helper wiring lands.
         Assert.True(
-            refusalSiteKeys.All(k => !string.Equals(helper.Get(k).Text, k, StringComparison.Ordinal)),
+            refusalSiteKeys.All(k => !string.Equals(helper.Get(k).ToString(), k, StringComparison.Ordinal)),
             "T165 RED: at least one refusal site renders raw key — parity broken.");
     }
 }
