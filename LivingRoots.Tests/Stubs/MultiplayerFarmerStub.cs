@@ -38,6 +38,14 @@ namespace LivingRoots.Tests.Stubs
         /// <summary>Multiplayer ID the atomic lock keys on (FR-019).</summary>
         public long FarmerId { get; }
 
+        /// <summary>
+        /// T125 (FR-019): the multiplayer ID exactly as the production
+        /// TryApplyCompostWithLock / TryInteractWithBin entry points key the
+        /// host-authoritative lock on. An alias of <see cref="FarmerId"/> kept
+        /// distinct so the simulation reads the way the game code does.
+        /// </summary>
+        public long UniqueMultiplayerID => FarmerId;
+
         /// <summary>"Host" or "Farmhand" — the role the ID belongs to.</summary>
         public string Role { get; }
 
@@ -126,7 +134,7 @@ namespace LivingRoots.Tests.Stubs
     /// deterministic equivalent of a simultaneous multiplayer tick available on
     /// a single-threaded test host.
     /// </summary>
-    public sealed class MultiplayerSimulationContext
+    public sealed class MultiplayerSimulationContext : IPlayerProvider
     {
         private readonly MultiplayerFarmerStub[] _farmers;
         private readonly Barrier _barrier;
@@ -140,7 +148,44 @@ namespace LivingRoots.Tests.Stubs
             }
 
             _barrier = new Barrier(_farmers.Length);
+            _activeFarmer = _farmers[0];
         }
+
+        /// <summary>The farmer the participant is currently acting as.</summary>
+        private MultiplayerFarmerStub _activeFarmer;
+
+        /// <summary>
+        /// Selects the farmer whose context the next call resolves. The
+        /// production entry points (<see cref="TryApplyCompostWithLock"/>,
+        /// TryInteractWithBin) take a farmer ID but the services read the held
+        /// item through <see cref="IPlayerProvider"/>, so the simulation must be
+        /// told which actor is acting — otherwise a two-player test would watch
+        /// one farmer's item being consumed for the other's action.
+        /// </summary>
+        /// <param name="farmer">The farmer about to act.</param>
+        public void SetActiveFarmer(MultiplayerFarmerStub farmer)
+        {
+            _activeFarmer = farmer ?? throw new ArgumentNullException(nameof(farmer));
+        }
+
+        /// <summary>The farmer whose held item the provider currently resolves.</summary>
+        public MultiplayerFarmerStub ActiveFarmer => _activeFarmer;
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// T125: the context is also the <see cref="IPlayerProvider"/> the
+        /// production CompostApplicationService resolves held items through, so
+        /// the SC-010 headline test drives the real service instead of an
+        /// inline reimplementation. <see cref="IPlayerProvider.CurrentPlayer"/>
+        /// returns a real <c>Farmer</c>, which cannot be constructed in a
+        /// unit-test host, so it throws here — no production path in this test
+        /// touches it.
+        /// </remarks>
+        public Farmer CurrentPlayer => throw new NotSupportedException(
+            "A real Farmer cannot be constructed in a unit-test host; use the farmer stub's held item instead.");
+
+        /// <inheritdoc />
+        public Item? CurrentItem => _activeFarmer.CurrentItem;
 
         /// <summary>Every farmer participating in this simulation, in join order.</summary>
         public IReadOnlyList<MultiplayerFarmerStub> AllFarmers => _farmers;
@@ -175,6 +220,31 @@ namespace LivingRoots.Tests.Stubs
             });
 
             return await Task.WhenAll(tasks);
+        }
+
+        /// <summary>
+        /// Non-generic overload for void-ish actions: a lambda returning
+        /// <see cref="Task.CompletedTask"/> binds here rather than failing T
+        /// inference.
+        /// </summary>
+        /// <param name="action">Action to run per farmer.</param>
+        public async Task RunSimultaneouslyAsync(Func<MultiplayerFarmerStub, Task> action)
+        {
+            if (action == null)
+            {
+                throw new ArgumentNullException(nameof(action));
+            }
+
+            var barrier = new Barrier(_farmers.Length);
+            var tasks = _farmers.Select(async farmer =>
+            {
+                await Task.Yield();
+                barrier.SignalAndWait();
+
+                await action(farmer);
+            });
+
+            await Task.WhenAll(tasks);
         }
     }
 }

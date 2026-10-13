@@ -887,6 +887,7 @@ public class MultiplayerConcurrencyTests
         // on the same tile coordinate, simultaneously.
         var results = await context.RunSimultaneouslyAsync(async farmer =>
         {
+            context.SetActiveFarmer(farmer);
             bool success = controller.TryApplyCompostWithLock(
                 fixture.Location,
                 tile,
