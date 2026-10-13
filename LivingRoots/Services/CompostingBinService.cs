@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using LivingRoots.Domain;
+using LivingRoots.Domain.Interfaces;
 using LivingRoots.Domain.Models;
 using LivingRoots.Domain.Services;
 using Microsoft.Xna.Framework;
@@ -17,6 +18,7 @@ public class CompostingBinService(
     CompostingBinFactory factory,
     IPlayerInventory playerInventory,
     ILocationProvider? locationProvider = null,
+    IHostAtomicLockService? hostAtomicLockService = null,
     ITranslationHelper? translationHelper = null) : ICompostingBinService
 {
     private readonly IModDataService _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
@@ -34,6 +36,14 @@ public class CompostingBinService(
     /// because the provider cannot prove the world lacks the bin.
     /// </summary>
     private readonly ILocationProvider? _locationProvider = locationProvider;
+    /// <summary>
+    /// T055 (FR-019): the host-authoritative atomic lock service, the SAME
+    /// instance the controller holds — the composition root creates one and
+    /// injects it here and there, so a tile either of them locks is locked for
+    /// both. Null only when a caller (a headless test double) constructs the
+    /// service without one; production never does.
+    /// </summary>
+    private readonly IHostAtomicLockService? _hostAtomicLockService = hostAtomicLockService;
     /// <summary>
     /// T054/T157 (FR-008a): SMAPI's translation helper, so the
     /// full-inventory refusal at collection renders in the player's language

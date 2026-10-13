@@ -90,12 +90,12 @@ namespace LivingRoots
             // Game1.showRedMessage shows the player's language.
             var translationHelper = helper.Translation;
             var locationProvider = new LocationProvider();
-            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, translationHelper: translationHelper);
+            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, hostAtomicLockService: hostAtomicLockService, translationHelper: translationHelper);
             var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
 
             // Create soil decay service
             var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
-            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider);
+            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider, timeProvider);
 
             // Create visualization services (F4 — DI wiring per Phase 9/10)
             var colorInterpolationService = new ColorInterpolationService();

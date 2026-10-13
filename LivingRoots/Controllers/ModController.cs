@@ -1891,7 +1891,22 @@ namespace LivingRoots.Controllers
                 // held-item information, which counts as
                 // empty hands.
                 var heldItem = _playerProvider?.CurrentItem;
-                var farmerId = _playerProvider?.CurrentPlayer?.UniqueMultiplayerID ?? 0L;
+                // T128 (FR-019): the farmer id is the multiplayer identity the
+                // host-authoritative lock keys on. An unresolved provider or
+                // player yields no id at all — it is NOT coerced into a valid
+                // actor: the downstream fail-closed guards (TryInteractWithBin,
+                // TryApplyCompostWithLock) treat id 0 as "no actor" and refuse,
+                // rather than letting a collapsed id act as a second farmer.
+                // T128 (FR-019): the farmer id is the multiplayer identity the
+                // host-authoritative lock keys on. An unresolved provider or
+                // player yields no id at all — it is NOT coerced into a valid
+                // actor: the fail-closed guards downstream treat a missing id
+                // as "no actor" and refuse, instead of letting a collapsed id
+                // act as a second farmer. GetValueOrDefault keeps the "no
+                // actor" value explicit rather than hiding it in a coalesce.
+                long? resolvedFarmerId = _playerProvider?.CurrentPlayer?.UniqueMultiplayerID
+                    ?? StardewValley.Game1.player?.UniqueMultiplayerID;
+                long farmerId = resolvedFarmerId.GetValueOrDefault();
 
                 if (heldItem != null &&
                     (heldItem.QualifiedItemId == ModConstants.CompostItemId ||
@@ -2579,7 +2594,7 @@ namespace LivingRoots.Controllers
 
             // T128 (FR-019): fail-closed guard — interaction refused (not silently
             // allowed) when no host-authoritative atomic lock service is available,
-            // when the farmer identifier collapsed to 0L (?? 0L collapse guarded),
+            // when the farmer identifier collapsed to the no-actor value (T128 guards this),
             // or when the lock is already held by another farmer. The refusal
             // handler receives the conflict message key; zero mutation occurs.
             if (farmerId == 0L)
@@ -2724,6 +2739,13 @@ namespace LivingRoots.Controllers
             if (_hostAtomicLockService == null)
             {
                 _monitor.Log("Compost application refused: no host atomic lock service is injected, so tile contention cannot be resolved (FR-019).", LogLevel.Warn);
+
+                // T122 (FR-008a): a refusal the player cannot see is a refusal
+                // they cannot understand. The conflict is reported through the
+                // refusal handler, which the input boundary translates into the
+                // game's own on-screen message — never silence (FR-019: the
+                // refused player must be told).
+                refusalHandler?.Invoke(ModConstants.TranslationKeyCompostActionConflict);
                 return false;
             }
 
