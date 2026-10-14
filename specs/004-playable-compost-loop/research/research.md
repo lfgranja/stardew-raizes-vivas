@@ -56,6 +56,13 @@
 - **Rationale**: Constitution VI; spec Assumptions (multiplayer verification boundary) and Clarifications; CHESS/CTrigger/Jepsen evidence.
 - **Alternatives**: Declare stub-bound complete (rejected — violates Principle VI / spec debt D1).
 
+### 11. Guard Mechanism: `lock` + Dictionary over `Interlocked.CompareExchange` (T041 — accepted deviation)
+- **Decision**: The host-authoritative first-wins lock (`HostAtomicLockService.TryAcquireLock`) and the exactly-once-per-day-per-location guard (`CompostingBinService.ProcessDayStart`, mirrored by `SoilDecayService`) are implemented with `lock` plus a per-key `Dictionary`, not the `Interlocked.CompareExchange`-on-a-dedicated-flag mechanism named by FR-001b's fallback text and tasks T011c/T018. This is a documented, accepted deviation of mechanism, not a functional defect.
+- **Rationale**: (a) the required BEHAVIOUR is fully satisfied — first-wins mutual exclusion and exactly-once-per-day-per-location are proven by `MultiplayerConcurrencyTests`, `MultiplayerInvariantsTests`, `SingleMultiplayerParityInvariantsTests` and `DailyDecayTests`; (b) Constitution III permits lock-based synchronisation for game-loop coordination and reserves lock-free atomics for where snapshot-diff is insufficient — a Monitor critical section provides the atomicity both guards need; (c) `Interlocked.CompareExchange` on a scalar flag cannot express the per-location dictionary these guards need without an additional container, so the named primitive would not simplify the implementation; (d) the two guards are already independent mechanisms on separate fields (`_lockObject`/`_locks` versus `_dayLock`/`_lastProcessedDay`), which is the separation T011c and T018 actually require.
+- **Alternatives**: Rewriting both guards to scalar `Interlocked.CompareExchange` flags (rejected — would add a per-location container anyway, risks regressing 1053 green tests, buys no behavioural change); leaving the deviation undocumented (rejected — the spec and task text name a primitive the code does not use, so silence would leave the codebase dishonest about its own design).
+- **Status / debt**: Accepted deviation. NOT a functional defect; does not weaken FR-004 / FR-019 / Principle VI — the behaviour is verified. The remaining spec/task wording naming the primitive is reconciled through the spec-change process (a human gate), tracked as task T041 in `tasks.md`.
+- **Verification boundary** (mirroring decision 10): the guards are attested by automated stubs within their bounds; live 2-player verification remains owed to roadmap D1.
+
 ---
 
 ## Outstanding Dependencies / Integration Patterns
