@@ -33,6 +33,12 @@ namespace LivingRoots.Services.Visualization
         // T143/FR-011: the snapshot the cache was built from, so a data change
         // invalidates even when the viewport is unchanged.
         private Dictionary<Point, float>? _cachedData;
+        // T253/FR-010: the configuration the cache was built from, so a
+        // configuration change invalidates even when the viewport and the
+        // data are unchanged.
+        private float _cachedOpacity;
+        private bool _cachedShowPatterns;
+        private string? _cachedDegradationMode;
         private readonly object _cacheLock = new();
 
         // Tracks whether degradation notification has been sent (one-time per degradation event)
@@ -81,6 +87,9 @@ namespace LivingRoots.Services.Visualization
                 _cachedOverlays = null;
                 _cachedViewport = Rectangle.Empty;
                 _cachedData = null;
+                _cachedOpacity = 0f;
+                _cachedShowPatterns = false;
+                _cachedDegradationMode = null;
             }
         }
 
@@ -107,14 +116,22 @@ namespace LivingRoots.Services.Visualization
                 return new List<TileOverlay>();
             }
 
-            // Check cache (FR-010): return cached result only when BOTH the
-            // viewport and the tile-health data are unchanged. Keying on the
-            // viewport alone serves a stale overlay set after the data changes
-            // (FR-011: the display must not report a value it cannot draw, and
-            // must not linger on one it should no longer draw).
+            // Check cache (FR-010): return cached result only when the
+            // viewport, the tile-health data AND the configuration are
+            // unchanged. Keying on the viewport alone serves a stale
+            // overlay set after the data changes (FR-011: the display
+            // must not report a value it cannot draw, and must not
+            // linger on one it should no longer draw), and keying
+            // without the configuration serves one after an opacity,
+            // palette or pattern change. The configuration is read
+            // before the check so the comparison observes it.
+            var config = _configService.GetConfiguration();
             lock (_cacheLock)
             {
-                if (_cachedOverlays != null && _cachedViewport == viewport && DataEqual(_cachedData, tileHealthData))
+                if (_cachedOverlays != null
+                    && _cachedViewport == viewport
+                    && DataEqual(_cachedData, tileHealthData)
+                    && ConfigEqual(_cachedOpacity, _cachedShowPatterns, _cachedDegradationMode, config))
                 {
                     return _cachedOverlays;
                 }
@@ -125,9 +142,6 @@ namespace LivingRoots.Services.Visualization
             var cullBounds = ComputeCullingBounds(viewport, mapBounds);
             var visibleTiles = CullToViewport(tileHealthData, cullBounds);
             var visibleCount = visibleTiles.Count;
-
-            // Read configuration for opacity and pattern settings
-            var config = _configService.GetConfiguration();
 
             // Graceful degradation (FR-009): disable patterns when >1000 tiles in auto mode
             var degradationMode = config.AccessibilityDegradation ?? "auto";
@@ -166,6 +180,9 @@ namespace LivingRoots.Services.Visualization
                 _cachedOverlays = overlays;
                 _cachedViewport = viewport;
                 _cachedData = tileHealthData;
+                _cachedOpacity = config.Opacity;
+                _cachedShowPatterns = config.ShowPatterns;
+                _cachedDegradationMode = config.AccessibilityDegradation;
             }
 
             return overlays;
@@ -207,6 +224,33 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <summary>
+        /// T253/FR-010: compares the configuration snapshot the cache was
+        /// built from against the configuration just read. A frame whose
+        /// opacity, pattern toggle or degradation mode changed is NOT a
+        /// cache hit — it would otherwise redraw the previous
+        /// configuration's tints, which is exactly the stale report
+        /// FR-010 forbids.
+        /// </summary>
+        private static bool ConfigEqual(
+            float cachedOpacity,
+            bool cachedShowPatterns,
+            string? cachedDegradationMode,
+            VisualizationConfiguration incoming)
+        {
+            if (!cachedOpacity.Equals(incoming.Opacity))
+            {
+                return false;
+            }
+
+            if (cachedShowPatterns != incoming.ShowPatterns)
+            {
+                return false;
+            }
+
+            return string.Equals(cachedDegradationMode, incoming.AccessibilityDegradation, StringComparison.Ordinal);
+        }
+
+        /// <summary>
         /// Invalidates the overlay cache, forcing recalculation on the next <see cref="GetOverlays"/> call.
         /// Called when soil health data changes (FR-010).
         /// </summary>
@@ -217,6 +261,9 @@ namespace LivingRoots.Services.Visualization
                 _cachedOverlays = null;
                 _cachedViewport = Rectangle.Empty;
                 _cachedData = null;
+                _cachedOpacity = 0f;
+                _cachedShowPatterns = false;
+                _cachedDegradationMode = null;
             }
             _monitor.Log("Overlay renderer cache invalidated.", LogLevel.Trace);
         }
