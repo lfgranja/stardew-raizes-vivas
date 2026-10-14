@@ -69,7 +69,7 @@ specs/004-playable-compost-loop/
 
 ```text
 LivingRoots/
-├── Constants.cs                                # ModConstants: IDs, maturation, recipes, colors
+├── ModConstants.cs                             # ModConstants: IDs, maturation, recipes, colors
 ├── ModEntry.cs                                 # Composition root & AssetRequested handler (Data/Objects, Data/CraftingRecipes, Data/Machines)
 ├── i18n/
 │   └── default.json                            # Translation keys for player refusal messages (FR-008a)
@@ -79,8 +79,8 @@ LivingRoots/
 │   │   ├── ICompostApplicationService.cs       # Application contracts with crop tolerance & refusal reasons
 │   │   └── ISoilHealthService.cs               # Soil health contracts + OnTileHealthChanged event
 │   └── Models/
-│       ├── CompostingBinStateModel.cs          # Runtime machine state model with modData serialization
-│       └── CompostingBinData.cs                # Tolerant persistence DTO
+│       ├── CompostingBinStateModel.cs          # Runtime machine state (Empty→Processing→Ready, modData serialization)
+│       └── CompostingBinData.cs                # Persistence DTO (save/load, tolerant reader)
 ├── Services/
 │   ├── CompostingBinService.cs                 # Machine lifecycle, 1-out yield, progress preservation, tolerant reader
 │   ├── CompostApplicationService.cs            # Application execution, validation, inventory decrement
