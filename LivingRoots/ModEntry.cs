@@ -42,94 +42,106 @@ namespace LivingRoots
         {
             _helper = helper;
 
-            // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031).
-            // T137 (FR-012): subscribe through the stored handler field so Dispose
-            // detaches the exact delegate instance — a method-group subscription
-            // leaves no readable reference to release on unload.
-            _onAssetRequestedHandler = OnAssetRequested;
-            helper.Events.Content.AssetRequested += _onAssetRequestedHandler;
+            try
+            {
+                // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031).
+                // T137 (FR-012): subscribe through the stored handler field so Dispose
+                // detaches the exact delegate instance — a method-group subscription
+                // leaves no readable reference to release on unload.
+                _onAssetRequestedHandler = OnAssetRequested;
+                helper.Events.Content.AssetRequested += _onAssetRequestedHandler;
 
-            // Create domain services - Composition Root
-            var unicodeNormalizationService = new UnicodeNormalizationService();
-            var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
-            var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
-            var pathValidationService = new PathValidationService(unicodeNormalizationService);
-            var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
+                // Create domain services - Composition Root
+                var unicodeNormalizationService = new UnicodeNormalizationService();
+                var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
+                var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
+                var pathValidationService = new PathValidationService(unicodeNormalizationService);
+                var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
 
-            // Create application services
-            var modDataService = new ModDataService(helper, this.Monitor, modLogic);
+                // Create application services
+                var modDataService = new ModDataService(helper, this.Monitor, modLogic);
 
-            // Create the soil health service with the required dependencies
-            var soilHealthService = new SoilHealthService(modDataService, this.Monitor, fileNameSanitizationService);
-            _soilHealthService = soilHealthService;
+                // Create the soil health service with the required dependencies
+                var soilHealthService = new SoilHealthService(modDataService, this.Monitor, fileNameSanitizationService);
+                _soilHealthService = soilHealthService;
 
-            // Create the save ID provider with monitor for logging
-            var saveIdProvider = new SaveIdProvider(this.Monitor);
+                // Create the save ID provider with monitor for logging
+                var saveIdProvider = new SaveIdProvider(this.Monitor);
 
-            // Create testable interface implementations (Fix-4)
-            var timeProvider = new TimeProvider();
-            var seasonProvider = new SeasonProvider();
-            var playerProvider = new PlayerProvider();
+                // Create testable interface implementations (Fix-4)
+                var timeProvider = new TimeProvider();
+                var seasonProvider = new SeasonProvider();
+                var playerProvider = new PlayerProvider();
 
-            // T055 (U3, FR-019): ONE host-authoritative lock
-            // service, created here and passed to both the
-            // controller and the bin service. Two `?? new`
-            // fallbacks would hand each class a disjoint
-            // lock registry, so a tile one of them locked
-            // would look free to the other.
-            var hostAtomicLockService = new HostAtomicLockService();
+                // T055 (U3, FR-019): ONE host-authoritative lock
+                // service, created here and passed to both the
+                // controller and the bin service. Two `?? new`
+                // fallbacks would hand each class a disjoint
+                // lock registry, so a tile one of them locked
+                // would look free to the other.
+                var hostAtomicLockService = new HostAtomicLockService();
 
-            // Create composting services
-            // T141: OrganicWasteValidator takes the monitor for trace
-            // diagnostics of accepted/rejected waste (IOrganicWasteValidator).
-            var organicWasteValidator = new OrganicWasteValidator(this.Monitor);
-            var compostingBinFactory = new CompostingBinFactory();
-            var playerInventory = new PlayerInventory();
-            // T054 (FR-008a): SMAPI's translation helper, injected
-            // into every service that renders a refusal message so
-            // Game1.showRedMessage shows the player's language.
-            var translationHelper = helper.Translation;
-            var locationProvider = new LocationProvider();
-            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, hostAtomicLockService: hostAtomicLockService, translationHelper: translationHelper);
-            var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
+                // Create composting services
+                // T141: OrganicWasteValidator takes the monitor for trace
+                // diagnostics of accepted/rejected waste (IOrganicWasteValidator).
+                var organicWasteValidator = new OrganicWasteValidator(this.Monitor);
+                var compostingBinFactory = new CompostingBinFactory();
+                var playerInventory = new PlayerInventory();
+                // T054 (FR-008a): SMAPI's translation helper, injected
+                // into every service that renders a refusal message so
+                // Game1.showRedMessage shows the player's language.
+                var translationHelper = helper.Translation;
+                var locationProvider = new LocationProvider();
+                var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, hostAtomicLockService: hostAtomicLockService, translationHelper: translationHelper);
+                var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
 
-            // Create soil decay service
-            var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
-            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider, timeProvider);
+                // Create soil decay service
+                var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
+                var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider, timeProvider);
 
-            // Create visualization services (F4 — DI wiring per Phase 9/10)
-            var colorInterpolationService = new ColorInterpolationService();
-            var visualizationConfigService = new VisualizationConfigurationService(modDataService, this.Monitor, fileNameSanitizationService);
-            var hudNotifier = new HudNotifierImpl();
-            var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor, hudNotifier);
+                // Create visualization services (F4 — DI wiring per Phase 9/10)
+                var colorInterpolationService = new ColorInterpolationService();
+                var visualizationConfigService = new VisualizationConfigurationService(modDataService, this.Monitor, fileNameSanitizationService);
+                var hudNotifier = new HudNotifierImpl();
+                var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor, hudNotifier);
 
-            // Wire reactive cache invalidation upon soil health change (T036, FR-010).
-            // T137 (FR-012): a stored named handler rather than an anonymous
-            // lambda — an anonymous subscription has no readable reference, so
-            // it can never be detached and keeps the visualization service
-            // alive through the event past mod unload.
-            _onTileHealthChangedHandler = (_, _, _) => visualizationService.InvalidateCache();
-            soilHealthService.OnTileHealthChanged += _onTileHealthChangedHandler;
+                // Wire reactive cache invalidation upon soil health change (T036, FR-010).
+                // T137 (FR-012): a stored named handler rather than an anonymous
+                // lambda — an anonymous subscription has no readable reference, so
+                // it can never be detached and keeps the visualization service
+                // alive through the event past mod unload.
+                _onTileHealthChangedHandler = (_, _, _) => visualizationService.InvalidateCache();
+                soilHealthService.OnTileHealthChanged += _onTileHealthChangedHandler;
 
-            // Create controller with dependency injection.
-            // T069 (FR-004): the color interpolator is the
-            // SAME instance the visualization service holds,
-            // so a configuration change applies the custom
-            // category palette live (SetCategoryColors) —
-            // without this wiring the controller's palette
-            // application is a null-conditional no-op and
-            // the interpolator keeps its ModConstants
-            // defaults.
-            // T055 (U3): the player provider (live hoe
-            // feedback — a null provider silently skips
-            // HandleHoeUsage) and the shared host atomic
-            // lock service (the same instance the bin
-            // service holds) are injected here, not left
-            // to the constructor's `?? new` fallbacks.
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService);
+                // Create controller with dependency injection.
+                // T069 (FR-004): the color interpolator is the
+                // SAME instance the visualization service holds,
+                // so a configuration change applies the custom
+                // category palette live (SetCategoryColors) —
+                // without this wiring the controller's palette
+                // application is a null-conditional no-op and
+                // the interpolator keeps its ModConstants
+                // defaults.
+                // T055 (U3): the player provider (live hoe
+                // feedback — a null provider silently skips
+                // HandleHoeUsage) and the shared host atomic
+                // lock service (the same instance the bin
+                // service holds) are injected here, not left
+                // to the constructor's `?? new` fallbacks.
+                _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService);
 
-            // Register events through the Controller
-            _controller.RegisterEvents();
+                // Register events through the Controller
+                _controller.RegisterEvents();
+            }
+            catch (Exception ex)
+            {
+                // T254 (FR-014): a failure anywhere in the DI graph or event
+                // registration must never prevent the mod from loading or break
+                // gameplay. Report in sanitized form only — the exception type
+                // plus HResult at Trace — never the raw message or stack trace
+                // (FR-015 convention).
+                this.Monitor.Log($"LivingRoots entry wiring failed: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Trace);
+            }
         }
 
         /*********
