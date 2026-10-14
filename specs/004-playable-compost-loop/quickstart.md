@@ -121,7 +121,7 @@
 
 **Expected**:
 - Concurrent actions = exactly one applied; second refused with explanation; inventory unchanged.
-- Host-authoritative atomic lock verified in stub; not presented as live 2-player proof (debt D1; spec line 302–303 / Constitution §VI).
+- Host-authoritative atomic lock verified in stub; not presented as live 2-player proof (debt D1; spec Assumptions — multiplayer verification boundary / Constitution §VI).
 - `ISoilHealthService.OnTileHealthChanged` triggers immediate cache invalidation (≤16.67ms) in simulated farmhand listener.
 
 ---
@@ -147,4 +147,4 @@
 | 2 — Product Quality | Loop playable; health 0–100; save/load preserves; no regressions | Scenarios A–F above |
 | 3 — End-to-End | Real-player journey passes (till → modify → save → reload → verify) | Scenarios A, B, D, F performed manually; concurrent stub G verifies mechanism (not live network proof) |
 
-**Note on Gate 3 multi-client**: Multi-player live verification (D1) is a required debt item linked to Roadmap D1. Feature 004 verifies concurrency logic via automated stubs and must NOT be declared complete for multi Gate 3 until D1 runs (Constitution VI; spec Assumptions 302–303).
+**Note on Gate 3 multi-client**: Multi-player live verification (D1) is a required debt item linked to Roadmap D1. Feature 004 verifies concurrency logic via automated stubs and must NOT be declared complete for multi Gate 3 until D1 runs (Constitution VI; spec Assumptions — multiplayer verification boundary).
