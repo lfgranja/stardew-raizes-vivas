@@ -10,7 +10,7 @@
 
 | Field | Type | Source / Constraint |
 |---|---|---|
-| `Location` | `GameLocation` + tile coord | Placed on farm / Greenhouse; invalid: water, buildings, non-farm interiors (FR-002) |
+| `Location` | `GameLocation` + tile coord | Placed on farm / Greenhouse / Ginger Island farm; invalid: water, buildings, non-farm interiors (FR-002) |
 | `State` | Enum: `Empty` → `Processing` → `Ready` | Native `Data/Machines` `Triggers` + `DaysUntilReady` (FR-001a / FR-001b) |
 | `InputId` | `string` (item qualified-ID) | Serializes into `Item.modData` (`LivingRoots.InputId`) when in inventory (FR-005c) |
 | `DaysRemaining` | `int` | Serializes into `Item.modData`; decrements exactly once per in-game day (FR-004) |
@@ -26,7 +26,7 @@
 - `Ready + collect when inventory full` → stay `Ready`; deliver full batch later (FR-005b)
 
 **Validation Rules**:
-- Placeable only on farm land or `Greenhouse` (FR-002)
+- Placeable only on farm land, `Greenhouse`, or Ginger Island farm (FR-002)
 - Non-qualifying input rejected with native machine shake / audio cancel (FR-003 / FR-008a clarification)
 - Concurrent mutation: first wins; second evaluated against new state; refused with `message.compost.action-conflict` if invalid (FR-019)
 
@@ -42,6 +42,7 @@
 | `QualifiedItemId` | `string` | Registered via `Data/Objects` (`LivingRoots.Compost`) |
 | `DisplayName` / `Description` | `string` (localized) | Game-native; no custom UI |
 | `Stackable` | `bool` | Standard item stack behavior |
+| `Stack` | `int` | `999` (standard item stack) per `contracts/contracts.md` §2 |
 | `Source` | Constraint | ONLY from completed bin batch (FR-006) — no crafting bypass |
 
 **Validation / Rules**:
