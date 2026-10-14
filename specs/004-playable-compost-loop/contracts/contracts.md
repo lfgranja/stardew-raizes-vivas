@@ -16,9 +16,9 @@ These define what the game (and other mods via SMAPI) sees when loading assets.
   "DisplayName": "Compost",
   "Description": "Rich organic fertilizer.",
   "Type": "Basic",
-  "Category": "-9", // or appropriate category per mod standard
+  "Category": "-9", // Basic category; confirm during implementation
   "Price": 0,
-  "Texture": "...",
+  "Texture": "Mods/LivingRoots/Compost",
   "SpriteSize": [16, 16],
   "CanBeGivenAsGift": true
 }
@@ -37,7 +37,7 @@ These define what the game (and other mods via SMAPI) sees when loading assets.
   "Name": "LivingRoots.CompostingBin",
   "DisplayName": "Composting Bin",
   "Description": "A bin for turning organic waste into compost.",
-  "Texture": "...",
+  "Texture": "Mods/LivingRoots/CompostingBin",
   "SpriteSize": [16, 32],
   "PlacementRestriction": "Farmable",
   "IsFurniture": false,
@@ -58,7 +58,7 @@ These define what the game (and other mods via SMAPI) sees when loading assets.
 {
   "Name": "LivingRoots.CompostingBin",
   "DisplayName": "Composting Bin",
-  "Input": { "ItemId": "...organic waste qualified id...", "Quantity": 1 },
+  "Input": { "ItemId": "<inherited from spec 002>", "Quantity": 1 }, // Qualifying set owned by spec 002 (FR-003); see CompostApplicationService for validation
   "Output": { "ItemId": "(O)LivingRoots.Compost", "Quantity": 1 },
   "MinutesUntilReady": 0,
   "DaysUntilReady": 2,
@@ -87,7 +87,7 @@ These define what the game (and other mods via SMAPI) sees when loading assets.
 ```json
 {
   "Name": "LivingRoots.CompostingBinRecipe",
-  "Ingredients": { ... },
+  "Ingredients": { "Wood": 50, "Stone": 20 }, // Placeholder — confirm with maintainer during T014
   "Output": { "ItemId": "(BC)LivingRoots.CompostingBin", "Quantity": 1 },
   "IsKnown": true
 }

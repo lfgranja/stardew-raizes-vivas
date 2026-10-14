@@ -1,6 +1,6 @@
 # Feature Specification: Playable Compost Loop
 
-**Feature Branch**: `[none — no branch hook configured]`
+**Feature Branch**: `004-playable-compost-loop`
 
 **Created**: 2026-10-03
 
@@ -197,9 +197,9 @@ every stated capability either works or is explicitly labelled as not yet workin
   machine rules (`Triggers` + `DaysUntilReady = 2`; output quantity `1`; see `contracts/contracts.md` §1.3 — authoritative asset-registration spec; spec/plan reference it only, never redefine).
   machine interface, progress display, and processing rules, rather than a bespoke interface supplied
   by this mod. A player who has used another game's machine must recognise this one without instruction.
-- **FR-001b**: The bin's processing MUST follow the game's own machine timing (2 days, `MaturationDays`), and MUST NOT be accelerated, shortened, or completed by this mod. Implementation preferred: native `Data/Machines` rules (`Triggers` + `DaysUntilReady`). **Fallback permitted** (Assumptions): event-interception via `OnDayStarted` with an exactly-once guard (`Interlocked.CompareExchange` on `MachineState.DaysRemaining` flag; guard must pass before decrement), without changing duration or quantity. The fallback is accepted behaviour, not a violation. Exactly-once guard implemented via Interlocked.CompareExchange on MachineState.DaysRemaining flag. The guard passes first; only then is DaysRemaining decremented. If the guard fails, no decrement occurs. Fallback event-interception via OnDayStarted with guard check.
+- **FR-001b**: The bin's processing MUST follow the game's own machine timing (2 days, `MaturationDays`), and MUST NOT be accelerated, shortened, or completed by this mod. Implementation preferred: native `Data/Machines` rules (`Triggers` + `DaysUntilReady`). **Fallback permitted** (Assumptions): event-interception via `OnDayStarted` with an exactly-once guard (`Interlocked.CompareExchange` on a dedicated decrement flag; guard must pass before decrement), without changing duration or quantity. The fallback is accepted behaviour, not a violation. Exactly-once guard implemented via Interlocked.CompareExchange on a dedicated decrement flag (separate from the concurrent-action first-wins lock flag). The guard passes first; only then is DaysRemaining decremented. If the guard fails, no decrement occurs. Fallback event-interception via OnDayStarted with guard check.
 - NOTE: FR-001a defines interface; FR-001b defines timing/fallback. Consolidated: native machine preferred (FR-001a); fallback event-interception (FR-001b) only if native Data/Machines fails. No redesign of either.
-- **FR-002**: The composting bin MUST be placeable on farm land **and the Greenhouse** (invalid terrain: water, buildings, non-farm interiors), removable, and MUST NOT leave
+- **FR-002**: The composting bin MUST be placeable on farm land, **the Greenhouse, and Ginger Island farm** (invalid terrain: water, buildings, non-farm interiors), removable, and MUST NOT leave
   orphaned state in the save data when removed. Rejected placement MUST NOT leave a ghost object.
 - **FR-003**: The bin MUST accept qualifying organic material by player action and MUST reject
   non-qualifying material. **The qualifying set is owned by the soil decay and compost specification and
@@ -224,7 +224,7 @@ every stated capability either works or is explicitly labelled as not yet workin
   that material and its processing progress. The bin object in inventory MUST serialize remaining progress and input data into its `Item.modData` (e.g. `LivingRoots.InputId`, `LivingRoots.DaysRemaining`), MUST enforce a maximum stack size of 1 while carrying progress or contents, and MUST pause processing while unplaced. Removing a bin via tools (axe, pickaxe, hoe) or environmental explosions MUST destroy neither its contents nor its progress, and MUST leave no orphaned state behind (FR-002). If inventory space is unavailable upon dislodgement, the bin MUST drop as a floating world debris item retaining its `Item.modData`; persistence rule: debris is written to `GameLocation.Objects` with the same `Item.modData` key and pruned on save-load only when no matching placed bin exists (FR-002 / FR-012). Placing a bin back down MUST restore the progress it had, so that a bin cannot be used to reset or shortcut processing.
 - **FR-006**: The compost item MUST be obtainable by the player through the bin and MUST NOT exist
   through any path that bypasses the bin's processing rules.
-- **FR-007**: Applying compost to a valid, improvable tile MUST consume exactly one compost item from the player's active inventory stack and MUST increase that tile's soil health by exactly 15 points (clamped to 100). A valid, improvable tile is a tilled dirt tile (`HoeDirt`) on farm land or in the Greenhouse whose current soil health is under 100, regardless of whether a living crop is planted on it. Compost application on actively growing crops acts as side-dressing/top-dressing and MUST NOT damage or remove the crop.
+- **FR-007**: Applying compost to a valid, improvable tile MUST consume exactly one compost item from the player's active inventory stack and MUST increase that tile's soil health by exactly 15 points (clamped to 100). A valid, improvable tile is a tilled dirt tile (`HoeDirt`) on farm land, in the Greenhouse, or on Ginger Island farm whose current soil health is under 100, regardless of whether a living crop is planted on it. Compost application on actively growing crops acts as side-dressing/top-dressing and MUST NOT damage or remove the crop.
 - **FR-008**: Applying compost MUST be refused, with a player-visible reason and without consuming the
   compost, when the target is not a valid improvable tile (untilled tile, non-farm/greenhouse map, or soil health already at 100).
 - **FR-008a**: Every refusal reason this feature owes the player for compost application failures, full inventory on harvest, and multiplayer action conflicts MUST be delivered through the game's own
@@ -238,7 +238,10 @@ every stated capability either works or is explicitly labelled as not yet workin
   tile after compost is applied. The soil health display is **in scope for this feature** — seeing the
   soil change is part of the promise this feature delivers, not a later enhancement. Visual differentiation across the 0–100 scale inherits Feature 001's 3-tier continuous RGB interpolation (Poor: 1–33, Moderate: 34–66, Healthy: 67–100) rendered under ambient lighting, with health 0 remaining unrendered neutral dirt. Overlays MUST blend under ambient lighting passes without clipping or washing out during night, rain, and winter. Toggling the display setting or updating tile health takes effect on the next frame (≤16.67ms) without scene reload or polling lag via reactive event notification (`ISoilHealthService.OnTileHealthChanged`). Blend alpha ≥ 0.65 under ambient lighting; RGB shift < 5% vs untreated neighbouring tile at same light level. MEASUREMENT POINT: blend alpha measured at tile center pixel (not boundary); RGB shift computed over full tile quad versus adjacent untreated quad under identical ambient pass. Fixture required in LivingRoots.Tests/Visualization/OverlayMeasurementFixture.cs (new).
 - **FR-011**: The soil health display MUST operate without silently failing, and MUST NOT report a
-  value it is not actually able to draw.
+  value it is not actually able to draw. SILENT FAILURE DEFINED: a silent failure is any condition
+  where the overlay renders without error but displays no data (e.g., missing cache, null health
+  map, zero-initialized tile). The display MUST either render the correct tier or render nothing
+  (neutral vanilla dirt); it MUST NOT render a stale or zero-value overlay as if it were valid data.
 - **FR-012**: Bin state, processing progress, and soil health MUST survive a save and reload unchanged,
   with neither lost values nor invented values. Visual overlays MUST be invalidated and re-rendered from the reloaded soil health cache on the subsequent frame. Save loading MUST employ a tolerant reader with per-entry fault isolation: individual corrupted or malformed bin entries MUST be quarantined (skipped from runtime registration) with sanitized diagnostic logging (FR-015) without aborting the save load or corrupting valid bins. Obsolete schema fields from prior mod versions (`MaturationLevel`, `ConsecutiveActiveDays`, `ConsecutiveIdleDays`) MUST be ignored without throwing errors, defaulting to single-item batch yield (FR-005a). Disconnected save entries where no physical bin exists in the world (`GameLocation.Objects`) MUST be pruned as orphaned state (FR-002) to guarantee zero phantom machine duplication.
 - **FR-013**: Advancing one in-game day MUST apply soil decay exactly once, and MUST apply the same
@@ -292,8 +295,11 @@ every stated capability either works or is explicitly labelled as not yet workin
 - **SC-006**: Zero user-facing feature claims in the project are false or unlabelled.
 - **SC-007**: Zero specification or plan documents declare multiplayer support out of scope in
   contradiction of the project's constitution.
-- **SC-008**: A player who has never read the mod's documentation can discover the loop by opening the
-  crafting menu and experimenting.
+- **SC-008**: A player starting from a fresh save can discover the composting loop by opening the
+  crafting menu and experimenting, without reading external documentation. DISCOVERABILITY MARKER:
+  verified by manual playtest — the composting recipe appears in the crafting menu unconditionally,
+  the bin is placeable on first attempt, and organic waste is accepted on first insert. No automated
+  task covers this criterion; it is validated during Gate 2/3 manual playthrough only.
 - **SC-009**: Zero instances of player-provided organic material or finished compost are destroyed by
   this feature — verified by collecting from a full inventory repeatedly, and by picking a bin up and
   putting it back down mid-batch.
