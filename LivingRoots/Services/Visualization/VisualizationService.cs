@@ -341,7 +341,10 @@ namespace LivingRoots.Services.Visualization
         {
             // FR-001: pattern opacity must remain at minimum 0.7 regardless of overlay opacity
             var patternOpacity = Math.Max(ModConstants.PatternMinOpacity, config.Opacity);
-            var patternColor = overlay.Color;
+            // T253 (FR-010, F7): the pattern blends under the ambient
+            // lighting pass like the base fill, instead of drawing the
+            // unblended color over the darkened world.
+            var patternColor = BlendUnderAmbientLight(overlay.Color);
             patternColor.A = (byte)(patternOpacity * 255f);
 
             switch (overlay.PatternType)
