@@ -289,11 +289,21 @@ namespace LivingRoots.Services.Visualization
                     continue;
                 }
 
+                // T248 (FR-009/FR-010, F2): baseline soil (health 0)
+                // renders as neutral vanilla dirt with no overlay, so a
+                // zero reading is skipped outright and never reaches
+                // the draw path. NaN/inf still render the Unknown
+                // overlay above; every other finite value draws.
+                if (healthValue == 0f)
+                {
+                    continue;
+                }
+
                 // FR-009/T178: the Poor interval floor at 1 applies to the DRAWN
-                // tint (health 0 must render nothing, so the floor keeps the
-                // lowest drawn value non-zero), never to the reported value:
-                // FR-011 forbids reporting a value the draw did not carry, so a
-                // sub-floor reading is reported exactly as measured.
+                // tint (the floor keeps the lowest drawn value non-zero),
+                // never to the reported value: FR-011 forbids reporting a
+                // value the draw did not carry, so a sub-floor reading is
+                // reported exactly as measured.
                 var drawnHealth = Math.Max(healthValue, 1f);
 
                 var category = _colorService.GetCategoryForHealth(drawnHealth);
