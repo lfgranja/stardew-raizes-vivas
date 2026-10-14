@@ -24,7 +24,8 @@ These define what the game (and other mods via SMAPI) sees when loading assets.
 }
 ```
 
-**Constraints (FR-005, FR-006)**:
+**Constraints (FR-005, FR-005a, FR-006)**:
+- Standard item stack (`Stack = 999`); bin output always produces exactly 1 item.
 - Only obtainable through completed bin batch (`Data/Machines` output → inventory).
 - No alternate crafting / purchase path bypassing bin.
 
@@ -107,7 +108,7 @@ public interface ISoilHealthService
     int GetHealth(GameLocation location, Vector2 tile);
     void ApplyCompost(GameLocation location, Vector2 tile, int amount); // amount = 1 item; +15 pts clamped
     event EventHandler<TileHealthChangedEventArgs> OnTileHealthChanged; // ≤16.67ms invalidation
-    // ... persistence / load / save contracts
+    // plus persistence: LoadAsync / SaveAsync (via IModDataService)
 }
 ```
 
@@ -127,7 +128,7 @@ public interface ICompostingBinService
     bool TryInsertOrganicWaste(GameLocation location, Vector2 tile, Item item, string playerId); // first-wins atomic
     bool TryCollect(GameLocation location, Vector2 tile, Player player); // delivers 1 if Ready; full inventory retries
     IEnumerable<Item> GetInventoryProgressItems(); // items with modData (InputId, DaysRemaining)
-    // ... save / load / tolerant reader
+    // plus persistence: LoadAsync / SaveAsync with tolerant-reader fault isolation
 }
 ```
 
