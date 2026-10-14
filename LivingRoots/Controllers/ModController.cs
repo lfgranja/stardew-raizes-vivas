@@ -2671,6 +2671,7 @@ namespace LivingRoots.Controllers
                         if (_compostingBinService.GetBinState(location.Name, tile) != Domain.CompostingBinState.Empty)
                         {
                             heldItem.Stack--;
+                            ClearConsumedHeldItemSlot(heldItem);
                         }
 
                         return true;
@@ -2717,6 +2718,49 @@ namespace LivingRoots.Controllers
             finally
             {
                 _hostAtomicLockService?.ReleaseLock(location.Name, tile, farmerId);
+            }
+        }
+
+        /// <summary>
+        /// Clears the active inventory slot when a consumed held-item stack
+        /// empties, so no zero-stack item remains (T266, FR-007) — the
+        /// <see cref="TryPlaceBin(StardewValley.GameLocation, Microsoft.Xna.Framework.Vector2, StardewValley.Item, System.Collections.Generic.IList{StardewValley.Item})"/>
+        /// slot-clearing pattern applied to the bin-deposit path.
+        /// </summary>
+        /// <remarks>
+        /// The farmer inventory slot is the production truth: nulling it
+        /// clears the active slot in-game. A settable provider cell
+        /// (unit-test doubles expose a setter while the provider seam stays
+        /// get-only, so no existing implementer breaks) is cleared as a
+        /// fallback only when it still holds the consumed reference — a
+        /// get-only provider is simply left alone.
+        /// </remarks>
+        /// <param name="consumed">The held item just consumed.</param>
+        private void ClearConsumedHeldItemSlot(StardewValley.Item consumed)
+        {
+            if (consumed.Stack > 0)
+            {
+                return;
+            }
+
+            var items = _playerProvider?.CurrentPlayer?.Items;
+            if (items != null)
+            {
+                int index = items.IndexOf(consumed);
+                if (index != -1)
+                {
+                    items[index] = null!;
+                    return;
+                }
+            }
+
+            if (ReferenceEquals(_playerProvider?.CurrentItem, consumed))
+            {
+                var currentItemProperty = _playerProvider?.GetType().GetProperty("CurrentItem");
+                if (currentItemProperty != null && currentItemProperty.CanWrite)
+                {
+                    currentItemProperty.SetValue(_playerProvider, null);
+                }
             }
         }
 
