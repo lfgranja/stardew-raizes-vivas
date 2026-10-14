@@ -10,11 +10,11 @@
 
 ---
 
-## Phase 1: Setup (Shared Infrastructure) — RUN AFTER Phase 0 RED PASSES
+## Phase 1: Setup (Shared Infrastructure) — RUN AFTER Phase 0 RED tests exist and are FAILING
 
 **Purpose**: Project initialization and asset-registration infrastructure. Blocked until RED-phase tasks (T000-R1..R5) are failing (not passing).
 
-- [ ] T001 Initialize `LivingRoots/Constants.cs` / `ModConstants.cs` with `MaturationDays = 2`, `RestorationAmount = 15`, item IDs (`LivingRoots.Compost`, `LivingRoots.CompostingBin`), recipe ID per `plan.md` and `contracts/contracts.md` §1.1–§1.4 (T053 spike-decision.md route settled; no task needed — documented in spec Assumptions)
+- [ ] T001 Initialize `ModConstants.cs` with `MaturationDays = 2`, `RestorationAmount = 15`, item IDs (`LivingRoots.Compost`, `LivingRoots.CompostingBin`), recipe ID per `plan.md` and `contracts/contracts.md` §1.1–§1.4 (T053 spike-decision.md route settled; no task needed — documented in spec Assumptions)
 - [ ] T002 Configure `LivingRoots/i18n/default.json` with refusal keys (`message.compost.invalid-tile`, `message.compost.max-health`, `message.compost.action-conflict`, `message.harvest.inventory-full`) per `contracts/contracts.md` §3 / `spec.md` FR-008a
 - [ ] T003 [P] Set up `LivingRoots/Domain/Interfaces/` skeleton (`ICompostApplicationService.cs`, `ICompostingBinService.cs`, `ISoilHealthService.cs`) per `AGENTS.md` DDD pattern (interface in Domain → impl in Services)
 - [ ] T004 [P] Configure `ModEntry.cs` `OnAssetRequested` handler structure for `Data/Objects`, `Data/BigCraftables`, `Data/Machines`, `Data/CraftingRecipes` per `plan.md` and `contracts/contracts.md` §1
@@ -48,17 +48,17 @@
 - [ ] T011a [P] Configure `ModController.cs` placement/dislodge handlers with `ExecuteWithConcurrencyGuard` and progress preservation (`FR-005c`)
 - [ ] T011b [P] Configure `ModController.cs` right-click compost-application handler with atomically-locked refusal reasons (`FR-007`/`FR-008`/`FR-019`)
 - [ ] T011c [P] Configure `ModController.cs` host-authoritative atomic lock mechanism per tile/machine (**host-lock only**, `Principle VI` / `FR-019`: first-wins concurrent action; stub-bounded, D1 debt documented) — use `Interlocked.CompareExchange` on `MachineState.DaysRemaining` (per FR-001b exactly-once guard) for first-wins atomic lock; refusal on second concurrent action preserved
-- [ ] T012 [P] Reconcile 8 stale spec/doc scope statements (`specs/001-003` + `docs/design-system`) declaring multiplayer out of scope — scope-word correction only, no redesign; reference `FR-017` / Constitution VI / `plan.md` Constitution Check CONDITIONAL PASS
-  Per-file checkpoint (FR-017 8-file scope reconciliation):
-    T012a specs/001-soil-health-visualization (scope words)
-    T012b specs/001-plan
-    T012c specs/002-soil-decay-compost
-    T012d specs/003-composting-tests
-    T012e specs/004-playable-compost-loop/plan.md
-    T012f specs/004-playable-compost-loop/spec.md
-    T012g docs/design-system
-    T012h docs/design-system/LIVING-ROOTS-UI-UX-DESIGN-SYSTEM.md
-  All scope-only word corrections per FR-017; verification gate at T012-close (confirm each file corrected, no redesign).
+- [ ] T014d [P] Implement `SoilHealthService` daily decay once per day (`FR-013` / `FR-011` / `FR-001`): apply `decayRate * seasonalMultiplier` to bare tilled tiles at day start; seasonal rules 1.5x summer, 0.5x spring/fall, 0 winter; exempt greenhouse; inherited from `specs/002-soil-decay-compost/` (spec §FR-001/FR-011); property-based invariant: health clamped 0–100 after decay. DEPENDENCY NOTE: independent of US1 (bin existence); executes in Phase 2 parallel with T008–T011c; US4 (visual) requires US2 for compost source; no cross-block.
+- [ ] T012 [P] Reconcile 8 stale spec/doc scope statements declaring multiplayer out of scope — scope-wording correction only, no redesign; reference `FR-017` / Constitution VI / `plan.md` Constitution Check CONDITIONAL PASS. Sub-tasks:
+  - [ ] T012a Reconcile `specs/001-soil-health-visualization/spec.md` (scope words)
+  - [ ] T012b Reconcile `specs/001-soil-health-visualization/plan.md` (scope words)
+  - [ ] T012c Reconcile `specs/002-soil-decay-compost/spec.md` (scope words)
+  - [ ] T012d Reconcile `specs/002-soil-decay-compost/plan.md` (scope words)
+  - [ ] T012e Reconcile `specs/003-composting-tests/spec.md` (scope words)
+  - [ ] T012f Reconcile `specs/003-composting-tests/plan.md` (scope words)
+  - [ ] T012g Reconcile `docs/design-system/REALITY-CHECK-EVALUATION.md` (scope words)
+  - [ ] T012h Reconcile `docs/design-system/LIVING-ROOTS-UI-UX-DESIGN-SYSTEM.md` (scope words)
+  Verification gate upon T012 completion: confirm each file corrected, no redesign.
   FR-016 coverage: confirm README.md under ## Features has zero false/unlabelled claims; if any (Planned) suffix missing, add before declaring T012 complete.
 
 **Checkpoint**: Foundation ready — `ISoilHealthService`, `ICompostingBinService`, persistence, visualization, and atomic-lock controller all functional and independently testable.
@@ -73,11 +73,11 @@
 
 **Story dependencies**: None (after Phase 2); all other stories eventually depend on bin existing.
 
-- [ ] T012-US1 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/Objects` (`LivingRoots.Compost`) per `contracts/contracts.md` §1.1
+- [ ] T013a-US1 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/Objects` (`LivingRoots.Compost`) per `contracts/contracts.md` §1.1
 - [ ] T013 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/BigCraftables` (`LivingRoots.CompostingBin`) per `contracts/contracts.md` §1.2
 - [ ] T014 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/CraftingRecipes` (`LivingRoots.CompostingBinRecipe`) per `contracts/contracts.md` §1.4
 - [ ] T015 [US1] Implement `CompostingBinService.TryPlace()` / removal logic with valid-terrain check (farm / Greenhouse); rejected placement must leave no ghost; dislodge preserves `Item.modData` (`FR-002`, `FR-005c` / `data-model.md`)
-- [ ] [P] T016 [US1] Verify `Data/Machines` declaration (`Triggers` + `DaysUntilReady`) registered (native machine interface `FR-001a` / `contracts/contracts.md` §1.3); no bespoke UI (FR-001a / FR-001b / contracts)
+
 
 ---
 
@@ -89,9 +89,8 @@
 
 **Story dependencies**: Requires bin from US1 (can test with pre-placed bin independently).
 
-- [ ] T017 [US2] Implement `CompostingBinService.TryInsertOrganicWaste()` with qualifying-set check (inherited, not restated; `FR-003` / `data-model.md`) and native-machine shake/cancel on invalid drop-in (`FR-008a` clarification 2026-10-13)
-- [ ] T018 [US2] Implement `CompostingBinService.OnDayStarted()` exactly-once **daily-decrement guard** (`FR-001b` fallback permitted) — not host-lock; decrement `DaysRemaining` once per day regardless of player count (`FR-004`)
-- [ ] T013c [P] Implement `SoilHealthService` daily decay once per day (`FR-013` / `FR-011` / `FR-001`): apply `decayRate * seasonalMultiplier` to bare tilled tiles at day start; seasonal rules 1.5x summer, 0.5x spring/fall, 0 winter; exempt greenhouse; inherited from `specs/002-soil-decay-compost/` (spec §FR-001/FR-011); property-based invariant: health clamped 0–100 after decay. DEPENDENCY NOTE: independent of US1 (bin existence); executes in Phase 2 parallel with T008–T011c; US4 (visual) requires US2 for compost source; no cross-block.
+- [ ] T017 [US2] Implement `CompostingBinService.TryInsertOrganicWaste()` with qualifying-set check (inherited, not restated; `FR-003` / `data-model.md`) and native-machine shake/cancel on invalid drop-in (`FR-008a` clarification 2026-10-13). **FR-003 verification (moved here from T022):** property-based invariant `ForAll(item => IsCompostable(item) == ExpectedFromSpec002(item))` confirming qualifying set matches spec 002 exactly (artisan goods excluded unless 002 updated).
+- [ ] T018 [US2] Implement `CompostingBinService.OnDayStarted()` exactly-once **daily-decrement guard** (`FR-001b` fallback permitted) — NOTE: uses `Interlocked.CompareExchange` on a dedicated decrement flag (not the same lock as T011c's concurrent-action first-wins lock); decrement `DaysRemaining` once per day regardless of player count (`FR-004`); T011c lock and T018 guard are independent mechanisms on separate fields
 - [ ] T019 [US2] Implement `CompostingBinService.TryCollect()` yielding exactly `1` `LivingRoots.Compost`; full inventory leaves `Ready`; retry delivers full batch; `message.harvest.inventory-full` delivered (`FR-005b` / `FR-008a`)
 - [ ] T020 [US2] Enforce `Item.modData` (`LivingRoots.InputId`, `LivingRoots.DaysRemaining`) serializes into inventory bin; `max stack = 1` while progress present; processing pauses unplaced (`FR-005c` / `data-model.md`)
 - [ ] T021 [P] [US2] Implement `ModEntry.OnAssetRequested` edit for `Data/Machines` (`Triggers`, `DaysUntilReady = 2`, output quantity `1`) per `contracts/contracts.md` §1.3 (**retire old 1-5 multiplier**; confirm obsolete fields `MaturationLevel`, `ConsecutiveActiveDays`, `ConsecutiveIdleDays` absent from definition) (FR-001b / FR-005a / A2). **Verification of Data/Machines declaration consolidated here (was T016); T021 now covers declaration + implementation + retirement of multiplier.**
@@ -106,11 +105,12 @@
 
 **Story dependencies**: Requires compost item from US2 (can test with manually added item independently).
 
-- [ ] T022 [US3] Implement `CompostApplicationService.TryApply()` consuming exactly `1` compost; `+15` clamped to `100`; refused on untilled / non-farm / `100` / building / indoor (`FR-007`, `FR-008` / `data-model.md`)
+- [ ] T022 [US3] Implement `CompostApplicationService.TryApply()` consuming exactly `1` compost; `+15` clamped to `100`; refused on untilled / non-farm / `100` / building / indoor (`FR-007`, `FR-008` / `data-model.md`). Note: qualifying-set verification lives in T017 (FR-003), not here.
 - [ ] T023 [US3] Wire refusal messages through `Game1.showRedMessage` + `ITranslationHelper` with keys `message.compost.invalid-tile`, `message.compost.max-health`, `message.compost.action-conflict` (no custom UI; `FR-008a` / `contracts/contracts.md` §3)
 - [ ] T024 [US3] Implement `VisualizationService` 3-tier RGB interpolation and ambient-light blending; `0` health renders neutral vanilla dirt without overlay (`FR-009`, `FR-010` / `data-model.md`)
 - [ ] T025 [US3] Confirm `ISoilHealthService.OnTileHealthChanged` triggers `VisualizationService` cache invalidation on next frame (`≤16.67ms`); zero polling (`FR-010` / `data-model.md`)
-- [ ] T026 [P] [US3] Allow application on active growing crop (side-dressing / top-dressing); crop not harmed or removed (`FR-007` clarification 2026-10-04) (FR-007 / clarification 2026-10-04)
+- [ ] T025-b [P] [US3] Failure-mode stub: `VisualizationService` MUST NOT render when health cache is null/uninitialized; "no overlay" defined as: VisualizationService.Draw is not called when cache is null; no fallback to default or zero-value rendering occurs; property-based invariant `ForAll(cache => cache == null ? !renderCalled : renderCalled)` (`FR-011` / `data-model.md`)
+- [ ] T026 [P] [US3] Allow application on active growing crop (side-dressing / top-dressing); crop not harmed or removed (`FR-007` clarification 2026-10-04) (FR-007 / clarification 2026-10-04). **FR-018 invariant**: property-based `ForAll(state => SinglePlayerPath(state) == MultiPlayerPath(state))` — no code path may behave differently on multiplayer farm than single-player farm (Constitution VI / FR-018)
 
 ---
 
@@ -123,7 +123,7 @@
 **Story dependencies**: None (documentation); ideally after US1–US3 verified but can proceed independently.
 
 - [ ] T027 [US4] Audit `README.md` `## Features`; label all unbuilt capabilities with `(Planned)` suffix; remove false claims (`FR-016` / `spec.md` clarification 2026-10-04)
-- [ ] T028 [US4] Reconcile scope statements in 8 stale docs (`specs/001-soil-health-visualization/{spec,plan}.md`, `specs/002-soil-decay-compost/{spec,plan}.md`, `specs/003-composting-tests/{spec,plan}.md`, `docs/design-system/REALITY-CHECK-EVALUATION.md`, `docs/design-system/LIVING-ROOTS-UI-UX-DESIGN-SYSTEM.md`) — wording correction only, no redesign (`FR-017`)
+
 - [ ] T029 [US4] Verify no spec declares multiplayer out of scope where it contradicts Constitution Principle VI (`SC-007` / `spec.md` Assumptions 302–303)
 
 ---
@@ -132,8 +132,9 @@
 
 **Purpose**: Concurrency verification, save/load fault isolation, security, format, documentation of D1 debt
 
-- [ ] T030 [P] Implement `MultiplayerConcurrencyTests.cs` automated multi-threaded stub / `ThreadSafeGameLoopEventsStub` verifying first-wins atomic lock (`Principle VI` / FR-019) and `OnTileHealthChanged` reactive invalidation (`SC-05`, `SC-10`; stub-bounded, not live proof — D1 debt explicit per spec lines 302–303 / Constitution §VI). ADD: simulated disconnect/reconnect sequence + network-fault injection (message drop, reorder) required to approach interleaving coverage; stub alone never reproduces live SMAPI message ordering (CHESS/CTrigger/Jepsen limits documented). (FR-019 / Principle VI)
-- [ ] T031b [P] Property-based invariant tests (FsCheck `ForAll`): soil health always clamped 0–100; compost application always +15 (or refused); bin state-machine never regresses; first-wins concurrent action always yields exactly one applied change; visual overlay distinguishable (RGB shift <5% vs untreated at same light; blend alpha ≥0.65) — B1: overlay timing ≤16.67ms validated by reactive event `OnTileHealthChanged`; C1: exactly-one-change verified by stub + refusal message assertion (T030). Delegate to subagent wave (reuse T000-R5 context). Reuse note: Property fixture shared with T000-R1..R5 (FsCheck ForAll setup); subagent wave may reuse same test-project context to avoid duplicate setup.
+- [ ] T030 [P] Implement `MultiplayerConcurrencyTests.cs` automated multi-threaded stub / `ThreadSafeGameLoopEventsStub` verifying first-wins atomic lock (`Principle VI` / FR-019) and `OnTileHealthChanged` reactive invalidation (`SC-005`, `SC-010`; stub-bounded, not live proof — D1 debt explicit per spec lines 302–303 / Constitution §VI). ADD: simulated disconnect/reconnect sequence + network-fault injection (message drop, reorder) required to approach interleaving coverage; stub alone never reproduces live SMAPI message ordering (CHESS/CTrigger/Jepsen limits documented). (FR-019 / Principle VI). **FR-018 invariant**: property-based `ForAll(state => SinglePlayerPath(state) == MultiPlayerPath(state))` — no code path may behave differently on multiplayer farm than single-player farm (Constitution VI / FR-018)
+- [ ] T031b [P] Property-based invariant tests (FsCheck `ForAll`): soil health always clamped 0–100; compost application always +15 (or refused); bin state-machine never regresses — FR-009/FR-007/FR-001a invariants. Delegate to subagent wave (reuse T000-R3/R4 context). Reuse note: Property fixture shared with T000-R1..R5 (FsCheck ForAll setup); subagent wave may reuse same test-project context to avoid duplicate setup.
+- [ ] T031c [P] Property-based invariant tests (FsCheck `ForAll`): first-wins concurrent action always yields exactly one applied change; visual overlay distinguishable (RGB shift <5% vs untreated at same light; blend alpha ≥0.65); overlay timing ≤16.67ms validated by reactive event `OnTileHealthChanged` — FR-010/FR-019 invariants. Delegate to subagent wave (reuse T000-R5 context). Reuse note: Property fixture shared with T000-R1..R5.
 - [ ] T031 [P] Implement save/load round-trip tests (`SC-04`, `FR-012`): corrupt / obsolete / orphaned entries quarantined; valid entries preserved; visual overlays re-rendered. Note: Integration round-trip: builds on T000-R1 invariant; validates save/load with corrupt + orphan + obsolete entries.
 - [ ] T032 [P] Security validation: `ModDataService.SanitizePathSegments()` on tile keys; no raw exception messages to output (`FR-015` / `AGENTS.md` — `ex.GetType().FullName` + `HResult` at `LogLevel.Trace` only, never `Message`); `CheckForOverflowUnderflow` never suppressed; bounds `0–100` enforced (`Principle II`)
 - [ ] T033 [P] Format verification: `dotnet format Stardew-LivingRoots.sln --verify-no-changes`; build green (`dotnet build --nologo`) (`Gate 1` / `AGENTS.md`)
@@ -141,6 +142,9 @@
 - [ ] T034b [P] Explicit SC-003 audit: verify 100% of observed soil health values within [0,100] across all bin lifecycle states; property-based invariant `ForAll<int>(h => h >= 0 && h <= 100)`
 - [ ] T035b [P] Explicit SC-009 audit: repeated collect from full inventory + pick-up/re-place mid-batch + floating-world-debris with unavailable inventory; **property-based invariant: `Item.modData` keys `LivingRoots.InputId` + `LivingRoots.DaysRemaining` preserved after debris placement**; zero destruction attested (U2)
 - [ ] T035 [P] Confirm `Item.modData` progress serialization works across pickup / placement / dislodgement; floating-world-debris case with full inventory (`FR-005c` / `data-model.md`)
+- [ ] T036 [P] Property-based invariant for FR-006: compost obtainable ONLY through bin processing — `ForAll(player => CanObtainCompost(player) == HasCompletedBinCycle(player))`; no bypass path exists (no direct inventory grant, no crafting recipe for compost, no loot table) (`FR-006` / `data-model.md`)
+- [ ] T037 [US4] SC-008 discoverability marker: manual playtest confirms recipe appears in crafting menu unconditionally, bin placeable on first attempt, organic waste accepted on first insert — no external docs required; validated during Gate 2/3 playthrough only, not automatable
+- [ ] T038 [P] SC-002 audit: verify every step of the player-facing loop (craft → place → insert → advance → collect → apply → observe) produces a visible in-game result; no step completes silently; property-based invariant: `ForAll(step => ProducesVisibleChange(step))` over all loop stages (`SC-002`)
 
 ---
 
@@ -149,7 +153,7 @@
 ### Phase Dependencies
 
 - **Phase 1 (Setup)**: No dependencies — start immediately.
-- **Phase 2 (Foundational)**: Depends on Phase 1; **BLOCKS all user stories** (`T005`–`T011c` must finish before `T012`+).
+- **Phase 2 (Foundational)**: Depends on Phase 1; **BLOCKS all user stories** (`T005`–`T011c` + `T012`–`T014d` must finish before user-story tasks begin).
 - **Phase 3 (US1)**: After Phase 2; can begin in parallel with US2/US3/US4 if staffed (independent tests), but US2 requires bin object existence (sequential dependency for full loop).
 - **Phase 4 (US2)**: After Phase 2; depends on US1 for full journey, but independently testable with pre-placed bin.
 - **Phase 5 (US3)**: After Phase 2 + US2 for compost source; independently testable with manually added compost.
@@ -185,11 +189,11 @@ DEPENDENCY: T003 (structural skeleton) must exist before T000-R1 (RED tests) can
 
 ```bash
 # Launch asset registrations + placement logic in parallel (different files):
-T012: LivingRoots/ModEntry.cs — Data/Objects edit
+T013a-US1: LivingRoots/ModEntry.cs — Data/Objects edit
 T013: LivingRoots/ModEntry.cs — Data/BigCraftables edit
 T014: LivingRoots/ModEntry.cs — Data/CraftingRecipes edit
 T015: LivingRoots/Services/CompostingBinService.cs — TryPlace / removal
-T016 [P]: LivingRoots/ModEntry.cs — Data/Machines declaration verification  # Verification consolidated into T021; T016 now placement-only scope.
+T021 [P]: LivingRoots/ModEntry.cs — Data/Machines declaration + implementation (Triggers, DaysUntilReady=2, qty 1); retire 1-5 multiplier per FR-005a.
 ```
 
 ---
@@ -199,7 +203,7 @@ T016 [P]: LivingRoots/ModEntry.cs — Data/Machines declaration verification  # 
 ### MVP (User Story 1 Only + Foundational)
 
 1. Complete Phase 1 + Phase 2 (`T001`–`T011c`).
-2. Complete Phase 3 (`T012`–`T016`).
+2. Complete Phase 3 (`T013a-US1`–`T015`).
 3. **STOP / VALIDATE**: Independent test — craft → place → pick up → verify no ghost (`quickstart.md` A). Confirm `ModEntry.OnAssetRequested` delivers real `Data/Objects`, `Data/BigCraftables`, `Data/CraftingRecipes`, `Data/Machines`.
 4. Deploy / demo.
 
@@ -222,6 +226,7 @@ T016 [P]: LivingRoots/ModEntry.cs — Data/Machines declaration verification  # 
 
 ## Notes
 
+- **D1 debt boundary (applies to all concurrency tasks):** Automated stubs attest mechanism within their bounds; live 2-player verification is owed to roadmap D1. 004 MUST NOT be declared complete for multi Gate 3 until D1 runs. Stubs systematically miss interleavings/network semantics (CHESS/CTrigger/Jepsen limits).
 - All tasks use exact file paths from `AGENTS.md` / `plan.md` project structure.
 - Constraint quotes from `data-model.md` embedded in tasks (e.g., `max stack = 1` in `T020`, `+15` clamped in `T022`).
 - `T030` explicitly bounded as stub-only; live 2-player verification deferred to Roadmap D1 (`spec.md` Assumptions / Constitution §VI / `quickstart.md` G).
