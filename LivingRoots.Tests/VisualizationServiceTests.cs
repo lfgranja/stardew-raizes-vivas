@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using FsCheck;
+using FsCheck.Xunit;
 using LivingRoots;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Visualization;
@@ -131,7 +132,7 @@ public class VisualizationServiceTests
     public Property SetTileHealthData_AnyDictionary_DoesNotThrow()
     {
         return Prop.ForAll(
-            TileDataGenerator(),
+            Arb.From(TileDataGenerator()),
             dict =>
             {
                 var ex = Record.Exception(() => _service.SetTileHealthData(dict));
@@ -166,7 +167,7 @@ public class VisualizationServiceTests
     public Property RenderSafety_NullCache_NoDraw_NonNullCache_Draws()
     {
         return Prop.ForAll(
-            NullableTileDataGenerator(),
+            Arb.From(NullableTileDataGenerator()),
             tileData =>
             {
                 var colorMock = new Mock<IColorInterpolationService>();
