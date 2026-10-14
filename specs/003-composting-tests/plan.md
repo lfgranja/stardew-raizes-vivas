@@ -18,7 +18,7 @@ This feature adds test coverage for the composting state machine and supporting 
 
 **Testing**: xUnit with Moq, `ThreadSafeGameLoopEventsStub` for async event testing, stub implementations of `ITimeProvider`/`ISeasonProvider`/`IPlayerProvider` for time/season/player-dependent tests
 
-**Target Platform**: Stardew Valley via SMAPI (Windows/Linux/macOS, single-player)
+**Target Platform**: Stardew Valley via SMAPI (Windows/Linux/macOS)
 
 **Project Type**: Stardew Valley mod (desktop game mod, DLL plugin)
 
