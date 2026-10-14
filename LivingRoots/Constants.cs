@@ -20,12 +20,7 @@ namespace LivingRoots
         // Additional constants for security and performance
         public const int MaxDataKeyLength = 200; // Maximum length for generated data keys (prefix + sanitized saveId)
         public const int MaxTilesPerSave = 30000; // Global limit for tile processing across all locations to prevent DoS attacks (slightly above theoretical max of 50 * 500 = 25,000)
-
-        // Additional constants for security and performance
-        public const int MaxPathSegmentLength = 100; // Maximum length for individual path segments to prevent DoS attacks
-        public const int MaxPathDepth = 10; // Maximum depth for path traversal to prevent DoS attacks
         public const int MaxFileNameLength = 255; // Standard maximum file name length to prevent OS issues
-        public const int MaxDataValueSizeBytes = 1024 * 1024; // 1MB maximum size for data values to prevent memory exhaustion
 
         // Visualization Constants
         public static readonly Color PoorColor = new Color(185, 28, 28); // #B91C1C
@@ -43,14 +38,6 @@ namespace LivingRoots
         public const bool OverlaysEnabledDefault = true;
         public const bool TooltipsEnabledDefault = true;
         public const bool HoeFeedbackEnabledDefault = true;
-
-        // Extended palette for composting, environment
-        public static readonly Color CompostEmptyColor = new Color(120, 113, 108);    // #78716C
-        public static readonly Color CompostProcessingColor = new Color(161, 98, 7);  // #A16207
-        public static readonly Color CompostReadyColor = new Color(22, 101, 52);      // #166534
-        public static readonly Color WaterColor = new Color(37, 99, 235);             // #2563EB
-        public static readonly Color SunColor = new Color(250, 204, 21);              // #FACC15
-        public static readonly Color MulchColor = new Color(146, 64, 14);             // #92400E
 
         // Decay & Compost Constants
         public const string CompostingBinKeyPrefix = "composting_bins_";
