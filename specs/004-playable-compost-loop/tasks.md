@@ -84,7 +84,7 @@
 - [ ] T013c [P] Implement `SoilHealthService` daily decay once per day (`FR-013` / `FR-011` / `FR-001`): apply `decayRate * seasonalMultiplier` to bare tilled tiles at day start; seasonal rules 1.5x summer, 0.5x spring/fall, 0 winter; exempt greenhouse; inherited from `specs/002-soil-decay-compost/` (spec §FR-001/FR-011); property-based invariant: health clamped 0–100 after decay. DEPENDENCY NOTE: independent of US1 (bin existence); executes in Phase 2 parallel with T008–T011c; US4 (visual) requires US2 for compost source; no cross-block.
 - [ ] T019 [US2] Implement `CompostingBinService.TryCollect()` yielding exactly `1` `LivingRoots.Compost`; full inventory leaves `Ready`; retry delivers full batch; `message.harvest.inventory-full` delivered (`FR-005b` / `FR-008a`)
 - [ ] T020 [US2] Enforce `Item.modData` (`LivingRoots.InputId`, `LivingRoots.DaysRemaining`) serializes into inventory bin; `max stack = 1` while progress present; processing pauses unplaced (`FR-005c` / `data-model.md`)
-- [ ] T021 [P] [US2] Implement `ModEntry.OnAssetRequested` edit for `Data/Machines` (`Triggers`, `DaysUntilReady = 2`, output quantity `1`) per `contracts/contracts.md` §1.3 (FR-001b / FR-005a)
+- [ ] T021 [P] [US2] Implement `ModEntry.OnAssetRequested` edit for `Data/Machines` (`Triggers`, `DaysUntilReady = 2`, output quantity `1`) per `contracts/contracts.md` §1.3 (**retire old 1-5 multiplier**; confirm obsolete fields `MaturationLevel`, `ConsecutiveActiveDays`, `ConsecutiveIdleDays` absent from definition) (FR-001b / FR-005a / A2)
 
 ---
 
