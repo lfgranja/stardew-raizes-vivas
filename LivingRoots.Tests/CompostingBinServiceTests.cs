@@ -1530,7 +1530,7 @@ public class CompostingBinServiceTests
         // Verify saved data has correct maturation values
         var binData = savedData!.LocationBinData["Farm"]["10,10"];
         Assert.Equal("Ready", binData.State);
-        Assert.Equal(2, binData.MaturationLevel);
+        Assert.Equal(1, binData.MaturationLevel);  // T250 single-yield
         Assert.Equal(3, binData.ConsecutiveActiveDays);
 
         // Create new service instance with fresh mocks
@@ -1567,7 +1567,7 @@ public class CompostingBinServiceTests
 
         var reloadedBinData = reloadedData.LocationBinData["Farm"]["10,10"];
         Assert.Equal("Ready", reloadedBinData.State);
-        Assert.Equal(2, reloadedBinData.MaturationLevel);
+        Assert.Equal(1, reloadedBinData.MaturationLevel);  // T250 single-yield
         Assert.Equal(3, reloadedBinData.ConsecutiveActiveDays);
     }
 
