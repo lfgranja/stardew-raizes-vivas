@@ -36,7 +36,7 @@ Deliver the complete, playable composting and soil health loop in Stardew Valley
 - Bounds: soil health clamped to 0–100 (`ModConstants.MinSoilHealth` and `MaxSoilHealth`).
 - Zero orphaned bin state: tolerant reader with per-entry isolation and orphaned entity pruning.
 
-**Scale/Scope**: Farm and Greenhouse maps, up to 10,000 tilled tiles, multiple composting bins operating concurrently.
+**Scale/Scope**: Farm, Greenhouse, and Ginger Island maps, up to 10,000 tilled tiles, multiple composting bins operating concurrently.
 
 ## Constitution Check
 
@@ -49,7 +49,7 @@ Deliver the complete, playable composting and soil health loop in Stardew Valley
 | III. Async-Only Concurrency | PASS | I/O-bound persistence uses async/await; game tick events and thread safety use atomic snapshot-diff / locks; no `.Result` or `.Wait()`. |
 | IV. Test-Driven Development | PASS | Test tasks written and blocking implementation; property-based invariant tests with FsCheck / xUnit; unit & concurrency stubs. |
 | V. Simplicity and YAGNI | PASS | Native machine UI and Stardew `Data/Machines` / `Game1.showRedMessage` utilized; no bespoke UI components or text drawing systems. |
-| VI. Multiplayer As A First-Class Requirement | CONDITIONAL PASS | Design rules (host-authoritative, first-wins, farm-keyed) implemented + stubs; Gate 3 live 2-player **deferred to D1** (debt C1). Single-player is a supported degenerate case; multi-live is not verified here. |
+| VI. Multiplayer As A First-Class Requirement | CONDITIONAL PASS | Design rules (host-authoritative, first-wins, farm-keyed) implemented + stubs; Gate 3 live 2-player **deferred to D1** (debt D1). Single-player is a supported degenerate case; multi-live is not verified here. |
 
 **Gate Result**: PASS with one documented conditional — Principle VI (multiplayer) live verification is deferred to roadmap D1 (debt); no MUST violations detected.
 
@@ -100,5 +100,7 @@ LivingRoots.Tests/
 ├── CompostApplicationServiceTests.cs           # Application, consumption & crop coexistence tests (RED T000-R4)
 ├── MultiplayerConcurrencyTests.cs              # Simulated concurrent action stubs (RED T000-R5)
 ├── VisualizationServiceTests.cs                # Overlay render-safety & tier tests (RED T000-R6)
-└── DailyDecayTests.cs                          # Once-per-day decay & seasonal rules (RED T000-R7)
+├── DailyDecayTests.cs                          # Once-per-day decay & seasonal rules (RED T000-R7)
+├── AssetRegistrationTests.cs                   # US1 asset registration & placement tests (RED T000-R8)
+└── CompostingBinServiceTests.cs                # US2 insert / collect / yield tests (RED T000-R9)
 ```
