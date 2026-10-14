@@ -10,9 +10,9 @@
 
 ---
 
-## Phase 1: Setup (Shared Infrastructure)
+## Phase 1: Setup (Shared Infrastructure) — RUN AFTER Phase 0 RED PASSES
 
-**Purpose**: Project initialization and asset-registration infrastructure
+**Purpose**: Project initialization and asset-registration infrastructure. Blocked until RED-phase tasks (T000-R1..R5) are failing (not passing).
 
 - [ ] T001 Initialize `LivingRoots/Constants.cs` / `ModConstants.cs` with `MaturationDays = 2`, `RestorationAmount = 15`, item IDs (`LivingRoots.Compost`, `LivingRoots.CompostingBin`), recipe ID per `plan.md` and `contracts/contracts.md` §1.1–§1.4 (T053 spike-decision.md route settled; no task needed — documented in spec Assumptions)
 - [ ] T002 Configure `LivingRoots/i18n/default.json` with refusal keys (`message.compost.invalid-tile`, `message.compost.max-health`, `message.compost.action-conflict`, `message.harvest.inventory-full`) per `contracts/contracts.md` §3 / `spec.md` FR-008a
@@ -31,7 +31,7 @@
 - [ ] T000-R4 [P] Write failing `CompostApplicationServiceTests.cs` (exactly 1 consumed, refusal reasons, crop tolerance) — must fail before T022
 - [ ] T000-R5 [P] Write failing `MultiplayerConcurrencyTests.cs` stub (first-wins atomic lock, refusal message; stub-only / D1 debt explicit — SC-010 / FR-019) — must fail before T011c; property-based via FsCheck `ForAll` for invariants
 
-**Gate**: These 5 tasks exist and are RED (failing) → unlock Phase 2. No GREEN before Phase 2 starts.
+**Gate**: These 5 tasks exist and are RED (failing) → unlock Phase 1 (Setup) and Phase 2 (Foundational). No GREEN before Phase 2 starts.
 
 ## Phase 2: Foundational (Blocking Prerequisites — MUST complete before ANY user story)
 
