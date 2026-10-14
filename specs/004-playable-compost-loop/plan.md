@@ -73,15 +73,15 @@ specs/004-playable-compost-loop/
 
 ```text
 LivingRoots/
-├── ModConstants.cs                             # ModConstants: IDs, maturation, recipes, colors
+├── Constants.cs                                # ModConstants class: IDs, maturation, recipes, colors
 ├── ModEntry.cs                                 # Composition root & AssetRequested handler (Data/Objects, Data/BigCraftables, Data/CraftingRecipes, Data/Machines)
 ├── i18n/
 │   └── default.json                            # Translation keys for player refusal messages (FR-008a)
 ├── Domain/
+│   ├── ISoilHealthService.cs                   # Soil health contracts + OnTileHealthChanged event (at Domain/ root)
 │   ├── Interfaces/
 │   │   ├── ICompostingBinService.cs            # Bin lifecycle, pickup progress, and batch processing contracts
-│   │   ├── ICompostApplicationService.cs       # Application contracts with crop tolerance & refusal reasons
-│   │   └── ISoilHealthService.cs               # Soil health contracts + OnTileHealthChanged event
+│   │   └── ICompostApplicationService.cs       # Application contracts with crop tolerance & refusal reasons
 │   └── Models/
 │       ├── CompostingBinStateModel.cs          # Runtime machine state (Empty→Processing→Ready, modData serialization)
 │       └── CompostingBinData.cs                # Persistence DTO (save/load, tolerant reader)
@@ -108,3 +108,5 @@ LivingRoots.Tests/
 ├── AssetRegistrationTests.cs                   # US1 asset registration & placement tests (RED T000-R8)
 └── CompostingBinServiceTests.cs                # US2 insert / collect / yield tests (RED T000-R9)
 ```
+
+> **Layout note (T042)**: this tree was reconciled against the actual repository layout in the convergence pass — no files were relocated. Constitution Principle I requires every service interface to live in `Domain/` (satisfied by `Domain/ISoilHealthService.cs`); it does not mandate a specific `Domain/` subfolder.
