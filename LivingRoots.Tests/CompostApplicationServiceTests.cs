@@ -6,7 +6,9 @@ using System.Reflection;
 using System.Text;
 using FsCheck;
 using FsCheck.Xunit;
+using LivingRoots.Controllers;
 using LivingRoots.Domain;
+using LivingRoots.Domain.Interfaces;
 using LivingRoots.Services;
 using LivingRoots.Tests.Fixtures;
 using LivingRoots.Tests.Stubs;
@@ -1013,6 +1015,125 @@ public class CompostApplicationServiceTests
         Assert.Contains(
             Game1.hudMessages,
             message => message.message == interiorRefusalText);
+    }
+
+    // ------------------------------------------------------------------
+    // T239 (FR-007, F20): consuming the last compost item must clear the
+    // active inventory slot — no zero-stack item may remain — on BOTH
+    // consumption paths: the compost-application path
+    // (CompostApplicationService.cs:131, `heldItem.Stack--;`) and the
+    // bin-deposit path (ModController.cs:2656, `heldItem.Stack--;`). The
+    // correct slot-clearing pattern exists at ModController.cs:2417-2425
+    // but is omitted on both paths. Property-based over arbitrary stack
+    // sizes 1..20; size 1 is the discriminating case.
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// T239 (FR-007, F20): for any initial compost stack size, a successful
+    /// consumption leaves no zero-stack item in the active slot on either
+    /// the compost-application path or the bin-deposit path — the slot is
+    /// cleared when the last item is consumed.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// RED today: both paths decrement <c>Stack</c> without clearing the
+    /// slot, so an initial stack of 1 leaves a zero-stack item behind and
+    /// both slot assertions below fail. Stack sizes above 1 pass today (the
+    /// decrement alone is correct there), so FsCheck shrinks the failure to
+    /// the discriminating size 1.
+    /// </para>
+    /// <para>
+    /// The active slot is observed through
+    /// <c>PlayerProviderStub.CurrentItem</c>: the application path consumes
+    /// through that same provider, and the deposit half passes the very
+    /// reference the provider holds as the deposit held item (the controller
+    /// is injected with the same stub, the CompostingBinServiceTests
+    /// interaction pattern), so the provider cell observes the deposit
+    /// consumption exactly as the in-game active slot would. The fix (T266)
+    /// must clear that cell — the ModController.cs:2417-2425 pattern — on
+    /// both paths.
+    /// </para>
+    /// </remarks>
+    [Property(MaxTest = 100)]
+    public void ConsumingLastCompostItem_ClearsInventorySlot_NoZeroStackRemains(PositiveInt stackSize)
+    {
+        int initialStack = ((stackSize.Get - 1) % 20) + 1;
+
+        // Path 1 — compost application: farm soil, real HoeDirt, health
+        // below max, compost held (the T028 success pattern).
+        var applicationTile = new Vector2(10, 10);
+        var applicationFixture = new GameLocationFixture("Farm");
+        applicationFixture.AddHoeDirtTile(10, 10);
+        var applicationCompost = ItemFactory.CreateItem(ModConstants.CompostItemId);
+        applicationCompost.Stack = initialStack;
+        _playerStub.CurrentItem = applicationCompost;
+        _mockSoilHealthService.Setup(x => x.GetSoilHealth("Farm", applicationTile)).Returns(50f);
+
+        bool applied = _service.TryApplyCompost(applicationFixture.Location, applicationTile);
+
+        Assert.True(applied, "T239 premise: compost application on valid soil must succeed.");
+        Item? applicationSlot = _playerStub.CurrentItem;
+
+        // Path 2 — bin deposit: a placed bin, an accepting validator, and
+        // the same provider cell passed as the deposit held item (the
+        // CompostingBinServiceTests interaction pattern).
+        var mockWasteValidator = new Mock<IOrganicWasteValidator>();
+        var binService = new CompostingBinService(
+            new Mock<IModDataService>().Object,
+            new Mock<ISaveIdProvider>().Object,
+            mockWasteValidator.Object,
+            _mockMonitor.Object,
+            new TimeProviderStub(),
+            new CompostingBinFactory(),
+            new RecordingPlayerInventory());
+        var controller = new ModController(
+            new Mock<IModHelper>().Object,
+            _mockMonitor.Object,
+            new Mock<IManifest>().Object,
+            _mockSoilHealthService.Object,
+            new Mock<ISaveIdProvider>().Object,
+            binService,
+            new Mock<ISoilDecayService>().Object,
+            hostAtomicLockService: new HostAtomicLockService(),
+            playerProvider: _playerStub);
+
+        var depositTile = new Vector2(20, 20);
+        var depositFixture = new GameLocationFixture("Farm");
+        depositFixture.Location.Objects.Add(depositTile, new StardewValley.Object
+        {
+            ItemId = ModConstants.CompostingBinItemId,
+            TileLocation = depositTile
+        });
+        var depositCompost = ItemFactory.CreateItem(ModConstants.CompostItemId);
+        depositCompost.Stack = initialStack;
+        _playerStub.CurrentItem = depositCompost;
+        mockWasteValidator.Setup(x => x.IsValidOrganicWaste(depositCompost)).Returns(true);
+
+        bool deposited = controller.TryInteractWithBin(depositFixture.Location, depositTile, 1L, _playerStub.CurrentItem);
+
+        Assert.True(deposited, "T239 premise: deposit into an empty bin must be accepted.");
+        Assert.Equal(CompostingBinState.Processing, binService.GetBinState("Farm", depositTile));
+        Item? depositSlot = _playerStub.CurrentItem;
+
+        // Neither path may leave a zero-stack item in the active slot.
+        if (initialStack == 1)
+        {
+            Assert.True(
+                applicationSlot == null,
+                "T239 RED (FR-007): applying the last compost item must clear the active slot — " +
+                "CompostApplicationService.cs:131 decrements Stack with no slot clearing, leaving a zero-stack item.");
+            Assert.True(
+                depositSlot == null,
+                "T239 RED (FR-007): depositing the last compost item must clear the active slot — " +
+                "ModController.cs:2656 decrements Stack with no slot clearing, leaving a zero-stack item.");
+        }
+        else
+        {
+            Assert.NotNull(applicationSlot);
+            Assert.NotNull(depositSlot);
+            Assert.Equal(initialStack - 1, applicationSlot!.Stack);
+            Assert.Equal(initialStack - 1, depositSlot!.Stack);
+        }
     }
 }
 
