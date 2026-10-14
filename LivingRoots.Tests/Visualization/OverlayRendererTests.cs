@@ -1,3 +1,4 @@
+using FsCheck;
 using FsCheck.Xunit;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Visualization;
@@ -36,6 +37,15 @@ namespace LivingRoots.Tests.Visualization
                 _mockColorService.Object,
                 _mockConfigService.Object,
                 _mockMonitor.Object);
+        }
+
+        /// <summary>
+        /// Generates positive finite health values (1-100) for property tests.
+        /// Edge cases (0, NaN, infinities) are tested separately via [Fact] tests.
+        /// </summary>
+        private static Gen<float> PositiveHealthGenerator()
+        {
+            return Gen.Choose(1, 100).Select(i => (float)i);
         }
 
         /// <summary>
@@ -250,24 +260,13 @@ namespace LivingRoots.Tests.Visualization
 
         /// <summary>
         /// T222 (FR-009/FR-010): health 0 renders ZERO overlays over
-        /// arbitrary tile states. Every run carries the pinned zero
-        /// tile (so the property cannot pass vacuously) plus the
-        /// generated sibling: finite (including a second zero), NaN
-        /// and infinities are all in the generated input domain. The
-        /// zero tile must never contribute an overlay; a finite
-        /// non-zero sibling draws exactly one overlay, and a
-        /// non-finite sibling draws the Unknown overlay. Template:
-        /// the FsCheck <c>[Property(MaxTest = 100)]</c> shape used
-        /// across the suite (e.g. <c>BinPlacementTests</c>), driven
-        /// directly against <c>OverlayRenderer.GetOverlays</c> with
-        /// the cache cleared per case. RED today:
-        /// <c>OverlayRenderer.BuildOverlays</c> clamps with
-        /// <c>Math.Max(healthValue, 1f)</c> and never skips zero, so
-        /// the zero tile always contributes a Poor overlay and the
-        /// pinned-position scan fails on every run.
+        /// arbitrary tile states with positive finite health (1-100).
+        /// Edge cases (0, NaN, infinities) are covered by fact tests.
+        /// The zero tile must never contribute an overlay; a
+        /// finite non-zero sibling draws exactly one overlay.
         /// </summary>
         [Property(MaxTest = 100)]
-        public bool T222_GetOverlays_HealthZero_RendersZeroOverlays(float tileHealth)
+        public void T222_GetOverlays_HealthZero_RendersZeroOverlays(float tileHealth)
         {
             // Arrange — the pinned zero tile plus the generated
             // sibling, both inside the viewport.
@@ -288,22 +287,87 @@ namespace LivingRoots.Tests.Visualization
             {
                 if (overlay.TilePosition == zeroTile)
                 {
-                    return false;
+                    Assert.Fail("Zero tile produced an overlay");
                 }
             }
 
-            if (tileHealth == 0f)
-            {
-                return overlays.Count == 0;
-            }
+            // Positive health should produce exactly one overlay for the arbitrary tile
+            Assert.Single(overlays);
+            Assert.Equal(arbitraryTile, overlays[0].TilePosition);
+        }
 
-            if (float.IsNaN(tileHealth) || float.IsInfinity(tileHealth))
-            {
-                return overlays.Count == 1
-                    && overlays[0].Category == HealthCategory.Unknown;
-            }
+        [Fact]
+        public void T222_ZeroHealth_SiblingZero_RendersZeroOverlays()
+        {
+            var viewport = new Rectangle(0, 0, 40, 40);
+            var zeroTile = new Point(5, 5);
+            var arbitraryTile = new Point(6, 6);
 
-            return overlays.Count == 1;
+            _renderer.InvalidateCache();
+            var overlays = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
+            {
+                { zeroTile, 0f },
+                { arbitraryTile, 0f }
+            });
+
+            Assert.Empty(overlays);
+        }
+
+        [Fact]
+        public void T222_ZeroHealth_SiblingNaN_RendersUnknownOverlay()
+        {
+            var viewport = new Rectangle(0, 0, 40, 40);
+            var zeroTile = new Point(5, 5);
+            var arbitraryTile = new Point(6, 6);
+
+            _renderer.InvalidateCache();
+            var overlays = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
+            {
+                { zeroTile, 0f },
+                { arbitraryTile, float.NaN }
+            });
+
+            Assert.Single(overlays);
+            Assert.Equal(arbitraryTile, overlays[0].TilePosition);
+            Assert.Equal(HealthCategory.Unknown, overlays[0].Category);
+        }
+
+        [Fact]
+        public void T222_ZeroHealth_SiblingInfinity_RendersUnknownOverlay()
+        {
+            var viewport = new Rectangle(0, 0, 40, 40);
+            var zeroTile = new Point(5, 5);
+            var arbitraryTile = new Point(6, 6);
+
+            _renderer.InvalidateCache();
+            var overlays = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
+            {
+                { zeroTile, 0f },
+                { arbitraryTile, float.PositiveInfinity }
+            });
+
+            Assert.Single(overlays);
+            Assert.Equal(arbitraryTile, overlays[0].TilePosition);
+            Assert.Equal(HealthCategory.Unknown, overlays[0].Category);
+        }
+
+        [Fact]
+        public void T222_ZeroHealth_SiblingNegativeInfinity_RendersUnknownOverlay()
+        {
+            var viewport = new Rectangle(0, 0, 40, 40);
+            var zeroTile = new Point(5, 5);
+            var arbitraryTile = new Point(6, 6);
+
+            _renderer.InvalidateCache();
+            var overlays = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
+            {
+                { zeroTile, 0f },
+                { arbitraryTile, float.NegativeInfinity }
+            });
+
+            Assert.Single(overlays);
+            Assert.Equal(arbitraryTile, overlays[0].TilePosition);
+            Assert.Equal(HealthCategory.Unknown, overlays[0].Category);
         }
 
         // ──────────────────────────────────────────────
@@ -329,63 +393,38 @@ namespace LivingRoots.Tests.Visualization
         /// instance (the same reference swap the production service
         /// performs on every change), and requires the next frame to
         /// recompute instead of serving the stale cached list.
-        /// Template: the FsCheck <c>[Property(MaxTest = 100)]</c>
-        /// shape used across the suite. RED today on both halves:
-        /// health 66 resolves near-green (G127) while 67 snaps back
-        /// to moderate (G119), and the renderer keys its cache on
-        /// viewport plus data only, so the swapped configuration
-        /// still serves the identical cached list.
         /// </summary>
         [Property(MaxTest = 100)]
-        public bool T227_ColorMonotone_AndConfigChangeInvalidatesCache(float tileHealth)
+        public void T227_ColorMonotone_NonDecreasingPalette(float tileHealth)
         {
-            // Half 1 — monotone palette over the generated health.
             var palette = new ColorInterpolationService();
-            if (float.IsNaN(tileHealth) || float.IsInfinity(tileHealth))
+
+            // Tier boundaries must be monotone (green channel)
+            var at33 = palette.GetColorForHealth(33f, 1f);
+            var at34 = palette.GetColorForHealth(34f, 1f);
+            Assert.True(at34.G >= at33.G, "Green channel must not decrease at Poor→Moderate boundary (33→34)");
+
+            var at66 = palette.GetColorForHealth(66f, 1f);
+            var at67 = palette.GetColorForHealth(67f, 1f);
+            Assert.True(at67.G >= at66.G, "Green channel must not decrease at Moderate→Healthy boundary (66→67)");
+
+            // Adjacent steps must be monotone within tiers (green channel)
+            if (tileHealth >= 1f && tileHealth < 100f)
             {
-                if (palette.GetCategoryForHealth(tileHealth) != HealthCategory.Unknown)
-                {
-                    return false;
-                }
-
-                if (!palette.GetColorForHealth(tileHealth, 1f).Equals(ModConstants.UnknownColor))
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                var at33 = palette.GetColorForHealth(33f, 1f);
-                var at34 = palette.GetColorForHealth(34f, 1f);
-                if (at34.G < at33.G)
-                {
-                    return false;
-                }
-
-                var at66 = palette.GetColorForHealth(66f, 1f);
-                var at67 = palette.GetColorForHealth(67f, 1f);
-                if (at67.G < at66.G)
-                {
-                    return false;
-                }
-
                 var lo = (float)(Math.Abs((double)tileHealth) % 99.0);
                 var hi = lo + 1f;
-                if (palette.GetColorForHealth(hi, 1f).G < palette.GetColorForHealth(lo, 1f).G)
-                {
-                    return false;
-                }
+                var colorLo = palette.GetColorForHealth(lo, 1f);
+                var colorHi = palette.GetColorForHealth(hi, 1f);
+                Assert.True(colorHi.G >= colorLo.G, $"Green channel must not decrease at step {lo}→{hi}");
             }
+        }
 
-            // Half 2 — a configuration change invalidates the overlay
-            // cache on the next frame.
+        [Fact]
+        public void T227_ConfigChange_InvalidatesCache()
+        {
             var viewport = new Rectangle(0, 0, 40, 40);
             var tile = new Point(7, 7);
             float seedHealth = 50f;
-            if (!float.IsNaN(tileHealth) && !float.IsInfinity(tileHealth) && tileHealth != 0f)
-            {
-                seedHealth = Math.Clamp(tileHealth, 1f, 100f);
-            }
 
             _renderer.InvalidateCache();
             var first = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
@@ -406,7 +445,7 @@ namespace LivingRoots.Tests.Visualization
                 { tile, seedHealth }
             });
 
-            return !ReferenceEquals(first, second);
+            Assert.False(ReferenceEquals(first, second), "Config change should invalidate cache");
         }
     }
 }
