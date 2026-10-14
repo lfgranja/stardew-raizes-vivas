@@ -956,3 +956,49 @@
 - **Recommendation**: run `/speckit.implement` on T221–T246 (red-first, wave dispatch above), then T247–T272 in a clean session; T273–T276 attests last. A follow-up `/speckit.converge` will find fewer or no remaining items.
 - T052 (live multi-player, D1) and T086 (SC-001 manual playtest) remain deferred per spec Assumptions and must NOT be treated as Phase 22 blockers; they are tracked separately.
 - Note for the implementer: Gates 2 and 3 are runnable in this workspace via `GamePath="$PWD/.gamepath"` (verified this pass) — earlier phases' "gate deferred, no game path" notes are stale and must not be reused as an excuse to skip T274/T275.
+
+---
+
+## Phase 23: Gate 3 Remediation (appended per T191 — never rewrite IDs)
+
+**Purpose**: Fix the 24 Gate 3 failures observed in the T275 run (940 passed / 24 failed / 964 total) without renumbering T001–T276. T247–T272 stay [X] (work delivered); T273–T276 stay [ ] and attest LAST after the fixes below. Red state is OBSERVED (failing tests listed per task), so TDD red-first is satisfied; no new tests are added except test-side reconciliations explicitly listed.
+
+**Binding rules**: template/scaffold first (N/A — no generatable boilerplate); [P] delegation at max fan-out with shared-file tasks in one subagent; atomic conventional commit per file; ONLY T273–T276 attest success.
+
+### Findings (from T275 failure output + read-only triage, 2026-10-14)
+
+| ID | Failing tests | Root cause | Fix task |
+|----|---------------|------------|----------|
+| G1 | 5 AddWaste cancel/shake tests | PRODUCTION regression from T262: stray `return;` inside `lock` in `AddWaste` makes post-lock cue emission dead code | T277 |
+| G2 | RenderOverlays_AmbientLighting | Observable gap: surviving single log carries no tint; blend itself correct | T278 |
+| G3 | T227 (OverlayRendererTests) | TEST state pollution: shared mock config across FsCheck cases | T279 |
+| G4 | T126/T143/Measurable/Unmeasurable×3/PoorFloorAt1 | TEST stale: deleted log prefixes + missing FR-009 zero guard | T279 |
+| G5 | SaveLoad_MaturationPersistsAcrossSession | TEST stale: asserts retired multiplier (missed by T250 de-pin) | T280 |
+| G6 | 2 CompostingMachineInvariants | TEST bugs: shared service/time across cases (T251 guard + tile reuse contaminate) | T280 |
+| G7 | HudNotifierTranslationTests | TEST factory builds parameterless notifier + PRODUCTION ModEntry:105 drops translationHelper | T281 |
+| G8 | Guard TileKeyParsing locator | TEST locator anchors first `ParseTileKey` (call-site :428) not definition (:676) | T282 |
+| G9 | 3 FalseComment guards | 2 stale comments (ground-drop :43-44, ShakeDuration :98-100); 1 stale TEST premise (day guard exists per T251/T225) | T282 |
+| G10 | NoUnreferencedConstants | 10 constants verified zero production refs (F19 listed only 3) | T282 |
+| G11 | Spec001Plan PrincipleVI row | DOC rows lack literal `Principle VI` token the test regexes | T283 |
+
+### Remediation (clean session)
+
+- [ ] T277 [P] Fix `AddWaste` dead cue path in `LivingRoots/Services/CompostingBinService.cs:107-126`: delete the stray `return;` at :118 after `rejectedAsInvalid = true;` and `else`-branch the accept path so invalid items cannot fall through; keep `:106` early-return. Re-run the 5 AddWaste tests (G1).
+- [ ] T278 [P] Enrich the single overlay record in `LivingRoots/Services/Visualization/VisualizationService.cs:304-308` with the blended tint AFTER `:316` (e.g. `"Overlay drawn: <value|Unknown> RGBA(r,g,b,a)"` from `blendedColor`) — still ONE `"Overlay drawn: "`-prefixed record per drawn tile so T235 stays green; first read T222 (`SoilHealthVisualizationTests.cs:1101-1152`) and keep its assertions green (extend T222's parser alongside the others if it asserts exact suffix). Re-run AmbientLighting + T235 + T222 (G2).
+- [ ] T279 [P] Test-side visualization reconciliation (no production change except T278's log): (a) `OverlayRendererTests.cs:390` re-establish default `VisualizationConfiguration` on the mock before `InvalidateCache()` per case (G3); (b) `SoilHealthVisualizationTests.cs:347/:746` accept surviving `"Overlay drawn: "` prefix (value = token after prefix up to first space, supporting enriched RGBA suffix); (c) `:845-896` parse trailing `RGBA(r,g,b,a)` from `"Overlay drawn: "`; (d) add FR-009 zero guards (expect zero `"Overlay drawn: "` logs for `tileHealth == 0f`, mirroring `T222_HealthZero:1125-1140`) in T126/Measurable/PoorFloorAt1 (G4). Re-run T227/T126/T143/Measurable/Unmeasurable×3/PoorFloorAt1 (G3+G4).
+- [ ] T280 [P] Test-side yield/matrix corrections: (a) `CompostingBinServiceTests.cs:1533/:1570` `Assert.Equal(2,` → `Assert.Equal(1,` + `:1501` comment to single-yield/no-increment (completes T250 de-pin, G5); (b) `LivingRoots.Tests/Invariants/CompostingMachineInvariantsTests.cs` construct fresh `TimeProviderStub` + `CompostingBinService` (+ fresh inventory for yield) as method locals per case following the T119 pattern (`CompostingBinServiceTests.cs:1653-1668`) (G6). Re-run SaveLoad/MachineYield/MachineState.
+- [ ] T281 [P] Complete T258 wiring: (a) `HudNotifierTranslationTests.cs:68-70` `CreateNotifier` takes the `ITranslationHelper` and `:188` passes the PT-backed `localeHelper`; (b) `LivingRoots/ModEntry.cs:105` → `new HudNotifierImpl(translationHelper)` using the `:93-94` local (G7). Re-run T232.
+- [ ] T282 [P] Guards/comments/constants: (a) `ProductionSourceGuardTests.cs:166` anchor `IndexOf("private static Point ParseTileKey")` (G8); (b) `ICompostingBinService.cs:44` → state clears-tracked-state-only and `does not drop items on the ground` (exact substring, G9); (c) `ICompostingBinService.cs:37-38` → describe the existing guard with exact `Exactly-once per day, per location`, AND update the stale guard expectation at `ProductionSourceGuardTests.cs:390-407` (`corrected = "Exactly-once per day, per location"` + post-T251 assert message; premise invalidated by green T225, G9); (d) `Constants.cs:96-99` → `worldObject.shakeTimer` reality, remove `ShakeDuration` claim (G9); (e) delete verified-zero-ref `MaxPathSegmentLength`, `MaxPathDepth`, `MaxDataValueSizeBytes`, `CompostEmptyColor`, `CompostProcessingColor`, `CompostReadyColor`, `WaterColor`, `SunColor`, `MulchColor` from `Constants.cs`, and `TooltipDebounceMs` (wire into `TooltipRenderer.cs` ONLY if a literal `50` debounce exists there, else delete), and `MaxFileNameLength` (`Constants.cs:27`: rewire `FileNameSanitizationService`'s shadowing `private const` to the shared constant if values are equal, else delete the shared one) — re-grep zero refs at edit time (G10); (f) delete stale `RED today (T251 pending)` remark at `MultiplayerConcurrencyTests.cs:1537-1549`. Re-run all `ProductionSourceGuardTests` (G8+G9+G10).
+- [ ] T283 [P] Add the literal `Principle ` token to both VI rows in `specs/001-soil-health-visualization/plan.md:42` and `:55` (first cells → `| Principle VI. Multiplayer As A First-Class Requirement |`, G11). Re-run Spec001Plan test.
+
+### Verification (ONLY T273–T276 attest — re-run AFTER T277–T283, in gate order)
+
+T052/T086 excluded (D1/maintainer) as before.
+
+### Wave 30 (remediation implementation — [P] fan-out, disjoint files)
+
+- Subagent EA: T277 (`CompostingBinService.cs` AddWaste region only)
+- Subagent EB: T278 + T279 (`VisualizationService.cs` log + `OverlayRendererTests.cs` + `SoilHealthVisualizationTests.cs` — shared log-format contract, one agent serially)
+- Subagent EC: T280 + T281-test-half (`CompostingBinServiceTests.cs`, `CompostingMachineInvariantsTests.cs`, `HudNotifierTranslationTests.cs` — test files only)
+- Subagent ED: T281-prod (`ModEntry.cs:105` one-liner) + T283 (`plan.md` rows)
+- Subagent EE: T282 (interface comments + guard test + `Constants.cs` + tooltip/filename checks + stale remark)
