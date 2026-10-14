@@ -39,7 +39,7 @@
 
 **⚠️ CRITICAL**: No user story implementation begins until Phase 2 complete.
 
-- [ ] T005 Implement `CompostingBinData` persistence DTO (`LivingRoots/Domain/Models/`) with tolerant-reader rules: ignore obsolete fields (`MaturationLevel`, `ConsecutiveActiveDays`, `ConsecutiveIdleDays`), per-entry `try/catch`, quarantined corrupt records with sanitized logs (`FR-012`, `FR-014`, `FR-015` per `data-model.md`)
+- [ ] T005 Implement `CompostingBinData` persistence DTO (`LivingRoots/Domain/Models/`) with tolerant-reader rules: ignore obsolete fields (`MaturationLevel`, `ConsecutiveActiveDays`, `ConsecutiveIdleDays`), per-entry `try/catch`, quarantined corrupt records with sanitized logs (`FR-012`, `FR-014`, `FR-015` per `data-model.md`) — load MUST continue (no abort) when corrupt entries quarantined; verify with `T031` round-trip
 - [ ] T006 Implement `CompostingBinStateModel` runtime state (`LivingRoots/Domain/Models/`) holding `Location`, `State` (`Empty`/`Processing`/`Ready`), `InputId`, `DaysRemaining`, `ProgressPaused`; enforce `max stack = 1` when progress active (`FR-005c` / `data-model.md`)
 - [ ] T007 Implement `IModDataService` persistence layer (`LivingRoots/Services/ModDataService.cs`) with `SanitizePathSegments()` for tile keys; save keys `composting_bins_{saveId}` / `soil_health_data_{saveId}`; sparse storage (do not store default `0` health) per `AGENTS.md`
 - [ ] T008 [P] Implement `SoilHealthService.cs` (`LivingRoots/Services/`) with `GetHealth`, `ApplyCompost`, reactive `OnTileHealthChanged` event, bounds clamp to `[0, 100]` (`ModConstants.Min/Max`); allow application on active crop (`FR-007` clarification 2026-10-04)
