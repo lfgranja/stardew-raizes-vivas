@@ -295,17 +295,12 @@ namespace LivingRoots.Services.Visualization
 
             var destRect = new Rectangle(screenX, screenY, ModConstants.TileSize, ModConstants.TileSize);
 
-            // T143/T159 (FR-011): the value this draw carries, reported before the
-            // draw lands. FR-011 requires the display never report a value it
-            // cannot draw, so the observable is the value the draw actually
-            // consumed: the measured value for a measurable tile, and the
-            // literal Unknown for an unmeasurable one — never a fabricated
-            // percentage.
-            _monitor.Log(
-                "Overlay value drawn: " + (float.IsNaN(overlay.HealthValue) || float.IsInfinity(overlay.HealthValue)
-                    ? "Unknown"
-                    : overlay.HealthValue.ToString("R", System.Globalization.CultureInfo.CurrentCulture)),
-                LogLevel.Trace);
+            // T261 (FR-011/FR-010, F15): one log record per drawn frame.
+            // The destination observable carries the value the draw
+            // actually consumed — the measured value for a measurable
+            // tile, the literal Unknown for an unmeasurable one, never
+            // a fabricated percentage — so the duplicate drawn-value
+            // log and the third per-overlay tint log are gone.
             _monitor.Log(
                 "Overlay drawn: " + (float.IsNaN(overlay.HealthValue) || float.IsInfinity(overlay.HealthValue)
                     ? "Unknown"
@@ -319,9 +314,6 @@ namespace LivingRoots.Services.Visualization
             // clipping or washing out. Full daylight is the identity blend
             // (white ambient), which is why the day tint is the unlit tint.
             var blendedColor = BlendUnderAmbientLight(overlay.Color);
-            _monitor.Log(
-                $"Overlay tint drawn: RGBA({blendedColor.R}, {blendedColor.G}, {blendedColor.B}, {blendedColor.A})",
-                LogLevel.Trace);
 
             // Draw the base color overlay with configured opacity
             spriteBatch.Draw(GetTexture(), destRect, blendedColor);
