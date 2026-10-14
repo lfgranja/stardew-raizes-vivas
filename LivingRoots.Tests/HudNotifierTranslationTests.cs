@@ -65,9 +65,9 @@ public class HudNotifierTranslationTests
     /// unchanged.
     /// </summary>
     /// <returns>The notifier under test.</returns>
-    private static IHudNotifier CreateNotifier()
+    private static IHudNotifier CreateNotifier(ITranslationHelper helper)
     {
-        return new HudNotifierImpl();
+        return new HudNotifierImpl(helper);
     }
 
     /// <summary>
@@ -185,7 +185,7 @@ public class HudNotifierTranslationTests
         int hudMessagesBefore = Game1.hudMessages.Count;
 
         // Act
-        CreateNotifier().NotifyAccessibilityPatternsDegraded(VisibleTileCount);
+        CreateNotifier(localeHelper).NotifyAccessibilityPatternsDegraded(VisibleTileCount);
 
         // Assert — exactly one new red HUD message was shown.
         Assert.Equal(hudMessagesBefore + 1, Game1.hudMessages.Count);
