@@ -302,7 +302,7 @@ namespace LivingRoots.Services.Visualization
             // a fabricated percentage — so the duplicate drawn-value
             // log and the third per-overlay tint log are gone.
             _monitor.Log(
-                "Overlay drawn: " + (float.IsNaN(overlay.HealthValue) || float.IsInfinity(overlay.HealthValue) ? "Unknown" : overlay.HealthValue.ToString("R", System.Globalization.CultureInfo.CurrentCulture)) + " RGBA(" + (int)(overlay.Color.R*255) + "," + (int)(overlay.Color.G*255) + "," + (int)(overlay.Color.B*255) + "," + (int)(overlay.Color.A*255) + ")",
+                "Overlay drawn: " + (float.IsNaN(overlay.HealthValue) || float.IsInfinity(overlay.HealthValue) ? "Unknown" : overlay.HealthValue.ToString("R", System.Globalization.CultureInfo.CurrentCulture)) + " RGBA(" + (int)(overlay.Color.R * 255) + "," + (int)(overlay.Color.G * 255) + "," + (int)(overlay.Color.B * 255) + "," + (int)(overlay.Color.A * 255) + ")",
                 LogLevel.Trace);
 
             // T101 (FR-010): the overlay blends under the ambient lighting pass
