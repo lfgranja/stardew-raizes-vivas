@@ -65,7 +65,7 @@
 - Bin in inventory carries `Item.modData`; `max stack = 1` while progress present.
 - Processing paused unplaced (`ProgressPaused = true`).
 - If inventory full → drops as floating world debris retaining `modData`.
-- Place back → progress restored; cannot shortcut.`
+- Place back → progress restored; cannot shortcut.
 
 **Verify reference**: [`data-model.md`](./data-model.md) Pickup / removal rules; [`contracts/contracts.md`](./contracts/contracts.md) §2.2 (`GetInventoryProgressItems`).
 
@@ -93,7 +93,7 @@
 - Concurrent action by second player; second evaluated after first mutation.
 
 **Expected** (each):
-- No compost consumed.`
+- No compost consumed.
 - `Game1.showRedMessage` with correct translation key (`message.compost.invalid-tile`, `message.compost.max-health`, `message.compost.action-conflict`).
 - No custom UI / overlay / text-drawing added (FR-008a).
 - Invalid drop-in on bin → vanilla machine shake / cancel audio, no text (FR-008a clarification 2026-10-13).
