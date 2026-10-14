@@ -19,10 +19,11 @@ namespace LivingRoots.Domain
         /// <summary>
         /// Collects finished compost from the specified bin if it is ready.
         /// The compost is granted through the injected <see cref="IPlayerInventory"/>.
+        /// One batch yields exactly one compost item (exactly-one batch yield, FR-005a).
         /// </summary>
         /// <param name="locationName">The location containing the bin.</param>
         /// <param name="tile">The tile coordinates of the bin.</param>
-        /// <returns>The number of compost items produced (equal to maturation level).</returns>
+        /// <returns>The number of compost items produced (exactly one).</returns>
         int CollectCompost(string locationName, Vector2 tile);
 
         /// <summary>
