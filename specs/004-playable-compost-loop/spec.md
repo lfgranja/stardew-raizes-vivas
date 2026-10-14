@@ -189,6 +189,7 @@ every stated capability either works or is explicitly labelled as not yet workin
 - **FR-001**: The composting bin MUST be obtainable through the crafting recipe the mod already
   registers, and MUST exist as a real, placeable object in the game world.
 - **FR-001a**: The composting bin MUST behave as a **native game machine**, using the game's own
+  machine rules (`Triggers` + `DaysUntilReady = 2`; output quantity `1`; see `contracts/contracts.md` §1.3 — authoritative asset-registration spec; spec/plan reference it only, never redefine).
   machine interface, progress display, and processing rules, rather than a bespoke interface supplied
   by this mod. A player who has used another game's machine must recognise this one without instruction.
 - **FR-001b**: The bin's processing MUST follow the game's own machine timing (2 days, `MaturationDays`), and MUST NOT be accelerated, shortened, or completed by this mod. Implementation preferred: native `Data/Machines` rules (`Triggers` + `DaysUntilReady`). **Fallback permitted** (Assumptions): event-interception via `OnDayStarted` with an exactly-once guard (`Interlocked.CompareExchange` on `MachineState.DaysRemaining` flag; guard must pass before decrement), without changing duration or quantity. The fallback is accepted behaviour, not a violation. Exactly-once guard implemented via Interlocked.CompareExchange on MachineState.DaysRemaining flag; fallback event-interception via OnDayStarted with guard check.
