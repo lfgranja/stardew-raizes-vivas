@@ -118,6 +118,7 @@
 **Purpose**: Concurrency verification, save/load fault isolation, security, format, documentation of D1 debt
 
 - [ ] T030 [P] Implement `MultiplayerConcurrencyTests.cs` automated multi-threaded stub / `ThreadSafeGameLoopEventsStub` verifying first-wins atomic lock (`Principle VI` / FR-019) and `OnTileHealthChanged` reactive invalidation (`SC-05`, `SC-10`; stub-bounded, not live proof — D1 debt explicit per spec lines 302–303 / Constitution §VI)
+- [ ] T031b [P] Property-based invariant tests (FsCheck `ForAll`): soil health always clamped 0–100; compost application always +15 (or refused); bin state-machine never regresses; first-wins concurrent action always yields exactly one applied change; delegated to subagent wave (reuse T000-R5 context)
 - [ ] T031 [P] Implement save/load round-trip tests (`SC-04`, `FR-012`): corrupt / obsolete / orphaned entries quarantined; valid entries preserved; visual overlays re-rendered
 - [ ] T032 [P] Security validation: `ModDataService.SanitizePathSegments()` on tile keys; no raw exception messages to output (`FR-015` / `AGENTS.md`); `CheckForOverflowUnderflow` never suppressed; bounds `0–100` enforced (`Principle II`)
 - [ ] T033 [P] Format verification: `dotnet format Stardew-LivingRoots.sln --verify-no-changes`; build green (`dotnet build --nologo`) (`Gate 1` / `AGENTS.md`)
