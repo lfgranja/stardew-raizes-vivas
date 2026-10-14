@@ -1412,7 +1412,9 @@ public class CompostingBinServiceTests
         Assert.NotNull(savedData);
         Assert.True(savedData!.LocationBinData.ContainsKey("Farm"));
         Assert.True(savedData.LocationBinData["Farm"].ContainsKey("10,10"));
-        Assert.Equal(4, savedData.LocationBinData["Farm"]["10,10"].MaturationLevel);
+
+        // T250 (FR-005a single-yield): no collect-time increment — level stays 3, yield exactly one.
+        Assert.Equal(3, savedData.LocationBinData["Farm"]["10,10"].MaturationLevel);
 
         // Part 2: MaturationLevel=5 → collect → yields 1 (FR-005a), maturation stays at 5
         var dataAt5 = new CompostingBinData();
@@ -1441,6 +1443,8 @@ public class CompostingBinServiceTests
         Assert.NotNull(savedData);
         Assert.True(savedData!.LocationBinData.ContainsKey("Farm"));
         Assert.True(savedData.LocationBinData["Farm"].ContainsKey("10,10"));
+
+        // T250 (FR-005a single-yield): no increment beyond cap — stays 5, yield exactly one.
         Assert.Equal(5, savedData.LocationBinData["Farm"]["10,10"].MaturationLevel);
     }
 
@@ -1473,7 +1477,7 @@ public class CompostingBinServiceTests
         var state = _service.GetBinState("Farm", new Vector2(10, 10));
         Assert.True(Enum.IsDefined(typeof(CompostingBinState), state));
 
-        // Invariant: MaturationLevel in [1, 5]
+        // Invariant (T250 FR-005a single-yield): no maturation increment runs, so level stays 1.
         CompostingBinData? savedData = null;
         _mockModDataService.Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
             .Callback<CompostingBinData, string>((d, k) => savedData = d);
@@ -1482,7 +1486,7 @@ public class CompostingBinServiceTests
         if (savedData != null && savedData.LocationBinData.ContainsKey("Farm") && savedData.LocationBinData["Farm"].ContainsKey("10,10"))
         {
             var binData = savedData.LocationBinData["Farm"]["10,10"];
-            Assert.InRange(binData.MaturationLevel, 1, 5);
+            Assert.Equal(1, binData.MaturationLevel);
             Assert.True(Enum.IsDefined(typeof(CompostingBinState), Enum.Parse<CompostingBinState>(binData.State)));
         }
     }
