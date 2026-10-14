@@ -63,7 +63,7 @@
 
 **Story dependencies**: None (after Phase 2); all other stories eventually depend on bin existing.
 
-- [ ] T012 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/Objects` (`LivingRoots.Compost`) per `contracts/contracts.md` §1.1
+- [ ] T012-US1 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/Objects` (`LivingRoots.Compost`) per `contracts/contracts.md` §1.1
 - [ ] T013 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/BigCraftables` (`LivingRoots.CompostingBin`) per `contracts/contracts.md` §1.2
 - [ ] T014 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/CraftingRecipes` (`LivingRoots.CompostingBinRecipe`) per `contracts/contracts.md` §1.4
 - [ ] T015 [US1] Implement `CompostingBinService.TryPlace()` / removal logic with valid-terrain check (farm / Greenhouse); rejected placement must leave no ghost; dislodge preserves `Item.modData` (`FR-002`, `FR-005c` / `data-model.md`)
