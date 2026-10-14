@@ -53,8 +53,8 @@
 
 ### 10. Multiplayer Verification Boundary (Formal, not implicit)
 - **Decision**: Feature 004 verifies concurrency via automated multi-threaded stubs / event simulations in `LivingRoots.Tests` (SC-010 stub-bounded). Live 2-player verification deferred to Roadmap D1; 004 MUST NOT declare Gate 3 multi-complete until D1 runs. No presentation of stubs as live proof.
-- **Rationale**: Constitution VI; spec Assumptions / Clarifications lines 302–303, 66; CHESS/CTrigger/Jepsen evidence.
-- **Alternatives**: Declare stub-bound complete (rejected — violates Principle VI / spec debt C1).
+- **Rationale**: Constitution VI; spec Assumptions (multiplayer verification boundary) and Clarifications; CHESS/CTrigger/Jepsen evidence.
+- **Alternatives**: Declare stub-bound complete (rejected — violates Principle VI / spec debt D1).
 
 ---
 
