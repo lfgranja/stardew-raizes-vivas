@@ -90,3 +90,5 @@ public class SoilHealthInvariantsTests
         Assert.Equal(expected, actual);
     }
 }
+
+// T280(b): per-case isolation — construct fresh TimeProviderStub + service (and inventory for yield) as method locals per FsCheck case, following T119 pattern at CompostingBinServiceTests.cs:1653-1668. Shared _service/_timeStub causes cross-case contamination (T251 guard + tile reuse).
