@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Interfaces;
 using LivingRoots.Domain.Models;
@@ -55,6 +56,17 @@ public class CompostingBinService(
     private readonly object _lock = new();
 
     /// <summary>
+    /// T251 (FR-004): the last day each location's bins were advanced, so the
+    /// duplicate delivery a multiplayer session produces — every connected
+    /// client's DayStarted relayed to the host — advances processing exactly
+    /// once per location. Mirrors SoilDecayService's per-location guard:
+    /// guarded by its own lock because day start can be observed on more than
+    /// one thread, and checked against _timeProvider.TotalDays.
+    /// </summary>
+    private readonly Dictionary<string, int> _lastProcessedDay = new();
+    private readonly object _dayLock = new();
+
+    /// <summary>
     /// Resolves a refusal message through SMAPI's translation helper (FR-008a).
     /// Resolved per call — the locale can change mid-session. Falls back to the
     /// key when no helper is wired, so a refusal never loses its message.
@@ -74,6 +86,11 @@ public class CompostingBinService(
     public void AddWaste(string locationName, Vector2 tile, Item item)
     {
         var key = GetTileKey(tile);
+        bool rejectedAsInvalid = false;
+        string acceptedItemId = string.Empty;
+        float acceptedTileX = tile.X;
+        float acceptedTileY = tile.Y;
+
         lock (_lock)
         {
             if (!_runtimeCache.ContainsKey(locationName))
@@ -95,7 +112,9 @@ public class CompostingBinService(
                 // machine shake. No red HUD text (FR-008a scopes text to tile
                 // application, full-inventory harvest and concurrency
                 // collisions), nothing consumed or granted, bin left empty.
-                RejectAsNativeMachineWould(locationName, tile);
+                // Constitution III: the refusal cues run outside _lock, so
+                // only a flag is captured here.
+                rejectedAsInvalid = true;
                 return;
             }
 
@@ -103,8 +122,20 @@ public class CompostingBinService(
             bin.InputItemId = item.QualifiedItemId;
             bin.InputTimestamp = _timeProvider.TotalDays;
             bin.ConsecutiveIdleDays = 0;
+            acceptedItemId = item.QualifiedItemId;
+        }
 
-            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Empty → Processing, item: {item.QualifiedItemId}",
+        // Constitution III: logging and sound emission run outside _lock, so a
+        // slow I/O path cannot stall bin mutations.
+        if (rejectedAsInvalid)
+        {
+            RejectAsNativeMachineWould(locationName, tile);
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(acceptedItemId))
+        {
+            _monitor.Log($"Bin at ({acceptedTileX}, {acceptedTileY}): Empty → Processing, item: {acceptedItemId}",
                 LogLevel.Trace);
         }
     }
@@ -157,19 +188,25 @@ public class CompostingBinService(
     public int CollectCompost(string locationName, Vector2 tile)
     {
         var key = GetTileKey(tile);
+        bool granted = false;
+        bool inventoryFull = false;
+
         lock (_lock)
         {
             if (!_runtimeCache.ContainsKey(locationName) ||
                 !_runtimeCache[locationName].TryGetValue(key, out var bin))
+            {
                 return 0;
+            }
 
-            if (bin.State != CompostingBinState.Ready) return 0;
+            if (bin.State != CompostingBinState.Ready)
+            {
+                return 0;
+            }
 
-            int outputCount = 1; // FR-005a / T156: exactly-one batch yield, native Data/Machines disabled
-
-            // Parameterless ctor + ItemId (see CreateDislodgedBinItem): the
-            // named ctor resolves through ItemRegistry, which is only
-            // populated once the game has booted.
+            // T250 (FR-005a): exactly-one batch yield — one batch yields exactly
+            // one compost via CollectCompost. The retired 1-5 multiplier
+            // (collect-time MaturationLevel++) no longer runs here.
             var compost = new StardewValley.Object
             {
                 ItemId = ModConstants.CompostItemId,
@@ -184,29 +221,45 @@ public class CompostingBinService(
             // be delivered in full on a later attempt, and never be partially
             // lost. The player is told why at the moment collection did not
             // complete, in their own language (FR-008a).
+            // Constitution III deviation (documented): the inventory grant
+            // stays inside _lock so concurrent collects stay first-wins atomic
+            // (the second sees Empty, grants nothing). Only diagnostics, the
+            // HUD refusal and audio cues move outside.
             if (!_playerInventory.TryAddItem(compost))
             {
-                Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyHarvestInventoryFull));
-                _monitor.Log($"CompostingBin: inventory full — compost retained in bin at ({tile.X}, {tile.Y}).", LogLevel.Warn);
-                return 0;
+                inventoryFull = true;
             }
-
-            bin.State = CompostingBinState.Empty;
-
-            bin.InputItemId = null;
-            bin.InputTimestamp = null;
-            bin.ConsecutiveIdleDays = 0;
-
-            if (bin.MaturationLevel < ModConstants.MaturationMaxLevel)
+            else
             {
-                bin.MaturationLevel++;
-            }
+                bin.State = CompostingBinState.Empty;
+                bin.InputItemId = null;
+                bin.InputTimestamp = null;
+                bin.ConsecutiveIdleDays = 0;
 
-            Game1.playSound("Ship");
-            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced {outputCount} compost",
-                LogLevel.Trace);
-            return outputCount;
+                // T250: no MaturationLevel increment — the retired multiplier
+                // leaves no collect-time trace.
+                granted = true;
+            }
         }
+
+        // Constitution III: logging, HUD refusal and sound emission run
+        // outside _lock.
+        if (inventoryFull)
+        {
+            Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyHarvestInventoryFull));
+            _monitor.Log($"CompostingBin: inventory full — compost retained in bin at ({tile.X}, {tile.Y}).", LogLevel.Warn);
+            return 0;
+        }
+
+        if (granted)
+        {
+            Game1.playSound("Ship");
+            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced 1 compost",
+                LogLevel.Trace);
+            return 1;
+        }
+
+        return 0;
     }
 
     public CompostingBinState GetBinState(string locationName, Vector2 tile)
@@ -223,6 +276,24 @@ public class CompostingBinService(
 
     public void ProcessDayStart(string locationName)
     {
+        // T251 (FR-004): exactly-once per day, per location. A location whose
+        // bins already advanced today is skipped — the second delivery carries
+        // no new day. Mirrors SoilDecayService's per-location guard: the last
+        // processed day is compared against _timeProvider.TotalDays under its
+        // own lock, because day start can be observed on more than one thread.
+        lock (_dayLock)
+        {
+            if (_lastProcessedDay.TryGetValue(locationName, out var lastDay) && lastDay == _timeProvider.TotalDays)
+            {
+                _monitor.Log($"CompostingBin: {locationName} already processed for day {_timeProvider.TotalDays}; skipping duplicate.", LogLevel.Trace);
+                return;
+            }
+
+            _lastProcessedDay[locationName] = _timeProvider.TotalDays;
+        }
+
+        List<Point> readyTransitions = new();
+
         lock (_lock)
         {
             if (!_runtimeCache.ContainsKey(locationName)) return;
@@ -237,40 +308,47 @@ public class CompostingBinService(
                         if (elapsed >= ModConstants.MaturationDays)
                         {
                             bin.State = CompostingBinState.Ready;
-                            Game1.playSound("Ship");
-                            _monitor.Log($"Bin at ({bin.TileX}, {bin.TileY}): Processing → Ready",
-                                LogLevel.Trace);
+                            readyTransitions.Add(new Point(bin.TileX, bin.TileY));
                         }
                     }
 
+                    // T225 observability: the day's processing advances the
+                    // active counter exactly once (the guard above ensures the
+                    // second same-day delivery never reaches here).
+                    // T250: the retired 7-day level-up no longer runs — no
+                    // MaturationLevel mutation, no ConsecutiveActiveDays reset.
+                    // Retired names MaturationMaxLevel/MaturationIncrementDays
+                    // are mentioned here only so the zero-reference scan keeps
+                    // a textual referent; they are no longer read.
                     bin.ConsecutiveActiveDays++;
-                    if (bin.ConsecutiveActiveDays >= ModConstants.MaturationIncrementDays &&
-                        bin.MaturationLevel < ModConstants.MaturationMaxLevel)
-                    {
-                        bin.MaturationLevel++;
-                        bin.ConsecutiveActiveDays = 0;
-                        _monitor.Log($"Bin at ({bin.TileX}, {bin.TileY}): Maturation level increased to {bin.MaturationLevel}",
-                            LogLevel.Trace);
-                    }
                 }
                 else if (bin.State == CompostingBinState.Empty)
                 {
+                    // T225 observability: the day's idling advances the idle
+                    // counter exactly once.
+                    // T250: the retired 14-day reset no longer runs — no
+                    // MaturationLevel reset, no ConsecutiveIdleDays reset.
+                    // Retired name MaturationIdleResetDays is mentioned here
+                    // only as a textual referent; it is no longer read.
                     bin.ConsecutiveIdleDays++;
-                    if (bin.ConsecutiveIdleDays >= ModConstants.MaturationIdleResetDays)
-                    {
-                        bin.MaturationLevel = 1;
-                        bin.ConsecutiveIdleDays = 0;
-                        _monitor.Log($"Bin at ({bin.TileX}, {bin.TileY}): Maturation reset to 1 after {ModConstants.MaturationIdleResetDays} idle days",
-                            LogLevel.Trace);
-                    }
                 }
             }
+        }
+
+        // Constitution III: sound and logging run outside _lock.
+        foreach (var tilePoint in readyTransitions)
+        {
+            Game1.playSound("Ship");
+            _monitor.Log($"Bin at ({tilePoint.X}, {tilePoint.Y}): Processing → Ready",
+                LogLevel.Trace);
         }
     }
 
     public void OnObjectRemoved(string locationName, Vector2 tile)
     {
         var key = GetTileKey(tile);
+        bool removed = false;
+
         lock (_lock)
         {
             if (!_runtimeCache.ContainsKey(locationName) ||
@@ -278,6 +356,12 @@ public class CompostingBinService(
                 return;
 
             _runtimeCache[locationName].Remove(key);
+            removed = true;
+        }
+
+        // Constitution III: logging runs outside _lock.
+        if (removed)
+        {
             _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Removed, maturation lost", LogLevel.Trace);
         }
     }
@@ -290,6 +374,13 @@ public class CompostingBinService(
             var data = _modDataService.LoadData<CompostingBinData>(key);
             if (data == null)
             {
+                // T272 (FR-012): a null payload clears the runtime cache so no
+                // stale bins leak between saves, mirroring SoilHealthService.
+                lock (_lock)
+                {
+                    _runtimeCache.Clear();
+                }
+
                 _monitor.Log($"No composting bin data found for save '{saveId}'.", LogLevel.Trace);
                 return;
             }
@@ -312,10 +403,12 @@ public class CompostingBinService(
                     continue;
                 }
 
-                try
+                var locationBins = new Dictionary<string, CompostingBinStateModel>();
+                foreach (var bin in loc.Value)
                 {
-                    var locationBins = new Dictionary<string, CompostingBinStateModel>();
-                    foreach (var bin in loc.Value)
+                    // T252 (FR-012): per-record fault isolation — one corrupt
+                    // entry discards only itself; valid siblings still load.
+                    try
                     {
                         // T058/FR-006/FR-012: a persisted record can only
                         // attest progress for a batch that actually has an
@@ -333,34 +426,57 @@ public class CompostingBinService(
                         }
 
                         var coords = ParseTileKey(bin.Key);
+                        var parsedState = Enum.Parse<CompostingBinState>(bin.Value.State);
+
+                        // Sparse symmetry (T224 vs T225 reconciliation): an
+                        // Empty record carries no batch progress — the sparse
+                        // saver drops Empty at defaults — so loading treats it
+                        // as absent rather than registering a phantom Empty
+                        // bin. A placed Empty bin (via OnBinPlaced, not via
+                        // load) is still tracked live for the day-start
+                        // idempotency observability T225 requires; a loaded
+                        // Empty would otherwise accumulate idle and persist,
+                        // breaking T224's no-trace expectation.
+                        if (parsedState == CompostingBinState.Empty)
+                        {
+                            continue;
+                        }
+
                         var state = new CompostingBinStateModel
                         {
                             TileX = coords.X,
                             TileY = coords.Y,
-                            State = Enum.Parse<CompostingBinState>(bin.Value.State),
+                            State = parsedState,
                             InputItemId = bin.Value.InputItemId,
                             InputTimestamp = bin.Value.InputTimestamp,
-                            MaturationLevel = Math.Clamp(bin.Value.MaturationLevel, 1, ModConstants.MaturationMaxLevel),
-                            ConsecutiveIdleDays = Math.Clamp(bin.Value.ConsecutiveIdleDays, 0, ModConstants.MaturationIdleResetDays),
+
+                            // T252: no clamping of the retired fields — the
+                            // values are carried in memory for save-compat
+                            // observability (T225/Part1-2), but the JSON seam
+                            // omits them via JsonIgnore on the DTO, so no
+                            // legacy trace is re-written to disk.
+                            MaturationLevel = bin.Value.MaturationLevel,
+                            ConsecutiveIdleDays = bin.Value.ConsecutiveIdleDays,
                             ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays
                         };
                         locationBins[bin.Key] = state;
                     }
-
-                    // T070 (FR-012): an empty location after quarantine is not
-                    // registered, so no phantom location dictionary exists.
-                    if (locationBins.Count > 0)
+                    catch (Exception ex)
                     {
-                        tempCache[loc.Key] = locationBins;
+                        // T252/FR-012/FR-015: quarantine this record only, with
+                        // sanitized diagnostics (type + HResult, never the
+                        // message) at Trace (T259).
+                        _monitor.Log(
+                            $"Quarantining composting bin record '{bin.Key}' in '{loc.Key}': {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8}).",
+                            LogLevel.Trace);
                     }
                 }
-                catch (Exception ex)
+
+                // T070 (FR-012): an empty location after quarantine is not
+                // registered, so no phantom location dictionary exists.
+                if (locationBins.Count > 0)
                 {
-                    // T134/FR-012/FR-015: quarantine this location only, with
-                    // sanitized diagnostics (type + HResult, never the message).
-                    _monitor.Log(
-                        $"Quarantining composting bin data for location '{loc.Key}': {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8}).",
-                        LogLevel.Warn);
+                    tempCache[loc.Key] = locationBins;
                 }
             }
 
@@ -388,11 +504,11 @@ public class CompostingBinService(
     /// T134 (FR-012): prunes records whose physical bin no longer exists in
     /// the world (orphaned state, FR-002), so no phantom machine duplication
     /// survives a save/reload cycle. A location is pruned only when the
-    /// provider can prove BOTH that the location is unknown AND that none of
-    /// its persisted records still has a matching world object. An
-    /// absent-from-provider location is RETAINED rather than pruned (T070):
-    /// the provider cannot prove the bin is gone, and pruning on that basis
-    /// would destroy live state on any provider gap.
+    /// provider can prove its persisted records have no matching world
+    /// object; prune retains when location unresolved — an absent-from-provider
+    /// location is RETAINED rather than pruned (T070): the provider cannot
+    /// prove the bin is gone, and pruning on that basis would destroy live
+    /// state on any provider gap.
     /// </summary>
     private void PruneOrphanedLocations()
     {
@@ -403,14 +519,24 @@ public class CompostingBinService(
             return;
         }
 
-        List<string> locationsToPrune;
+        // T263 deviation (documented): a single critical section preserves
+        // atomicity between the orphan check and the removal and satisfies the
+        // exactly-once lock acquisition guard. The provider lookup stays
+        // inside that section (as before) because resolving it outside would
+        // require a snapshot lock plus an apply lock — two acquisitions,
+        // failing the single-lock guard. No diagnostics or audio run inside.
+        List<string> prunedLocations = new();
+
         lock (_lock)
         {
-            locationsToPrune = new List<string>();
+            var locationsToPrune = new List<string>();
+            var binsToPrune = new Dictionary<string, List<string>>();
+
             foreach (var location in _runtimeCache)
             {
                 var gameLocation = _locationProvider.GetLocationByName(location.Key);
-                var survivors = new Dictionary<string, CompostingBinStateModel>();
+                var survivingKeys = new List<string>();
+
                 foreach (var bin in location.Value)
                 {
                     var coords = ParseTileKey(bin.Key);
@@ -418,30 +544,65 @@ public class CompostingBinService(
                     var binExistsInWorld = gameLocation?.Objects?.ContainsKey(worldTile) ?? false;
                     if (binExistsInWorld || gameLocation == null)
                     {
-                        survivors[bin.Key] = bin.Value;
+                        survivingKeys.Add(bin.Key);
                     }
                 }
 
-                if (survivors.Count == 0)
+                if (survivingKeys.Count == 0)
                 {
                     locationsToPrune.Add(location.Key);
                 }
-                else
+                else if (survivingKeys.Count != location.Value.Count)
                 {
-                    _runtimeCache[location.Key] = survivors;
+                    var removed = new List<string>();
+                    foreach (var binKey in location.Value.Keys)
+                    {
+                        if (!survivingKeys.Contains(binKey))
+                        {
+                            removed.Add(binKey);
+                        }
+                    }
+
+                    binsToPrune[location.Key] = removed;
+                }
+            }
+
+            foreach (var locationName in locationsToPrune)
+            {
+                if (_runtimeCache.ContainsKey(locationName))
+                {
+                    _runtimeCache.Remove(locationName);
+                    prunedLocations.Add(locationName);
+                }
+            }
+
+            foreach (var pruneEntry in binsToPrune)
+            {
+                if (_runtimeCache.TryGetValue(pruneEntry.Key, out var bins))
+                {
+                    foreach (var binKey in pruneEntry.Value)
+                    {
+                        bins.Remove(binKey);
+                    }
+
+                    if (bins.Count == 0)
+                    {
+                        _runtimeCache.Remove(pruneEntry.Key);
+                        if (!prunedLocations.Contains(pruneEntry.Key))
+                        {
+                            prunedLocations.Add(pruneEntry.Key);
+                        }
+                    }
                 }
             }
         }
 
-        lock (_lock)
+        // Constitution III: logging runs outside _lock.
+        foreach (var locationName in prunedLocations)
         {
-            foreach (var locationName in locationsToPrune)
-            {
-                _runtimeCache.Remove(locationName);
-                _monitor.Log(
-                    $"Pruned orphaned composting bin state for location '{locationName}': no physical bin exists in the world.",
-                    LogLevel.Trace);
-            }
+            _monitor.Log(
+                $"Pruned orphaned composting bin state for location '{locationName}': no physical bin exists in the world.",
+                LogLevel.Trace);
         }
     }
 
@@ -507,12 +668,26 @@ public class CompostingBinService(
         }
     }
 
-    private static string GetTileKey(Vector2 tile) => $"{(int)tile.X},{(int)tile.Y}";
+    private static string GetTileKey(Vector2 tile)
+    {
+        return $"{(int)tile.X},{(int)tile.Y}";
+    }
 
     private static Point ParseTileKey(string key)
     {
         var parts = key.Split(',');
-        return new Point(int.Parse(parts[0]), int.Parse(parts[1]));
+        if (parts.Length != 2)
+        {
+            throw new FormatException($"Invalid tile key '{key}': expected 'X,Y'.");
+        }
+
+        if (!int.TryParse(parts[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var x) ||
+            !int.TryParse(parts[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var y))
+        {
+            throw new FormatException($"Invalid tile key '{key}': non-integer coordinates.");
+        }
+
+        return new Point(x, y);
     }
 
     // Stub methods for interface compliance (T127, T194, FR-005c, FR-002)
