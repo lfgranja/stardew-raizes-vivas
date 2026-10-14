@@ -7,7 +7,7 @@
 ## Summary
 
 Deliver the complete, playable composting and soil health loop in Stardew Valley 1.6:
-1. Programmatically register Compost item (`LivingRoots.Compost`), Composting Bin machine (`LivingRoots.CompostingBin`), and recipe (`LivingRoots.CompostingBinRecipe`) via SMAPI `AssetRequested` against `Data/Objects`, `Data/CraftingRecipes`, and `Data/Machines`.
+1. Programmatically register Compost item (`LivingRoots.Compost`), Composting Bin machine (`LivingRoots.CompostingBin`), and recipe (`LivingRoots.CompostingBinRecipe`) via SMAPI `AssetRequested` against `Data/Objects`, `Data/BigCraftables`, `Data/CraftingRecipes`, and `Data/Machines`.
 2. Support native machine behaviors and machine state lifecycle (Empty → Processing → Ready) driven by 2 in-game days maturation (`ModConstants.MaturationDays = 2`), single compost batch yield (retiring 1-5 multiplier per FR-005a), and progress retention across machine removal/pickup into inventory `Item.modData` (FR-005c) with tolerant reader fault isolation (FR-012, FR-015).
 3. Connect compost application (consuming 1 item, adding +15 health clamped to 100 on tilled `HoeDirt` with or without active crop) with localized native refusal alerts (`Game1.showRedMessage` via SMAPI `ITranslationHelper` in `i18n/default.json`).
 4. Re-render visual soil health overlays across the 3-tier RGB spectrum with neutral dirt for 0 health, responding immediately (≤16.67ms) to `ISoilHealthService.OnTileHealthChanged` reactive events.
@@ -51,7 +51,7 @@ Deliver the complete, playable composting and soil health loop in Stardew Valley
 | V. Simplicity and YAGNI | PASS | Native machine UI and Stardew `Data/Machines` / `Game1.showRedMessage` utilized; no bespoke UI components or text drawing systems. |
 | VI. Multiplayer As A First-Class Requirement | CONDITIONAL PASS | Design rules (host-authoritative, first-wins, farm-keyed) implemented + stubs; Gate 3 live 2-player **deferred to D1** (debt C1). Single-player is a supported degenerate case; multi-live is not verified here. |
 
-**Gate Result**: PASS — No violations detected.
+**Gate Result**: PASS with one documented conditional — Principle VI (multiplayer) live verification is deferred to roadmap D1 (debt); no MUST violations detected.
 
 ## Project Structure
 
@@ -70,7 +70,7 @@ specs/004-playable-compost-loop/
 ```text
 LivingRoots/
 ├── ModConstants.cs                             # ModConstants: IDs, maturation, recipes, colors
-├── ModEntry.cs                                 # Composition root & AssetRequested handler (Data/Objects, Data/CraftingRecipes, Data/Machines)
+├── ModEntry.cs                                 # Composition root & AssetRequested handler (Data/Objects, Data/BigCraftables, Data/CraftingRecipes, Data/Machines)
 ├── i18n/
 │   └── default.json                            # Translation keys for player refusal messages (FR-008a)
 ├── Domain/
@@ -93,9 +93,12 @@ LivingRoots/
 LivingRoots.Tests/
 ├── Fixtures/                                   # Real game objects & test factories
 ├── Stubs/                                      # Event & provider stubs
-├── Invariants/                                 # Property-based tests (FsCheck)
-├── CompostingBinServiceTests.cs                # State machine & lifecycle tests
-├── CompostApplicationServiceTests.cs           # Application & crop coexistence tests
-├── SoilHealthVisualizationTests.cs             # Overlay invalidation & tier tests
-└── MultiplayerConcurrencyTests.cs              # Simulated concurrent action stubs
+├── Invariants/                                 # Property-based tests (FsCheck); shared fixture
+├── CompostingBinDataTests.cs                   # Tolerant-reader persistence DTO tests (RED T000-R1)
+├── CompostingBinStateModelTests.cs             # State-machine & lifecycle tests (RED T000-R2)
+├── SoilHealthServiceTests.cs                   # Bounds / clamp / reactive event tests (RED T000-R3)
+├── CompostApplicationServiceTests.cs           # Application, consumption & crop coexistence tests (RED T000-R4)
+├── MultiplayerConcurrencyTests.cs              # Simulated concurrent action stubs (RED T000-R5)
+├── VisualizationServiceTests.cs                # Overlay render-safety & tier tests (RED T000-R6)
+└── DailyDecayTests.cs                          # Once-per-day decay & seasonal rules (RED T000-R7)
 ```
