@@ -5,9 +5,8 @@
       Added sections: Principle VI (Multiplayer As A First-Class Requirement, NON-NEGOTIABLE)
       Removed items: none
       Deferred items: live 2-player verification (roadmap D1)
-      GOVERNANCE FLAG: prepared by the agent; per the Governance section this
-      amendment merges only after human review and approval. Until ratified it
-      is drafted, not governing.
+      Ratified: approved by human review per the Governance section;
+      merged as v2.0.0. Last Amended: 2026-10-13.
  -->
 
 # Living Roots Constitution
