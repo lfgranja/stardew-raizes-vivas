@@ -47,7 +47,7 @@
 - [ ] T010 [P] Implement `VisualizationService.cs` (`LivingRoots/Services/Visualization/`) reactive subscription to `ISoilHealthService.OnTileHealthChanged`; 3-tier RGB interpolation (Poor 1–33 / Moderate 34–66 / Healthy 67–100); `0` = neutral vanilla dirt, no overlay (`FR-009`, `FR-010` / `data-model.md`)
 - [ ] T011a [P] Configure `ModController.cs` placement/dislodge handlers with `ExecuteWithConcurrencyGuard` and progress preservation (`FR-005c`)
 - [ ] T011b [P] Configure `ModController.cs` right-click compost-application handler with atomically-locked refusal reasons (`FR-007`/`FR-008`/`FR-019`)
-- [ ] T011c [P] Configure `ModController.cs` host-authoritative atomic lock mechanism per tile/machine (`Principle VI` / `FR-019`; stub-bounded, D1 debt documented) — use `Interlocked.CompareExchange` on `MachineState.DaysRemaining` (per FR-001b exactly-once guard) for first-wins atomic lock; refusal on second concurrent action preserved
+- [ ] T011c [P] Configure `ModController.cs` host-authoritative atomic lock mechanism per tile/machine (**host-lock only**, `Principle VI` / `FR-019`: first-wins concurrent action; stub-bounded, D1 debt documented) — use `Interlocked.CompareExchange` on `MachineState.DaysRemaining` (per FR-001b exactly-once guard) for first-wins atomic lock; refusal on second concurrent action preserved
 - [ ] T012 [P] Reconcile 8 stale spec/doc scope statements (`specs/001-003` + `docs/design-system`) declaring multiplayer out of scope — scope-word correction only, no redesign; reference `FR-017` / Constitution VI / `plan.md` Constitution Check CONDITIONAL PASS
   FR-016 coverage: confirm README.md under ## Features has zero false/unlabelled claims; if any (Planned) suffix missing, add before declaring T012 complete.
 
@@ -80,7 +80,7 @@
 **Story dependencies**: Requires bin from US1 (can test with pre-placed bin independently).
 
 - [ ] T017 [US2] Implement `CompostingBinService.TryInsertOrganicWaste()` with qualifying-set check (inherited, not restated; `FR-003` / `data-model.md`) and native-machine shake/cancel on invalid drop-in (`FR-008a` clarification 2026-10-13)
-- [ ] T018 [US2] Implement `CompostingBinService.OnDayStarted()` exactly-once guard (`FR-001b` fallback permitted) with `DaysRemaining` decrement; advance exactly once per day regardless of player count (`FR-004`)
+- [ ] T018 [US2] Implement `CompostingBinService.OnDayStarted()` exactly-once **daily-decrement guard** (`FR-001b` fallback permitted) — not host-lock; decrement `DaysRemaining` once per day regardless of player count (`FR-004`)
 - [ ] T013c [P] Implement `SoilHealthService` daily decay once per day (`FR-013` / `FR-011` / `FR-001`): apply `decayRate * seasonalMultiplier` to bare tilled tiles at day start; seasonal rules 1.5x summer, 0.5x spring/fall, 0 winter; exempt greenhouse; inherited from `specs/002-soil-decay-compost/` (spec §FR-001/FR-011); property-based invariant: health clamped 0–100 after decay. DEPENDENCY NOTE: independent of US1 (bin existence); executes in Phase 2 parallel with T008–T011c; US4 (visual) requires US2 for compost source; no cross-block.
 - [ ] T019 [US2] Implement `CompostingBinService.TryCollect()` yielding exactly `1` `LivingRoots.Compost`; full inventory leaves `Ready`; retry delivers full batch; `message.harvest.inventory-full` delivered (`FR-005b` / `FR-008a`)
 - [ ] T020 [US2] Enforce `Item.modData` (`LivingRoots.InputId`, `LivingRoots.DaysRemaining`) serializes into inventory bin; `max stack = 1` while progress present; processing pauses unplaced (`FR-005c` / `data-model.md`)
