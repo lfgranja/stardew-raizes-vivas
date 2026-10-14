@@ -168,6 +168,11 @@ every stated capability either works or is explicitly labelled as not yet workin
 
 ### Edge Cases
 
+- Full-inventory harvest: player tries to collect ready compost with full inventory; compost must remain in bin (FR-005b); refusal message shown; no partial loss.
+- Dislodgement mid-batch with full inventory: bin removed (axe/pickaxe/hoe/explosion); progress + input preserved in Item.modData (FR-005c); if no inventory space, floats as debris with same modData; placed back restores progress.
+- Emptying a ready bin: must yield exactly 1 compost; no leftover progress; bin returns to Empty.
+- Concurrent action on same bin/tile: first wins; second refused with message; no state change (FR-019).
+
 - The player's inventory is full when collecting compost, or when a crafted bin would be added.
 - Compost is applied to untilled soil, to a growing crop, to a building, or to indoor tiles.
 - A tile's soil health is already at its maximum when compost is applied.
@@ -193,11 +198,12 @@ every stated capability either works or is explicitly labelled as not yet workin
   machine interface, progress display, and processing rules, rather than a bespoke interface supplied
   by this mod. A player who has used another game's machine must recognise this one without instruction.
 - **FR-001b**: The bin's processing MUST follow the game's own machine timing (2 days, `MaturationDays`), and MUST NOT be accelerated, shortened, or completed by this mod. Implementation preferred: native `Data/Machines` rules (`Triggers` + `DaysUntilReady`). **Fallback permitted** (Assumptions): event-interception via `OnDayStarted` with an exactly-once guard (`Interlocked.CompareExchange` on `MachineState.DaysRemaining` flag; guard must pass before decrement), without changing duration or quantity. The fallback is accepted behaviour, not a violation. Exactly-once guard implemented via Interlocked.CompareExchange on MachineState.DaysRemaining flag. The guard passes first; only then is DaysRemaining decremented. If the guard fails, no decrement occurs. Fallback event-interception via OnDayStarted with guard check.
+- NOTE: FR-001a defines interface; FR-001b defines timing/fallback. Consolidated: native machine preferred (FR-001a); fallback event-interception (FR-001b) only if native Data/Machines fails. No redesign of either.
 - **FR-002**: The composting bin MUST be placeable on farm land **and the Greenhouse** (invalid terrain: water, buildings, non-farm interiors), removable, and MUST NOT leave
   orphaned state in the save data when removed. Rejected placement MUST NOT leave a ghost object.
 - **FR-003**: The bin MUST accept qualifying organic material by player action and MUST reject
   non-qualifying material. **The qualifying set is owned by the soil decay and compost specification and
-  is inherited from it unchanged.** This feature MUST NOT restate, extend, narrow, or contradict that
+  is inherited from it unchanged. VERIFICATION: T022 confirms qualifying set matches spec 002 (artisan goods excluded unless 002 updated); property-based invariant ForAll(item => IsCompostable(item) == ExpectedFromSpec002(item)) enforced in LivingRoots.Tests/CompostApplicationServiceTests.cs.** This feature MUST NOT restate, extend, narrow, or contradict that
   set; changing it is a change to that specification, not to this one.
 - **FR-004**: Advancing one in-game day MUST advance bin processing exactly once, regardless of how many
   players are connected to the farm.
@@ -224,11 +230,12 @@ every stated capability either works or is explicitly labelled as not yet workin
   on-screen message system (`Game1.showRedMessage`), in the game's own font and in the player's own language via SMAPI's `ITranslationHelper` with standard translation keys registered in `i18n/default.json` (`message.compost.invalid-tile`, `message.compost.max-health`, `message.compost.action-conflict`, and `message.harvest.inventory-full`). Attempting to load an invalid, non-compostable item into a composting bin follows native game machine behavior (vanilla audio cancel cue and machine shake, without text overlay). This feature MUST
   NOT introduce its own user interface, text-drawing component, or on-screen notice, and MUST NOT require
   new artwork in order to explain a refusal.
+- KEY UNIFICATION: inventory-full refusal (FR-005b) and harvest-full refusal share `message.harvest.inventory-full`; no duplicate keys. Confirmed in i18n/default.json. All refusal keys (`message.compost.invalid-tile`, `message.compost.max-health`, `message.compost.action-conflict`, `message.harvest.inventory-full`) use same `ITranslationHelper` path (SMAPI `helper.Translation.Get`).
 - **FR-009**: Every soil health value the player can observe MUST remain within the defined bounds of
   0 to 100 inclusive. Baseline unaugmented soil (health value 0) MUST display with neutral vanilla dirt appearance without visual overlay to prevent visual noise.
 - **FR-010**: The soil health of a tile MUST be visually distinguishable from a neighbouring untreated
   tile after compost is applied. The soil health display is **in scope for this feature** — seeing the
-  soil change is part of the promise this feature delivers, not a later enhancement. Visual differentiation across the 0–100 scale inherits Feature 001's 3-tier continuous RGB interpolation (Poor: 1–33, Moderate: 34–66, Healthy: 67–100) rendered under ambient lighting, with health 0 remaining unrendered neutral dirt. Overlays MUST blend under ambient lighting passes without clipping or washing out during night, rain, and winter. Toggling the display setting or updating tile health takes effect on the next frame (≤16.67ms) without scene reload or polling lag via reactive event notification (`ISoilHealthService.OnTileHealthChanged`). Blend alpha ≥ 0.65 under ambient lighting; RGB shift < 5% vs untreated neighbouring tile at same light level.
+  soil change is part of the promise this feature delivers, not a later enhancement. Visual differentiation across the 0–100 scale inherits Feature 001's 3-tier continuous RGB interpolation (Poor: 1–33, Moderate: 34–66, Healthy: 67–100) rendered under ambient lighting, with health 0 remaining unrendered neutral dirt. Overlays MUST blend under ambient lighting passes without clipping or washing out during night, rain, and winter. Toggling the display setting or updating tile health takes effect on the next frame (≤16.67ms) without scene reload or polling lag via reactive event notification (`ISoilHealthService.OnTileHealthChanged`). Blend alpha ≥ 0.65 under ambient lighting; RGB shift < 5% vs untreated neighbouring tile at same light level. MEASUREMENT POINT: blend alpha measured at tile center pixel (not boundary); RGB shift computed over full tile quad versus adjacent untreated quad under identical ambient pass. Fixture required in LivingRoots.Tests/Visualization/OverlayMeasurementFixture.cs (new).
 - **FR-011**: The soil health display MUST operate without silently failing, and MUST NOT report a
   value it is not actually able to draw.
 - **FR-012**: Bin state, processing progress, and soil health MUST survive a save and reload unchanged,
