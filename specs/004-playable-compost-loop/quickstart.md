@@ -32,7 +32,7 @@
 - Place on farm / Greenhouse valid tile → appears in world; can pick back up.
 - Place on water / building → refused; no ghost object (FR-002).
 
-**Verify reference**: [`contracts/contracts.md`](./contracts/contracts.md) §1.2 / §1.4; [`data-model.md`](./data-model.md) ComposterBin placement rules.
+**Verify reference**: [`contracts/contracts.md`](./contracts/contracts.md) §1.2 / §1.4; [`data-model.md`](./data-model.md) Composting Bin placement rules.
 
 ---
 
