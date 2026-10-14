@@ -45,7 +45,7 @@
 - [ ] T008 [P] Implement `SoilHealthService.cs` (`LivingRoots/Services/`) with `GetHealth`, `ApplyCompost`, reactive `OnTileHealthChanged` event, bounds clamp to `[0, 100]` (`ModConstants.Min/Max`); allow application on active crop (`FR-007` clarification 2026-10-04)
 - [ ] T009 [P] Implement `CompostingBinService.cs` (`LivingRoots/Services/`) state machine (`Empty → Processing → Ready`); `MaturationDays = 2`; exactly-one batch yield `1`; progress preserved in `Item.modData`; processing pauses unplaced (`FR-001b`, `FR-005c` / `data-model.md`)
 - [ ] T010 [P] Implement `VisualizationService.cs` (`LivingRoots/Services/Visualization/`) reactive subscription to `ISoilHealthService.OnTileHealthChanged`; 3-tier RGB interpolation (Poor 1–33 / Moderate 34–66 / Healthy 67–100); `0` = neutral vanilla dirt, no overlay (`FR-009`, `FR-010` / `data-model.md`)
-- [ ] T011 [P] Configure `ModController.cs` (`LivingRoots/Controllers/`) event handlers (right-click / placement / dislodge) with `ExecuteWithConcurrencyGuard`; host-authoritative atomic lock per tile / machine instance (`Principle VI`, `FR-019` / `spec.md` clarification 2026-10-03)
+- [ ] T011 [P] Configure `ModController.cs` (`LivingRoots/Controllers/`) event handlers (right-click / placement / dislodge) with `ExecuteWithConcurrencyGuard`; host-authoritative atomic lock per tile / machine instance (`Principle VI`, `FR-019` / `spec.md` clarification 2026-10-03; stub-bounded, not live proof — D1 debt)
 
 **Checkpoint**: Foundation ready — `ISoilHealthService`, `ICompostingBinService`, persistence, visualization, and atomic-lock controller all functional and independently testable.
 
@@ -117,11 +117,11 @@
 
 **Purpose**: Concurrency verification, save/load fault isolation, security, format, documentation of D1 debt
 
-- [ ] T030 [P] Implement `MultiplayerConcurrencyTests.cs` automated multi-threaded stub / `ThreadSafeGameLoopEventsStub` verifying first-wins atomic lock and `OnTileHealthChanged` reactive invalidation (`SC-05`, `SC-10`, `FR-019`; stub-bounded, not live proof — D1 debt explicit per spec lines 302–303 / Constitution §VI)
+- [ ] T030 [P] Implement `MultiplayerConcurrencyTests.cs` automated multi-threaded stub / `ThreadSafeGameLoopEventsStub` verifying first-wins atomic lock (`Principle VI` / FR-019) and `OnTileHealthChanged` reactive invalidation (`SC-05`, `SC-10`; stub-bounded, not live proof — D1 debt explicit per spec lines 302–303 / Constitution §VI)
 - [ ] T031 [P] Implement save/load round-trip tests (`SC-04`, `FR-012`): corrupt / obsolete / orphaned entries quarantined; valid entries preserved; visual overlays re-rendered
 - [ ] T032 [P] Security validation: `ModDataService.SanitizePathSegments()` on tile keys; no raw exception messages to output (`FR-015` / `AGENTS.md`); `CheckForOverflowUnderflow` never suppressed; bounds `0–100` enforced (`Principle II`)
 - [ ] T033 [P] Format verification: `dotnet format Stardew-LivingRoots.sln --verify-no-changes`; build green (`dotnet build --nologo`) (`Gate 1` / `AGENTS.md`)
-- [ ] T034 [P] Run `quickstart.md` scenarios A–H; confirm Gate 2 (product-level) and Gate 3 (end-to-end real-player journey) satisfied; document D1 live-verification debt in task notes, not hidden as complete
+- [ ] T034 [P] Run `quickstart.md` scenarios A–H; confirm Gate 2 (product-level) and Gate 3 (end-to-end real-player journey) satisfied; document D1 live-verification debt (`Principle VI` / FR-018/FR-019) in task notes, not hidden as complete; verification-only attestation
 - [ ] T034b [P] Explicit SC-003 audit: verify 100% of observed soil health values within [0,100] across all bin lifecycle states; property-based invariant `ForAll<int>(h => h >= 0 && h <= 100)`
 - [ ] T035b [P] Explicit SC-009 audit: repeated collect from full inventory + pick-up/re-place mid-batch + floating-world-debris with unavailable inventory; zero destruction attested
 - [ ] T035 [P] Confirm `Item.modData` progress serialization works across pickup / placement / dislodgement; floating-world-debris case with full inventory (`FR-005c` / `data-model.md`)
