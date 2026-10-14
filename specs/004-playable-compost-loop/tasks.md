@@ -14,7 +14,7 @@
 
 **Purpose**: Project initialization and asset-registration infrastructure
 
-- [ ] T001 Initialize `LivingRoots/Constants.cs` / `ModConstants.cs` with `MaturationDays = 2`, `RestorationAmount = 15`, item IDs (`LivingRoots.Compost`, `LivingRoots.CompostingBin`), recipe ID per `plan.md` and `contracts/contracts.md` §1.1–§1.4
+- [ ] T001 Initialize `LivingRoots/Constants.cs` / `ModConstants.cs` with `MaturationDays = 2`, `RestorationAmount = 15`, item IDs (`LivingRoots.Compost`, `LivingRoots.CompostingBin`), recipe ID per `plan.md` and `contracts/contracts.md` §1.1–§1.4 (T053 spike-decision.md route settled; no task needed — documented in spec Assumptions)
 - [ ] T002 Configure `LivingRoots/i18n/default.json` with refusal keys (`message.compost.invalid-tile`, `message.compost.max-health`, `message.compost.action-conflict`, `message.harvest.inventory-full`) per `contracts/contracts.md` §3 / `spec.md` FR-008a
 - [ ] T003 [P] Set up `LivingRoots/Domain/Interfaces/` skeleton (`ICompostApplicationService.cs`, `ICompostingBinService.cs`, `ISoilHealthService.cs`) per `AGENTS.md` DDD pattern (interface in Domain → impl in Services)
 - [ ] T004 [P] Configure `ModEntry.cs` `OnAssetRequested` handler structure for `Data/Objects`, `Data/BigCraftables`, `Data/Machines`, `Data/CraftingRecipes` per `plan.md` and `contracts/contracts.md` §1
