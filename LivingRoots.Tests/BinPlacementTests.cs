@@ -926,7 +926,6 @@ public class BinPlacementTests
     /// is gone in the same frame, with no save reload to clear it.
     /// </summary>
     /// <remarks>
-    /// RED today (T100 pending): the controller subscribes no world event, so
     /// nothing calls <see cref="ICompostingBinService.OnObjectRemoved"/> for a
     /// game-driven removal and the cache entry survives. The right-click
     /// dislodge path already prunes it
@@ -998,7 +997,6 @@ public class BinPlacementTests
     /// with the pruned record.
     /// </summary>
     /// <remarks>
-    /// RED today (T127 pending): <c>OnObjectListChanged</c> only
     /// prunes the live record (<c>OnObjectRemoved</c>) and never
     /// reconstructs the dislodged item, so a tool/explosion
     /// removal destroys the batch outright — the exact
@@ -1074,7 +1072,6 @@ public class BinPlacementTests
     /// generated non-farm interior name without it, placement stays refused.
     /// </summary>
     /// <remarks>
-    /// RED today (T105 pending): the controller compares the literal
     /// <c>location.Name == "Greenhouse"</c>, so every modded greenhouse-like
     /// name is refused. The generated greenhouse-like name is never exactly
     /// "Greenhouse" (both fragments are non-empty), so the property cannot pass
