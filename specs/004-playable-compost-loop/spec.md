@@ -309,7 +309,10 @@ every stated capability either works or is explicitly labelled as not yet workin
   Changing that transport belongs to the multiplayer work item and is deliberately not touched here.
 - **The soil health decay rules, the seasonal rules, and the processing duration of a bin already
   implemented remain as specified** in the earlier soil decay and compost specifications. This feature
-  makes them reachable and observable; it does not redesign them. There are exactly two deliberate
+  makes them reachable and observable; it does not redesign them. Decay logic (rate, seasonal
+  multiplier, greenhouse exemption, once-per-day application) is inherited unchanged from
+  `specs/002-soil-decay-compost/`; FR-013 does not restate those rules but references them by
+  inheritance, with property-based invariant `ForAll` enforcing clamped 0–100 after decay. There are exactly two deliberate
   exceptions, both settled by the maintainer in this feature's clarification session, and both of which
   override the earlier specification:
   1. **Compost quantity per batch.** The maturation multiplier is retired; one completed batch yields
