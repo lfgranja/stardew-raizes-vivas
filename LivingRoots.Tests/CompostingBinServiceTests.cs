@@ -1766,4 +1766,171 @@ public class CompostingBinServiceTests
         Assert.True(worldObject.shakeTimer > 0,
             "Invalid drop-in must shake the machine in addition to cancel cue (FR-008a).");
     }
+
+    // ------------------------------------------------------------------
+    // T224 (FR-005a/FR-012, F4 contradicts): the retired 1-5 maturation
+    // multiplier must not run anywhere on the production paths. Collecting
+    // a finished batch pays exactly one compost and persists no maturation
+    // trace; repeated day-start processing never levels maturation up and
+    // idle days record no reset trace; and the CollectCompost doc contract
+    // states exactly one item. Fixed-literals — property-based N/A (no
+    // input domain beyond the fixed yield).
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// T224 (FR-005a): collecting a finished batch staged through the
+    /// production path persists no maturation trace — no collect-time
+    /// increment runs. RED today: CollectCompost increments MaturationLevel
+    /// (1 to 2), so the emptied bin is still persisted with level 2.
+    /// </summary>
+    [Fact]
+    public void T224_CollectCompost_LeavesNoMaturationTraceInPersistedSnapshot()
+    {
+        var item = CreateValidItem();
+        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
+        _timeStub.TotalDays = 1;
+
+        var tile = new Vector2(10, 10);
+        _service.AddWaste("Farm", tile, item);
+        _timeStub.TotalDays = 3;
+        _service.ProcessDayStart("Farm");
+        Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", tile));
+
+        CompostingBinData? savedData = null;
+        _mockModDataService
+            .Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
+            .Callback<CompostingBinData, string>((data, _) => savedData = data);
+
+        var result = _service.CollectCompost("Farm", tile);
+        Assert.Equal(1, result);
+        Assert.Equal(CompostingBinState.Empty, _service.GetBinState("Farm", tile));
+
+        _service.SaveData("t224-collect");
+        Assert.NotNull(savedData);
+        bool hasRecord = savedData!.LocationBinData.TryGetValue("Farm", out var bins)
+            && bins.ContainsKey("10,10");
+        Assert.False(
+            hasRecord,
+            "T224 FR-005a: collecting a finished batch must persist no maturation trace — an emptied bin at default maturation is sparse-dropped.");
+    }
+
+    /// <summary>
+    /// T224 (FR-005a): four full add/process/collect cycles through the
+    /// production day-start path persist no maturation trace — the 7-day
+    /// level-up never runs. RED today: ConsecutiveActiveDays accumulates to
+    /// 7 and MaturationLevel increments, so the bin persists with level 3.
+    /// </summary>
+    [Fact]
+    public void T224_ProcessDayStart_AcrossActiveCycles_LeavesNoMaturationTraceInPersistedSnapshot()
+    {
+        var item = CreateValidItem();
+        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
+        var tile = new Vector2(10, 10);
+
+        int day = 1;
+        for (int cycle = 0; cycle < 4; cycle++)
+        {
+            _timeStub.TotalDays = day;
+            _service.AddWaste("Farm", tile, item);
+            _timeStub.TotalDays = day + 1;
+            _service.ProcessDayStart("Farm");
+            _timeStub.TotalDays = day + 2;
+            _service.ProcessDayStart("Farm");
+            Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", tile));
+            Assert.Equal(1, _service.CollectCompost("Farm", tile));
+            day += 3;
+        }
+
+        CompostingBinData? savedData = null;
+        _mockModDataService
+            .Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
+            .Callback<CompostingBinData, string>((data, _) => savedData = data);
+
+        _service.SaveData("t224-active-cycles");
+        Assert.NotNull(savedData);
+        bool hasRecord = savedData!.LocationBinData.TryGetValue("Farm", out var bins)
+            && bins.ContainsKey("10,10");
+        Assert.False(
+            hasRecord,
+            "T224 FR-005a: repeated day-start processing must never level maturation up — an emptied bin at default maturation is sparse-dropped.");
+    }
+
+    /// <summary>
+    /// T224 (FR-012): idle day-start processing records no maturation/idle
+    /// trace — the 14-day reset path has no counters to run on. RED today:
+    /// ConsecutiveIdleDays accumulates, so the untouched bin is persisted.
+    /// </summary>
+    [Fact]
+    public void T224_ProcessDayStart_AcrossIdleDays_LeavesNoMaturationTraceInPersistedSnapshot()
+    {
+        var data = new CompostingBinData();
+        data.LocationBinData["Farm"] = new Dictionary<string, CompostingBinStateData>
+        {
+            ["10,10"] = new CompostingBinStateData { State = "Empty" }
+        };
+        _mockModDataService.Setup(x => x.LoadData<CompostingBinData>(It.IsAny<string>())).Returns(data);
+        _service.LoadData("t224-idle");
+
+        for (int day = 2; day <= 6; day++)
+        {
+            _timeStub.TotalDays = day;
+            _service.ProcessDayStart("Farm");
+        }
+
+        CompostingBinData? savedData = null;
+        _mockModDataService
+            .Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
+            .Callback<CompostingBinData, string>((snapshot, _) => savedData = snapshot);
+
+        _service.SaveData("t224-idle");
+        Assert.NotNull(savedData);
+        bool hasRecord = savedData!.LocationBinData.TryGetValue("Farm", out var bins)
+            && bins.ContainsKey("10,10");
+        Assert.False(
+            hasRecord,
+            "T224 FR-012: idle day-start processing must record no maturation/idle trace — an untouched bin persists nothing.");
+    }
+
+    /// <summary>
+    /// T224 (FR-005a): the CollectCompost doc contract states exactly one
+    /// item. RED today: ICompostingBinService documents "equal to maturation
+    /// level", the retired multiplier payout.
+    /// </summary>
+    [Fact]
+    public void T224_CollectCompost_DocContract_StatesExactlyOneItem()
+    {
+        var interfacePath = System.IO.Path.Combine(
+            LocateRepoRoot(),
+            "LivingRoots",
+            "Domain",
+            "Interfaces",
+            "ICompostingBinService.cs");
+        Assert.True(System.IO.File.Exists(interfacePath), $"Interface source not found at {interfacePath}.");
+
+        var content = System.IO.File.ReadAllText(interfacePath);
+        const string marker = "Collects finished compost";
+        int index = content.IndexOf(marker, System.StringComparison.Ordinal);
+        Assert.True(index >= 0, "CollectCompost doc comment must be present in ICompostingBinService.cs.");
+
+        string window = content.Substring(index, Math.Min(800, content.Length - index));
+        Assert.Contains("exactly one", window, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Walks up from the test output directory to the directory containing
+    /// <c>Stardew-LivingRoots.sln</c> (the ProductionSourceGuardTests pattern),
+    /// so the doc-contract test reads the interface source regardless of the
+    /// runner's working directory.
+    /// </summary>
+    private static string LocateRepoRoot()
+    {
+        var directory = new System.IO.DirectoryInfo(System.AppContext.BaseDirectory);
+        while (directory != null && !System.IO.File.Exists(System.IO.Path.Combine(directory.FullName, "Stardew-LivingRoots.sln")))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.True(directory != null, "Could not locate Stardew-LivingRoots.sln above the test output directory.");
+        return directory!.FullName;
+    }
 }
