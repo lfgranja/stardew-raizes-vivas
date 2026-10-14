@@ -25,10 +25,10 @@
 
 **Purpose**: Per Constitution IV / user input #1 — tests written first, failing for the right reason (RED), blocking all implementation until written (not passing; failure attests design understanding). Delegated to maximum viable parallel agents (`[P]`).
 
-- [ ] T000-R1 [P] Write failing `CompostingBinDataTests.cs` (tolerant reader: corrupt entries quarantined, obsolete fields ignored) — must fail before T005. Note: RED-phase only: design invariant for tolerant reader; must fail before T005. Not integration test.
+- [ ] T000-R1 [P] Write failing `CompostingBinDataTests.cs` (tolerant reader: corrupt entries quarantined, obsolete fields ignored) — must fail before T005. Property-based invariant (`FsCheck.ForAll`) required for corrupt-entry isolation; RED-phase only: design invariant for tolerant reader; not integration test.
 - [ ] T000-R2 [P] Write failing `CompostingBinStateModelTests.cs` (state-machine monotonicity: Empty→Processing→Ready, max stack=1 when progress) — must fail before T006
-- [ ] T000-R3 [P] Write failing `SoilHealthServiceTests.cs` (bounds invariant 0–100, +15 clamp, reactive event fires) — must fail before T008
-- [ ] T000-R4 [P] Write failing `CompostApplicationServiceTests.cs` (exactly 1 consumed, refusal reasons, crop tolerance) — must fail before T022
+- [ ] T000-R3 [P] Write failing `SoilHealthServiceTests.cs` (bounds invariant 0–100, +15 clamp, reactive event fires) — must fail before T008. Property-based `FsCheck.ForAll` required: `h => h >= 0 && h <= 100`; apply +15 => clamped to 100 or refused.
+- [ ] T000-R4 [P] Write failing `CompostApplicationServiceTests.cs` (exactly 1 consumed, refusal reasons, crop tolerance) — must fail before T022. Property-based `FsCheck.ForAll`: consumption always exactly 1 (or refused) and soil health +15 (or refused).
 - [ ] T000-R5 [P] Write failing `MultiplayerConcurrencyTests.cs` stub (first-wins atomic lock, refusal message; stub-only / D1 debt explicit — SC-010 / FR-019) — must fail before T011c; property-based via FsCheck `ForAll` for invariants
 
 **Gate**: These 5 tasks exist and are RED (failing) → unlock Phase 1 (Setup) and Phase 2 (Foundational). No GREEN before Phase 2 starts.
