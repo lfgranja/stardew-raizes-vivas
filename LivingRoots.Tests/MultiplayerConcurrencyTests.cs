@@ -6,6 +6,8 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using FsCheck;
+using FsCheck.Xunit;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Interfaces;
@@ -1460,6 +1462,386 @@ public class MultiplayerConcurrencyTests
             s => s.UpdateHealth("Farm", tile, ModConstants.RestorationAmount),
             Times.Once,
             "T125/SC-010: the production CompostApplicationService must be the one that mutated soil health.");
+    }
+
+    /// <summary>
+    /// Reads one bin's observable maturation counters through the production
+    /// persistence snapshot seam (<c>CreateSaveSnapshot</c> — the same seam
+    /// <c>SaveData</c> writes), which is how a duplicate same-day delivery's
+    /// double-increment becomes observable without any test-local guard.
+    /// </summary>
+    /// <remarks>
+    /// Template: <c>CompostingBinPersistenceTests.ReadPersistedRecord</c>, which
+    /// reads the same private snapshot seam by reflection because no public
+    /// member exposes the counters.
+    /// </remarks>
+    /// <param name="service">The production bin service under test.</param>
+    /// <param name="locationName">The location holding the bin.</param>
+    /// <param name="tile">The tile coordinate of the bin.</param>
+    /// <returns>The persisted record for the bin, or null when absent.</returns>
+    private static CompostingBinStateData? ReadPersistedBinRecord(
+        CompostingBinService service,
+        string locationName,
+        Vector2 tile)
+    {
+        var snapshot = (CompostingBinData?)typeof(CompostingBinService)
+            .GetMethod("CreateSaveSnapshot", BindingFlags.NonPublic | BindingFlags.Instance)
+            ?.Invoke(service, null);
+        if (snapshot == null)
+        {
+            return null;
+        }
+
+        string key = (int)tile.X + "," + (int)tile.Y;
+        if (snapshot.LocationBinData.TryGetValue(locationName, out var bins) && bins.TryGetValue(key, out var record))
+        {
+            return record;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Allocates a <see cref="StardewValley.Farmer"/> carrying the given multiplayer
+    /// identity without running its constructor, so the production
+    /// <c>OnButtonPressed</c> farmer-id resolution observes a genuine non-zero actor.
+    /// Template: the same helper in <c>BinPlacementTests</c>.
+    /// </summary>
+    /// <remarks>
+    /// Field initializers do not run on constructor-less instances, so the
+    /// <c>uniqueMultiplayerID</c> net backing field is populated directly
+    /// (the <c>UniqueMultiplayerID</c> setter dereferences it and throws on a
+    /// null field).
+    /// </remarks>
+    /// <param name="farmerId">The multiplayer identity the farmer carries.</param>
+    /// <returns>A farmer stub carrying <paramref name="farmerId"/>.</returns>
+    private static Farmer CreateFarmerWithId(long farmerId)
+    {
+        var farmer = (Farmer)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(Farmer));
+        typeof(Farmer).GetField("uniqueMultiplayerID", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)!.SetValue(farmer, new Netcode.NetLong(farmerId));
+        return farmer;
+    }
+
+    // =========================================================================
+    // Task T225 [P] [US2] Tests: same-day ProcessDayStart idempotency (FR-004, F5)
+    // =========================================================================
+
+    /// <summary>
+    /// T225 [P] [US2] (FR-004, F5 contradicts): repeated same-day
+    /// <see cref="CompostingBinService.ProcessDayStart"/> deliveries advance
+    /// processing exactly once through the production service. For any repeat count
+    /// within one day, a Processing bin's <c>ConsecutiveActiveDays</c> and an Empty
+    /// bin's <c>ConsecutiveIdleDays</c> each advance by exactly one — the duplicate
+    /// deliveries a multiplayer session produces must not double-count the day.
+    /// </summary>
+    /// <remarks>
+    /// RED today (T251 pending): <c>ProcessDayStart</c> carries no per-day
+    /// idempotency guard, so every same-day call increments the counters again
+    /// and the snapshot reads the repeat count instead of one. No test-local guard
+    /// is used here — the service is called unconditionally in a loop, mirroring
+    /// <see cref="DailySoilDecay_SameDayProcessedTwice_AppliesDecayExactlyOnce"/>
+    /// (the FR-013 pattern), whose production <c>SoilDecayService</c> guard is the
+    /// model for the missing one. Template for the arrange/act/assert shape: the
+    /// T019 day-advance tests; template for the counter observation: the
+    /// persistence suite's snapshot seam (<see cref="ReadPersistedBinRecord"/>).
+    /// The repeat count is capped so no run reaches the 7-day maturation
+    /// level-up, keeping the assertion on the exactly-once increment itself.
+    /// </remarks>
+    [Property(MaxTest = 100)]
+    public void ProcessDayStart_SameDayRepeatedCalls_AdvanceProcessingExactlyOnce(
+        PositiveInt arbitraryRepeats)
+    {
+        int repeats = (arbitraryRepeats.Get % 5) + 2;
+
+        var service = CreateBinService();
+        var processingTile = new Vector2(10, 10);
+        var idleTile = new Vector2(11, 10);
+
+        _timeStub.TotalDays = 1;
+        service.AddWaste("Farm", processingTile, CreateWasteItem());
+        service.OnBinPlaced("Farm", idleTile);
+
+        for (int i = 0; i < repeats; i++)
+        {
+            service.ProcessDayStart("Farm");
+        }
+
+        var activeRecord = ReadPersistedBinRecord(service, "Farm", processingTile);
+        Assert.NotNull(activeRecord);
+        Assert.Equal(1, activeRecord!.ConsecutiveActiveDays);
+
+        var idleRecord = ReadPersistedBinRecord(service, "Farm", idleTile);
+        Assert.NotNull(idleRecord);
+        Assert.Equal(1, idleRecord!.ConsecutiveIdleDays);
+
+        Assert.Equal(CompostingBinState.Processing, service.GetBinState("Farm", processingTile));
+    }
+
+    // =========================================================================
+    // Task T240 [P] Tests: controller held-item gate parity with the service (FR-002, F21)
+    // =========================================================================
+
+    /// <summary>
+    /// T240 [P] (FR-002, F21 partial): the controller's held-item gate accepts
+    /// exactly the item-id forms <see cref="CompostApplicationService"/> accepts —
+    /// no silent fall-through. For every generated id form (the unqualified
+    /// <c>LivingRoots.Compost</c> and the qualified <c>(O)LivingRoots.Compost</c>
+    /// carried as <c>ItemId</c>), the service itself applies on a valid tile AND
+    /// the production <c>OnButtonPressed</c> path routes the same held item to
+    /// application, observed as exactly one soil-health update on the cursor tile.
+    /// </summary>
+    /// <remarks>
+    /// RED today (T267 pending): the controller gate omits
+    /// <c>heldItem.ItemId == ModConstants.QualifiedCompostItemId</c> while the
+    /// service's <c>HoldsCompost</c> accepts it, so an item carrying the qualified
+    /// id as its <c>ItemId</c> (whose <c>QualifiedItemId</c> is then doubly
+    /// prefixed) applies through the service directly yet falls through every
+    /// controller branch — no application, no message — and the routed update
+    /// never happens. Template: <see cref="T125_SC010_Headline_DrivesProductionLockAndAppService"/>
+    /// for the production application wiring, and the T122 conflict tests for the
+    /// production input-path wiring.
+    /// </remarks>
+    [Property(MaxTest = 100)]
+    public void OnButtonPressed_HeldItemGate_AcceptsEveryFormServiceAccepts(
+        PositiveInt arbitraryForm)
+    {
+        int form = arbitraryForm.Get % 2;
+        Item heldCompost = form == 0
+            ? ItemFactory.CreateItem(ModConstants.CompostItemId)
+            : ItemFactory.CreateItem(ModConstants.QualifiedCompostItemId);
+        heldCompost.Stack = 5;
+
+        var soilHealth = new Mock<ISoilHealthService>();
+        soilHealth.Setup(s => s.GetSoilHealth(It.IsAny<string>(), It.IsAny<Vector2>())).Returns(50f);
+
+        var playerProvider = new PlayerProviderStub();
+        playerProvider.CurrentItem = heldCompost;
+
+        var realApplication = new CompostApplicationService(
+            soilHealth.Object,
+            playerProvider,
+            _mockMonitor.Object);
+        var lockService = new HostAtomicLockService();
+        var controller = CreateController(CreateBinService(), realApplication, lockService, playerProvider);
+
+        var serviceTile = new Vector2(14, 14);
+        var serviceFixture = new GameLocationFixture("Farm", isFarm: true);
+        serviceFixture.AddHoeDirtTile((int)serviceTile.X, (int)serviceTile.Y);
+
+        Assert.True(
+            realApplication.TryApplyCompost(serviceFixture.Location, serviceTile),
+            "Precondition: the service itself must accept this compost id form on a valid tile.");
+
+        var inputEvents = WireControllerEventSubscriptions();
+        controller.RegisterEvents();
+
+        var tile = new Vector2(16, 16);
+        var fixture = new GameLocationFixture("Farm", isFarm: true);
+        fixture.AddHoeDirtTile((int)tile.X, (int)tile.Y);
+        var originalLocation = Game1.currentLocation;
+        Game1.currentLocation = fixture.Location;
+        var cursor = new Mock<ICursorPosition>();
+        cursor.Setup(x => x.GrabTile).Returns(tile);
+        _mockHelper.Setup(x => x.Input.GetCursorPosition()).Returns(cursor.Object);
+
+        try
+        {
+            var args = CreateButtonPressedEventArgs(SButton.MouseRight, cursor.Object);
+            inputEvents.Raise(x => x.ButtonPressed += null, args);
+        }
+        finally
+        {
+            Game1.currentLocation = originalLocation;
+        }
+
+        soilHealth.Verify(
+            s => s.UpdateHealth("Farm", tile, ModConstants.RestorationAmount),
+            Times.Once,
+            "FR-002: the controller gate must route every compost id form the service accepts to application — no silent fall-through.");
+    }
+
+    // =========================================================================
+    // Task T246 [P] [US2] Tests: SC-005/SC-010 bin evidence via production ModController (FR-004/FR-019)
+    // =========================================================================
+
+    /// <summary>
+    /// T246 [P] [US2] (FR-004/FR-019, SC-005/SC-010, F1/F5 follow-up): the
+    /// multi-day and concurrent-action evidence for bins is produced through the
+    /// production <see cref="ModController"/> path, never an inline
+    /// reimplementation. For any connected-player count, same-day day-start
+    /// deliveries through the controller's <c>OnDayStarted</c> advance processing
+    /// exactly once (SC-005); maturation to Ready runs through the same
+    /// controller tick; concurrent collects run through the production
+    /// <c>TryInteractWithBin</c> with exactly one winner and one compost (SC-010);
+    /// and an empty-handed collect on a second Ready bin through the production
+    /// <c>OnButtonPressed</c> input path grants exactly one compost with the bin
+    /// returning to Empty and the world object retained.
+    /// </summary>
+    /// <remarks>
+    /// RED today, for two stacked reasons. First, the day-start half trips the
+    /// missing idempotency guard (F5/T251): every same-day controller tick
+    /// re-increments the maturation counters. Second — and this is the documented
+    /// dependency on T221's fix (T247) — the closing collect trips the
+    /// dislodge-before-collect ordering (F1): <c>OnButtonPressed</c> removes the
+    /// Ready bin before <c>TryInteractWithBin</c> is reached, so no compost is
+    /// granted and the world object is gone. This test cannot go green until
+    /// T221's reachability fix lands, even after the idempotency guard does.
+    /// Template: <see cref="DayAdvance_ControllerDayStarted_AdvancesBinsInFarmAndGreenhouse"/>
+    /// for the <c>OnDayStarted</c> reflection seam,
+    /// <see cref="ConcurrentCollectCompost_TwoFarmersOnSameBin_FirstWins_SecondRefusedWithZeroDuplicateYield"/>
+    /// FsCheck 2.16.6 <c>[Property]</c> methods cannot return
+    /// <c>Task</c> (the runner throws <c>No instances of class
+    /// Testable for type Task</c>), so the concurrent phase below drives
+    /// raw threads off a start <c>Barrier</c> — the same deterministic
+    /// rendezvous primitive the suite already uses synchronously
+    /// (e.g. <c>contentionBarrier.SignalAndWait</c>), not a blocking
+    /// wait on an async call.
+    /// </remarks>
+    [Property(MaxTest = 100)]
+    public bool SC005_SC010_BinEvidence_ThroughProductionController(
+        PositiveInt arbitraryPlayerCount)
+    {
+        int farmhands = (arbitraryPlayerCount.Get % 3) + 1;
+        var session = MultiplayerFarmerStub.CreateSession(farmhands);
+        int playerCount = session.AllFarmers.Count;
+
+        var timeStub = new TimeProviderStub { TotalDays = 1 };
+        var serviceInventory = new RecordingPlayerInventory();
+        var mockModData = new Mock<IModDataService>();
+        var mockWasteValidator = new Mock<IOrganicWasteValidator>();
+        mockWasteValidator.Setup(x => x.IsValidOrganicWaste(It.IsAny<Item>())).Returns(true);
+        var binService = new CompostingBinService(
+            mockModData.Object,
+            _mockSaveIdProvider.Object,
+            mockWasteValidator.Object,
+            _mockMonitor.Object,
+            timeStub,
+            new CompostingBinFactory(),
+            serviceInventory,
+            _mockLocationProvider.Object);
+        var lockService = new HostAtomicLockService();
+        var playerProvider = new PlayerProviderStub();
+        playerProvider.CurrentItem = null;
+        playerProvider.CurrentPlayer = CreateFarmerWithId(7101L);
+        var controller = CreateController(binService, null, lockService, playerProvider);
+
+        var inputEvents = WireControllerEventSubscriptions();
+        controller.RegisterEvents();
+
+        var fixture = new GameLocationFixture("Farm", isFarm: true);
+        var dayStartTile = new Vector2(10, 10);
+        var collectTile = new Vector2(12, 12);
+        fixture.Location.Objects.Add(dayStartTile, new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId });
+        fixture.Location.Objects.Add(collectTile, new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId });
+
+        timeStub.TotalDays = 1;
+        binService.AddWaste("Farm", dayStartTile, CreateWasteItem());
+        binService.AddWaste("Farm", collectTile, CreateWasteItem());
+
+        var onDayStarted = typeof(ModController).GetMethod("OnDayStarted", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(onDayStarted);
+
+        var originalLocation = Game1.currentLocation;
+        Game1.currentLocation = fixture.Location;
+
+        try
+        {
+            timeStub.TotalDays = 2;
+            for (int i = 0; i < playerCount; i++)
+            {
+                onDayStarted!.Invoke(controller, new object?[] { null, null });
+            }
+        }
+        finally
+        {
+            Game1.currentLocation = originalLocation;
+        }
+
+        var dayStartRecord = ReadPersistedBinRecord(binService, "Farm", dayStartTile);
+        Assert.NotNull(dayStartRecord);
+        Assert.Equal(1, dayStartRecord!.ConsecutiveActiveDays);
+        Assert.Equal(CompostingBinState.Processing, binService.GetBinState("Farm", dayStartTile));
+
+        originalLocation = Game1.currentLocation;
+        Game1.currentLocation = fixture.Location;
+
+        try
+        {
+            timeStub.TotalDays = 3;
+            onDayStarted!.Invoke(controller, new object?[] { null, null });
+        }
+        finally
+        {
+            Game1.currentLocation = originalLocation;
+        }
+
+        Assert.Equal(CompostingBinState.Ready, binService.GetBinState("Farm", dayStartTile));
+        Assert.Equal(CompostingBinState.Ready, binService.GetBinState("Farm", collectTile));
+
+        int compostBeforeConcurrent = serviceInventory.AddedItems.Count;
+        var farmers = session.AllFarmers.ToArray();
+        var concurrentResults = new bool[farmers.Length];
+        using var startBarrier = new System.Threading.Barrier(farmers.Length);
+        var concurrentThreads = new System.Collections.Generic.List<System.Threading.Thread>(farmers.Length);
+        for (int i = 0; i < farmers.Length; i++)
+        {
+            int index = i;
+            var thread = new System.Threading.Thread(() =>
+            {
+                var farmer = farmers[index];
+                startBarrier.SignalAndWait(TimeSpan.FromSeconds(30));
+                bool success = controller.TryInteractWithBin(
+                    fixture.Location,
+                    dayStartTile,
+                    farmer.FarmerId,
+                    farmer.CurrentItem,
+                    farmer.Inventory,
+                    msg => farmer.RecordRefusal(msg));
+
+                if (success)
+                {
+                    farmer.RecordSuccess();
+                }
+
+                concurrentResults[index] = success;
+            });
+            concurrentThreads.Add(thread);
+        }
+
+        concurrentThreads.ForEach(thread => thread.Start());
+        concurrentThreads.ForEach(thread => thread.Join(TimeSpan.FromSeconds(60)));
+        var results = concurrentResults.ToList();
+
+        Assert.Equal(1, results.Count(r => r));
+        Assert.Equal(playerCount - 1, results.Count(r => !r));
+        Assert.Equal(CompostingBinState.Empty, binService.GetBinState("Farm", dayStartTile));
+        Assert.Equal(compostBeforeConcurrent + 1, serviceInventory.AddedItems.Count);
+
+        var cursor = new Mock<ICursorPosition>();
+        cursor.Setup(x => x.GrabTile).Returns(collectTile);
+        _mockHelper.Setup(x => x.Input.GetCursorPosition()).Returns(cursor.Object);
+
+        originalLocation = Game1.currentLocation;
+        Game1.currentLocation = fixture.Location;
+
+        try
+        {
+            var args = CreateButtonPressedEventArgs(SButton.MouseRight, cursor.Object);
+            inputEvents.Raise(x => x.ButtonPressed += null, args);
+        }
+        finally
+        {
+            Game1.currentLocation = originalLocation;
+        }
+
+        Assert.Equal(compostBeforeConcurrent + 2, serviceInventory.AddedItems.Count);
+        Assert.Equal(ModConstants.CompostItemId, serviceInventory.AddedItems[serviceInventory.AddedItems.Count - 1].ItemId);
+        Assert.Equal(CompostingBinState.Empty, binService.GetBinState("Farm", collectTile));
+        Assert.True(
+            fixture.Location.Objects.ContainsKey(collectTile),
+            "T221 dependency: collecting a Ready bin through OnButtonPressed must not dislodge it — the world object stays on the tile.");
+
+        return true;
     }
 
 }
