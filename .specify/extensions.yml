@@ -3,4 +3,8 @@ installed:
 - bug
 settings:
   auto_execute_hooks: true
-hooks: {}
+hooks:
+  after_analyze:
+    - name: atomic-commit-hook
+      command: bash .specify/scripts/atomic-commit-hook.sh
+      description: deterministic conventional commit after each edit — Process #6
