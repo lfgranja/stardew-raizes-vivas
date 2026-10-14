@@ -60,7 +60,7 @@ public class VisualizationInvariantsTests
     public Property T025b_NullCache_NoRender()
     {
         return Prop.ForAll(
-            NullableTileDataGenerator(),
+            Arb.From(NullableTileDataGenerator()),
             tileData =>
             {
                 var (service, colorMock) = BuildRenderService();
@@ -86,7 +86,7 @@ public class VisualizationInvariantsTests
     public Property T025b_InitializedCache_Render()
     {
         return Prop.ForAll(
-            TileDataGenerator(),
+            Arb.From(TileDataGenerator()),
             tileData =>
             {
                 var (service, colorMock) = BuildRenderService();
