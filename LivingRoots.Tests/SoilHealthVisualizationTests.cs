@@ -9,6 +9,7 @@ using FsCheck.Xunit;
 using LivingRoots;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
+using LivingRoots.Domain.Interfaces;
 using LivingRoots.Domain.Visualization;
 using LivingRoots.Services;
 using LivingRoots.Services.Visualization;
@@ -420,17 +421,12 @@ public class SoilHealthVisualizationTests
         NonNegativeInt tileY,
         float tileHealth)
     {
-        // Premise: health 0 is the FR-009 neutral-dirt
-        // baseline — the overlay renderer draws no overlay
-        // for it (OverlayRenderer.BuildOverlays), so the
-        // frame reports no value for it. The unrendered
-        // state is distinct from the unmeasured unknown
-        // sentinel, which still renders (and so still owes
-        // a reported value).
-        if (tileHealth == 0f)
-        {
-            return true;
-        }
+        // T222: no zero exemption — health 0 flows through the
+        // genuine assertions below. Health 0 is the FR-009
+        // neutral-dirt baseline (OverlayRenderer.BuildOverlays
+        // must draw no overlay for it), distinct from the
+        // unmeasured unknown sentinel, which still renders (and
+        // so still owes a reported value).
 
         // Arrange — the generated tile inside the frame's
         // viewport, and the monitor-captured frame logs the
@@ -495,14 +491,11 @@ public class SoilHealthVisualizationTests
             return unknownReported == "Unknown" && !unknownReported.Contains('%');
         }
 
-        // Measurable tile (finite, non-zero): overlay must report
-        // the drawable value exactly, never with a fabricated '%'.
-        // Poor floor at 1 means 0 < h < 1 must NOT be clamped
-        // to 1 in the reported value (no fabrication to floor).
-        if (tileHealth == 0f)
-        {
-            return true; // zero is unrendered baseline (FR-009), not a reportable overlay
-        }
+        // T222: no zero exemption — health 0 flows through the
+        // genuine assertions below. Zero is the FR-009 unrendered
+        // baseline, not a reportable overlay; the Poor floor at 1
+        // means 0 < h < 1 must NOT be clamped to 1 in the reported
+        // value (no fabrication to floor).
 
         var messages = new List<string>();
         var service = BuildDrawableValueFrameService(messages);
@@ -1073,16 +1066,339 @@ public class SoilHealthVisualizationTests
             return reported == "Unknown" && !reported.Contains('%') && !reported.Any(char.IsDigit);
         }
 
-        // Zero is the FR-009 neutral-dirt baseline: no overlay is drawn, so the
-        // frame owes no value — distinct from the unknown sentinel.
-        if (tileHealth == 0f)
-        {
-            return true;
-        }
+        // T222: no zero exemption — health 0 (the FR-009
+        // neutral-dirt baseline) flows through the genuine
+        // assertions below, distinct from the unknown sentinel.
 
         // Measurable: the exact drawable value, never a fabricated percentage.
         return !reported.Contains('%')
             && float.TryParse(reported, NumberStyles.Float, CultureInfo.CurrentCulture, out var drawn)
             && drawn == tileHealth;
+    }
+
+    // ──────────────────────────────────────────────
+    // T222 (FR-009/FR-010): health 0 renders zero overlays
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// T222 (FR-009/FR-010): health 0 renders ZERO overlays at
+    /// frame level. One frame carries the pinned zero tile on every
+    /// run (so the property cannot pass vacuously) plus the
+    /// generated sibling covering arbitrary tile states: a finite
+    /// non-zero sibling draws exactly one overlay carrying its own
+    /// value, a non-finite sibling draws the Unknown overlay, and a
+    /// zero sibling draws nothing — so for any generated health the
+    /// zero tile stays undrawn. Template: the T126 drawable-value
+    /// frame (<see cref="BuildDrawableValueFrameService"/> with the
+    /// stand-in batch and the absorbed draw boundary), counting the
+    /// "Overlay drawn: " destination logs instead of demanding the
+    /// value observable. RED today:
+    /// <c>OverlayRenderer.BuildOverlays</c> clamps with
+    /// <c>Math.Max(healthValue, 1f)</c> and never skips zero, so the
+    /// zero tile draws a Poor strip overlay and every run observes
+    /// an outstanding draw.
+    /// </summary>
+    [Property(MaxTest = 100)]
+    public bool T222_HealthZero_RendersZeroOverlays_FrameLevel(float tileHealth)
+    {
+        // Arrange — the pinned zero tile plus the generated sibling,
+        // both inside the frame's viewport.
+        var zeroTile = new Point(DrawnValueTile.X, DrawnValueTile.Y);
+        var arbitraryTile = new Point(DrawnValueTile.X + 1, DrawnValueTile.Y + 1);
+        var messages = new List<string>();
+        var service = BuildDrawableValueFrameService(messages);
+        service.SetTileHealthData(new Dictionary<Point, float>
+        {
+            { zeroTile, 0f },
+            { arbitraryTile, tileHealth }
+        });
+
+        // Act — one frame through the stand-in batch (the
+        // headless-host draw boundary is absorbed inside the runner).
+        messages.Clear();
+        using (new CameraViewportState(DrawnValueViewport))
+        {
+            Record.Exception(() =>
+                service.RenderOverlays(StandInSpriteBatch(), DrawnValueViewport, new GameTime()));
+        }
+
+        var drawnCount = 0;
+        string? drawnValue = null;
+        foreach (var message in messages)
+        {
+            if (message.StartsWith("Overlay drawn: ", StringComparison.Ordinal))
+            {
+                drawnCount++;
+                drawnValue = message.Substring("Overlay drawn: ".Length);
+            }
+        }
+
+        // Assert — the zero tile never draws, whatever the generated
+        // sibling carries.
+        if (tileHealth == 0f)
+        {
+            return drawnCount == 0;
+        }
+
+        if (float.IsNaN(tileHealth) || float.IsInfinity(tileHealth))
+        {
+            return drawnCount == 1 && drawnValue == "Unknown";
+        }
+
+        return drawnCount == 1
+            && drawnValue != null
+            && float.TryParse(drawnValue, NumberStyles.Float, CultureInfo.CurrentCulture, out var drawn)
+            && drawn == tileHealth;
+    }
+
+    // ──────────────────────────────────────────────
+    // T227 (FR-010): monotone palette + config-change cache
+    // invalidation
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// T227 (FR-010): the production palette is monotone
+    /// non-decreasing across the whole 0–100 range (no backwards
+    /// step at 33/34 or 66/67) AND a configuration change
+    /// invalidates the overlay cache on the next frame.
+    /// Monotonicity is asserted on the green channel, which carries
+    /// the poor-to-healthy progression of the earth-tone palette
+    /// (Poor G28 → Moderate G119 → Healthy G128): red, blue and
+    /// luminance are not monotone by palette design, so they cannot
+    /// be the monotone observable. Non-finite inputs take the
+    /// Unknown label path instead of the monotonicity path. The
+    /// generated health drives both the adjacent-step check (mapped
+    /// into [0, 99] so every run exercises a real step) and, via the
+    /// pinned 33/34 and 66/67 boundary pairs, the tier joints. The
+    /// cache half drives the private
+    /// <c>ModController.ApplyVisualizationConfigurationChange</c>
+    /// twice across a swapped configuration instance (the same
+    /// reference-inequality signal the render frame uses) and
+    /// requires an <c>InvalidateCache</c> call on the visualization
+    /// service. Template: the T126 FsCheck property shape
+    /// (<c>[Property(MaxTest = 100)]</c> over an arbitrary float)
+    /// and the T094 reflection seam for the composition root. RED
+    /// today on both halves: health 66 resolves near-green
+    /// (G127) while 67 snaps back to moderate (G119), and the
+    /// configuration-change path never calls
+    /// <c>InvalidateCache</c>.
+    /// </summary>
+    [Property(MaxTest = 100)]
+    public bool T227_ColorMonotone_AndConfigChangeInvalidatesOverlayCache(float tileHealth)
+    {
+        // Half 1 — monotone palette over the generated health.
+        if (float.IsNaN(tileHealth) || float.IsInfinity(tileHealth))
+        {
+            var unknownPalette = new ColorInterpolationService();
+            if (unknownPalette.GetCategoryForHealth(tileHealth) != HealthCategory.Unknown)
+            {
+                return false;
+            }
+
+            if (!unknownPalette.GetColorForHealth(tileHealth, 1f).Equals(ModConstants.UnknownColor))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if (!T227_GreenChannelNonDecreasingAtTierJoints())
+            {
+                return false;
+            }
+
+            var lo = (float)(Math.Abs((double)tileHealth) % 99.0);
+            var hi = lo + 1f;
+            var stepPalette = new ColorInterpolationService();
+            if (stepPalette.GetColorForHealth(hi, 1f).G < stepPalette.GetColorForHealth(lo, 1f).G)
+            {
+                return false;
+            }
+        }
+
+        // Half 2 — a configuration change invalidates the overlay
+        // cache on the next frame.
+        return T227_ConfigurationChangeInvalidatesOverlayCache();
+    }
+
+    /// <summary>
+    /// The pinned tier-joint half of T227: the green channel must
+    /// not step backwards at either interpolation joint (33/34 or
+    /// 66/67). Fails today at 66/67 (G127 snaps back to G119).
+    /// </summary>
+    private static bool T227_GreenChannelNonDecreasingAtTierJoints()
+    {
+        var palette = new ColorInterpolationService();
+
+        var at33 = palette.GetColorForHealth(33f, 1f);
+        var at34 = palette.GetColorForHealth(34f, 1f);
+        if (at34.G < at33.G)
+        {
+            return false;
+        }
+
+        var at66 = palette.GetColorForHealth(66f, 1f);
+        var at67 = palette.GetColorForHealth(67f, 1f);
+        if (at67.G < at66.G)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The cache-invalidation half of T227: applying a swapped
+    /// configuration instance through the production
+    /// <c>ModController.ApplyVisualizationConfigurationChange</c>
+    /// path must invalidate the visualization overlay cache, so the
+    /// next frame cannot serve the stale overlay list. Fails today:
+    /// the path updates the palette and persists the configuration
+    /// but never calls <c>InvalidateCache</c>.
+    /// </summary>
+    private static bool T227_ConfigurationChangeInvalidatesOverlayCache()
+    {
+        var visualizationService = new Mock<IVisualizationService>();
+        var configurationService = new Mock<IVisualizationConfigurationService>();
+        var colorService = new Mock<IColorInterpolationService>();
+
+        configurationService
+            .Setup(c => c.GetConfiguration())
+            .Returns(new VisualizationConfiguration
+            {
+                OverlaysEnabled = true,
+                Opacity = ModConstants.DefaultOpacity,
+                ShowPatterns = false
+            });
+
+        var controller = T227_BuildConfigurationChangeController(
+            visualizationService,
+            configurationService,
+            colorService);
+
+        T227_InvokeApplyVisualizationConfigurationChange(controller, "test-save");
+
+        configurationService
+            .Setup(c => c.GetConfiguration())
+            .Returns(new VisualizationConfiguration
+            {
+                OverlaysEnabled = true,
+                Opacity = 0.9f,
+                ShowPatterns = true
+            });
+
+        T227_InvokeApplyVisualizationConfigurationChange(controller, "test-save");
+
+        foreach (var invocation in visualizationService.Invocations)
+        {
+            if (string.Equals(invocation.Method.Name, nameof(IVisualizationService.InvalidateCache), StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Builds the production controller around mocked seams for the
+    /// T227 cache half (the <c>MultiplayerConcurrencyTests</c>
+    /// controller-harness shape).
+    /// </summary>
+    private static ModController T227_BuildConfigurationChangeController(
+        Mock<IVisualizationService> visualizationService,
+        Mock<IVisualizationConfigurationService> configurationService,
+        Mock<IColorInterpolationService> colorService)
+    {
+        var helper = new Mock<IModHelper>();
+        var monitor = new Mock<IMonitor>();
+        var manifest = new Mock<IManifest>();
+        var soilHealthService = new Mock<ISoilHealthService>();
+        var saveIdProvider = new Mock<ISaveIdProvider>();
+        var compostingBinService = new Mock<ICompostingBinService>();
+        var soilDecayService = new Mock<ISoilDecayService>();
+
+        manifest.Setup(m => m.UniqueID).Returns("test.mod.id");
+        manifest.Setup(m => m.Version).Returns(new SemanticVersion(1, 0, 0));
+
+        return new ModController(
+            helper.Object,
+            monitor.Object,
+            manifest.Object,
+            soilHealthService.Object,
+            saveIdProvider.Object,
+            compostingBinService.Object,
+            soilDecayService.Object,
+            null,
+            visualizationService.Object,
+            configurationService.Object,
+            null,
+            null,
+            colorService.Object);
+    }
+
+    /// <summary>
+    /// Invokes the private production configuration-change path (the
+    /// T094 reflection seam-shape for the composition root's private
+    /// wiring).
+    /// </summary>
+    private static void T227_InvokeApplyVisualizationConfigurationChange(ModController controller, string saveId)
+    {
+        var method = typeof(ModController).GetMethod(
+            "ApplyVisualizationConfigurationChange",
+            BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(method);
+        method.Invoke(controller, new object[] { saveId });
+    }
+
+    // ──────────────────────────────────────────────
+    // T235 (FR-011/FR-010): one log record per drawn frame
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// T235 (FR-011/FR-010): one frame drawing one tile emits
+    /// exactly one overlay log record — no duplicate drawn-value log
+    /// and no third per-overlay tint log. Template: the T126
+    /// drawable-value frame (<see cref="BuildDrawableValueFrameService"/>
+    /// with the stand-in batch and the absorbed draw boundary),
+    /// counting every overlay-prefixed record for the frame. Fixed
+    /// count assertion — property-based N/A (no input domain beyond
+    /// the fixed frame). RED today: the draw path emits three
+    /// records per overlay ("Overlay value drawn: ", the duplicate
+    /// "Overlay drawn: ", and "Overlay tint drawn: "), so the single
+    /// count fails.
+    /// </summary>
+    [Fact]
+    public void T235_RenderOverlays_EmitsExactlyOneLogRecordPerDrawnTile()
+    {
+        // Arrange — one measurable tile, one frame.
+        var messages = new List<string>();
+        var service = BuildDrawableValueFrameService(messages);
+        service.SetTileHealthData(new Dictionary<Point, float>
+        {
+            { DrawnValueTile, 50f }
+        });
+
+        // Act — one frame through the stand-in batch.
+        messages.Clear();
+        using (new CameraViewportState(DrawnValueViewport))
+        {
+            Record.Exception(() =>
+                service.RenderOverlays(StandInSpriteBatch(), DrawnValueViewport, new GameTime()));
+        }
+
+        // Assert — exactly one overlay record for the one drawn tile.
+        var overlayRecords = new List<string>();
+        foreach (var message in messages)
+        {
+            if (message.StartsWith("Overlay value drawn: ", StringComparison.Ordinal)
+                || message.StartsWith("Overlay drawn: ", StringComparison.Ordinal)
+                || message.StartsWith("Overlay tint drawn: ", StringComparison.Ordinal))
+            {
+                overlayRecords.Add(message);
+            }
+        }
+
+        Assert.Single(overlayRecords);
     }
 }
