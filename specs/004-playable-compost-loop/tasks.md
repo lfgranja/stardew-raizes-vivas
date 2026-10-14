@@ -163,6 +163,7 @@
 ### Parallel Opportunities
 
 - `T003` / `T004` / `T012`–`T014` / `T015` (different files, no shared state) — `[P]` marked.
+DEPENDENCY: T003 (structural skeleton) must exist before T000-R1 (RED tests) can compile, but T003 contains no production logic — structural only.
 - `T005`–`T011c` (foundational) can run in parallel within Phase 2 if staffed.
 - Once Phase 2 completes: `US1`, `US2` (with fixtures), `US3` (with fixtures), `US4` can proceed in parallel by different developers.
 - `T030` / `T031` / `T032` / `T033` (polish / stub / security / format) independent of story order — can start once relevant service code exists.
