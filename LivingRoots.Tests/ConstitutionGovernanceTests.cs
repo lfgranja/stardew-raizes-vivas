@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Text.RegularExpressions;
 
@@ -57,6 +58,53 @@ namespace LivingRoots.Tests
             Assert.True(
                 !singlePlayerOnly.IsMatch(content),
                 "The constitution on disk must not declare 'Single-player only' scope; Principle VI (v2.0.0) supersedes that constraint.");
+        }
+
+        /// <summary>
+        /// T241 (F22, partial, Constitution Governance): <c>.specify/memory/constitution.md:8-10</c>
+        /// still carries the pre-merge flag "amendment merges only after human
+        /// review and approval. Until ratified it is drafted, not governing",
+        /// contradicting the ratified footer (<c>**Version**: 2.0.0 |
+        /// **Ratified**: 2026-09-05 | **Last Amended**: 2026-10-13</c> at :76),
+        /// and the header reports the wrong amended date. The flag must be gone
+        /// and the header and footer amendment dates must agree. TDD red-first:
+        /// this test is written to FAIL against the current file and BLOCKS T268
+        /// (delete the stale flag, align the dates). Fixed-document assertion —
+        /// property-based testing N/A (no input domain to generate over).
+        /// </summary>
+        [Fact]
+        public void Constitution_CarriesNoStaleGovernanceFlagAndHeaderFooterDatesAgree()
+        {
+            // Arrange
+            var repoRoot = LocateRepoRoot();
+            var constitutionPath = Path.Combine(repoRoot, ".specify", "memory", "constitution.md");
+            Assert.True(File.Exists(constitutionPath), $"Constitution not found at {constitutionPath}.");
+
+            var content = File.ReadAllText(constitutionPath);
+
+            // Assert 1 — the pre-merge governance flag (:8-10) must be gone now
+            // that the v2.0.0 amendment is ratified (:76).
+            var staleFlag = new Regex(@"Until ratified|not governing", RegexOptions.IgnoreCase);
+            Assert.True(
+                !staleFlag.IsMatch(content),
+                ".specify/memory/constitution.md:8-10 must carry no stale \"Until ratified ... not governing\" flag; the v2.0.0 amendment is ratified (.specify/memory/constitution.md:76).");
+
+            // Assert 2 — the header's amended date must agree with the ratified
+            // footer's Last Amended date (:76).
+            var footerDate = new Regex(@"\*\*Last Amended\*\*:\s*(\d{4}-\d{2}-\d{2})");
+            var footerMatch = footerDate.Match(content);
+            Assert.True(
+                footerMatch.Success,
+                ".specify/memory/constitution.md:76 must record a Last Amended date in the ratified footer.");
+
+            var headerEnd = content.IndexOf("-->", StringComparison.Ordinal);
+            Assert.True(
+                headerEnd >= 0,
+                ".specify/memory/constitution.md header must keep its Sync Impact Report block (:1-11) so its amended date can be checked against the footer.");
+            var header = content.Substring(0, headerEnd);
+            Assert.True(
+                header.Contains(footerMatch.Groups[1].Value, StringComparison.Ordinal),
+                $".specify/memory/constitution.md header (:1-11) amended date must agree with the ratified footer :76 (Last Amended {footerMatch.Groups[1].Value}).");
         }
 
         /// <summary>
