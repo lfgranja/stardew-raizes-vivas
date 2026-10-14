@@ -84,6 +84,11 @@ Stardew Valley agroecological mod (.NET 6 / C# latest) implementing soil health,
 - **Snapshot outside lock** — capture data, release lock, then do I/O
 - **ThreadSafeGameLoopEventsStub** — test stub simulating concurrent game events
 
+## PROCESS NOTE — Process #6 (atomic conventional commit)
+- After every file edit: `git add <file> && git commit -m "feat/fix/docs: <summary> — <files> — <why>"`
+- Hook enforced: `.specify/scripts/atomic-commit-hook.sh`; registered in `.specify/extensions.yml` (`hooks.after_analyze`).
+- Deterministic; user-mandated per #6.
+
 ## COMMANDS
 
 ```bash
