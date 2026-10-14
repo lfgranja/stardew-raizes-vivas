@@ -1331,6 +1331,11 @@ namespace LivingRoots.Controllers
                 ToColor(active.HealthyColor),
                 ToColor(active.UnknownColor));
 
+            // T253 (FR-010, F7): a configuration change (opacity, palette,
+            // patterns) invalidates the overlay cache, so the next frame
+            // recomputes instead of serving the stale cached list.
+            _visualizationService?.InvalidateCache();
+
             _visualizationConfigService.SaveConfiguration(saveId);
         }
 
