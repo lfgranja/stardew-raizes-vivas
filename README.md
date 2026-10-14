@@ -17,7 +17,7 @@ A Stardew Valley mod that introduces sustainable farming practices through soil 
 - Apply compost to improve soil health
 
 ### Agroecological Practices
-- Implement sustainable farming techniques
+- Implement sustainable farming techniques (Planned)
 - Learn about real-world soil management (Planned)
 - Enhance your farming experience with educational elements (Planned)
 
