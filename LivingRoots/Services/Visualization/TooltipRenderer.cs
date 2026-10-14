@@ -23,7 +23,7 @@ namespace LivingRoots.Services.Visualization
         /// <summary>
         /// Minimum interval between tooltip updates per FR-015.
         /// </summary>
-        private static readonly TimeSpan MinUpdateInterval = TimeSpan.FromMilliseconds(50);
+        private static readonly TimeSpan MinUpdateInterval = TimeSpan.FromMilliseconds(ModConstants.TooltipDebounceMs);
 
         /// <summary>
         /// Sentinel tile value indicating no tile has been visited yet.
