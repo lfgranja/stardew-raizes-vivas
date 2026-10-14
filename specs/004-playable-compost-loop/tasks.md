@@ -122,6 +122,8 @@
 - [ ] T032 [P] Security validation: `ModDataService.SanitizePathSegments()` on tile keys; no raw exception messages to output (`FR-015` / `AGENTS.md`); `CheckForOverflowUnderflow` never suppressed; bounds `0–100` enforced (`Principle II`)
 - [ ] T033 [P] Format verification: `dotnet format Stardew-LivingRoots.sln --verify-no-changes`; build green (`dotnet build --nologo`) (`Gate 1` / `AGENTS.md`)
 - [ ] T034 [P] Run `quickstart.md` scenarios A–H; confirm Gate 2 (product-level) and Gate 3 (end-to-end real-player journey) satisfied; document D1 live-verification debt in task notes, not hidden as complete
+- [ ] T034b [P] Explicit SC-003 audit: verify 100% of observed soil health values within [0,100] across all bin lifecycle states; property-based invariant `ForAll<int>(h => h >= 0 && h <= 100)`
+- [ ] T035b [P] Explicit SC-009 audit: repeated collect from full inventory + pick-up/re-place mid-batch + floating-world-debris with unavailable inventory; zero destruction attested
 - [ ] T035 [P] Confirm `Item.modData` progress serialization works across pickup / placement / dislodgement; floating-world-debris case with full inventory (`FR-005c` / `data-model.md`)
 
 ---
