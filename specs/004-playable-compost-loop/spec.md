@@ -289,7 +289,7 @@ every stated capability either works or is explicitly labelled as not yet workin
   this feature — verified by collecting from a full inventory repeatedly, and by picking a bin up and
   putting it back down mid-batch.
 - **SC-010**: Two concurrent actions on one bin or one tile result in
-  exactly **one** applied change, and the player whose action was refused is shown a reason. In addition, when soil health updates, visual overlays reflect the updated tier on the next render frame (≤16.67ms) with zero polling lag. Verified in Feature 004 by automated multi-threaded test stubs and event simulations in `LivingRoots.Tests` (including simulated client listener reception of `OnTileHealthChanged` triggering immediate cache invalidation); end-to-end live multi-client network packet transport testing remains owed to the multiplayer work item on the roadmap.
+  exactly **one** applied change, and the player whose action was refused is shown a reason. In addition, when soil health updates, visual overlays reflect the updated tier on the next render frame (≤16.67ms) with zero polling lag. Verified in Feature 004 by automated multi-threaded test stubs and event simulations in `LivingRoots.Tests` (including simulated client listener reception of `OnTileHealthChanged` triggering immediate cache invalidation); end-to-end live multi-client network packet transport testing remains owed to the multiplayer work item on the roadmap. Overlay pixel coverage under ambient lighting MUST be ≥95% (clipping defined as any pixel falling below blend-alpha 0.65 at the tile boundary); RGB shift vs untreated neighbour <5% at same light level verified per frame.
 
 ## Assumptions
 

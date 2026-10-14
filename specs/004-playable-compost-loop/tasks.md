@@ -26,7 +26,7 @@
 **Purpose**: Per Constitution IV / user input #1 — tests written first, failing for the right reason (RED), blocking all implementation until written (not passing; failure attests design understanding). Delegated to maximum viable parallel agents (`[P]`).
 
 - [ ] T000-R1 [P] Write failing `CompostingBinDataTests.cs` (tolerant reader: corrupt entries quarantined, obsolete fields ignored) — must fail before T005. Property-based invariant (`FsCheck.ForAll`) required for corrupt-entry isolation; RED-phase only: design invariant for tolerant reader; not integration test.
-- [ ] T000-R2 [P] Write failing `CompostingBinStateModelTests.cs` (state-machine monotonicity: Empty→Processing→Ready, max stack=1 when progress) — must fail before T006
+- [ ] T000-R2 [P] Write failing `CompostingBinStateModelTests.cs` (state-machine monotonicity: Empty→Processing→Ready, max stack=1 when progress) — must fail before T006. Property-based invariant (FsCheck.ForAll): state-machine monotonicity Empty→Processing→Ready and batch yield == 1 exactly; never skip, never duplicate, never reset on inventory pickup.
 - [ ] T000-R3 [P] Write failing `SoilHealthServiceTests.cs` (bounds invariant 0–100, +15 clamp, reactive event fires) — must fail before T008. Property-based `FsCheck.ForAll` required: `h => h >= 0 && h <= 100`; apply +15 => clamped to 100 or refused.
 - [ ] T000-R4 [P] Write failing `CompostApplicationServiceTests.cs` (exactly 1 consumed, refusal reasons, crop tolerance) — must fail before T022. Property-based `FsCheck.ForAll`: consumption always exactly 1 (or refused) and soil health +15 (or refused).
 - [ ] T000-R5 [P] Write failing `MultiplayerConcurrencyTests.cs` stub (first-wins atomic lock, refusal message; stub-only / D1 debt explicit — SC-010 / FR-019) — must fail before T011c; property-based via FsCheck `ForAll` for invariants
@@ -47,7 +47,8 @@
 - [ ] T010 [P] Implement `VisualizationService.cs` (`LivingRoots/Services/Visualization/`) reactive subscription to `ISoilHealthService.OnTileHealthChanged`; 3-tier RGB interpolation (Poor 1–33 / Moderate 34–66 / Healthy 67–100); `0` = neutral vanilla dirt, no overlay (`FR-009`, `FR-010` / `data-model.md`)
 - [ ] T011a [P] Configure `ModController.cs` placement/dislodge handlers with `ExecuteWithConcurrencyGuard` and progress preservation (`FR-005c`)
 - [ ] T011b [P] Configure `ModController.cs` right-click compost-application handler with atomically-locked refusal reasons (`FR-007`/`FR-008`/`FR-019`)
-- [ ] T011c [P] Configure `ModController.cs` host-authoritative atomic lock mechanism per tile/machine (`Principle VI` / `FR-019`; stub-bounded, D1 debt documented)
+- [ ] T011c [P] Configure `ModController.cs` host-authoritative atomic lock mechanism per tile/machine (`Principle VI` / `FR-019`; stub-bounded, D1 debt documented) — use `Interlocked.CompareExchange` on `MachineState.DaysRemaining` (per FR-001b exactly-once guard) for first-wins atomic lock; refusal on second concurrent action preserved
+- [ ] T012 [P] Reconcile 8 stale spec/doc scope statements (`specs/001-003` + `docs/design-system`) declaring multiplayer out of scope — scope-word correction only, no redesign; reference `FR-017` / Constitution VI / `plan.md` Constitution Check CONDITIONAL PASS
 
 **Checkpoint**: Foundation ready — `ISoilHealthService`, `ICompostingBinService`, persistence, visualization, and atomic-lock controller all functional and independently testable.
 
