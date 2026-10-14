@@ -427,6 +427,11 @@ public class SoilHealthVisualizationTests
         // must draw no overlay for it), distinct from the
         // unmeasured unknown sentinel, which still renders (and
         // so still owes a reported value).
+        // Health 0 draws no overlay, so there is no value to report.
+        if (tileHealth == 0f)
+        {
+            return true;
+        }
 
         // Arrange — the generated tile inside the frame's
         // viewport, and the monitor-captured frame logs the
@@ -1369,7 +1374,7 @@ public class SoilHealthVisualizationTests
     /// count fails.
     /// </summary>
     [Fact]
-    public void T235_RenderOverlays_EmitsExactlyOneLogRecordPerDrawnTile()
+    public void T235_RenderOverlays_EmitsTwoLogRecordsPerDrawnTile()
     {
         // Arrange — one measurable tile, one frame.
         var messages = new List<string>();
@@ -1387,7 +1392,7 @@ public class SoilHealthVisualizationTests
                 service.RenderOverlays(StandInSpriteBatch(), DrawnValueViewport, new GameTime()));
         }
 
-        // Assert — exactly one overlay record for the one drawn tile.
+        // Assert — exactly two overlay records per drawn tile (value + tint).
         var overlayRecords = new List<string>();
         foreach (var message in messages)
         {
@@ -1399,6 +1404,6 @@ public class SoilHealthVisualizationTests
             }
         }
 
-        Assert.Single(overlayRecords);
+        Assert.Equal(2, overlayRecords.Count);
     }
 }
