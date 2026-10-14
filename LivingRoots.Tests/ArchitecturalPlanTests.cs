@@ -206,6 +206,275 @@ namespace LivingRoots.Tests
             }
         }
 
+        // =========================================================================
+        // Phase 22 / Task T230 (F10, contradicts, FR-017): markdown scope-guard
+        // assertions. TDD red-first — each test below is written to FAIL against
+        // the current documents and BLOCKS T256 until the four unreconciled
+        // "single-player" statements are wording-corrected and both specs/001
+        // Constitution Check tables gain a Principle VI row. Fixed-literal
+        // assertions — property-based testing N/A (no input domain to
+        // generate over).
+        // =========================================================================
+
+        /// <summary>
+        /// T230 (F10, contradicts, FR-017): <c>specs/001-soil-health-visualization/spec.md:110</c>
+        /// (clarification answer: tile identity) and <c>:147</c> (Soil Health Tile
+        /// entity) still read "...single-player scope" with no Principle VI
+        /// reconciliation, while <c>:178</c> and the Out of Scope section show the
+        /// permitted shape. Each cited line must carry the Principle VI pointer.
+        /// </summary>
+        [Fact]
+        public void Spec001Spec_SinglePlayerScopeSentences_CarryPrincipleVIReconciliation()
+        {
+            // Arrange
+            var repoRoot = LocateRepoRoot();
+            var path = Path.Combine(repoRoot, "specs", "001-soil-health-visualization", "spec.md");
+            Assert.True(File.Exists(path), $"specs/001-soil-health-visualization/spec.md not found at {path}.");
+
+            var lines = File.ReadAllText(path).Replace("\r\n", "\n").Split('\n');
+            Assert.True(lines.Length >= 147, $"specs/001-soil-health-visualization/spec.md must keep the cited lines (:110 and :147); file has only {lines.Length} lines.");
+
+            var principleVI = new Regex(@"Principle\s+VI", RegexOptions.IgnoreCase);
+
+            // Assert — spec.md:110 (tile-identity clarification answer).
+            var line110 = lines[109];
+            Assert.True(
+                principleVI.IsMatch(line110),
+                $"specs/001-soil-health-visualization/spec.md:110 must carry the Principle VI reconciliation (FR-017); actual line: \"{line110.Trim()}\".");
+
+            // Assert — spec.md:147 (Soil Health Tile entity).
+            var line147 = lines[146];
+            Assert.True(
+                principleVI.IsMatch(line147),
+                $"specs/001-soil-health-visualization/spec.md:147 must carry the Principle VI reconciliation (FR-017); actual line: \"{line147.Trim()}\".");
+        }
+
+        /// <summary>
+        /// T230 (F10, contradicts, FR-017): <c>specs/002-soil-decay-compost/plan.md:21</c>
+        /// and <c>specs/003-composting-tests/plan.md:21</c> still read
+        /// "(Windows/Linux/macOS, single-player)". Neither Target Platform line
+        /// may declare single-player scope; the reconciled wording names the
+        /// cross-platform targets without the single-player qualifier.
+        /// </summary>
+        [Fact]
+        public void Plans002And003_TargetPlatformLines_DoNotDeclareSinglePlayerScope()
+        {
+            // Arrange
+            var repoRoot = LocateRepoRoot();
+            var targetPlatformFiles = new[]
+            {
+                Path.Combine("specs", "002-soil-decay-compost", "plan.md"),
+                Path.Combine("specs", "003-composting-tests", "plan.md"),
+            };
+            var singlePlayer = new Regex(@"single-player", RegexOptions.IgnoreCase);
+
+            // Act + Assert — one assertion per cited line.
+            foreach (var relativePath in targetPlatformFiles)
+            {
+                var path = Path.Combine(repoRoot, relativePath);
+                Assert.True(File.Exists(path), $"{relativePath} not found at {path}.");
+
+                var lines = File.ReadAllText(path).Replace("\r\n", "\n").Split('\n');
+                Assert.True(lines.Length >= 21, $"{relativePath} must keep the cited Target Platform line (:21); file has only {lines.Length} lines.");
+
+                var line21 = lines[20];
+                Assert.True(
+                    !singlePlayer.IsMatch(line21),
+                    $"{relativePath}:21 must not read \"single-player\" (FR-017); actual line: \"{line21.Trim()}\".");
+            }
+        }
+
+        /// <summary>
+        /// T230 (F10, contradicts, FR-017): both Constitution Check tables in
+        /// <c>specs/001-soil-health-visualization/plan.md</c> (the pre-design gate
+        /// at :35-43 and the post-design re-evaluation at :45-55) list Principles
+        /// I-V only. Each table must contain a Principle VI row.
+        /// </summary>
+        [Fact]
+        public void Spec001Plan_BothConstitutionCheckTables_ContainPrincipleVIRow()
+        {
+            // Arrange
+            var repoRoot = LocateRepoRoot();
+            var relativePath = Path.Combine("specs", "001-soil-health-visualization", "plan.md");
+            var path = Path.Combine(repoRoot, relativePath);
+            Assert.True(File.Exists(path), $"{relativePath} not found at {path}.");
+
+            var content = File.ReadAllText(path);
+            var preDesignStart = content.IndexOf("## Constitution Check", StringComparison.Ordinal);
+            var postDesignStart = content.IndexOf("### Post-Design Re-evaluation", StringComparison.Ordinal);
+            var projectStructureStart = content.IndexOf("## Project Structure", StringComparison.Ordinal);
+            Assert.True(
+                preDesignStart >= 0 && postDesignStart > preDesignStart && projectStructureStart > postDesignStart,
+                $"{relativePath} must keep both Constitution Check tables (pre-design gate and post-design re-evaluation).");
+
+            var principleVI = new Regex(@"Principle\s+VI", RegexOptions.IgnoreCase);
+
+            // Assert — first table (plan.md:35-43, pre-design gate).
+            var preDesignTable = content.Substring(preDesignStart, postDesignStart - preDesignStart);
+            Assert.True(
+                principleVI.IsMatch(preDesignTable),
+                $"{relativePath}:35-43 (pre-design Constitution Check table) must contain a Principle VI row (FR-017).");
+
+            // Assert — second table (plan.md:45-55, post-design re-evaluation).
+            var postDesignTable = content.Substring(postDesignStart, projectStructureStart - postDesignStart);
+            Assert.True(
+                principleVI.IsMatch(postDesignTable),
+                $"{relativePath}:45-55 (post-design Constitution Check re-evaluation table) must contain a Principle VI row (FR-017).");
+        }
+
+        // =========================================================================
+        // Phase 22 / Tasks T242-T243 (F23, F24): project-structure guards.
+        // TDD red-first — each test below is written to FAIL against the current
+        // tree and BLOCKS its matching remediation (T269/T270). Fixed file-set
+        // and literal assertions — property-based testing N/A.
+        // =========================================================================
+
+        /// <summary>
+        /// T242 (F23, partial, plan project structure): <c>specs/004-playable-compost-loop/plan.md:95</c>
+        /// names <c>LivingRoots.Tests/Invariants/</c> and tasks T009/T016/T027 name
+        /// the three invariant files inside it (all checked [X]), but the folder
+        /// does not exist today — the 18 <c>[Property]</c> FsCheck tests live in
+        /// top-level files. The three declared paths must exist (contents are
+        /// T269's concern, not this guard's).
+        /// </summary>
+        [Fact]
+        public void TestsInvariantsFolder_ContainsDeclaredPropertyBasedInvariantFiles()
+        {
+            // Arrange
+            var repoRoot = LocateRepoRoot();
+            var expectedFiles = new[]
+            {
+                Path.Combine("LivingRoots.Tests", "Invariants", "BinCraftingInvariantsTests.cs"),
+                Path.Combine("LivingRoots.Tests", "Invariants", "CompostingMachineInvariantsTests.cs"),
+                Path.Combine("LivingRoots.Tests", "Invariants", "SoilHealthInvariantsTests.cs"),
+            };
+
+            // Act + Assert — existence at the declared paths, not contents.
+            foreach (var relativePath in expectedFiles)
+            {
+                var fullPath = Path.Combine(repoRoot, relativePath);
+                Assert.True(
+                    File.Exists(fullPath),
+                    $"{relativePath} must exist per specs/004-playable-compost-loop/plan.md:95 and tasks T009/T016/T027 (F23); expected file at {fullPath}.");
+            }
+        }
+
+        /// <summary>
+        /// T243 (F24, unrequested, Constitution V): <c>LivingRoots/AGENTS.md:13</c>
+        /// and <c>LivingRoots/Controllers/AGENTS.md:10</c> still list
+        /// <c>Controllers/CompostingBinController.cs</c>, deleted by the spec 003
+        /// research decision. Every <c>*.cs</c> path the code maps mention is
+        /// resolved against the filesystem: relative to the AGENTS.md file,
+        /// relative to <c>LivingRoots/</c>, by basename anywhere under
+        /// <c>LivingRoots/</c> (build outputs excluded), or as a declared type
+        /// (covers <c>ModConstants.cs</c>, whose <c>ModConstants</c> class lives
+        /// in <c>Constants.cs</c>).
+        /// </summary>
+        [Fact]
+        public void AgentsMdCodeMaps_ReferenceOnlyExistingFiles()
+        {
+            // Arrange
+            var repoRoot = LocateRepoRoot();
+            var livingRootsDir = Path.Combine(repoRoot, "LivingRoots");
+            var agentsDocs = new[]
+            {
+                Path.Combine("LivingRoots", "AGENTS.md"),
+                Path.Combine("LivingRoots", "Controllers", "AGENTS.md"),
+            };
+            var csToken = new Regex(@"(?<![\w/.-])([A-Za-z0-9_][\w/.-]*\.cs)\b");
+            var violations = new List<string>();
+
+            // Pre-read every production source once (build outputs excluded) so
+            // bare mentions can fall back to a declared-type match.
+            var productionSources = ReadProductionSources(livingRootsDir);
+
+            // Act — resolve every *.cs token in both code maps.
+            foreach (var relativePath in agentsDocs)
+            {
+                var agentsPath = Path.Combine(repoRoot, relativePath);
+                Assert.True(File.Exists(agentsPath), $"AGENTS.md code map not found at {agentsPath}.");
+
+                var agentsDir = Path.GetDirectoryName(agentsPath);
+                Assert.True(agentsDir != null, $"Could not determine the directory of {agentsPath}.");
+
+                var docLines = File.ReadAllText(agentsPath).Replace("\r\n", "\n").Split('\n');
+                for (int lineIndex = 0; lineIndex < docLines.Length; lineIndex++)
+                {
+                    foreach (Match match in csToken.Matches(docLines[lineIndex]))
+                    {
+                        var token = match.Groups[1].Value.Replace('\\', '/');
+                        if (token.Contains("*") || token.Contains("{") || token.Contains("}"))
+                        {
+                            continue;
+                        }
+
+                        if (!ResolvesToExistingFileOrDeclaredType(token, agentsDir!, livingRootsDir, productionSources))
+                        {
+                            violations.Add($"{relativePath}:{lineIndex + 1}: '{token}'");
+                        }
+                    }
+                }
+            }
+
+            // Assert
+            Assert.True(
+                violations.Count == 0,
+                $"AGENTS.md code maps must list no non-existent files (F24 — LivingRoots/AGENTS.md:13 and LivingRoots/Controllers/AGENTS.md:10 still list the deleted Controllers/CompostingBinController.cs): {string.Join("; ", violations)}.");
+        }
+
+        /// <summary>
+        /// T243 (F24, unrequested, Constitution V): <c>LivingRoots.Tests/BinPlacementTests.cs:779, 851, 927</c>
+        /// still carry stale "RED today" remarks (pending markers) for
+        /// implemented, green behaviour. No test file may retain such a marker
+        /// tied to an already-implemented task; markers for genuinely pending
+        /// work (e.g. T098/T129) are out of scope for this guard.
+        /// </summary>
+        [Fact]
+        public void TestFiles_CarryNoStaleRedTodayRemarksForGreenBehaviour()
+        {
+            // Arrange
+            var repoRoot = LocateRepoRoot();
+            var testsDir = Path.Combine(repoRoot, "LivingRoots.Tests");
+            Assert.True(Directory.Exists(testsDir), $"LivingRoots.Tests directory not found at {testsDir}.");
+
+            var staleTaskIds = new[] { "T100", "T105", "T127" };
+            var violations = new List<string>();
+
+            // Act — scan every test source for RED-today markers tied to the
+            // already-implemented tasks.
+            foreach (var file in Directory.GetFiles(testsDir, "*.cs", SearchOption.AllDirectories))
+            {
+                if (IsExcludedTestPath(testsDir, file))
+                {
+                    continue;
+                }
+
+                var testLines = File.ReadAllText(file).Replace("\r\n", "\n").Split('\n');
+                for (int lineIndex = 0; lineIndex < testLines.Length; lineIndex++)
+                {
+                    var line = testLines[lineIndex];
+                    if (line.IndexOf("RED today", StringComparison.OrdinalIgnoreCase) < 0)
+                    {
+                        continue;
+                    }
+
+                    foreach (var taskId in staleTaskIds)
+                    {
+                        if (line.IndexOf(taskId, StringComparison.Ordinal) >= 0)
+                        {
+                            var relativeFile = Path.GetRelativePath(repoRoot, file).Replace('\\', '/');
+                            violations.Add($"{relativeFile}:{lineIndex + 1} ({taskId}): \"{line.Trim()}\"");
+                        }
+                    }
+                }
+            }
+
+            // Assert
+            Assert.True(
+                violations.Count == 0,
+                $"No test file may retain a \"RED today\" remark for already-implemented (green) behaviour (F24 — LivingRoots.Tests/BinPlacementTests.cs:779, :851, :927): {string.Join("; ", violations)}.");
+        }
+
         /// <summary>
         /// Extracts the body of a <c>## {sectionTitle}</c> markdown section
         /// (lines until the next <c>## </c> header), or <c>null</c> when the
@@ -256,6 +525,97 @@ namespace LivingRoots.Tests
             }
 
             return bullets;
+        }
+
+        /// <summary>
+        /// Concatenates the contents of every production <c>*.cs</c> file under
+        /// <paramref name="livingRootsDir"/>, excluding build outputs, so bare
+        /// code-map mentions can fall back to a declared-type match.
+        /// </summary>
+        private static string ReadProductionSources(string livingRootsDir)
+        {
+            var contents = new List<string>();
+            foreach (var file in Directory.GetFiles(livingRootsDir, "*.cs", SearchOption.AllDirectories))
+            {
+                if (IsExcludedProductionPath(livingRootsDir, file))
+                {
+                    continue;
+                }
+
+                contents.Add(File.ReadAllText(file));
+            }
+
+            return string.Join("\n", contents);
+        }
+
+        /// <summary>
+        /// Resolves a <c>*.cs</c> code-map token against the filesystem:
+        /// relative to the AGENTS.md file, relative to <c>LivingRoots/</c>, by
+        /// basename anywhere under <c>LivingRoots/</c> (build outputs excluded),
+        /// or as a declared type in the production sources.
+        /// </summary>
+        private static bool ResolvesToExistingFileOrDeclaredType(string token, string agentsDir, string livingRootsDir, string productionSources)
+        {
+            if (File.Exists(Path.Combine(agentsDir, token)))
+            {
+                return true;
+            }
+
+            if (File.Exists(Path.Combine(livingRootsDir, token)))
+            {
+                return true;
+            }
+
+            var fileName = token.Substring(token.LastIndexOf('/') + 1);
+            foreach (var file in Directory.GetFiles(livingRootsDir, fileName, SearchOption.AllDirectories))
+            {
+                if (!IsExcludedProductionPath(livingRootsDir, file))
+                {
+                    return true;
+                }
+            }
+
+            var stem = fileName.Substring(0, fileName.Length - ".cs".Length);
+            var declaration = new Regex(@"\b(class|interface|enum|struct)\s+" + Regex.Escape(stem) + @"\b");
+            return declaration.IsMatch(productionSources);
+        }
+
+        /// <summary>
+        /// Reports whether a file under <c>LivingRoots/</c> is a build output
+        /// rather than a production source.
+        /// </summary>
+        private static bool IsExcludedProductionPath(string livingRootsDir, string file)
+        {
+            var relativePath = file.Substring(livingRootsDir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var segments = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            foreach (var segment in segments)
+            {
+                if (segment.Equals("bin", StringComparison.OrdinalIgnoreCase) || segment.Equals("obj", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Reports whether a file under <c>LivingRoots.Tests/</c> is generated
+        /// output rather than a test source.
+        /// </summary>
+        private static bool IsExcludedTestPath(string testsDir, string file)
+        {
+            var relativePath = file.Substring(testsDir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var segments = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            foreach (var segment in segments)
+            {
+                if (segment.Equals("bin", StringComparison.OrdinalIgnoreCase) || segment.Equals("obj", StringComparison.OrdinalIgnoreCase) || segment.Equals("TestResults", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
