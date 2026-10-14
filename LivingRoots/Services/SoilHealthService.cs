@@ -49,7 +49,7 @@ namespace LivingRoots.Services
             {
                 // FR-011: a failing subscriber must never break the mutation
                 // or bubble into game loop code. Sanitized per FR-015.
-                _monitor.Log($"Tile health change subscriber failed: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Warn);
+                _monitor.Log($"Tile health change subscriber failed: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Trace);
             }
         }
 
