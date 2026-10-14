@@ -49,6 +49,7 @@
 - [ ] T011b [P] Configure `ModController.cs` right-click compost-application handler with atomically-locked refusal reasons (`FR-007`/`FR-008`/`FR-019`)
 - [ ] T011c [P] Configure `ModController.cs` host-authoritative atomic lock mechanism per tile/machine (`Principle VI` / `FR-019`; stub-bounded, D1 debt documented) — use `Interlocked.CompareExchange` on `MachineState.DaysRemaining` (per FR-001b exactly-once guard) for first-wins atomic lock; refusal on second concurrent action preserved
 - [ ] T012 [P] Reconcile 8 stale spec/doc scope statements (`specs/001-003` + `docs/design-system`) declaring multiplayer out of scope — scope-word correction only, no redesign; reference `FR-017` / Constitution VI / `plan.md` Constitution Check CONDITIONAL PASS
+  FR-016 coverage: confirm README.md under ## Features has zero false/unlabelled claims; if any (Planned) suffix missing, add before declaring T012 complete.
 
 **Checkpoint**: Foundation ready — `ISoilHealthService`, `ICompostingBinService`, persistence, visualization, and atomic-lock controller all functional and independently testable.
 
@@ -66,7 +67,7 @@
 - [ ] T013 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/BigCraftables` (`LivingRoots.CompostingBin`) per `contracts/contracts.md` §1.2
 - [ ] T014 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/CraftingRecipes` (`LivingRoots.CompostingBinRecipe`) per `contracts/contracts.md` §1.4
 - [ ] T015 [US1] Implement `CompostingBinService.TryPlace()` / removal logic with valid-terrain check (farm / Greenhouse); rejected placement must leave no ghost; dislodge preserves `Item.modData` (`FR-002`, `FR-005c` / `data-model.md`)
-- [ ] [P] T016 [US1] Verify `Data/Machines` declaration (`Triggers` + `DaysUntilReady`) registered (native machine interface `FR-001a` / `contracts/contracts.md` §1.3); no bespoke UI
+- [ ] [P] T016 [US1] Verify `Data/Machines` declaration (`Triggers` + `DaysUntilReady`) registered (native machine interface `FR-001a` / `contracts/contracts.md` §1.3); no bespoke UI (FR-001a / FR-001b / contracts)
 
 ---
 
@@ -83,7 +84,7 @@
 - [ ] T013c [P] Implement `SoilHealthService` daily decay once per day (`FR-013` / `FR-011` / `FR-001`): apply `decayRate * seasonalMultiplier` to bare tilled tiles at day start; seasonal rules 1.5x summer, 0.5x spring/fall, 0 winter; exempt greenhouse; inherited from `specs/002-soil-decay-compost/` (spec §FR-001/FR-011); property-based invariant: health clamped 0–100 after decay. DEPENDENCY NOTE: independent of US1 (bin existence); executes in Phase 2 parallel with T008–T011c; US4 (visual) requires US2 for compost source; no cross-block.
 - [ ] T019 [US2] Implement `CompostingBinService.TryCollect()` yielding exactly `1` `LivingRoots.Compost`; full inventory leaves `Ready`; retry delivers full batch; `message.harvest.inventory-full` delivered (`FR-005b` / `FR-008a`)
 - [ ] T020 [US2] Enforce `Item.modData` (`LivingRoots.InputId`, `LivingRoots.DaysRemaining`) serializes into inventory bin; `max stack = 1` while progress present; processing pauses unplaced (`FR-005c` / `data-model.md`)
-- [ ] T021 [P] [US2] Implement `ModEntry.OnAssetRequested` edit for `Data/Machines` (`Triggers`, `DaysUntilReady = 2`, output quantity `1`) per `contracts/contracts.md` §1.3
+- [ ] T021 [P] [US2] Implement `ModEntry.OnAssetRequested` edit for `Data/Machines` (`Triggers`, `DaysUntilReady = 2`, output quantity `1`) per `contracts/contracts.md` §1.3 (FR-001b / FR-005a)
 
 ---
 
@@ -99,7 +100,7 @@
 - [ ] T023 [US3] Wire refusal messages through `Game1.showRedMessage` + `ITranslationHelper` with keys `message.compost.invalid-tile`, `message.compost.max-health`, `message.compost.action-conflict` (no custom UI; `FR-008a` / `contracts/contracts.md` §3)
 - [ ] T024 [US3] Implement `VisualizationService` 3-tier RGB interpolation and ambient-light blending; `0` health renders neutral vanilla dirt without overlay (`FR-009`, `FR-010` / `data-model.md`)
 - [ ] T025 [US3] Confirm `ISoilHealthService.OnTileHealthChanged` triggers `VisualizationService` cache invalidation on next frame (`≤16.67ms`); zero polling (`FR-010` / `data-model.md`)
-- [ ] T026 [P] [US3] Allow application on active growing crop (side-dressing / top-dressing); crop not harmed or removed (`FR-007` clarification 2026-10-04)
+- [ ] T026 [P] [US3] Allow application on active growing crop (side-dressing / top-dressing); crop not harmed or removed (`FR-007` clarification 2026-10-04) (FR-007 / clarification 2026-10-04)
 
 ---
 
@@ -121,7 +122,7 @@
 
 **Purpose**: Concurrency verification, save/load fault isolation, security, format, documentation of D1 debt
 
-- [ ] T030 [P] Implement `MultiplayerConcurrencyTests.cs` automated multi-threaded stub / `ThreadSafeGameLoopEventsStub` verifying first-wins atomic lock (`Principle VI` / FR-019) and `OnTileHealthChanged` reactive invalidation (`SC-05`, `SC-10`; stub-bounded, not live proof — D1 debt explicit per spec lines 302–303 / Constitution §VI). ADD: simulated disconnect/reconnect sequence + network-fault injection (message drop, reorder) required to approach interleaving coverage; stub alone never reproduces live SMAPI message ordering (CHESS/CTrigger/Jepsen limits documented).
+- [ ] T030 [P] Implement `MultiplayerConcurrencyTests.cs` automated multi-threaded stub / `ThreadSafeGameLoopEventsStub` verifying first-wins atomic lock (`Principle VI` / FR-019) and `OnTileHealthChanged` reactive invalidation (`SC-05`, `SC-10`; stub-bounded, not live proof — D1 debt explicit per spec lines 302–303 / Constitution §VI). ADD: simulated disconnect/reconnect sequence + network-fault injection (message drop, reorder) required to approach interleaving coverage; stub alone never reproduces live SMAPI message ordering (CHESS/CTrigger/Jepsen limits documented). (FR-019 / Principle VI)
 - [ ] T031b [P] Property-based invariant tests (FsCheck `ForAll`): soil health always clamped 0–100; compost application always +15 (or refused); bin state-machine never regresses; first-wins concurrent action always yields exactly one applied change; visual overlay distinguishable from untreated neighbor (treated tile health > neighbor or overlay color diff > 0) — delegated to subagent wave (reuse T000-R5 context)
 - [ ] T031 [P] Implement save/load round-trip tests (`SC-04`, `FR-012`): corrupt / obsolete / orphaned entries quarantined; valid entries preserved; visual overlays re-rendered. Note: Integration round-trip: builds on T000-R1 invariant; validates save/load with corrupt + orphan + obsolete entries.
 - [ ] T032 [P] Security validation: `ModDataService.SanitizePathSegments()` on tile keys; no raw exception messages to output (`FR-015` / `AGENTS.md` — `ex.GetType().FullName` + `HResult` at `LogLevel.Trace` only, never `Message`); `CheckForOverflowUnderflow` never suppressed; bounds `0–100` enforced (`Principle II`)
