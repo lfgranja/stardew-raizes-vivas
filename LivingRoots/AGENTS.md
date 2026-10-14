@@ -10,7 +10,6 @@ ModConstants.cs          # All magic numbers — costs, durations, limits
 AssemblyInfo.cs          # InternalsVisibleTo("LivingRoots.Tests")
 Controllers/
   ModController.cs       # Event orchestrator (atomic state machine, ~1k LOC)
-  CompostingBinController.cs  # Right-click bin interaction
 Domain/
   Interfaces/            # 14 service contracts (ISoilHealthService, etc.)
   Models/                # Persistence DTOs (SoilHealthState, CompostingBinData)
