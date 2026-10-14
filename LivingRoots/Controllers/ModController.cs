@@ -1734,12 +1734,14 @@ namespace LivingRoots.Controllers
                 // the host occupies plus the farm locations it
                 // does not: the Greenhouse, and the farm
                 // itself, whose location name is "Farm" for
-                // every farm type. Each service keeps its own
-                // exactly-once-per-day, per-location guard
-                // (T056 in CompostingBinService, T068 in
-                // SoilDecayService), so a location named twice
-                // on the same day — the occupied farm overlaps
-                // the literal pair — is ticked once.
+                // every farm type — no per-day guard exists
+                // at this layer. The set below dedups a
+                // location named twice within a single tick
+                // (the occupied farm overlaps the literal
+                // pair); repeat same-day deliveries still
+                // reach the services — any per-location day
+                // guard (T251) lives in CompostingBinService,
+                // not here.
                 var farmLocationNames = new HashSet<string>();
                 var currentLocationName = StardewValley.Game1.currentLocation?.Name;
                 if (!string.IsNullOrEmpty(currentLocationName))
