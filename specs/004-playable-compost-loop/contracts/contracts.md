@@ -16,7 +16,7 @@ These define what the game (and other mods via SMAPI) sees when loading assets.
   "DisplayName": "Compost",
   "Description": "Rich organic fertilizer.",
   "Type": "Basic",
-  "Category": "-9", // Basic category; confirm during implementation
+  "Category": "-9", // Basic category (settled for 004)
   "Price": 0,
   "Texture": "Mods/LivingRoots/Compost",
   "SpriteSize": [16, 16],
@@ -48,7 +48,7 @@ These define what the game (and other mods via SMAPI) sees when loading assets.
 
 **Constraints (FR-001a, FR-002)**:
 - Must behave as native `Data/Machines` machine — uses game's machine UI, progress display, input/output rules.
-- Placeable on farm / `Greenhouse`; rejected on water / buildings / non-farm interiors.
+- Placeable on farm / `Greenhouse` / Ginger Island farm; rejected on water / buildings / non-farm interiors.
 
 ---
 
@@ -58,19 +58,19 @@ These define what the game (and other mods via SMAPI) sees when loading assets.
 {
   "Name": "LivingRoots.CompostingBin",
   "DisplayName": "Composting Bin",
-  "Input": { "ItemId": "<inherited from spec 002>", "Quantity": 1 }, // Qualifying set owned by spec 002 (FR-003); see CompostApplicationService for validation
+  "Input": { "ItemId": "<inherited from specs/002-soil-decay-compost — see FR-003>", "Quantity": 1 }, // Qualifying set owned by spec 002 (FR-003); see CompostApplicationService for validation
   "Output": { "ItemId": "(O)LivingRoots.Compost", "Quantity": 1 },
   "MinutesUntilReady": 0,
   "DaysUntilReady": 2,
   "Triggers": [
     {
       "Trigger": "DropIn",
-      "Condition": "...",
+      "Condition": "TRUE",
       "Result": "Ready",
-      "Id": "..."
+      "Id": "LivingRoots.CompostingBin_DropIn"
     }
   ],
-  "MachineTileSets": [ ... ],
+  "MachineTileSets": [],
   "DeluxeOutputChance": 0.0
 }
 ```
@@ -87,7 +87,7 @@ These define what the game (and other mods via SMAPI) sees when loading assets.
 ```json
 {
   "Name": "LivingRoots.CompostingBinRecipe",
-  "Ingredients": { "Wood": 50, "Stone": 20 }, // Placeholder — confirm with maintainer during T014
+  "Ingredients": { "Wood": 50, "Stone": 20 }, // 004 implementation default (settled for this feature; changing it requires a spec update)
   "Output": { "ItemId": "(BC)LivingRoots.CompostingBin", "Quantity": 1 },
   "IsKnown": true
 }
