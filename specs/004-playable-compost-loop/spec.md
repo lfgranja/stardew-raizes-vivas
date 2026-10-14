@@ -45,6 +45,9 @@ describe a product that is not there.
 ### Session 2026-10-04
 
 - Q: Can compost be applied to tilled tiles that contain an active growing crop? → A: Yes, compost top-dressing/side-dressing on active crops is permitted and nourishes the living roots without harming or removing the crop.
+
+### Session 2026-10-13
+
 - Q: How should baseline (health 0) soil appear visually? → A: Neutral vanilla dirt appearance without color overlay to avoid cognitive visual clutter and alert fatigue.
 - Q: What exact incremental value is added to soil health per compost application? → A: Exactly 15 points per application (from ModConstants.RestorationAmount), clamped to 100.
 - Q: What are the exact 8 stale specification and plan documents to be reconciled under FR-017? → A: specs/001-soil-health-visualization/{spec,plan}.md, specs/002-soil-decay-compost/{spec,plan}.md, specs/003-composting-tests/{spec,plan}.md, docs/design-system/REALITY-CHECK-EVALUATION.md, and docs/design-system/LIVING-ROOTS-UI-UX-DESIGN-SYSTEM.md.
@@ -64,8 +67,6 @@ describe a product that is not there.
 - Q: What semantic translation keys are used for refusal messages? → A: Standard keys: message.compost.invalid-tile, message.compost.max-health, message.compost.action-conflict, and message.harvest.inventory-full.
 - Q: Is the item-registration route (native SMAPI AssetRequested vs ContentPatcher) still unsettled for this feature? → A: Settled — native SMAPI AssetRequested (current ModEntry.OnAssetRequested, T053 completed, no ContentPatcher dependency). FR-001a native-machine requirement forces this; assumption at line 292 is stale documentation, not open design.
 - Q: How should multiplayer concurrency verification (SC-010 / FR-019 / Constitution VI) be recorded as a completion boundary? → A: Formal "stub-bounded + live D1 required" boundary. 004 verifies concurrency logic via automated multi-threaded stubs / event simulations; live 2-player verification remains owed to roadmap D1; 004 MUST NOT be declared complete for multi Gate 3 until D1 runs (spec Assumptions lines 302-303; Constitution Principle VI non-negotiable). CHESS/CTrigger/Jepsen evidence confirms stubs systematically miss interleavings/network semantics stubs cannot reproduce.
-
-### Session 2026-10-13
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -194,16 +195,18 @@ every stated capability either works or is explicitly labelled as not yet workin
 - **FR-001**: The composting bin MUST be obtainable through the crafting recipe the mod already
   registers, and MUST exist as a real, placeable object in the game world.
 - **FR-001a**: The composting bin MUST behave as a **native game machine**, using the game's own
-  machine rules (`Triggers` + `DaysUntilReady = 2`; output quantity `1`; see `contracts/contracts.md` §1.3 — authoritative asset-registration spec; spec/plan reference it only, never redefine).
   machine interface, progress display, and processing rules, rather than a bespoke interface supplied
   by this mod. A player who has used another game's machine must recognise this one without instruction.
+  Asset-registration details (`Triggers`, `DaysUntilReady = 2`, output quantity `1`) are owned by
+  `contracts/contracts.md` §1.3 — authoritative asset-registration spec; spec/plan reference it only,
+  never redefine. Timing is governed by FR-001b; output quantity by FR-005a.
 - **FR-001b**: The bin's processing MUST follow the game's own machine timing (2 days, `MaturationDays`), and MUST NOT be accelerated, shortened, or completed by this mod. Implementation preferred: native `Data/Machines` rules (`Triggers` + `DaysUntilReady`). **Fallback permitted** (Assumptions): event-interception via `OnDayStarted` with an exactly-once guard (`Interlocked.CompareExchange` on a dedicated decrement flag; guard must pass before decrement), without changing duration or quantity. The fallback is accepted behaviour, not a violation. Exactly-once guard implemented via Interlocked.CompareExchange on a dedicated decrement flag (separate from the concurrent-action first-wins lock flag). The guard passes first; only then is DaysRemaining decremented. If the guard fails, no decrement occurs. Fallback event-interception via OnDayStarted with guard check.
 - NOTE: FR-001a defines interface; FR-001b defines timing/fallback. Consolidated: native machine preferred (FR-001a); fallback event-interception (FR-001b) only if native Data/Machines fails. No redesign of either.
 - **FR-002**: The composting bin MUST be placeable on farm land, **the Greenhouse, and Ginger Island farm** (invalid terrain: water, buildings, non-farm interiors), removable, and MUST NOT leave
   orphaned state in the save data when removed. Rejected placement MUST NOT leave a ghost object.
 - **FR-003**: The bin MUST accept qualifying organic material by player action and MUST reject
   non-qualifying material. **The qualifying set is owned by the soil decay and compost specification and
-  is inherited from it unchanged. VERIFICATION: T022 confirms qualifying set matches spec 002 (artisan goods excluded unless 002 updated); property-based invariant ForAll(item => IsCompostable(item) == ExpectedFromSpec002(item)) enforced in LivingRoots.Tests/CompostApplicationServiceTests.cs.** This feature MUST NOT restate, extend, narrow, or contradict that
+  is inherited from it unchanged. VERIFICATION: T017 confirms qualifying set matches spec 002 (artisan goods excluded unless 002 updated); property-based invariant ForAll(item => IsCompostable(item) == ExpectedFromSpec002(item)) enforced in LivingRoots.Tests/CompostApplicationServiceTests.cs.** This feature MUST NOT restate, extend, narrow, or contradict that
   set; changing it is a change to that specification, not to this one.
 - **FR-004**: Advancing one in-game day MUST advance bin processing exactly once, regardless of how many
   players are connected to the farm.
@@ -214,7 +217,7 @@ every stated capability either works or is explicitly labelled as not yet workin
   compost items according to how long a bin had been kept busy — is **superseded by this feature and
   MUST NOT be implemented**. The quantity of a batch's output is never adjusted, scaled, or
   accumulated by this mod.
-  COMPOST ITEM STACK: `LivingRoots.Compost` defines `Stack = 999` (standard item stack) per contracts/contracts.md §2; bin output always produces 1 item regardless of stack; no accumulation. Verified by T022 asset-registration test.
+  COMPOST ITEM STACK: `LivingRoots.Compost` defines `Stack = 999` (standard item stack) per contracts/contracts.md §2; bin output always produces 1 item regardless of stack; no accumulation. Verified by T021 (`Data/Machines` declaration) and T013a/T013 (asset registration).
 - **FR-005b**: Finished compost MUST NOT be destroyed, discarded, or silently dropped. When the player
   cannot receive a completed batch — a full inventory being the ordinary cause — the compost MUST remain
   in the bin, MUST be delivered in full on a later player-initiated harvest attempt (OnButtonPressed / right-click), and MUST NOT be partially lost, duplicated,
