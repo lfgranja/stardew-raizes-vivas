@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using FsCheck;
+using FsCheck.Xunit;
 using LivingRoots;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Services;
@@ -256,7 +257,7 @@ public class DailyDecayTests
     public Property DecayResult_ClampedToMinMax()
     {
         return Prop.ForAll(
-            ValidHealthGenerator(),
+            Arb.From(ValidHealthGenerator()),
             health =>
             {
                 var result = ApplyDecay(health, "spring");
@@ -272,8 +273,8 @@ public class DailyDecayTests
     public Property DecayWithAnySeason_ProducesValidHealth()
     {
         return Prop.ForAll(
-            ValidHealthGenerator(),
-            NonNullSeasonGenerator(),
+            Arb.From(ValidHealthGenerator()),
+            Arb.From(NonNullSeasonGenerator()),
             (health, season) =>
             {
                 var result = ApplyDecay(health, season);
