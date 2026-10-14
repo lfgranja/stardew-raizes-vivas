@@ -2,5 +2,6 @@
   "message.compost.invalid-tile": "Compost can only be applied to tilled soil.",
   "message.compost.max-health": "This soil is already at maximum health.",
   "message.compost.action-conflict": "Another player is already interacting with this tile.",
-  "message.harvest.inventory-full": "Your inventory is full!"
+  "message.harvest.inventory-full": "Your inventory is full!",
+  "message.accessibility.patterns-hidden": "Accessibility patterns hidden: too many tiles visible."
 }
