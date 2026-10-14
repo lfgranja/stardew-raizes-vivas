@@ -1914,10 +1914,15 @@ namespace LivingRoots.Controllers
                     ?? StardewValley.Game1.player?.UniqueMultiplayerID;
                 long farmerId = resolvedFarmerId.GetValueOrDefault();
 
+                // T267 (FR-002): the held-item gate accepts exactly the item-id
+                // forms CompostApplicationService.HoldsCompost accepts, so every
+                // accepted form reaches application rather than silently falling
+                // through to the bin paths.
                 if (heldItem != null &&
                     (heldItem.QualifiedItemId == ModConstants.CompostItemId ||
                      heldItem.QualifiedItemId == ModConstants.QualifiedCompostItemId ||
-                     heldItem.ItemId == ModConstants.CompostItemId))
+                     heldItem.ItemId == ModConstants.CompostItemId ||
+                     heldItem.ItemId == ModConstants.QualifiedCompostItemId))
                 {
                     if (TryApplyCompostWithLock(location, binTile, farmerId, msg => StardewValley.Game1.showRedMessage(TranslateRefusalMessage(msg))))
                     {
