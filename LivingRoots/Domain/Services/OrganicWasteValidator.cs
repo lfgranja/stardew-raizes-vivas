@@ -20,12 +20,29 @@ public class OrganicWasteValidator(IMonitor monitor) : IOrganicWasteValidator
     /// <summary>Context tag that overrides every inclusion rule and excludes the item.</summary>
     public const string NotCompostableTag = "not_compostable";
 
+    /// <summary>Vanilla context tag for the seeds category (category id -74).</summary>
+    public const string CategorySeedsTag = "category_seeds";
+
+    /// <summary>Vanilla context tag for the vegetable category (category id -75).</summary>
+    public const string CategoryVegetableTag = "category_vegetable";
+
+    /// <summary>Vanilla context tag for the fruit category (category id -79).</summary>
+    public const string CategoryFruitsTag = "category_fruits";
+
+    /// <summary>Vanilla context tag for the flower category (category id -80).</summary>
+    public const string CategoryFlowersTag = "category_flowers";
+
+    /// <summary>Vanilla context tag for the greens/forage category (category id -81).</summary>
+    public const string CategoryGreensTag = "category_greens";
+
     /// <summary>
-    /// T133 (FR-003): the tag rule the native <c>Data/Machines</c> triggers use —
-    /// inclusion by <see cref="CompostableItemTag"/> OR vanilla category, with
-    /// <see cref="NotCompostableTag"/> overriding everything. Derived from the
-    /// validator's own constants, never restated, so the native machine path and
-    /// the mod's <see cref="IsValidOrganicWaste"/> can never drift.
+    /// T249 (FR-003, specs/002 FR-008): the modded-inclusion trigger's tag set —
+    /// <see cref="CompostableItemTag"/> with the <see cref="NotCompostableTag"/>
+    /// exclusion override — consumed verbatim by ModEntry's Data/Machines
+    /// "Modded" trigger, so the native machine path states the inclusion tag
+    /// once, here, and can never drift from <see cref="IsValidOrganicWaste"/>.
+    /// The five vanilla category triggers pair each Category*Tag above with
+    /// the same exclusion override.
     /// </summary>
     public static IReadOnlyList<string> MachineWasteTags { get; } = new[] { CompostableItemTag, "!" + NotCompostableTag };
 
