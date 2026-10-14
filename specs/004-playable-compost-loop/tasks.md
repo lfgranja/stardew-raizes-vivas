@@ -6,7 +6,7 @@
 
 **Prerequisites**: `plan.md` (tech: .NET 6 / SMAPI / C# latest; `LivingRoots/` structure), `spec.md` (4 user stories), `constitution.md` (Principles I–VI; VI conditional, D1 debt explicit), `data-model.md`, `contracts/contracts.md`
 
-**Tests**: Optional — include concurrency / save-load stub and contract verification tasks per spec success criteria (SC-04, SC-05, SC-10, FR-012/FR-014/FR-015). No full test-suite rewrite required.
+**Tests**: MANDATORY (RED-phase blocking per Constitution IV / user rule #1) — all RED tasks (T000-R1..R5) must exist and be FAILING before any Phase 2 implementation starts; property-based invariants (FsCheck `ForAll`) required wherever applicable (user rule #2).
 
 ---
 
