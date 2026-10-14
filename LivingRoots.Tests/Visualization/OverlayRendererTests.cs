@@ -140,7 +140,8 @@ namespace LivingRoots.Tests.Visualization
             Assert.False(_renderer.IsCacheEmpty);
 
             // Act
-            _renderer.InvalidateCache();
+            _renderer._mockConfigService.Setup(c => c.GetConfiguration()).Returns(new VisualizationConfiguration());
+                InvalidateCache();
 
             // Assert
             Assert.True(_renderer.IsCacheEmpty);

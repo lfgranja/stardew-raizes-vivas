@@ -344,7 +344,7 @@ public class SoilHealthVisualizationTests
     // ──────────────────────────────────────────────
 
     /// <summary>Prefix of the demanded overlay-value trace log.</summary>
-    private const string DrawnOverlayValueLogPrefix = "Overlay value drawn: ";
+    private const string DrawnOverlayValueLogPrefix = "Overlay drawn: ";  // T261/T279: single-log survivor
 
     /// <summary>The tile the deterministic frames render.</summary>
     private static readonly Point DrawnValueTile = new(4, 4);
