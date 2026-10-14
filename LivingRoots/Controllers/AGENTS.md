@@ -7,7 +7,6 @@ SMAPI event handlers. Thread-safe orchestration layer between game events and do
 | File | Role |
 |------|------|
 | `ModController.cs` | Main orchestrator: GameLaunched, SaveLoaded, Saving, RenderedWorld, ButtonReleased, UpdateTicked. Atomic flag state machine with rollback. |
-| `CompostingBinController.cs` | Handles composting bin interactions (ButtonPressed). |
 
 ## Conventions
 
