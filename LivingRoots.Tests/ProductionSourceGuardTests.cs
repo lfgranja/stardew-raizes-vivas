@@ -163,7 +163,7 @@ namespace LivingRoots.Tests
 
             // Act — isolate the ParseTileKey window.
             var content = File.ReadAllText(servicePath);
-            var methodIndex = content.IndexOf("ParseTileKey", StringComparison.Ordinal);
+            var methodIndex = content.IndexOf("private static Point ParseTileKey", StringComparison.Ordinal);
             Assert.True(methodIndex >= 0, "ParseTileKey not found in LivingRoots/Services/CompostingBinService.cs.");
             var methodWindow = content.Substring(methodIndex, Math.Min(800, content.Length - methodIndex));
 
@@ -319,7 +319,7 @@ namespace LivingRoots.Tests
 
             // Act.
             var controllerContent = File.ReadAllText(controllerPath);
-            string corrected = "no per-day guard exists";
+            string corrected = "Exactly-once per day, per location";
             string falsePhrase = "exactly-once-per-day, per-location guard";
             bool hasCorrected = controllerContent.Contains(corrected);
             bool hasFalse = controllerContent.Contains(falsePhrase);
@@ -397,7 +397,7 @@ namespace LivingRoots.Tests
 
             // Act.
             var content = File.ReadAllText(interfacePath);
-            string corrected = "no per-day guard exists";
+            string corrected = "Exactly-once per day, per location";
             bool hasCorrected = content.Contains(corrected);
 
             // Assert.

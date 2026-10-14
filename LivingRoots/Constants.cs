@@ -94,8 +94,9 @@ namespace LivingRoots
         public const string CompostingBinReadySpriteAssetName = "Mods/lfgranja.LivingRoots/CompostingBinReadySprite";
 
         // T136 (FR-008a): the native machine rejection cue for an invalid
-        // drop-in — vanilla audio cancel cue plus machine shake. Keys off the
-        // Data/Machines ShakeDuration field so no second shake path exists.
+        // drop-in — vanilla audio cancel cue plus machine shake. Applies
+        // worldObject.shakeTimer directly (the Data/Machines registration sets
+        // DaysUntilReady only) so no second shake path exists.
         public const int BinInvalidDropInShakeTimerMs = 750;
     }
 }

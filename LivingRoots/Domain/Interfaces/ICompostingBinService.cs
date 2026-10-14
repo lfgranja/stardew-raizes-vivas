@@ -35,13 +35,13 @@ namespace LivingRoots.Domain
         CompostingBinState GetBinState(string locationName, Vector2 tile);
 
         /// <summary>
-        /// Processes day start for all bins in a location. Checks processing completion and maturation resets.
+        /// Processes day start for all bins in a location. Exactly-once per day, per location: a repeat call for an already-processed day is skipped (duplicate DayStarted deliveries carry no new day). Checks processing completion and maturation resets.
         /// </summary>
         /// <param name="locationName">The location containing the bins.</param>
         void ProcessDayStart(string locationName);
 
         /// <summary>
-        /// Called when a composting bin object is removed/broken. Drops items on ground and clears state.
+        /// Called when a composting bin object is removed/broken. Clears tracked state only and does not drop items on the ground (progress preservation is via CreateDislodgedBinItem, dropped by the caller).
         /// </summary>
         /// <param name="locationName">The location containing the bin.</param>
         /// <param name="tile">The tile coordinates of the bin.</param>
