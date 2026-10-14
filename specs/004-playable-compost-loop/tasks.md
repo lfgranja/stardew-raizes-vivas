@@ -30,11 +30,11 @@
 - [ ] T000-R4 [P] Write failing `CompostApplicationServiceTests.cs` (exactly 1 consumed, refusal reasons, crop tolerance, **side-dressing invariant: active crop preserved**; property-based `FsCheck.ForAll`: consumption always exactly 1 (or refused) and soil health +15 (or refused); crop presence unchanged on application) — must fail before T022.
 - [ ] T000-R5 [P] Write failing `MultiplayerConcurrencyTests.cs` stub (first-wins atomic lock, refusal message; stub-only / D1 debt explicit — SC-010 / FR-019) — must fail before T011c; stub-based simulation tests for first-wins atomic lock; property-based invariant: `ForAll(concurrentPairs => ExactlyOneSucceeds(concurrentPairs))`
 - [ ] T000-R6 [P] Write failing `VisualizationServiceTests.cs` (overlay render-safety: MUST NOT render when cache is null/uninitialized; 3-tier interpolation; reactive invalidation ≤16.67ms) — must fail before T024. Property-based invariant: `ForAll(cache => cache == null ? !renderCalled : renderCalled)` (`FR-010` / `FR-011`).
-- [ ] T000-R7 [P] Write failing `DailyDecayTests.cs` (once-per-day decay; seasonal multiplier 1.5× summer / 0.5× spring & fall / 0× winter; greenhouse exempt; clamp 0–100) — must fail before T014d. Property-based invariant: `ForAll(health, season => IsClamped(ApplyDecay(health, season)))` (`FR-013`).
-- [ ] T000-R8 [P] Write failing `AssetRegistrationTests.cs` (US1: `LivingRoots.Compost` present in `Data/Objects`, `LivingRoots.CompostingBin` in `Data/BigCraftables`, recipe in `Data/CraftingRecipes`, machine in `Data/Machines`; recipe listed as craftable; bin placeable on farm / Greenhouse / Ginger Island farm, removable, no ghost on rejected placement) — must fail before T013a/T013/T014/T015/T021. Property-based invariant: `ForAll(placement => ValidTerrain(placement) == PlacementSucceeds(placement))` (`FR-001` / `FR-002`).
+- [ ] T000-R7 [P] Write failing `DailyDecayTests.cs` (once-per-day decay; seasonal multiplier 1.5× summer / 0.5× spring & fall / 0× winter; greenhouse exempt; clamp 0–100) — must fail before T008a. Property-based invariant: `ForAll(health, season => IsClamped(ApplyDecay(health, season)))` (`FR-013`).
+- [ ] T000-R8 [P] Write failing `AssetRegistrationTests.cs` (US1: `LivingRoots.Compost` present in `Data/Objects`, `LivingRoots.CompostingBin` in `Data/BigCraftables`, recipe in `Data/CraftingRecipes`, machine in `Data/Machines`; recipe listed as craftable; bin placeable on farm / Greenhouse / Ginger Island farm, removable, no ghost on rejected placement) — must fail before T012/T013/T014/T015 (US1 asset registration) and T021 (`Data/Machines` declaration, shared with US2). Property-based invariant: `ForAll(placement => ValidTerrain(placement) == PlacementSucceeds(placement))` (`FR-001` / `FR-002`).
 - [ ] T000-R9 [P] Write failing `CompostingBinServiceTests.cs` (US2: insert qualifying waste → `Processing`; collect when `Ready` → exactly 1 `Compost`; collect when not `Ready` → nothing produced; full inventory → bin stays `Ready`; one in-game day advances processing exactly once) — must fail before T017/T018/T019/T020. Property-based invariant: `ForAll(bin => Collect(bin).Yield == (bin.State == Ready ? 1 : 0))` (`FR-004` / `FR-005a` / `FR-005b`); FR-003 qualifying-set invariant: `ForAll(item => IsCompostable(item) == ExpectedFromSpec002(item))`.
 
-**Gate**: All 9 RED tasks (T000-R1..R9) exist and FAIL → unlock Phase 1 (Setup) and Phase 2 (Foundational). No implementation anywhere before its RED test exists and fails. RED → phase mapping: Phase 2 ← R1/R2/R3/R5/R7; Phase 3 (US1) ← R8; Phase 4 (US2) ← R2/R9; Phase 5 (US3) ← R4/R6; Phase 6 (US4) is documentation, verified by T027/T027a/T029 rather than a RED test.
+**Gate**: All 9 RED tasks (T000-R1..R9) exist and FAIL → unlock Phase 1 (Setup) and Phase 2 (Foundational). No implementation anywhere before its RED test exists and fails. RED → phase mapping: Phase 2 ← R1/R2/R3/R5/R7; Phase 3 (US1) ← R8; Phase 4 (US2) ← R9 (state-model transitions shared with R2); Phase 5 (US3) ← R4/R6; Phase 6 (US4) is documentation, verified by T027/T027a/T029 rather than a RED test.
 
 ---
 
@@ -62,7 +62,7 @@
 - [ ] T011a [P] Configure `ModController.cs` placement/dislodge handlers with `ExecuteWithConcurrencyGuard` and progress preservation (`FR-005c`)
 - [ ] T011b [P] Configure `ModController.cs` right-click compost-application handler with atomically-locked refusal reasons (`FR-007`/`FR-008`/`FR-019`)
 - [ ] T011c [P] Configure `ModController.cs` host-authoritative atomic lock mechanism per tile/machine (**host-lock only**, `Principle VI` / `FR-019`: first-wins concurrent action; stub-bounded, D1 debt documented) — use `Interlocked.CompareExchange` on a dedicated per-tile/machine lock flag for first-wins atomic lock (separate from the daily-decrement guard flag); refusal on second concurrent action preserved
-- [ ] T014d [P] Implement `SoilHealthService` daily decay once per day (`FR-013` / `FR-011`): apply `decayRate * seasonalMultiplier` to bare tilled tiles at day start; seasonal rules 1.5x summer, 0.5x spring/fall, 0 winter; exempt greenhouse; inherited from `specs/002-soil-decay-compost/` (spec §FR-001/FR-011); property-based invariant: health clamped 0–100 after decay. DEPENDENCY NOTE: independent of US1 (bin existence); executes in Phase 2 parallel with T008–T011c; US4 (visual) requires US2 for compost source; no cross-block.
+- [ ] T008a [P] Implement `SoilHealthService` daily decay once per day (`FR-013` / `FR-011`): apply `decayRate * seasonalMultiplier` to bare tilled tiles at day start; seasonal rules 1.5x summer, 0.5x spring/fall, 0 winter; exempt greenhouse; inherited from `specs/002-soil-decay-compost/` (spec §FR-001/FR-011); property-based invariant: health clamped 0–100 after decay. DEPENDENCY NOTE: independent of US1 (bin existence); executes in Phase 2 parallel with T008–T011c; US4 (visual) requires US2 for compost source; no cross-block.
 
 **Checkpoint**: Foundation ready — `ISoilHealthService`, `ICompostingBinService`, persistence, visualization, and atomic-lock controller all functional and independently testable.
 
@@ -76,7 +76,7 @@
 
 **Story dependencies**: None (after Phase 2); all other stories eventually depend on bin existing.
 
-- [ ] T013a [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/Objects` (`LivingRoots.Compost`) per `contracts/contracts.md` §1.1
+- [ ] T012 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/Objects` (`LivingRoots.Compost`) per `contracts/contracts.md` §1.1
 - [ ] T013 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/BigCraftables` (`LivingRoots.CompostingBin`) per `contracts/contracts.md` §1.2
 - [ ] T014 [US1] Implement `ModEntry.OnAssetRequested` edit for `Data/CraftingRecipes` (`LivingRoots.CompostingBinRecipe`) per `contracts/contracts.md` §1.4
 - [ ] T015 [US1] Implement `CompostingBinService.TryPlace()` / removal logic with valid-terrain check (farm / Greenhouse / Ginger Island farm); rejected placement must leave no ghost; dislodge preserves `Item.modData` (`FR-002`, `FR-005c` / `data-model.md`)
@@ -173,7 +173,7 @@
 ### Phase Dependencies
 
 - **Phase 1 (Setup)**: Depends on Phase 0 RED tasks (T000-R1..R9) existing and FAILING; Phase 0a compile scaffolding (T003/T004/T004a) precedes Phase 0.
-- **Phase 2 (Foundational)**: Depends on Phase 1; **BLOCKS all user stories** (`T005`–`T011c` + `T014d` must finish before user-story tasks begin).
+- **Phase 2 (Foundational)**: Depends on Phase 1; **BLOCKS all user stories** (`T005`–`T011c` + `T008a` must finish before user-story tasks begin).
 - **Phase 3 (US1)**: After Phase 2; can begin in parallel with US2/US3/US4 if staffed (independent tests), but US2 requires bin object existence (sequential dependency for full loop).
 - **Phase 4 (US2)**: After Phase 2; depends on US1 for full journey, but independently testable with pre-placed bin.
 - **Phase 5 (US3)**: After Phase 2 + US2 for compost source; independently testable with manually added compost.
@@ -200,7 +200,7 @@
 - `T003` / `T004` / `T004a` (Phase 0a scaffolding, different files, no shared state) — `[P]` marked.
 DEPENDENCY: Phase 0a scaffolding (T003/T004/T004a) must exist before the RED tests (T000-R1..R9) can compile, but it contains no production logic — structural only, exempt from the RED gate.
 - `T001` / `T002` (Phase 1 setup, different files) — `[P]` marked.
-- `T005`–`T011c` + `T014d` (foundational) can run in parallel within Phase 2 if staffed.
+- `T005`–`T011c` + `T008a` (foundational) can run in parallel within Phase 2 if staffed.
 - Once Phase 2 completes: `US1`, `US2` (with fixtures), `US3` (with fixtures), `US4` can proceed in parallel by different developers.
 - `T030` / `T031` / `T031a` / `T031b` / `T032` / `T033` / `T035` / `T036` (polish / stub / security / format) independent of story order — can start once relevant service code exists.
 
@@ -211,8 +211,8 @@ DEPENDENCY: Phase 0a scaffolding (T003/T004/T004a) must exist before the RED tes
 | W0 | T003, T004, T004a | Compile scaffolding (Domain/Interfaces + ModEntry skeleton + test fixture) | background `[P]` |
 | W1 | T000-R1..R9 | RED tests — one subagent per test file (max 9 concurrent) | background `[P]` |
 | W2 | T001, T002 | Constants + i18n (different files) | background `[P]` |
-| W3 | T005, T006, T007, T008, T009, T010, T011a, T011b, T011c, T014d | Foundational services — group by shared context: persistence (T005/T006/T007), soil (T008/T014d), bin (T009), visualization (T010), controller (T011a/b/c) | background `[P]` |
-| W4 | T013a, T013, T014, T015, T017–T021, T022–T026 | User stories US1–US3 — one subagent per story; within a story, tasks touching the same file (e.g. ModEntry.cs) run sequentially inside that subagent | background |
+| W3 | T005, T006, T007, T008, T009, T010, T011a, T011b, T011c, T008a | Foundational services — group by shared context: persistence (T005/T006/T007), soil (T008/T008a), bin (T009), visualization (T010), controller (T011a/b/c) | background `[P]` |
+| W4 | T012, T013, T014, T015, T017–T021, T022–T026 | User stories US1–US3 — one subagent per story; within a story, tasks touching the same file (e.g. ModEntry.cs) run sequentially inside that subagent | background |
 | W5 | T027, T027a, T029 | US4 documentation — reuse one docs subagent | background `[P]` |
 | W6 | T030, T031, T031a, T031b, T032, T033, T035, T036 | Polish/implementation test suites (excludes verification T034, which is W7) | background `[P]` |
 | W7 | T034, T034a, T035a, T037, T038, T039 | Verification only — fresh subagent(s); MUST NOT reuse implementing context | background |
@@ -224,13 +224,13 @@ Reuse rule: tasks that share a context (same service / same test project / same 
 ## Sequential Example: User Story 1 (shared ModEntry.cs)
 
 ```bash
-# Asset registrations + placement logic (T013a/T013/T014/T021 share ModEntry.cs → sequential; T015 is a separate file):
-T013a-US1: LivingRoots/ModEntry.cs — Data/Objects edit
+# Asset registrations + placement logic (T012/T013/T014/T021 share ModEntry.cs → sequential; T015 is a separate file):
+T012-US1: LivingRoots/ModEntry.cs — Data/Objects edit
 T013: LivingRoots/ModEntry.cs — Data/BigCraftables edit
 T014: LivingRoots/ModEntry.cs — Data/CraftingRecipes edit
 T015: LivingRoots/Services/CompostingBinService.cs — TryPlace / removal
 T021 [P]: LivingRoots/ModEntry.cs — Data/Machines declaration + implementation (Triggers, DaysUntilReady=2, qty 1); retire 1-5 multiplier per FR-005a.
-# NOTE: T013a/T013/T014/T021 all edit ModEntry.cs — assign them to ONE subagent and run sequentially (no parallel writes to the same file).
+# NOTE: T012/T013/T014/T021 all edit ModEntry.cs — assign them to ONE subagent and run sequentially (no parallel writes to the same file).
 ```
 
 ---
@@ -240,7 +240,7 @@ T021 [P]: LivingRoots/ModEntry.cs — Data/Machines declaration + implementation
 ### MVP (User Story 1 Only + Foundational)
 
 1. Complete Phase 0a + Phase 0 + Phase 1 + Phase 2 (`T003`–`T011c`).
-2. Complete Phase 3 (`T013a-US1`–`T015`).
+2. Complete Phase 3 (`T012-US1`–`T015`).
 3. **STOP / VALIDATE**: Independent test — craft → place → pick up → verify no ghost (`quickstart.md` A). Confirm `ModEntry.OnAssetRequested` delivers real `Data/Objects`, `Data/BigCraftables`, `Data/CraftingRecipes`, `Data/Machines`.
 4. Deploy / demo.
 
