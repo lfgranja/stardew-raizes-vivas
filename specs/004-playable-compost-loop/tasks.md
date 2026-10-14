@@ -29,7 +29,7 @@
 - [ ] T000-R2 [P] Write failing `CompostingBinStateModelTests.cs` (state-machine monotonicity: Empty→Processing→Ready, max stack=1 when progress) — must fail before T006
 - [ ] T000-R3 [P] Write failing `SoilHealthServiceTests.cs` (bounds invariant 0–100, +15 clamp, reactive event fires) — must fail before T008
 - [ ] T000-R4 [P] Write failing `CompostApplicationServiceTests.cs` (exactly 1 consumed, refusal reasons, crop tolerance) — must fail before T022
-- [ ] T000-R5 [P] Write failing `MultiplayerConcurrencyTests.cs` stub (first-wins atomic lock, refusal message; stub-only / D1 debt explicit — SC-010 / FR-019) — must fail before T011; property-based via FsCheck `ForAll` for invariants
+- [ ] T000-R5 [P] Write failing `MultiplayerConcurrencyTests.cs` stub (first-wins atomic lock, refusal message; stub-only / D1 debt explicit — SC-010 / FR-019) — must fail before T011c; property-based via FsCheck `ForAll` for invariants
 
 **Gate**: These 5 tasks exist and are RED (failing) → unlock Phase 2. No GREEN before Phase 2 starts.
 
@@ -45,7 +45,9 @@
 - [ ] T008 [P] Implement `SoilHealthService.cs` (`LivingRoots/Services/`) with `GetHealth`, `ApplyCompost`, reactive `OnTileHealthChanged` event, bounds clamp to `[0, 100]` (`ModConstants.Min/Max`); allow application on active crop (`FR-007` clarification 2026-10-04)
 - [ ] T009 [P] Implement `CompostingBinService.cs` (`LivingRoots/Services/`) state machine (`Empty → Processing → Ready`); `MaturationDays = 2`; exactly-one batch yield `1`; progress preserved in `Item.modData`; processing pauses unplaced (`FR-001b`, `FR-005c` / `data-model.md`)
 - [ ] T010 [P] Implement `VisualizationService.cs` (`LivingRoots/Services/Visualization/`) reactive subscription to `ISoilHealthService.OnTileHealthChanged`; 3-tier RGB interpolation (Poor 1–33 / Moderate 34–66 / Healthy 67–100); `0` = neutral vanilla dirt, no overlay (`FR-009`, `FR-010` / `data-model.md`)
-- [ ] T011 [P] Configure `ModController.cs` (`LivingRoots/Controllers/`) event handlers (right-click / placement / dislodge) with `ExecuteWithConcurrencyGuard`; host-authoritative atomic lock per tile / machine instance (`Principle VI`, `FR-019` / `spec.md` clarification 2026-10-03; stub-bounded, not live proof — D1 debt)
+- [ ] T011a [P] Configure `ModController.cs` placement/dislodge handlers with `ExecuteWithConcurrencyGuard` and progress preservation (`FR-005c`)
+- [ ] T011b [P] Configure `ModController.cs` right-click compost-application handler with atomically-locked refusal reasons (`FR-007`/`FR-008`/`FR-019`)
+- [ ] T011c [P] Configure `ModController.cs` host-authoritative atomic lock mechanism per tile/machine (`Principle VI` / `FR-019`; stub-bounded, D1 debt documented)
 
 **Checkpoint**: Foundation ready — `ISoilHealthService`, `ICompostingBinService`, persistence, visualization, and atomic-lock controller all functional and independently testable.
 
@@ -77,7 +79,7 @@
 
 - [ ] T017 [US2] Implement `CompostingBinService.TryInsertOrganicWaste()` with qualifying-set check (inherited, not restated; `FR-003` / `data-model.md`) and native-machine shake/cancel on invalid drop-in (`FR-008a` clarification 2026-10-13)
 - [ ] T018 [US2] Implement `CompostingBinService.OnDayStarted()` exactly-once guard (`FR-001b` fallback permitted) with `DaysRemaining` decrement; advance exactly once per day regardless of player count (`FR-004`)
-- [ ] T013b [P] Implement `SoilHealthService` daily decay once per day (`FR-013` / `FR-011` / `FR-001`): apply `decayRate * seasonalMultiplier` to bare tilled tiles at day start; seasonal rules 1.5x summer, 0.5x spring/fall, 0 winter; exempt greenhouse; inherited from `specs/002-soil-decay-compost/` (spec §FR-001/FR-011); property-based invariant: health clamped 0–100 after decay; parallelizable with Phase 2 foundational work
+- [ ] T013c [P] Implement `SoilHealthService` daily decay once per day (`FR-013` / `FR-011` / `FR-001`): apply `decayRate * seasonalMultiplier` to bare tilled tiles at day start; seasonal rules 1.5x summer, 0.5x spring/fall, 0 winter; exempt greenhouse; inherited from `specs/002-soil-decay-compost/` (spec §FR-001/FR-011); property-based invariant: health clamped 0–100 after decay; **can execute in Phase 2 parallel with T008–T011c**
 - [ ] T019 [US2] Implement `CompostingBinService.TryCollect()` yielding exactly `1` `LivingRoots.Compost`; full inventory leaves `Ready`; retry delivers full batch; `message.harvest.inventory-full` delivered (`FR-005b` / `FR-008a`)
 - [ ] T020 [US2] Enforce `Item.modData` (`LivingRoots.InputId`, `LivingRoots.DaysRemaining`) serializes into inventory bin; `max stack = 1` while progress present; processing pauses unplaced (`FR-005c` / `data-model.md`)
 - [ ] T021 [P] [US2] Implement `ModEntry.OnAssetRequested` edit for `Data/Machines` (`Triggers`, `DaysUntilReady = 2`, output quantity `1`) per `contracts/contracts.md` §1.3
@@ -135,7 +137,7 @@
 ### Phase Dependencies
 
 - **Phase 1 (Setup)**: No dependencies — start immediately.
-- **Phase 2 (Foundational)**: Depends on Phase 1; **BLOCKS all user stories** (`T005`–`T011` must finish before `T012`+).
+- **Phase 2 (Foundational)**: Depends on Phase 1; **BLOCKS all user stories** (`T005`–`T011c` must finish before `T012`+).
 - **Phase 3 (US1)**: After Phase 2; can begin in parallel with US2/US3/US4 if staffed (independent tests), but US2 requires bin object existence (sequential dependency for full loop).
 - **Phase 4 (US2)**: After Phase 2; depends on US1 for full journey, but independently testable with pre-placed bin.
 - **Phase 5 (US3)**: After Phase 2 + US2 for compost source; independently testable with manually added compost.
@@ -160,7 +162,7 @@
 ### Parallel Opportunities
 
 - `T003` / `T004` / `T012`–`T014` / `T015` (different files, no shared state) — `[P]` marked.
-- `T005`–`T011` (foundational) can run in parallel within Phase 2 if staffed.
+- `T005`–`T011c` (foundational) can run in parallel within Phase 2 if staffed.
 - Once Phase 2 completes: `US1`, `US2` (with fixtures), `US3` (with fixtures), `US4` can proceed in parallel by different developers.
 - `T030` / `T031` / `T032` / `T033` (polish / stub / security / format) independent of story order — can start once relevant service code exists.
 
@@ -183,7 +185,7 @@ T016 [P]: LivingRoots/ModEntry.cs — Data/Machines declaration verification
 
 ### MVP (User Story 1 Only + Foundational)
 
-1. Complete Phase 1 + Phase 2 (`T001`–`T011`).
+1. Complete Phase 1 + Phase 2 (`T001`–`T011c`).
 2. Complete Phase 3 (`T012`–`T016`).
 3. **STOP / VALIDATE**: Independent test — craft → place → pick up → verify no ghost (`quickstart.md` A). Confirm `ModEntry.OnAssetRequested` delivers real `Data/Objects`, `Data/BigCraftables`, `Data/CraftingRecipes`, `Data/Machines`.
 4. Deploy / demo.
