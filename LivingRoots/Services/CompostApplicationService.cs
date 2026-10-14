@@ -89,6 +89,49 @@ public class CompostApplicationService(
         return true;
     }
 
+    /// <summary>
+    /// T266 (FR-007): clears the active inventory slot when a consumed compost
+    /// stack empties, so no zero-stack item remains — the
+    /// <c>ModController.TryPlaceBin</c> slot-clearing pattern applied to the
+    /// compost-application path.
+    /// </summary>
+    /// <remarks>
+    /// The farmer inventory slot is the production truth: nulling it clears
+    /// the active slot in-game. A settable provider cell (unit-test doubles
+    /// expose a setter while <c>IPlayerProvider.CurrentItem</c> stays
+    /// get-only, so no existing implementer breaks) is cleared as a fallback
+    /// only when it still holds the consumed reference — a get-only provider
+    /// is simply left alone.
+    /// </remarks>
+    /// <param name="consumed">The held item just consumed.</param>
+    private void ClearConsumedHeldItemSlot(Item consumed)
+    {
+        if (consumed.Stack > 0)
+        {
+            return;
+        }
+
+        var items = _playerProvider.CurrentPlayer?.Items;
+        if (items != null)
+        {
+            int index = items.IndexOf(consumed);
+            if (index != -1)
+            {
+                items[index] = null!;
+                return;
+            }
+        }
+
+        if (ReferenceEquals(_playerProvider.CurrentItem, consumed))
+        {
+            var currentItemProperty = _playerProvider.GetType().GetProperty("CurrentItem");
+            if (currentItemProperty != null && currentItemProperty.CanWrite)
+            {
+                currentItemProperty.SetValue(_playerProvider, null);
+            }
+        }
+    }
+
     public bool TryApplyCompost(GameLocation location, Vector2 tile)
     {
         var locationName = location.Name ?? "Unknown";
@@ -129,6 +172,7 @@ public class CompostApplicationService(
         _soilHealthService.UpdateHealth(locationName, tile, ModConstants.RestorationAmount);
 
         heldItem.Stack--;
+        ClearConsumedHeldItemSlot(heldItem);
 
         var worldPosition = new Vector2(tile.X * 64f + 32f, tile.Y * 64f);
         var sprite = new TemporaryAnimatedSprite(
