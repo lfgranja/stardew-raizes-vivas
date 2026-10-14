@@ -62,24 +62,41 @@ public class CompostingMachineInvariantsTests
         PositiveInt arbitraryX,
         PositiveInt arbitraryY)
     {
+        // T280(b): fresh instances per case to avoid cross-case contamination.
+        GameStateFixture.Install();
+        var mockModDataService = new Mock<IModDataService>();
+        var mockSaveIdProvider = new Mock<ISaveIdProvider>();
+        var mockWasteValidator = new Mock<IOrganicWasteValidator>();
+        var mockMonitor = new Mock<IMonitor>();
+        var timeStub = new TimeProviderStub();
+        mockWasteValidator.Setup(x => x.IsValidOrganicWaste(It.IsAny<Item>())).Returns(true);
+        var service = new CompostingBinService(
+            mockModDataService.Object,
+            mockSaveIdProvider.Object,
+            mockWasteValidator.Object,
+            mockMonitor.Object,
+            timeStub,
+            new CompostingBinFactory(),
+            new RecordingPlayerInventory());
+
         int startDay = 1 + (arbitraryStartDay.Get % 1000);
         var tile = new Vector2(
             (arbitraryX.Get + Interlocked.Increment(ref _caseSalt)) % 40,
             arbitraryY.Get % 40);
 
-        _timeStub.TotalDays = startDay;
-        _service.AddWaste("Farm", tile, ItemFactory.CreateValidWasteItem());
-        Assert.Equal(CompostingBinState.Processing, _service.GetBinState("Farm", tile));
+        timeStub.TotalDays = startDay;
+        service.AddWaste("Farm", tile, ItemFactory.CreateValidWasteItem());
+        Assert.Equal(CompostingBinState.Processing, service.GetBinState("Farm", tile));
 
-        _timeStub.TotalDays = startDay + ModConstants.MaturationDays - 1;
-        _service.ProcessDayStart("Farm");
+        timeStub.TotalDays = startDay + ModConstants.MaturationDays - 1;
+        service.ProcessDayStart("Farm");
         Assert.Equal(
             CompostingBinState.Processing,
-            _service.GetBinState("Farm", tile));
+            service.GetBinState("Farm", tile));
 
-        _timeStub.TotalDays = startDay + ModConstants.MaturationDays;
-        _service.ProcessDayStart("Farm");
-        Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", tile));
+        timeStub.TotalDays = startDay + ModConstants.MaturationDays;
+        service.ProcessDayStart("Farm");
+        Assert.Equal(CompostingBinState.Ready, service.GetBinState("Farm", tile));
     }
 
     /// <summary>
@@ -92,20 +109,37 @@ public class CompostingMachineInvariantsTests
         PositiveInt arbitraryX,
         PositiveInt arbitraryY)
     {
+        // T280(b): fresh instances per case to avoid cross-case contamination.
+        GameStateFixture.Install();
+        var mockModDataService = new Mock<IModDataService>();
+        var mockSaveIdProvider = new Mock<ISaveIdProvider>();
+        var mockWasteValidator = new Mock<IOrganicWasteValidator>();
+        var mockMonitor = new Mock<IMonitor>();
+        var timeStub = new TimeProviderStub();
+        mockWasteValidator.Setup(x => x.IsValidOrganicWaste(It.IsAny<Item>())).Returns(true);
+        var service = new CompostingBinService(
+            mockModDataService.Object,
+            mockSaveIdProvider.Object,
+            mockWasteValidator.Object,
+            mockMonitor.Object,
+            timeStub,
+            new CompostingBinFactory(),
+            new RecordingPlayerInventory());
+
         int startDay = 1 + (arbitraryStartDay.Get % 1000);
         var tile = new Vector2(
             (arbitraryX.Get + Interlocked.Increment(ref _caseSalt)) % 40,
             arbitraryY.Get % 40);
 
-        _timeStub.TotalDays = startDay;
-        _service.AddWaste("Farm", tile, ItemFactory.CreateValidWasteItem());
-        _timeStub.TotalDays = startDay + ModConstants.MaturationDays;
-        _service.ProcessDayStart("Farm");
-        Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", tile));
+        timeStub.TotalDays = startDay;
+        service.AddWaste("Farm", tile, ItemFactory.CreateValidWasteItem());
+        timeStub.TotalDays = startDay + ModConstants.MaturationDays;
+        service.ProcessDayStart("Farm");
+        Assert.Equal(CompostingBinState.Ready, service.GetBinState("Farm", tile));
 
-        int collected = _service.CollectCompost("Farm", tile);
+        int collected = service.CollectCompost("Farm", tile);
         Assert.Equal(1, collected);
-        Assert.Equal(CompostingBinState.Empty, _service.GetBinState("Farm", tile));
+        Assert.Equal(CompostingBinState.Empty, service.GetBinState("Farm", tile));
     }
 }
 
