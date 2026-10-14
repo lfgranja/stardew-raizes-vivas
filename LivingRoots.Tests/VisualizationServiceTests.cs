@@ -143,14 +143,19 @@ public class VisualizationServiceTests
     // ── Property: health clamped to [0, 100] ──────────────────
 
     /// <summary>
-    /// The color pipeline clamps any health to [MinSoilHealth, MaxSoilHealth]:
-    /// the color resolved for an out-of-range health equals the color for the
-    /// clamped health. SetTileHealthData stores the raw value; the clamp is
-    /// applied when the color is resolved.
+    /// The color pipeline clamps finite health values to [MinSoilHealth, MaxSoilHealth]:
+    /// the color resolved for an out-of-range finite health equals the color for the
+    /// clamped health. Non-finite values (NaN/Infinity) are intentionally handled as
+    /// Unknown per FR-011 and are excluded from the clamping invariant.
     /// </summary>
     [Property(MaxTest = 100)]
     public bool HealthValue_ClampedToMinMax(float health)
     {
+        if (!float.IsFinite(health))
+        {
+            return true; // Non-finite handled separately per FR-011
+        }
+
         var colorService = new ColorInterpolationService();
         var clamped = Math.Clamp(health, ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth);
         return colorService.GetColorForHealth(health) == colorService.GetColorForHealth(clamped);
