@@ -129,7 +129,7 @@
 - [ ] T033 [P] Format verification: `dotnet format Stardew-LivingRoots.sln --verify-no-changes`; build green (`dotnet build --nologo`) (`Gate 1` / `AGENTS.md`)
 - [ ] T034 [P] Run `quickstart.md` scenarios A–H; confirm Gate 2 (product-level) and Gate 3 (end-to-end real-player journey) satisfied; document D1 live-verification debt (`Principle VI` / FR-018/FR-019) in task notes, not hidden as complete; verification-only attestation — MUST NOT declare complete for multi Gate 3 until D1 runs
 - [ ] T034b [P] Explicit SC-003 audit: verify 100% of observed soil health values within [0,100] across all bin lifecycle states; property-based invariant `ForAll<int>(h => h >= 0 && h <= 100)`
-- [ ] T035b [P] Explicit SC-009 audit: repeated collect from full inventory + pick-up/re-place mid-batch + floating-world-debris with unavailable inventory; zero destruction attested
+- [ ] T035b [P] Explicit SC-009 audit: repeated collect from full inventory + pick-up/re-place mid-batch + floating-world-debris with unavailable inventory; **property-based invariant: `Item.modData` keys `LivingRoots.InputId` + `LivingRoots.DaysRemaining` preserved after debris placement**; zero destruction attested (U2)
 - [ ] T035 [P] Confirm `Item.modData` progress serialization works across pickup / placement / dislodgement; floating-world-debris case with full inventory (`FR-005c` / `data-model.md`)
 
 ---
