@@ -115,14 +115,15 @@ public class CompostingBinService(
                 // Constitution III: the refusal cues run outside _lock, so
                 // only a flag is captured here.
                 rejectedAsInvalid = true;
-                return;
             }
-
-            bin.State = CompostingBinState.Processing;
-            bin.InputItemId = item.QualifiedItemId;
-            bin.InputTimestamp = _timeProvider.TotalDays;
-            bin.ConsecutiveIdleDays = 0;
-            acceptedItemId = item.QualifiedItemId;
+            else
+            {
+                bin.State = CompostingBinState.Processing;
+                bin.InputItemId = item.QualifiedItemId;
+                bin.InputTimestamp = _timeProvider.TotalDays;
+                bin.ConsecutiveIdleDays = 0;
+                acceptedItemId = item.QualifiedItemId;
+            }
         }
 
         // Constitution III: logging and sound emission run outside _lock, so a
