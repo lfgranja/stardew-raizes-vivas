@@ -212,6 +212,41 @@ public class BinPlacementTests
         };
     }
 
+    private static Item CreateWasteItem(int stack = 1)
+    {
+        return new StardewValley.Object
+        {
+            ItemId = "24",
+            Name = "Parsnip",
+            Stack = stack
+        };
+    }
+
+    /// <summary>
+    /// Allocates a <see cref="StardewValley.Farmer"/> carrying the given multiplayer
+    /// identity without running its constructor.
+    /// </summary>
+    /// <remarks>
+    /// A real <c>Farmer</c> cannot be constructed in the test host — its constructor
+    /// dereferences sprite data that only exists once the game has booted — so the
+    /// instance is allocated the same way <see cref="GameStateFixture"/> allocates
+    /// <c>Game1</c>. Field initializers do not run on such an instance, so the
+    /// <c>uniqueMultiplayerID</c> net backing field is populated directly
+    /// (the <c>UniqueMultiplayerID</c> setter dereferences it and throws on a
+    /// null field). Only the multiplayer identity is populated, which touches
+    /// no game state, so the production <c>OnButtonPressed</c> farmer-id
+    /// resolution observes a genuine non-zero actor instead of the collapsed
+    /// no-actor value.
+    /// </remarks>
+    /// <param name="farmerId">The multiplayer identity the farmer carries.</param>
+    /// <returns>A farmer stub carrying <paramref name="farmerId"/>.</returns>
+    private static Farmer CreateFarmerWithId(long farmerId)
+    {
+        var farmer = (Farmer)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(Farmer));
+        typeof(Farmer).GetField("uniqueMultiplayerID", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!.SetValue(farmer, new Netcode.NetLong(farmerId));
+        return farmer;
+    }
+
     /// <summary>
     /// Covers a rectangular footprint with a completed building at the given
     /// tile coordinates, the way the game's own building placement does.
@@ -609,14 +644,24 @@ public class BinPlacementTests
     }
 
     /// <summary>
-    /// T062 (FR-002, FR-005c): the production input path wires dislodgement.
-    /// Raising the <c>Input.ButtonPressed</c> handler the controller subscribed
-    /// in <see cref="ModController.RegisterEvents"/> — a right-click — over an
-    /// occupied bin tile with empty hands dislodges the bin through
+    /// T062 (FR-002, FR-005c): the production input path wires dislodgement for a
+    /// NON-Ready bin. Raising the <c>Input.ButtonPressed</c> handler the controller
+    /// subscribed in <see cref="ModController.RegisterEvents"/> — a right-click —
+    /// over an occupied bin tile with empty hands, where the bin is explicitly set
+    /// up as Empty (never Ready), dislodges the bin through
     /// <see cref="ModController.TryDislodgeBin"/>, which asks the composting
     /// service for the dislodged item (carrying its batch progress) and clears
     /// the world object and the service record.
     /// </summary>
+    /// <remarks>
+    /// Scoped to non-Ready bins only (T221): the same empty-handed gesture on a
+    /// Ready bin must collect through <c>CompostingBinService.CollectCompost</c>,
+    /// never dislodge — that half is pinned by
+    /// <c>OnButtonPressed_EmptyHandsOnReadyBin_CollectsExactlyOneCompostThroughProductionPath</c>.
+    /// The Empty state is set up explicitly instead of relying on the mock's
+    /// default, so a future change to the mock default cannot silently rescope
+    /// this test onto a Ready bin.
+    /// </remarks>
     [Fact]
     public void OnButtonPressed_RightClickOnBinTileWithEmptyHands_DisLodgesBinThroughService()
     {
@@ -630,6 +675,7 @@ public class BinPlacementTests
         var fixture = new GameLocationFixture("Farm", isFarm: true);
         var tile = new Vector2(15, 20);
         fixture.Location.Objects.Add(tile, new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId });
+        _mockCompostingBinService.Setup(x => x.GetBinState("Farm", tile)).Returns(CompostingBinState.Empty);
         var originalLocation = Game1.currentLocation;
         Game1.currentLocation = fixture.Location;
         var cursor = new Mock<ICursorPosition>();
@@ -649,12 +695,116 @@ public class BinPlacementTests
         _mockCompostingBinService.Verify(
             x => x.CreateDislodgedBinItem("Farm", tile),
             Times.AtLeastOnce,
-            "Right-clicking an occupied bin tile with empty hands must dislodge the bin through the production input path.");
+            "Right-clicking an occupied non-Ready bin tile with empty hands must dislodge the bin through the production input path.");
         _mockCompostingBinService.Verify(
             x => x.OnObjectRemoved("Farm", tile),
             Times.Once,
             "Dislodgement must clear the service record to prevent orphaned state.");
+        _mockCompostingBinService.Verify(
+            x => x.CollectCompost(It.IsAny<string>(), It.IsAny<Vector2>()),
+            Times.Never,
+            "Dislodging a non-Ready bin must not route through collection — the Ready-bin collect path is pinned by T221.");
         Assert.False(fixture.Location.Objects.ContainsKey(tile), "Dislodgement must remove the world object from the tile.");
+    }
+
+    /// <summary>
+    /// T221 [P] [US2] (FR-001a/FR-005b/FR-006, F1 contradicts): an empty-handed
+    /// right-click on a Ready bin through the production <c>OnButtonPressed</c>
+    /// input path collects exactly one compost through
+    /// <see cref="ICompostingBinService.CollectCompost"/> and returns the bin to
+    /// Empty — no dislodge, no second credit. For any elapsed maturation span at
+    /// or beyond <see cref="ModConstants.MaturationDays"/> the matured batch is
+    /// Ready, so the collect branch (not the dislodge branch) must win.
+    /// </summary>
+    /// <remarks>
+    /// RED today (T247 pending): <c>OnButtonPressed</c> dislodges ANY bin on an
+    /// empty-handed right-click before <c>TryInteractWithBin</c> — the sole
+    /// production caller of <c>CollectCompost</c> — is reached, and
+    /// <c>TryDislodgeBin</c> returns true for any bin object, so the world object
+    /// is removed, the service record is pruned and zero compost is granted. The
+    /// non-Ready half of the gesture (Empty/Processing bins still dislodge) stays
+    /// pinned by
+    /// <see cref="OnButtonPressed_RightClickOnBinTileWithEmptyHands_DisLodgesBinThroughService"/>.
+    /// Template: <see cref="OnButtonPressed_RightClickBinItemOnFarmTile_PlacesBinAndCreatesServiceCacheEntry"/>
+    /// for the production event wiring (the REAL <c>OnButtonPressed</c> handler is
+    /// driven, never <c>TryInteractWithBin</c> directly), and the exactly-one-compost
+    /// assertion shape of the concurrency suite's Ready-bin collection tests.
+    /// </remarks>
+    [Property(MaxTest = 100)]
+    public void OnButtonPressed_EmptyHandsOnReadyBin_CollectsExactlyOneCompostThroughProductionPath(
+        PositiveInt arbitraryElapsedDays)
+    {
+        int elapsedDays = ModConstants.MaturationDays + (arbitraryElapsedDays.Get % 30);
+
+        var timeStub = new TimeProviderStub { TotalDays = 1 };
+        var serviceInventory = new RecordingPlayerInventory();
+        var mockModData = new Mock<IModDataService>();
+        var mockWasteValidator = new Mock<IOrganicWasteValidator>();
+        mockWasteValidator.Setup(x => x.IsValidOrganicWaste(It.IsAny<Item>())).Returns(true);
+        var binService = new CompostingBinService(
+            mockModData.Object,
+            _mockSaveIdProvider.Object,
+            mockWasteValidator.Object,
+            _mockMonitor.Object,
+            timeStub,
+            new CompostingBinFactory(),
+            serviceInventory);
+        var lockService = new HostAtomicLockService();
+        var playerProvider = new PlayerProviderStub();
+        playerProvider.CurrentItem = null;
+        playerProvider.CurrentPlayer = CreateFarmerWithId(7001L);
+
+        var controller = new ModController(
+            _mockHelper.Object,
+            _mockMonitor.Object,
+            _mockManifest.Object,
+            _mockSoilHealthService.Object,
+            _mockSaveIdProvider.Object,
+            binService,
+            _mockSoilDecayService.Object,
+            null,
+            null,
+            null,
+            lockService,
+            playerProvider);
+        var inputEvents = WireControllerEventSubscriptions();
+        controller.RegisterEvents();
+
+        var fixture = new GameLocationFixture("Farm", isFarm: true);
+        var tile = new Vector2(15, 20);
+        fixture.Location.Objects.Add(tile, new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId });
+
+        timeStub.TotalDays = 1;
+        binService.AddWaste("Farm", tile, CreateWasteItem(stack: 1));
+        timeStub.TotalDays = 1 + elapsedDays;
+        binService.ProcessDayStart("Farm");
+
+        Assert.Equal(
+            CompostingBinState.Ready,
+            binService.GetBinState("Farm", tile));
+
+        var originalLocation = Game1.currentLocation;
+        Game1.currentLocation = fixture.Location;
+        var cursor = new Mock<ICursorPosition>();
+        cursor.Setup(x => x.GrabTile).Returns(tile);
+        _mockHelper.Setup(x => x.Input.GetCursorPosition()).Returns(cursor.Object);
+
+        try
+        {
+            var args = CreateButtonPressedEventArgs(SButton.MouseRight, cursor.Object);
+            inputEvents.Raise(x => x.ButtonPressed += null, args);
+        }
+        finally
+        {
+            Game1.currentLocation = originalLocation;
+        }
+
+        Assert.Single(serviceInventory.AddedItems);
+        Assert.Equal(ModConstants.CompostItemId, serviceInventory.AddedItems[0].ItemId);
+        Assert.Equal(CompostingBinState.Empty, binService.GetBinState("Farm", tile));
+        Assert.True(
+            fixture.Location.Objects.ContainsKey(tile),
+            "Collecting a Ready bin must not dislodge it — the world object stays on the tile.");
     }
 
     /// <summary>
