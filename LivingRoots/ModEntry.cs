@@ -383,39 +383,30 @@ namespace LivingRoots
                             new StardewValley.GameData.Machines.MachineOutputRule
                             {
                                 Id = "Default",
-                                // T053 (FR-003): the native input filter mirrors
-                                // OrganicWasteValidator's hybrid validation:
-                                // inclusion tag "compostable_item" OR vanilla
-                                // category IDs (-74 seeds, -75 vegetables,
-                                // -79 fruits, -80 flowers, -81 greens),
-                                // with exclusion tag "not_compostable"
-                                // overriding everything. Each trigger ANDs its
-                                // tags; any matching trigger starts the rule.
-                                // The positive tag set mirrors OrganicWasteValidator's
-                                // inherited qualifying set (spec 002 FR-008)
-                                // so the native machine path and the mod's
-                                // AddWaste path accept the same items, and
-                                // !not_compostable keeps explicitly excluded
-                                // items out even when they match a category.
-                                // (T133 FR-003) Machine rule triggers use the validator-owned waste set:
-                                // inclusion tag "compostable_item" OR vanilla category IDs (-74 seeds, -75 vegetables,
-                                // -79 fruits, -80 flowers, -81 greens), with exclusion tag "not_compostable" overriding
-                                // everything. Each trigger ANDs its tags; any matching trigger starts the rule.
-                                // The positive tag set mirrors OrganicWasteValidator's
-                                // inherited qualifying set (spec 002 FR-008) so the native machine path and the mod's
-                                // AddWaste path accept the same items, and
-                                // !not_compostable keeps explicitly excluded items out even when they match a category.
-                                // (T133 FR-003) Machine rule triggers use the validator-owned waste set:
-                                // the inclusion and exclusion tags are the validator's own constants
-                                // (OrganicWasteValidator.CompostableItemTag / NotCompostableTag), so the
-                                // native machine path can never restate or drift from the qualifying
-                                 // set the mod's AddWaste path accepts (T120 asserts parity).
-                                 Triggers = new System.Collections.Generic.List<StardewValley.GameData.Machines.MachineOutputTriggerRule>
-                                 {
-                                     new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Compost", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { Domain.Services.OrganicWasteValidator.CompostableItemTag }, RequiredCount = 1 },
-                                     // (T133 FR-003) Modded trigger uses the validator-owned waste set as the canonical tag-based filter.
-                                     new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Modded", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { Domain.Services.OrganicWasteValidator.CompostableItemTag, "!" + Domain.Services.OrganicWasteValidator.NotCompostableTag }, RequiredCount = 1 }
-                                 },
+                                // T249 (FR-003, specs/002 FR-008): every trigger derives
+                                // from the validator-owned qualifying set — the five
+                                // vanilla category context tags plus the modded
+                                // inclusion tag — each ANDed with the validator-owned
+                                // exclusion override, so the native machine filter and
+                                // the mod's AddWaste path accept the same items. Each
+                                // trigger ANDs its tags; any matching trigger starts
+                                // the rule. The modded trigger consumes
+                                // OrganicWasteValidator.MachineWasteTags verbatim, so
+                                // the inclusion tag is stated once, in the validator,
+                                // and can never drift (T223 pins the registered
+                                // MachineData; T120 pins the tag-rule parity).
+                                Triggers = new System.Collections.Generic.List<StardewValley.GameData.Machines.MachineOutputTriggerRule>
+                                {
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Seeds", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { OrganicWasteValidator.CategorySeedsTag, "!" + OrganicWasteValidator.NotCompostableTag }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Vegetable", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { OrganicWasteValidator.CategoryVegetableTag, "!" + OrganicWasteValidator.NotCompostableTag }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Fruits", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { OrganicWasteValidator.CategoryFruitsTag, "!" + OrganicWasteValidator.NotCompostableTag }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Flowers", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { OrganicWasteValidator.CategoryFlowersTag, "!" + OrganicWasteValidator.NotCompostableTag }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Greens", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { OrganicWasteValidator.CategoryGreensTag, "!" + OrganicWasteValidator.NotCompostableTag }, RequiredCount = 1 },
+                                    // The modded trigger consumes the validator-owned set
+                                    // verbatim — the inclusion tag is stated once, in the
+                                    // validator, never restated here.
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Modded", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string>(OrganicWasteValidator.MachineWasteTags), RequiredCount = 1 }
+                                },
                                 OutputItem = new System.Collections.Generic.List<StardewValley.GameData.Machines.MachineItemOutput>
                                 {
                                     // Native payout disabled — rely on
