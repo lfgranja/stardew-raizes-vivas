@@ -61,6 +61,10 @@ Deliver the complete, playable composting and soil health loop in Stardew Valley
 specs/004-playable-compost-loop/
 ├── spec.md              # Feature specification
 ├── plan.md              # Implementation plan
+├── data-model.md        # Entity rules / state transitions / invariants
+├── contracts/           # Game asset + domain service contracts (contracts.md)
+├── quickstart.md        # End-to-end validation scenarios A–H
+├── research/            # Design decisions (research.md)
 ├── checklists/          # Requirements and quality checklists
 └── tasks.md             # Execution task list
 ```
