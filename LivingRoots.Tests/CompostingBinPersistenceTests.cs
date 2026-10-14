@@ -59,54 +59,16 @@ namespace LivingRoots.Tests
             Assert.Equal(CompostingBinState.Empty, service.GetBinState("CorruptFarm", new Vector2(10, 10)));
         }
 
-        /// <summary>
-        /// T199 (SC-004) — the save/reload round-trip must preserve every bin's
-        /// state and batch progress EXACTLY, over the full lifecycle matrix:
-        /// {Empty, Processing, Ready} × {placed in world, held in inventory,
-        /// floating debris}. Neither lost nor invented values, whatever form the
-        /// bin is in when the save is written.
-        /// </summary>
-        [Fact]
-        public void T199_RoundTrip_PreservesStateAndProgress_ForEveryLifecycleStateAndPlacementForm()
-        {
-            // Each row: the batch state to stage, the placement form it is in,
-            // and the world object the pruning step can see (null = the bin is
-            // not in any location, so nothing is prunable).
-            var matrix = new (CompostingBinState State, string Form, StardewValley.Object? WorldObject)[]
-            {
-                (CompostingBinState.Empty, "placed-in-world", new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId }),
-                (CompostingBinState.Processing, "placed-in-world", new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId }),
-                (CompostingBinState.Ready, "placed-in-world", new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId }),
-                (CompostingBinState.Empty, "held-in-inventory", null),
-                (CompostingBinState.Processing, "held-in-inventory", null),
-                (CompostingBinState.Ready, "held-in-inventory", null),
-                (CompostingBinState.Empty, "floating-debris", null),
-                (CompostingBinState.Processing, "floating-debris", null),
-                (CompostingBinState.Ready, "floating-debris", null)
-            };
-
-            var tile = new Vector2(10, 10);
-            for (var index = 0; index < matrix.Length; index++)
-            {
-                var (state, form, worldObject) = matrix[index];
-
-                var persisted = StageBatchAndSave(state, index, tile, worldObject, out var expectedInputId, out var expectedTimestamp);
-                var reloaded = Reload(persisted, worldObject);
-
-                // The lifecycle state survives whatever form the bin is in...
-                Assert.True(
-                    state == reloaded.GetBinState("Farm", tile),
-                    $"SC-004: state {state} ({form}) must survive the save/reload round-trip.");
-
-                // ...and so does the batch progress, exactly — never lost, never invented.
-                Assert.True(
-                    string.Equals(expectedInputId, ReadPersistedInputId(reloaded, tile), StringComparison.Ordinal),
-                    $"SC-004: input id must be preserved for {state} ({form}).");
-                Assert.True(
-                    Nullable.Equals(expectedTimestamp, ReadPersistedTimestamp(reloaded, tile)),
-                    $"SC-004: input timestamp must be preserved for {state} ({form}).");
-            }
-        }
+        // ------------------------------------------------------------------
+        // T255 (SC-004/FR-012, F9): T199's Fact matrix is superseded by the
+        // property-based T229 matrix below (lifecycle × placement through the
+        // real JSON seam, discriminating Empty rows, distinct placement paths,
+        // soil-health half). The old Fact passed vacuously for Empty
+        // (sparse-dropped null==null), exercised one code path for held/debris
+        // (both worldObject null), used an in-memory mock (never JSON) and had
+        // no soil half — all four F9 points. It is removed so the file carries
+        // a single round-trip matrix (T229); T229 is the rewritten test.
+        // ------------------------------------------------------------------
 
         /// <summary>
         /// Stages a bin in the given lifecycle state, writes it through the
@@ -549,6 +511,14 @@ namespace LivingRoots.Tests
                 {
                     debrisItem = carried;
                 }
+
+                // T255 (SC-004/F9): a held or floating bin is NOT placed — its
+                // progress lives in the carried item's modData, not in the
+                // service runtime. Clear the staged runtime record so the save
+                // carries no phantom placed bin for a floating one; the reload
+                // then exercises a genuinely distinct path (no record) from
+                // the placed form (record + world object).
+                stagingService.OnObjectRemoved("Farm", tile);
             }
 
             stagingService.SaveData(saveId);
@@ -588,8 +558,14 @@ namespace LivingRoots.Tests
 
             bool stateOk;
             bool progressOk;
-            if (state == CompostingBinState.Empty)
+            if (state == CompostingBinState.Empty || form != 0)
             {
+                // Empty (all forms) and held/debris (forms 1-2, T255): the bin
+                // is not placed, so the JSON carries no Farm-tile record and
+                // the reloaded service has no phantom — the discriminating
+                // Empty-style assertion, never vacuous null==null. For
+                // held/debris with progress, the batch survives in the carried
+                // item's modData (carriedOk below), not in the service.
                 bool noRecordPersisted = true;
                 if (binJson != null)
                 {
