@@ -49,6 +49,16 @@
 - [ ] T011b [P] Configure `ModController.cs` right-click compost-application handler with atomically-locked refusal reasons (`FR-007`/`FR-008`/`FR-019`)
 - [ ] T011c [P] Configure `ModController.cs` host-authoritative atomic lock mechanism per tile/machine (**host-lock only**, `Principle VI` / `FR-019`: first-wins concurrent action; stub-bounded, D1 debt documented) — use `Interlocked.CompareExchange` on `MachineState.DaysRemaining` (per FR-001b exactly-once guard) for first-wins atomic lock; refusal on second concurrent action preserved
 - [ ] T012 [P] Reconcile 8 stale spec/doc scope statements (`specs/001-003` + `docs/design-system`) declaring multiplayer out of scope — scope-word correction only, no redesign; reference `FR-017` / Constitution VI / `plan.md` Constitution Check CONDITIONAL PASS
+  Per-file checkpoint (FR-017 8-file scope reconciliation):
+    T012a specs/001-soil-health-visualization (scope words)
+    T012b specs/001-plan
+    T012c specs/002-soil-decay-compost
+    T012d specs/003-composting-tests
+    T012e specs/004-playable-compost-loop/plan.md
+    T012f specs/004-playable-compost-loop/spec.md
+    T012g docs/design-system
+    T012h docs/design-system/LIVING-ROOTS-UI-UX-DESIGN-SYSTEM.md
+  All scope-only word corrections per FR-017; verification gate at T012-close (confirm each file corrected, no redesign).
   FR-016 coverage: confirm README.md under ## Features has zero false/unlabelled claims; if any (Planned) suffix missing, add before declaring T012 complete.
 
 **Checkpoint**: Foundation ready — `ISoilHealthService`, `ICompostingBinService`, persistence, visualization, and atomic-lock controller all functional and independently testable.
@@ -84,7 +94,7 @@
 - [ ] T013c [P] Implement `SoilHealthService` daily decay once per day (`FR-013` / `FR-011` / `FR-001`): apply `decayRate * seasonalMultiplier` to bare tilled tiles at day start; seasonal rules 1.5x summer, 0.5x spring/fall, 0 winter; exempt greenhouse; inherited from `specs/002-soil-decay-compost/` (spec §FR-001/FR-011); property-based invariant: health clamped 0–100 after decay. DEPENDENCY NOTE: independent of US1 (bin existence); executes in Phase 2 parallel with T008–T011c; US4 (visual) requires US2 for compost source; no cross-block.
 - [ ] T019 [US2] Implement `CompostingBinService.TryCollect()` yielding exactly `1` `LivingRoots.Compost`; full inventory leaves `Ready`; retry delivers full batch; `message.harvest.inventory-full` delivered (`FR-005b` / `FR-008a`)
 - [ ] T020 [US2] Enforce `Item.modData` (`LivingRoots.InputId`, `LivingRoots.DaysRemaining`) serializes into inventory bin; `max stack = 1` while progress present; processing pauses unplaced (`FR-005c` / `data-model.md`)
-- [ ] T021 [P] [US2] Implement `ModEntry.OnAssetRequested` edit for `Data/Machines` (`Triggers`, `DaysUntilReady = 2`, output quantity `1`) per `contracts/contracts.md` §1.3 (**retire old 1-5 multiplier**; confirm obsolete fields `MaturationLevel`, `ConsecutiveActiveDays`, `ConsecutiveIdleDays` absent from definition) (FR-001b / FR-005a / A2)
+- [ ] T021 [P] [US2] Implement `ModEntry.OnAssetRequested` edit for `Data/Machines` (`Triggers`, `DaysUntilReady = 2`, output quantity `1`) per `contracts/contracts.md` §1.3 (**retire old 1-5 multiplier**; confirm obsolete fields `MaturationLevel`, `ConsecutiveActiveDays`, `ConsecutiveIdleDays` absent from definition) (FR-001b / FR-005a / A2). **Verification of Data/Machines declaration consolidated here (was T016); T021 now covers declaration + implementation + retirement of multiplier.**
 
 ---
 
@@ -123,7 +133,7 @@
 **Purpose**: Concurrency verification, save/load fault isolation, security, format, documentation of D1 debt
 
 - [ ] T030 [P] Implement `MultiplayerConcurrencyTests.cs` automated multi-threaded stub / `ThreadSafeGameLoopEventsStub` verifying first-wins atomic lock (`Principle VI` / FR-019) and `OnTileHealthChanged` reactive invalidation (`SC-05`, `SC-10`; stub-bounded, not live proof — D1 debt explicit per spec lines 302–303 / Constitution §VI). ADD: simulated disconnect/reconnect sequence + network-fault injection (message drop, reorder) required to approach interleaving coverage; stub alone never reproduces live SMAPI message ordering (CHESS/CTrigger/Jepsen limits documented). (FR-019 / Principle VI)
-- [ ] T031b [P] Property-based invariant tests (FsCheck `ForAll`): soil health always clamped 0–100; compost application always +15 (or refused); bin state-machine never regresses; first-wins concurrent action always yields exactly one applied change; visual overlay distinguishable from untreated neighbor (**RGB shift < 5% vs untreated at same light level; blend alpha ≥ 0.65** — A3 property invariant) — delegated to subagent wave (reuse T000-R5 context). Reuse note: Property fixture shared with T000-R1..R5 (FsCheck ForAll setup); subagent wave may reuse same test-project context to avoid duplicate setup.
+- [ ] T031b [P] Property-based invariant tests (FsCheck `ForAll`): soil health always clamped 0–100; compost application always +15 (or refused); bin state-machine never regresses; first-wins concurrent action always yields exactly one applied change; visual overlay distinguishable (RGB shift <5% vs untreated at same light; blend alpha ≥0.65) — B1: overlay timing ≤16.67ms validated by reactive event `OnTileHealthChanged`; C1: exactly-one-change verified by stub + refusal message assertion (T030). Delegate to subagent wave (reuse T000-R5 context). Reuse note: Property fixture shared with T000-R1..R5 (FsCheck ForAll setup); subagent wave may reuse same test-project context to avoid duplicate setup.
 - [ ] T031 [P] Implement save/load round-trip tests (`SC-04`, `FR-012`): corrupt / obsolete / orphaned entries quarantined; valid entries preserved; visual overlays re-rendered. Note: Integration round-trip: builds on T000-R1 invariant; validates save/load with corrupt + orphan + obsolete entries.
 - [ ] T032 [P] Security validation: `ModDataService.SanitizePathSegments()` on tile keys; no raw exception messages to output (`FR-015` / `AGENTS.md` — `ex.GetType().FullName` + `HResult` at `LogLevel.Trace` only, never `Message`); `CheckForOverflowUnderflow` never suppressed; bounds `0–100` enforced (`Principle II`)
 - [ ] T033 [P] Format verification: `dotnet format Stardew-LivingRoots.sln --verify-no-changes`; build green (`dotnet build --nologo`) (`Gate 1` / `AGENTS.md`)
@@ -179,7 +189,7 @@ T012: LivingRoots/ModEntry.cs — Data/Objects edit
 T013: LivingRoots/ModEntry.cs — Data/BigCraftables edit
 T014: LivingRoots/ModEntry.cs — Data/CraftingRecipes edit
 T015: LivingRoots/Services/CompostingBinService.cs — TryPlace / removal
-T016 [P]: LivingRoots/ModEntry.cs — Data/Machines declaration verification
+T016 [P]: LivingRoots/ModEntry.cs — Data/Machines declaration verification  # Verification consolidated into T021; T016 now placement-only scope.
 ```
 
 ---
