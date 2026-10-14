@@ -1947,7 +1947,19 @@ namespace LivingRoots.Controllers
                 // T131 FR-005c: route dislodged bin into inventory when space is available
                 // (debris only when full). Pass a PlayerInventory instance so the dislodged
                 // bin carrying progress lands in inventory rather than always becoming debris.
-                if (heldItem == null && TryDislodgeBin(location, binTile, inventory: new PlayerInventory(), onDropDebris: null))
+                // T247 (FR-001a/FR-005b/FR-006): a Ready bin with empty hands must
+                // collect through TryInteractWithBin below — the sole production
+                // caller of CompostingBinService.CollectCompost, which grants
+                // exactly one compost and returns the bin to Empty while the
+                // world object stays on the tile — never dislodge.
+                // TryDislodgeBin returns true for any bin object, so the
+                // dislodge yields whenever the bin is Ready. A non-Ready bin
+                // keeps the existing dislodge behaviour. The Data/Machines
+                // native payout stays disabled, so exactly one driver pays
+                // (no double-payout).
+                if (heldItem == null
+                    && _compostingBinService.GetBinState(location.Name, binTile) != Domain.CompostingBinState.Ready
+                    && TryDislodgeBin(location, binTile, inventory: new PlayerInventory(), onDropDebris: null))
                 {
                     return;
                 }
