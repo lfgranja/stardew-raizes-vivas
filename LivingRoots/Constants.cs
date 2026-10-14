@@ -73,9 +73,7 @@ namespace LivingRoots
         public const int CompostingBinWoodCost = 50;
         public const int CompostingBinStoneCost = 25;
         public const int CompostingBinFiberCost = 15;
-        public const string CompostCraftingSound = "axe";
         public const int CompostCategoryId = -26;
-        public const int CompostStackMax = 999;
 
         // T007 (FR-005c): the Item.modData keys a held bin serializes its
         // batch progress into. Progressing through them is the only way a
@@ -98,7 +96,6 @@ namespace LivingRoots
         // T136 (FR-008a): the native machine rejection cue for an invalid
         // drop-in — vanilla audio cancel cue plus machine shake. Keys off the
         // Data/Machines ShakeDuration field so no second shake path exists.
-        public const float BinInvalidDropInShakeSeconds = 1.0f;
         public const int BinInvalidDropInShakeTimerMs = 750;
     }
 }
