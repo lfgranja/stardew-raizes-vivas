@@ -39,7 +39,7 @@ Implement a soil health visualization system that renders color-coded overlays o
 | III. Async-Only Concurrency | PASS | I/O-bound operations (config file load, save/load data persistence) use async/await. Game-loop-thread coordination (render state snapshots, atomic config swaps, pause/resume flags) uses lock-free atomic synchronization (Interlocked, Volatile.Read) — async/await is not applicable to same-thread frame coordination. No .Result or .Wait() calls on I/O paths. |
 | IV. Test-Driven Development | PASS | Tests will be written before implementation. xUnit + Moq for unit tests. ThreadSafeGameLoopEventsStub for event testing. |
 | V. Simplicity and YAGNI | PASS | No premature abstractions. Only interfaces needed: IVisualizationService, IVisualizationConfigurationService, IColorInterpolationService. |
-| VI. Multiplayer As A First-Class Requirement | PASS | Farm state is host-authoritative and farm-scoped; the overlay is local-rendered and read-only, generating no network traffic of its own. Single-player is the degenerate case of multiplayer (a host with no clients), not a separate mode. |
+| Principle VI. Multiplayer As A First-Class Requirement | PASS | Farm state is host-authoritative and farm-scoped; the overlay is local-rendered and read-only, generating no network traffic of its own. Single-player is the degenerate case of multiplayer (a host with no clients), not a separate mode. |
 
 **Gate Result**: PASS — No violations detected.
 
@@ -52,7 +52,7 @@ Implement a soil health visualization system that renders color-coded overlays o
 | III. Async-Only Concurrency | PASS | I/O-bound operations (config file load, save/load data persistence) use async/await. Game-loop-thread coordination uses lock-free atomic synchronization (Interlocked, Volatile.Read). Event handlers follow existing sync pattern for game-loop coordination; async/await used only for true I/O. |
 | IV. Test-Driven Development | PASS | Tests to be written before implementation per project convention. |
 | V. Simplicity and YAGNI | PASS | Only three interfaces created, matching exact feature requirements. No speculative abstractions. |
-| VI. Multiplayer As A First-Class Requirement | PASS | Design keeps farm state host-authoritative and farm-scoped; visualization stays local-rendered and read-only with no network traffic of its own. Single-player is the degenerate case of multiplayer (a host with no clients), not a separate mode. |
+| Principle VI. Multiplayer As A First-Class Requirement | PASS | Design keeps farm state host-authoritative and farm-scoped; visualization stays local-rendered and read-only with no network traffic of its own. Single-player is the degenerate case of multiplayer (a host with no clients), not a separate mode. |
 
 **Re-evaluation Result**: PASS — Design aligns with all constitutional principles.
 
