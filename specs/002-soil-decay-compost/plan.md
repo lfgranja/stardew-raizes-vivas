@@ -18,7 +18,7 @@ This feature implements the core agroecology gameplay loop: tilled soil decays w
 
 **Testing**: xUnit with Moq, ThreadSafeGameLoopEventsStub for async event testing
 
-**Target Platform**: Stardew Valley via SMAPI (Windows/Linux/macOS, single-player)
+**Target Platform**: Stardew Valley via SMAPI (Windows/Linux/macOS)
 
 **Project Type**: Stardew Valley mod (desktop game mod, DLL plugin)
 
