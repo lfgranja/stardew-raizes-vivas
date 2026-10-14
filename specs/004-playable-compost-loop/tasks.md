@@ -32,7 +32,7 @@
 - [ ] T000-R6 [P] Write failing `VisualizationServiceTests.cs` (overlay render-safety: MUST NOT render when cache is null/uninitialized; 3-tier interpolation; reactive invalidation ≤16.67ms) — must fail before T024. Property-based invariant: `ForAll(cache => cache == null ? !renderCalled : renderCalled)` (`FR-010` / `FR-011`).
 - [ ] T000-R7 [P] Write failing `DailyDecayTests.cs` (once-per-day decay; seasonal multiplier 1.5× summer / 0.5× spring & fall / 0× winter; greenhouse exempt; clamp 0–100) — must fail before T014d. Property-based invariant: `ForAll(health, season => IsClamped(ApplyDecay(health, season)))` (`FR-013`).
 - [ ] T000-R8 [P] Write failing `AssetRegistrationTests.cs` (US1: `LivingRoots.Compost` present in `Data/Objects`, `LivingRoots.CompostingBin` in `Data/BigCraftables`, recipe in `Data/CraftingRecipes`, machine in `Data/Machines`; recipe listed as craftable; bin placeable on farm / Greenhouse / Ginger Island farm, removable, no ghost on rejected placement) — must fail before T013a/T013/T014/T015/T021. Property-based invariant: `ForAll(placement => ValidTerrain(placement) == PlacementSucceeds(placement))` (`FR-001` / `FR-002`).
-- [ ] T000-R9 [P] Write failing `CompostingBinServiceTests.cs` (US2: insert qualifying waste → `Processing`; collect when `Ready` → exactly 1 `Compost`; collect when not `Ready` → nothing produced; full inventory → bin stays `Ready`; one in-game day advances processing exactly once) — must fail before T017/T018/T019/T020. Property-based invariant: `ForAll(bin => Collect(bin).Yield == (bin.State == Ready ? 1 : 0))` (`FR-004` / `FR-005a` / `FR-005b`).
+- [ ] T000-R9 [P] Write failing `CompostingBinServiceTests.cs` (US2: insert qualifying waste → `Processing`; collect when `Ready` → exactly 1 `Compost`; collect when not `Ready` → nothing produced; full inventory → bin stays `Ready`; one in-game day advances processing exactly once) — must fail before T017/T018/T019/T020. Property-based invariant: `ForAll(bin => Collect(bin).Yield == (bin.State == Ready ? 1 : 0))` (`FR-004` / `FR-005a` / `FR-005b`); FR-003 qualifying-set invariant: `ForAll(item => IsCompostable(item) == ExpectedFromSpec002(item))`.
 
 **Gate**: All 9 RED tasks (T000-R1..R9) exist and FAIL → unlock Phase 1 (Setup) and Phase 2 (Foundational). No implementation anywhere before its RED test exists and fails. RED → phase mapping: Phase 2 ← R1/R2/R3/R5/R7; Phase 3 (US1) ← R8; Phase 4 (US2) ← R2/R9; Phase 5 (US3) ← R4/R6; Phase 6 (US4) is documentation, verified by T027/T027a/T029 rather than a RED test.
 
@@ -124,7 +124,7 @@
 
 **Story dependencies**: None (documentation); ideally after US1–US3 verified but can proceed independently.
 
-- [ ] T027 [US4] Audit `README.md` `## Features`; label all unbuilt capabilities with `(Planned)` suffix; remove false claims (`FR-016` / `spec.md` clarification 2026-10-04)
+- [ ] T027 [P] [US4] Audit `README.md` `## Features`; label all unbuilt capabilities with `(Planned)` suffix; remove false claims (`FR-016` / `spec.md` clarification 2026-10-04)
 
 - [ ] T027a [P] [US4] Reconcile 8 stale spec/doc scope statements declaring multiplayer out of scope — scope-wording correction only (changes limited to sentences containing 'multiplayer' or 'single-player'; no changes to requirement IDs, acceptance criteria, or technical constraints); reference `FR-017` / Constitution VI / `plan.md` Constitution Check CONDITIONAL PASS. Sub-tasks:
   - [ ] T027a-1 Reconcile `specs/001-soil-health-visualization/spec.md` (scope words)
@@ -136,7 +136,7 @@
   - [ ] T027a-7 Reconcile `docs/design-system/REALITY-CHECK-EVALUATION.md` (scope words)
   - [ ] T027a-8 Reconcile `docs/design-system/LIVING-ROOTS-UI-UX-DESIGN-SYSTEM.md` (scope words)
   Verification gate upon T027a completion: confirm each file corrected, no redesign.
-- [ ] T029 [US4] Verify no spec declares multiplayer out of scope where it contradicts Constitution Principle VI (`SC-007` / `spec.md` Assumptions — multiplayer verification boundary)
+- [ ] T029 [P] [US4] Verify no spec declares multiplayer out of scope where it contradicts Constitution Principle VI (`SC-007` / `spec.md` Assumptions — multiplayer verification boundary)
 
 ---
 
@@ -215,13 +215,13 @@ DEPENDENCY: Phase 0a scaffolding (T003/T004/T004a) must exist before the RED tes
 | W4 | T013a, T013, T014, T015, T017–T021, T022–T026 | User stories US1–US3 — one subagent per story; within a story, tasks touching the same file (e.g. ModEntry.cs) run sequentially inside that subagent | background |
 | W5 | T027, T027a, T029 | US4 documentation — reuse one docs subagent | background `[P]` |
 | W6 | T030, T031, T031a, T031b, T032, T033, T035, T036 | Polish/implementation test suites (excludes verification T034, which is W7) | background `[P]` |
-| W7 | T034, T034a, T035a, T037, T038, T039 | Verification only — fresh subagent(s); MUST NOT reuse implementing context | background `[P]` |
+| W7 | T034, T034a, T035a, T037, T038, T039 | Verification only — fresh subagent(s); MUST NOT reuse implementing context | background |
 
 Reuse rule: tasks that share a context (same service / same test project / same doc set) reuse the same subagent; tasks in different contexts run as separate background agents.
 
 ---
 
-## Parallel Example: User Story 1
+## Sequential Example: User Story 1 (shared ModEntry.cs)
 
 ```bash
 # Asset registrations + placement logic (T013a/T013/T014/T021 share ModEntry.cs → sequential; T015 is a separate file):
