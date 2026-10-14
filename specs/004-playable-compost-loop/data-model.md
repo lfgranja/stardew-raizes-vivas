@@ -42,7 +42,7 @@
 | `QualifiedItemId` | `string` | Registered via `Data/Objects` (`LivingRoots.Compost`) |
 | `DisplayName` / `Description` | `string` (localized) | Game-native; no custom UI |
 | `Stackable` | `bool` | Standard item stack behavior |
-| `Stack` | `int` | `999` (standard item stack) per `contracts/contracts.md` §2 |
+| `Stack` | `int` | `999` (standard item stack) per `contracts/contracts.md` §1.1 |
 | `Source` | Constraint | ONLY from completed bin batch (FR-006) — no crafting bypass |
 
 **Validation / Rules**:
@@ -93,4 +93,4 @@
 - `CompostingBin` batch yield always `1` (FR-005a)
 - `DaysRemaining` advances exactly once per in-game day regardless of player count (FR-004 / FR-013)
 - Concurrent mutation on same tile / bin = exactly `1` applied; second refused with visible reason (FR-019 / SC-010)
-- Visual overlay invalidation ≤ 16.67ms (FR-010 / SC-10) — verified by stub, not live packet transport (debt D1)
+- Visual overlay invalidation ≤ 16.67ms (FR-010 / SC-010) — verified by stub, not live packet transport (debt D1)
