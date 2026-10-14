@@ -217,7 +217,7 @@ every stated capability either works or is explicitly labelled as not yet workin
   compost items according to how long a bin had been kept busy — is **superseded by this feature and
   MUST NOT be implemented**. The quantity of a batch's output is never adjusted, scaled, or
   accumulated by this mod.
-  COMPOST ITEM STACK: `LivingRoots.Compost` defines `Stack = 999` (standard item stack) per contracts/contracts.md §1.1; bin output always produces 1 item regardless of stack; no accumulation. Verified by T021 (`Data/Machines` declaration) and T013a/T013 (asset registration).
+  COMPOST ITEM STACK: `LivingRoots.Compost` defines `Stack = 999` (standard item stack) per contracts/contracts.md §1.1; bin output always produces 1 item regardless of stack; no accumulation. Verified by T021 (`Data/Machines` declaration) and T012/T013 (asset registration).
 - **FR-005b**: Finished compost MUST NOT be destroyed, discarded, or silently dropped. When the player
   cannot receive a completed batch — a full inventory being the ordinary cause — the compost MUST remain
   in the bin, MUST be delivered in full on a later player-initiated harvest attempt (OnButtonPressed / right-click), and MUST NOT be partially lost, duplicated,
