@@ -389,9 +389,19 @@ namespace LivingRoots.Tests
             }
 
             Assert.True(recipeDict.ContainsKey(ModConstants.CompostingBinRecipeId));
-            Assert.Equal(
-                $"{ModConstants.CompostingBinWoodCost} 388 {ModConstants.CompostingBinStoneCost} 390 {ModConstants.CompostingBinFiberCost} 771/Home/{ModConstants.CompostingBinItemId}/true/default/",
-                recipeDict[ModConstants.CompostingBinRecipeId]);
+
+            // Contract pinned by specs/004-playable-compost-loop/briefings/data-entries-machines-recipes.md
+            // §4 ("pares `id qtd`": 388 wood×50, 390 stone×25, 771 fiber×15) and §5.1's canonical
+            // string. Ingredients are item-ID THEN quantity — a quantity-first reading is wrong.
+            var recipe = recipeDict[ModConstants.CompostingBinRecipeId];
+            var segments = recipe.Split('/');
+            Assert.Equal(6, segments.Length);
+            Assert.Equal("388 50 390 25 771 15", segments[0]);
+            Assert.Equal(ModConstants.CompostCraftingTab, segments[1]);
+            Assert.Equal(ModConstants.CompostingBinItemId, segments[2].Split(' ')[0]);
+            Assert.Equal("true", segments[3]);      // yield resolves as a (BC) big craftable
+            Assert.Equal("default", segments[4]);   // learned on day one, no skill gate
+            Assert.Equal("Composting Bin", segments[5]);
         }
 
         [Fact]
