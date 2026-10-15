@@ -8,8 +8,8 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 > ✅ implemented & verified (build + tests green) · 🟡 partial / inert · ❌ not implemented ·
 > ⚠️ implemented but **has no effect on gameplay**.
 > The original design text is preserved unchanged; annotations were added, nothing was deleted.
-> **Deep-dive evidence:** `research/smapi-1.6-crop-and-soil-api-2026.md`,
-> `research/comparable-soil-farming-mods-2026.md`, `research/agroecology-feature-grounding-2026.md`.
+> **Deep-dive evidence:** `research/2026-10-roadmap-feasibility-and-agronomy.md` (SMAPI 1.6 API, baseline
+> competitivo e base agronômica de cada mecânica abaixo, com fontes primárias).
 
 ## Where we actually are (verified, not inferred)
 
@@ -126,7 +126,7 @@ The focus is on integrating systems and creating a self-sustaining cycle on the 
     ❌ **Not implemented** (`briefings/pest-system-mvp.md`, `briefings/mobile-coop.md`).
 *   **Beneficial Insects and Beekeeping:** Beehives now have a second function: in addition to honey, they create an aura of "Beneficial Insects." "Insect Hotels" (new crafting) also attract beneficial insects for natural pest control.
     ❌ **Not implemented** (`briefings/insect-hotels-beehive-aura.md`). ⚠️ Caution: the entomological
-    evidence for insect hotels is weak-to-negative — see `research/agroecology-feature-grounding-2026.md`.
+    evidence for insect hotels is weak-to-negative — see `research/2026-10-roadmap-feasibility-and-agronomy.md` §C.3.
     Do not present the pest-control benefit as established agronomy.
 *   **Living Pharmacy:** Learn from Elena or Linus to grow medicinal herbs (Rue, Boldo, Chamomile). These can be used to create tonics (energy buffs) or "Natural Sprays" (Pest Control without soil damage).
     ❌ **Not implemented** (`briefings/living-pharmacy-tonics-sprays.md`). Needs 3 new crops + crafting + buffs.
@@ -209,7 +209,21 @@ cover crops, grazing, faster growth at 70+/90+ ("an extra day of growth per nigh
 farm-wide quality/yield at 75+/90+ average. Our differentiation is therefore **not** the
 soil-health mechanic; it is the agroecological grounding, the compounding compost loop, the
 educational framing and multiplayer correctness. Design steps 2-4 to beat it on *coherence*, not on
-novelty. See `research/comparable-soil-farming-mods-2026.md`.
+novelty. See `research/2026-10-roadmap-feasibility-and-agronomy.md` §B.
+
+### Agronomic grounding (what the evidence actually supports)
+
+Before building any of the above, the roadmap's promises were checked against the literature
+(`research/2026-10-roadmap-feasibility-and-agronomy.md` §C). The result changes the priority order:
+
+| Mechanic | Evidence | Consequence for the mod |
+|---|---|---|
+| Compost / manure | ✅ strong — long-term trials: manure raises organic C +13%, available N +19%, available P +47% | Build as promised. Keep +15 as an explicit game abstraction, not a simulation |
+| **Mulch / soil cover** | ✅ **strongest** — global meta-analysis (90 studies): runoff **−47%**, soil loss **−76%** | Best-supported claim in the whole roadmap. Real agronomy to teach |
+| Green manure | ✅ strong — 34-yr trial: grain yield **+45%**, organic matter **+41%** | Build as promised |
+| Crop rotation | ✅ strong but **21–52 year** timescale — soil health +32–49% over decades | Honest framing impossible at 28-day seasons: model as abstraction, say so |
+| **Three Sisters** | 🟡 **overstated** — land-equivalent yield advantage is real, but bean yield was ~10× *lower* and squash ~20× *lower* in polyculture; one trial found **no significant difference in soil N** | Do not teach "sisters improve each other's soil". Model as an area-efficiency trade-off |
+| **Insect hotels** | ❌ **not supported** — "bee hotels differentially augment wasps rather than native bees"; authors coined *"bee-washing"*; NC State: no strong evidence either way | **Do not ship as pest control.** If built, make the doubt the lesson |
 
 ### Blockers that are not roadmap items
 
