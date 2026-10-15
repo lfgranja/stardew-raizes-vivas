@@ -10,7 +10,7 @@
 
 > Enquanto STARDEW_GAME_PATH estiver vazia, Build and Test reporta skipped — workflow verde não significa que testes rodaram.
 
-Note on the variable name: the report spells it `STARDEW_GAME_PATH`; the repository uses `STARDEW_GAME_PATH` (4 occurrences in `.github/workflows/build_and_analyze.yml`). Treated as a typo in the report, not a second variable.
+Note on the variable name: the report spells it `STARDEW_GAME_PATH`. At the time of this assessment the repository instead carried `STARDIEW_GAME_PATH`, an `I` that does not belong in the game's name — introduced by mistake when the `ci-workflow-misplaced` fix first wrote the workflow, not inherited from the report. Corrected in the fix below; see Deviations.
 
 ## Symptom
 
