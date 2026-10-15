@@ -763,6 +763,8 @@ var color = new Color(185, 28, 28);
 
 > **Reminder:** Stardew Valley/MonoGame is single-threaded. The `lock` pattern is for data consistency between SMAPI events, not for game/render thread separation. Use `Mutex` for genuine cross-thread scenarios (like UI Info Suite 2 does for multiplayer tile data).
 
+> **Note:** The `Mutex` guidance above covers genuine cross-thread farmhand data sync. Farm state itself is **host-authoritative** and farm-scoped per Principle VI (Multiplayer As A First-Class Requirement) in `.specify/memory/constitution.md`: the host owns the state, per-tile/per-machine resolution is atomic with first-wins semantics, and single-player is a degenerate case of the same shared-state model. This does not change the single-threaded advice above — it states what the farm state is, not which thread it lives on.
+
 ### 13.5 Shared Constants
 
 All shared constants must be defined in `ModConstants` — **never duplicate constants across files**.
@@ -850,6 +852,7 @@ All shared constants must be defined in `ModConstants` — **never duplicate con
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.0.1 | 2026-10-13 | Added Principle VI (Multiplayer As A First-Class Requirement) host-authoritative farm-state pointer to the concurrency/lock guidance; threading advice unchanged |
 | 2.0.0 | 2026-09-09 | Reality-checked update: Fixed threading model (single-threaded), tile size (zoom/UI scale), coordinate conversion (GlobalToLocal), accessibility standard (Game Accessibility Guidelines), color defaults (earth tones), prefers-reduced-motion (config toggle), tooltip rendering (native drawHoverText), domain layer purity (ColorDTO), pattern scaling (pixelZoom), shared constants (no duplicates) |
 | 1.0.0 | 2026-09-09 | Initial design system release |
 

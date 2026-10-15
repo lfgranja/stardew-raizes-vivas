@@ -18,7 +18,7 @@ This feature adds test coverage for the composting state machine and supporting 
 
 **Testing**: xUnit with Moq, `ThreadSafeGameLoopEventsStub` for async event testing, stub implementations of `ITimeProvider`/`ISeasonProvider`/`IPlayerProvider` for time/season/player-dependent tests
 
-**Target Platform**: Stardew Valley via SMAPI (Windows/Linux/macOS, single-player)
+**Target Platform**: Stardew Valley via SMAPI (Windows/Linux/macOS)
 
 **Project Type**: Stardew Valley mod (desktop game mod, DLL plugin)
 
@@ -395,3 +395,12 @@ public void ProcessDayStart_SummerDecay_HigherThanSpring()
 2. Execute prerequisite fixes (Fix-1 through Fix-5)
 3. Create test files following patterns in this plan
 4. Run test suite and verify all tests pass
+
+## Reconciliation — FR-017 / Principle VI (v2.0.0)
+
+| ID | Reconciliation Statement | Boundary (No Redesign) |
+|----|--------------------------|------------------------|
+| R-1 | Principle VI (`constitution.md` v2.0.0): Farm state is host-authoritative. Bin state and soil health belong to the farm (`specs/004-playable-compost-loop/spec.md` §FR-018/FR-019). | Plan scope (test files, stubs, fixtures) unchanged; only multiplayer scope wording reconciled. |
+| R-2 | Multiplayer not out of scope; single-player is degenerate case (`specs/004-playable-compost-loop/spec.md` §Assumptions). | Existing Phase 1–6 tasks and dependency order preserved. |
+| R-3 | Host-authoritative atomic lock applies to bin mutation and persistence; divergence explicit (`FR-019`). No silent last-write-wins on farm tiles. | No redesign of test infrastructure (`ThreadSafeGameLoopEventsStub`, `ITimeProvider` stubs) or prerequisite fixes (Fix-1 through Fix-5). |
+

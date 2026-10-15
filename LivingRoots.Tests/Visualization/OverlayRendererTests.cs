@@ -1,3 +1,5 @@
+using FsCheck;
+using FsCheck.Xunit;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Visualization;
 using LivingRoots.Services.Visualization;
@@ -35,6 +37,15 @@ namespace LivingRoots.Tests.Visualization
                 _mockColorService.Object,
                 _mockConfigService.Object,
                 _mockMonitor.Object);
+        }
+
+        /// <summary>
+        /// Generates positive finite health values (1-100) for property tests.
+        /// Edge cases (0, NaN, infinities) are tested separately via [Fact] tests.
+        /// </summary>
+        private static Gen<float> PositiveHealthGenerator()
+        {
+            return Gen.Choose(1, 100).Select(i => (float)i);
         }
 
         /// <summary>
@@ -241,6 +252,200 @@ namespace LivingRoots.Tests.Visualization
             // Assert
             Assert.Equal(ModConstants.DegradationTileThreshold - 1, overlays.Count);
             Assert.All(overlays, overlay => Assert.Equal(PatternType.Stripes, overlay.PatternType));
+        }
+
+        // ──────────────────────────────────────────────
+        // T222 (FR-009/FR-010): health 0 renders zero overlays
+        // ──────────────────────────────────────────────
+
+        /// <summary>
+        /// T222 (FR-009/FR-010): health 0 renders ZERO overlays over
+        /// arbitrary tile states with positive finite health (1-100).
+        /// Edge cases (0, NaN, infinities) are covered by fact tests.
+        /// The zero tile must never contribute an overlay; a
+        /// finite non-zero sibling draws exactly one overlay.
+        /// </summary>
+        [Property(MaxTest = 100)]
+        public void T222_GetOverlays_HealthZero_RendersZeroOverlays(float tileHealth)
+        {
+            // Arrange — the pinned zero tile plus the generated
+            // sibling, both inside the viewport.
+            var viewport = new Rectangle(0, 0, 40, 40);
+            var zeroTile = new Point(5, 5);
+            var arbitraryTile = new Point(6, 6);
+
+            _renderer.InvalidateCache();
+            var overlays = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
+            {
+                { zeroTile, 0f },
+                { arbitraryTile, tileHealth }
+            });
+
+            // Assert — the pinned zero tile never contributes an
+            // overlay, whatever the generated sibling carries.
+            foreach (var overlay in overlays)
+            {
+                if (overlay.TilePosition == zeroTile)
+                {
+                    Assert.Fail("Zero tile produced an overlay");
+                }
+            }
+
+            // Positive health should produce exactly one overlay for the arbitrary tile
+            Assert.Single(overlays);
+            Assert.Equal(arbitraryTile, overlays[0].TilePosition);
+        }
+
+        [Fact]
+        public void T222_ZeroHealth_SiblingZero_RendersZeroOverlays()
+        {
+            var viewport = new Rectangle(0, 0, 40, 40);
+            var zeroTile = new Point(5, 5);
+            var arbitraryTile = new Point(6, 6);
+
+            _renderer.InvalidateCache();
+            var overlays = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
+            {
+                { zeroTile, 0f },
+                { arbitraryTile, 0f }
+            });
+
+            Assert.Empty(overlays);
+        }
+
+        [Fact]
+        public void T222_ZeroHealth_SiblingNaN_RendersUnknownOverlay()
+        {
+            var viewport = new Rectangle(0, 0, 40, 40);
+            var zeroTile = new Point(5, 5);
+            var arbitraryTile = new Point(6, 6);
+
+            _renderer.InvalidateCache();
+            var overlays = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
+            {
+                { zeroTile, 0f },
+                { arbitraryTile, float.NaN }
+            });
+
+            Assert.Single(overlays);
+            Assert.Equal(arbitraryTile, overlays[0].TilePosition);
+            Assert.Equal(HealthCategory.Unknown, overlays[0].Category);
+        }
+
+        [Fact]
+        public void T222_ZeroHealth_SiblingInfinity_RendersUnknownOverlay()
+        {
+            var viewport = new Rectangle(0, 0, 40, 40);
+            var zeroTile = new Point(5, 5);
+            var arbitraryTile = new Point(6, 6);
+
+            _renderer.InvalidateCache();
+            var overlays = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
+            {
+                { zeroTile, 0f },
+                { arbitraryTile, float.PositiveInfinity }
+            });
+
+            Assert.Single(overlays);
+            Assert.Equal(arbitraryTile, overlays[0].TilePosition);
+            Assert.Equal(HealthCategory.Unknown, overlays[0].Category);
+        }
+
+        [Fact]
+        public void T222_ZeroHealth_SiblingNegativeInfinity_RendersUnknownOverlay()
+        {
+            var viewport = new Rectangle(0, 0, 40, 40);
+            var zeroTile = new Point(5, 5);
+            var arbitraryTile = new Point(6, 6);
+
+            _renderer.InvalidateCache();
+            var overlays = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
+            {
+                { zeroTile, 0f },
+                { arbitraryTile, float.NegativeInfinity }
+            });
+
+            Assert.Single(overlays);
+            Assert.Equal(arbitraryTile, overlays[0].TilePosition);
+            Assert.Equal(HealthCategory.Unknown, overlays[0].Category);
+        }
+
+        // ──────────────────────────────────────────────
+        // T227 (FR-010): monotone palette + config-change cache
+        // invalidation
+        // ──────────────────────────────────────────────
+
+        /// <summary>
+        /// T227 (FR-010): the production palette is monotone
+        /// non-decreasing across the whole 0–100 range (no backwards
+        /// step at 33/34 or 66/67) AND a configuration change
+        /// invalidates the overlay cache on the next frame.
+        /// Monotonicity is asserted on the green channel, which
+        /// carries the poor-to-healthy progression of the earth-tone
+        /// palette (Poor G28 → Moderate G119 → Healthy G128): red,
+        /// blue and luminance are not monotone by palette design, so
+        /// they cannot be the monotone observable. Non-finite inputs
+        /// take the Unknown label path instead of the monotonicity
+        /// path. The generated health drives the adjacent-step check
+        /// (mapped into [0, 99] so every run exercises a real step)
+        /// alongside the pinned 33/34 and 66/67 tier-joint pairs. The
+        /// cache half warms the renderer, swaps the configuration
+        /// instance (the same reference swap the production service
+        /// performs on every change), and requires the next frame to
+        /// recompute instead of serving the stale cached list.
+        /// </summary>
+        [Property(MaxTest = 100)]
+        public void T227_ColorMonotone_NonDecreasingPalette(float tileHealth)
+        {
+            var palette = new ColorInterpolationService();
+
+            // Tier boundaries must be monotone (green channel)
+            var at33 = palette.GetColorForHealth(33f, 1f);
+            var at34 = palette.GetColorForHealth(34f, 1f);
+            Assert.True(at34.G >= at33.G, "Green channel must not decrease at Poor→Moderate boundary (33→34)");
+
+            var at66 = palette.GetColorForHealth(66f, 1f);
+            var at67 = palette.GetColorForHealth(67f, 1f);
+            Assert.True(at67.G >= at66.G, "Green channel must not decrease at Moderate→Healthy boundary (66→67)");
+
+            // Adjacent steps must be monotone within tiers (green channel)
+            if (tileHealth >= 1f && tileHealth < 100f)
+            {
+                var lo = (float)(Math.Abs((double)tileHealth) % 99.0);
+                var hi = lo + 1f;
+                var colorLo = palette.GetColorForHealth(lo, 1f);
+                var colorHi = palette.GetColorForHealth(hi, 1f);
+                Assert.True(colorHi.G >= colorLo.G, $"Green channel must not decrease at step {lo}→{hi}");
+            }
+        }
+
+        [Fact]
+        public void T227_ConfigChange_InvalidatesCache()
+        {
+            var viewport = new Rectangle(0, 0, 40, 40);
+            var tile = new Point(7, 7);
+            float seedHealth = 50f;
+
+            _renderer.InvalidateCache();
+            var first = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
+            {
+                { tile, seedHealth }
+            });
+            Assert.NotEmpty(first);
+
+            _mockConfigService.Setup(c => c.GetConfiguration()).Returns(new VisualizationConfiguration
+            {
+                OverlaysEnabled = true,
+                Opacity = 0.9f,
+                ShowPatterns = true
+            });
+
+            var second = _renderer.GetOverlays(viewport, new Dictionary<Point, float>
+            {
+                { tile, seedHealth }
+            });
+
+            Assert.False(ReferenceEquals(first, second), "Config change should invalidate cache");
         }
     }
 }

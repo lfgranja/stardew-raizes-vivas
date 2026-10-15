@@ -43,12 +43,45 @@ internal sealed class MinimalContentManager : LocalizedContentManager
     /// <inheritdoc />
     public override T Load<T>(string assetName)
     {
-        return CreateEmptyAsset<T>();
+        return LoadAsset<T>(assetName);
     }
 
     /// <inheritdoc />
     public override T Load<T>(string assetName, LanguageCode languageCode)
     {
+        return LoadAsset<T>(assetName);
+    }
+
+    /// <summary>
+    /// Serves the two assets a terrain-feature-bearing location needs — the
+    /// location-context registry and the object-data registry — with the
+    /// vanilla entries present, so <c>HoeDirt</c>'s constructor (which resolves
+    /// the location's season) and season-derived reads succeed instead of
+    /// throwing on an empty game. Everything else keeps the empty-asset
+    /// behaviour.
+    /// </summary>
+    /// <typeparam name="T">Requested asset type.</typeparam>
+    /// <param name="assetName">Asset name the game asked for.</param>
+    /// <returns>The seeded entry for those two assets; the empty default otherwise.</returns>
+    private static T LoadAsset<T>(string assetName)
+    {
+        if (typeof(T) == typeof(Dictionary<string, StardewValley.GameData.LocationContexts.LocationContextData>)
+            && string.Equals(assetName, "Data/LocationContexts", StringComparison.OrdinalIgnoreCase))
+        {
+            var contexts = new Dictionary<string, StardewValley.GameData.LocationContexts.LocationContextData>();
+            foreach (var id in new[] { "Valley", "Island" })
+            {
+                // The context data must be a REAL instance: a merely allocated
+                // one leaves its fields null, and season reads then dereference
+                // null instead of falling back to defaults.
+                var instance = Activator.CreateInstance(typeof(StardewValley.GameData.LocationContexts.LocationContextData), nonPublic: true);
+                var data = (StardewValley.GameData.LocationContexts.LocationContextData)instance!;
+                contexts[id] = data;
+            }
+
+            return (T)(object)contexts;
+        }
+
         return CreateEmptyAsset<T>();
     }
 
@@ -139,6 +172,7 @@ public static class GameStateFixture
             Game1.objectData = new Dictionary<string, ObjectData>();
             ItemRegistry.AddTypeDefinition(new ObjectDataDefinition());
             Game1.sounds = new Stubs.NoOpSoundsHelperStub();
+            EnsureLocationContextsSeeded();
 
             // The real Game1 constructor dereferences Content.ServiceProvider, which MonoGame only
             // populates while booting the game. Allocating without it gives the static accessor a
@@ -149,6 +183,42 @@ public static class GameStateFixture
                 .SetValue(null, game);
 
             _installed = true;
+        }
+    }
+
+    /// <summary>
+    /// Populates <c>LocationContexts</c>' internal registry with the vanilla
+    /// Valley and Island contexts. The game fills it from
+    /// "Data/LocationContexts" at boot, and a terrain-feature-bearing location
+    /// reads it through GetSeason() (HoeDirt's constructor), so a test host
+    /// that skips boot must seed it or every tilled-tile fixture throws
+    /// NullReferenceException. Called from <see cref="Install"/>, which is
+    /// process-global and lock-guarded.
+    /// </summary>
+    private static void EnsureLocationContextsSeeded()
+    {
+        var registryField = typeof(LocationContexts).GetField("Contexts",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        if (registryField?.GetValue(null) is not System.Collections.IDictionary registry || registry.Count > 0)
+        {
+            return;
+        }
+
+        foreach (var id in new[] { "Valley", "Island" })
+        {
+            var data = (StardewValley.GameData.LocationContexts.LocationContextData)
+                System.Runtime.Serialization.FormatterServices.GetUninitializedObject(
+                    typeof(StardewValley.GameData.LocationContexts.LocationContextData));
+            try
+            {
+                registry[id] = data;
+            }
+            catch (Exception)
+            {
+                // A registry whose key type is not string (or a game build that
+                // changed the shape) needs nothing here — season reads then fall
+                // back to their defaults instead of failing the fixture.
+            }
         }
     }
 }

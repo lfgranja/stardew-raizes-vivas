@@ -20,10 +20,18 @@
     <Content Include="manifest.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="i18n\**\*.json">
+    <!-- T003/T103 (FR-008a): translation files ship with the mod so SMAPI
+         serves the refusal messages in the player's language; the tests read
+         them from the source tree to assert PT/EN parity and zero raw-key
+         leakage. -->
+    <Content Include="i18n/*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\**\*.*">
+    <!-- T260 (FR-005/FR-001a): texture assets served through
+         e.LoadFromModFile (the compost icon plus the bin
+         empty/processing/ready sprites); the wildcard mirrors the
+         i18n/*.json convention so the PNGs ship to the mod folder. -->
+    <Content Include="Assets/*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

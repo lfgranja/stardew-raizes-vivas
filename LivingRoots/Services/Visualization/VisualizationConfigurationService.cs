@@ -1,3 +1,4 @@
+using System.Threading;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Visualization;
 using StardewModdingAPI;
@@ -20,6 +21,18 @@ namespace LivingRoots.Services.Visualization
         private readonly IMonitor _monitor;
         private readonly IFileNameSanitizationService _sanitizationService;
         private VisualizationConfiguration _configuration = new();
+
+        /// <summary>
+        /// T069/T083: set by <see cref="NotifyConfigurationChanged"/> when the
+        /// persisted configuration was changed out of band. LoadConfiguration
+        /// re-reads storage unconditionally, so this flag records the signal
+        /// for observability and for callers that need to know a reload was
+        /// pending; it is cleared on the next load.
+        /// </summary>
+        private bool _configurationDirty;
+
+        /// <summary>Whether a signal from <see cref="NotifyConfigurationChanged"/> is still pending.</summary>
+        public bool HasPendingConfigurationChange => Volatile.Read(ref _configurationDirty);
 
         public VisualizationConfigurationService(
             IModDataService dataService,
@@ -54,6 +67,12 @@ namespace LivingRoots.Services.Visualization
                 _configuration = loaded == null
                     ? CreateDefaults()
                     : Validate(loaded);
+
+                // T069/T083: a signalled external edit has now been applied, so
+                // clear the signal. Cleared BEFORE any early return so a failed
+                // reload is retried on the following frame rather than being
+                // silently dropped.
+                _configurationDirty = false;
             }
             catch (ArgumentException)
             {
@@ -101,6 +120,17 @@ namespace LivingRoots.Services.Visualization
         public void UpdateConfiguration(VisualizationConfiguration configuration)
         {
             _configuration = Validate(configuration ?? throw new ArgumentNullException(nameof(configuration)));
+        }
+
+        /// <summary>
+        /// T069/T083: signals that the persisted configuration changed out of
+        /// band. The next <see cref="LoadConfiguration"/> then re-reads the
+        /// mod-folder store instead of serving the in-memory cache, so the
+        /// change applies within one render frame (FR-005).
+        /// </summary>
+        public void NotifyConfigurationChanged()
+        {
+            _configurationDirty = true;
         }
 
         /// <summary>

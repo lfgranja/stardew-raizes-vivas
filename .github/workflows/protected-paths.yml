@@ -1,0 +1,33 @@
+name: Protected Paths
+
+# Asserts that the protective .gitignore entries are in force and that no prohibited
+# assembly has been committed. This is the CI half of the guarantee described in
+# .gitignore's Secrets block; the lefthook pre-commit hook is the local half.
+#
+# Deliberately a separate workflow from code-style.yml. That file states its whole scope
+# in its own name and its header ("a green result here means exactly 'formatting passed'
+# and nothing more"), and quietly widening it would recreate the false-green problem that
+# build_and_test.yml's dormancy already caused once.
+on:
+    push:
+        branches:
+            - main
+            - dev
+    pull_request:
+        types: [opened, synchronize, reopened]
+
+# No paths-ignore filter, for the same reason code-style.yml has none: this check is cheap,
+# and filtering it would let a documentation-only PR be excluded from a check that may
+# later be required, which then blocks forever waiting on a check that cannot report.
+jobs:
+    protected-paths:
+        name: Check Protected Paths
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v4
+
+            # Full history is unnecessary; the script inspects the working tree and the
+            # index of this checkout only.
+            - name: Check protected paths
+              run: ./scripts/check-protected-paths.sh

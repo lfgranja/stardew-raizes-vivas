@@ -23,7 +23,7 @@ namespace LivingRoots.Services.Visualization
         /// <summary>
         /// Minimum interval between tooltip updates per FR-015.
         /// </summary>
-        private static readonly TimeSpan MinUpdateInterval = TimeSpan.FromMilliseconds(50);
+        private static readonly TimeSpan MinUpdateInterval = TimeSpan.FromMilliseconds(ModConstants.TooltipDebounceMs);
 
         /// <summary>
         /// Sentinel tile value indicating no tile has been visited yet.
@@ -59,6 +59,18 @@ namespace LivingRoots.Services.Visualization
             _configService = configService ?? throw new ArgumentNullException(nameof(configService));
             _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
             _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
+        }
+
+        /// <summary>
+        /// Resets the FR-015 throttle window so the leading-edge rule applies
+        /// fresh on the next hover. Called when a menu open/close cycle ends:
+        /// the window must not survive it, or the first hover after a menu
+        /// closes would be suppressed as though it were a rapid re-entry.
+        /// </summary>
+        public void ResetThrottle()
+        {
+            _lastTooltipTile = UninitializedTile;
+            _lastUpdateTime = null;
         }
 
         /// <summary>

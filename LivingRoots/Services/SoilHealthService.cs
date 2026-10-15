@@ -19,6 +19,40 @@ namespace LivingRoots.Services
         // Lock object for thread safety
         private readonly object _lock = new();
 
+        // T034/T104 (FR-010): reactive notification so the visualization
+        // service invalidates its overlay cache on the SAME frame the health
+        // changed — zero polling lag. Raised outside the lock (never while
+        // _lock is held) so a slow subscriber cannot stall mutations.
+        public event Action<string, Vector2, float>? OnTileHealthChanged;
+
+        /// <summary>
+        /// Raises <see cref="OnTileHealthChanged"/> for a tile whose health was
+        /// mutated (FR-010). The value is re-read from the cache under the lock
+        /// so subscribers always receive the post-mutation value, including the
+        /// clamped one. Safe to call from any thread; a null subscriber list is
+        /// a no-op.
+        /// </summary>
+        /// <param name="locationName">Location whose tile changed.</param>
+        /// <param name="tile">Tile that changed.</param>
+        private void RaiseTileHealthChanged(string locationName, Vector2 tile)
+        {
+            var handler = OnTileHealthChanged;
+            if (handler == null)
+                return;
+
+            var currentHealth = GetSoilHealth(locationName, tile);
+            try
+            {
+                handler(locationName, tile, currentHealth);
+            }
+            catch (Exception ex)
+            {
+                // FR-011: a failing subscriber must never break the mutation
+                // or bubble into game loop code. Sanitized per FR-015.
+                _monitor.Log($"Tile health change subscriber failed: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Trace);
+            }
+        }
+
         // Flag to prevent SaveData from executing if LoadData was aborted due to limits
         // This avoids overwriting valid on-disk data with an empty or incomplete in-memory state
         private volatile bool _loadAbortedForLimits;
@@ -96,10 +130,6 @@ namespace LivingRoots.Services
 
                 // Add trace-level exception details for debugging without leaking message content
                 _monitor.Log($"LoadData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-
-#if DEBUG
-                _monitor.Log(ex.StackTrace ?? "LoadData stack trace unavailable.", LogLevel.Trace);
-#endif
 
                 // Ensure we don't leak/serve stale state after a failed load.
                 lock (_lock)
@@ -512,9 +542,6 @@ namespace LivingRoots.Services
                 _monitor.Log($"SaveData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
 
                 // Add stack trace logging for better diagnostics without exposing sensitive information
-#if DEBUG
-                _monitor.Log(ex.StackTrace ?? "SaveData stack trace unavailable.", LogLevel.Trace);
-#endif
             }
         }
 
@@ -560,6 +587,11 @@ namespace LivingRoots.Services
 
             // Log messages outside the lock to avoid blocking other threads
             LogOperationResult(operationResult, locationName);
+
+            // T034/T104 (FR-010): notify subscribers AFTER the mutation and
+            // AFTER the lock is released, so the overlay cache invalidates on
+            // this same frame without ever being raised mid-mutation.
+            RaiseTileHealthChanged(locationName, tile);
         }
 
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
@@ -597,6 +629,10 @@ namespace LivingRoots.Services
 
             // Log messages outside the lock to avoid blocking other threads
             LogOperationResult(operationResult, locationName);
+
+            // T034/T104 (FR-010): notify subscribers after the mutation, outside
+            // the lock — reactive invalidation within the same frame.
+            RaiseTileHealthChanged(locationName, tile);
         }
 
         private void LogOperationResult(SoilHealthOperationResult operationResult, string locationName)
@@ -627,12 +663,14 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
-        /// Test-only method to directly inject raw soil health data into the runtime cache.
-        /// This bypasses validation and is intended for testing corruption scenarios.
+        /// T135/Constitution III: the persistence snapshot is built under the lock
+        /// and the I/O runs outside it. This test-only injection reads back the
+        /// cache through the same lock the mutations use, so it observes a
+        /// consistent snapshot rather than a torn one.
         /// </summary>
-        /// <param name="locationName">The location name (can be invalid for testing)</param>
-        /// <param name="tile">The tile coordinates</param>
-        /// <param name="value">The health value</param>
+        /// <param name="locationName">Location name (can be invalid for testing).</param>
+        /// <param name="tile">Tile coordinates.</param>
+        /// <param name="value">Raw health value to inject (bypasses validation).</param>
         internal void TestOnly_SetRawSoilHealth(string locationName, Vector2 tile, float value)
         {
             lock (_lock)

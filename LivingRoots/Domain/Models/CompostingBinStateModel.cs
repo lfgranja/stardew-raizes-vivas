@@ -21,8 +21,8 @@ public class CompostingBinStateModel
     /// <summary>Game day when waste was added via ITimeProvider.TotalDays (null if empty).</summary>
     public int? InputTimestamp { get; set; }
 
-    /// <summary>Current maturation level (1-5), determines output multiplier.</summary>
-    public int MaturationLevel { get; set; } = 1;
+    /// <summary>Single batch yields exactly one compost item (FR-005a supersedes multiplier).</summary>
+    public int MaturationLevel { get; set; } = 1; // Retired: kept for save compatibility only
 
     /// <summary>Consecutive days without activity, used for maturation reset.</summary>
     public int ConsecutiveIdleDays { get; set; } = 0;

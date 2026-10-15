@@ -16,13 +16,25 @@ public class SoilDecayService(
     IMonitor monitor,
     SeasonalDecayMultiplier seasonalDecayMultiplier,
     ISeasonProvider seasonProvider,
-    ILocationProvider locationProvider) : ISoilDecayService
+    ILocationProvider locationProvider,
+    ITimeProvider? timeProvider = null) : ISoilDecayService
 {
     private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
     private readonly SeasonalDecayMultiplier _seasonalDecayMultiplier = seasonalDecayMultiplier ?? throw new ArgumentNullException(nameof(seasonalDecayMultiplier));
     private readonly ISeasonProvider _seasonProvider = seasonProvider ?? throw new ArgumentNullException(nameof(seasonProvider));
     private readonly ILocationProvider _locationProvider = locationProvider ?? throw new ArgumentNullException(nameof(locationProvider));
+    private readonly ITimeProvider? _timeProvider = timeProvider;
+
+    /// <summary>
+    /// T068 (FR-013): the last day each location's decay was applied, so the
+    /// duplicate delivery a multiplayer session produces — every connected
+    /// client's DayStarted relayed to the host — applies the day's decay
+    /// exactly once per location. Guarded by a lock because day start can be
+    /// observed on more than one thread.
+    /// </summary>
+    private readonly Dictionary<string, int> _lastProcessedDay = new();
+    private readonly object _dayLock = new();
 
     public void ProcessDayStart(string locationName)
     {
@@ -30,6 +42,25 @@ public class SoilDecayService(
         {
             _monitor.Log("SoilDecay: Greenhouse exempt from decay.", LogLevel.Trace);
             return;
+        }
+
+        // T068 (FR-013): exactly-once per day, per location. A location whose
+        // decay already ran today is skipped — the second delivery carries no
+        // new day. Without a time provider the guard cannot know the day, so a
+        // caller that did not inject one keeps the unguarded (single-player
+        // event path) behaviour; production always injects one.
+        if (_timeProvider != null)
+        {
+            lock (_dayLock)
+            {
+                if (_lastProcessedDay.TryGetValue(locationName, out var lastDay) && lastDay == _timeProvider.TotalDays)
+                {
+                    _monitor.Log($"SoilDecay: {locationName} already processed for day {_timeProvider.TotalDays}; skipping duplicate.", LogLevel.Trace);
+                    return;
+                }
+
+                _lastProcessedDay[locationName] = _timeProvider.TotalDays;
+            }
         }
 
         var location = _locationProvider.GetLocationByName(locationName);

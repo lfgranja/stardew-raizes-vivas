@@ -107,7 +107,7 @@ As a player, I want to customize visualization behavior through configuration so
 - Q: Which specific concurrent scenarios must the visualization system handle safely? → A: Three specific scenarios already defined in the spec: (1) health value changing mid-render (FR-020), (2) config hot-reload during active rendering (FR-019), (3) save/load pausing rendering (FR-017)
 - Q: What is the maximum acceptable delay for configuration changes to take effect (SC-003)? → A: Within the next render frame (≤16.67ms at 60 FPS)
 - Q: How should technical FRs (FR-009 through FR-021) be verified without full acceptance scenarios? → A: Brief verification note on each technical FR describing the observable test outcome
-- Q: How is a soil health tile uniquely identified within the visualization system? → A: Grid position (X, Y) alone — consistent with existing SoilHealthService and single-player scope
+- Q: How is a soil health tile uniquely identified within the visualization system? → A: Grid position (X, Y) alone — consistent with existing SoilHealthService tile key scheme and farm-scoped host-authoritative state per Principle VI (single-player is the degenerate case of multiplayer, a host with no clients)
 
 ## Requirements *(mandatory)*
 
@@ -144,7 +144,7 @@ As a player, I want to customize visualization behavior through configuration so
 ### Key Entities
 
 - **Visualization Configuration**: Stores feature toggles (overlays enabled, tooltips enabled, hoe feedback enabled), custom color values for each health category, opacity level, and accessibility degradation behavior (`auto`/`never`/`notify` per FR-009). Persisted as JSON.
-- **Soil Health Tile**: A tilled soil position with an associated health value (0-100) that determines overlay color and tooltip content. Uniquely identified by tile position (X, Y) in grid coordinates — consistent with existing SoilHealthService tile key scheme and single-player scope. Cursor-to-tile mapping converts screen pixel coordinates to tile position (X, Y) using Stardew Valley's tile coordinate system.
+- **Soil Health Tile**: A tilled soil position with an associated health value (0-100) that determines overlay color and tooltip content. Uniquely identified by tile position (X, Y) in grid coordinates — consistent with existing SoilHealthService tile key scheme and farm-scoped host-authoritative state per Principle VI (single-player is the degenerate case of multiplayer, a host with no clients). Cursor-to-tile mapping converts screen pixel coordinates to tile position (X, Y) using Stardew Valley's tile coordinate system.
 - **Color Mapping**: The translation from a numeric health value to a visual color, using thresholds: Poor (0-33), Moderate (34-66), Healthy (67-100). Uses linear RGB interpolation between adjacent category colors. Boundaries use half-open intervals: [0, 34), [34, 67), [67, 100].
 - **Tile Overlay**: A visual layer rendered on top of a soil tile indicating its health status through color.
 - **Tooltip Data**: Formatted string displayed when hovering over a tile: "Soil Health: {percentage}% ({category})" (e.g., "Soil Health: 75% (Healthy)").
@@ -175,7 +175,7 @@ Each assumption includes a validation mechanism to confirm correctness before an
 - MonoGame/XNA `SpriteBatch` rendering is available for overlay drawing. **Validation**: Confirmed — Stardew Valley uses MonoGame and SpriteBatch is available in all SMAPI mods.
 - The existing `IModHelper.Events` system provides the necessary game loop events (update, cursor change, input). **Validation**: Confirmed via SMAPI documentation and existing ModController event subscriptions.
 - Configuration file lives in the mod's directory alongside existing mod files. **Validation**: Confirmed — IModDataService uses per-save SMAPI data storage in mod directory.
-- Single-player game context only (no multiplayer sync required for visualization state). **Validation**: Confirmed by design — visualization is local-only; multiplayer sync is Out of Scope.
+- Single-player game context only (no multiplayer sync required for visualization state). **Validation**: Confirmed by design — visualization remains local-rendered (a read-only overlay that generates no network traffic of its own), while the underlying farm state it displays is host-authoritative and farm-scoped per Principle VI. Single-player is the degenerate case of multiplayer (a host with no connected clients), so multiplayer is not out of scope.
 
 ## Dependencies
 
@@ -187,7 +187,7 @@ Each assumption includes a validation mechanism to confirm correctness before an
 ## Out of Scope
 
 - Soil health value modification through visualization (visualization is read-only)
-- Multiplayer synchronization of visualization settings
+- Multiplayer synchronization of visualization settings — the overlay itself stays local-rendered and read-only (a display concern that generates no network traffic of its own). **Validation**: Confirmed by design — the underlying farm state it displays is host-authoritative and farm-scoped per Principle VI. Single-player is the degenerate case of multiplayer (a host with no connected clients), so multiplayer is not out of scope.
 - In-game legend or tutorial explaining the color coding
 - Historical trend visualization (only current values shown)
 - Integration with other mods' soil systems

@@ -186,6 +186,14 @@ This specification defines the testing requirements for the composting state mac
 - Tests using `GameLocation` will use the correct constructor signature `GameLocation(string mapPath, string name)` with valid map paths (e.g., `"Maps\\Farm"`)
 - Game1 dependencies are extracted behind thin interfaces (`ITimeProvider`, `ISeasonProvider`, `IPlayerProvider`) to eliminate XNA graphics dependencies, player disposal risks, and parallelization conflicts; tests use stub implementations
 
+## Reconciliation — FR-017 / Principle VI (v2.0.0)
+
+| ID | Reconciliation Statement | Boundary (No Redesign) |
+|----|--------------------------|------------------------|
+| R-1 | Principle VI (`constitution.md` v2.0.0): Farm state is shared, host-authoritative. Soil health and composting bin state belong to the farm, not an individual player (`specs/004-playable-compost-loop/spec.md` §FR-018/FR-019). | Scope wording corrected only; settled FR-1 through FR-7 test requirements remain unchanged. |
+| R-2 | Multiplayer is not out of scope. Single-player is the degenerate case of multi-player (`specs/004-playable-compost-loop/spec.md` §Assumptions). | No new multiplayer test infrastructure added; existing xUnit/Moq/stub patterns preserved. |
+| R-3 | Host-authoritative atomic locking applies to bin mutation (`ModController` right-click) and persistence (`IModDataService`); divergence handling must be explicit, not silent last-write-wins (`FR-019`). | Persistence DTO (`CompostingBinStateData`) and service contracts (`ICompostingBinService`) not redesigned; only scope statements reconciled. |
+
 ## Prerequisite Fixes
 
 These bugs must be fixed before the test suite can verify correct behavior. They are in scope for this feature.

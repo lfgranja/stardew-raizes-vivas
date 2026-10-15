@@ -48,6 +48,8 @@ MonoGame's `Game.Update()` and `Game.Draw()` run sequentially on the same thread
 
 **Recommendation:** Simplify the threading story. Use `lock` only where genuinely needed (multiplayer sync, `PerScreen<T>` state). Document that Stardew Valley is single-threaded and SMAPI events are synchronous.
 
+**Multiplayer scope (Principle VI):** This simplification is not a statement that multiplayer is out of scope. Per Principle VI (Multiplayer As A First-Class Requirement, NON-NEGOTIABLE) in `.specify/memory/constitution.md`, farm state is **host-authoritative** and farm-scoped: the host owns the state, actions resolve per tile/machine instance under an atomic lock with first-wins semantics, and a second player's action is re-evaluated against the new state and explicitly refused with a message when invalid — never silently overwritten. SMAPI events remain synchronous in that model, so the `lock` recommendation above still holds, and the `Mutex` guidance still applies to genuine cross-thread farmhand data sync. Single-player is a degenerate case of the same shared-state model, not a separate code path, and live two-player verification remains owed to D1.
+
 ---
 
 ### C3. Tile Size Is Not Fixed at 64px — Zoom and UI Scale Break This

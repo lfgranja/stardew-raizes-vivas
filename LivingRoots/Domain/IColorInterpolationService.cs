@@ -39,7 +39,8 @@ namespace LivingRoots.Domain
         /// <param name="poorColor">Color for Poor category boundary</param>
         /// <param name="moderateColor">Color for Moderate category boundary</param>
         /// <param name="healthyColor">Color for Healthy category boundary</param>
-        void SetCategoryColors(Color poorColor, Color moderateColor, Color healthyColor);
+        /// <param name="unknownColor">Color used for unmeasurable tiles (FR-014)</param>
+        void SetCategoryColors(Color poorColor, Color moderateColor, Color healthyColor, Color unknownColor);
 
         /// <summary>
         /// Invalidates the color cache.

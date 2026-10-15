@@ -20,12 +20,7 @@ namespace LivingRoots
         // Additional constants for security and performance
         public const int MaxDataKeyLength = 200; // Maximum length for generated data keys (prefix + sanitized saveId)
         public const int MaxTilesPerSave = 30000; // Global limit for tile processing across all locations to prevent DoS attacks (slightly above theoretical max of 50 * 500 = 25,000)
-
-        // Additional constants for security and performance
-        public const int MaxPathSegmentLength = 100; // Maximum length for individual path segments to prevent DoS attacks
-        public const int MaxPathDepth = 10; // Maximum depth for path traversal to prevent DoS attacks
         public const int MaxFileNameLength = 255; // Standard maximum file name length to prevent OS issues
-        public const int MaxDataValueSizeBytes = 1024 * 1024; // 1MB maximum size for data values to prevent memory exhaustion
 
         // Visualization Constants
         public static readonly Color PoorColor = new Color(185, 28, 28); // #B91C1C
@@ -44,14 +39,6 @@ namespace LivingRoots
         public const bool TooltipsEnabledDefault = true;
         public const bool HoeFeedbackEnabledDefault = true;
 
-        // Extended palette for composting, environment
-        public static readonly Color CompostEmptyColor = new Color(120, 113, 108);    // #78716C
-        public static readonly Color CompostProcessingColor = new Color(161, 98, 7);  // #A16207
-        public static readonly Color CompostReadyColor = new Color(22, 101, 52);      // #166534
-        public static readonly Color WaterColor = new Color(37, 99, 235);             // #2563EB
-        public static readonly Color SunColor = new Color(250, 204, 21);              // #FACC15
-        public static readonly Color MulchColor = new Color(146, 64, 14);             // #92400E
-
         // Decay & Compost Constants
         public const string CompostingBinKeyPrefix = "composting_bins_";
         public const float DailyDecayRate = 2f;
@@ -62,14 +49,41 @@ namespace LivingRoots
         public const int MaturationIncrementDays = 7; // days of continuous operation per level
         public const string CompostItemId = "LivingRoots.Compost";
         public const string QualifiedCompostItemId = "(O)LivingRoots.Compost";
+        public const string MachineCompostingBinId = "(BC)LivingRoots.CompostingBin";
+        public const string TranslationKeyCompostActionConflict = "message.compost.action-conflict";
+        public const string TranslationKeyCompostInvalidTile = "message.compost.invalid-tile";
+        public const string TranslationKeyCompostMaxHealth = "message.compost.max-health";
+        public const string TranslationKeyHarvestInventoryFull = "message.harvest.inventory-full";
         public const string CompostingBinItemId = "LivingRoots.CompostingBin";
         public const string CompostingBinRecipeId = "LivingRoots.CompostingBinRecipe";
         public const string CompostCraftingTab = "Home";
         public const int CompostingBinWoodCost = 50;
         public const int CompostingBinStoneCost = 25;
         public const int CompostingBinFiberCost = 15;
-        public const string CompostCraftingSound = "axe";
         public const int CompostCategoryId = -26;
-        public const int CompostStackMax = 999;
+
+        // T007 (FR-005c): the Item.modData keys a held bin serializes its
+        // batch progress into. Progressing through them is the only way a
+        // picked-up bin can carry InputId/DaysRemaining, so placement restores
+        // the batch instead of resetting it.
+        public const string ModDataInputIdKey = "LivingRoots.InputId";
+        public const string ModDataDaysRemainingKey = "LivingRoots.DaysRemaining";
+
+        // T078/T099 (FR-001a, FR-005): asset names under the mod's unique ID
+        // (manifest.json UniqueID). Asset names under Mods/ have no locale
+        // variants, so NameWithoutLocale identifies each asset exactly.
+        // The Data/Objects, Data/BigCraftables and Data/Machines entries point
+        // Texture at the bin asset; the processing/ready sprites are the
+        // progress sprites the native machine interface renders.
+        public const string CompostTextureAssetName = "Mods/lfgranja.LivingRoots/CompostTexture";
+        public const string CompostingBinTextureAssetName = "Mods/lfgranja.LivingRoots/CompostingBinTexture";
+        public const string CompostingBinProcessingSpriteAssetName = "Mods/lfgranja.LivingRoots/CompostingBinProcessingSprite";
+        public const string CompostingBinReadySpriteAssetName = "Mods/lfgranja.LivingRoots/CompostingBinReadySprite";
+
+        // T136 (FR-008a): the native machine rejection cue for an invalid
+        // drop-in — vanilla audio cancel cue plus machine shake. Applies
+        // worldObject.shakeTimer directly (the Data/Machines registration sets
+        // DaysUntilReady only) so no second shake path exists.
+        public const int BinInvalidDropInShakeTimerMs = 750;
     }
 }

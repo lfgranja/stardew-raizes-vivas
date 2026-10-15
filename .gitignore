@@ -478,3 +478,7 @@ graphify-out/
 
 # Python bytecode (pyc covered above; pyo was not)
 *.pyo
+.gamepath/
+# Proprietary Stardew Valley assemblies fetched from builddeps repo (gamepath-v1).
+# Must never be committed; see .specify/bugs/gamepath-not-gitignored/assessment.md.
+

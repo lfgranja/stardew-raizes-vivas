@@ -7,19 +7,19 @@ A Stardew Valley mod that introduces sustainable farming practices through soil 
 ### Soil Health System
 - Each farm tile has a persistent soil health value (0-100%)
 - Health values are saved and loaded with the game
-- Visual indicators show soil health status (Planned)
-- Health degrades over time when soil is left bare (Planned)
-- Health improves with compost application (Planned)
+- Visual indicators show soil health status
+- Health degrades over time when soil is left bare
+- Health improves with compost application
 
 ### Composting
 - Create compost from organic materials
+- Composting bin: craft, place, load with organic waste, harvest compost after 2 in-game days
 - Apply compost to improve soil health
-- Different materials provide different benefits
 
 ### Agroecological Practices
-- Implement sustainable farming techniques
-- Learn about real-world soil management
-- Enhance your farming experience with educational elements
+- Implement sustainable farming techniques (Planned)
+- Learn about real-world soil management (Planned)
+- Enhance your farming experience with educational elements (Planned)
 
 ## Installation
 
