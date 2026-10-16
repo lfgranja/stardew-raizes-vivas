@@ -11,7 +11,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 **Input Documents**: `plan.md`, `spec.md`, `data-model.md`, `contracts/i-soil-health-service.md`, `quickstart.md`, `research.md`, `checklists/` (5 files: `band-scale-host-authority.md`, `growth-performance.md`, `harvest-quality-extra.md`, `requirements.md`, `verification-pipeline.md`), `.specify/memory/constitution.md` (v2.0.0 — Principle VI multiplayer first-class).
 
 **Prerequisites (blocking — must complete before any user story)**:
-- `spec-004` (`CompostingBinService.CollectCompost`) rollback verification (`SC-008`) — concurrent prerequisite (`user B` selection 2026-10-16); must pass (`manual GamePath` + automated `StillConsumesBin` — `CompostingBinServiceTests.cs:339`) before final yield activation (`FR-005`; `Dependencies` 136-137).
+- `spec-004` (`CompostingBinService.CollectCompost`) rollback verification (`SC-008`) — **absolute blocker for yield activation** (`FR-002`/`FR-003`; clarification 2026-10-16 overrides previous concurrent `B` selection); design/implementation permitted concurrently; must pass (`manual GamePath` + automated `StillConsumesBin` — `CompostingBinServiceTests.cs:339`) before any yield feature activates (`FR-005`; `Dependencies` 136-137).
 - `GamePath` spike (`A1` 86; `Dependencies` 141) — verify `Crop.newDay` public-field ordering with vanilla growth before `FR-001` activation.
 - `ROADMAP.md` band reconciliation (`FR-004` / `A3`) — scale locked: `Poor` [0,30], `Moderate` [31,70], `Healthy` [71,100] (`data-model.md` 16-17; `spec.md` A3).
 
