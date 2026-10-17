@@ -161,7 +161,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 - [ ] T054 [P] [US3] Confirm `SC-005`: `Healthy` tile shows extra item rate > `Moderate` tile (`base + 0.10` > `base`); manual `GamePath` observation required (`SC-009` / `FR-009` 82) — `LivingRoots.Tests/ExtraHarvestDuplicationTests.cs`
 - [ ] T055 [US3] Confirm `FR-005` rollback (`SC-008`) interaction — duplication hazard (`outputCount > 1`) must not affect `US3` (extra harvest never duplicates; rollback protects inventory-full case only; `SC-008` concurrent prerequisite) — `LivingRoots/Controllers/ModController.cs` / `LivingRoots/Services/CompostingBinService.cs`
 - [ ] T056 [P] [US3] Reuse floating-text (`VisualizationService`) for extra-item confirmation (`A4` 89; `Clarifications` Q3/A4 33-34) — `LivingRoots/Controllers/ModController.cs`
-- [ ] T057 [US3] Confirm zero duplication (`US3` 58 — "sem duplicar itens") — `LivingRoots/Controllers/ModController.cs`
+- [ ] T057 [US3] Confirm zero duplication (`US3` 58 — "without duplicating items") — `LivingRoots/Controllers/ModController.cs`
 
 **Checkpoint**: US3 complete — `SC-005` observable (`Healthy` > `base`); floating-text confirmation; no duplication; per-tile only; `FR-003` activation complete.
 
