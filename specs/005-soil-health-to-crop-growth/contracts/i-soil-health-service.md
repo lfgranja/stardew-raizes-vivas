@@ -31,12 +31,12 @@
 
 ### `ICompostApplicationService` (`Domain/Interfaces/ICompostApplicationService.cs`)
 
-**Purpose**: Compost application to tilled tiles. Existing interface from spec 004 — rollback verification (`SC-008`) is an **absolute blocker for yield activation** (`FR-002`/`FR-003`); clarification 2026-10-16 (Option A) overrides previous concurrent (`B`) selection — design/implementation permitted concurrently; activation blocked until `SC-008` passes (`manual GamePath` + `StillConsumesBin`).
+**Purpose**: Compost application to tilled tiles. Existing interface from spec 004 — rollback verification (`SC-008`) is an **absolute blocker for yield activation** (`FR-002`/`FR-003`); clarification 2026-10-16 (Option A) overrides previous concurrent (`B`) selection — design/implementation permitted concurrently; activation blocked until `SC-008` passes (`manual GamePath` + `CollectCompost_WhenInventoryRefuses_StillConsumesBin (alias StillConsumesBin; see CompostingBinServiceTests.cs:339)`).
 
 **Verification prerequisite** (`SC-008` — absolute blocker for yield activation; concurrent design/implementation permitted; clarification 2026-10-16 overrides previous `B` selection):
-- `CompostingBinService.CollectCompost` rollback must pass (`manual GamePath` play-through + automated `StillConsumesBin` — `CompostingBinServiceTests.cs` 339)
+- `CompostingBinService.CollectCompost` rollback must pass (`manual GamePath` play-through + automated `CollectCompost_WhenInventoryRefuses_StillConsumesBin (alias StillConsumesBin; see CompostingBinServiceTests.cs:339)` — `CompostingBinServiceTests.cs` 339)
 - Hidden duplication bug (`outputCount > 1` with partial-delivery loop at `CompostingBinService.cs` 189-264) must be fixed or verified before final yield activation (`FR-005` 78)
-- Clarification 2026-10-16 Option A: design/implementation concurrent (`user B`); **yield activation blocked until `SC-008` passes (`manual GamePath` + `StillConsumesBin`)** — absolute blocker for `FR-002`/`FR-003`.
+- Clarification 2026-10-16 Option A: design/implementation concurrent (`user B`); **yield activation blocked until `SC-008` passes (`manual GamePath` + `CollectCompost_WhenInventoryRefuses_StillConsumesBin (alias StillConsumesBin; see CompostingBinServiceTests.cs:339)`)** — absolute blocker for `FR-002`/`FR-003`.
 
 **Rollback contract** (`FR-005` — concurrent design permitted; absolute blocker for activation until `SC-008` green):
 - `CompostingBinService` must handle full-inventory collection correctly (`FR-005b` / `FR-005c`)
