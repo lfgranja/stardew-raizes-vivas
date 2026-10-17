@@ -114,7 +114,7 @@ As the maintainer, I can confirm that claims about soil-health effects are backe
 | # | Criterion | Measurable | Technology-agnostic | Baseline (today) | Target |
 |---|---|---|---|---|---|
 | SC-001 | Poor-tile growth is slower than vanilla Medium | Growth time to harvestable phase is longer on Poor vs. Medium, same crop/season/water | Yes — compares days, not API | 0 (no effect) | Poor > Medium |
-| SC-002 | Living-tile growth is faster than vanilla Medium | Growth time shorter on Living vs. Medium | Yes | 0 | Living < Medium |
+| SC-002 | Healthy-tier (`≥71`, user-facing: Living) growth is faster | Growth time shorter on Healthy (`≥71`) vs. Medium (`[31,70]`) — `Living` = user-facing label for Healthy tier (`FR-003` / `US3`) | Yes | 0 | Healthy (`Living`) < Medium |
 | SC-003 | Medium-tier parity with vanilla | No difference in growth time / quality roll / extra harvest vs. untreated vanilla tile | Yes — controls for all modifiers | 0 (all tiers = vanilla) | Medium = vanilla |
 | SC-004 | Harvest quality reflects tier | Poor tier → quality 0; Medium → vanilla roll; Living → enhanced probability | Yes | 0 | Tier reflects in roll |
 | SC-005 | Extra harvest on Living tier | Per-tile probability > base `ExtraHarvestChance` on Living tiles | Yes | 0 | Living > base |
