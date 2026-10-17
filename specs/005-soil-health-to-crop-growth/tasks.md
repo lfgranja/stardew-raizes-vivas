@@ -216,7 +216,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 - [ ] T084 [P] Confirm no premature abstractions (`Principle V`) — `Crop.harvest` hook reuses `VisualizationService` floating-text; no new abstract base for harvest intercept (`A4` 89) — `LivingRoots/Controllers/ModController.cs`
 - [ ] T085 [P] Confirm `SC-003` (`Moderate` parity) — **consolidated into T065**; `Moderate` (`[31,70]`) must stay exactly `1.00×` with same vanilla modifiers — `LivingRoots/Controllers/ModController.cs` / `LivingRoots.Tests/GrowthModifierIntegrationTests.cs`
 - [ ] T086 [P] Confirm `SC-004` (`Harvest quality`) — **consolidated into T066**; `Poor` (`[0,30]`) → 0 stars (`FR-002` 75; `A2` exception); `Moderate` (`[31,70]`) → vanilla roll; `Healthy` (`[71,100]`) → enhanced (`+0.08`) — `LivingRoots/Controllers/ModController.cs` / `LivingRoots.Tests/HarvestQualityTests.cs`
-- [ ] T087 [P] Confirm `SC-005` (`Extra harvest`) — `Healthy` (`≥71`) per-tile probability > base (`+0.10`); floating-text confirmation; no duplication (`US3` 58) — `LivingRoots/Controllers/ModController.cs` / `LivingRoots.Tests/ExtraHarvestTests.cs`
+- [ ] T087 [P] Confirm `SC-005` (`Extra harvest`) — **consolidated into T067**; `Healthy` (`≥71`) per-tile probability > base (`+0.10`); floating-text confirmation; no duplication (`US3` 58) — `LivingRoots/Controllers/ModController.cs` / `LivingRoots.Tests/ExtraHarvestTests.cs`
 
 ---
 
