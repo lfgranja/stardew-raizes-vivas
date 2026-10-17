@@ -43,7 +43,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 
 **Purpose**: Core constants, contracts, data-model alignment, chunk mechanism design, and infrastructure updates that must complete before ANY user story implementation. **No user story work begins until this phase is complete.**
 
-**Critical**: `SC-008` rollback verification is **absolute blocker for yield activation** (`FR-002`/`FR-003`; clarification 2026-10-16 overrides previous concurrent `B`) — design/implementation permitted concurrently; activation blocked until `SC-008` green. `GamePath` spike (`A1`) is absolute gate before `FR-001` activation.
+**Critical**: See prerequisites Lines 13-16; absolute blocker for yield activation (`FR-005` 78; `Dependencies` 136-137; clarification 2026-10-16).
 
 - [ ] T008 Verify `ModConstants.cs` exists and is the single source of truth (`AGENTS.md` conventions) — add placeholders for `SoilGrowthPoorMultiplier`, `SoilGrowthHealthyMultiplier`, `SoilQualityHealthyBoost`, `SoilExtraHarvestHealthyBoost`
 - [ ] T009 [P] Update `LivingRoots/ModConstants.cs` with soil-growth constants (quote constraints verbatim from `spec.md` / `data-model.md`): `SoilGrowthPoorMultiplier = 1.15`; `SoilGrowthHealthyMultiplier = 0.85`; `SoilQualityHealthyBoost = 0.08`; `SoilExtraHarvestHealthyBoost = 0.10` (`spec.md` Q3/Q4; `data-model.md` 21-25)
@@ -269,7 +269,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 - **Phase 7 (US4 — Verification)**: Depends on Phase 6 (all stories implemented). Includes `SC-008` activation gate (`FR-005`), `SC-009` manual observation, `GamePath` spike verification (`A1`), `SC-007` save/reload, `SC-006` overlay, `FR-009` mean-verified.
 - **Phase 8 (Chunk)**: Parallel `P` tasks; can run with Phase 4–6 but must complete before `SC-009` manual verification of performance.
 - **Phase 9 (Polish)**: Depends on Phase 7. Cross-cutting: overlay preservation, security hardening, documentation reconciliation (`plan.md`, `quickstart.md`, `data-model.md`), zero assets verification (`FR-008`), multiplayer (`Principle VI`), no premature abstractions (`Principle V`).
-- **Phase 10 (VERIFICATION — ONLY attests success)**: Final verification gate. `SC-008` rollback (`manual GamePath` + `StillConsumesBin`) must be GREEN (`FR-005`). `SC-001`–`SC-005` observed. `SC-009` executed. `FR-009` verified. **Agent NEVER attests — only these tasks.**
+- **Phase 10 (VERIFICATION — ONLY attests success)**: Final verification gate. `SC-008` rollback (`manual GamePath` + `CollectCompost_WhenInventoryRefuses_StillConsumesBin`, alias `StillConsumesBin`) must be GREEN (`FR-005`). `SC-001`–`SC-005` observed. `SC-009` executed. `FR-009` verified. **Agent NEVER attests — only these tasks.**
 
 ### User Story Dependencies
 
@@ -322,7 +322,7 @@ Task: "T056 [US3] Reuse floating-text for extra-item confirmation"
 
 # Wave 6 (Verification + Integration — US4 + Chunk) — Subagent F (shared context: verification / SC-008 / manual / integration):
 Task: "T058 [US4] Verify SC-006 (Overlay preserved)"
-Task: "T060 [US4] Confirm SC-008 rollback verification (manual + StillConsumesBin) GREEN"
+Task: "T060 [US4] Confirm SC-008 rollback verification (manual + CollectCompost_WhenInventoryRefuses_StillConsumesBin) GREEN"
 Task: "T090 [US4] Confirm SC-001 / SC-002 / SC-003 observed (manual GamePath)"
 Task: "T070 [P] Implement chunk mechanism spread (contingency)"
 
@@ -361,7 +361,7 @@ Task: "T100 [US4] VERIFICATION: Principle VI multiplayer verified"
 3. Phase 4 (`US1`) → Growth modifier (`FR-001`); `SC-003` parity is the critical verification; `A1` (`GamePath`) required before activation; `SC-008` concurrent prerequisite acknowledged.
 4. Phase 5 (`US2`) → Harvest quality (`FR-002`); `SC-004` observable; `A2` exception (`Poor` override only) documented; floating-text (`A4`) reused.
 5. Phase 6 (`US3`) → Extra harvest (`FR-003`); `SC-005` observable; per-tile only (`US3` 58); no duplication; floating-text (`A4`) reused.
-6. Phase 7 (`US4`) → `SC-006` (`Overlay` preserved); `SC-007` (save/reload); `SC-008` rollback (`manual GamePath` + `StillConsumesBin`); `SC-009` (`Manual`); `FR-009` (`Mean-verified`); `A1` (`GamePath` spike); `A5` (`ReGen Valley`); `SC-003` (parity); `SC-004` (quality); `SC-005` (extra); `SC-008` (rollback); `SC-006` (overlay); `SC-007` (save/reload); `SC-009` (manual); no false-green (`FR-009` 82).
+6. Phase 7 (`US4`) → `SC-006` (`Overlay` preserved); `SC-007` (save/reload); `SC-008` rollback (`manual GamePath` + `CollectCompost_WhenInventoryRefuses_StillConsumesBin`); `SC-009` (`Manual`); `FR-009` (`Mean-verified`); `A1` (`GamePath` spike); `A5` (`ReGen Valley`); `SC-003` (parity); `SC-004` (quality); `SC-005` (extra); `SC-008` (rollback); `SC-006` (overlay); `SC-007` (save/reload); `SC-009` (manual); no false-green (`FR-009` 82).
 7. Phase 8 (`Chunk`) → Performance contingency (`FR-001`); activates only when linear exceeds `<5ms` @ 40,000 tiles (`spec-002` `:113`/`:176`); `SC-003` preserved; `SC-007` preserved.
 8. Phase 9 (`Polish`) → Cross-cutting (`SC-006` preserved; `SC-007` verified; `SC-008` concurrent; `SC-009` manual; `FR-008` no pixel assertions; `FR-009` mean-verified; `Principle VI` multiplayer; `Principle V` no premature abstractions; `Principle II` security; `A4` zero assets; zero `Harmony`).
 9. Phase 10 (`VERIFICATION`) — ONLY attests success: `SC-008` rollback GREEN; `SC-001`–`SC-005` observed; `SC-006`–`SC-007` verified; `SC-009` executed; `FR-009` verified; `A1` verified; `Principle VI` verified; `FR-008` no pixel assertions; `FR-005` yield activation blocked until `SC-008` green; agent NEVER claims success.
