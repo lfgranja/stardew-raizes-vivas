@@ -31,6 +31,7 @@ namespace LivingRoots.Controllers
         internal const int DisposedFlag = 1 << 2;
         internal const int OnSaveLoadedExecutingFlag = 1 << 3;
         internal const int OnSavingExecutingFlag = 1 << 4;
+        internal const int OnDayStartedExecutingFlag = 1 << 7;
         internal const int UnregisteringFlag = 1 << 5;
         internal const int RegisteringFlag = 1 << 6;
         internal int _state = 0; // Combine flags in single volatile field
@@ -1720,68 +1721,71 @@ namespace LivingRoots.Controllers
         {
             if (IsDisposed()) return;
 
-            try
+            ExecuteWithConcurrencyGuard(OnDayStartedExecutingFlag, "OnDayStarted", () =>
             {
-                // T074 (FR-004, T063): the SMAPI DayStarted
-                // event fires once per day for the whole host —
-                // not once per location — so a day-start path
-                // that only processes Game1.currentLocation
-                // silently starves every other farm location's
-                // bins and soil. The mod's bins live on the
-                // farm and in the Greenhouse (FR-002, T057),
-                // the complete set of farm locations a save
-                // holds, so the day tick reaches the location
-                // the host occupies plus the farm locations it
-                // does not: the Greenhouse, and the farm
-                // itself, whose location name is "Farm" for
-                // every farm type — no per-day guard exists
-                // at this layer. The set below dedups a
-                // location named twice within a single tick
-                // (the occupied farm overlaps the literal
-                // pair); repeat same-day deliveries still
-                // reach the services — any per-location day
-                // guard (T251) lives in CompostingBinService,
-                // not here.
-                var farmLocationNames = new HashSet<string>();
-                var currentLocationName = StardewValley.Game1.currentLocation?.Name;
-                if (!string.IsNullOrEmpty(currentLocationName))
+                try
                 {
-                    farmLocationNames.Add(currentLocationName);
-                }
-
-                farmLocationNames.Add("Greenhouse");
-                farmLocationNames.Add("Farm");
-
-                foreach (var locationName in farmLocationNames)
-                {
-                    // T134 (FR-012/FR-014): narrow the day-start try per location,
-                    // so a corrupt record in one location cannot abort the day
-                    // tick for the others — the Greenhouse still matures when
-                    // the Farm's tick throws.
-                    try
+                    // T074 (FR-004, T063): the SMAPI DayStarted
+                    // event fires once per day for the whole host —
+                    // not once per location — so a day-start path
+                    // that only processes Game1.currentLocation
+                    // silently starves every other farm location's
+                    // bins and soil. The mod's bins live on the
+                    // farm and in the Greenhouse (FR-002, T057),
+                    // the complete set of farm locations a save
+                    // holds, so the day tick reaches the location
+                    // the host occupies plus the farm locations it
+                    // does not: the Greenhouse, and the farm
+                    // itself, whose location name is "Farm" for
+                    // every farm type — no per-day guard exists
+                    // at this layer. The set below dedups a
+                    // location named twice within a single tick
+                    // (the occupied farm overlaps the literal
+                    // pair); repeat same-day deliveries still
+                    // reach the services — any per-location day
+                    // guard (T251) lives in CompostingBinService,
+                    // not here.
+                    var farmLocationNames = new HashSet<string>();
+                    var currentLocationName = StardewValley.Game1.currentLocation?.Name;
+                    if (!string.IsNullOrEmpty(currentLocationName))
                     {
-                        _compostingBinService.ProcessDayStart(locationName);
-                        _soilDecayService.ProcessDayStart(locationName);
+                        farmLocationNames.Add(currentLocationName);
+                    }
 
-                        // Spec 005 (FR-001): soil-health growth modifier applied to
-                        // Crop.phaseDays at DayStarted. Host-only (FR-006).
-                        if (StardewModdingAPI.Context.IsMainPlayer)
+                    farmLocationNames.Add("Greenhouse");
+                    farmLocationNames.Add("Farm");
+
+                    foreach (var locationName in farmLocationNames)
+                    {
+                        // T134 (FR-012/FR-014): narrow the day-start try per location,
+                        // so a corrupt record in one location cannot abort the day
+                        // tick for the others — the Greenhouse still matures when
+                        // the Farm's tick throws.
+                        try
                         {
-                            ApplySoilGrowthModifier(locationName);
+                            _compostingBinService.ProcessDayStart(locationName);
+                            _soilDecayService.ProcessDayStart(locationName);
+
+                            // Spec 005 (FR-001): soil-health growth modifier applied to
+                            // Crop.phaseDays at DayStarted. Host-only (FR-006).
+                            if (StardewModdingAPI.Context.IsMainPlayer)
+                            {
+                                ApplySoilGrowthModifier(locationName);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _monitor.Log($"Error processing day start for location '{locationName}'.", LogLevel.Error);
+                            _monitor.Log($"Day start exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        _monitor.Log($"Error processing day start for location '{locationName}'.", LogLevel.Error);
-                        _monitor.Log($"Day start exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _monitor.Log("Error in day started handler.", LogLevel.Error);
-                _monitor.Log($"Day started exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-            }
+                catch (Exception ex)
+                {
+                    _monitor.Log("Error in day started handler.", LogLevel.Error);
+                    _monitor.Log($"Day started exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                }
+            });
         }
 
         /// <summary>
@@ -1813,12 +1817,35 @@ namespace LivingRoots.Controllers
         /// Healthy (71-100) => 0.85x (faster). Compositional: applied to base
         /// phaseDays before vanilla modifiers (A2).
         /// </summary>
+        private readonly System.Collections.Generic.Dictionary<object, int[]> _soilGrowthBasePhaseDays =
+            new System.Collections.Generic.Dictionary<object, int[]>();
+        private readonly System.Collections.Generic.HashSet<string> _soilGrowthProcessedLocations =
+            new System.Collections.Generic.HashSet<string>();
+        private string? _soilGrowthLastDayKey;
+
         private void ApplySoilGrowthModifier(string locationName)
         {
             try
             {
+                // Per-location day guard: a single DayStarted delivery must not
+                // re-scale the same location twice (multiplayer duplicate
+                // deliveries / re-entrancy). Reset the processed set on a new day.
+                var dayKey = $"{StardewValley.Game1.currentSeason}_{StardewValley.Game1.dayOfMonth}_{StardewValley.Game1.year}";
+                if (_soilGrowthLastDayKey != dayKey)
+                {
+                    _soilGrowthLastDayKey = dayKey;
+                    _soilGrowthProcessedLocations.Clear();
+                }
+
+                if (!_soilGrowthProcessedLocations.Add(locationName))
+                {
+                    return;
+                }
+
                 var location = StardewValley.Game1.getLocationFromName(locationName);
                 if (location == null) return;
+
+                var farmerId = StardewValley.Game1.player == null ? 0L : StardewValley.Game1.player.UniqueMultiplayerID;
 
                 foreach (var kvp in location.terrainFeatures.Pairs)
                 {
@@ -1826,7 +1853,16 @@ namespace LivingRoots.Controllers
                     if (hoeDirt.crop == null) continue;
 
                     var tile = new Microsoft.Xna.Framework.Vector2(kvp.Key.X, kvp.Key.Y);
+
+                    // FR-007: fall back to vanilla (1.00x) when health data is
+                    // missing/corrupted/out-of-bounds. Sparse save never persists
+                    // 0, so a 0 result means "no data" -> vanilla.
                     var health = _soilHealthService.GetSoilHealth(locationName, tile);
+                    if (float.IsNaN(health) || float.IsInfinity(health) ||
+                        health < 0f || health > 100f || health <= 0f)
+                    {
+                        continue;
+                    }
 
                     float multiplier;
                     if (health <= 30f) multiplier = ModConstants.SoilGrowthPoorMultiplier;
@@ -1836,14 +1872,49 @@ namespace LivingRoots.Controllers
                     if (Math.Abs(multiplier - 1.0f) < 0.0001f) continue;
 
                     var crop = hoeDirt.crop;
-                    // phaseDays is a NetIntList (per-phase durations); scale each
-                    // entry multiplicatively. The list field itself is read-only,
-                    // so mutate elements in place.
-                    for (int i = 0; i < crop.phaseDays.Count; i++)
+
+                    // Host-authoritative atomic lock (Principle VI / T101).
+                    if (_hostAtomicLockService != null && farmerId != 0L)
                     {
-                        var scaled = (int)Math.Round(crop.phaseDays[i] * multiplier);
-                        if (scaled < 1) scaled = 1;
-                        crop.phaseDays[i] = scaled;
+                        if (!_hostAtomicLockService.TryAcquireLock(locationName, tile, farmerId))
+                        {
+                            continue;
+                        }
+                    }
+
+                    try
+                    {
+                        // Idempotent scaling: restore base phase durations before
+                        // applying the multiplier so repeated calls never compound.
+                        if (!_soilGrowthBasePhaseDays.TryGetValue(crop, out var baseDays))
+                        {
+                            baseDays = new int[crop.phaseDays.Count];
+                            for (int b = 0; b < crop.phaseDays.Count; b++)
+                            {
+                                baseDays[b] = crop.phaseDays[b];
+                            }
+
+                            _soilGrowthBasePhaseDays[crop] = baseDays;
+                        }
+
+                        // phaseDays is a NetIntList (per-phase durations); scale each
+                        // entry multiplicatively. The list field itself is read-only,
+                        // so mutate elements in place.
+                        var count = Math.Min(crop.phaseDays.Count, baseDays.Length);
+                        for (int i = 0; i < count; i++)
+                        {
+                            var restored = baseDays[i];
+                            var scaled = (int)Math.Round(restored * multiplier);
+                            if (scaled < 1) scaled = 1;
+                            crop.phaseDays[i] = scaled;
+                        }
+                    }
+                    finally
+                    {
+                        if (_hostAtomicLockService != null && farmerId != 0L)
+                        {
+                            _hostAtomicLockService.ReleaseLock(locationName, tile, farmerId);
+                        }
                     }
                 }
             }
