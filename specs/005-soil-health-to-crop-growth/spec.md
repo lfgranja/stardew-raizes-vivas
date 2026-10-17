@@ -68,7 +68,7 @@ As a player harvesting from a high-health tile, I occasionally receive an extra 
 
 ---
 
-### User Story 4 — Trust the pipeline (P3 — verification of verification)
+### User Story 4 — Trust the pipeline (P4 — verification of verification)
 
 As the maintainer, I can confirm that claims about soil-health effects are backed by evidence in the repo — not by a green test count alone — so that future decisions rest on verified signals.
 
