@@ -122,7 +122,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 **Independent Test** (before activation): Confirm `SC-003` (`Moderate` = vanilla parity) using manual observation or automated growth-time comparison (`SC-001`: `Poor` > `Medium`; `SC-002`: `Healthy` < `Medium`).
 
 - [ ] T037a [US1] **SCAFFOLD FIRST** (user instruction 0): Generate `ISoilHealthService` contract stub and `Crop.newDay` public-field scan stub via LSP/code actions / `.specify` scaffold template (verify `.editorconfig` formatting) BEFORE hand-writing `T037` — `Domain/Interfaces/` / `LivingRoots/Controllers/ModController.cs`
-- [ ] T037 [US1] Implement `Crop.newDay` public-field scan (`DayStarted`) in `LivingRoots/Controllers/ModController.cs` — extend existing `OnDayStarted` handler (1719-1778) or add new hook; apply multiplicative modifier (`SoilGrowthPoorMultiplier` / `SoilGrowthHealthyMultiplier`) to `phaseDays` BEFORE vanilla modifiers (`A2`; `FR-001` 74; `data-model.md` 30-35)
+- [ ] T037 [US1] Implement `Crop.newDay` public-field scan (`DayStarted`) in `LivingRoots/Controllers/ModController.cs` — extend existing `OnDayStarted` handler (1719-1778) or add new hook; apply multiplicative modifier (`SoilGrowthPoorMultiplier` / `SoilGrowthHealthyMultiplier`) to `phaseDays` BEFORE vanilla modifiers (`A2`; `FR-001` 74; `data-model.md` 30-35). Extend existing ModController.OnDayStarted (1719-1778); no new Game1.event.subscribe required unless GamePath spike (T042) confirms ordering failure.
 - [ ] T038 [US1] Add `HostAtomicLockService` per-tile guard (`IsMainPlayer` / `Context.IsMainPlayer`) for `FR-001` host-only persistent phase (`FR-006` 79; `HostAtomicLockService.cs` 7-60; `ModController` 1483-1492 `HoeDirt` filter pattern)
 - [ ] T039 [US1] Update `ModConstants.cs` — confirm `SoilGrowthPoorMultiplier` (`1.15`) and `SoilGrowthHealthyMultiplier` (`0.85`) applied; no hardcoded values (`AGENTS.md` anti-pattern)
 - [ ] T040 [P] [US1] Implement chunk mechanism (`FR-001` contingency — `Clarifications` Q7 34): combined chunk (`~1000` tiles/chunk; `~2ms` budget; prime-modulus stride `61`); spread across ticks when linear exceeds `<5ms` at 40,000 tiles; add `ExecuteWithConcurrencyGuard` at `OnDayStarted` (`ModController` 2100 pattern exists for `OnSaveLoaded`/`OnSaving`; must add at `OnDayStarted`) — `LivingRoots/Controllers/ModController.cs` / `LivingRoots/Services/SoilDecayService.cs`
@@ -184,7 +184,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 - [ ] T068 [P] [US4] Confirm no `Harmony` footprint (`A1` — `AGENTS.md` anti-pattern; `spec.md` A1 86; zero `Lib.Harmony` dependency) — `LivingRoots/Controllers/ModController.cs`
 - [ ] T069 [P] [US4] Confirm `FR-008` (`No pixel assertions`) — all tests assert logic (`phaseDays` multiplier, quality roll value, tier classification) — never color, pixel, blend alpha, or overlay appearance (`SC-006` visual preservation only) — `LivingRoots.Tests/HarvestQualityTests.cs` / `LivingRoots.Tests/GrowthModifierTests.cs`
 
-**Checkpoint**: US4 / Verification complete — `SC-008` rollback verification passes (`manual` + `StillConsumesBin`); `SC-006` preserved; `SC-007` consistent; `SC-009` manual observation confirms full loop; `SC-003` parity verified; `SC-004` quality verified; `SC-005` extra harvest verified; `GamePath` spike verified; `ReGen Valley` interaction documented; `FR-009` mean-verified; `FR-008` no pixel assertions confirmed. **This is the ONLY phase that fully attests feature success and completeness (per user instruction 3).**
+**Checkpoint**: US4 / Verification complete — `SC-008` rollback verification passes (see prerequisites Line 13; T088); `SC-006` preserved; `SC-007` consistent; `SC-009` manual observation confirms full loop; `SC-003` parity verified; `SC-004` quality verified; `SC-005` extra harvest verified; `GamePath` spike verified; `ReGen Valley` interaction documented; `FR-009` mean-verified; `FR-008` no pixel assertions confirmed. **This is the ONLY phase that fully attests feature success and completeness (per user instruction 3).**
 
 ---
 
@@ -389,21 +389,3 @@ Task: "T100 [US4] VERIFICATION: Principle VI multiplayer verified"
 - **DDD Layered (`Principle I`)**: Contracts (`Domain/Interfaces/`) separated from implementations (`Services/`) and controllers (`Controllers/`). `ISoilHealthService` (`Domain/Interfaces/ISoilHealthService.cs`) + `SoilHealthService` (`Services/SoilHealthService.cs`). `ModController` (`Controllers/ModController.cs`) orchestrates events. `HealthCategory` (`Domain/Visualization/HealthCategory.cs`) derived from `SoilHealthState` (`Domain/Models/SoilHealthState.cs`).
 - **Template / Scaffold (`Requirement 0`)**: All code generable by template/scaffold (LSP code actions: interface contracts, model DTOs, test stubs, `ModConstants` constants) must be written by scaffold BEFORE hand-writing. Tasks `T002` (`contracts/` verification), `T009` (`ModConstants.cs` constants from spec/data-model), `T010` (`HealthCategory.cs` scale verification from `ROADMAP.md`), `T012` (`HostAtomicLockService` interface verification), `T015` (`VisualizationService` floating-text reuse verification) enforce this — scaffold/template code verified before `T037` (hand-written `DayStarted` scan) / `T045` (hand-written `Crop.harvest` hook) / `T052` (hand-written extra harvest).
 - **Verification Tasks (`Phase 10`) — ONLY attest success**: `T088`–`T100`. Per user instruction 3: ONLY these verification tasks attest to success. Agent never claims feature complete; only `Phase 10` tasks (with `SC-008` rollback verified GREEN, `SC-001`–`SC-005` observed, `SC-009` executed, `FR-009` mean-verified, `A1` spike verified, `Principle VI` multiplayer verified, `FR-008` no pixel assertions confirmed) can declare feature complete.
-
----
-
-## Format Validation
-
-- [ ] All tasks use checklist format (`- [ ]`)
-- [ ] All tasks have sequential IDs (`T001`–`T100`)
-- [ ] All tasks include file paths (e.g., `LivingRoots/Controllers/ModController.cs`, `LivingRoots.Tests/Invariants/SoilHealthCategoryInvariantsTests.cs`)
-- [ ] User story phases (`US1`, `US2`, `US3`, `US4`) have `[USn]` story labels
-- [ ] Setup (`Phase 1`) and Foundational (`Phase 2`) have NO story label
-- [ ] RED PHASE (`Phase 3`) tests have `[USn]` story labels (`US1`–`US4`)
-- [ ] Implementation phases (`Phase 4`–`Phase 6`) have `[USn]` story labels (`US1`, `US2`, `US3`)
-- [ ] Verification phase (`Phase 7`, `Phase 10`) uses `[US4]` (verification story) and `[P]` where parallel
-- [ ] `[P]` included ONLY for tasks that can run in parallel (different files / independent stories / property-based tests across stories)
-- [ ] Task IDs sequential (`T001` → `T100`)
-- [ ] Phase structure: Setup (`Phase 1`) → Foundational (`Phase 2`) → RED PHASE Tests (`Phase 3`) → US1 Implementation (`Phase 4`) → US2 Implementation (`Phase 5`) → US3 Implementation (`Phase 6`) → US4 Verification (`Phase 7`) → Chunk (`Phase 8`) → Polish (`Phase 9`) → Final Verification (`Phase 10`)
-- [ ] Dependencies section shows phase order and user story independence
-- [ ] Parallel examples show subagent waves (`Subagent A` through `Subagent H`) with shared context reuse (`US1` growth mechanism; `US2` harvest hook; `US3` extra harvest; `US4` verification; cross-cutting security/docs; RED PHASE property-based; final verification proof)
