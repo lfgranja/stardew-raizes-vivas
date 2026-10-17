@@ -62,6 +62,14 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 
 **Purpose**: TDD — ALL tests written FIRST; must FAIL (RED PHASE) before ANY implementation. **BLOCKING**: No implementation task (Phase 4+) may begin until ALL tasks in this phase are complete and the resulting tests are confirmed failing. This phase uses property-based testing (`FsCheck` — `FsCheck.dll` / `FsCheck.Xunit.dll` present in `LivingRoots.Tests/bin/`) wherever invariants apply.
 
+**Property-Based Generator Patterns (FsCheck)** — concrete patterns for RED PHASE invariants (resolve A3):
+- `HealthValue`: `Gen.choose (0, 100)` (clamped `int`); `Gen.elements` for `HealthCategory` (`Poor`=`[0,30]`, `Moderate`=`[31,70]`, `Healthy`=`[71,100]`).
+- `Chunk stride`: `Gen.choose (1, 1000)` for chunk size; `Arb.filter` for prime-modulus stride `61` disjoint-range verification.
+- `Quality roll`: `Gen.map (fun p -> clamp 0.0 1.0 p)` for base probability `p = 0.2·L/10 + 0.2·B·(L+2)/12 + 0.01`; `Gen.constant 0.0` for Poor override (`A2` exception).
+- `Extra harvest`: `Gen.map` (`base + 0.10`) for Healthy (`≥71`); `Gen.constant base` for Moderate/`Poor`.
+- `Sparse save`: `Gen.map (fun dict -> filter (fun (k,v) -> v <> 0) dict)` — only non-zero values persisted (`AGENTS.md` anti-pattern).
+- Use `ROADMAP.md` scale (`[0,30]`, `[31,70]`, `[71,100]`) explicitly in all `Prop.forAll` assertions.
+
 **Independent Test Criteria per Story**:
 - **US1** (`SC-001`/`SC-002`/`SC-003`): Poor tile growth > Medium > Healthy; `Moderate` = vanilla parity; multiplicative on base `phaseDays` before vanilla modifiers (`A2` compositional).
 - **US2** (`SC-004`): Poor → 0 stars (override permitted only for Poor tier — `A2` exception documented); Moderate → vanilla roll; Healthy → enhanced (`+0.08`); floating-text confirmation (`A4`).
