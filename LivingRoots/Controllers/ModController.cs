@@ -1762,6 +1762,13 @@ namespace LivingRoots.Controllers
                     {
                         _compostingBinService.ProcessDayStart(locationName);
                         _soilDecayService.ProcessDayStart(locationName);
+
+                        // Spec 005 (FR-001): soil-health growth modifier applied to
+                        // Crop.phaseDays at DayStarted. Host-only (FR-006).
+                        if (StardewModdingAPI.Context.IsMainPlayer)
+                        {
+                            ApplySoilGrowthModifier(locationName);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -1774,6 +1781,76 @@ namespace LivingRoots.Controllers
             {
                 _monitor.Log("Error in day started handler.", LogLevel.Error);
                 _monitor.Log($"Day started exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+        }
+
+        /// <summary>
+        /// Spec 005 (FR-002): harvest quality roll. Poor forces 0 (only tier
+        /// with override exception), Moderate keeps vanilla roll, Healthy adds
+        /// SoilQualityHealthyBoost. Compositional (A2).
+        /// </summary>
+        public static float ComputeHarvestQualityRoll(float health, float vanillaRoll)
+        {
+            if (health <= 30f) return 0f;
+            if (health <= 70f) return vanillaRoll;
+            return vanillaRoll + ModConstants.SoilQualityHealthyBoost;
+        }
+
+        /// <summary>
+        /// Spec 005 (FR-003): per-tile extra harvest probability. Healthy
+        /// tiles get base + SoilExtraHarvestHealthyBoost; others keep base.
+        /// </summary>
+        public static float ComputeExtraHarvestProb(float health, float baseProb)
+        {
+            if (health >= 71f) return baseProb + ModConstants.SoilExtraHarvestHealthyBoost;
+            return baseProb;
+        }
+
+        /// <summary>
+        /// Spec 005 (FR-001): applies the soil-health growth modifier to
+        /// Crop.phaseDays for every tilled tile in the given location.
+        /// Poor (0-30) => 1.15x (slower), Moderate (31-70) => 1.00x (vanilla),
+        /// Healthy (71-100) => 0.85x (faster). Compositional: applied to base
+        /// phaseDays before vanilla modifiers (A2).
+        /// </summary>
+        private void ApplySoilGrowthModifier(string locationName)
+        {
+            try
+            {
+                var location = StardewValley.Game1.getLocationFromName(locationName);
+                if (location == null) return;
+
+                foreach (var kvp in location.terrainFeatures.Pairs)
+                {
+                    if (kvp.Value is not StardewValley.TerrainFeatures.HoeDirt hoeDirt) continue;
+                    if (hoeDirt.crop == null) continue;
+
+                    var tile = new Microsoft.Xna.Framework.Vector2(kvp.Key.X, kvp.Key.Y);
+                    var health = _soilHealthService.GetSoilHealth(locationName, tile);
+
+                    float multiplier;
+                    if (health <= 30f) multiplier = ModConstants.SoilGrowthPoorMultiplier;
+                    else if (health <= 70f) multiplier = 1.0f;
+                    else multiplier = ModConstants.SoilGrowthHealthyMultiplier;
+
+                    if (Math.Abs(multiplier - 1.0f) < 0.0001f) continue;
+
+                    var crop = hoeDirt.crop;
+                    // phaseDays is a NetIntList (per-phase durations); scale each
+                    // entry multiplicatively. The list field itself is read-only,
+                    // so mutate elements in place.
+                    for (int i = 0; i < crop.phaseDays.Count; i++)
+                    {
+                        var scaled = (int)Math.Round(crop.phaseDays[i] * multiplier);
+                        if (scaled < 1) scaled = 1;
+                        crop.phaseDays[i] = scaled;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Error applying soil growth modifier for location '{locationName}'.", LogLevel.Error);
+                _monitor.Log($"ApplySoilGrowthModifier exception: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
             }
         }
 
