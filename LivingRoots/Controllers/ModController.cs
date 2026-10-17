@@ -1811,6 +1811,89 @@ namespace LivingRoots.Controllers
         }
 
         /// <summary>
+        /// Spec 005 (FR-002/FR-003): harvest-time modifier entry point. Applies
+        /// the tile-health quality roll and extra-harvest probability to the
+        /// vanilla values. Returns true when a tier actually modified the outcome
+        /// (so callers can emit floating-text feedback, A4). Safe to call with a
+        /// null visualization service (no feedback emitted).
+        /// </summary>
+        /// <summary>
+        /// Spec 005 (FR-001 contingency, Q7): returns the start indices of
+        /// disjoint chunks of size <paramref name="chunkSize"/> covering
+        /// <paramref name="totalTiles"/> tiles using a prime-modulus stride of
+        /// <paramref name="stride"/> (default 61). Used to spread work across
+        /// ticks when the linear scan exceeds the 5ms budget at 40,000 tiles.
+        /// </summary>
+        public static System.Collections.Generic.List<int> GetChunkStartIndices(int totalTiles, int chunkSize, int stride = 61)
+        {
+            var result = new System.Collections.Generic.List<int>();
+            if (totalTiles <= 0 || chunkSize <= 0) return result;
+
+            int chunks = (totalTiles + chunkSize - 1) / chunkSize;
+            // Prime-modulus stride produces a permutation of chunk indices so
+            // no chunk is processed twice and none is missed.
+            for (int i = 0; i < chunks; i++)
+            {
+                int idx = (i * stride) % chunks;
+                result.Add(idx * chunkSize);
+            }
+
+            // De-duplicate (stride may collide for small chunk counts) while
+            // preserving coverage.
+            var seen = new System.Collections.Generic.HashSet<int>();
+            var deduped = new System.Collections.Generic.List<int>();
+            foreach (var s in result)
+            {
+                if (seen.Add(s)) deduped.Add(s);
+            }
+
+            // Ensure full coverage: append any missing chunk starts.
+            for (int c = 0; c < chunks; c++)
+            {
+                int s = c * chunkSize;
+                if (seen.Add(s)) deduped.Add(s);
+            }
+
+            return deduped;
+        }
+
+        public bool ApplyHarvestModifiers(string locationName, Microsoft.Xna.Framework.Vector2 tile,
+            float vanillaRoll, float baseExtraProb, out float qualityRoll, out float extraProb)
+        {
+            qualityRoll = vanillaRoll;
+            extraProb = baseExtraProb;
+
+            var health = _soilHealthService.GetSoilHealth(locationName, tile);
+            if (float.IsNaN(health) || float.IsInfinity(health) || health < 0f || health > 100f)
+            {
+                return false;
+            }
+
+            var newQuality = ComputeHarvestQualityRoll(health, vanillaRoll);
+            var newExtra = ComputeExtraHarvestProb(health, baseExtraProb);
+
+            bool modified = Math.Abs(newQuality - vanillaRoll) > 0.0001f
+                || Math.Abs(newExtra - baseExtraProb) > 0.0001f;
+
+            qualityRoll = newQuality;
+            extraProb = newExtra;
+
+            if (modified && _visualizationService != null)
+            {
+                try
+                {
+                    _visualizationService.TriggerHoeFeedback(tile.ToPoint(), health);
+                }
+                catch
+                {
+                    // Best-effort feedback; never fail the harvest.
+                }
+            }
+
+            return modified;
+        }
+
+        /// <summary>
         /// Spec 005 (FR-001): applies the soil-health growth modifier to
         /// Crop.phaseDays for every tilled tile in the given location.
         /// Poor (0-30) => 1.15x (slower), Moderate (31-70) => 1.00x (vanilla),
