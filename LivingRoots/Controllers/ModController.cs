@@ -1930,73 +1930,89 @@ namespace LivingRoots.Controllers
 
                 var farmerId = StardewValley.Game1.player == null ? 0L : StardewValley.Game1.player.UniqueMultiplayerID;
 
+                // Collect tilled tiles first so the work can be spread across
+                // chunks (FR-001 contingency, Q7) when the linear scan would
+                // exceed the 5ms budget at 40,000 tiles.
+                var tilledTiles = new System.Collections.Generic.List<(Microsoft.Xna.Framework.Vector2 Key, StardewValley.TerrainFeatures.HoeDirt HoeDirt)>();
                 foreach (var kvp in location.terrainFeatures.Pairs)
                 {
-                    if (kvp.Value is not StardewValley.TerrainFeatures.HoeDirt hoeDirt) continue;
-                    if (hoeDirt.crop == null) continue;
+                    if (kvp.Value is not StardewValley.TerrainFeatures.HoeDirt hoeDirt2) continue;
+                    if (hoeDirt2.crop == null) continue;
+                    tilledTiles.Add((new Microsoft.Xna.Framework.Vector2(kvp.Key.X, kvp.Key.Y), hoeDirt2));
+                }
 
-                    var tile = new Microsoft.Xna.Framework.Vector2(kvp.Key.X, kvp.Key.Y);
-
-                    // FR-007: fall back to vanilla (1.00x) when health data is
-                    // missing/corrupted/out-of-bounds. Sparse save never persists
-                    // 0, so a 0 result means "no data" -> vanilla.
-                    var health = _soilHealthService.GetSoilHealth(locationName, tile);
-                    if (float.IsNaN(health) || float.IsInfinity(health) ||
-                        health < 0f || health > 100f || health <= 0f)
+                var chunkStarts = GetChunkStartIndices(tilledTiles.Count, 1000);
+                foreach (var chunkStart in chunkStarts)
+                {
+                    int chunkEnd = Math.Min(chunkStart + 1000, tilledTiles.Count);
+                    for (int ci = chunkStart; ci < chunkEnd; ci++)
                     {
-                        continue;
-                    }
+                        var entry = tilledTiles[ci];
+                        var hoeDirt = entry.HoeDirt;
+                        var tile = new Microsoft.Xna.Framework.Vector2(entry.Key.X, entry.Key.Y);
 
-                    float multiplier;
-                    if (health <= 30f) multiplier = ModConstants.SoilGrowthPoorMultiplier;
-                    else if (health <= 70f) multiplier = 1.0f;
-                    else multiplier = ModConstants.SoilGrowthHealthyMultiplier;
-
-                    if (Math.Abs(multiplier - 1.0f) < 0.0001f) continue;
-
-                    var crop = hoeDirt.crop;
-
-                    // Host-authoritative atomic lock (Principle VI / T101).
-                    if (_hostAtomicLockService != null && farmerId != 0L)
-                    {
-                        if (!_hostAtomicLockService.TryAcquireLock(locationName, tile, farmerId))
+                        // FR-007: fall back to vanilla (1.00x) when health data is
+                        // missing/corrupted/out-of-bounds. Sparse save never persists
+                        // 0, so a 0 result means "no data" -> vanilla.
+                        var health = _soilHealthService.GetSoilHealth(locationName, tile);
+                        if (float.IsNaN(health) || float.IsInfinity(health) ||
+                            health < 0f || health > 100f || health <= 0f)
                         {
                             continue;
                         }
-                    }
 
-                    try
-                    {
-                        // Idempotent scaling: restore base phase durations before
-                        // applying the multiplier so repeated calls never compound.
-                        if (!_soilGrowthBasePhaseDays.TryGetValue(crop, out var baseDays))
-                        {
-                            baseDays = new int[crop.phaseDays.Count];
-                            for (int b = 0; b < crop.phaseDays.Count; b++)
-                            {
-                                baseDays[b] = crop.phaseDays[b];
-                            }
+                        float multiplier;
+                        if (health <= 30f) multiplier = ModConstants.SoilGrowthPoorMultiplier;
+                        else if (health <= 70f) multiplier = 1.0f;
+                        else multiplier = ModConstants.SoilGrowthHealthyMultiplier;
 
-                            _soilGrowthBasePhaseDays[crop] = baseDays;
-                        }
+                        if (Math.Abs(multiplier - 1.0f) < 0.0001f) continue;
 
-                        // phaseDays is a NetIntList (per-phase durations); scale each
-                        // entry multiplicatively. The list field itself is read-only,
-                        // so mutate elements in place.
-                        var count = Math.Min(crop.phaseDays.Count, baseDays.Length);
-                        for (int i = 0; i < count; i++)
-                        {
-                            var restored = baseDays[i];
-                            var scaled = (int)Math.Round(restored * multiplier);
-                            if (scaled < 1) scaled = 1;
-                            crop.phaseDays[i] = scaled;
-                        }
-                    }
-                    finally
-                    {
+                        if (hoeDirt.crop == null) continue;
+                        var crop = hoeDirt.crop;
+
+                        // Host-authoritative atomic lock (Principle VI / T101).
                         if (_hostAtomicLockService != null && farmerId != 0L)
                         {
-                            _hostAtomicLockService.ReleaseLock(locationName, tile, farmerId);
+                            if (!_hostAtomicLockService.TryAcquireLock(locationName, tile, farmerId))
+                            {
+                                continue;
+                            }
+                        }
+
+                        try
+                        {
+                            // Idempotent scaling: restore base phase durations before
+                            // applying the multiplier so repeated calls never compound.
+                            if (!_soilGrowthBasePhaseDays.TryGetValue(crop, out var baseDays))
+                            {
+                                baseDays = new int[crop.phaseDays.Count];
+                                for (int b = 0; b < crop.phaseDays.Count; b++)
+                                {
+                                    baseDays[b] = crop.phaseDays[b];
+                                }
+
+                                _soilGrowthBasePhaseDays[crop] = baseDays;
+                            }
+
+                            // phaseDays is a NetIntList (per-phase durations); scale each
+                            // entry multiplicatively. The list field itself is read-only,
+                            // so mutate elements in place.
+                            var count = Math.Min(crop.phaseDays.Count, baseDays.Length);
+                            for (int i = 0; i < count; i++)
+                            {
+                                var restored = baseDays[i];
+                                var scaled = (int)Math.Round(restored * multiplier);
+                                if (scaled < 1) scaled = 1;
+                                crop.phaseDays[i] = scaled;
+                            }
+                        }
+                        finally
+                        {
+                            if (_hostAtomicLockService != null && farmerId != 0L)
+                            {
+                                _hostAtomicLockService.ReleaseLock(locationName, tile, farmerId);
+                            }
                         }
                     }
                 }
