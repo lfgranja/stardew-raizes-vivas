@@ -118,10 +118,10 @@ As the maintainer, I can confirm that claims about soil-health effects are backe
 | SC-001 | Poor-tile growth is slower than vanilla Medium | Growth time to harvestable phase is longer on Poor vs. Medium, same crop/season/water | Yes — compares days, not API | 0 (no effect) | Poor > Medium |
 | SC-002 | Healthy-tier (`≥71`, user-facing: Living) growth is faster | Growth time shorter on Healthy (`≥71`) vs. Medium (`[31,70]`) — `Living` = user-facing label for Healthy tier (`FR-003` / `US3`) | Yes | 0 | Healthy (`Living`) < Medium |
 | SC-003 | Medium-tier parity with vanilla | No difference in growth time / quality roll / extra harvest vs. untreated vanilla tile | Yes — controls for all modifiers | 0 (all tiers = vanilla) | Medium = vanilla |
-| SC-004 | Harvest quality reflects tier | Poor tier → quality 0; Medium → vanilla roll; Living → enhanced probability | Yes | 0 | Tier reflects in roll |
-| SC-005 | Extra harvest on Living tier | Per-tile probability > base `ExtraHarvestChance` on Living tiles | Yes | 0 | Living > base |
+| SC-004 | Harvest quality reflects tier | Poor tier → quality 0; Medium → vanilla roll; Living → enhanced probability | Yes | 0 | Tier reflects in roll (≥10 harvests per tier at 95% confidence) |
+| SC-005 | Extra harvest on Living tier | Per-tile probability > base `ExtraHarvestChance` on Living tiles | Yes | 0 | Living > base (≥10 harvests per tier at 95% confidence) |
 | SC-006 | Overlay/tooltip reflect updated health | Existing overlay renders updated tier after compost; no new overlay needed | Yes (visual) | Works (spec 001) | Unchanged |
-| SC-007 | Save/reload preserves growth effect | After save/reload, tile's health and crop's growth state are consistent | Yes | Not tested (no runs) | Consistent |
+| SC-007 | Save/reload preserves growth effect | After save/reload, tile's health and crop's growth state are consistent | Yes | Not tested (no runs) | Consistent (health value unchanged AND phaseDays multiplier reapplied after reload) |
 | SC-008 | Manual play-through confirms full loop | Player applies compost → sees crop response on treated vs. untreated tiles | Qualitative (only verification) | Unverified | Confirmed |
 | SC-009 | Mean-verified manual observation (`FR-009`) | `GamePath` play-through verifies full loop: growth (`SC-001`–`SC-003`), quality (`SC-004`), extra harvest (`SC-005`), save/reload (`SC-007`); only automation gap (not hidden) | Qualitative — manual observation required | Unverified (requires `GamePath`) | Confirmed (post-play-through) |
 
