@@ -203,7 +203,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 
 **Purpose**: Improvements affecting multiple stories; final verification; security hardening; documentation reconciliation.
 
-- [ ] T074 [P] Confirm `SC-006` (`Overlay` preserved) — `VisualizationService.cs` continues to reflect updated `HealthCategory`; no regression in `OverlayRenderer`, `TooltipRenderer`, `HoeFeedbackRenderer` — `LivingRoots/Services/Visualization/`
+- [ ] T074 [P] Confirm `SC-006` (`Overlay` preserved) — **consolidated into T058**; verify no regression in `OverlayRenderer`, `TooltipRenderer`, `HoeFeedbackRenderer` — `LivingRoots/Services/Visualization/`
 - [ ] T075 [P] Security hardening (`Principle II`): verify `SanitizePathSegments` (`FormC`) applied to all new input paths (`LocationName`, `TileKey`) — `LivingRoots/Services/ModDataService.cs` / `LivingRoots/Domain/FileNameSanitizationService.cs`
 - [ ] T076 [P] Confirm no new `Assets/*.png` (`A4` 89; `FR-008` / `Non-Goals` 122-123) — `LivingRoots/Assets/` unchanged; `Data/Crops` not edited; `i18n/default.json` / `i18n/en.json` / `i18n/pt.json` unchanged (reuse existing `floating-text` / `restoration-text` keys only)
 - [ ] T077 [P] Confirm `SC-007` (`Save/reload`) — `SoilHealthState` persistence (`ModDataService`) + `Crop.phaseDays` sync through `GameLocation.terrainFeatures` — `LivingRoots/Services/ModDataService.cs` / `LivingRoots/Services/SoilHealthService.cs`
