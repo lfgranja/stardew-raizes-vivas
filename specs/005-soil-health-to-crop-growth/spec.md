@@ -134,7 +134,7 @@ As the maintainer, I can confirm that claims about soil-health effects are backe
 - No new crop sheet / `Data/Crops` edit (no new seeds / products — this feature uses existing crops).
 - No new `Data/Characters`, `Data/Buildings`, `Data/Quests` — no narrative or quest integration.
 - No `ContentPatcher` — repo uses `AssetRequested` + `e.Edit` only.
-- No `config.json` / GMCM page — persistence stays via existing `IModDataService` / `VisualiizationConfigurationService`.
+- No `config.json` / GMCM page — persistence stays via existing `IModDataService` / `VisualizationConfigurationService`.
 - No new `i18n` keys for growth feedback (reuses `floating-text` / `restoration-text`).
 - No multiplayer transport change (live 2-player D1 verification stays owed from spec 004).
 - No teaching-material redesign (Three Sisters / insect hotels must remain with documented caveats from `research.md` — not hidden bonuses).
