@@ -11,7 +11,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 **Input Documents**: `plan.md`, `spec.md`, `data-model.md`, `contracts/i-soil-health-service.md`, `quickstart.md`, `research.md`, `checklists/` (5 files: `band-scale-host-authority.md`, `growth-performance.md`, `harvest-quality-extra.md`, `requirements.md`, `verification-pipeline.md`), `.specify/memory/constitution.md` (v2.0.0 — Principle VI multiplayer first-class).
 
 **Prerequisites (blocking — must complete before any user story)**:
-- `spec-004` (`CompostingBinService.CollectCompost`) rollback verification (`SC-008`) — **absolute blocker for yield activation** (`FR-002`/`FR-003`; clarification 2026-10-16 overrides previous concurrent `B` selection); design/implementation permitted concurrently; must pass (`manual GamePath` + automated `StillConsumesBin` — `CompostingBinServiceTests.cs:339`) before any yield feature activates (`FR-005`; `Dependencies` 136-137).
+- `spec-004` (`CompostingBinService.CollectCompost`) rollback verification (`SC-008`) — **absolute blocker for yield activation** (`FR-002`/`FR-003`; clarification 2026-10-16 overrides previous concurrent `B` selection); design/implementation permitted concurrently; must pass (`manual GamePath` + automated `CollectCompost_WhenInventoryRefuses_StillConsumesBin (alias StillConsumesBin; see CompostingBinServiceTests.cs:339)`) before any yield feature activates (`FR-005`; `Dependencies` 136-137).
 - `GamePath` spike (`A1` 86; `Dependencies` 141) — verify `Crop.newDay` public-field ordering with vanilla growth before `FR-001` activation.
 - `ROADMAP.md` band reconciliation (`FR-004` / `A3`) — scale locked: `Poor` [0,30], `Moderate` [31,70], `Healthy` [71,100] (`data-model.md` 16-17; `spec.md` A3).
 
@@ -34,7 +34,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 - [ ] T003 [P] Verify `.specify/memory/constitution.md` v2.0.0 compliance (Principle I DDD, II Security-First, III Async-Only, IV TDD, V YAGNI, VI Multiplayer First-Class) for feature design
 - [ ] T004 [P] Verify `contracts/i-soil-health-service.md` matches `Domain/Interfaces/ISoilHealthService.cs` and `Domain/Interfaces/ICompostApplicationService.cs` (existing interfaces; zero premature abstractions per `Principle V`)
 - [ ] T005 [P] Verify `data-model.md` entities (`SoilHealth`, `HealthCategory`, `Crop` / `HoeDirt`) align with `Domain/Models/SoilHealthState.cs`, `Domain/Visualization/HealthCategory.cs`, `ModConstants.cs` references
-- [ ] T006 [P] Confirm `SC-008` rollback verification (`spec-004`) concurrent prerequisite status (`CompostingBinServiceTests.cs` 339 — `StillConsumesBin`) — does NOT block design/implementation but MUST pass before yield activation (`FR-005` 78)
+- [ ] T006 [P] Confirm `SC-008` rollback verification (`spec-004`) concurrent prerequisite status (`CompostingBinServiceTests.cs` 339 — `CollectCompost_WhenInventoryRefuses_StillConsumesBin (alias StillConsumesBin; see CompostingBinServiceTests.cs:339)`) — does NOT block design/implementation but MUST pass before yield activation (`FR-005` 78)
 - [ ] T007 [P] Confirm `GamePath` spike (`A1` — `Crop.newDay` public-field scan; no `Harmony`) required before `FR-001` activation (`plan.md` §Phase 2 Note; `Dependencies` 141)
 
 ---
@@ -43,7 +43,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 
 **Purpose**: Core constants, contracts, data-model alignment, chunk mechanism design, and infrastructure updates that must complete before ANY user story implementation. **No user story work begins until this phase is complete.**
 
-**Critical**: See prerequisites Lines 13-16; absolute blocker for yield activation (`FR-005` 78; `Dependencies` 136-137; clarification 2026-10-16).
+**Critical**: `SC-008` rollback verification is **absolute blocker for yield activation** (`FR-002`/`FR-003`; clarification 2026-10-16 overrides previous concurrent `B`) — design/implementation permitted concurrently; activation blocked until `SC-008` green. `GamePath` spike (`A1`) is absolute gate before `FR-001` activation.
 
 - [ ] T008 Verify `ModConstants.cs` exists and is the single source of truth (`AGENTS.md` conventions) — add placeholders for `SoilGrowthPoorMultiplier`, `SoilGrowthHealthyMultiplier`, `SoilQualityHealthyBoost`, `SoilExtraHarvestHealthyBoost`
 - [ ] T009 [P] Update `LivingRoots/ModConstants.cs` with soil-growth constants (quote constraints verbatim from `spec.md` / `data-model.md`): `SoilGrowthPoorMultiplier = 1.15`; `SoilGrowthHealthyMultiplier = 0.85`; `SoilQualityHealthyBoost = 0.08`; `SoilExtraHarvestHealthyBoost = 0.10` (`spec.md` Q3/Q4; `data-model.md` 21-25)
@@ -74,7 +74,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 - **US1** (`SC-001`/`SC-002`/`SC-003`): Poor tile growth > Medium > Healthy; `Moderate` = vanilla parity; multiplicative on base `phaseDays` before vanilla modifiers (`A2` compositional).
 - **US2** (`SC-004`): Poor → 0 stars (override permitted only for Poor tier — `A2` exception documented); Moderate → vanilla roll; Healthy → enhanced (`+0.08`); floating-text confirmation (`A4`).
 - **US3** (`SC-005`): Healthy (`≥71`) per-tile extra harvest probability > base (`base + 0.10`); floating-text confirmation (`A4`); no duplication (`US3` 58).
-- **US4** (`SC-006`/`SC-007`/`SC-008`): Overlay preserved (`SC-006`); save/reload consistent (`SC-007`); verification pipeline includes `SC-008` rollback (`manual GamePath` + `StillConsumesBin`).
+- **US4** (`SC-006`/`SC-007`/`SC-008`): Overlay preserved (`SC-006`); save/reload consistent (`SC-007`); `SC-008` rollback prerequisite — see prerequisites Lines 13-16; `T006`/`T060`/`T088`.
 
 ### User Story 1 — Growth Modifier Tests (`FR-001`) [US1] [P]
 
@@ -105,13 +105,13 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 
 - [ ] T032 [P] [US4] Integration test: `SC-006` — `Overlay` reflects updated health (`VisualizationService` continues to work; `SC-006` 113) — `LivingRoots.Tests/OverlayHealthReflectionTests.cs`
 - [ ] T033 [P] [US4] Integration test: `SC-007` — Save/reload preserves growth effect (`SoilHealthState` persistent data consistent with `Crop.phaseDays` sync via `GameLocation.terrainFeatures`) — `LivingRoots.Tests/SaveReloadConsistencyTests.cs`
-- [ ] T034 [P] [US4] Contract test: `SC-008` rollback verification (`manual GamePath` + automated `StillConsumesBin` — `CompostingBinServiceTests.cs`:339) — must pass before ANY yield activation (`FR-005` 78; `Dependencies` 136-137) — `LivingRoots.Tests/VerificationPipelineTests.cs`
+- [ ] T034 [P] [US4] Contract test: `SC-008` rollback verification (`manual GamePath` + automated `CollectCompost_WhenInventoryRefuses_StillConsumesBin (alias StillConsumesBin; see CompostingBinServiceTests.cs:339)` — `CompostingBinServiceTests.cs`:339) — must pass before ANY yield activation (`FR-005` 78; `Dependencies` 136-137) — `LivingRoots.Tests/VerificationPipelineTests.cs`
 - [ ] T035 [P] [US4] Property-based invariant test: Sparse save (`AGENTS.md` anti-pattern) — only non-default `HealthValue` stored (`SoilHealthState` dictionary); default `0` never persisted (`data-model.md` 24) — `LivingRoots.Tests/Invariants/SoilHealthPersistenceInvariantsTests.cs`
 - [ ] T036 [P] [US4] Property-based invariant test: `ReGen Valley` interaction (`Assumes` 145) — first-wins host-authoritative (`HostAtomicLockService`); second concurrent mutation refused with message (inventory intact); never last-write-wins — `LivingRoots.Tests/Invariants/ReGenValleyInvariantsTests.cs`
 
 **RED PHASE BLOCKING STATUS**: Confirm ALL `T016`–`T036` tasks complete and ALL resulting tests FAIL before proceeding to Phase 4. If any test does not exist or does not fail, Phase 4 is BLOCKED. Document RED status in session state file.
 
-**Checkpoint**: RED PHASE complete — all 21 test tasks (T016–T036) written; all tests confirmed failing; property-based invariants cover `HealthCategory`, growth multipliers, chunk stride, harvest quality roll, extra harvest probability, sparse save, `ReGen Valley` interaction, security sanitization, async-only, no pixel assertions, and `SC-008` rollback prerequisite. Implementation may proceed.
+**Checkpoint**: RED PHASE complete — all 21 test tasks (T016–T036) written; all tests confirmed failing; property-based invariants cover `HealthCategory`, growth multipliers, chunk stride, harvest quality roll, extra harvest probability, sparse save, `ReGen Valley` interaction, security sanitization, async-only, no pixel assertions, and `SC-008` rollback prerequisite (see prerequisites Lines 13-16; `T006`/`T060`/`T088`). Implementation may proceed.
 
 ---
 
@@ -173,7 +173,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 
 - [ ] T058 [US4] Verify `SC-006` — `Overlay` reflects updated `HealthCategory` (`VisualizationService` continues to work; `SC-006` 113) — `LivingRoots/Controllers/ModController.cs` / `LivingRoots/Services/Visualization/VisualizationService.cs`
 - [ ] T059 [P] [US4] Verify `SC-007` — Save/reload consistency (`SoilHealthState` persistent data + `Crop.phaseDays` sync through `GameLocation.terrainFeatures`; `data-model.md` 91-92; `FR-007` 80) — `LivingRoots.Tests/SaveReloadConsistencyTests.cs`
-- [ ] T060 [US4] Confirm `SC-008` rollback verification (`manual GamePath` play-through + automated `CollectCompost_WhenInventoryRefuses_StillConsumesBin (alias StillConsumesBin; see CompostingBinServiceTests.cs:339)` — `CompostingBinServiceTests.cs`:339) passes BEFORE ANY yield activation (`FR-005` 78; `Dependencies` 136-137; user `B` concurrent selection — design/implementation permitted concurrently; activation blocked) — `LivingRoots.Tests/VerificationPipelineTests.cs`
+- [ ] T060 [US4] Confirm `SC-008` rollback verification passes BEFORE ANY yield activation — see prerequisites Lines 13-16; `T006`/`T034`/`T088`; `CompostingBinServiceTests.cs`:339 (`FR-005` 78; `Dependencies` 136-137; concurrent `B` permitted) — `LivingRoots.Tests/VerificationPipelineTests.cs`
 - [ ] T061 [US4] Confirm `SC-009` (`Manual observation`) — `GamePath` play-through verifies full loop: apply compost → observe faster/slower growth (`SC-001`/`SC-002`) and parity (`SC-003`) → harvest quality (`SC-004`) → extra harvest (`SC-005`) → save/reload (`SC-007`) — `LivingRoots/Controllers/ModController.cs` / `quickstart.md` §Scenarios
 - [ ] T062 [US4] Confirm `A1` (`GamePath` spike) — verify `Crop.newDay` public-field ordering with vanilla growth (`plan.md` §Phase 0; `Dependencies` 141) — `LivingRoots/Controllers/ModController.cs`
 - [ ] T063 [US4] Confirm `A5` (`ReGen Valley` interaction — `Assumes` 145): first-wins host-authoritative (`HostAtomicLockService`); second concurrent mutation refused with message (inventory intact); never last-write-wins (`Principle VI`; `Clarifications` Q5 31-32) — `LivingRoots/Controllers/ModController.cs` / `LivingRoots/Services/HostAtomicLockService.cs`
@@ -184,7 +184,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 - [ ] T068 [P] [US4] Confirm no `Harmony` footprint (`A1` — `AGENTS.md` anti-pattern; `spec.md` A1 86; zero `Lib.Harmony` dependency) — `LivingRoots/Controllers/ModController.cs`
 - [ ] T069 [P] [US4] Confirm `FR-008` (`No pixel assertions`) — all tests assert logic (`phaseDays` multiplier, quality roll value, tier classification) — never color, pixel, blend alpha, or overlay appearance (`SC-006` visual preservation only) — `LivingRoots.Tests/HarvestQualityTests.cs` / `LivingRoots.Tests/GrowthModifierTests.cs`
 
-**Checkpoint**: US4 / Verification complete — `SC-008` rollback verification passes (see prerequisites Line 13; T088); `SC-006` preserved; `SC-007` consistent; `SC-009` manual observation confirms full loop; `SC-003` parity verified; `SC-004` quality verified; `SC-005` extra harvest verified; `GamePath` spike verified; `ReGen Valley` interaction documented; `FR-009` mean-verified; `FR-008` no pixel assertions confirmed. **This is the ONLY phase that fully attests feature success and completeness (per user instruction 3).**
+**Checkpoint**: US4 / Verification complete — `SC-008` rollback verified (see prerequisites Lines 13-16; `T006`/`T060`/`T088`); `SC-006`–`SC-007` consistent; `SC-009` manual loop confirmed; `SC-003`–`SC-005` verified; `FR-009` mean-verified; `FR-008` no pixel assertions confirmed. **ONLY phase that attests feature success (per user instruction 3).**
 
 ---
 
@@ -211,7 +211,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 - [ ] T079 [P] Confirm `SC-009` (`Manual play-through`) — full loop verified (`quickstart.md` §Scenarios 1–4) — `specs/005-soil-health-to-crop-growth/quickstart.md`
 - [ ] T080 [P] Confirm `FR-009` (`Mean-verified`) — `ROADMAP.md` reconciliation (`FR-004` 77); `ModConstants` values documented; `COMPLETION_SUMMARY.md` reconciled; `.specify/assessments/` artifacts show evidence-backed status; `research.md` cited (`research/2026-10-roadmap-feasibility-and-agronomy.md`) — `specs/005-soil-health-to-crop-growth/checklists/verification-pipeline.md`
 - [ ] T081 [P] Confirm design deferred items (`plan.md` §Phase 2 Note) — `Crop.newDay` scan (`FR-001`), chunk mechanism (`FR-001` contingency), harvest-intercept hook (`A4`), `SC-008` verification, `GamePath` spike — all either completed or deferred with clear prerequisites — `specs/005-soil-health-to-crop-growth/plan.md`
-- [ ] T082 [P] Confirm `SC-008` concurrent prerequisite (`user B`) — design/implementation permitted concurrently; yield activation (`FR-005`) blocked until `SC-008` green (`manual GamePath` + `CollectCompost_WhenInventoryRefuses_StillConsumesBin (alias StillConsumesBin; see CompostingBinServiceTests.cs:339)`) — `LivingRoots/Services/CompostingBinService.cs` / `LivingRoots.Tests/CompostingBinServiceTests.cs`:339
+- [ ] T082 [P] Confirm `SC-008` concurrent prerequisite (`user B`) — see prerequisites Lines 13-16; design/implementation permitted concurrently; yield activation (`FR-005`) blocked until `SC-008` green (`manual GamePath` + `StillConsumesBin`); `T006`/`T060`/`T088`; `CompostingBinServiceTests.cs`:339 — `LivingRoots/Services/CompostingBinService.cs`
 - [ ] T083 [P] Confirm zero `Harmony` footprint (`AGENTS.md` anti-pattern) — `Lib.Harmony` not referenced; direct `Crop.newDay` public-field scan (`A1` 86) — `LivingRoots/Controllers/ModController.cs`
 - [ ] T084 [P] Confirm no premature abstractions (`Principle V`) — `Crop.harvest` hook reuses `VisualizationService` floating-text; no new abstract base for harvest intercept (`A4` 89) — `LivingRoots/Controllers/ModController.cs`
 - [ ] T085 [P] Confirm `SC-003` (`Moderate` parity) — `Moderate` (`[31,70]`) must stay exactly `1.00×` with same vanilla modifiers — `LivingRoots/Controllers/ModController.cs` / `LivingRoots.Tests/GrowthModifierIntegrationTests.cs`
@@ -224,9 +224,9 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 
 **Purpose**: Per user instruction: verification tasks performed at the end. **ONLY these verification tasks attest to the success and completeness of the implementation — NEVER the agent itself.** This phase includes the `SC-008` activation gate, `GamePath` final verification, and cross-story integration.
 
-**Critical**: See prerequisites Lines 13-16; `SC-008` rollback (`manual GamePath` + `CollectCompost_WhenInventoryRefuses_StillConsumesBin (alias StillConsumesBin; see CompostingBinServiceTests.cs:339)`) must be GREEN before `FR-005` activation (`FR-002`/`FR-003` yield) — regardless of any other green tests or agent claims. **MANDATORY GATE** (`FR-005` 78; `Dependencies` 136-137).
+**Critical**: See prerequisites Lines 13-16; `SC-008` rollback (`manual GamePath` + `StillConsumesBin`) must be GREEN before `FR-005` activation (`FR-002`/`FR-003` yield) — regardless of any other green tests or agent claims. **MANDATORY GATE** (`FR-005` 78; `Dependencies` 136-137).
 
-- [ ] T088 [US4] [P] **VERIFICATION TASK**: Confirm `SC-008` rollback verification (`CompostingBinServiceTests.cs`:339 — `CollectCompost_WhenInventoryRefuses_StillConsumesBin (alias StillConsumesBin; see CompostingBinServiceTests.cs:339)`) passes (`manual GamePath` + automated) — **MANDATORY GATE** before yield activation (`FR-005` 78; `Dependencies` 136-137) — `LivingRoots.Tests/VerificationPipelineTests.cs`
+- [ ] T088 [US4] [P] **VERIFICATION TASK**: Confirm `SC-008` rollback verification (`CompostingBinServiceTests.cs`:339 — `StillConsumesBin`) passes (`manual GamePath` + automated) — **MANDATORY GATE** before yield activation (`FR-005` 78; `Dependencies` 136-137) — `LivingRoots.Tests/VerificationPipelineTests.cs`
 - [ ] T089 [US4] [P] **VERIFICATION TASK**: Confirm `SC-001` / `SC-002` / `SC-003` growth differences observable via `GamePath` (`manual` — `FR-009` 82; `SC-009`) — `quickstart.md` §Scenario 1; `LivingRoots/Controllers/ModController.cs`
 - [ ] T090 [US4] [P] **VERIFICATION TASK**: Confirm `SC-004` harvest quality observable (`manual` — `Poor` (`[0,30]`) = 0 stars; `Healthy` (`Living`, `≥71`) enhanced; floating-text) — `quickstart.md` §Scenario 2; `LivingRoots/Controllers/ModController.cs`
 - [ ] T091 [US4] [P] **VERIFICATION TASK**: Confirm `SC-005` extra harvest observable (`manual` — `Healthy` (`Living`, `≥71`) rate > `base`; no duplication; floating-text) — `quickstart.md` §Scenario 3; `LivingRoots/Controllers/ModController.cs`
@@ -269,7 +269,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 - **Phase 7 (US4 — Verification)**: Depends on Phase 6 (all stories implemented). Includes `SC-008` activation gate (`FR-005`), `SC-009` manual observation, `GamePath` spike verification (`A1`), `SC-007` save/reload, `SC-006` overlay, `FR-009` mean-verified.
 - **Phase 8 (Chunk)**: Parallel `P` tasks; can run with Phase 4–6 but must complete before `SC-009` manual verification of performance.
 - **Phase 9 (Polish)**: Depends on Phase 7. Cross-cutting: overlay preservation, security hardening, documentation reconciliation (`plan.md`, `quickstart.md`, `data-model.md`), zero assets verification (`FR-008`), multiplayer (`Principle VI`), no premature abstractions (`Principle V`).
-- **Phase 10 (VERIFICATION — ONLY attests success)**: Final verification gate. `SC-008` rollback (`manual GamePath` + `CollectCompost_WhenInventoryRefuses_StillConsumesBin`, alias `StillConsumesBin`) must be GREEN (`FR-005`). `SC-001`–`SC-005` observed. `SC-009` executed. `FR-009` verified. **Agent NEVER attests — only these tasks.**
+- **Phase 10 (VERIFICATION — ONLY attests success)**: Final verification gate. `SC-008` rollback (`manual GamePath` + `StillConsumesBin`) must be GREEN (`FR-005`). `SC-001`–`SC-005` observed. `SC-009` executed. `FR-009` verified. **Agent NEVER attests — only these tasks.**
 
 ### User Story Dependencies
 
@@ -322,7 +322,7 @@ Task: "T056 [US3] Reuse floating-text for extra-item confirmation"
 
 # Wave 6 (Verification + Integration — US4 + Chunk) — Subagent F (shared context: verification / SC-008 / manual / integration):
 Task: "T058 [US4] Verify SC-006 (Overlay preserved)"
-Task: "T060 [US4] Confirm SC-008 rollback verification (manual + CollectCompost_WhenInventoryRefuses_StillConsumesBin) GREEN"
+Task: "T060 [US4] Confirm SC-008 rollback verification (manual + StillConsumesBin) GREEN"
 Task: "T090 [US4] Confirm SC-001 / SC-002 / SC-003 observed (manual GamePath)"
 Task: "T070 [P] Implement chunk mechanism spread (contingency)"
 
@@ -361,7 +361,7 @@ Task: "T100 [US4] VERIFICATION: Principle VI multiplayer verified"
 3. Phase 4 (`US1`) → Growth modifier (`FR-001`); `SC-003` parity is the critical verification; `A1` (`GamePath`) required before activation; `SC-008` concurrent prerequisite acknowledged.
 4. Phase 5 (`US2`) → Harvest quality (`FR-002`); `SC-004` observable; `A2` exception (`Poor` override only) documented; floating-text (`A4`) reused.
 5. Phase 6 (`US3`) → Extra harvest (`FR-003`); `SC-005` observable; per-tile only (`US3` 58); no duplication; floating-text (`A4`) reused.
-6. Phase 7 (`US4`) → `SC-006` (`Overlay` preserved); `SC-007` (save/reload); `SC-008` rollback (`manual GamePath` + `CollectCompost_WhenInventoryRefuses_StillConsumesBin`); `SC-009` (`Manual`); `FR-009` (`Mean-verified`); `A1` (`GamePath` spike); `A5` (`ReGen Valley`); `SC-003` (parity); `SC-004` (quality); `SC-005` (extra); `SC-008` (rollback); `SC-006` (overlay); `SC-007` (save/reload); `SC-009` (manual); no false-green (`FR-009` 82).
+6. Phase 7 (`US4`) → `SC-006` (`Overlay` preserved); `SC-007` (save/reload); `SC-008` rollback (`manual GamePath` + `StillConsumesBin`); `SC-009` (`Manual`); `FR-009` (`Mean-verified`); `A1` (`GamePath` spike); `A5` (`ReGen Valley`); `SC-003` (parity); `SC-004` (quality); `SC-005` (extra); `SC-008` (rollback); `SC-006` (overlay); `SC-007` (save/reload); `SC-009` (manual); no false-green (`FR-009` 82).
 7. Phase 8 (`Chunk`) → Performance contingency (`FR-001`); activates only when linear exceeds `<5ms` @ 40,000 tiles (`spec-002` `:113`/`:176`); `SC-003` preserved; `SC-007` preserved.
 8. Phase 9 (`Polish`) → Cross-cutting (`SC-006` preserved; `SC-007` verified; `SC-008` concurrent; `SC-009` manual; `FR-008` no pixel assertions; `FR-009` mean-verified; `Principle VI` multiplayer; `Principle V` no premature abstractions; `Principle II` security; `A4` zero assets; zero `Harmony`).
 9. Phase 10 (`VERIFICATION`) — ONLY attests success: `SC-008` rollback GREEN; `SC-001`–`SC-005` observed; `SC-006`–`SC-007` verified; `SC-009` executed; `FR-009` verified; `A1` verified; `Principle VI` verified; `FR-008` no pixel assertions; `FR-005` yield activation blocked until `SC-008` green; agent NEVER claims success.
