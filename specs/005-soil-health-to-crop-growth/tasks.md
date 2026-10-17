@@ -121,6 +121,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 
 **Independent Test** (before activation): Confirm `SC-003` (`Moderate` = vanilla parity) using manual observation or automated growth-time comparison (`SC-001`: `Poor` > `Medium`; `SC-002`: `Healthy` < `Medium`).
 
+- [ ] T037a [US1] **SCAFFOLD FIRST** (user instruction 0): Generate `ISoilHealthService` contract stub and `Crop.newDay` public-field scan stub via LSP/code actions / `.specify` scaffold template (verify `.editorconfig` formatting) BEFORE hand-writing `T037` — `Domain/Interfaces/` / `LivingRoots/Controllers/ModController.cs`
 - [ ] T037 [US1] Implement `Crop.newDay` public-field scan (`DayStarted`) in `LivingRoots/Controllers/ModController.cs` — extend existing `OnDayStarted` handler (1719-1778) or add new hook; apply multiplicative modifier (`SoilGrowthPoorMultiplier` / `SoilGrowthHealthyMultiplier`) to `phaseDays` BEFORE vanilla modifiers (`A2`; `FR-001` 74; `data-model.md` 30-35)
 - [ ] T038 [US1] Add `HostAtomicLockService` per-tile guard (`IsMainPlayer` / `Context.IsMainPlayer`) for `FR-001` host-only persistent phase (`FR-006` 79; `HostAtomicLockService.cs` 7-60; `ModController` 1483-1492 `HoeDirt` filter pattern)
 - [ ] T039 [US1] Update `ModConstants.cs` — confirm `SoilGrowthPoorMultiplier` (`1.15`) and `SoilGrowthHealthyMultiplier` (`0.85`) applied; no hardcoded values (`AGENTS.md` anti-pattern)
@@ -138,6 +139,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 
 **Goal**: Harvest quality roll incorporates tile health additively (`A2` compositional; never overriding vanilla `p = 0.2·L/10 + 0.2·B·(L+2)/12 + 0.01`): `Poor` forces 0 (only tier with override exception — `spec.md` 89); `Moderate` = vanilla; `Healthy` `+0.08` (`FR-002` 75 / `SC-004` 110). Observable: floating-text message when tier modifies outcome (`A4` 89).
 
+- [ ] T045a [US2] **SCAFFOLD FIRST** (user instruction 0): Generate `Crop.harvest` hook stub and harvest-intercept contract stub via LSP/code actions / `.specify` scaffold template (verify `.editorconfig` formatting) BEFORE hand-writing `T045` — `LivingRoots/Controllers/ModController.cs` / `contracts/i-soil-health-service.md`
 - [ ] T045 [US2] Implement harvest-intercept hook at `Crop.harvest` in `LivingRoots/Controllers/ModController.cs` — new hook required (zero harvest hooks exist today; `ModController` has zero `Crop.harvest` references beyond `message.harvest.inventory-full` at `Constants.cs` 56; `Clarifications` Q3/A4 33-34)
 - [ ] T046 [US2] Implement quality roll (`FR-002` 75): Poor tier → force 0 (override permitted only for Poor — `A2` exception); Moderate → vanilla roll; Healthy → `vanilla + 0.08` (`SoilQualityHealthyBoost`) — `LivingRoots/Controllers/ModController.cs` / `LivingRoots/Services/SoilHealthService.cs`
 - [ ] T047 [US2] Confirm `A2` compositional consistency (`FR-002` 75; `A2` 87): roll is composed (not replaced); `Poor` exception is tier-conditional only — `LivingRoots/Controllers/ModController.cs`
@@ -226,8 +228,8 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 
 - [ ] T088 [US4] [P] **VERIFICATION TASK**: Confirm `SC-008` rollback verification (`CompostingBinServiceTests.cs`:339 — `StillConsumesBin`) passes (`manual GamePath` + automated) — **MANDATORY GATE** before yield activation (`FR-005` 78; `Dependencies` 136-137) — `LivingRoots.Tests/VerificationPipelineTests.cs`
 - [ ] T089 [US4] [P] **VERIFICATION TASK**: Confirm `SC-001` / `SC-002` / `SC-003` growth differences observable via `GamePath` (`manual` — `FR-009` 82; `SC-009`) — `quickstart.md` §Scenario 1; `LivingRoots/Controllers/ModController.cs`
-- [ ] T090 [US4] [P] **VERIFICATION TASK**: Confirm `SC-004` harvest quality observable (`manual` — poor = 0 stars; healthy enhanced; floating-text) — `quickstart.md` §Scenario 2; `LivingRoots/Controllers/ModController.cs`
-- [ ] T091 [US4] [P] **VERIFICATION TASK**: Confirm `SC-005` extra harvest observable (`manual` — healthy rate > base; no duplication; floating-text) — `quickstart.md` §Scenario 3; `LivingRoots/Controllers/ModController.cs`
+- [ ] T090 [US4] [P] **VERIFICATION TASK**: Confirm `SC-004` harvest quality observable (`manual` — `Poor` (`[0,30]`) = 0 stars; `Healthy` (`Living`, `≥71`) enhanced; floating-text) — `quickstart.md` §Scenario 2; `LivingRoots/Controllers/ModController.cs`
+- [ ] T091 [US4] [P] **VERIFICATION TASK**: Confirm `SC-005` extra harvest observable (`manual` — `Healthy` (`Living`, `≥71`) rate > `base`; no duplication; floating-text) — `quickstart.md` §Scenario 3; `LivingRoots/Controllers/ModController.cs`
 - [ ] T092 [US4] [P] **VERIFICATION TASK**: Confirm `SC-007` save/reload consistency — `SoilHealthState` + `Crop.phaseDays` sync preserved after reload — `LivingRoots.Tests/SaveReloadConsistencyTests.cs`
 - [ ] T093 [US4] [P] **VERIFICATION TASK**: Confirm `SC-006` overlay preserved — `VisualizationService` reflects updated `HealthCategory` with no regression — `LivingRoots/Services/Visualization/VisualizationService.cs`
 - [ ] T094 [US4] [P] **VERIFICATION TASK**: Confirm `SC-003` (`Moderate` = vanilla parity) — `Moderate` tile (`[31,70]`) grows at exactly `1.00×` with same modifiers — `quickstart.md` §Scenario 1; `LivingRoots/Controllers/ModController.cs`
