@@ -121,6 +121,7 @@ As the maintainer, I can confirm that claims about soil-health effects are backe
 | SC-006 | Overlay/tooltip reflect updated health | Existing overlay renders updated tier after compost; no new overlay needed | Yes (visual) | Works (spec 001) | Unchanged |
 | SC-007 | Save/reload preserves growth effect | After save/reload, tile's health and crop's growth state are consistent | Yes | Not tested (no runs) | Consistent |
 | SC-008 | Manual play-through confirms full loop | Player applies compost → sees crop response on treated vs. untreated tiles | Qualitative (only verification) | Unverified | Confirmed |
+| SC-009 | Mean-verified manual observation (`FR-009`) | `GamePath` play-through verifies full loop: growth (`SC-001`–`SC-003`), quality (`SC-004`), extra harvest (`SC-005`), save/reload (`SC-007`); only automation gap (not hidden) | Qualitative — manual observation required | Unverified (requires `GamePath`) | Confirmed (post-play-through) |
 
 ---
 
