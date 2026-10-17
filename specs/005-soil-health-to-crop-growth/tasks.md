@@ -43,7 +43,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 
 **Purpose**: Core constants, contracts, data-model alignment, chunk mechanism design, and infrastructure updates that must complete before ANY user story implementation. **No user story work begins until this phase is complete.**
 
-**Critical**: `SC-008` rollback verification is concurrent (not absolute blocker for design/implementation), but `GamePath` spike (`A1`) is an absolute gate before `FR-001` activation.
+**Critical**: `SC-008` rollback verification is **absolute blocker for yield activation** (`FR-002`/`FR-003`; clarification 2026-10-16 overrides previous concurrent `B`) — design/implementation permitted concurrently; activation blocked until `SC-008` green. `GamePath` spike (`A1`) is absolute gate before `FR-001` activation.
 
 - [ ] T008 Verify `ModConstants.cs` exists and is the single source of truth (`AGENTS.md` conventions) — add placeholders for `SoilGrowthPoorMultiplier`, `SoilGrowthHealthyMultiplier`, `SoilQualityHealthyBoost`, `SoilExtraHarvestHealthyBoost`
 - [ ] T009 [P] Update `LivingRoots/ModConstants.cs` with soil-growth constants (quote constraints verbatim from `spec.md` / `data-model.md`): `SoilGrowthPoorMultiplier = 1.15`; `SoilGrowthHealthyMultiplier = 0.85`; `SoilQualityHealthyBoost = 0.08`; `SoilExtraHarvestHealthyBoost = 0.10` (`spec.md` Q3/Q4; `data-model.md` 21-25)
