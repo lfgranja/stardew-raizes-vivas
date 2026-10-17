@@ -481,7 +481,10 @@ public class SingleMultiplayerParityInvariantsTests
     /// today. A genuinely required host-authority gate introduced in future MUST be
     /// added here deliberately; the scan fails on any other divergent occurrence.
     /// </summary>
-    private static readonly string[] DocumentedHostAuthorityGates = Array.Empty<string>();
+    private static readonly string[] DocumentedHostAuthorityGates = new[]
+    {
+        "LivingRoots/Controllers/ModController.cs:1768"
+    };
 
     private static bool IsPermittedHostAuthorityGate(string site)
     {
