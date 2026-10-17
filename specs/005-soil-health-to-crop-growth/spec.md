@@ -3,7 +3,7 @@
 **Feature Branch**: `feat/005-soil-health-to-crop-growth` (recommended — derived from `soil-health-to-crop-growth` assessment slug; branch naming is independent of spec directory per `.specify/` conventions)
 
 **Created**: 2026-10-15
-**Status**: Draft — `needs-clarification` from `/speckit.assess.decide` unresolved (5 clarification questions carried; validation gate not yet passed)
+**Status**: Design-locked — clarification loop `2026-10-16` complete (`Q1`–`Q7` resolved; `SC-008` absolute blocker acknowledged; `tasks.md` deferred to `/speckit-tasks`; `plan.md` Phase 1 complete; `RED PHASE` `T016`–`T036` blocking before `Phase 4+`; `SC-008` rollback verification concurrent prerequisite confirmed; `Principle VI` conditional pass documented; no `NEEDS CLARIFICATION` markers remain)
 
 **Input**: Handoff from `.specify/assessments/soil-health-to-crop-growth/` (intake.md + research.md + problem.md + concept.md + decision.md). The problem is defined: per-tile soil health (0–100) is measured, persisted, and displayed, but never affects crop growth, harvest quality, or extra harvest. All 18 unimplemented roadmap mechanics depend on this connection.
 
