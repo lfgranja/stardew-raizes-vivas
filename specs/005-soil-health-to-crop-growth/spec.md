@@ -76,6 +76,8 @@ As the maintainer, I can confirm that claims about soil-health effects are backe
 
 ---
 
+> **Terminology note**: The technical category `Moderate` (range [31,70], `HealthCategory` enum, `Data-Model.md`) corresponds to the user-facing label `Medium` used in `SC-001` (`Poor` > `Medium`) and `SC-003` (`Medium`-tier parity). The user-facing label `Living` corresponds to the technical category `Healthy` (range [71,100], `HealthCategory` enum), used in `SC-002` (`Healthy` tier, user-facing: `Living`) and `SC-005` (`Healthy` tier, user-facing: `Living`). These mappings are consistent and do not indicate conflicting requirements.
+
 ## Requirements
 
 ### Functional Requirements
@@ -92,7 +94,7 @@ As the maintainer, I can confirm that claims about soil-health effects are backe
 
 ### Assumptions
 
-- **A1 (Hook path)**: CONFIRMED — Option A (`DayStarted` scan via public `Crop.newDay` fields, no Harmony required for minimal path). Spike must verify ordering with vanilla growth (`GamePath` build required) before `plan`; fallback to Option B (`HoeDilt.GetFertilizerSpeedBoost()`) only if ordering fails. Default (a) stands.
+- **A1 (Hook path)**: CONFIRMED — Option A (`DayStarted` scan via public `Crop.newDay` fields, no Harmony required for minimal path). Spike must verify ordering with vanilla growth (`GamePath` build required) before `plan`; fallback to Option B (`HoeDirt.GetFertilizerSpeedBoost()`) only if ordering fails. Default (a) stands.
 - **A2 (Composition)**: The multiplicative adjustment must compose with vanilla modifications rather than replace them (e.g., a tile with `Speed-Gro` + High soil health must grow faster than either alone; a Medium tile must stay exactly vanilla). **Exception**: Poor tier permits quality override (force 0, no stars) as an explicit tier-conditional exception (`FR-002`); this exception applies only to Poor, not to Moderate or Healthy tiers. The brief `soil-tier-outcomes-harvest-feedback.md` flags this as risk #4.
 - **A3 (Scale)**: CONFIRMED — Adopt `ROADMAP.md` scale (0-30 / 31-70 / 71-100) per user's criteria; `spec-001` half-open reconciled as implementation artifact. All `HealthCategory`, `ModConstants`, and test assertions must align.
 - **A4 (No asset)**: No new `Assets/*.png`, no new `Data/Crops` entry, no new `Data/Objects`, no new `Data/Recipe`, no new `Data/BigCraftables`, no new `i18n` key required for growth feedback (reuses existing `floating-text` / `restoration-text` patterns from `CompostApplicationService.cs`).
