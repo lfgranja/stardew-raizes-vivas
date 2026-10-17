@@ -85,7 +85,7 @@ description: "Task list for feature 005 — Soil Health → Crop Growth (SMAPI .
 - [ ] T020 [P] [US1] Property-based invariant test: Chunk mechanism stride (`prime-modulus stride 61`) produces disjoint ranges (no tile processed twice; no tile missed) — `LivingRoots.Tests/Invariants/ChunkStrideInvariantsTests.cs`
 - [ ] T021 [P] [US1] Security/path sanitization invariant (`Principle II`): `LocationName` (`FormC`) and `TileKey` (`SanitizePathSegments`) always sanitized before any `SoilHealthService` query/update — `LivingRoots.Tests/Invariants/SecuritySanitizationInvariantsTests.cs`
 - [ ] T022 [P] [US1] Async-only invariant (`Principle III`): No `.Result` or `.Wait()` in `DayStarted` handler; `volatile`/`Interlocked` permitted (`AGENTS.md` anti-pattern) — `LivingRoots.Tests/ConcurrencyInvariantsTests.cs`
-- [ ] T023 [P] [US1] Performance contract test (`spec-002` contract `:113`/`:176`): Linear scan ≤ `<5ms` at 40,000 tiles (`SoilDecayService.cs` 86-105); chunk budget `~2ms` per chunk (`FR-001` 74; `Clarifications` Q7 34; `subagent-response-q7.md`) — `LivingRoots.Tests/GrowthPerformanceTests.cs`
+- [ ] T023 [P] [US1] Performance contract test (`spec-002` contract `:113`/`:176`): Linear scan ≤ `<5ms` at 40,000 tiles (spec-002 contract: ≤10,000 tilled tiles target, ≤40,000 extreme, <5ms linear at DayStarted) (`SoilDecayService.cs` 86-105); chunk budget `~2ms` per chunk (`FR-001` 74; `Clarifications` Q7 34; `subagent-response-q7.md`) — `LivingRoots.Tests/GrowthPerformanceTests.cs`
 
 ### User Story 2 — Harvest Quality Tests (`FR-002`) [US2] [P]
 
