@@ -157,6 +157,14 @@ namespace LivingRoots.Controllers
         // GameTime captured from UpdateTicked for use in render events
         private GameTime _lastGameTime = new();
 
+        // T114 (FR-002/FR-003): harvest tracking — mature crops detected via
+        // UpdateTicked polling. When a mature crop disappears from a tile, it
+        // was harvested. The dictionary maps location name -> (tile -> crop).
+        private readonly System.Collections.Generic.Dictionary<string,
+            System.Collections.Generic.Dictionary<Microsoft.Xna.Framework.Vector2,
+                StardewValley.Crop>> _matureCrops = new();
+        private readonly object _harvestLock = new();
+
         // Console command registration state
         private readonly object _commandLock = new();
 
@@ -265,6 +273,12 @@ namespace LivingRoots.Controllers
                     worldEvents.ObjectListChanged += localObjectListChangedHandler;
                 }
 
+                // T114 (FR-002/FR-003): UpdateTicked is always subscribed
+                // (not just when visualization is available) so harvest
+                // detection works even without the visualization service.
+                _onUpdateTickedHandler = OnUpdateTicked;
+                gameLoop.UpdateTicked += _onUpdateTickedHandler;
+
                 // Subscribe to visualization events if services are available
                 if (_visualizationService != null)
                 {
@@ -272,9 +286,6 @@ namespace LivingRoots.Controllers
                     localButtonReleasedHandler = _onButtonReleasedHandler ??= OnButtonReleased;
                     _helper.Events.Display.RenderedWorld += localRenderedWorldHandler;
                     _helper.Events.Input.ButtonReleased += localButtonReleasedHandler;
-
-                    _onUpdateTickedHandler = OnUpdateTicked;
-                    gameLoop.UpdateTicked += _onUpdateTickedHandler;
 
                     // T126 (FR-025, DC-4): pause/resume rendering
                     // around in-game menus. MenuChanged rides the
@@ -1552,6 +1563,10 @@ namespace LivingRoots.Controllers
             // elapsed delta is zero, so every same-tile
             // tooltip refresh is suppressed forever).
             _lastGameTime = StardewValley.Game1.currentGameTime;
+
+            // T114 (FR-002/FR-003): harvest detection — scan for mature
+            // crops and detect when one disappears (was harvested).
+            DetectAndApplyHarvestModifiers();
         }
 
         /// <summary>
@@ -1796,8 +1811,8 @@ namespace LivingRoots.Controllers
         public static float ComputeHarvestQualityRoll(float health, float vanillaRoll)
         {
             if (health <= 30f) return 0f;
-            if (health <= 70f) return vanillaRoll;
-            return vanillaRoll + ModConstants.SoilQualityHealthyBoost;
+            if (health <= 70f) return Math.Clamp(vanillaRoll, 0f, 1f);
+            return Math.Clamp(vanillaRoll + ModConstants.SoilQualityHealthyBoost, 0f, 1f);
         }
 
         /// <summary>
@@ -1806,8 +1821,8 @@ namespace LivingRoots.Controllers
         /// </summary>
         public static float ComputeExtraHarvestProb(float health, float baseProb)
         {
-            if (health >= 71f) return baseProb + ModConstants.SoilExtraHarvestHealthyBoost;
-            return baseProb;
+            if (health >= 71f) return Math.Clamp(baseProb + ModConstants.SoilExtraHarvestHealthyBoost, 0f, 1f);
+            return Math.Clamp(baseProb, 0f, 1f);
         }
 
         /// <summary>
@@ -1882,7 +1897,10 @@ namespace LivingRoots.Controllers
             {
                 try
                 {
-                    _visualizationService.TriggerHoeFeedback(tile.ToPoint(), health);
+                    var message = newQuality < vanillaRoll
+                        ? "Quality reduced (Poor soil)"
+                        : "Quality boosted (Healthy soil)";
+                    _visualizationService.TriggerHarvestFeedback(tile.ToPoint(), message);
                 }
                 catch
                 {
@@ -1891,6 +1909,148 @@ namespace LivingRoots.Controllers
             }
 
             return modified;
+        }
+
+        /// <summary>
+        /// T114 (FR-002/FR-003): scans the current location for mature crops and
+        /// detects when one disappears (was harvested). When a harvest is detected,
+        /// computes the vanilla roll, calls ApplyHarvestModifiers, and applies the
+        /// results to the harvested item in the player's inventory.
+        /// </summary>
+        private void DetectAndApplyHarvestModifiers()
+        {
+            try
+            {
+                var location = StardewValley.Game1.currentLocation;
+                if (location == null) return;
+
+                var locationName = location.Name;
+                if (string.IsNullOrEmpty(locationName)) return;
+
+                var currentMatureCrops = new System.Collections.Generic.Dictionary<
+                    Microsoft.Xna.Framework.Vector2, StardewValley.Crop>();
+
+                foreach (var kvp in location.terrainFeatures.Pairs)
+                {
+                    if (kvp.Value is StardewValley.TerrainFeatures.HoeDirt hoeDirt
+                        && hoeDirt.crop != null
+                        && IsCropMature(hoeDirt.crop))
+                    {
+                        currentMatureCrops[kvp.Key] = hoeDirt.crop;
+                    }
+                }
+
+                System.Collections.Generic.Dictionary<Microsoft.Xna.Framework.Vector2, StardewValley.Crop>? previouslyTracked;
+                lock (_harvestLock)
+                {
+                    _matureCrops.TryGetValue(locationName, out previouslyTracked);
+                }
+
+                if (previouslyTracked != null)
+                {
+                    foreach (var kvp in previouslyTracked)
+                    {
+                        if (!currentMatureCrops.ContainsKey(kvp.Key))
+                        {
+                            ApplyHarvestModifiersToTile(locationName, kvp.Key, kvp.Value);
+                        }
+                    }
+                }
+
+                lock (_harvestLock)
+                {
+                    _matureCrops[locationName] = currentMatureCrops;
+                }
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Harvest detection error: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+        }
+
+        /// <summary>
+        /// T114: returns true when the crop has reached its final phase and
+        /// the current phase's day count has elapsed (ready to harvest).
+        /// </summary>
+        private static bool IsCropMature(StardewValley.Crop crop)
+        {
+            if (crop.phaseDays == null || crop.phaseDays.Count == 0) return false;
+            var currentPhase = crop.currentPhase.Value;
+            var dayOfPhase = crop.dayOfCurrentPhase.Value;
+            if (currentPhase < 0 || currentPhase >= crop.phaseDays.Count) return false;
+            return currentPhase == crop.phaseDays.Count - 1
+                && dayOfPhase >= crop.phaseDays[currentPhase];
+        }
+
+        /// <summary>
+        /// T114 (FR-002/FR-003): applies harvest modifiers when a mature crop
+        /// disappears from a tile (was harvested). Computes the vanilla roll,
+        /// calls ApplyHarvestModifiers, and applies the modified quality/extra
+        /// to the harvested item in the player's inventory.
+        /// </summary>
+        private void ApplyHarvestModifiersToTile(string locationName, Microsoft.Xna.Framework.Vector2 tile, StardewValley.Crop crop)
+        {
+            try
+            {
+                var farmer = StardewValley.Game1.player;
+                if (farmer == null) return;
+
+                var farmingLevel = farmer.FarmingLevel;
+                var vanillaRoll = 0.2f * farmingLevel / 10f + 0.01f;
+
+                var baseExtraProb = 0f;
+                var cropData = StardewValley.Game1.cropData;
+                var harvestId = crop.indexOfHarvest?.ToString() ?? string.Empty;
+                if (cropData != null && !string.IsNullOrEmpty(harvestId) && cropData.TryGetValue(harvestId, out var data))
+                {
+                    baseExtraProb = (float)data.ExtraHarvestChance;
+                }
+
+                float qualityRoll, extraProb;
+                bool modified = ApplyHarvestModifiers(locationName, tile, vanillaRoll, baseExtraProb, out qualityRoll, out extraProb);
+
+                if (!modified) return;
+
+                var random = StardewValley.Game1.random;
+
+                var harvestedItems = farmer.Items;
+                if (harvestedItems == null) return;
+
+                foreach (var item in harvestedItems)
+                {
+                    if (item == null) continue;
+                    if (item is not StardewValley.Object obj) continue;
+
+                    if (qualityRoll <= 0f)
+                    {
+                        obj.Quality = 0;
+                    }
+                    else if (qualityRoll < 1f)
+                    {
+                        var roll = (float)random.NextDouble();
+                        if (roll < qualityRoll)
+                        {
+                            obj.Quality = Math.Min(obj.Quality + 1, 3);
+                        }
+                    }
+
+                    if (extraProb > baseExtraProb)
+                    {
+                        var extraRoll = (float)random.NextDouble();
+                        if (extraRoll < extraProb - baseExtraProb)
+                        {
+                            var extraItem = new StardewValley.Object(obj.ParentSheetIndex.ToString(), 1);
+                            farmer.addItemByMenuIfNecessary(extraItem);
+                        }
+                    }
+
+                    break;
+                }
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Harvest modifier application error: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
         }
 
         /// <summary>
