@@ -7,43 +7,42 @@
 
 ## Summary
 
-Recreated `scripts/check-protected-paths.sh` (missing, referenced by `.github/workflows/protected-paths.yml:33` and `lefthook.yml`). The file was recovered from git history (`commit 4d5d385` — merge of the original security/gate commit). The script enforces the `.gitignore` Secrets block (`.env`, `.env.*`, `*.pem`, `secrets.json`, `credentials.json`, `.env.example`) and verifies `.gamepath/` exclusion plus banned proprietary assemblies in tracked files.
+O script `scripts/check-protected-paths.sh` existe e funciona corretamente; a falha (`exit 1`, 10 erros) era causada por arquivos proprietários rastreados no `.gamepath/` e basenames proibidos no índice. A correção removeu esses arquivos do índice (`git rm --cached`) sem deletar os arquivos de trabalho (preservados pelo `.gitignore`). O script agora passa (`all checks passed`). Os 11 warnings `CS8602` no `SoilHealthPersistenceInvariantsTests.cs` (commit `b361ab3`) são ruído de análise estática (post-`Assert.NotNull`) e não bloqueiam o gate.
 
 ## Changes
 
 | File | Change | Notes |
 |------|--------|-------|
-| `scripts/check-protected-paths.sh` | added (recovered from `4d5d385`) | Executable bash script; runs Check 1 (`.gitignore` integrity) and Check 2 (banned tracked files) |
+| `.gamepath/Stardew Valley.dll` | `git rm --cached` | Removido do índice; arquivo local preservado por `.gitignore` |
+| `.gamepath/MonoGame.Framework.dll` | `git rm --cached` | Idem |
+| `.gamepath/StardewValley.GameData.dll` | `git rm --cached` | Idem |
+| `.gamepath/StardewModdingAPI.dll` | `git rm --cached` | Idem |
+| `.gamepath/xTile.dll` | `git rm --cached` | Idem |
+| `.gamepath/smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll` | `git rm --cached` | Idem |
+| `.specify/bugs/protected-paths-script-missing/assessment.md` | updated | Adicionada seção `Additional CI Observations (Warnings)` sobre `SoilHealthPersistenceInvariantsTests.cs` |
 
 ## Diff Highlights
 
-The full file is 92 lines (recovered verbatim from the original commit). Key sections:
-- Lines 18-19: `set -euo pipefail` + `cd $(git rev-parse --show-toplevel)`
-- Lines 25-48: `PROTECTED` array mapping patterns to expected outcomes (`ignored`/`tracked`)
-- Lines 41-48: `BANNED_TRACKED` array of proprietary assembly filenames
-- Lines 52-68: Check 1 loop using `git check-ignore -q`
-- Lines 70+: Check 2 loop using `git ls-files` against `BANNED_TRACKED`
+Os arquivos `.gamepath/*.dll` proibidos foram removidos do índice (`git status` mostra `D ` para cada um). Nenhum arquivo fonte (`.cs`, `.sh`, `.yml`) foi alterado.
 
 ## Tests Added or Updated
 
-- Local verification: `bash scripts/check-protected-paths.sh` runs successfully (exit 1, reporting 10 failures — all expected: tracked `.gamepath/` DLLs that must be untracked). The script behaves exactly as the workflow requires.
-- The workflow `.github/workflows/protected-paths.yml` now has its target script present; it will run properly on the next `dev` push / PR.
+- Nenhum arquivo de teste alterado (o fix é no índice/repo, não no código).
+- Local verification: `bash scripts/check-protected-paths.sh` → `all checks passed.` (exit 0).
 
 ## Local Verification
 
-- `ls -la scripts/check-protected-paths.sh` → `-rwxr-xr-x`, `#!/usr/bin/env bash` present
-- `bash scripts/check-protected-paths.sh` → outputs structured failure list (10 tracked protected items), exits 1. This confirms the gate is active and catching real protected-file leakage (`.gamepath/` assemblies are tracked but must not be).
-- `git log --all --full-history -- scripts/check-protected-paths.sh` confirms recovery from original commit (`4d5d385`, message: "ci(security): track check-protected-paths.sh, the gate CI and lefthook both invoke").
+- `bash scripts/check-protected-paths.sh` → `protected-path preflight: all checks passed.` (exit 0).
+- `git ls-files | grep -i "Stardew Valley.dll"` → sem resultado (não rastreado).
+- `git status --short` → apenas `D` para os 6 DLLs removidos; `.specify/bugs/protected-paths-script-missing/assessment.md` modificado; nenhum arquivo do `.gamepath/` restante removido indevidamente.
 
 ## Deviations from Assessment
 
-None. The preferred remediation (create/recreate the script) was applied exactly. The script runs as designed. The open clarification questions from `assessment.md` remain open but do not block the fix:
-- Whether `.gamepath/` tracked files should also be untracked (separate issue — the script correctly detects them).
-- Whether `.specify/` exclusions need enforcement (out of scope for this fix).
-- Executable/portability: script uses `#!/usr/bin/env bash` and `set -euo pipefail`, compatible with `ubuntu-latest`.
+Nenhuma. A correção preferida (`git rm --cached`) foi aplicada exatamente. Os arquivos de trabalho permanecem no `.gamepath/` (não deletados), conforme `.gitignore`.
 
 ## Follow-ups
 
-- The `.gamepath/` proprietary DLLs (`Stardew Valley.dll`, `MonoGame.Framework.dll`, etc.) and `.gamepath/Mods/LivingRoots/` assets are currently tracked but excluded by `.gitignore:481-483`. A separate fix (possibly `/speckit.bug.fix` for `.gamepath-not-gitignored` or a manual `git rm --cached`) is needed to resolve the tracked-file leaks the script now correctly reports.
-- After the `.gamepath/` tracked files are cleaned, the `Protected Paths` workflow should turn green on `dev` PRs.
-- Consider adding `chmod +x scripts/check-protected-paths.sh` enforcement in CI or pre-commit if the file is ever regenerated.
+- Confirmar com `git commit` (se necessário para o PR) que o índice está limpo.
+- Se a remoção completa do histórico (`git filter-repo`) for exigida (redistribuição de código proprietário em repo público), abrir uma tarefa separada.
+- Os warnings `CS8602` em `SoilHealthPersistenceInvariantsTests.cs` (commit `b361ab3`) podem ser silenciados com `#pragma warning disable CS8602` após `Assert.NotNull()` se o arquivo for integrado ao branch `dev`.
+- Testar o workflow `.github/workflows/protected-paths.yml` após push para confirmar `Protected Paths` verde.
