@@ -11,7 +11,7 @@ namespace LivingRoots.Domain
     {
         /// <summary>
         /// Gets the color for a health value with interpolation.
-        /// Uses category thresholds with half-open intervals: Poor [0, 34), Moderate [34, 67), Healthy [67, 100].
+        /// Uses category thresholds per ROADMAP.md scale (spec 005 FR-004): Poor [0, 30], Moderate [31, 70], Healthy [71, 100].
         /// </summary>
         /// <param name="healthValue">Health value (0-100)</param>
         /// <returns>Interpolated color for the health value</returns>

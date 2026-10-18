@@ -15,11 +15,11 @@ Plain C# DTOs/models for soil health tile rendering — no SMAPI or XNA dependen
 
 ## Health Categories
 
-| Category | Range |
-|----------|-------|
-| Poor | 0–33% |
-| Moderate | 34–66% |
-| Healthy | 67–100% |
+| Category | Range (ROADMAP.md scale, spec 005 FR-004) |
+|----------|-------------------------------------------|
+| Poor | [0, 30] |
+| Moderate | [31, 70] |
+| Healthy | [71, 100] |
 | Unknown | N/A |
 
 ## Colors (from ModConstants)
