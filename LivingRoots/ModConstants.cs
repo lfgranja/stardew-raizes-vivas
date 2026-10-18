@@ -38,6 +38,9 @@ namespace LivingRoots
         public const int DegradationTileThreshold = 1000;
         public const float DefaultOpacity = 0.5f;
         public const float PatternMinOpacity = 0.7f;
+        // Tolerance for float equality checks (cache/config comparison). Exact
+        // float equality is unreliable and forbidden by S1244; a range is used instead.
+        public const float FloatComparisonEpsilon = 0.0001f;
         public const int FlashDurationMs = 300;
         public const int TextDurationMs = 1000;
         public const double MaxRenderTimeMs = 16.67;
