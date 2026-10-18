@@ -103,5 +103,14 @@ namespace LivingRoots.Domain
         /// <param name="spriteBatch">SpriteBatch for drawing.</param>
         /// <param name="gameTime">Current game time for animation.</param>
         void RenderHoeFeedbackFloatingText(SpriteBatch spriteBatch, GameTime gameTime);
+
+        /// <summary>
+        /// Spec 005 (A4): emits a floating-text message when a soil-health tier
+        /// modifies the harvest outcome (quality boost or extra harvest). Reuses
+        /// the existing floating-text render path — no new assets or i18n keys.
+        /// </summary>
+        /// <param name="tilePosition">Tile where the harvest occurred.</param>
+        /// <param name="message">Feedback message to display.</param>
+        void TriggerHarvestFeedback(Microsoft.Xna.Framework.Point tilePosition, string message);
     }
 }
