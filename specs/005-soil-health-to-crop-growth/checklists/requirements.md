@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [x] No [NEEDS CLARIFICATION] markers remain — 4 of 5 resolved in `Clarifications` (Q1 hook, Q2 scale, Q3 growth multipliers, Q4 quality/extra-yield); 1 deferred (`Rollback / ReGen Valley`, requires `SC-008` verification before plan — documented in `Dependencies` / `Open Questions`). Per stage rules, deferred item is verification prerequisite, not spec ambiguity.
+- [x] No [NEEDS CLARIFICATION] markers remain — 8 of 9 resolved in `Clarifications` (Q1 hook, Q2 scale, Q3 growth, Q4 quality/extra, Q6 growth application at `DayStarted` — 2026-10-15; Q1 multiplayer sync + Q7 chunk/guard + harvest feedback message — 2026-10-16); 1 deferred (`Rollback / ReGen Valley`, requires `SC-008` verification before plan — documented in `Dependencies` / `Open Questions`). Per stage rules, deferred item is verification prerequisite, not spec ambiguity.
 - [x] Requirements are testable and unambiguous — FR-001 through FR-009 each have measurable targets; SC-001 through SC-008 are quantitative (time difference) or qualitative (manual confirmation) but verifiable.
 - [x] Success criteria are measurable — SC-001 to SC-005 are time/count/roll metrics; SC-006 (overlay) and SC-007 (save/reload) are existing behavior preserved; SC-008 is manual.
 - [x] Success criteria are technology-agnostic — no `dotnet test`, `Harmony`, `ModConstants`, `Crop.newDay` syntax appears in criteria; only the *outcome* (growth time, quality roll, extra yield) is specified.
@@ -31,9 +31,9 @@
 
 ## Validation Iteration
 
-- **Iteration 2** (post-clarification): 4 of 5 clarifications resolved (Q1–Q4); 1 deferred (`Rollback / ReGen Valley`, requires `SC-008` verification — documented in `Dependencies` verification gate / `Open Questions` / `Clarifications`). Checklist: 16/16 content-quality items passing (line 30 now checked); no regressions; 0 newly failing.
-- **Issues found**: None blocking. Deferred item (rollback verification) is a prerequisite from spec 004, not a spec ambiguity — it does not block clarification completeness.
-- **Resolution**: All 5 questions answered/recorded; 4 integrated into `spec.md`; 1 deferred with verification gate. `Clarifications` section created; `Open Questions` updated; checklist verified.
+- **Iteration 4** (post-clarification 2026-10-16 — harvest feedback visibility + chunk/guard): 8 of 9 clarifications resolved (Q1 hook / Q2 scale / Q3 growth / Q4 quality / Q6 growth-application / Q7 chunk-guard + harvest feedback message — 2026-10-15 / 2026-10-16); 1 deferred (`Rollback / ReGen Valley`, verification gate `SC-008`). Checklist: 16/16 content-quality items passing; 2 newly updated (harvest feedback message + performance chunk/guard integrated into FR-002 / FR-003 / FR-001 / Clarifications / Dependencies / Open Questions); 0 regressions; 0 newly failing.
+- **Issues found**: None blocking. Deferred item (rollback verification `SC-008`) is prerequisite from spec 004, not spec ambiguity. Four new clarifications integrated across sessions (multiplayer sync; performance/scan; harvest feedback message; chunk/guard with concurrency guard) — all reduce deployment/verification risk.
+- **Resolution**: All 9 clarification questions answered/recorded; 8 integrated into `spec.md` (FR-002 / FR-003 / FR-001 / Clarifications / Dependencies / Open Questions / User Scenarios updated, new session 2026-10-16 created); 1 deferred with verification gate. `Clarifications` section extended; checklist verified (16/16 passing; 2 updated for new clarity).
 - **Status**: **Ready for `/speckit.plan`** — with condition: `SC-008` (spec 004 rollback verification) must pass before any yield-increase implementation activates (`FR-005`; `Dependencies` verification gate). `ReGen Valley` interaction is documented (`Assumes`), not solved, consistent with scope.
 
 ## Notes

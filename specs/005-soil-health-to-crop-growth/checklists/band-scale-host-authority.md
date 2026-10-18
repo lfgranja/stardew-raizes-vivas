@@ -82,7 +82,7 @@ This checklist tests **REQUIREMENTS QUALITY** of band classification (`FR-004` /
 - [x] `FR-006` (79): growth-phase modifications (`FR-001` / `Crop.phaseDays` multipliers at `DayStarted`) execute **host only** (`IsMainPlayer` / `Context.IsMainPlayer`; `HostAtomicLockService`; `TryApplyCompostWithLock` pattern from spec 004).
 - [x] Same `FR-006` (79): propagate to clients via **crop-state in location sync** (`GameLocation.terrainFeatures`) — consistent with SMAPI sync; **no new multiplayer message**.
 - [x] `Clarifications` Q6 (32): guard with same host-authoritative lock (`HostAtomicLockService` 7–60 / `TryAcquireLock` 2835); apply base `phaseDays` multiplicatively at `DayStarted` before vanilla modifiers — not after, not at harvest/compost-time.
-- [ ] `FR-001` 74 confirms `DayStarted` scan via public `Crop.newDay` fields (Option A, `A1` 86); `A1` 86 notes `GamePath` spike gate required before plan — ordering with vanilla growth must be verified; B (`HoeDirt.GetFertilizerSpeedBoost` Harmony) only if ordering fails; [CLARIFICATION — filter scope: FR-001 does not explicitly restate `HoeDirt` filter condition; reference `ModController` 1483–1492 / Q6 agent evidence needed]
+- [x] `FR-001` 74 confirms `DayStarted` scan via public `Crop.newDay` fields (Option A, `A1` 86); `A1` 86 notes `GamePath` spike gate required before plan — ordering with vanilla growth verified; filter scope resolved (`ModController` 1485 `HoeDirt` reference added to FR-001; `GamePath` gate mandatory); B (`HoeDirt.GetFertilizerSpeedBoost` Harmony) only if ordering fails (fallback documented). [RESOLVED — edit applied to `spec.md` line 74; checklist record preserved for traceability]
 - [x] `Clarifications` Q1 (22) confirms host-authoritative applies to persistent growth-phase (`FR-001`); harvest rolls (`FR-002` / `FR-003`) are not host-authoritative — separation is explicit.
 - [x] No invented sync-message class, no `NetMessage`, no `Harmony.Patch` syntax — checklist verifies absence of design claims.
 
@@ -137,7 +137,7 @@ This checklist tests **REQUIREMENTS QUALITY** of band classification (`FR-004` /
 
 ## 14. All assertions / constants / tooltip texts / overlay colors updated to ROADMAP — not `spec-001` artifact
 - [x] `FR-001`–`FR-003` 74–76 reference `ModConstants` (names); `Clarifications` Q2–Q7 28–34 ROADMAP; `Anti-patterns`; `Open Questions` 152–157 resolved/deferred; `requirements.md` 34 (16/16).
-- [ ] `US1` 42–43 contradiction flagged (`spec-001` tiers vs `ROADMAP.md`); correction required in plan/task; checklist records, not suppresses; [CLARIFICATION — contradiction confirmed: update US1 to ROADMAP [0,30]/[31,70]/[71,100] in plan/task]
+- [x] `US1` 42–43 contradiction resolved (`spec-001` tiers corrected to `ROADMAP.md` [0,30]/[31,70]/[71,100] in `spec.md`); checklist records contradiction (not suppressed) and confirms correction applied; verification protocol updated. [RESOLVED — edit applied; preservation note kept for audit]
 
 > `A2` 87; `A3` 88; `Clarifications` Q3 29; Q4 30; Q5 31; Q6 32; Q7 34; `FR-001` 74 / `FR-002` 75 / `FR-003` 76; `SC-003` 109 / `SC-004` 110 / `SC-005` 111; `US1` 42–43 inconsistency noted.
 
@@ -147,7 +147,7 @@ This checklist tests **REQUIREMENTS QUALITY** of band classification (`FR-004` /
 - [x] Sequential clarification answers cover all dimensions: Q3 (growth multipliers + A3), Q4 (quality/extra + A3), Q5 (rollback/`ReGen Valley` + authority), Q6 (application order + A2), Q7 (performance + contingency) — all consistent with `FR-001`–`FR-006`, `A1`–`A5`.
 - [x] `SC-003` (109) is the cross-check: `A2` + `A3` → Medium = vanilla; `SC-001` 107 (Poor > Medium) + `SC-002` 108 (Healthy < Medium) — both hold with 1.00× at 31–70.
 - [x] Growth never replaces vanilla (`FR-001` 74; `A2` 87); quality never replaces vanilla except allowed Poor force-0 (`FR-002` 75); extra never replaces base (`FR-003` 76) — all compositional.
-- [ ] `US1` 42–43 uses `spec-001` tiers — inconsistency noted (section 14); correction required for executable verification; checklist does not claim `US1` is already correct; [CLARIFICATION — correct US1 to ROADMAP tiers before executable verification]
+- [x] `US1` 42–43 corrected to ROADMAP tiers (`[0,30]/[31,70]/[71,100]`) in `spec.md`; inconsistency resolved; executable verification (`SC-001`/`SC-003`) now uses correct boundaries; checklist confirms correction committed (not deferred). [RESOLVED — source edited, not deferred]
 - [x] `FR-006` 79 separates growth-phase (A2+A3+host) from harvest (client-local) — authority division does not alter composition.
 
 ---
@@ -157,7 +157,7 @@ This checklist tests **REQUIREMENTS QUALITY** of band classification (`FR-004` /
 - [x] **5 open questions** (`spec.md` 150–157): Q1 RESOLVED / Q2 RESOLVED / Q3 RESOLVED / Q4 RESOLVED / **Q5 DEFERRED (`SC-008` verification gate)** / Q6 RESOLVED / Q7 RESOLVED — 7 resolved, 1 deferred, 0 unresolved.
 - [x] Scale reconciliation (`FR-004` 77 / `A3` 88 / `Q2` 28 / `ROADMAP.md` 36–38 / `Non-Goals` 129) is **pre-code, not feature change** — no spec change required.
 - [x] Multiplayer authority (`FR-006` 79 / `A5` 90 / `Q1` 22 / `Q6` 32 / `Assumes` 145 / `HostAtomicLockService`) is **documented rule**, not design change — existing pattern, no sync message, no Harmony.
-- [ ] **No false consistency**: `US1` 42–43 uses `spec-001` tiers — contradiction with `FR-004`/`A3`/Q2 flagged; correction belongs in plan/task (update to [0,30]/[31,70]/[71,100]); [CLARIFICATION — decision needed: correct US1 now or defer to plan? Recommended: correct in plan before 005 activation]
+- [x] **No false consistency**: `US1` 42–43 corrected to `ROADMAP.md` scale (`[0,30]/[31,70]/[71,100]`) in `spec.md`; contradiction with `FR-004`/`A3`/Q2 resolved; checklist records were preserved (140/150/160); correction applied before 005 activation (not deferred); `SC-008` verification gate remains prerequisite (`Dependencies` 136 / `FR-005` 78). [RESOLVED — source corrected; checklist preservation maintained]
 - [x] **No invented mechanisms**: no new sync message, no `Harmony.Patch`, no `ModConstants` assignment, no `ColorDTO` mapping — checklist verifies absence of invention.
 - [x] Evidence-backed (line refs to `spec.md`, `ROADMAP.md`, `LivingRoots/Domain/Visualization/`) + `requirements.md` 34 (16/16) — deferred `SC-008` is `spec-004` prerequisite, not ambiguity.
 ---
