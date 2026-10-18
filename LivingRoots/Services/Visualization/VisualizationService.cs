@@ -224,6 +224,26 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <inheritdoc />
+        public void TriggerHarvestFeedback(Point tilePosition, string message)
+        {
+            var feedback = new HoeFeedback
+            {
+                TilePosition = tilePosition,
+                StartTime = (long)Game1.currentGameTime.TotalGameTime.TotalMilliseconds,
+                HealthValue = 0,
+                Category = HealthCategory.Unknown,
+                HealthText = message
+            };
+
+            lock (_feedbackLock)
+            {
+                _activeFeedbacks.Add(feedback);
+            }
+
+            _monitor.Log($"Harvest feedback triggered for tile ({tilePosition.X}, {tilePosition.Y}): {message}", LogLevel.Trace);
+        }
+
+        /// <inheritdoc />
         public void InvalidateCache()
         {
             _overlayRenderer.InvalidateCache();
