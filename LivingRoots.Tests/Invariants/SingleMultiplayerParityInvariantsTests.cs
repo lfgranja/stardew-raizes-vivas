@@ -483,7 +483,9 @@ public class SingleMultiplayerParityInvariantsTests
     /// </summary>
     private static readonly string[] DocumentedHostAuthorityGates = new[]
     {
-        "LivingRoots/Controllers/ModController.cs:1771"
+        "LivingRoots/Controllers/ModController.cs:1771",
+        // Spec 005 (FR-001/FR-006): host-authoritative DayStarted soil-growth gate
+        "LivingRoots/Controllers/ModController.cs:1786"
     };
 
     private static bool IsPermittedHostAuthorityGate(string site)
