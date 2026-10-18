@@ -1,0 +1,96 @@
+using System;
+using Microsoft.Xna.Framework;
+
+namespace LivingRoots
+{
+    public static class ModConstants
+    {
+        // Soil Health Constants
+        public const string KeyPrefix = "soil_health_data_";
+        public const float MinSoilHealth = 0f;
+        public const float MaxSoilHealth = 100f;  // Changed from 10 to 100 to align with documentation
+
+        // Soil Health → Crop Growth Constants (spec 005)
+        public const float SoilGrowthPoorMultiplier = 1.15f;
+        public const float SoilGrowthHealthyMultiplier = 0.85f;
+        public const float SoilQualityHealthyBoost = 0.08f;
+        public const float SoilExtraHarvestHealthyBoost = 0.10f;
+        public const int MaxTilledTiles = 40000;
+
+        // Security Constants
+        public const int MaxTilesPerLocation = 500; // Maximum number of tiles allowed per location to prevent DoS attacks
+        public const int MaxLocationsPerSave = 50; // Maximum number of locations allowed per save to prevent DoS attacks
+        public const int MaxAbsoluteTileCoordinate = 10000; // Maximum absolute value for tile coordinates to prevent malicious save files
+        public const int MaxSaveIdLength = 200; // Maximum length for save IDs to prevent overlong filenames
+        public const int MaxLocationNameLength = 100; // Maximum length for location names to prevent overlong strings
+
+        // Additional constants for security and performance
+        public const int MaxDataKeyLength = 200; // Maximum length for generated data keys (prefix + sanitized saveId)
+        public const int MaxTilesPerSave = 30000; // Global limit for tile processing across all locations to prevent DoS attacks (slightly above theoretical max of 50 * 500 = 25,000)
+        public const int MaxFileNameLength = 255; // Standard maximum file name length to prevent OS issues
+
+        // Visualization Constants
+        public static readonly Color PoorColor = new Color(185, 28, 28); // #B91C1C
+        public static readonly Color ModerateColor = new Color(217, 119, 6); // #D97706
+        public static readonly Color HealthyColor = new Color(21, 128, 61); // #15803D
+        public static readonly Color UnknownColor = new Color(107, 114, 128); // #6B7280
+        public const int TileSize = 64;
+        public const int DegradationTileThreshold = 1000;
+        public const float DefaultOpacity = 0.5f;
+        public const float PatternMinOpacity = 0.7f;
+        public const int FlashDurationMs = 300;
+        public const int TextDurationMs = 1000;
+        public const double MaxRenderTimeMs = 16.67;
+        public const int TooltipDebounceMs = 50;
+        public const bool OverlaysEnabledDefault = true;
+        public const bool TooltipsEnabledDefault = true;
+        public const bool HoeFeedbackEnabledDefault = true;
+
+        // Decay & Compost Constants
+        public const string CompostingBinKeyPrefix = "composting_bins_";
+        public const float DailyDecayRate = 2f;
+        public const float RestorationAmount = 15f;
+        public const int MaturationDays = 2; // 2 full days for Processing → Ready transition
+        public const int MaturationMaxLevel = 5;
+        public const int MaturationIdleResetDays = 14;
+        public const int MaturationIncrementDays = 7; // days of continuous operation per level
+        public const string CompostItemId = "LivingRoots.Compost";
+        public const string QualifiedCompostItemId = "(O)LivingRoots.Compost";
+        public const string MachineCompostingBinId = "(BC)LivingRoots.CompostingBin";
+        public const string TranslationKeyCompostActionConflict = "message.compost.action-conflict";
+        public const string TranslationKeyCompostInvalidTile = "message.compost.invalid-tile";
+        public const string TranslationKeyCompostMaxHealth = "message.compost.max-health";
+        public const string TranslationKeyHarvestInventoryFull = "message.harvest.inventory-full";
+        public const string CompostingBinItemId = "LivingRoots.CompostingBin";
+        public const string CompostingBinRecipeId = "LivingRoots.CompostingBinRecipe";
+        public const string CompostCraftingTab = "Home";
+        public const int CompostingBinWoodCost = 50;
+        public const int CompostingBinStoneCost = 25;
+        public const int CompostingBinFiberCost = 15;
+        public const int CompostCategoryId = -26;
+
+        // T007 (FR-005c): the Item.modData keys a held bin serializes its
+        // batch progress into. Progressing through them is the only way a
+        // picked-up bin can carry InputId/DaysRemaining, so placement restores
+        // the batch instead of resetting it.
+        public const string ModDataInputIdKey = "LivingRoots.InputId";
+        public const string ModDataDaysRemainingKey = "LivingRoots.DaysRemaining";
+
+        // T078/T099 (FR-001a, FR-005): asset names under the mod's unique ID
+        // (manifest.json UniqueID). Asset names under Mods/ have no locale
+        // variants, so NameWithoutLocale identifies each asset exactly.
+        // The Data/Objects, Data/BigCraftables and Data/Machines entries point
+        // Texture at the bin asset; the processing/ready sprites are the
+        // progress sprites the native machine interface renders.
+        public const string CompostTextureAssetName = "Mods/lfgranja.LivingRoots/CompostTexture";
+        public const string CompostingBinTextureAssetName = "Mods/lfgranja.LivingRoots/CompostingBinTexture";
+        public const string CompostingBinProcessingSpriteAssetName = "Mods/lfgranja.LivingRoots/CompostingBinProcessingSprite";
+        public const string CompostingBinReadySpriteAssetName = "Mods/lfgranja.LivingRoots/CompostingBinReadySprite";
+
+        // T136 (FR-008a): the native machine rejection cue for an invalid
+        // drop-in — vanilla audio cancel cue plus machine shake. Applies
+        // worldObject.shakeTimer directly (the Data/Machines registration sets
+        // DaysUntilReady only) so no second shake path exists.
+        public const int BinInvalidDropInShakeTimerMs = 750;
+    }
+}
