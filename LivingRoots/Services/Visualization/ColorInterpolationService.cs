@@ -7,7 +7,7 @@ namespace LivingRoots.Services.Visualization
 {
     /// <summary>
     /// Computes color mappings from health values using linear RGB interpolation.
-    /// Uses category thresholds with half-open intervals: Poor [0, 34), Moderate [34, 67), Healthy [67, 100].
+    /// Uses category thresholds with ROADMAP.md intervals: Poor [0, 30], Moderate [31, 70], Healthy [71, 100].
     /// </summary>
     public class ColorInterpolationService : IColorInterpolationService
     {
@@ -56,9 +56,9 @@ namespace LivingRoots.Services.Visualization
 
             return healthValue switch
             {
-                >= 0 and < 34 => HealthCategory.Poor,
-                >= 34 and < 67 => HealthCategory.Moderate,
-                >= 67 and <= 100 => HealthCategory.Healthy,
+                >= 0 and <= 30 => HealthCategory.Poor,
+                >= 31 and <= 70 => HealthCategory.Moderate,
+                >= 71 and <= 100 => HealthCategory.Healthy,
                 _ => HealthCategory.Unknown
             };
         }
@@ -94,16 +94,16 @@ namespace LivingRoots.Services.Visualization
             Color baseColor;
             float t;
 
-            if (healthValue < 34f)
+            if (healthValue <= 30f)
             {
                 baseColor = _poorColor;
-                t = healthValue / 34f;
+                t = healthValue / 30f;
                 return LerpColor(baseColor, _moderateColor, t, opacity);
             }
-            else if (healthValue < 67f)
+            else if (healthValue <= 70f)
             {
                 baseColor = _moderateColor;
-                t = (healthValue - 34f) / 33f;
+                t = (healthValue - 31f) / 39f;
                 return LerpColor(baseColor, _healthyColor, t, opacity);
             }
             else

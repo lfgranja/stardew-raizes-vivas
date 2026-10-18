@@ -86,7 +86,7 @@ namespace LivingRoots.Tests.Visualization
         public void GetCategoryForHealth_HealthThirtyThree_ReturnsPoor()
         {
             // Act
-            var result = _service.GetCategoryForHealth(33f);
+            var result = _service.GetCategoryForHealth(30f);
 
             // Assert
             Assert.Equal(HealthCategory.Poor, result);
@@ -116,7 +116,7 @@ namespace LivingRoots.Tests.Visualization
         public void GetCategoryForHealth_HealthSixtySeven_ReturnsHealthy()
         {
             // Act
-            var result = _service.GetCategoryForHealth(67f);
+            var result = _service.GetCategoryForHealth(71f);
 
             // Assert
             Assert.Equal(HealthCategory.Healthy, result);

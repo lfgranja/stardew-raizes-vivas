@@ -180,9 +180,9 @@ public class VisualizationInvariantsTests
 
         var colorService = new ColorInterpolationService();
         var actual = colorService.GetCategoryForHealth(health);
-        var expected = health <= 33
+        var expected = health <= 30
             ? HealthCategory.Poor
-            : health <= 66
+            : health <= 70
                 ? HealthCategory.Moderate
                 : HealthCategory.Healthy;
 
