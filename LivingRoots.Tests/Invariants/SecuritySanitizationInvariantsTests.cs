@@ -82,6 +82,28 @@ namespace LivingRoots.Tests.Invariants
         }
 
         [Fact]
+        public void UnicodeNormalizer_NormalizesFullwidthDigitsAndPunctuation()
+        {
+            var normalizer = new UnicodeNormalizer(new UnicodeNormalizationService());
+
+            // The whole fullwidth ASCII block (U+FF01–U+FF5E) maps to ASCII:
+            // fullwidth digits U+FF11–U+FF14 and FULLWIDTH FULL STOP U+FF0E.
+            var fullwidth = normalizer.Normalize("\uFF11\uFF12\uFF13\uFF0E\uFF14");
+            Assert.Equal("123.4", fullwidth);
+        }
+
+        [Fact]
+        public void UnicodeNormalizer_PreservesNonLatinScript()
+        {
+            var normalizer = new UnicodeNormalizer(new UnicodeNormalizationService());
+
+            // CJK text is neither fullwidth-ASCII nor a Latin/Greek confusable,
+            // so it must pass through unchanged — the fullwidth mapping must not
+            // become broad compatibility normalization (over-normalization).
+            Assert.Equal("\u65E5\u672C\u8A9E", normalizer.Normalize("\u65E5\u672C\u8A9E"));
+        }
+
+        [Fact]
         public void UnicodeNormalizer_HandlesNullInput()
         {
             var normalizer = new UnicodeNormalizer(new UnicodeNormalizationService());

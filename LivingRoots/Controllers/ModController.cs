@@ -2105,10 +2105,18 @@ namespace LivingRoots.Controllers
                     tilledTiles.Add((new Microsoft.Xna.Framework.Vector2(kvp.Key.X, kvp.Key.Y), hoeDirt2));
                 }
 
-                var chunkStarts = GetChunkStartIndices(tilledTiles.Count, 1000);
+                // T071 (spec 005 FR-001, Q7): the chunk mechanism activates only
+                // at or above the measured 40,000-tile budget
+                // (ModConstants.MaxTilledTiles); below it the linear scan already
+                // fits the 5ms budget, so a single chunk covers the whole list.
+                // Chunk size is ~1,000 tiles (spec 005 T070).
+                int chunkSize = tilledTiles.Count >= ModConstants.MaxTilledTiles
+                    ? 1000
+                    : Math.Max(1, tilledTiles.Count);
+                var chunkStarts = GetChunkStartIndices(tilledTiles.Count, chunkSize);
                 foreach (var chunkStart in chunkStarts)
                 {
-                    int chunkEnd = Math.Min(chunkStart + 1000, tilledTiles.Count);
+                    int chunkEnd = Math.Min(chunkStart + chunkSize, tilledTiles.Count);
                     for (int ci = chunkStart; ci < chunkEnd; ci++)
                     {
                         var entry = tilledTiles[ci];
