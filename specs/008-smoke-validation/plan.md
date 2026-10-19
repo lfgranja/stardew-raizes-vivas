@@ -6,17 +6,19 @@
 
 ## Summary
 
-A bash script that launches Stardew Valley via SMAPI with the Living Roots mod installed under a headless Xvfb display, polls the SMAPI log for the mod's success marker, and exits with a deterministic pass/fail result. The script is the project's first automated end-to-end validation tool — it transforms "does the mod load in the real game?" from a manual, error-prone task into a single command with a machine-readable exit code.
+A bash script that launches Stardew Valley via SMAPI with the Living Roots mod installed under a headless Xvfb display, polls the SMAPI log for SMAPI's own mod-resolution output, and exits with a deterministic pass/fail result. The script is the project's first automated end-to-end validation tool — it transforms "does the mod load in the real game?" from a manual, error-prone task into a single command with a machine-readable exit code.
 
-The script follows a strict lifecycle: pre-flight validation → flock acquisition → process detection → Xvfb launch → game launch → log polling → result determination → game termination → cleanup. It uses SMAPI's officially supported automation environment variables and parses the SMAPI log for mod-specific entries only. The save-data persistence check is deferred (the mod is purely reactive and SMAPI has no CLI save selection).
+The script follows a strict lifecycle: pre-flight validation → build & verify artifact → flock acquisition → process detection → log baseline capture → Xvfb launch → game launch → log polling → result determination → game termination → cleanup. It uses SMAPI's officially supported automation environment variables and parses the SMAPI log for mod-specific entries only. The save-data persistence check is deferred (the mod is purely reactive and SMAPI has no CLI save selection).
 
 ## Technical Context
 
 **Language/Version**: Bash 4+ (Linux), with standard POSIX utilities (grep, pgrep, flock, sed, awk) and a Unicode normalizer (`python3`, or `uconv` as fallback) for NFC path normalization and symlink-safe file opens (`O_NOFOLLOW`)
 
-**Primary Dependencies**: Stardew Valley game installation, SMAPI (Stardew Modding API), Xvfb (virtual framebuffer), `python3`/`uconv` (path normalization — pre-flight verified, fails closed)
+**Primary Dependencies**: Stardew Valley game installation, SMAPI 4.5.2 (Stardew Modding API), Xvfb (virtual framebuffer), `python3`/`uconv` (path normalization — pre-flight verified, fails closed), `mesa-utils` (`glxinfo`, `xdpyinfo`) for the graphics probe
 
-**Storage**: N/A (script is stateless; reads SMAPI log, writes nothing persistent)
+**Launch Invocation**: `./StardewModdingAPI --no-terminal`, executed with the game installation directory as the working directory. SMAPI 4.x is a **self-contained .NET 6 `linux-x64`** deployment (`libcoreclr.so`, `libhostfxr.so`, `libhostpolicy.so` ship in the game folder), so **no system .NET and no Mono runtime** is required or probed. The launcher must be run in place — a relocated copy aborts with SIGABRT (exit 134).
+
+**Storage**: No persistent data model. The script writes exactly one thing: a per-run diagnostic log at `${XDG_STATE_HOME:-$HOME/.local/state}/living-roots-smoke/runs/<run-id>.log` (FR-014).
 
 **Testing**: Manual validation via script execution against real game installation; exit code verification
 
@@ -24,17 +26,28 @@ The script follows a strict lifecycle: pre-flight validation → flock acquisiti
 
 **Project Type**: CLI tool / maintainer automation script
 
-**Performance Goals**: Script completes within 120 seconds (configurable timeout). Game launch to log check typically 15-30 seconds on modern hardware.
+**Performance Goals**: Script completes within 120 seconds (configurable timeout) for the game launch and log check; the rebuild-and-verify step adds roughly 10–20 seconds.
 
 **Constraints**: 
-- Headless operation only (Xvfb)
+- Headless operation only (Xvfb + Mesa software rendering via `LIBGL_ALWAYS_SOFTWARE=1` / `GALLIUM_DRIVER=llvmpipe`)
 - No save file loading (title screen is expected state)
 - Local execution only (no CI integration in current scope)
 - No cross-process data locking in the mod (script-level flock + process detection required)
 - Not a container entrypoint — PID 1 signal semantics are out of scope
 - Configuration via CLI arguments with documented defaults (no config file, no env-var mechanism)
+- No running Steam client required (`steam_appid.txt` ships with the game)
 
 **Scale/Scope**: Single maintainer, single game instance, single mod. No scalability concerns.
+
+**Design Decisions (from clarification)**:
+
+| Decision | Resolution |
+|----------|------------|
+| Success signal | SMAPI's `Loaded N mods:` / `Skipped mods` output — the mod's own marker is reported but does not gate (FR-003) |
+| Build provenance | Rebuild, remove deploy target first, compare SHA-256 digests (FR-016) |
+| Mods directory | Resolved explicitly via `--mods-path`, default `<game-path>/Mods` (FR-017) |
+| Log freshness | Evaluate only lines after SMAPI's `Log started at {UTC} UTC` sentinel, plus an inode-change assertion (FR-002) |
+| Diagnostic output | Per-run XDG log file with a run ID; verdict on stdout, diagnostics on stderr (FR-014) |
 
 ## Constitution Check
 
@@ -44,9 +57,9 @@ The Living Roots constitution (v2.0.0) defines three quality gates. This feature
 
 | Gate | Application to This Feature | Status |
 |------|---------------------------|--------|
-| **Gate 1 — Static Checks and Tests Pass** | The script must be syntactically valid (`bash -n`), follow shellcheck conventions, and produce correct exit codes for all defined scenarios. | ✅ Pass — script is bash, validated by execution |
+| **Gate 1 — Static Checks and Tests Pass** | The script must be syntactically valid (`bash -n`), pass `shellcheck`, and produce correct exit codes for all defined scenarios. | ⏳ Pending implementation — the script does not exist yet |
 | **Gate 2 — Product-Level Quality Bar** | The script must be usable without documentation (clear `--help`, actionable error messages following "What → Where → How to fix" pattern). Must produce deterministic, idempotent results. | ✅ Pass — spec defines clear UX contracts |
-| **Gate 3 — End-to-End Verification** | The script must actually launch the real game with the real mod and detect load success/failure. This is the entire purpose of the feature. | ✅ Pass — spec defines acceptance scenarios for real-game validation |
+| **Gate 3 — End-to-End Verification** | The script must actually launch the real game with the real mod and detect load success/failure. This is the entire purpose of the feature. | ⏳ **Not satisfied — awaiting execution.** The gate is a runtime gate; it was previously marked passed on the strength of the *specification* alone, which does not satisfy it. It can only be marked passed after a real run against the installed game. Note also that `Xvfb` is not installed on the maintainer's machine, so the first run requires `xorg-x11-server-Xvfb` (or `xvfb`) to be installed first |
 
 **Constitutional Principles Compliance**:
 
