@@ -1,49 +1,68 @@
-# Bug Fix: flaky property tests (T031b + T222) — not applied; assessment premise disproven
+# Bug Fix: flaky property tests (T031b + T222)
 
 - **Slug**: flaky-property-tests
 - **Fixed**: 2026-10-19
 - **Assessment**: ./assessment.md
-- **Status**: not-applied
+- **Status**: applied
+
+> Supersedes the earlier `not-applied` report for this slug (kept in git history). The prior attempt was halted because the first assessment's T031b premise was disproven; this report implements the corrected re-assessment.
 
 ## Summary
 
-The assessment's remediation for **T031b** (constrain the generator to integer health) **does not fix the test**. The property "distinct categories ⇒ distinct colours" is false at the **category boundaries** `(30,31)` and `(70,71)` even for integer health, because the colour palette is a continuous gradient (`Poor → Moderate → Healthy`): the boundary values share the intermediate colour. No source was modified. T222's remediation (a strictly-positive generator) is independent and sound, but per the guardrail the whole fix is halted and re-assessment is recommended.
+Corrected the two flaky property tests to match the code's actual behaviour: **T031b**'s property wrongly required distinct tints across categories, which the continuous gradient + flat Healthy tier (`T253/FR-010`) never guarantees — so the property was fixed (cross-tier distinctness dropped, same-tier gradient kept) and its generator constrained to integer health; **T222**'s sibling generator was constrained to positive health so it can no longer emit `0`. No production code changed.
 
 ## Changes
 
 | File | Change | Notes |
 |------|--------|-------|
-| — | none | No source modified. The proposed fix was disproven before any edit. |
+| `LivingRoots.Tests/Invariants/VisualizationInvariantsTests.cs` | modified | T031b: property corrected; integer generator added; deterministic seam `[Theory]` + flat-Healthy `[Fact]` added; dead `IsMeasurable` helper removed. |
+| `LivingRoots.Tests/Visualization/OverlayRendererTests.cs` | modified | T222: property now uses the existing `PositiveHealthGenerator()` via `Prop.ForAll`. |
 
-## Evidence (why the proposed fix does not work)
+## Diff Highlights
 
-Read-only verification against the built assembly (`ColorInterpolationService`, no repo changes):
-
+```csharp
+// T031b — the property no longer requires cross-tier distinctness
+if (categoryA != categoryB)
+{
+    return true; // continuous palette + flat Healthy tier (T253/FR-010)
+}
+...
+return colorService.GetColorForHealth(healthA) != colorService.GetColorForHealth(healthB);
 ```
-cat(30)=Poor     cat(31)=Moderate  colorsEqual=True   <- T031b fails here (integers!)
-cat(70)=Moderate cat(71)=Healthy   colorsEqual=True   <- T031b fails here (integers!)
-cat(29)=Poor     cat(30)=Poor      colorsEqual=False  <- same category, colours differ (fine)
+
+```csharp
+// T222 — the sibling is positive (1-100), so it can never be the skipped 0
+[Property(MaxTest = 100)]
+public Property T222_GetOverlays_HealthZero_RendersZeroOverlays()
+{
+    return Prop.ForAll(
+        Arb.From(PositiveHealthGenerator()),
+        tileHealth => ZeroTile_RendersZeroOverlays(tileHealth));
+}
 ```
 
-Root cause of the equality (from `ColorInterpolationService.InterpolateColor` + `ModConstants`):
+## Tests Added or Updated
 
-- `GetColorForHealth(30)` → `Lerp(PoorColor, ModerateColor, t = 30/30 = 1)` = **ModerateColor**
-- `GetColorForHealth(31)` → `Lerp(ModerateColor, HealthyColor, t = (31-31)/39 = 0)` = **ModerateColor**
-- `GetColorForHealth(70)` → `Lerp(ModerateColor, HealthyColor, t = (70-31)/39 = 1)` = **HealthyColor**
-- `GetColorForHealth(71)` → flat **HealthyColor**
+- `VisualizationInvariantsTests.T031b_OverlayDistinguishable_DistinctHealth_DistinctColors` — rewritten: same-tier gradient distinctness only, integer health `0–100`.
+- `VisualizationInvariantsTests.T031b_PaletteSeam_SharesTheEndpointColour(30,31)` and `(70,71)` — pins that the tier seams share the endpoint colour (categories differ, colours equal) so the behaviour is intentional.
+- `VisualizationInvariantsTests.T031b_HealthyTier_IsFlat` — pins that `GetColorForHealth(71) == GetColorForHealth(100)`.
+- `OverlayRendererTests.T222_GetOverlays_HealthZero_RendersZeroOverlays` — now generates strictly positive health.
 
-So the two pairs have different categories but identical colours — the property's `categoryA != categoryB ⇒ colorA != colorB` clause is unsatisfiable at the boundaries.
+## Local Verification
+
+- Build: `GamePath=… dotnet build Stardew-LivingRoots.sln -c Release` → **0 errors**.
+- Targeted: `dotnet test --filter "…VisualizationInvariantsTests|…OverlayRendererTests"` → **27/27 passed**.
+- Regression: full suite run **5 consecutive times** → `1271 passed, 1 skipped, 0 failed` each time (the prior flakiness was ~1 in 3).
+- Format gate: `dotnet format Stardew-LivingRoots.sln --verify-no-changes` → **exit 0**.
+- Manual: confirmed against the built assembly that the 29 violating integer pairs `(70, k)`, `k ∈ 72..100`, are now exempt (cross-tier) and that same-tier gradient pairs still differ.
 
 ## Deviations from Assessment
 
-The assessment's **Root Cause Hypothesis** for T031b was **incomplete/wrong**. It attributed the failure solely to the generator emitting non-integer values in the `(30,31)`/`(70,71)` gaps, and the confirmed remediation ("constrain the generator to integers") was accepted on that basis. In fact the property fails for **integer** boundary values as well, because the palette is continuous across categories. The generator constraint reduces the *probability* of hitting a counterexample but does not remove it — T031b would remain flaky (and can be made to fail deterministically with the input `(30, 31)`).
-
-Note: the "gap" analysis was also partly moot — `HealthCategoryExtensions.FromHealthValue` and `ColorInterpolationService.GetCategoryForHealth` share the gaps, and `InterpolateColor` has none, but that inconsistency is not what T031b trips on at the boundaries.
+- **Scope note (small expansion):** the dead private helper `IsMeasurable` in `VisualizationInvariantsTests` was removed. It was used only by the old T031b guard; with the integer-domain generator the guard is unnecessary, and leaving the helper would trip Sonar `S1144` (unused private member). Not listed in the assessment's "Files likely to change", but within the same file and required to avoid a new static-analysis issue.
+- Otherwise the fix follows the assessment's **Preferred** remediation exactly (T031b: drop cross-tier clause + integer generator; T222: positive generator). The two `[NEEDS CLARIFICATION]` items were resolved in the assessment's Clarifications (keep the continuous/flat palette; leave the category gaps as-is) before this fix ran.
 
 ## Follow-ups
 
-- **Re-run `/speckit.bug.assess` for `flaky-property-tests`** with this new evidence. The T031b question is not "test-fix vs production-fix of the gaps" but **"is the property itself correct?"** Candidate options for the re-assessment:
-  - Refine the property so it does not require distinct colours at a category boundary (e.g. exempt values within the boundary neighbourhood, mirroring the existing `|a-b| < 1` and Healthy exemptions).
-  - Or make the palette discontinuous at category boundaries (production change) so distinct categories always have distinct colours — a real visual/UX decision.
-- **T222 is separable and sound.** Its remediation (generate strictly positive health, matching the doc "positive finite health (1-100)") does not depend on the disproven T031b reasoning; it can proceed on its own once the assessment is corrected. The existing unused local `PositiveHealthGenerator()` in `OverlayRendererTests` already implements it.
-- No files were changed by this command.
+- The non-integer category gaps `(30,31)`/`(70,71)` remain (intentionally, per Clarifications); harmless for integer health.
+- `Build and Test` should now stay green on pushes (verify in `/speckit.bug.test`).
+- No production code changed, so no runtime/behaviour risk beyond the test suite.

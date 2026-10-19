@@ -103,27 +103,41 @@ public class VisualizationInvariantsTests
     // ────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// T031b invariant: distinct health readings produce distinct overlay
-    /// tints. Readings in different categories always differ (the 3-tier
-    /// palette is distinguishable); readings at least one point apart in
-    /// the same non-flat tier differ too. The Healthy tier is deliberately
-    /// flat (T253/FR-010), so it is exempt from the gradient half.
+    /// T031b invariant: within a gradient tier (Poor or Moderate), two readings
+    /// at least one point apart produce different tints. Cross-tier distinctness
+    /// is deliberately NOT asserted: the palette is a continuous gradient that
+    /// reaches the Healthy colour at 70, and the Healthy tier is held flat
+    /// (T253/FR-010) — so e.g. 70 (Moderate) and every Healthy reading share a
+    /// colour by design. Health is generated as an integer 0–100 (its real
+    /// domain), so the property does not depend on the unreachable non-integer
+    /// category gaps.
     /// </summary>
     [Property(MaxTest = 100)]
-    public bool T031b_OverlayDistinguishable_DistinctHealth_DistinctColors(float healthA, float healthB)
+    public Property T031b_OverlayDistinguishable_DistinctHealth_DistinctColors()
     {
-        if (!IsMeasurable(healthA) || !IsMeasurable(healthB))
-        {
-            return true;
-        }
+        return Prop.ForAll(
+            Arb.From(IntegerHealthGenerator().Two()),
+            pair => DistinctHealth_ProducesDistinctColors(pair.Item1, pair.Item2));
+    }
 
+    /// <summary>Integer soil health 0–100 — the domain soil health actually takes.</summary>
+    private static Gen<float> IntegerHealthGenerator()
+    {
+        return Gen.Choose(0, 100).Select(i => (float)i);
+    }
+
+    private static bool DistinctHealth_ProducesDistinctColors(float healthA, float healthB)
+    {
         var colorService = new ColorInterpolationService();
         var categoryA = colorService.GetCategoryForHealth(healthA);
         var categoryB = colorService.GetCategoryForHealth(healthB);
 
+        // Cross-tier readings are not required to differ: the palette is a
+        // continuous gradient (Poor→Moderate→Healthy) with a flat Healthy tier
+        // (T253/FR-010), so the tier seams share the endpoint colour.
         if (categoryA != categoryB)
         {
-            return colorService.GetColorForHealth(healthA) != colorService.GetColorForHealth(healthB);
+            return true;
         }
 
         if (categoryA == HealthCategory.Healthy || categoryA == HealthCategory.Unknown)
@@ -137,6 +151,31 @@ public class VisualizationInvariantsTests
         }
 
         return colorService.GetColorForHealth(healthA) != colorService.GetColorForHealth(healthB);
+    }
+
+    /// <summary>
+    /// T031b (deterministic companion): the palette is continuous at the tier
+    /// seams — a seam value and the first value of the next tier share the
+    /// endpoint colour by design (T253/FR-010). Pins that behaviour so it stays
+    /// intentional rather than accidental.
+    /// </summary>
+    [Theory]
+    [InlineData(30f, 31f)]
+    [InlineData(70f, 71f)]
+    public void T031b_PaletteSeam_SharesTheEndpointColour(float low, float high)
+    {
+        var colorService = new ColorInterpolationService();
+
+        Assert.NotEqual(colorService.GetCategoryForHealth(low), colorService.GetCategoryForHealth(high));
+        Assert.Equal(colorService.GetColorForHealth(low), colorService.GetColorForHealth(high));
+    }
+
+    /// <summary>T031b: the Healthy tier is flat — every Healthy reading shares one colour.</summary>
+    [Fact]
+    public void T031b_HealthyTier_IsFlat()
+    {
+        var colorService = new ColorInterpolationService();
+        Assert.Equal(colorService.GetColorForHealth(71f), colorService.GetColorForHealth(100f));
     }
 
     /// <summary>
@@ -369,13 +408,5 @@ public class VisualizationInvariantsTests
     private static float SafeOverlayHealth(float health)
     {
         return float.IsFinite(health) && health != 0f ? health : 50f;
-    }
-
-    /// <summary>A finite reading inside [MinSoilHealth, MaxSoilHealth].</summary>
-    private static bool IsMeasurable(float health)
-    {
-        return float.IsFinite(health)
-            && health >= ModConstants.MinSoilHealth
-            && health <= ModConstants.MaxSoilHealth;
     }
 }
