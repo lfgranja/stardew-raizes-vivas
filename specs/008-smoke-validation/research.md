@@ -134,7 +134,7 @@ The saveId is sanitized via Unicode normalization (FormC) and filename sanitizat
 
 ## 7. Termination Strategy
 
-**Decision**: Terminate game immediately after log check passes (success marker found)
+**Decision**: Terminate game immediately after the log check passes
 
 **Rationale**: The Info-level success marker confirms all mod `Entry()` methods completed without throwing. The mod emits no observable log marker on `Saved` (per `ModController.cs:1089-1102`), making it impossible to detect externally. Waiting for `Saved` would require automation of title screen UI interaction (clicking "Load" → selecting save → waiting for load), which adds significant complexity and fragility for a P2 feature (save check). The script sends SIGTERM first, waits a brief grace period for graceful exit, and escalates to SIGKILL only if unresponsive.
 
