@@ -67,22 +67,29 @@
 - [ ] 4.9 Game save data is backed up before test and restored after (or uses isolated save) (N/A: save check deferred, title screen expected)
 - [x] 4.10 Xvfb display is released and can be re-acquired on re-run
 - [x] 4.11 Script validates preconditions (game files exist, SMAPI installed) before making changes
+- [x] 4.12 A failed `dotnet build` aborts the run before the game is launched — a failed build that leaves the previous DLL in place would otherwise produce a false pass (FR-016)
+- [x] 4.13 The deployed assembly's SHA-256 digest is compared with the freshly built assembly's; a mismatch aborts the run before launch (FR-016, SC-012)
+- [x] 4.14 The deploy target directory is removed before the rebuild, so a stale artifact cannot survive the build (FR-016)
+- [x] 4.15 The run log is written outside the temporary directory (XDG state dir), so it survives the EXIT trap's temp cleanup and remains available for post-mortem review (FR-014)
 
 ---
 
 ## 5. Timeout & Readiness Polling
 
-- [x] 5.1 Readiness is determined by polling a real signal (log pattern), not fixed sleep
+- [x] 5.1 Readiness is determined by polling a real signal (the current run's `Log started at {UTC} UTC` sentinel), not fixed sleep
 - [x] 5.2 Every polling loop has a deadline: `deadline=$(( $(date +%s) + timeout ))`
 - [x] 5.3 Polling loop checks deadline before each iteration and exits with error on timeout
 - [x] 5.4 Process liveness is checked during polling: `kill -0 "$pid" 2>/dev/null || fail`
-- [x] 5.5 Log-based readiness uses `tail -F` with timeout wrapper
+- [x] 5.5 Log-based readiness uses `tail -F -n +1` (or an equivalent follow) with a timeout wrapper — `-F` reopens the file by name so it survives SMAPI's unlink-and-recreate; `-n +1` is required because `-F` otherwise starts at EOF
 - [x] 5.6 Xvfb readiness: check `/tmp/.X11-unix/X{n}` socket exists
-- [x] 5.7 Game readiness: SMAPI log contains the success marker line
+- [x] 5.7 Game readiness: the log contains the current run's `Log started at {UTC} UTC` sentinel, and the mod is listed in `Loaded N mods:` and absent from `Skipped mods`
 - [x] 5.8 Polling interval is appropriate: 0.5–1s for local processes
 - [x] 5.9 On timeout, diagnostic info is dumped (last N lines of log, process status)
 - [x] 5.10 `timeout --kill-after=30` sends SIGKILL 30s after SIGTERM if process refuses to die
 - [x] 5.11 Script does not use `sleep N` as a substitute for readiness checking
+- [x] 5.12 All signals are evaluated only against log lines **after** the current run's sentinel — a stale log from an earlier successful run cannot produce a false pass (FR-002, SC-011)
+- [x] 5.13 The log file's inode is recorded before launch and verified to have changed once the log is recreated (belt-and-braces freshness assertion)
+- [x] 5.14 A game process that exits with status `0` but produced no log is treated as failure, not success (SMAPI's post-update dependency re-assertion exits `0`)
 
 ---
 
@@ -115,6 +122,10 @@
 - [x] 7.6 Each cleanup step is isolated with `|| true` so one failure does not prevent others
 - [x] 7.7 Cleanup order is reverse of allocation: game first, then Xvfb, then locks and temp files
 - [x] 7.8 Failure reports include last 20-30 lines of SMAPI log with Trace-level entries following any Error
+- [x] 7.9 A stale `SMAPI-latest.txt` and `SMAPI-crash.txt` are removed before launch; the crash file's removal also prevents SMAPI's blocking `Console.ReadKey()` from hanging the headless run
+- [x] 7.10 The script writes one run log per run (never a shared append-only file), so concurrent runs cannot interleave their output
+- [x] 7.11 The run log carries the run ID and the script `VERSION` on every line, so a failed run can be reconstructed from that file alone (FR-014, SC-014)
+- [x] 7.12 Exit codes `9` (missing dependency), `10` (display conflict), and `11` (Steam prerequisite) are distinguished from the existing categories
 
 ---
 
