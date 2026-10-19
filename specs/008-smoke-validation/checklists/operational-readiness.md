@@ -25,13 +25,13 @@
 ## 2. Exit Code Conventions
 
 - [x] 2.1 Exit code 0 is returned on success
-- [ ] 2.2 Exit code 1 is returned for tool/runtime errors (script itself broke) (superseded: spec uses sysexits scheme 1=game; see 2.10)
-- [ ] 2.3 Exit code 2 is returned for validation/policy failures (script ran correctly but check failed) (superseded: spec uses sysexits scheme 2=SMAPI; see 2.10)
+- [x] 2.2 Exit code 1 is returned for tool/runtime errors (script itself broke) (superseded by FR-007 — spec.md:85 defines the sysexits scheme with 1 = game installation not found; confirmed at spec.md:174 and data-model.md:104, so the generic 1 = tool/runtime-error convention does not apply)
+- [x] 2.3 Exit code 2 is returned for validation/policy failures (script ran correctly but check failed) (superseded by FR-007 — spec.md:85 defines 2 = SMAPI not found; confirmed at spec.md:174 and data-model.md:105, so the generic 2 = validation/policy-failure convention does not apply)
 - [x] 2.4 No exit codes use reserved values (126, 127, 128+n, 130, 255) for non-standard purposes
 - [x] 2.5 All exit codes are documented in the script header and `--help` output
 - [x] 2.6 Exit code semantics are consistent with the documented scheme across all failure modes
 - [x] 2.7 CI pipeline correctly interprets the script's exit codes (non-zero = failure)
-- [x] 2.8 Child command exit codes are propagated (not swallowed or collapsed to 1)
+- [x] 2.8 Child command exit codes are propagated (not swallowed or collapsed to 1) — with one documented exception: GNU `timeout`'s native `124` is translated to the canonical `4` at the script boundary, so no subprocess-specific status becomes the script's final code (FR-007, spec.md:85)
 - [x] 2.9 `set -euo pipefail` is used so pipeline failures are caught
 - [x] 2.10 sysexits.h convention is followed with distinct codes per failure category (1=game, 2=SMAPI, 3=Xvfb/graphics, 4=timeout, 5=mod failure, 6=lock, 7=process conflict, 9=missing dependency, 10=display conflict, 11=Steam prerequisite)
 
@@ -73,9 +73,9 @@
 
 - [x] 5.1 Script exits non-zero on any failure (CI can rely on exit code alone)
 - [x] 5.2 stdout carries data/reports; stderr carries errors and human-readable messages
-- [ ] 5.3 `--json` flag (or equivalent) produces machine-parseable output for fine-grained CI routing (deferred per FR-013 local-first)
-- [ ] 5.4 JSON output includes stable fields: `ok`, `checks[]`, `warnings[]`, `errors[]`, `exit_code` (deferred per FR-013)
-- [ ] 5.5 JSON output does not contain secrets (deferred per FR-013; secrets rule already in 3.9)
+- [x] 5.3 `--json` flag (or equivalent) produces machine-parseable output for fine-grained CI routing (deferred by FR-013 — spec.md:92 excludes any machine-parseable (`--json`) mode from the current scope; the deferral is recorded at spec.md:181 and spec.md:189, with plan.md:34 and plan.md:70; FR-014 (spec.md:99) makes the exit code the sole machine-readable signal)
+- [x] 5.4 JSON output includes stable fields: `ok`, `checks[]`, `warnings[]`, `errors[]`, `exit_code` (deferred with the `--json` mode by FR-013 — spec.md:92; no machine-parseable output exists in the current scope, so the stable-field contract is undefined; the exit code remains the only machine-readable signal (spec.md:99))
+- [x] 5.5 JSON output does not contain secrets (deferred with the `--json` mode by FR-013 — spec.md:92; no JSON output exists in the current scope, and the no-secrets rule for the human-readable output is already covered by checklist 3.9 and plan.md:67)
 - [x] 5.6 Script can be called from a CI pipeline step (GitLab `script:`, Azure DevOps `Bash@3`, GitHub Actions `run:`)
 - [x] 5.7 Commands containing colons are properly quoted for YAML parsing
 - [x] 5.8 `&&` chaining is wrapped in parentheses to preserve failure semantics in CI
@@ -91,7 +91,7 @@
 - [x] 6.2 `set -euo pipefail` is at the top of the script
 - [x] 6.3 All variable references are quoted (double quotes for substitution, single quotes for literals)
 - [x] 6.4 Functions use `local` variables (no accidental globals)
-- [ ] 6.5 Script is modular — reusable logic is in sourced library files (out of scope: single-file script per plan)
+- [x] 6.5 Script is modular — reusable logic is in sourced library files (out of scope by design — plan.md:95-99 records the Structure Decision "Single-file bash script at scripts/smoke-validation.sh", the clarification at spec.md:190 keeps sourced modules out of scope, and plan.md:70 (YAGNI) and security-safety.md item 1.10 agree)
 - [x] 6.6 Configuration is externalized (CLI args with documented defaults: `--game-path`, `--mods-path`, `--timeout`, `--grace-period`, `--smapi-log`, `--force`)
 - [x] 6.7 Structured logging is used (log_info/log_warn/log_error, not bare echo)
 - [x] 6.8 Log messages are timestamped
