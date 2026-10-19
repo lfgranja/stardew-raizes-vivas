@@ -1,86 +1,97 @@
-# Bug Assessment: Flaky property tests redden "Build and Test" (T031b + T222)
+# Bug Assessment: Flaky property tests redden "Build and Test" (T031b + T222) — re-assessment
 
 - **Slug**: flaky-property-tests
 - **Created**: 2026-10-19
-- **Source**: pasted text (session report)
+- **Source**: session context (re-assessment requested by `./fix.md`, which recorded that the first assessment's T031b premise was disproven)
 - **Verdict**: valid
 - **Severity**: medium
 
-## Clarifications
-
-### Session 2026-10-19
-
-- Q: Is non-integer soil health a value the mod must support, or is soil health always a whole number in practice? → A: Whole number — soil health is integer-valued in practice (decay `2 × {0.5, 1.5, 0.0}` → `{1, 3, 0}`, compost `+15`, clamped to `[0, 100]`), so the `(30,31)`/`(70,71)` category gaps are unreachable and the flaky failure is a test over-specification; fix the tests, not production.
-- Q: Should the shared FsCheck fixture gain domain-constrained health generators so property tests stop re-deriving the domain (and new tests can't repeat this flakiness)? → A: Yes, minimally — add reusable integer (`0–100`) and positive (`1–100`) `Health` arbitraries to `FsCheckFixture` and use them in T031b/T222; leave the existing `Health` arbitrary unchanged so the other property-test classes are not perturbed.
+> Re-assessment. This file replaces the earlier assessment (same slug). The prior remediation was rejected by `/speckit.bug.fix` after empirical verification showed the T031b root cause was elsewhere.
 
 ## Report (verbatim or summarized)
 
-Pasted: `flaky-property-test bug (T031b + T222)`.
+Two FsCheck property tests fail intermittently in full-suite runs, reddening `Build and Test` (~1 in 3 runs observed; the CI job failed on PR #285 and passed on re-run):
 
-Context from this session: while verifying `build-and-test-failures`, full-suite runs intermittently failed on two FsCheck property tests, and the CI `Build and Test` on PR #285 failed on the first run and passed on re-run:
+- `VisualizationInvariantsTests.T031b_OverlayDistinguishable_DistinctHealth_DistinctColors` — counterexample `(87.47000122f, 70.93000031f)`.
+- `OverlayRendererTests.T222_GetOverlays_HealthZero_RendersZeroOverlays` — observed failing once.
 
-- `LivingRoots.Tests.Invariants.VisualizationInvariantsTests.T031b_OverlayDistinguishable_DistinctHealth_DistinctColors` — FsCheck counterexample `Original: (87.47000122f, 70.93000031f)`.
-- `LivingRoots.Tests.Visualization.OverlayRendererTests.T222_GetOverlays_HealthZero_RendersZeroOverlays` — observed failing once in a full-suite run.
+The prior fix attempt (`./fix.md`) disproved the first assessment's T031b premise. New evidence gathered for this re-assessment, against the built assembly:
 
-No URL was supplied, so no fetch was performed.
+```
+cat(30)=Poor     cat(31)=Moderate  colorsEqual=True    <- boundary seam
+cat(70)=Moderate cat(71)=Healthy   colorsEqual=True    <- boundary seam
+cat(29)=Poor     cat(30)=Poor      colorsEqual=False   <- same-tier gradient (fine)
+```
+
+Exhaustive integer scan (all pairs 0..100):
+
+```
+violations: 29
+  DIFFCAT 70(Moderate) vs 72(Healthy)
+  DIFFCAT 70(Moderate) vs 73(Healthy)
+  ... (all 70 vs k, k in 72..100)
+```
 
 ## Symptom
 
-Two property-based tests fail **intermittently and only in full-suite runs** (never in isolation), which makes the `Build and Test` workflow flaky (~1 in 3 full-suite runs observed). Expected: deterministic pass, so a red `Build and Test` means a real regression rather than a seed-dependent counterexample.
+`T031b` asserts that distinct health readings produce distinct tints, including "readings in different categories always differ". That assertion is **false against the actual palette**, so the property fails whenever FsCheck happens to generate one of the violating pairs (e.g. `70` with any Healthy reading). `T222` asserts a non-zero sibling tile draws exactly one overlay, which fails when the generator emits `0`.
 
 ## Reproduction
 
-1. `GamePath=<Stardew install> dotnet test Stardew-LivingRoots.sln -c Release`.
-2. Repeat the full-suite run; `T031b` fails in roughly 1 of 3 runs (and `T222` rarely). The failure depends on the FsCheck seed the full-suite run happens to use.
-3. Isolation does **not** reproduce it: `--filter …T031b_OverlayDistinguishable…` → 0/25 failures; `--filter …T222_GetOverlays_HealthZero…` → 0/40 failures.
+1. `GamePath=<Stardew install> dotnet test Stardew-LivingRoots.sln -c Release` (full suite), repeated — intermittent failures.
+2. Deterministic proof of the T031b defect: with the palette, `GetColorForHealth(70f) == GetColorForHealth(72f)` (both `HealthyColor`) while their categories differ (`Moderate` vs `Healthy`).
+3. Deterministic proof of the T222 defect: `GetOverlays` with `{zeroTile: 0f, sibling: 0f}` returns **0** overlays (both tiles skipped), so `Assert.Single` fails.
 
 ## Suspected Code Paths
 
-- `LivingRoots.Tests/Invariants/VisualizationInvariantsTests.cs:113` — T031b takes raw `float healthA, float healthB` and does **not** call `FsCheckFixture.Register()`, so it uses FsCheck's **default** float generator.
-- `LivingRoots/Domain/Visualization/HealthCategory.cs:29` (`FromHealthValue`) and `LivingRoots/Services/Visualization/ColorInterpolationService.cs:52` (`GetCategoryForHealth`) — identical bands `Poor [0,30] / Moderate [31,70] / Healthy [71,100]`, leaving the gaps `(30,31)` and `(70,71)` → `Unknown`.
-- `LivingRoots/Services/Visualization/ColorInterpolationService.cs:92` (`InterpolateColor`) — uses `<= 30`, `<= 70`, `> 70` (no gaps), so a gap value gets a real tint while its category is `Unknown`.
-- `LivingRoots.Tests/Visualization/OverlayRendererTests.cs:269` — T222 takes raw `float tileHealth`, also without `Register()`, so the default float generator is used.
-- `LivingRoots/Services/Visualization/OverlayRenderer.cs:367` — `if (healthValue == 0f) continue;` (health 0 contributes no overlay).
-- `LivingRoots.Tests/Invariants/FsCheckFixture.cs:53,143` — the domain `Health` arbitrary (2-decimal values in `[0,100]`) that these two tests do not use.
+- `LivingRoots/Services/Visualization/ColorInterpolationService.cs:92` (`InterpolateColor`) — continuous gradient `Poor→Moderate→Healthy`; at `70` the lerp reaches `HealthyColor`.
+- `LivingRoots/Services/Visualization/ColorInterpolationService.cs:110-120` — the Healthy tier is held **flat** (`healthy` colour) for all `> 70`. So `70` (Moderate) and every Healthy reading share a colour.
+- `LivingRoots/Services/Visualization/ColorInterpolationService.cs:52` (`GetCategoryForHealth`) and `LivingRoots/Domain/Visualization/HealthCategory.cs:29` (`FromHealthValue`) — bands `[0,30]/[31,70]/[71,100]`, leaving the gaps `(30,31)`/`(70,71)` → `Unknown` (the original non-integer counterexample's second cause).
+- `LivingRoots.Tests/Invariants/VisualizationInvariantsTests.cs:113` (T031b) — the property that encodes the false assumption.
+- `LivingRoots.Tests/Visualization/OverlayRendererTests.cs:269` (T222) — raw `float tileHealth` (default FsCheck generator, which emits `0`); the class already has an unused `PositiveHealthGenerator()` at `:46`.
+- `LivingRoots/Services/Visualization/OverlayRenderer.cs:367` — `if (healthValue == 0f) continue;` (health 0 draws no overlay).
 
 ## Root Cause Hypothesis
 
-Confidence: **high**. Two distinct causes, both from property tests whose generators range over values outside the property's stated domain:
+Confidence: **high**.
 
-1. **T031b.** The generator produces arbitrary floats, including the `(30,31)`/`(70,71)` values. For those, `GetCategoryForHealth` returns `Unknown` while `GetColorForHealth` returns a real tint. The property "distinct categories ⇒ distinct colours" then fails — counterexample `(87.47, 70.93)`: categoryA `Healthy`, categoryB `Unknown` (gap), both `Healthy` colour. Root cause: the category functions have gaps that `InterpolateColor` does not.
-2. **T222.** The generator produces arbitrary floats for the sibling tile. When `tileHealth == 0f`, `BuildOverlays` skips **both** tiles (`healthValue == 0f`), so `overlays.Count == 0` and `Assert.Single` fails. The doc comment says the sibling is "positive finite health (1-100)", but the generator is not constrained.
+1. **T031b — the property is wrong, not the generator.** The palette is a **continuous** gradient that *reaches* the Healthy colour at 70 and then holds the Healthy tier **flat** (T253/FR-010, deliberate). Consequently `GetColorForHealth(70)` equals the colour of every Healthy reading, and `GetColorForHealth(30)` equals `GetColorForHealth(31)`. So "different categories ⇒ different colours" is unsatisfiable at both seams — **29 integer pairs** violate it. The non-integer category gaps `(30,31)`/`(70,71)` add more violations (the original `70.93` counterexample) by making the category `Unknown` while the colour stays real. Constraining the generator to integers (the rejected prior fix) would *raise* the failure rate (the 29 violating pairs are all integers).
 
-Both tests also skip `FsCheckFixture.Register()` (the fixture doc names T031a/T031b as consumers). Note: registering **alone would not fix them** — `FsCheckFixture.Health` still generates `0` and the gap values.
+2. **T222 — the generator is wrong.** `BuildOverlays` skips `healthValue == 0f`, so a generated `0` sibling yields 0 overlays and `Assert.Single` fails. The doc says the sibling is "positive finite health (1-100)", but the generator is unconstrained.
 
 ## Proposed Remediation
 
-**Confirmed** (per Clarifications 2026-10-19 — test-side, constrain the generators to the domain):
+**Preferred** (correct the tests to match the actual, intended palette):
 
-- **T031b**: generate integer health `0–100` (matching the documented integer bands). No value then falls in a gap.
-- **T222**: generate strictly positive health `1–100`, matching the doc "positive finite health (1-100)".
-- **Where**: add reusable constrained arbitraries to `FsCheckFixture` — an integer `0–100` and a positive `1–100` variant — and use them in both classes. Leave the existing `Health` arbitrary unchanged so the other property-test classes are not perturbed.
+- **T031b**: drop the false "different categories always differ" clause and keep only the invariants the palette actually guarantees:
+  - the tint is a deterministic function of health (same input → same colour);
+  - within the gradient tiers (Poor, Moderate), readings **≥ 1 apart differ** (verified: 0 violations today);
+  - cross-tier distinctness is **not** required (the palette is continuous and the Healthy tier is flat by design).
+  Also constrain the generator to the real domain — integer health `0–100` — so the property no longer depends on the unreachable non-integer gaps.
+- **T222**: generate strictly positive health (`1–100`), matching the doc, using the existing `PositiveHealthGenerator()` (or a shared `FsCheckFixture` positive arbitrary).
 
-**Rejected alternative** (production — close the category gaps):
-
-- Make the bands contiguous in **both** `HealthCategoryExtensions.FromHealthValue` and `ColorInterpolationService.GetCategoryForHealth`: Poor `[0,30]`, Moderate `(30,70]`, Healthy `(70,100]`. Update the `HealthCategory.cs` / `AGENTS.md` docs. Trade-off: changes the category label for non-integer health (e.g. 70.5: `Unknown` → `Healthy`). Health is integer-valued in practice (decay −2/day, compost +15), so in-game impact is likely nil — but it removes the latent inconsistency and keeps the property strong.
+**Alternatives**:
+- Make the palette **discontinuous** at the seams so distinct categories always have distinct colours (production change). Rejected: contradicts T253/FR-010 (flat Healthy tier, monotone palette) and changes player-visible tints.
+- Constrain only the T031b generator (no property change). Rejected: leaves the 29 integer violations → T031b fails ~40% of runs with integer health.
 
 **Files likely to change**:
-- `LivingRoots.Tests/Invariants/VisualizationInvariantsTests.cs`
-- `LivingRoots.Tests/Visualization/OverlayRendererTests.cs`
-- (alternative) `LivingRoots/Domain/Visualization/HealthCategory.cs`, `LivingRoots/Services/Visualization/ColorInterpolationService.cs`, `LivingRoots/Domain/Visualization/AGENTS.md`
-- (optional) `LivingRoots.Tests/Invariants/FsCheckFixture.cs`
+- `LivingRoots.Tests/Invariants/VisualizationInvariantsTests.cs` (T031b property)
+- `LivingRoots.Tests/Visualization/OverlayRendererTests.cs` (T222 generator; use/remove `PositiveHealthGenerator`)
+- `LivingRoots.Tests/Invariants/FsCheckFixture.cs` (optional: shared positive/integer `Health` arbitraries)
 
 **Tests to add or update**:
-- Constrain the T031b and T222 generators (preferred), or close the gaps and add a boundary test (alternative).
-- A deterministic `[Fact]`/`[InlineData]` pinning category↔colour consistency at the band boundaries (30, 31, 70, 71) — and for a gap value if the gaps are closed.
+- A deterministic `[Theory]` pinning the palette's **design** at the seams — `GetColorForHealth(30) == GetColorForHealth(31)` and `GetColorForHealth(70) == GetColorForHealth(71)` — so the continuity/flat behaviour is documented and intentional rather than accidental.
+- The corrected T031b property (same-tier gradient distinctness).
+- The corrected T222 generator.
 
 ## Risks & Considerations
 
-- The gaps only matter for non-integer health, which the game likely never produces — so the production alternative is low-impact, but it changes a documented contract.
-- The full-suite flakiness is ~1 in 3 runs; until fixed, a red `Build and Test` may be flakiness rather than a regression (exactly what happened on PR #285).
-- `Build and Test` is deliberately **not** a required status check (`AGENTS.md`), so the flakiness never blocked a merge — which is why it persisted.
-- Both tests were added in the spec-005 TDD-red wave; other property tests may share the same unconstrained-generator pattern (worth a sweep).
+- T031b currently fails intermittently; correcting the property is test-only and low-risk, but it *removes* an assertion ("distinct categories differ") that some may read as a UX requirement — hence the open question below.
+- The non-integer category gaps `(30,31)`/`(70,71)` remain a latent inconsistency between `GetCategoryForHealth`/`FromHealthValue` and `InterpolateColor`; harmless for integer health, but worth aligning separately.
+- `Build and Test` is not a required status check (`AGENTS.md`), so the flakiness never blocked merges — which is why it persisted.
+- Both tests are from the spec-005 TDD-red wave; other property tests may share the "assert a stronger property than the code guarantees" pattern.
 
 ## Open Questions
 
-None — both items are resolved (see Clarifications).
+- [NEEDS CLARIFICATION: Is "distinct categories always have distinct tints" a real UX requirement? If yes, the palette must be made discontinuous (production change, contradicts T253/FR-010). If no, the property is corrected to the same-tier gradient invariant (preferred).]
+- [NEEDS CLARIFICATION: Should the non-integer category gaps `(30,31)`/`(70,71)` be closed (production) or left as-is (integer health only)?]
