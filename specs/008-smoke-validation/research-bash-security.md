@@ -1,7 +1,7 @@
 # Research: Bash Script Security — Path Traversal & TOCTOU
 
 **Date**: 2026-10-19
-**Context**: `specs/008-smoke-validation` — smoke validation bash script handling game path, mod path, SMAPI log path; mod data under `<mod folder>/data/`.
+**Context**: `specs/008-smoke-validation` — smoke validation bash script handling game path, mod path, SMAPI log path; mod data under SMAPI's mod-data directory (`~/.config/StardewValley/.smapi/mod-data/<UniqueID>/`).
 **Authority**: OWASP OS Command Injection Defense Cheat Sheet; CWE-22 (Path Traversal), CWE-36 (Absolute Path Traversal), CWE-59 (Link Resolution), CWE-78 (OS Command Injection), CWE-367 (TOCTOU), CWE-377/378/379 (Insecure Temp File), CWE-732 (Incorrect Permission Assignment); David A. Wheeler *Secure Programs HOWTO* (avoid-race, file-names, character-encoding); BashFAQ/062; `ModDataService.SanitizePathSegments()` (project reference implementation).
 
 **Scope**: Unchecked security-safety checklist items `1.3, 1.5, 1.6, 1.7, 1.8, 1.10, 3.3, 8.2, 8.3, 8.6, 8.7`. Each entry: finding, recommendation, autonomous (can be implemented non-interactively by an agent/script).
@@ -162,7 +162,7 @@
 
 ## 8.7 — File ownership and permissions verified before reading sensitive files
 
-**Finding**: CWE-732 / CWE-276. Sensitive files (SMAPI log, mod data under `<mod folder>/data/`, save files) must be owned by the current user and not group/world-writable; otherwise another local user may have tampered with them (and, on shared hosts, read secrets). Wheeler and OWASP recommend least privilege and verifying attributes before use.
+**Finding**: CWE-732 / CWE-276. Sensitive files (SMAPI log, mod data under `~/.config/StardewValley/.smapi/mod-data/<UniqueID>/`, save files) must be owned by the current user and not group/world-writable; otherwise another local user may have tampered with them (and, on shared hosts, read secrets). Wheeler and OWASP recommend least privilege and verifying attributes before use.
 
 **Recommendation**:
 1. Add a helper `check_owner_mode()`: verify `stat -c %u` == `$(id -u)` and `stat -c %a` has no group/world write bits (mode & 0o022 == 0). For lock/temp dirs require exactly 0700 (8.4).
