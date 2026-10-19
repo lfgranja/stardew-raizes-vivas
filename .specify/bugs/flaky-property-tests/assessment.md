@@ -6,6 +6,13 @@
 - **Verdict**: valid
 - **Severity**: medium
 
+## Clarifications
+
+### Session 2026-10-19
+
+- Q: Is non-integer soil health a value the mod must support, or is soil health always a whole number in practice? → A: Whole number — soil health is integer-valued in practice (decay `2 × {0.5, 1.5, 0.0}` → `{1, 3, 0}`, compost `+15`, clamped to `[0, 100]`), so the `(30,31)`/`(70,71)` category gaps are unreachable and the flaky failure is a test over-specification; fix the tests, not production.
+- Q: Should the shared FsCheck fixture gain domain-constrained health generators so property tests stop re-deriving the domain (and new tests can't repeat this flakiness)? → A: Yes, minimally — add reusable integer (`0–100`) and positive (`1–100`) `Health` arbitraries to `FsCheckFixture` and use them in T031b/T222; leave the existing `Health` arbitrary unchanged so the other property-test classes are not perturbed.
+
 ## Report (verbatim or summarized)
 
 Pasted: `flaky-property-test bug (T031b + T222)`.
@@ -47,13 +54,13 @@ Both tests also skip `FsCheckFixture.Register()` (the fixture doc names T031a/T0
 
 ## Proposed Remediation
 
-**Preferred** (test-side, minimal — constrain the generators to the property's documented domain):
+**Confirmed** (per Clarifications 2026-10-19 — test-side, constrain the generators to the domain):
 
-- **T031b**: generate integer health 0–100 (matching the documented integer bands), e.g. via a `Gen.Choose(0, 100)`-based arbitrary or `[Property(Arbitrary = …)]`. No value then falls in a gap.
-- **T222**: generate strictly positive health, e.g. `Gen.Choose(1, 100)` (or the fixture `Health` filtered `> 0`), matching the doc "positive finite health (1-100)".
-- Optionally call `FsCheckFixture.Register()` in both classes and add integer/positive `Health` variants to the fixture for reuse.
+- **T031b**: generate integer health `0–100` (matching the documented integer bands). No value then falls in a gap.
+- **T222**: generate strictly positive health `1–100`, matching the doc "positive finite health (1-100)".
+- **Where**: add reusable constrained arbitraries to `FsCheckFixture` — an integer `0–100` and a positive `1–100` variant — and use them in both classes. Leave the existing `Health` arbitrary unchanged so the other property-test classes are not perturbed.
 
-**Alternative** (production, broader — close the category gaps):
+**Rejected alternative** (production — close the category gaps):
 
 - Make the bands contiguous in **both** `HealthCategoryExtensions.FromHealthValue` and `ColorInterpolationService.GetCategoryForHealth`: Poor `[0,30]`, Moderate `(30,70]`, Healthy `(70,100]`. Update the `HealthCategory.cs` / `AGENTS.md` docs. Trade-off: changes the category label for non-integer health (e.g. 70.5: `Unknown` → `Healthy`). Health is integer-valued in practice (decay −2/day, compost +15), so in-game impact is likely nil — but it removes the latent inconsistency and keeps the property strong.
 
@@ -76,5 +83,4 @@ Both tests also skip `FsCheckFixture.Register()` (the fixture doc names T031a/T0
 
 ## Open Questions
 
-- [NEEDS CLARIFICATION: Is non-integer soil health in the domain? If yes, the category gaps are a real bug (fix production); if no, constrain the generators to integers (fix tests).]
-- [NEEDS CLARIFICATION: Should `FsCheckFixture` gain integer/positive `Health` arbitraries so property tests stop re-deriving domain constraints (and to prevent recurrence in new tests)?]
+None — both items are resolved (see Clarifications).
