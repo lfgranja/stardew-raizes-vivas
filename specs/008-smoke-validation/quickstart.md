@@ -97,6 +97,7 @@ Each scenario below is a test case with a fixed input, a fixed execution conditi
 | TC-11 | Mod skipped by SMAPI | Installed SMAPI older than the mod's `MinimumApiVersion` | Run the script with an incompatible SMAPI version | Exit `5`; report states SMAPI's skip reason ("needs SMAPI X or later") | _(record)_ | ☐ Pass ☐ Fail |
 | TC-12 | Game exits cleanly without a log | SMAPI re-asserts its dependency manifest after a game update | Run the script with a stale `StardewModdingAPI.deps.json` | Exit non-zero (not `0`); message explains the relaunch requirement | _(record)_ | ☐ Pass ☐ Fail |
 | TC-13 | Graphics environment unusable | `glxinfo` reports no software renderer under Xvfb | Run the script with Mesa software rendering disabled | Exit `3`; error names the missing software renderer and the fix | _(record)_ | ☐ Pass ☐ Fail |
+| TC-14 | Mods directory override | A mods directory other than `<game-path>/Mods` | Run the script with `--mods-path <dir>` containing the mod | SMAPI receives the resolved directory (`Mods go here: <path>` in the log matches); verdict computed from that directory's mod | _(record)_ | ☐ Pass ☐ Fail |
 
 ### Scenario 1: Mod Loads Successfully
 
