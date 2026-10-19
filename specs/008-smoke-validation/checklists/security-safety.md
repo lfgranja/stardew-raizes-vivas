@@ -10,14 +10,14 @@
 
 - [x] 1.1 All filesystem paths constructed from external input are canonicalized with `realpath()` before use
 - [x] 1.2 Canonicalized paths are verified to start with the expected base directory prefix (game install, mod dir, or save dir)
-- [x] 1.3 Paths containing `../` sequences (literal or percent-encoded) after canonicalization are rejected
+- [x] 1.3 Paths containing `../` sequences (literal or percent-encoded) after canonicalization are rejected (decode once → realpath → base-prefix check + `..` segment reject)
 - [x] 1.4 Paths containing NUL bytes (`\0`, `%00`) are rejected — these truncate validation in C-based tools
-- [x] 1.5 Unicode-normalize all path components (NFC or NFKC) before comparison to prevent homoglyph bypasses
+- [x] 1.5 Unicode-normalize all path components (NFC or NFKC) before comparison to prevent homoglyph bypasses (NFC via python3/uconv, required pre-flight dep — FR-012 item 7; fail closed if absent)
 - [x] 1.6 Absolute paths (starting with `/`) are rejected when a relative path within a known base is expected
-- [x] 1.7 `O_NOFOLLOW` or equivalent is used when opening files to prevent symlink attacks on lock/temp files
-- [x] 1.8 Game save directory paths are validated to resolve to the expected Stardew Valley save location
+- [x] 1.7 `O_NOFOLLOW` or equivalent is used when opening files to prevent symlink attacks on lock/temp files (python3 helper + 0700 dir + lstat + ownership — FR-012 item 7)
+- [x] 1.8 Game save directory paths are validated to resolve to the expected Stardew Valley save location (applies when save check is implemented)
 - [x] 1.9 Path sanitization failures are logged (without exposing the raw malicious input) for audit purposes
-- [x] 1.10 The same sanitization rigor from `ModDataService.SanitizePathSegments()` is applied in the script
+- [x] 1.10 The same sanitization rigor from `ModDataService.SanitizePathSegments()` is applied in the script (ported as a `sanitize_path_segments()` function inside the single-file script)
 
 ---
 
@@ -40,10 +40,10 @@
 
 - [x] 3.1 `flock` (kernel advisory lock) is used rather than PID files — eliminates stale lock problem
 - [x] 3.2 `flock -n` (non-blocking) is used to fail fast if another instance holds the lock
-- [x] 3.3 Lock file is stored in a directory with restrictive permissions (`chmod 0700`)
+- [x] 3.3 Lock file is stored in a directory with restrictive permissions (`chmod 0700`) (mktemp -d + chmod 700)
 - [x] 3.4 Lock file is opened with a dedicated file descriptor (`exec 9>"$lockfile"`) held for script lifetime
-- [x] 3.5 If PID files are used, stale lock detection verifies PID is alive AND `/proc/$PID/exe` matches expected binary
-- [x] 3.6 If PID files are used, they are created with `O_CREAT|O_EXCL` (or `set -o noclobber`) to prevent symlink following
+- [ ] 3.5 If PID files are used, stale lock detection verifies PID is alive AND `/proc/$PID/exe` matches expected binary (N/A: flock used, no PID files)
+- [ ] 3.6 If PID files are used, they are created with `O_CREAT|O_EXCL` (or `set -o noclobber`) to prevent symlink following (N/A: flock used, no PID files)
 - [x] 3.7 Lock is tested under SIGKILL crash scenarios (kernel releases on process death)
 - [x] 3.8 `rm` of lock files after `flock` is avoided — kernel releases lock on process exit; removal creates race window
 
@@ -94,10 +94,10 @@
 ## 7. Xvfb Security
 
 - [x] 7.1 Xvfb is started with `-nolisten tcp` to prevent remote TCP connections to the virtual display
-- [x] 7.2 xauth-based access control (MIT-MAGIC-COOKIE-1) is used — never `xhost +` or `-ac`
-- [x] 7.3 A unique, random cookie is generated for the Xvfb display (not hardcoded)
-- [x] 7.4 Xauthority file is stored in a directory with `0700` permissions (`mktemp -d` + `chmod 0700`)
-- [x] 7.5 `XAUTHORITY` environment variable points to the isolated auth file — does not rely on `~/.Xauthority`
+- [ ] 7.2 xauth-based access control (MIT-MAGIC-COOKIE-1) is used — never `xhost +` or `-ac` (out of scope: minimal Xvfb posture per clarification)
+- [ ] 7.3 A unique, random cookie is generated for the Xvfb display (not hardcoded) (out of scope: minimal Xvfb posture)
+- [ ] 7.4 Xauthority file is stored in a directory with `0700` permissions (`mktemp -d` + `chmod 0700`) (out of scope: minimal Xvfb posture)
+- [ ] 7.5 `XAUTHORITY` environment variable points to the isolated auth file — does not rely on `~/.Xauthority` (out of scope: minimal Xvfb posture)
 - [x] 7.6 A non-default display number is used (e.g., `:99` or higher) to avoid conflicts
 - [x] 7.7 Xvfb process receives the same SIGTERM → SIGKILL treatment as the game process
 - [x] 7.8 Display `DISPLAY` value is not shared in world-readable logs or output
@@ -107,12 +107,12 @@
 ## 8. POSIX Filesystem Security
 
 - [x] 8.1 `O_CREAT|O_EXCL` semantics (via `mktemp`, `set -o noclobber`) are used for all file creation in shared directories
-- [x] 8.2 `access()` or `stat()` is never used to check before `open()` — this creates a TOCTOU window
-- [x] 8.3 `lstat()` is used to verify a file is not a symlink before operating on it
+- [x] 8.2 `access()` or `stat()` is never used to check before `open()` — this creates a TOCTOU window (open directly, branch on result)
+- [x] 8.3 `lstat()` is used to verify a file is not a symlink before operating on it (`[[ -L ]]` helper)
 - [x] 8.4 Directories used for lock/temp files have `0700` permissions
 - [x] 8.5 On shared systems, `mktemp -d` creates a private working directory rather than writing to `/tmp` directly
-- [x] 8.6 Symlinks in the game directory and mod directory are checked before reading/writing
-- [x] 8.7 File ownership and permissions are verified before reading sensitive files
+- [x] 8.6 Symlinks in the game directory and mod directory are checked before reading/writing (pre-flight `find -type l`)
+- [x] 8.7 File ownership and permissions are verified before reading sensitive files (owner == current user, no group/world write)
 
 ---
 
