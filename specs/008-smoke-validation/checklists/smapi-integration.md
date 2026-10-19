@@ -13,7 +13,7 @@
 - [x] 1.3 Set `SMAPI_DEVELOPER_MODE=true` to enable TRACE-level logging for diagnostics
 - [x] 1.4 All three environment variables are exported before game launch
 - [x] 1.5 `DISPLAY` environment variable is set to the Xvfb display before launch
-- [x] 1.6 Environment variables are documented in `--help` output
+- [ ] 1.6 Environment variables are documented in `--help` output
 
 ---
 
@@ -97,7 +97,7 @@
 
 ## 9. Mod-Specific Error Detection
 
-- [x] 9.1 Script greps log file for mod name `Stardew Valley - Living Roots` (case-insensitive option)
+- [ ] 9.1 Script greps log file for mod name `Stardew Valley - Living Roots` (case-insensitive option)
 - [x] 9.2 Script searches for `[ERROR]` and `[ALERT]` entries associated with the mod
 - [x] 9.3 Script checks for "failed to load" status for the mod
 - [x] 9.4 Script looks for exception stack traces mentioning mod types
@@ -111,7 +111,7 @@
 - [x] 10.1 `SMAPI-crash.txt` existence is checked before parsing `SMAPI-latest.txt`
 - [x] 10.2 If `SMAPI-crash.txt` is present, script parses it for exception details and stack trace
 - [x] 10.3 Game crash during launch is detected via non-zero process exit code
-- [x] 10.4 Crash time is compared with test run time to confirm relevance
+- [ ] 10.4 Crash time is compared with test run time to confirm relevance
 - [x] 10.5 Any `SMAPI-crash.txt` is treated as a test failure (overrides log check)
 - [x] 10.6 Old `SMAPI-crash.txt` is removed before test run to avoid false positives
 
