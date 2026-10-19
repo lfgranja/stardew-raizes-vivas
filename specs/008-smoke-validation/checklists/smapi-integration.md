@@ -32,7 +32,7 @@
 
 ## 3. Log Format Parsing
 
-- [x] 3.1 Log entries are parsed using the `[HH:MM:SS LEVEL ModName] message` format
+- [x] 3.1 Log entries are parsed using the `[HH:mm:ss LEVEL     SOURCE] message` format (level padded to 8 characters; lines are CRLF-terminated, so matching is substring-based with the trailing `\r` stripped)
 - [x] 3.2 Mod-specific entries are filtered by manifest name `Stardew Valley - Living Roots` in the bracket column
 - [x] 3.3 All 6 log levels are recognized: TRACE, DEBUG, INFO, WARN, ERROR, ALERT
 - [x] 3.4 Only ERROR and ALERT level entries are treated as failure markers
