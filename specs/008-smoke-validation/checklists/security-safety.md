@@ -83,11 +83,12 @@
 - [x] 6.2 A grace period (15-30 seconds) is implemented after SIGTERM before escalating to SIGKILL
 - [x] 6.3 After SIGTERM, process exit is polled using `kill -0 "$PID"` in a loop with sleep intervals
 - [x] 6.4 Process exit is verified (not just that the signal was sent)
-- [x] 6.5 After process exit, expected output files (SMAPI log) are verified to exist and have non-zero size
+- [x] 6.5 After process exit, expected output files (SMAPI log) are verified to exist and have non-zero size — noting that the log is removed pre-launch and recreated by SMAPI, so existence is checked against the current run's file, not a leftover
 - [x] 6.6 A timeout prevents the script from hanging indefinitely if the game becomes unresponsive
 - [x] 6.7 SIGKILL usage is logged (indicates graceful shutdown failed — potential data corruption risk)
 - [x] 6.8 `timeout --signal=TERM --kill-after=30s` is used as a safety net for unresponsive processes
 - [x] 6.9 Mod-specific save triggers that must be invoked before termination are documented
+- [x] 6.10 An X11 lock file owned by a **live** process is never removed — the run aborts with exit code `10` instead; only a lock whose owning PID is dead is treated as stale and reclaimed (mirrors xorg-server's `LockServer()` ESRCH/EPERM semantics)
 
 ---
 
@@ -122,6 +123,8 @@
 - [x] 9.2 SMAPI log excerpts in failure reports are truncated to relevant lines only (no full path exposure)
 - [x] 9.3 Error messages do not expose sensitive system details (constitution: "DO NOT expose raw exception messages to logs")
 - [x] 9.4 Xauthority cookie values are never logged or displayed
+- [x] 9.5 The run log directory is created with mode `0700` and the run log file inherits that restriction — it records paths, PIDs and signals but no secrets (FR-014)
+- [x] 9.6 The run log records the run ID and script `VERSION` only as correlation metadata; no credentials or tokens are ever written to it
 
 ---
 
