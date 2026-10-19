@@ -189,6 +189,28 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <summary>
+        /// S1244: float equality within <see cref="ModConstants.FloatComparisonEpsilon"/>
+        /// instead of by exact value. The non-finite sentinels keep their exact
+        /// semantics — NaN (the unmeasurable marker) equals only NaN, and each
+        /// infinity equals only itself — because the range check alone cannot
+        /// express them: <c>Math.Abs(NaN - x)</c> and <c>Math.Abs(∞ - ∞)</c> are
+        /// both NaN, and every NaN comparison is false, so a range-only check
+        /// would treat an Unknown frame as unchanged and redraw it forever
+        /// (FR-011 forbids exactly that stale report).
+        /// </summary>
+        private static bool ApproximatelyEqual(float left, float right)
+        {
+            if (!float.IsFinite(left) || !float.IsFinite(right))
+            {
+                return float.IsNaN(left) == float.IsNaN(right)
+                    && float.IsPositiveInfinity(left) == float.IsPositiveInfinity(right)
+                    && float.IsNegativeInfinity(left) == float.IsNegativeInfinity(right);
+            }
+
+            return Math.Abs(left - right) <= ModConstants.FloatComparisonEpsilon;
+        }
+
+        /// <summary>
         /// T143/FR-011: content comparison of the snapshot the cache was built
         /// from against the one just received. Two frames with the same viewport
         /// but different tile data are NOT cache hits — the second frame would
@@ -214,7 +236,8 @@ namespace LivingRoots.Services.Visualization
 
             foreach (var kvp in cached)
             {
-                if (!incoming.TryGetValue(kvp.Key, out var value) || !kvp.Value.Equals(value))
+                if (!incoming.TryGetValue(kvp.Key, out var value)
+                    || !ApproximatelyEqual(kvp.Value, value))
                 {
                     return false;
                 }
@@ -237,7 +260,7 @@ namespace LivingRoots.Services.Visualization
             string? cachedDegradationMode,
             VisualizationConfiguration incoming)
         {
-            if (!cachedOpacity.Equals(incoming.Opacity))
+            if (!ApproximatelyEqual(cachedOpacity, incoming.Opacity))
             {
                 return false;
             }

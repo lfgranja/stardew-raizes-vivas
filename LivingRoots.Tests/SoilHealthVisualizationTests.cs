@@ -127,6 +127,89 @@ public class SoilHealthVisualizationTests
         Assert.Equal(45f, updatedOverlays[0].HealthValue);
     }
 
+    /// <summary>
+    /// S1244 regression (FR-010/FR-011): two frames whose tile health differs
+    /// only within <see cref="ModConstants.FloatComparisonEpsilon"/> are the same
+    /// reading, so the cached overlay list is reused; a value beyond the
+    /// tolerance is a miss and is recomputed. The exact-equality comparison
+    /// S1244 forbids would recompute on every frame.
+    /// </summary>
+    [Fact]
+    public void GetOverlays_HealthWithinTolerance_IsCacheHit_BeyondTolerance_IsMiss()
+    {
+        // Arrange
+        var viewport = new Rectangle(0, 0, 100, 100);
+        var tilePos = new Point(10, 10);
+
+        var first = _overlayRenderer.GetOverlays(viewport, new Dictionary<Point, float> { { tilePos, 50f } });
+
+        // Act — differs by ~5e-5, inside the tolerance
+        var withinTolerance = _overlayRenderer.GetOverlays(viewport, new Dictionary<Point, float> { { tilePos, 50.00005f } });
+
+        // Act — differs by 0.1, far outside the tolerance
+        var beyondTolerance = _overlayRenderer.GetOverlays(viewport, new Dictionary<Point, float> { { tilePos, 50.1f } });
+
+        // Assert — the within-tolerance frame reuses the cached list; the
+        // beyond-tolerance frame recomputes a fresh one.
+        Assert.Same(first, withinTolerance);
+        Assert.NotSame(first, beyondTolerance);
+    }
+
+    /// <summary>
+    /// S1244 regression (FR-010): a configuration opacity that differs only
+    /// within <see cref="ModConstants.FloatComparisonEpsilon"/> is the same
+    /// configuration, so the overlay cache is reused rather than recomputed.
+    /// </summary>
+    [Fact]
+    public void GetOverlays_OpacityWithinTolerance_IsCacheHit()
+    {
+        // Arrange
+        var viewport = new Rectangle(0, 0, 100, 100);
+        var tileData = new Dictionary<Point, float> { { new Point(10, 10), 50f } };
+
+        var first = _overlayRenderer.GetOverlays(viewport, tileData);
+
+        // Act — opacity moves by 5e-6, inside the tolerance
+        _mockConfigService
+            .Setup(c => c.GetConfiguration())
+            .Returns(new VisualizationConfiguration
+            {
+                OverlaysEnabled = true,
+                Opacity = 0.500005f,
+                ShowPatterns = false
+            });
+
+        var second = _overlayRenderer.GetOverlays(viewport, tileData);
+
+        // Assert
+        Assert.Same(first, second);
+    }
+
+    /// <summary>
+    /// Regression guard for the epsilon comparison's non-finite handling: NaN
+    /// is the unmeasurable sentinel, so a NaN frame must cache-hit against
+    /// another NaN frame but miss against a finite one. A range-only check
+    /// would treat NaN as equal to everything and redraw a stale Unknown
+    /// (FR-011 forbids that stale report).
+    /// </summary>
+    [Fact]
+    public void GetOverlays_NonFiniteSentinels_PreserveCacheSemantics()
+    {
+        // Arrange
+        var viewport = new Rectangle(0, 0, 100, 100);
+        var tilePos = new Point(10, 10);
+
+        // Act
+        var nanFrame = _overlayRenderer.GetOverlays(viewport, new Dictionary<Point, float> { { tilePos, float.NaN } });
+        var nanAgain = _overlayRenderer.GetOverlays(viewport, new Dictionary<Point, float> { { tilePos, float.NaN } });
+        var finiteFrame = _overlayRenderer.GetOverlays(viewport, new Dictionary<Point, float> { { tilePos, 50f } });
+
+        // Assert
+        Assert.Same(nanFrame, nanAgain);
+        Assert.NotSame(nanFrame, finiteFrame);
+        Assert.Equal(50f, finiteFrame[0].HealthValue);
+    }
+
     // ──────────────────────────────────────────────
     // T091 (FR-010): ambient-light blending — DEMANDED SEAM
     // ──────────────────────────────────────────────

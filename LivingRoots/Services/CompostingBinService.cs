@@ -189,7 +189,6 @@ public class CompostingBinService(
     public int CollectCompost(string locationName, Vector2 tile)
     {
         var key = GetTileKey(tile);
-        bool granted = false;
         bool inventoryFull = false;
 
         lock (_lock)
@@ -239,7 +238,6 @@ public class CompostingBinService(
 
                 // T250: no MaturationLevel increment — the retired multiplier
                 // leaves no collect-time trace.
-                granted = true;
             }
         }
 
@@ -252,15 +250,14 @@ public class CompostingBinService(
             return 0;
         }
 
-        if (granted)
-        {
-            Game1.playSound("Ship");
-            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced 1 compost",
-                LogLevel.Trace);
-            return 1;
-        }
-
-        return 0;
+        // Reaching this point means the inventory accepted the compost, so the
+        // batch was consumed above — the only path that survives the refusal
+        // early-return. The former `if (granted)` guard was always true here
+        // (S2583), so it carried no information.
+        Game1.playSound("Ship");
+        _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced 1 compost",
+            LogLevel.Trace);
+        return 1;
     }
 
     public CompostingBinState GetBinState(string locationName, Vector2 tile)

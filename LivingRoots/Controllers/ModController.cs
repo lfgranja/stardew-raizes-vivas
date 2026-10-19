@@ -1950,7 +1950,11 @@ namespace LivingRoots.Controllers
                 {
                     foreach (var kvp in previouslyTracked)
                     {
-                        if (!currentMatureCrops.ContainsKey(kvp.Key))
+                        // currentMatureCrops is filled by the foreach above. S4158's
+                        // "known to be empty" is a SonarSource-confirmed false positive
+                        // for collections populated inside a loop, whose support in the
+                        // dataflow engine is poor (sonar-dotnet#1042 / #767).
+                        if (!currentMatureCrops.ContainsKey(kvp.Key)) //NOSONAR
                         {
                             ApplyHarvestModifiersToTile(locationName, kvp.Key, kvp.Value);
                         }
