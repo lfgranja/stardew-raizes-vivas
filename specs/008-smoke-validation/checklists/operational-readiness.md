@@ -25,8 +25,8 @@
 ## 2. Exit Code Conventions
 
 - [x] 2.1 Exit code 0 is returned on success
-- [x] 2.2 Exit code 1 is returned for tool/runtime errors (script itself broke)
-- [x] 2.3 Exit code 2 is returned for validation/policy failures (script ran correctly but check failed)
+- [ ] 2.2 Exit code 1 is returned for tool/runtime errors (script itself broke) (superseded: spec uses sysexits scheme 1=game; see 2.10)
+- [ ] 2.3 Exit code 2 is returned for validation/policy failures (script ran correctly but check failed) (superseded: spec uses sysexits scheme 2=SMAPI; see 2.10)
 - [x] 2.4 No exit codes use reserved values (126, 127, 128+n, 130, 255) for non-standard purposes
 - [x] 2.5 All exit codes are documented in the script header and `--help` output
 - [x] 2.6 Exit code semantics are consistent with the documented scheme across all failure modes
@@ -72,9 +72,9 @@
 
 - [x] 5.1 Script exits non-zero on any failure (CI can rely on exit code alone)
 - [x] 5.2 stdout carries data/reports; stderr carries errors and human-readable messages
-- [x] 5.3 `--json` flag (or equivalent) produces machine-parseable output for fine-grained CI routing
-- [x] 5.4 JSON output includes stable fields: `ok`, `checks[]`, `warnings[]`, `errors[]`, `exit_code`
-- [x] 5.5 JSON output does not contain secrets
+- [ ] 5.3 `--json` flag (or equivalent) produces machine-parseable output for fine-grained CI routing (deferred per FR-013 local-first)
+- [ ] 5.4 JSON output includes stable fields: `ok`, `checks[]`, `warnings[]`, `errors[]`, `exit_code` (deferred per FR-013)
+- [ ] 5.5 JSON output does not contain secrets (deferred per FR-013; secrets rule already in 3.9)
 - [x] 5.6 Script can be called from a CI pipeline step (GitLab `script:`, Azure DevOps `Bash@3`, GitHub Actions `run:`)
 - [x] 5.7 Commands containing colons are properly quoted for YAML parsing
 - [x] 5.8 `&&` chaining is wrapped in parentheses to preserve failure semantics in CI
@@ -90,11 +90,11 @@
 - [x] 6.2 `set -euo pipefail` is at the top of the script
 - [x] 6.3 All variable references are quoted (double quotes for substitution, single quotes for literals)
 - [x] 6.4 Functions use `local` variables (no accidental globals)
-- [x] 6.5 Script is modular — reusable logic is in sourced library files
-- [x] 6.6 Configuration is externalized (config file or env vars, not hardcoded)
+- [ ] 6.5 Script is modular — reusable logic is in sourced library files (out of scope: single-file script per plan)
+- [x] 6.6 Configuration is externalized (CLI args with documented defaults: `--game-path`, `--timeout`, `--grace-period`, `--smapi-log`)
 - [x] 6.7 Structured logging is used (log_info/log_warn/log_error, not bare echo)
 - [x] 6.8 Log messages are timestamped
-- [x] 6.9 Log messages include run ID / correlation ID for multi-run tracing
+- [ ] 6.9 Log messages include run ID / correlation ID for multi-run tracing (out of scope: not required by spec)
 - [x] 6.10 Script is version-controlled in Git with semantic version tags
 - [x] 6.11 `.gitignore` excludes logs, temp files, and .env files
 - [x] 6.12 Cleanup trap removes temp files and releases resources
@@ -126,11 +126,11 @@
 - [x] 8.1 Pass/fail criteria are defined before the script runs (not after)
 - [x] 8.2 A test log is produced chronologically (IEEE 829 test log concept)
 - [x] 8.3 Suspension criteria are defined (when to stop the script early)
-- [x] 8.4 Resumption requirements are defined (what must be true to re-run)
+- [x] 8.4 Resumption requirements are defined (what must be true to re-run) — quickstart.md "Resumption Requirements" (R-1…R-7)
 - [x] 8.5 Environmental needs are documented (hardware, software, tools)
 - [x] 8.6 Features NOT tested are explicitly listed (scope boundaries — save check deferred)
 - [x] 8.7 Test items are identified (what specifically is being validated)
-- [x] 8.8 Each test case has: input, execution condition, expected output, actual output, pass/fail
+- [x] 8.8 Each test case has: input, execution condition, expected output, actual output, pass/fail — quickstart.md "Test Case Documentation (IEEE 829-style)" (TC-1…TC-8)
 
 ---
 
@@ -147,7 +147,7 @@
 | Missing cleanup trap | Must have `trap ... EXIT` |
 | No structured logging | Use level-prefixed, timestamped logs |
 | ShellCheck violations | Must run clean |
-| No JSON output mode | Add `--json` for CI parsing |
+| No JSON output mode | Deferred per FR-013 (local-first); exit codes suffice for future CI |
 | Secrets in output | Must redact |
 | Script exits 0 on pre-flight failure | Must exit non-zero |
 | No concurrency protection | flock required |
