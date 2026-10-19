@@ -42,8 +42,8 @@
 - [x] 3.2 `flock -n` (non-blocking) is used to fail fast if another instance holds the lock
 - [x] 3.3 Lock file is stored in a directory with restrictive permissions (`chmod 0700`) (mktemp -d + chmod 700)
 - [x] 3.4 Lock file is opened with a dedicated file descriptor (`exec 9>"$lockfile"`) held for script lifetime
-- [ ] 3.5 If PID files are used, stale lock detection verifies PID is alive AND `/proc/$PID/exe` matches expected binary (N/A: flock used, no PID files)
-- [ ] 3.6 If PID files are used, they are created with `O_CREAT|O_EXCL` (or `set -o noclobber`) to prevent symlink following (N/A: flock used, no PID files)
+- [x] 3.5 If PID files are used, stale lock detection verifies PID is alive AND `/proc/$PID/exe` matches expected binary (N/A — the script uses no PID file: mutual exclusion is `flock` on a dedicated lock file, auto-released by the kernel on process death (spec.md FR-002; spec.md FR-010 item 5; research.md §4.1 lists "PID file + liveness check" as a rejected alternative). The only PID-bearing file the script touches is Xorg's `/tmp/.X{n}-lock`, governed by spec.md FR-012 item 5 — the script never signals that PID (it aborts with exit code `10` or reclaims the stale lock), so PID-reuse identity verification is inapplicable.)
+- [x] 3.6 If PID files are used, they are created with `O_CREAT|O_EXCL` (or `set -o noclobber`) to prevent symlink following (N/A — no PID file is created: the only mutual-exclusion lock is `flock` on a dedicated lock file (spec.md FR-002; research.md §4.1), and `/tmp/.X{n}-lock` is created and owned by Xorg, not by the script (spec.md FR-012 item 5). Symlink-safe creation of script-owned files is covered by spec.md FR-012 item 7 (`mktemp` + `O_CREAT|O_EXCL`/`O_NOFOLLOW`) and checklist 8.1.)
 - [x] 3.7 Lock is tested under SIGKILL crash scenarios (kernel releases on process death)
 - [x] 3.8 `rm` of lock files after `flock` is avoided — kernel releases lock on process exit; removal creates race window
 
@@ -95,10 +95,10 @@
 ## 7. Xvfb Security
 
 - [x] 7.1 Xvfb is started with `-nolisten tcp` to prevent remote TCP connections to the virtual display
-- [ ] 7.2 xauth-based access control (MIT-MAGIC-COOKIE-1) is used — never `xhost +` or `-ac` (out of scope: minimal Xvfb posture per clarification)
-- [ ] 7.3 A unique, random cookie is generated for the Xvfb display (not hardcoded) (out of scope: minimal Xvfb posture)
-- [ ] 7.4 Xauthority file is stored in a directory with `0700` permissions (`mktemp -d` + `chmod 0700`) (out of scope: minimal Xvfb posture)
-- [ ] 7.5 `XAUTHORITY` environment variable points to the isolated auth file — does not rely on `~/.Xauthority` (out of scope: minimal Xvfb posture)
+- [x] 7.2 xauth-based access control (MIT-MAGIC-COOKIE-1) is used — never `xhost +` or `-ac` (Resolved by decision — out of scope: spec.md Clarifications line 177 records "What Xvfb security posture? → A: Minimal — `-nolisten tcp` on a non-default display (e.g., `:99`); no xauth hardening for single-user local use". FR-001 mandates only `-nolisten tcp` on a non-default display, `xhost +`/`-ac` are never used, and plan.md Primary Dependencies (line 17) list no `xauth` package. Threat model: single-user local maintainer machine — spec.md Assumptions line 246, plan.md Target Platform line 25.)
+- [x] 7.3 A unique, random cookie is generated for the Xvfb display (not hardcoded) (Resolved by decision — out of scope: no MIT-MAGIC-COOKIE-1 cookie is generated, per spec.md Clarifications line 177 ("no xauth hardening for single-user local use"); the accepted Xvfb posture is FR-001's `-nolisten tcp` on a non-default display.)
+- [x] 7.4 Xauthority file is stored in a directory with `0700` permissions (`mktemp -d` + `chmod 0700`) (Resolved by decision — out of scope: no Xauthority file is created, per spec.md Clarifications line 177 ("no xauth hardening for single-user local use"); the accepted Xvfb posture is FR-001's `-nolisten tcp` on a non-default display.)
+- [x] 7.5 `XAUTHORITY` environment variable points to the isolated auth file — does not rely on `~/.Xauthority` (Resolved by decision — out of scope: `XAUTHORITY` is not set because no Xauthority file exists, per spec.md Clarifications line 177 ("no xauth hardening for single-user local use"); the accepted Xvfb posture is FR-001's `-nolisten tcp` on a non-default display.)
 - [x] 7.6 A non-default display number is used (e.g., `:99` or higher) to avoid conflicts
 - [x] 7.7 Xvfb process receives the same SIGTERM → SIGKILL treatment as the game process
 - [x] 7.8 Display `DISPLAY` value is not shared in world-readable logs or output
@@ -122,7 +122,7 @@
 - [x] 9.1 API keys, tokens, and passwords never appear in logs, error messages, or script output
 - [x] 9.2 SMAPI log excerpts in failure reports are truncated to relevant lines only (no full path exposure)
 - [x] 9.3 Error messages do not expose sensitive system details (constitution: "DO NOT expose raw exception messages to logs")
-- [x] 9.4 Xauthority cookie values are never logged or displayed
+- [x] 9.4 Xauthority cookie values are never logged or displayed — vacuous under the accepted minimal posture (no xauth is created, spec.md:177), so there is no cookie to leak; the rule holds trivially if the posture is ever changed
 - [x] 9.5 The run log directory is created with mode `0700` and the run log file inherits that restriction — it records paths, PIDs and signals but no secrets (FR-014)
 - [x] 9.6 The run log records the run ID and script `VERSION` only as correlation metadata; no credentials or tokens are ever written to it
 
@@ -150,7 +150,7 @@
 | 6 | `echo $var` (unquoted) | Word splitting, globbing | `echo "$var"` (always quote) |
 | 7 | `cd $dir` without validation | Path traversal | `cd -- "$dir"` + prefix check |
 | 8 | PID file without verification | PID reuse kills wrong process | Verify `/proc/$PID/exe` before signaling |
-| 9 | `xhost +` for X11 | Unauthorized display access | Use xauth/MIT-MAGIC-COOKIE-1 |
+| 9 | `xhost +` for X11 | Unauthorized display access | `-nolisten tcp` on a non-default display; xauth/MIT-MAGIC-COOKIE-1 is explicitly out of scope for this feature (spec.md:177) |
 | 10 | Fixed temp filename | Predictable, symlink-vulnerable | `mktemp` with random suffix |
 | 11 | `trap` defined after temp creation | Temp files left on crash | Define `trap` BEFORE `mktemp` |
 | 12 | Script running as root | Privilege escalation | Run as least-privilege user |
