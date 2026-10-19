@@ -8,6 +8,13 @@
 
 > Re-assessment. This file replaces the earlier assessment (same slug). The prior remediation was rejected by `/speckit.bug.fix` after empirical verification showed the T031b root cause was elsewhere.
 
+## Clarifications
+
+### Session 2026-10-19
+
+- Q: Must each health category (Poor / Moderate / Healthy) always show a visually distinct tint, or is it acceptable that the tint changes smoothly and the Healthy tier is a single flat colour? → A: Smooth is acceptable — keep the continuous gradient and the flat Healthy tier (deliberate per T253/FR-010); correct the T031b property rather than changing the palette.
+- Q: Should the health→category bands be made contiguous so every value in `[0, 100]` maps to Poor/Moderate/Healthy, or is it fine that non-integer values in `(30,31)` and `(70,71)` map to `Unknown`? → A: Leave as-is — health is integer-valued in practice (decay `2×{0.5,1.5,0}`, compost `+15`, clamp `[0,100]`), so the gaps are unreachable and the corrected tests won't depend on them; no production change to the shipped mapping.
+
 ## Report (verbatim or summarized)
 
 Two FsCheck property tests fail intermittently in full-suite runs, reddening `Build and Test` (~1 in 3 runs observed; the CI job failed on PR #285 and passed on re-run):
@@ -71,7 +78,7 @@ Confidence: **high**.
 - **T222**: generate strictly positive health (`1–100`), matching the doc, using the existing `PositiveHealthGenerator()` (or a shared `FsCheckFixture` positive arbitrary).
 
 **Alternatives**:
-- Make the palette **discontinuous** at the seams so distinct categories always have distinct colours (production change). Rejected: contradicts T253/FR-010 (flat Healthy tier, monotone palette) and changes player-visible tints.
+- Make the palette **discontinuous** at the seams so distinct categories always have distinct colours (production change). **Rejected** (Clarifications 2026-10-19): contradicts T253/FR-010 (flat Healthy tier, monotone palette) and changes player-visible tints.
 - Constrain only the T031b generator (no property change). Rejected: leaves the 29 integer violations → T031b fails ~40% of runs with integer health.
 
 **Files likely to change**:
@@ -87,11 +94,10 @@ Confidence: **high**.
 ## Risks & Considerations
 
 - T031b currently fails intermittently; correcting the property is test-only and low-risk, but it *removes* an assertion ("distinct categories differ") that some may read as a UX requirement — hence the open question below.
-- The non-integer category gaps `(30,31)`/`(70,71)` remain a latent inconsistency between `GetCategoryForHealth`/`FromHealthValue` and `InterpolateColor`; harmless for integer health, but worth aligning separately.
+- The non-integer category gaps `(30,31)`/`(70,71)` remain a latent inconsistency between `GetCategoryForHealth`/`FromHealthValue` and `InterpolateColor`; **left as-is** per Clarifications 2026-10-19 (unreachable for integer health).
 - `Build and Test` is not a required status check (`AGENTS.md`), so the flakiness never blocked merges — which is why it persisted.
 - Both tests are from the spec-005 TDD-red wave; other property tests may share the "assert a stronger property than the code guarantees" pattern.
 
 ## Open Questions
 
-- [NEEDS CLARIFICATION: Is "distinct categories always have distinct tints" a real UX requirement? If yes, the palette must be made discontinuous (production change, contradicts T253/FR-010). If no, the property is corrected to the same-tier gradient invariant (preferred).]
-- [NEEDS CLARIFICATION: Should the non-integer category gaps `(30,31)`/`(70,71)` be closed (production) or left as-is (integer health only)?]
+None — both items are resolved (see Clarifications).
