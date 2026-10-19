@@ -99,7 +99,7 @@
 
 - [x] 9.1 Script greps log file for mod name `Stardew Valley - Living Roots` (case-insensitive option)
 - [x] 9.2 Script searches for `[ERROR]` and `[ALERT]` entries associated with the mod
-- [ ] 9.3 Script checks for "failed to load" status for the mod
+- [x] 9.3 Script checks for "failed to load" status for the mod
 - [x] 9.4 Script looks for exception stack traces mentioning mod types
 - [x] 9.5 Failure reports include relevant Trace lines following any Error entry (20-30 lines context)
 - [x] 9.6 Script distinguishes mod errors from SMAPI core errors and other mods' errors
