@@ -16,9 +16,9 @@
 - [x] 1.6 `rm -rf` in cleanup is always quoted: `rm -rf -- "$tmpdir"` (prevents `rm -rf /` if var is empty)
 - [x] 1.7 Background process PIDs are recorded (`pids+=("$!")`) and killed in cleanup
 - [x] 1.8 `wait` is called after killing children to prevent zombie processes
-- [ ] 1.9 If script uses subshells, EXIT traps are registered in each subshell (N/A: single-file script, no subshells per plan)
+- [x] 1.9 If script uses subshells, EXIT traps are registered in each subshell (resolved: N/A by bash semantics — bash does **not** propagate an inherited `EXIT` trap into subshells, so the parent trap is the single cleanup path and a subshell registering its own `EXIT` trap would double-clean; verified empirically on bash 5.3.9 across command substitution, parenthesised subshell, background job, pipeline stage and a function called inside a subshell — only the parent fired, once; only `set -E` propagates the `ERR` trap. spec.md FR-005 now states the rule: the `EXIT` trap is registered exactly once in the top-level shell, and a subshell owning a child process MUST clean that child up itself. This replaces the earlier, unsupported "no subshells per plan" rationale — a single-file script still uses command substitution, pipelines and background jobs)
 - [x] 1.10 Cleanup function ignores further signals during cleanup: `trap '' INT TERM` (prevents interruption)
-- [ ] 1.11 Lock files are removed in EXIT trap, not just on normal exit (decided: do NOT remove — race window; kernel releases on exit)
+- [x] 1.11 Lock files are removed in EXIT trap, not just on normal exit (resolved: the flock file is NOT removed — the kernel releases the lock on process death and removing the file re-opens a race window; spec.md:90 FR-010 cleanup item (5) "the flock is auto-released by the kernel on process death", spec.md:162 clarification "The kernel automatically releases the lock on process death (even SIGKILL), eliminating stale-lock risk", quickstart.md:307 R-4, and security-safety.md:48 item 3.8 "rm of lock files after flock is avoided — removal creates race window" with research-bash-security.md:64 and :111 "Do not remove the lock file on exit"; FR-010 item (3) removes only the X11 lock files, which the spec keeps distinct from the flock)
 - [x] 1.12 Xvfb process PID is recorded and killed in cleanup (not left running)
 
 ---
@@ -34,7 +34,7 @@
 - [x] 2.7 Xvfb is launched with `&` and its PID recorded for cleanup
 - [x] 2.8 Script uses `wait` (not `sleep`) to block on child processes, enabling signal-responsive shutdown
 - [x] 2.9 Exit code convention: 128 + signal number (143 for TERM, 130 for INT)
-- [ ] 2.10 If script is PID 1 (container), it explicitly handles SIGTERM (default action ignored for PID 1) (N/A: container usage out of scope — local-only maintainer tool, no Dockerfile/entrypoint)
+- [x] 2.10 If script is PID 1 (container), it explicitly handles SIGTERM (default action ignored for PID 1) (resolved: out of scope — plan.md:36 constraint "Not a container entrypoint — PID 1 signal semantics are out of scope" and spec.md:204 clarification "Is container / PID 1 execution in scope? → A: No. The script is a local-only maintainer tool; no Dockerfile or entrypoint exists. PID-1 signal handling is N/A (script-reliability 2.10)"; consistent with spec.md:92 FR-013 (local-first, no CI integration) and spec.md:246 assumption; the repo has no Dockerfile/docker-compose and .github/workflows/*.yml run on ubuntu-latest with no container or service)
 - [x] 2.11 `timeout` command wraps long-running operations: `timeout --kill-after=30 300 cmd`
 - [x] 2.12 All process lifecycle events are logged with timestamps (FR-014)
 
@@ -64,7 +64,7 @@
 - [x] 4.6 Script detects and cleans up resources from previous crashed runs (orphaned Xvfb, stale locks)
 - [x] 4.7 Script can be run 10+ times in succession without error or state corruption
 - [x] 4.8 No duplicate entries in logs, no accumulating temp files
-- [ ] 4.9 Game save data is backed up before test and restored after (or uses isolated save) (N/A: save check deferred, title screen expected)
+- [x] 4.9 Game save data is backed up before test and restored after (or uses isolated save) (resolved: N/A — the script never loads a save, so no game save data can be read or mutated and there is nothing to back up; spec.md:82 FR-004 "the save check is always skipped (with a SKIPPED: warning) … The title screen is the expected state", spec.md:19 and spec.md:32-45 (User Story 2, P2, Deferred), spec.md:120-121 (SC-004/SC-005 deferred), plan.md:33 constraint "No save file loading (title screen is expected state)", quickstart.md:87 TC-1 "no save loaded", data-model.md:65 "Zero data files. This is valid and expected in the automated script"; the mod writes no save-scoped data until SaveLoaded (ModController.cs:946-1027) and never writes into the Stardew save file (spec.md:138))
 - [x] 4.10 Xvfb display is released and can be re-acquired on re-run
 - [x] 4.11 Script validates preconditions (game files exist, SMAPI installed) before making changes
 - [x] 4.12 A failed `dotnet build` aborts the run before the game is launched — a failed build that leaves the previous DLL in place would otherwise produce a false pass (FR-016)
