@@ -10,7 +10,7 @@
 
 - [x] 1.1 Set `SMAPI_NO_TERMINAL=true` to prevent terminal launch in headless environment
 - [x] 1.2 Set `SMAPI_USE_CURRENT_SHELL=true` to capture all output from the launching shell
-- [x] 1.3 Set `SMAPI_DEVELOPER_MODE=true` to enable TRACE-level logging for diagnostics
+- [x] 1.3 Set `SMAPI_DEVELOPER_MODE=true` to enable TRACE-level logging for diagnostics — it gates **console** verbosity only; SMAPI writes TRACE-level entries to the log file unconditionally, so the log-file diagnostics do not depend on it (FR-001; spec.md:227)
 - [x] 1.4 All three environment variables are exported before game launch
 - [x] 1.5 `DISPLAY` environment variable is set to the Xvfb display before launch
 - [x] 1.6 Environment variables are documented in `--help` output (FR-015 — "Environment (set automatically)" section)
@@ -129,7 +129,7 @@
 - [x] 10.1 `SMAPI-crash.txt` existence is checked before parsing `SMAPI-latest.txt`
 - [x] 10.2 If `SMAPI-crash.txt` is present, script parses it for exception details and stack trace
 - [x] 10.3 Game crash during launch is detected via non-zero process exit code
-- [ ] 10.4 Crash time is compared with test run time to confirm relevance (N/A — redundant with 10.6 stale-crash cleanup)
+- [x] 10.4 Crash time is compared with test run time to confirm relevance (N/A — the timestamp comparison is explicitly ruled out: spec.md Clarifications → Session 2026-10-19 (checklist review — round 3, final), spec.md:211 — "Should `SMAPI-crash.txt` timestamps be compared against the run window? → A: No. Stale-crash cleanup before launch (FR-012 item 6) already guarantees relevance; the timestamp comparison is N/A (smapi-integration 10.4)". The cleanup is unconditional and pre-launch (FR-002 "Pre-launch cleanup (MUST)", spec.md:76; FR-012 item 6, spec.md:89), so any `SMAPI-crash.txt` present after launch was written by the current run — a crash during the run is still detected by items 10.1/10.5 plus the non-zero exit code of item 10.3, leaving no gap in which a real crash is missed)
 - [x] 10.5 Any `SMAPI-crash.txt` is treated as a test failure (overrides log check)
 - [x] 10.6 Old `SMAPI-crash.txt` is removed before test run to avoid false positives
 - [x] 10.7 Removal of the stale crash file also prevents SMAPI's blocking `Console.ReadKey()` from hanging the headless launch
