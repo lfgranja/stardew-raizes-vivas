@@ -104,7 +104,9 @@ The **authoritative success signal is SMAPI's own mod-resolution output**, not t
 
 **Decision**: Follow sysexits.h convention with distinct codes per failure category
 
-**Rationale**: sysexits.h provides standard exit codes that are self-documenting and CI-friendly. The script uses: 0 (success), 1 (game not found), 2 (SMAPI not found), 3 (Xvfb not available), 4 (timeout), 5 (mod load failure), 6 (lock contention), 7 (process conflict), 8 (interrupted). This allows callers (including future CI) to distinguish failure modes programmatically.
+**Rationale**: sysexits.h provides standard exit codes that are self-documenting and CI-friendly. The script uses: 0 (success), 1 (game not found), 2 (SMAPI not found), 3 (Xvfb not available), 4 (timeout), 5 (mod load failure), 6 (lock contention), 7 (process conflict), 9 (missing host tool or runtime dependency), 10 (display conflict), 11 (Steam API prerequisite missing), plus the POSIX `128+N` interruption codes (130 = SIGINT, 143 = SIGTERM). This allows callers (including future CI) to distinguish failure modes programmatically.
+
+> **Superseded 2026-10-19** — this section originally listed `8 (interrupted)`. The round-2 clarification (spec.md Clarifications → "Session 2026-10-19 (checklist review — round 2)") replaced it with the POSIX `128+N` convention, and the environment-verified corrections added codes 9/10/11. The canonical table is `data-model.md` → "Exit Codes (sysexits.h convention)"; FR-007 is the normative source.
 
 **Alternatives Considered**:
 - Binary 0/1 → insufficient for actionable diagnostics
