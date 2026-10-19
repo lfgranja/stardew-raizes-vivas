@@ -33,7 +33,7 @@
 - [x] 2.7 CI pipeline correctly interprets the script's exit codes (non-zero = failure)
 - [x] 2.8 Child command exit codes are propagated (not swallowed or collapsed to 1)
 - [x] 2.9 `set -euo pipefail` is used so pipeline failures are caught
-- [x] 2.10 sysexits.h convention is followed with distinct codes per failure category (1=game, 2=SMAPI, 3=Xvfb, 4=timeout, 5=mod failure, 6=lock, 7=process conflict)
+- [x] 2.10 sysexits.h convention is followed with distinct codes per failure category (1=game, 2=SMAPI, 3=Xvfb/graphics, 4=timeout, 5=mod failure, 6=lock, 7=process conflict, 9=missing dependency, 10=display conflict, 11=Steam prerequisite)
 
 ---
 
@@ -65,6 +65,7 @@
 - [x] 4.8 Comments explain tricky/non-obvious parts (not line-by-line noise)
 - [x] 4.9 Script filename uses lowercase with `.sh` extension
 - [x] 4.10 A `quickstart.md` guide exists with runnable validation scenarios
+- [x] 4.11 `--help` documents the `--mods-path` option, the run-log location, the run ID format, the script `VERSION`, and every exit code (FR-015)
 
 ---
 
@@ -91,19 +92,21 @@
 - [x] 6.3 All variable references are quoted (double quotes for substitution, single quotes for literals)
 - [x] 6.4 Functions use `local` variables (no accidental globals)
 - [ ] 6.5 Script is modular — reusable logic is in sourced library files (out of scope: single-file script per plan)
-- [x] 6.6 Configuration is externalized (CLI args with documented defaults: `--game-path`, `--timeout`, `--grace-period`, `--smapi-log`)
+- [x] 6.6 Configuration is externalized (CLI args with documented defaults: `--game-path`, `--mods-path`, `--timeout`, `--grace-period`, `--smapi-log`, `--force`)
 - [x] 6.7 Structured logging is used (log_info/log_warn/log_error, not bare echo)
 - [x] 6.8 Log messages are timestamped
-- [ ] 6.9 Log messages include run ID / correlation ID for multi-run tracing (out of scope: not required by spec)
-- [x] 6.10 Script is version-controlled in Git with semantic version tags
-- [x] 6.11 `.gitignore` excludes logs, temp files, and .env files
-- [x] 6.12 Cleanup trap removes temp files and releases resources
+- [x] 6.9 Log messages include run ID / correlation ID for multi-run tracing (FR-014 — the run ID `<UTC>-<PID>` is stamped on every run-log line and reported in the summary and in every error message)
+- [x] 6.10 Script is version-controlled in Git, and the script's `VERSION` constant is reported in the run-log header, the stdout summary, and `--help` output (semantic version tags are not yet used by this repo)
+- [x] 6.11 `.gitignore` excludes logs, temp files, and .env files — the run log lives under `$XDG_STATE_HOME` (outside the repository), so it is never tracked
+- [x] 6.12 Cleanup trap removes temp files and releases resources — the run log is written outside the temp directory and survives the cleanup
 - [x] 6.13 Script follows a consistent naming convention (functions, variables, files)
 - [x] 6.14 No SUID/SGID on the script
 - [x] 6.15 `mktemp` is used for temp files (not predictable paths)
 - [x] 6.16 Script anchors paths to its own location: `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"`
 - [x] 6.17 No CRLF line endings (checked with `file script.sh`)
 - [x] 6.18 `printf` is used instead of `echo -e` for escape sequences (portability)
+- [x] 6.19 The verdict goes to stdout and all level-prefixed diagnostics go to stderr; the exit code remains the sole machine-readable signal (FR-013, FR-014)
+- [x] 6.20 The run log directory is created with mode `0700` and one file is written per run, so concurrent runs cannot interleave
 
 ---
 
@@ -130,7 +133,8 @@
 - [x] 8.5 Environmental needs are documented (hardware, software, tools)
 - [x] 8.6 Features NOT tested are explicitly listed (scope boundaries — save check deferred)
 - [x] 8.7 Test items are identified (what specifically is being validated)
-- [x] 8.8 Each test case has: input, execution condition, expected output, actual output, pass/fail — quickstart.md "Test Case Documentation (IEEE 829-style)" (TC-1…TC-8)
+- [x] 8.8 Each test case has: input, execution condition, expected output, actual output, pass/fail — quickstart.md "Test Case Documentation (IEEE 829-style)" (TC-1…TC-14)
+- [x] 8.9 Resumption requirements cover the stale-log and stale-artifact preconditions (quickstart.md R-1…R-9)
 
 ---
 
@@ -151,7 +155,8 @@
 | Secrets in output | Must redact |
 | Script exits 0 on pre-flight failure | Must exit non-zero |
 | No concurrency protection | flock required |
-| No version tracking in output | Include `$VERSION` in logs |
+| No version tracking in output | Include `$VERSION` in logs — now stamped on every run-log line and reported in the summary and `--help` (FR-014) |
+| No run ID for correlation | Generate a run ID (`<UTC>-<PID>`) and stamp it on every log line and error message (FR-014) |
 | Missing escalation path | Troubleshooting guide must have one |
 | `echo -e` for escape sequences | Use `printf` |
 | Relative paths breaking from different CWDs | Anchor to `SCRIPT_DIR` |
