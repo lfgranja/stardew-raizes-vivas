@@ -12,11 +12,13 @@ The script follows a strict lifecycle: pre-flight validation → build & verify 
 
 ## Technical Context
 
-**Language/Version**: Bash 4+ (Linux), with standard POSIX utilities (grep, pgrep, flock, sed, awk) and a Unicode normalizer (`python3`, or `uconv` as fallback) for NFC path normalization and symlink-safe file opens (`O_NOFOLLOW`)
+**Language/Version**: Bash 4+ (Linux), with standard POSIX utilities (grep, sed, awk) and a Unicode normalizer (`python3`, or `uconv` as fallback) for NFC path normalization and symlink-safe file opens (`O_NOFOLLOW`)
 
-**Primary Dependencies**: Stardew Valley game installation, SMAPI 4.5.2 (Stardew Modding API), Xvfb (virtual framebuffer), `python3`/`uconv` (path normalization — pre-flight verified, fails closed), `mesa-utils` (`glxinfo`, `xdpyinfo`) for the graphics probe
+**Primary Dependencies**: Stardew Valley game installation, SMAPI 4.5.2 (Stardew Modding API), Xvfb (virtual framebuffer), `python3`/`uconv` (path normalization — pre-flight verified, fails closed), `mesa-utils` (`glxinfo`, `xdpyinfo`) for the graphics probe, and the **.NET SDK** (`dotnet`) for the pre-run rebuild (FR-016) — the *game* needs no host .NET runtime. The full host-tool set verified by the pre-flight is enumerated in FR-012 item 8: `bash` 4+, `Xvfb`, `xdpyinfo`, `glxinfo`, `python3`/`uconv`, `flock`, `timeout`, `mktemp`, `stat`, `realpath`, `pgrep`/`pidof`, `sha256sum`, `dotnet`.
 
-**Launch Invocation**: `./StardewModdingAPI --no-terminal`, executed with the game installation directory as the working directory. SMAPI 4.x is a **self-contained .NET 6 `linux-x64`** deployment (`libcoreclr.so`, `libhostfxr.so`, `libhostpolicy.so` ship in the game folder), so **no system .NET and no Mono runtime** is required or probed. The launcher must be run in place — a relocated copy aborts with SIGABRT (exit 134).
+**Process-group mechanism**: the game is launched with bash job control (`set -m`) enabled for the launch only, so the game's process-group ID equals its PID and `kill -- -$!` signals exactly that group. No extra dependency (`setsid`) is introduced. Every group signal is preceded by an assertion that the group ID differs from the script's own group ID and from `1` (FR-005).
+
+**Launch Invocation**: `./StardewModdingAPI --no-terminal`, executed with the game installation directory as the working directory. SMAPI 4.x is a **self-contained .NET 6 `linux-x64`** deployment (`libcoreclr.so`, `libhostfxr.so`, `libhostpolicy.so` ship in the game folder), so **no system .NET runtime and no Mono runtime** is required to *launch* the game or probed by the pre-flight. (The .NET **SDK** is a separate requirement: FR-016 rebuilds the mod before each run, so `dotnet` must be on `PATH` — a missing SDK exits `9`.) The launcher must be run in place — a relocated copy aborts with SIGABRT (exit 134), which the FR-007 translation table maps to `2` (SMAPI not functional).
 
 **Storage**: No persistent data model. The script writes exactly one thing: a per-run diagnostic log at `${XDG_STATE_HOME:-$HOME/.local/state}/living-roots-smoke/runs/<run-id>.log` (FR-014).
 
@@ -48,6 +50,11 @@ The script follows a strict lifecycle: pre-flight validation → build & verify 
 | Mods directory | Resolved explicitly via `--mods-path`, default `<game-path>/Mods` (FR-017) |
 | Log freshness | Evaluate only lines after SMAPI's `Log started at {UTC} UTC` sentinel, plus an inode-change assertion (FR-002) |
 | Diagnostic output | Per-run XDG log file with a run ID; verdict on stdout, diagnostics on stderr (FR-014) |
+| Exit-code taxonomy | One distinct code per failure category — sysexits-*style* with bespoke values (1–7, 9–13, 130/143), **not** the `sysexits.h` numbering (which starts at 64); every child status is translated before the script exits (FR-007) |
+| Dependency failures | `9` = a required host tool is **absent**; `3` = the graphics stack is **present but unusable** (FR-012) |
+| Process-group launch | bash job control (`set -m`) for the launch only; mandatory PGID assertion before every group signal (FR-005) |
+| Process identification | `/proc/$PID/exe` restricted to the resolved game path; `pidof` for discovery — never `pgrep -x` on the 17-character apphost (FR-011) |
+| X11 lock cleanup | The script's own display only, and only when the owning PID is dead (FR-010) |
 
 ## Constitution Check
 
@@ -59,7 +66,7 @@ The Living Roots constitution (v2.0.0) defines three quality gates. This feature
 |------|---------------------------|--------|
 | **Gate 1 — Static Checks and Tests Pass** | The script must be syntactically valid (`bash -n`), pass `shellcheck`, and produce correct exit codes for all defined scenarios. | ⏳ Pending implementation — the script does not exist yet |
 | **Gate 2 — Product-Level Quality Bar** | The script must be usable without documentation (clear `--help`, actionable error messages following "What → Where → How to fix" pattern). Must produce deterministic, idempotent results. | ✅ Pass — spec defines clear UX contracts |
-| **Gate 3 — End-to-End Verification** | The script must actually launch the real game with the real mod and detect load success/failure. This is the entire purpose of the feature. | ⏳ **Not satisfied — awaiting execution.** The gate is a runtime gate; it was previously marked passed on the strength of the *specification* alone, which does not satisfy it. It can only be marked passed after a real run against the installed game. Note also that `Xvfb` is not installed on the maintainer's machine, so the first run requires `xorg-x11-server-Xvfb` (or `xvfb`) to be installed first |
+| **Gate 3 — End-to-End Verification** | The script must actually launch the real game with the real mod and detect load success/failure. This is the entire purpose of the feature. | ⏳ **Not satisfied — awaiting execution.** The gate is a runtime gate; it was previously marked passed on the strength of the *specification* alone, which does not satisfy it. It can only be marked passed after a real run against the installed game. Note also that `Xvfb` is not installed on the maintainer's machine, so the first run requires `xorg-x11-server-Xvfb` (or `xvfb`) to be installed first — until it is, the pre-flight fails closed with exit code `9` (missing host tool) |
 
 **Constitutional Principles Compliance**:
 
