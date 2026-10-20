@@ -13,7 +13,13 @@ pre-commit:
       # passed as arguments and never parsed. Measured: `bash -n good.sh bad.sh`
       # exits 0 even when bad.sh has a syntax error. The loop below parses every
       # staged file individually.
-      glob: "scripts/*.sh"
+      #
+      # The glob covers the feature script AND the test suite
+      # (`scripts/tests/**/*.sh`), so a broken test file is caught at commit time
+      # just like a broken script.
+      glob: |
+        scripts/*.sh
+        scripts/tests/**/*.sh
       run: |
         for f in {staged_files}; do
           bash -n "$f" || exit 1
@@ -27,7 +33,9 @@ pre-commit:
       # shellcheck is not installed on every machine (it is absent on the
       # maintainer's host), and a missing binary would abort the commit. The
       # step is skipped with a warning in that case rather than failing.
-      glob: "scripts/*.sh"
+      glob: |
+        scripts/*.sh
+        scripts/tests/**/*.sh
       run: |
         if ! command -v shellcheck >/dev/null 2>&1; then
           echo "⚠️ shellcheck not installed — skipping the static shell lint gate"
