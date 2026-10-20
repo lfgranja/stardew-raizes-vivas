@@ -25,7 +25,7 @@ The smoke validation script has no persistent data model of its own — it reads
 
 **Mod Identification**: The mod's manifest name is `Stardew Valley - Living Roots`. The script filters log entries by this name in the source column to isolate mod-specific messages.
 
-**Run boundary (MUST)**: Every log begins with the per-run sentinel `Log started at {UTC timestamp} UTC`. Only lines **after** that sentinel belong to the current run; all success/failure signals are evaluated against those lines only. SMAPI unlinks and recreates `SMAPI-latest.txt` at startup (new inode) rather than truncating it.
+**Run boundary (MUST)**: Every log begins with the per-run sentinel `Log started at {UTC timestamp} UTC`. Only lines **after** that sentinel belong to the current run; all success/failure signals are evaluated against those lines only. SMAPI **unlinks and recreates** `SMAPI-latest.txt` at startup (new inode): the `SCore` constructor calls `PurgeNormalLogs()` (`SCore.cs:2560`), which deletes every `SMAPI-*` file in the log directory **except** `SMAPI-crash.txt` (`SCore.cs:2573`), and only then does `LogFileManager` create the new file. The sentinel is a **TRACE**-level record with source `SMAPI` (`Monitor.Log` defaults to `LogLevel.Trace`).
 
 **Per-line timestamps**: `HH:mm:ss` in **local** time with no date — they MUST NOT be used to identify a run.
 
@@ -89,7 +89,9 @@ The smoke validation script has no persistent data model of its own — it reads
 | Field | Type | Description |
 |-------|------|-------------|
 | `game_pid` | integer | PID of the launched Stardew Valley process |
+| `game_pgid` | integer | Process-group ID of the launched game — equals the game's PID because the launch is performed under `set -m` (FR-005) |
 | `xvfb_pid` | integer | PID of the Xvfb process |
+| `xvfb_pgid` | integer | Process-group ID of the launched Xvfb — equals its PID because the launch is performed under `set -m` (FR-005) |
 | `display_num` | string | X11 display number **reported by the server** via `Xvfb -displayfd` (not chosen by the script) |
 | `lock_fd` | integer | File descriptor for flock lock |
 | `lock_path` | string | Stable per-user lock file path (`${XDG_RUNTIME_DIR}/livingroots-smoke.lock`, or the `${XDG_STATE_HOME}` fallback) |
