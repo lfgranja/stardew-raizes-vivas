@@ -88,7 +88,7 @@
 - [x] 6.7 SIGKILL usage is logged (indicates graceful shutdown failed — potential data corruption risk)
 - [x] 6.8 `timeout --signal=TERM --kill-after=30s` is used as a safety net for unresponsive processes
 - [x] 6.9 Mod-specific save triggers that must be invoked before termination are documented
-- [x] 6.10 An X11 lock file owned by a **live** process is never removed — the run aborts with exit code `10` instead; only a lock whose owning PID is dead is treated as stale and reclaimed (mirrors xorg-server's `LockServer()` ESRCH/EPERM semantics)
+- [x] 6.10 An X11 lock file owned by a **live** process is never removed — the run aborts with exit code `10` instead; only a lock whose owning PID is dead is treated as stale and reclaimed (mirrors xorg-server's `LockServer()` ESRCH/EPERM semantics — verified against xorg-server 21.1.24 `os/utils.c`: `kill(l_pid, 0)` returning `ESRCH` means stale and the lock is unlinked, while `EPERM` or success means live and the server refuses to start leaving the lock intact; FR-012 item 5 now also pins the lock file's fixed 11-byte `"%10lu\n"` format, whose leading-space padding MUST be stripped, and treats a non-11-byte lock as bogus/stale)
 
 ---
 
