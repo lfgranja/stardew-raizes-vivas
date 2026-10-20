@@ -6,26 +6,38 @@
 
 ## COMPLETION SUMMARY
 
-### Checklist review round 5 (2026-10-19) — DONE
-- 4 checklists with unchecked items reviewed by 4 parallel review agents; 6 background
-  research agents gathered external evidence.
-- **Result: 344/344 → 360/360 checkbox items passing across all 5 checklists**
-  (operational-readiness 92/92 · requirements 16/16 · script-reliability 88/88 ·
-  security-safety 82/82 · smapi-integration 82/82).
-- 9 atomic commits (`feat/fix/docs: … — <file> — <why>`), format gate green.
+### Checklist review round 7 (2026-10-19) — AWAITING USER BATCH
+- All 5 checklists re-verified against the current artifacts by **5 parallel review agents**;
+  **8 external research agents** gathered evidence (bash trap/process-group semantics,
+  lockfile design, exit-code taxonomy, TOCTOU/file-safety, headless graphics probing,
+  IEEE 829 → ISO/IEC/IEEE 29119, CLI output & error-message design, artifact identity &
+  reproducible builds).
+- **Result: 360/360 → 317/361 items passing** (operational-readiness 81/92 ·
+  requirements 12/16 · script-reliability 78/89 · security-safety 72/82 ·
+  smapi-integration 74/82). **44 items unchecked**, collapsing into **10 decision clusters**
+  now presented to the user as a batch.
+- 8 atomic commits (`fix/docs: … — <file> — <why>`), format gate green.
 
-### Evidence-resolved corrections applied
-- **Bash trap semantics** (measured on bash 5.3.9): an inherited `EXIT` trap does **not**
-  fire in command substitution / `( )` / background jobs / pipeline stages / functions-in-
-  subshells — only the parent fires it, once. FR-005 now states the single-trap rule.
-- `research.md` §5 still listed the superseded `8 (interrupted)` code → corrected to FR-007.
-- `smapi-integration` 1.3 → `SMAPI_DEVELOPER_MODE` gates console verbosity only.
-- `operational-readiness` 2.8 → now states the `timeout` 124→4 translation exception.
-- `security-safety` Anti-Patterns row 9 + item 9.4 → aligned with the minimal Xvfb posture
-  (spec.md:177). Residual risk recorded in spec.md Assumptions.
-- FR-012 item 5 → pinned the X11 lock file's 11-byte `"%10lu\n"` format and the
-  ESRCH/EPERM liveness test (xorg-server 21.1.24 `os/utils.c`).
-- `spec.md` interruption clarification → `BashFAQ/062` corrected to `BashFAQ/047`.
+### Round-7 evidence-resolved corrections (no decision needed) — applied
+- **SMAPI log format**: level field padded to **5** (not 8) + one separator space; there is
+  **no `[ERROR]` token** — the level lives inside the bracket group and must be matched as a
+  column. FR-003, `data-model.md`, `research.md` corrected.
+- **Crash marker**: SMAPI's blocking `Console.ReadKey()` is gated by
+  `smapi-internal/StardewModdingAPI.crash.marker`, **not** by `SMAPI-crash.txt` (which is
+  only a log copy). FR-002 now requires removing the marker.
+- **Relocated apphost** exits **154** (no dll) / **131** (no runtime) / **137** (no CoreCLR) —
+  never 134. FR-001's rationale about SMAPI's path resolution was wrong and is corrected.
+- **`SMAPI_USE_CURRENT_SHELL` does not exist** in SMAPI 4.5.2 (only `SMAPI_NO_TERMINAL`,
+  `SMAPI_MODS_PATH`, `SMAPI_DEVELOPER_MODE`).
+- **`Mods go here:` is `~`-anonymised**; the version banner and that line precede the
+  `Log started at` sentinel.
+- **Sentinel** = `Log started at <UtcNow:s> UTC` — no offset, so the `T0` comparison must
+  treat it as UTC; the inode baseline must be captured **before** the stale log is removed.
+- **Trap design pinned**: reset-and-re-raise (`trap - SIG; kill -SIG $$`), `trap '' INT TERM`
+  **prohibited**, `wait -f`, children with `</dev/null`.
+- **Lock file pinned**: stable per-user XDG path, `exec 9<>` (never `>`), never removed.
+- `Fix:` (not `hint:`) is the trailing remediation key; `research.md`'s four stale claims
+  (`DEVELOPER_MODE`, `pgrep`, `BashFAQ/062`, "mod's own data folder") corrected.
 
 ### BLOCKED — awaiting implementation
 - The script itself does not exist yet (`scripts/smoke-validation.sh`).
@@ -46,6 +58,11 @@
    `pgrep -x` is non-functional for the 17-char apphost — use `pidof`.
 
 ## Notes
+- **Round-7 side effect**: two review agents ran `dotnet build`, which re-deployed
+  `LivingRoots.dll` into `~/.steam/.../Mods/LivingRoots/` (mtime 21:01 and 21:21). The
+  repository working tree is unaffected (`LivingRoots/bin/` is gitignored). The deployed
+  copy is now the current build, which is *not* the state the spec's stale-artifact
+  scenario assumes.
 - Working tree also contains pre-existing changes not made by this session:
   `.specify/bugs/protected-paths-script-missing/test.md` (modified) and
   `.specify/assessments/automate-ingame-testing/` (untracked). Do not commit those here.
