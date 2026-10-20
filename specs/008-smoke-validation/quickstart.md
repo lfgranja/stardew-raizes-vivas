@@ -79,26 +79,66 @@ The success verdict is derived from SMAPI's own `Loaded N mods:` / `Skipped mods
 
 ## Validation Scenarios
 
-### Test Case Documentation (IEEE 829-style)
+### Test Case Specification (ISO/IEC/IEEE 29119-3-inspired)
+
+> **Conformance statement.** Structured after **ISO/IEC/IEEE 29119-3:2021** (*Software testing — Part 3: Test documentation*), which superseded **IEEE 829-2008** (IEEE lists 829-2008 as a *"Superseded Standard"*). The section naming follows IEEE 829-2008 §9.2, which 29119-3 Annex S maps to 29119-3 §6.2. We claim **tailored** conformance per 29119-3 §4.1.3: the Test Plan (test strategy), Test Case Specification, Test Procedure Specification and Test Execution Log information items are implemented; the remaining Annex A items are out of scope for a single-script smoke test. The justification for that tailoring is recorded in *Test Scope — Features Not Tested* below.
 
 Each scenario below is a test case with a fixed input, a fixed execution condition, and a defined expected output. **Actual output** and **Pass/Fail** are recorded at run time by the person executing the script (fill them in when the run happens, and keep them with the escalation evidence bundle).
 
-| # | Test item | Input | Execution condition | Expected output | Actual output | Pass/Fail |
-|---|-----------|-------|---------------------|-----------------|---------------|-----------|
-| TC-1 | Mod loads successfully | Default install paths, mod deployed, no save loaded | Script run with no arguments; game launch to log check within 120s | Exit `0`; `SUCCESS: Mod loaded without errors.`; the mod appears in SMAPI's `Loaded N mods:` block; game and Xvfb terminated; no orphaned processes | _(record)_ | ☐ Pass ☐ Fail |
-| TC-2 | Mod load-time error | Mod build with a failing `ModEntry.Entry()` | Script run with no arguments | Exit `5`; failure message with "What → Where → How to fix" and SMAPI log context | _(record)_ | ☐ Pass ☐ Fail |
-| TC-3 | Game not installed | `--game-path` pointing at a non-existent directory | Script run with `--game-path <missing>` | Exit `1`; actionable pre-flight error naming the missing path | _(record)_ | ☐ Pass ☐ Fail |
-| TC-4 | Game already running | An existing Stardew Valley/SMAPI process | Script run **without** `--force` | Exit `7`; error listing the conflicting PIDs | _(record)_ | ☐ Pass ☐ Fail |
-| TC-5 | Concurrent execution prevention | A second instance already holds the lock | Second script instance started while the first is running | Exit `6`; lock contention error; second instance exits immediately | _(record)_ | ☐ Pass ☐ Fail |
-| TC-6 | Timeout | Game that does not produce the SMAPI log | Script run with `--timeout 30`; no log produced within 30s | Exit `4`; timeout error with the log path and the `--timeout` hint | _(record)_ | ☐ Pass ☐ Fail |
-| TC-7 | Interruption | Script in its wait/poll phase | User presses Ctrl+C (SIGINT) | Exit `130`; cleanup ran (game killed, Xvfb killed, the script's own display locks removed, temp files cleaned) | _(record)_ | ☐ Pass ☐ Fail |
-| TC-8 | Pre-flight dependency missing | Environment without `python3`/`uconv` | Script run with the normalizer removed from `PATH` | Exit `9`; pre-flight error naming the missing normalizer and the fix | _(record)_ | ☐ Pass ☐ Fail |
-| TC-9 | Stale deployed artifact | The deployed `LivingRoots.dll` in the mods directory differs from a fresh build | Replace the deployed assembly with an older copy, then run the script | Exit `12` **before** the game launches; message names both SHA-256 digests | _(record)_ | ☐ Pass ☐ Fail |
-| TC-10 | Stale log cannot produce a false pass | A previous run left an `SMAPI-latest.txt` containing the mod's success marker | Seed a stale log, then run the script against a mod that fails to load | Exit `5` (not `0`); the stale marker is ignored because it precedes the current run's `Log started at` sentinel | _(record)_ | ☐ Pass ☐ Fail |
-| TC-11 | Mod skipped by SMAPI | Installed SMAPI older than the mod's `MinimumApiVersion` | Run the script with an incompatible SMAPI version | Exit `5`; report states SMAPI's skip reason ("needs SMAPI X or later") | _(record)_ | ☐ Pass ☐ Fail |
-| TC-12 | Game exits cleanly without a log | SMAPI re-asserts its dependency manifest after a game update | Run the script with a stale `StardewModdingAPI.deps.json` | Exit non-zero (not `0`); message explains the relaunch requirement | _(record)_ | ☐ Pass ☐ Fail |
-| TC-13 | Graphics environment unusable | `glxinfo` reports no software renderer under Xvfb | Run the script with Mesa software rendering disabled | Exit `3`; error names the missing software renderer and the fix | _(record)_ | ☐ Pass ☐ Fail |
-| TC-14 | Mods directory override | A mods directory other than `<game-path>/Mods` | Run the script with `--mods-path <dir>` containing the mod | SMAPI receives the resolved directory (`Mods go here: <path>` in the log matches); verdict computed from that directory's mod | _(record)_ | ☐ Pass ☐ Fail |
+#### Test Scope — Features Not Tested
+
+Identifies the features that are **excluded from testing**, and the rationale for each exclusion (29119-3 §6.2.4.3).
+
+| Feature / area excluded | Rationale for exclusion | Where it is covered instead |
+|------------------------|------------------------|------------------------------|
+| Save-data persistence (the mod's JSON sidecars under SMAPI's mod-data directory) | Deferred — the automated script cannot load a save (SMAPI has no CLI save selection; the mod is purely reactive). The title screen is the expected state (FR-004) | Manual play-through; spec 005 / the deferred US2 scenarios |
+| Gameplay behaviour, soil-health simulation, composting bin state | Out of scope for a **load** smoke test — this feature validates that the mod *loads* in the real game without errors, not that its mechanics are correct | Manual play-through (Gate 2/3) |
+| Multiplayer | Deferred (roadmap D1) | Not currently planned |
+| Non-functional quality attributes (performance, usability, accessibility) | A smoke test does not exercise them | Not currently planned |
+| The Steam client itself | Not required — the game ships `steam_appid.txt` (`413150`); Steam only disables achievements, which SMAPI logs from **core** (outside the mod-scoped gate) | n/a — explicitly out of scope |
+| CI integration, `--json` machine-parseable output | Deferred by FR-013 (local-first) | n/a — explicitly out of scope |
+| Container / PID-1 signal semantics | Not a container entrypoint; no Dockerfile exists (round-2 clarification) | n/a — explicitly out of scope |
+
+#### Test Items and Their Identifiers
+
+The items under test, with their version/revision level (IEEE 829-2008 §9.2.1 → 29119-3 §6.2.4.2).
+
+| Test item | Identifier / version |
+|-----------|----------------------|
+| Smoke validation script | `scripts/smoke-validation.sh`, `$VERSION` (reported in the run-log header, the stdout summary and `--help`) |
+| Living Roots mod | `lfgranja.LivingRoots`, manifest `Version` `0.0.1`, git commit SHA (recorded in the escalation bundle) |
+| SMAPI | version parsed from the log banner `SMAPI <ver> with Stardew Valley <ver> on <os>` |
+| Stardew Valley | game assembly version (recorded in the same banner) |
+| Host graphics stack | `Xvfb` version + the Mesa software renderer reported by `glxinfo -B` |
+
+#### Item Pass/Fail Criteria
+
+The aggregate criterion for the smoke test as a whole, defined **before** the run (IEEE 829-2008 §9.2.6 → 29119-3 §6.2.7.4):
+
+> The smoke test **PASSES** iff the script's exit code is `0` **and** the run log contains no Error/Alert entry attributable to the mod **and** no orphaned game, Xvfb or lock resource remains after cleanup. It **FAILS** otherwise, with the exit code from the FR-007 taxonomy identifying the failure class. An individual run never *suspends* — it fails with a code; suspension is a campaign-level decision (see *Suspension Criteria*).
+
+#### Test Oracle
+
+The **oracle** for every test case is the FR-007 exit-code contract (`data-model.md` → *Exit Codes*), plus, where the case concerns log content, the current run's `Log started at {UTC} UTC` sentinel. A test case **passes** iff the actual exit code equals the expected exit code **and** the named log predicate holds.
+
+| # | Test item / feature | Objective | Priority | Traceability | Input | Execution condition | Expected output | Actual output | Pass/Fail |
+|---|-----------|-----------|----------|---------------|-------|---------------------|-----------------|---------------|-----------|
+| TC-1 | Mod loads successfully | Verify the mod resolves and loads in the real game with no errors | Must | FR-006, SC-002 | Default install paths, mod deployed, no save loaded | Script run with no arguments; game launch to log check within 120s | Exit `0`; `SUCCESS: Mod loaded without errors.`; the mod appears in SMAPI's `Loaded N mods:` block; game and Xvfb terminated; no orphaned processes | _(record)_ | ☐ Pass ☐ Fail |
+| TC-2 | Mod load-time error | Verify a mod-scoped Error entry fails the run and is reported | Must | FR-003, FR-006, SC-003 | Mod build with a failing `ModEntry.Entry()` | Script run with no arguments | Exit `5`; failure message with "What → Where → How to fix" and SMAPI log context | _(record)_ | ☐ Pass ☐ Fail |
+| TC-3 | Game not installed | Verify the pre-flight fails closed on a missing game install | Must | FR-007, FR-012, SC-009 | `--game-path` pointing at a non-existent directory | Script run with `--game-path <missing>` | Exit `1`; actionable pre-flight error naming the missing path | _(record)_ | ☐ Pass ☐ Fail |
+| TC-4 | Game already running | Verify an existing game instance is detected and not clobbered | Must | FR-011, SC-007 | An existing Stardew Valley/SMAPI process | Script run **without** `--force` | Exit `7`; error listing the conflicting PIDs | _(record)_ | ☐ Pass ☐ Fail |
+| TC-5 | Concurrent execution prevention | Verify a second instance cannot run concurrently | Must | FR-002, SC-008 | A second instance already holds the lock | Second script instance started while the first is running | Exit `6`; lock contention error; second instance exits immediately | _(record)_ | ☐ Pass ☐ Fail |
+| TC-6 | Timeout | Verify the configurable timeout is honoured | Must | FR-009, SC-001 | Game that does not produce the SMAPI log | Script run with `--timeout 30`; no log produced within 30s | Exit `4`; timeout error with the log path and the `--timeout` hint | _(record)_ | ☐ Pass ☐ Fail |
+| TC-7 | Interruption | Verify cleanup runs and the exit status is the POSIX signal status | Must | FR-005, FR-010, SC-010 | Script in its wait/poll phase | User presses Ctrl+C (SIGINT) | Exit `130`; cleanup ran (game killed, Xvfb killed, the script's own display locks removed, temp files cleaned) | _(record)_ | ☐ Pass ☐ Fail |
+| TC-8 | Pre-flight dependency missing | Verify the pre-flight fails closed when a required host tool is absent | Must | FR-012 items 7–8, SC-009 | Environment without `python3`/`uconv` | Script run with the normalizer removed from `PATH` | Exit `9`; pre-flight error naming the missing normalizer and the fix | _(record)_ | ☐ Pass ☐ Fail |
+| TC-9 | Stale deployed artifact | Verify the deployed assembly is the one the current build produces | Must | FR-016, SC-012 | The deployed `LivingRoots.dll` in the mods directory differs from a fresh build | Replace the deployed assembly with an older copy, then run the script | Exit `12` **before** the game launches; message names both SHA-256 digests | _(record)_ | ☐ Pass ☐ Fail |
+| TC-10 | Stale log cannot produce a false pass | Verify a stale success marker cannot make the run pass | Must | FR-002, SC-011 | A previous run left an `SMAPI-latest.txt` containing the mod's success marker | Seed a stale log, then run the script against a mod that fails to load | Exit `5` (not `0`); the stale marker is ignored because it precedes the current run's `Log started at` sentinel | _(record)_ | ☐ Pass ☐ Fail |
+| TC-11 | Mod skipped by SMAPI | Verify a SMAPI skip is reported as a mod-load failure with SMAPI's reason | Must | FR-003, FR-006, SC-013 | Installed SMAPI older than the mod's `MinimumApiVersion` | Run the script with an incompatible SMAPI version | Exit `5`; report states SMAPI's skip reason ("needs SMAPI X or later") | _(record)_ | ☐ Pass ☐ Fail |
+| TC-12 | SMAPI exits without producing a log | Verify a clean SMAPI exit that produced no log is a failure, not a success | Must | FR-002, FR-007 | A stale `StardewModdingAPI.deps.json` makes SMAPI re-assert its dependency manifest and exit before the game starts | Run the script against a SMAPI whose dependency manifest is stale | Exit non-zero (the code is settled in the round-7 clarification); the message explains the relaunch requirement and names the stale dependency manifest | _(record)_ | ☐ Pass ☐ Fail |
+| TC-13 | Graphics environment unusable | Verify a present-but-unusable graphics stack is distinguished from a missing one | Must | FR-012 item 4, FR-007 | `glxinfo` reports no software renderer under Xvfb | Run the script with Mesa software rendering disabled | Exit `3`; error names the missing software renderer and the fix | _(record)_ | ☐ Pass ☐ Fail |
+| TC-14 | Mods directory override | Verify the resolved mods directory is the one SMAPI uses | Must | FR-017 | A mods directory other than `<game-path>/Mods` | Run the script with `--mods-path <dir>` containing the mod | SMAPI receives the resolved directory (the `Mods go here:` line in the log matches the resolved path after applying SMAPI's `~`-anonymisation); verdict computed from that directory's mod | _(record)_ | ☐ Pass ☐ Fail |
+
+**Execution order**: TC-1 → TC-2 → … → TC-14 (29119-3 §8.4.6 *Ordered test cases*). A failure in one case does **not** skip the independent cases that follow; TC-1 is always run first because it is the canary for the environment.
 
 ### Scenario 1: Mod Loads Successfully
 
@@ -298,6 +338,20 @@ Repro:         <steps>
 
 ---
 
+## Suspension Criteria
+
+Suspension is a **campaign-level** decision, not a per-run state: an individual run always terminates with an exit code from the FR-007 taxonomy, and it is the *sequence of runs* that may be suspended (IEEE 829-2008 §9.2.7 → ISO/IEC/IEEE 29119-3 §6.2.7.9 → ISO/IEC/IEEE 29119-2 §8.4.4 NOTE 1).
+
+| # | Suspension criterion | Who may suspend / resume | What is recorded |
+|---|----------------------|--------------------------|-----------------|
+| S-1 | The same failure class fails **three consecutive times** with an identical exit code | The L1 maintainer (repo owner) | A `SUSPENDED` entry in the escalation bundle: timestamp, the three run IDs, the exit code and its category |
+| S-2 | The host environment changed mid-campaign (game patch, SMAPI upgrade, Mesa/`glxinfo` change, .NET SDK change) | The L1 maintainer | The `SUSPENDED` entry above plus what changed |
+| S-3 | The run cannot be completed because of an external cause (the game install is mid-update, the disk is full) | The L1 maintainer | The `SUSPENDED` entry above plus the external cause |
+
+**Authority**: only the L1 maintainer may suspend or resume a campaign. An individual run never suspends — it fails with a code. Resumption requires every precondition in *Resumption Requirements* below to hold.
+
+---
+
 ## Resumption Requirements
 
 A run that ended in failure (or was interrupted) can be re-run without manual repair **once all of the following are true**. If any precondition is false, the re-run will fail in the same way and is not worth attempting until it is fixed.
@@ -314,6 +368,15 @@ A run that ended in failure (or was interrupted) can be re-run without manual re
 | R-8 | No stale SMAPI log can be mistaken for this run's | The pre-flight removes `SMAPI-latest.txt`; the script also requires the current run's `Log started at {UTC} UTC` sentinel | The sentinel's timestamp is not older than the run's launch timestamp |
 
 **Rule:** the script is idempotent (FR-008) — a re-run under the same conditions produces the same verdict. If a re-run produces a *different* verdict than the previous run with identical inputs, one of the preconditions above was violated.
+
+### Activities to Be Repeated on Resumption
+
+On resumption the run restarts at the appropriate task (ISO/IEC/IEEE 29119-2 §8.4.4 NOTE 1). Concretely:
+
+1. **TC-1 (mod loads successfully) is always re-run first**, as the canary for the environment.
+2. **Any test case whose verdict depended on the condition that caused the suspension MUST be re-run.**
+3. **Test cases that passed before the suspension are NOT re-run** — as little as possible of the testing already done should be repeated at resumption, based on a risk assessment (ISO/IEC/IEEE 29119-3 Annex worked example §5.7). A case may be marked "not re-run" only when its expected result is provably independent of the resolved condition.
+4. At resumption of a suspended test procedure, **the affected test procedure must be repeated**.
 
 ---
 
