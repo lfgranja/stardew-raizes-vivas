@@ -17,7 +17,9 @@ The smoke validation script has no persistent data model of its own — it reads
 
 **Location**: `~/.config/StardewValley/ErrorLogs/SMAPI-latest.txt` (Linux)
 
-**Format**: `[HH:mm:ss LEVEL     SOURCE] message` — the level field is padded to 8 characters, the source column carries the mod's manifest name for mod-originated entries, and lines are **CRLF-terminated**. Matching MUST be substring-based (`grep -F`), with any trailing carriage return stripped before an exact comparison.
+**Format**: `[HH:mm:ss LEVEL SOURCE] message` — the level field is padded to **5** characters (SMAPI renders it with `PadRight(Monitor.MaxLevelLength)`; `MaxLevelLength` is the length of the longest public `LogLevel` name — `Trace`/`Debug`/`Error`/`Alert` = 5) followed by a single separator space, the source column carries the mod's manifest name for mod-originated entries, and lines are **CRLF-terminated**. Matching MUST be substring-based (`grep -F`), with any trailing carriage return stripped before an exact comparison.
+
+> **Corrected 2026-10-19 (round 7).** The earlier "padded to 8 characters" was factually wrong and contradicted the worked examples below. The level lives **inside** the bracket group — there is no `[ERROR]` token — so Error/Alert entries MUST be matched on the **level column**, never as a literal `[ERROR]` substring. Verified against the installed SMAPI 4.5.2 binary and upstream `src/SMAPI/Framework/Monitor.cs`.
 
 **Levels** (6): `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `ALERT`
 
@@ -31,16 +33,18 @@ The smoke validation script has no persistent data model of its own — it reads
 
 | Signal | Meaning |
 |--------|---------|
-| `SMAPI <ver> with Stardew Valley <ver> on <os>` | Version banner — the installed SMAPI version |
-| `Mods go here: <path>` | The mods directory SMAPI actually resolved |
-| `Loaded N mods:` + `   <Name> <Version> by <Author>` | Mods SMAPI loaded — the mod MUST appear here |
-| `Skipped mods` + `   - <Name> <Version> because <reason>` | Mods SMAPI skipped — the mod MUST NOT appear here |
+| `SMAPI <ver> with Stardew Valley <ver> on <os>` | Version banner — the installed SMAPI version. **Written before the run sentinel** (see below) |
+| `Mods go here: <path>` | The mods directory SMAPI actually resolved. **Written before the run sentinel**, and the path is **tilde-anonymised** (`$HOME` → `~`) by `PathUtilities.AnonymizePathForDisplay` — a literal comparison against an absolute resolved path fails |
+| `Loaded N mods:` + `   <Name> <Version> by <Author>` (optionally ` \| <Description>`) | Mods SMAPI loaded — the mod MUST appear here. With zero mods SMAPI writes `Loaded 0 mods.` (period, not colon) |
+| `Skipped mods` + `      - <Name> <Version> because <reason>` | Mods SMAPI skipped — the mod MUST NOT appear here. The section header and its entries are logged by **SMAPI core** at Error level, so they are outside the mod-scoped gate |
 
 **Mod success marker (reported, not gating)**: `The 'Stardew Valley - Living Roots' mod was loaded successfully!` (Info level). Emitted **by the mod**, not by SMAPI, from its `GameLaunched` handler (`ModController.cs:959`) — it therefore appears only after the game reaches the title screen, which requires a working graphics device.
 
 **Failure Markers**: Error and Alert level entries attributable to the mod. Absence of the mod from the `Loaded N mods:` block (or its presence in `Skipped mods`) also indicates failure.
 
-**Crash Override**: `SMAPI-crash.txt` (if present) overrides `SMAPI-latest.txt` and indicates failure. It is removed pre-launch because SMAPI's handling of a leftover crash marker performs a blocking `Console.ReadKey()` that can hang a headless launch.
+**Crash Override**: `SMAPI-crash.txt` (if present) overrides `SMAPI-latest.txt` and indicates failure. It is a **copy of the log**, written at the moment of the crash.
+
+> **Corrected 2026-10-19 (round 7) — the blocking-read trigger is the MARKER, not the crash log.** SMAPI's `LogManager.HandleMarkerFiles()` gates its blocking `Console.ReadKey()` on `smapi-internal/StardewModdingAPI.crash.marker` (and, for beta/update flows, `smapi-internal/StardewModdingAPI.update.marker`). `Constants.FatalCrashLog` (`SMAPI-crash.txt`) is only a copy of the log file. Verified against the installed SMAPI 4.5.2 binary — the three literals `SMAPI-crash.txt`, `StardewModdingAPI.crash.marker` and `StardewModdingAPI.update.marker` are all present. Removing **only** `SMAPI-crash.txt` leaves the marker in place, so the headless launch still blocks on the keypress read. See the round-7 clarification for which files the pre-flight must remove.
 
 **Example Entry**:
 ```
