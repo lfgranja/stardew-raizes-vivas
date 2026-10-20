@@ -75,7 +75,7 @@
 1. Resolve the save root once: prefer `STARDew`/SMAPI env or default `~/.config/StardewValley/Saves`; canonicalize with `realpath`.
 2. For any save path input, canonicalize and require it to be `${saveRoot}/<name>` (prefix check) with `<name>` matching `^[A-Za-z0-9_-]+$` (already 5.4).
 3. Reject symlinks in the save path (checklist 8.6) and verify ownership (8.7).
-4. If `--save`/save name is not provided, skip save-data checks (P2 per spec 008 termination decision) and label them `SKIPPED:` (operational-readiness 1.10).
+4. The save-data check is deferred and has no CLI surface in this release — the script never loads a save, so there is no `--save` option to omit (the P2 save check is deferred per the spec 008 termination decision). When and if it is implemented, an absent save name must skip the save-data checks and label them `SKIPPED:` (operational-readiness 1.10).
 5. Never trust a save path supplied via environment without the same canonicalization + prefix + normalization pipeline (1.3/1.5/1.6).
 
 **Autonomous**: Yes (with a configurable save-root override for non-default installs, validated the same way).

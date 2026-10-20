@@ -7,9 +7,11 @@
 
 ## 1. SMAPI Automation Environment Variables
 
-**Decision**: Use `SMAPI_NO_TERMINAL=true`, `SMAPI_USE_CURRENT_SHELL=true`, `SMAPI_DEVELOPER_MODE=true`
+**Decision**: Use `SMAPI_NO_TERMINAL=true` and `SMAPI_DEVELOPER_MODE=true`.
 
-**Rationale**: SMAPI's official documentation defines three environment variables for headless/automated operation. `SMAPI_NO_TERMINAL=true` prevents SMAPI from allocating a terminal (essential for headless). `SMAPI_USE_CURRENT_SHELL=true` prevents SMAPI from spawning a new shell (ensures the game process is a direct child of the script). `SMAPI_DEVELOPER_MODE=true` enables TRACE-level logging, which captures DI wiring failures and exception details that are otherwise invisible.
+**Rationale**: `SMAPI_NO_TERMINAL=true` prevents SMAPI from allocating a terminal (essential for headless) and is equivalent to the `--no-terminal` launch flag. `SMAPI_DEVELOPER_MODE=true` gates **console** verbosity only — SMAPI writes TRACE-level entries to the log file unconditionally, so it is not required to capture them; it is retained because it makes the launch console output usable for debugging.
+
+> **Corrected 2026-10-19 (round 7) — `SMAPI_USE_CURRENT_SHELL` does not exist in SMAPI 4.5.2.** Verified against the installed binary: the only `SMAPI_*` string literals in `StardewModdingAPI.dll` are `SMAPI_NO_TERMINAL`, `SMAPI_MODS_PATH` and `SMAPI_DEVELOPER_MODE`; upstream `src/SMAPI/Program.cs` reads exactly those three. `SMAPI_USE_CURRENT_SHELL` is read **only** by SMAPI's installer wrapper (`src/SMAPI.Installer/assets/unix-launcher.sh`), which this design bypasses by launching the apphost directly — so it is a no-op here. The earlier rationale ("prevents SMAPI from spawning a new shell, ensuring the game process is a direct child of the script") was also wrong: SMAPI 4 runs the game **in-process** (`SCore.RunInteractively()`), so there is no shell to avoid, and the script's `&`-spawned PID *is* the game PID — which is exactly what FR-005's `set -m` process-group design assumes. See the round-7 clarification for whether FR-001/FR-015 should drop the variable.
 
 **Alternatives Considered**:
 - Running without env vars → SMAPI hangs waiting for terminal input
@@ -31,7 +33,7 @@
 - `Xvfb &` without readiness check → race condition where game launches before X server is ready
 - Persistent Xvfb service → requires systemd/root; not portable to maintainer machines
 
-**Source**: Debian bug #1095028 (xvfb-run 26-40% failure rate in cc-ci); BashFAQ/062 (resource cleanup patterns); Politowski et al. 2022 (mc-runtime-test ephemeral pattern)
+**Source**: Debian bug #1095028 (xvfb-run 26-40% failure rate in cc-ci); BashFAQ/047 (trapping signals in a shell script); Politowski et al. 2022 (mc-runtime-test ephemeral pattern)
 
 ---
 
@@ -39,7 +41,9 @@
 
 **Decision**: Parse `~/.config/StardewValley/ErrorLogs/SMAPI-latest.txt` for mod-specific entries
 
-**Rationale**: SMAPI writes structured log entries in `[HH:mm:ss LEVEL     SOURCE] message` format — the level field is padded to 8 characters and lines are CRLF-terminated, so matching must be substring-based with the trailing `\r` stripped. The mod's manifest name is "Stardew Valley - Living Roots" (from `manifest.json`). The script filters entries by this manifest name to distinguish mod-specific messages from SMAPI core or other mods.
+**Rationale**: SMAPI writes structured log entries in `[HH:mm:ss LEVEL SOURCE] message` format — the level field is padded to **5** characters, not 8: SMAPI's `Monitor.MaxLevelLength` is the length of the longest public `LogLevel` name (`Trace`/`Debug`/`Error`/`Alert` = 5), and the level is rendered with `PadRight(5)` followed by a single separator space. Lines are CRLF-terminated, so matching must be substring-based with the trailing `\r` stripped. A real mod-scoped line therefore reads `[14:32:02 ERROR Stardew Valley - Living Roots] …`. The mod's manifest name is "Stardew Valley - Living Roots" (from `manifest.json`). The script filters entries by this manifest name to distinguish mod-specific messages from SMAPI core or other mods.
+
+> **Corrected 2026-10-19 (round 7).** The earlier "level field is padded to 8 characters" was factually wrong and contradicted the worked examples already present in `data-model.md`. Two consequences that the spec text must respect: (1) there is **no `[ERROR]` token** — the level lives *inside* the bracket group, so a literal `grep -F '[ERROR]'` matches nothing and the level must be matched as a column; (2) the canonical anchored form is SMAPI's own, `^\[\d\d[:.]\d\d[:.]\d\d\] (?<level>[A-Z]+)(?: +screen_\d+)? +(?<source>[^\]]+)\] `. Verified against the installed SMAPI 4.5.2 binary and upstream `src/SMAPI/Framework/Monitor.cs`.
 
 The **authoritative success signal is SMAPI's own mod-resolution output**, not the mod's self-reported marker: the mod must appear in the `Loaded N mods:` block and must not appear in the `Skipped mods` section. The mod's own marker — "The 'Stardew Valley - Living Roots' mod was loaded successfully!" (Info level) — is emitted by the **mod** at `ModController.cs:959`, on SMAPI's `GameLaunched` event, not by SMAPI after `Entry()`. It therefore appears only once the game reaches the title screen, which requires a working graphics device; it is detected and reported but does not gate the verdict. *(Corrected 2026-10-19 against SMAPI 4.5.2 — the earlier attribution to SMAPI was incorrect.)*
 
@@ -74,16 +78,19 @@ The **authoritative success signal is SMAPI's own mod-resolution output**, not t
 
 ### 4.2 Process Detection
 
-**Decision**: `pgrep` for Stardew Valley/SMAPI processes before launch
+**Decision**: identify Stardew Valley/SMAPI processes **by executable path** (`/proc/$PID/exe` restricted to the resolved game directory); `pidof` is the acceptable stock discovery tool.
 
-**Rationale**: The mod has no cross-process data file locking (all locks are process-local). Concurrent instances would corrupt data files (non-atomic JSON writes) and truncate the SMAPI log. The script detects existing processes and aborts by default, with `--force` to kill them (SIGTERM → SIGKILL escalation).
+**Rationale**: The mod has no cross-process data file locking (all locks are process-local). Concurrent instances would corrupt data files (non-atomic JSON writes) and truncate the SMAPI log. The script detects existing processes and aborts by default, with `--force` to kill them (SIGTERM → SIGKILL escalation). Identification is by executable path, not by process-name matching: the kernel's process name (`comm`) is truncated to 15 characters and `StardewModdingAPI` is 17, so an exact-name match can never succeed and would silently never match. Any PID discovered by scanning the process table MUST be verified before it is signalled.
+
+> **Corrected 2026-10-19 (round 7).** The earlier decision (`pgrep`, with "use exact process name matching") was **contradicted by FR-011** and by the installed SMAPI 4.5.2 binary: `pgrep -x` refuses the pattern outright (procps-ng truncates `comm` to 15 chars), and `pgrep -f` over-matches deterministically — it was observed matching the invoking shell whose command line merely contained the target name. `pidof` matches on the untruncated name and on `/proc/$PID/exe`.
 
 **Alternatives Considered**:
 - No detection → data corruption risk
 - Lock file only → doesn't detect processes from other script invocations
-- `pgrep -f` pattern matching → may catch unintended processes; use exact process name matching
+- `pgrep -x` on the apphost → non-functional (17-character name vs. a 15-character `comm`)
+- `pgrep -f` pattern matching → over-matches; matches unrelated shells whose command line contains the name
 
-**Source**: Politowski et al. 2022 (mc-runtime-test ephemeral pattern)
+**Source**: Politowski et al. 2022 (mc-runtime-test ephemeral pattern); FR-011; `pidfd_open(2)` NOTES (a zombie PID is not recycled)
 
 ### 4.3 Signal Handling & Cleanup
 
@@ -96,7 +103,7 @@ The **authoritative success signal is SMAPI's own mod-resolution output**, not t
 - Single trap without EXIT → misses cleanup on unexpected exit
 - Cleanup without `|| true` guards → one failure aborts remaining cleanup
 
-**Source**: BashFAQ/062; Mironsoft four-layer cleanup model; systemd service cleanup pattern; Rasheed et al. 2022 (651 articles confirming resource leakage as top flakiness cause)
+**Source**: BashFAQ/047 (trapping signals in a shell script); Bash Beginners Guide §12.2 (Traps); Mironsoft four-layer cleanup model; systemd service cleanup pattern; Rasheed et al. 2022 (651 articles confirming resource leakage as top flakiness cause)
 
 ---
 
@@ -126,7 +133,9 @@ The **authoritative success signal is SMAPI's own mod-resolution output**, not t
 - `CompostingBinKeyPrefix = "composting_bins_"` → composting bin data files
 - Visualization config uses `visualization_config_` prefix
 
-The saveId is sanitized via Unicode normalization (FormC) and filename sanitization (`SanitizePathSegments` in `ModDataService.cs`). Files are written to the mod's own data folder (not the save file). When no save is loaded (title screen), zero data files is the expected valid state.
+The saveId is sanitized via Unicode normalization (FormC) and filename sanitization (`SanitizePathSegments` in `ModDataService.cs`). Files are written through SMAPI's `IModHelper.Data.WriteJsonFile`, which resolves a relative name against SMAPI's **mod-data directory** (`~/.config/StardewValley/.smapi/mod-data/lfgranja.LivingRoots/`) — *not* the save file and *not* a `data/` folder inside the mod folder. When no save is loaded (title screen), zero data files is the expected valid state.
+
+> **Corrected 2026-10-19 (round 7).** The earlier wording "written to the mod's own data folder" was ambiguous and could be read as a folder inside the mod directory; SMAPI's helper API never writes there.
 
 **Alternatives Considered**: N/A — this is existing mod behavior, not a script decision.
 
@@ -168,13 +177,13 @@ The saveId is sanitized via Unicode normalization (FormC) and filename sanitizat
 
 | # | Decision | Confidence | Basis |
 |---|----------|------------|-------|
-| 1 | SMAPI env vars: NO_TERMINAL, USE_CURRENT_SHELL, DEVELOPER_MODE | High | SMAPI official docs |
+| 1 | SMAPI env vars: NO_TERMINAL, DEVELOPER_MODE (`USE_CURRENT_SHELL` does not exist in SMAPI 4.5.2 — see the round-7 correction below) | High | SMAPI 4.5.2 binary (`strings -e l`) + upstream `Program.cs` |
 | 2 | Direct Xvfb lifecycle management | High | Debian bug #1095028 |
 | 3 | Parse SMAPI-latest.txt with mod name filter | High | SMAPI source + mod manifest |
 | 4 | flock for concurrency prevention | High | Kernel-managed atomicity |
-| 5 | pgrep for process detection | High | Politowski et al. 2022 |
+| 5 | Process detection by executable path (`/proc/$PID/exe`), `pidof` as the stock tool | High | FR-011; `comm` is truncated to 15 chars |
 | 6 | EXIT trap + signal forwarding | High | BashFAQ/047, Rasheed et al. 2022 |
 | 7 | One exit code per failure category | High | POSIX.1-2024 XCU `exit`; GNU `timeout(1)`; Bazel exit-code table |
 | 8 | Data file naming from ModConstants | High | Codebase (ModConstants.cs) |
-| 9 | Terminate after success marker | High | Codebase (ModController.cs) |
+| 9 | Terminate after the **log check** passes (the mod's own marker is reported, not gating) | High | FR-003, FR-006; Codebase (ModController.cs) |
 | 10 | Pre-flight validation | High | Existing CI patterns |
