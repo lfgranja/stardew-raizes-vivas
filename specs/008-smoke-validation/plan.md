@@ -32,7 +32,16 @@ The script follows a strict lifecycle: pre-flight validation → build & verify 
 
 **Project Type**: CLI tool / maintainer automation script
 
-**Performance Goals**: Script completes within 120 seconds (configurable timeout) for the game launch and log check; the rebuild-and-verify step adds roughly 10–20 seconds.
+**Performance Goals**: The script's wall time is the sum of three **independently bounded** phases, each of which reports its measured duration in the run log (FR-014). Measured on the maintainer's machine (8 cores, .NET SDK 10.0.400):
+
+| Phase | Measured | Bound |
+|---|---|---|
+| Pre-flight (tool sweep, path probes, display allocation, graphics probe) | ~1–3 s | not separately bounded; fails closed |
+| Rebuild-and-verify (FR-016) | 6.6 s warm · 8.8–10.6 s from a clean tree (restore ~2 s) · **5.0–26.2 s under host load** | `--build-timeout`, default **300 s** |
+| Launch-to-verdict (exec → SMAPI's loaded-mods block) | **~15 s unloaded · 29.6–41.8 s under host load** | `--timeout`, default **120 s** |
+| Termination (SIGTERM → grace) | 0.3–1 s typical, 15 s worst | `--grace-period`, default 15 s |
+
+Typical total **~25 s**; worst observed **~85 s**. **The 120 s figure is a per-phase bound on the launch-to-verdict window, not a whole-script bound** — the whole script's duration is the sum of the phases and is *reported*, not enforced. A whole-script cap of 120 s would leave only ~1.4× headroom in the worst measured state and would manufacture the very flakiness the test is meant to detect (absolute-timing flakiness rises with test size).
 
 **Constraints**: 
 - Headless operation only (Xvfb + Mesa software rendering via `LIBGL_ALWAYS_SOFTWARE=1` / `GALLIUM_DRIVER=llvmpipe`)

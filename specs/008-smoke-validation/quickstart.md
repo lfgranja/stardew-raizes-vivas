@@ -11,7 +11,7 @@ Before running the smoke validation script, ensure:
 
 1. **Stardew Valley** is installed via Steam on Linux at `~/.steam/steam/steamapps/common/Stardew Valley/`
 2. **SMAPI 4.5.2** is installed and functional in the game directory. The correct markers are `StardewModdingAPI` (the ELF launcher), `StardewModdingAPI.dll`, and `smapi-internal/SMAPI.Toolkit.dll` + `smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll`. **No SMAPI release ships `smapi-internal/SMAPI.dll`** — do not use that as the check
-3. **Xvfb** is available on the system. On Fedora this is the `xorg-x11-server-Xvfb` package (`apt install xvfb` on Debian/Ubuntu). **It is not installed by default**, and the pre-flight will exit `9` without it (a missing binary is a missing host tool)
+3. **Xvfb** is available on the system. On Fedora this is the `xorg-x11-server-Xvfb` package (`apt install xvfb` on Debian/Ubuntu). **It is not installed by default**, and the pre-flight will exit `9` without it (a missing binary is a missing host tool). **It is not installed on the maintainer's machine as of 2026-10-19**, so no end-to-end run of the script is currently possible — every TC below is unexecuted until it is installed
 4. **Mesa software rendering** is usable, and `mesa-utils` provides `glxinfo` and `xdpyinfo`. The pre-flight starts the virtual display and asserts, in layers: `xdpyinfo` reports the `GLX` and `RANDR` extensions; `glxinfo -B` under `LIBGL_ALWAYS_SOFTWARE=1` exits **0** (it exits **255**, not 1, on failure); the `OpenGL renderer string` is `llvmpipe` or `softpipe`; and **full `glxinfo` reports `GL_ARB_framebuffer_object` or `GL_EXT_framebuffer_object`** (or the GL version is ≥ 3.0). That last layer is load-bearing — the game's MonoGame backend throws `PlatformNotSupportedException: MonoGame requires either ARB_framebuffer_object or EXT_framebuffer_object` when a context lacks FBOs, and `glxinfo -B` prints no extension list, so it cannot detect that failure. A missing `glxinfo`/`xdpyinfo` exits `9`; a stack that is present but cannot provide usable software OpenGL exits `3`
 5. **The Living Roots mod** is deployed into the resolved mods directory (default `~/.steam/steam/steamapps/common/Stardew Valley/Mods/LivingRoots/`). The script rebuilds and redeploys it on every run — with the build's deploy target pinned to the resolved mods path — and verifies the deployed assembly by SHA-256 digest, so a manual deploy is not required. **Note:** the script *deletes and recreates* that directory on every run
 6. **Bash 4+** is available (standard on Linux)
@@ -46,6 +46,24 @@ Each run writes a diagnostic log to `${XDG_STATE_HOME:-$HOME/.local/state}/livin
 # Custom 180-second timeout
 ./scripts/smoke-validation.sh --timeout 180
 ```
+
+`--timeout` bounds the **game-launch-to-verdict window** only, and it is measured **from the instant the game process is launched** — not from the script's start. The pre-flight and the rebuild-and-verify phase run before the launch and are **not** charged against it (FR-009). The rebuild has its own bound, `--build-timeout` (default 300 seconds), so a hung NuGet restore cannot hang the run forever (FR-016). The run log records the duration of every phase and the total wall time, so both budgets are auditable after the fact (FR-014).
+
+### Build Timeout
+
+```bash
+# Default: 300 seconds
+./scripts/smoke-validation.sh
+
+# Give the rebuild 10 minutes
+./scripts/smoke-validation.sh --build-timeout 600
+```
+
+A build that exceeds the bound aborts the run with exit code `12` and a message naming the elapsed time. The build timeout is independent of `--timeout` and is never consumed from it.
+
+### Running Quietly
+
+The game runs on a **virtual** X display (Xvfb), so **nothing is ever drawn on your screen** — there is no window to minimize, and the console output is redirected to the run log rather than the terminal. The game is also **muted**: the script exports `SDL_AUDIODRIVER=dummy` and `ALSOFT_DRIVERS=null`, because Xvfb virtualizes the display but *not* the audio device, and without that mute the run would play the title-screen music through your speakers (FR-001).
 
 ### Mods Directory
 
@@ -137,12 +155,12 @@ The **oracle** for every test case is the FR-007 exit-code contract (`data-model
 
 | # | Test item / feature | Objective | Priority | Traceability | Input | Execution condition | Expected output | Actual output | Pass/Fail |
 |---|-----------|-----------|----------|---------------|-------|---------------------|-----------------|---------------|-----------|
-| TC-1 | Mod loads successfully | Verify the mod resolves and loads in the real game with no errors | Must | FR-006, SC-002 | Default install paths, mod deployed, no save loaded | Script run with no arguments; game launch to log check within 120s | Exit `0`; `SUCCESS: Mod loaded without errors.`; the mod appears in SMAPI's `Loaded N mods:` block; game and Xvfb terminated; no orphaned processes | _(record)_ | ☐ Pass ☐ Fail |
+| TC-1 | Mod loads successfully | Verify the mod resolves and loads in the real game with no errors | Must | FR-006, SC-002 | Default install paths, mod deployed, no save loaded | Script run with no arguments; **launch-to-verdict** within `--timeout` (default 120 s) | Exit `0`; `SUCCESS: Mod loaded without errors.`; the mod appears in SMAPI's loaded-mods block; game and Xvfb terminated; no orphaned processes; the per-phase durations and the total wall time are recorded in the run log | _(record)_ | ☐ Pass ☐ Fail |
 | TC-2 | Mod load-time error | Verify a mod-scoped Error entry fails the run and is reported | Must | FR-003, FR-006, SC-003 | Mod build with a failing `ModEntry.Entry()` | Script run with no arguments | Exit `5`; failure message with "What → Where → How to fix" and SMAPI log context | _(record)_ | ☐ Pass ☐ Fail |
 | TC-3 | Game not installed | Verify the pre-flight fails closed on a missing game install | Must | FR-007, FR-012, SC-009 | `--game-path` pointing at a non-existent directory | Script run with `--game-path <missing>` | Exit `1`; actionable pre-flight error naming the missing path | _(record)_ | ☐ Pass ☐ Fail |
 | TC-4 | Game already running | Verify an existing game instance is detected and not clobbered | Must | FR-011, SC-007 | An existing Stardew Valley/SMAPI process | Script run **without** `--force` | Exit `7`; error listing the conflicting PIDs | _(record)_ | ☐ Pass ☐ Fail |
 | TC-5 | Concurrent execution prevention | Verify a second instance cannot run concurrently | Must | FR-002, SC-008 | A second instance already holds the lock | Second script instance started while the first is running | Exit `6`; lock contention error; second instance exits immediately | _(record)_ | ☐ Pass ☐ Fail |
-| TC-6 | Timeout | Verify the configurable timeout is honoured | Must | FR-009, SC-001 | Game that does not produce the SMAPI log | Script run with `--timeout 30`; no log produced within 30s | Exit `4`; timeout error with the log path and the `--timeout` hint | _(record)_ | ☐ Pass ☐ Fail |
+| TC-6 | Timeout | Verify the configurable timeout is honoured | Must | FR-009, SC-001 | Game that does not produce the SMAPI log | Script run with `--timeout 30`; no log produced within 30s **measured from the game launch** | Exit `4`; timeout error with the log path and the `--timeout` hint | _(record)_ | ☐ Pass ☐ Fail |
 | TC-7 | Interruption | Verify cleanup runs and the exit status is the POSIX signal status | Must | FR-005, FR-010, SC-010 | Script in its wait/poll phase | User presses Ctrl+C (SIGINT) | Exit `130`; cleanup ran (game killed, Xvfb killed, the socket of the display this script allocated removed, temp files cleaned) | _(record)_ | ☐ Pass ☐ Fail |
 | TC-8 | Pre-flight dependency missing | Verify the pre-flight fails closed when a required host tool is absent | Must | FR-012 item 8, SC-009 | Environment without `Xvfb` on `PATH` | Script run with `Xvfb` removed from `PATH` | Exit `9`; pre-flight error naming the missing tool and the package that provides it (`xorg-x11-server-Xvfb`) | _(record)_ | ☐ Pass ☐ Fail |
 | TC-9 | Deploy ineffective | Verify the deployed assembly is byte-identical to the one this run built | Must | FR-016, SC-012 | The build cannot replace the deployed assembly in the resolved mods path | Make the resolved mods path read-only (or seed a stale `LivingRoots.dll` and make the deploy a no-op), then run the script | Exit `12` **before** the game launches; the message names both SHA-256 digests | _(record)_ | ☐ Pass ☐ Fail |
@@ -312,10 +330,10 @@ Ordered by **decreasing likelihood**, with **cost as the tiebreak** (Google SRE 
 |-----------|--------------|-------------|---------------------------|
 | 0 | Success — the mod loaded without errors | — | `SUCCESS: Mod loaded without errors.` |
 | 1 | Game not installed | Install Stardew Valley via Steam; check `--game-path` | the pre-flight finds the game |
-| 2 | SMAPI not installed, broken, or not functional (a relocated launcher exits `154`/`131`) | Run the SMAPI installer in the game directory; verify `StardewModdingAPI`, `StardewModdingAPI.dll`, and `smapi-internal/SMAPI.Toolkit*.dll` exist | SMAPI starts and writes a log |
+| 2 | SMAPI not installed, broken, or not functional (a relocated launcher exits `154`, `131`, `134` or `135`) | Run the SMAPI installer in the game directory; verify `StardewModdingAPI`, `StardewModdingAPI.dll`, and `smapi-internal/SMAPI.Toolkit*.dll` exist | SMAPI starts and writes a log |
 | 3 | Graphics stack present but unusable — no `GLX`/`RANDR`, no software renderer, or no framebuffer-object support | `sudo dnf install mesa-utils mesa-dri-drivers` (or the apt equivalents); verify `LIBGL_ALWAYS_SOFTWARE=1 glxinfo -B` reports `llvmpipe` and that full `glxinfo` lists `GL_ARB_framebuffer_object` | the graphics probe passes |
 | 4 | Game slow to launch, or never produced a log | Increase the timeout: `--timeout 180`; check the run log for a `Log started at` sentinel | the sentinel appears within the window |
-| 5 | Mod not loaded, skipped by SMAPI, or produced an error | Check the SMAPI log `Loaded N mods:` / `Skipped mods` blocks; the failure report includes the last 20–30 log lines | the mod appears in the block with no Error entries |
+| 5 | Mod not loaded, skipped by SMAPI, or produced an error | Check the SMAPI log's loaded-mods block and its skipped-mods section; the failure report includes the matched failure record together with its continuation lines | the mod appears in the block with no Error entries |
 | 6 | Another instance running | Wait for the other instance to finish (the lock is released by the kernel when that instance exits) | the next run acquires the lock |
 | 7 | Game already running | Close the game or use `--force` | no game process remains |
 | 9 | A required host tool is absent | Install the missing binary — the error names it (e.g. `Xvfb`, `glxinfo`, `xdpyinfo`, `dotnet`, `flock`, `sha256sum`) | the tool sweep passes |
@@ -326,6 +344,7 @@ Ordered by **decreasing likelihood**, with **cost as the tiebreak** (Google SRE 
 | 14 | Usage or CLI-argument error | Re-read `--help`; the message names the offending option and its expected form | the script accepts the arguments |
 | 15 | The game exited without producing a SMAPI log | SMAPI re-asserted its dependency manifest and asked for a relaunch — re-run the SMAPI installer, then re-run the script | SMAPI writes a log |
 | 16 | The resolved mods path, the mod folder, `manifest.json`, or its `UniqueID` is invalid | Check `--mods-path`; the mod folder must contain `LivingRoots/manifest.json` with `UniqueID` = `lfgranja.LivingRoots` | the manifest check passes |
+| 8 | **Retired** (round 2) — superseded by the POSIX `128+N` interruption codes | — | never reused; a new code is always allocated above the highest published code |
 | 129 / 130 / 143 | Script terminated by SIGHUP / SIGINT / SIGTERM | Normal — cleanup was run | — |
 
 ---
