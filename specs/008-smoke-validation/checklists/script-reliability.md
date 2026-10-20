@@ -29,7 +29,7 @@
 - [x] 2.2 TERM trap forwards signal to child: `kill -TERM "$game_pid" 2>/dev/null || true`
 - [x] 2.3 After forwarding TERM, script calls `wait "$game_pid"` to reap the child
 - [x] 2.4 Escalation pattern: SIGTERM → sleep N → `kill -9` if still running
-- [x] 2.5 Process tree termination uses session ID or process group (`kill -- -$PGID`)
+- [x] 2.5 Process tree termination uses session ID or process group (`kill -- -$PGID`) (resolved by decision — the mechanism is now specified: bash job control (`set -m`) is enabled around the launch only, so the game's process-group ID equals its PID and `kill -- -$!` signals exactly that group. A mandatory assertion precedes every group signal: the group ID to be signalled MUST differ from the script's own group ID and from `1`, because a plain `cmd &` leaves the child in the script's own group and `kill -- -$PGID` then terminates the script itself. Measured on bash 5.3.9 — FR-005, round-6 clarification)
 - [x] 2.6 `kill -0 "$pid"` is used to check if process is still alive before escalating
 - [x] 2.7 Xvfb is launched with `&` and its PID recorded for cleanup
 - [x] 2.8 Script uses `wait` (not `sleep`) to block on child processes, enabling signal-responsive shutdown
@@ -100,7 +100,7 @@
 - [x] 6.3 ERR trap prints line number, function name, and exit code: `BASH_LINENO`, `BASH_SOURCE`, `FUNCNAME`
 - [x] 6.4 All error messages go to stderr: `echo "ERROR: ..." >&2`
 - [x] 6.5 Error messages include script name and line number for debuggability (FR-014)
-- [x] 6.6 Exit codes follow conventions: canonical 4=timeout (GNU timeout's 124 translated to 4 at boundary), 128+N=signal, plus sysexits 1-7 (research resolved)
+- [x] 6.6 Exit codes follow conventions: one distinct code per failure category, `4`=timeout, `128+N`=signal, and every child status is translated before the script exits (resolved by decision — FR-007 now states the general rule it previously applied only to GNU `timeout`'s `124`: no subprocess-specific status ever becomes the script's final code. Translation table: 124→4, 125→13, 126→9, 127→9, 134→2, 137→5/13, 128+N unchanged, everything else→13. Codes `12` (build/artifact failure) and `13` (internal script error) close the two uncovered categories)
 - [x] 6.7 `local var; var=$(cmd)` pattern used (not `local var=$(cmd)`) to preserve exit code
 - [x] 6.8 Commands that may fail under `set -e` are explicitly handled: `cmd || true` or `if cmd; then`
 - [x] 6.9 `bash -n script.sh` is run as a syntax check before execution
@@ -114,7 +114,7 @@
 
 ## 7. Spec-Specific Reliability Requirements
 
-- [x] 7.1 Pre-flight failures produce distinct exit codes per category (1=game, 2=SMAPI, 3=Xvfb)
+- [x] 7.1 Pre-flight failures produce distinct exit codes per category (1=game, 2=SMAPI, 3=graphics-unusable, 4=timeout, 5=mod failure, 6=lock, 7=process conflict, 9=missing dependency, 10=display conflict, 11=Steam prerequisite, 12=build/artifact failure, 13=internal error) (resolved by decision — the categories are now disjoint by condition: `9` means a required host tool is **absent**, `3` means the graphics stack is **present but unusable**; the previously overlapping normalizer/Xvfb case is mapped to `9` and the full required-tool set is enumerated in FR-012 item 8 — FR-007, FR-012, round-6 clarification)
 - [x] 7.2 Game crash during launch is detected via non-zero exit or `SMAPI-crash.txt` presence
 - [x] 7.3 Mod name absent from SMAPi log is detected as mod-not-loaded failure
 - [x] 7.4 `--force` flag kills existing instances with SIGTERM → SIGKILL escalation before launching
