@@ -190,7 +190,7 @@ $ echo $?
 $ ./scripts/smoke-validation.sh
 ERROR: Another smoke test instance is running.
   What: Lock file is held by another process
-  Where: /tmp/smoke-validation.lock
+  Where: ${XDG_RUNTIME_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}}/livingroots-smoke/livingroots-smoke.lock
   Fix: Wait for the other instance to complete
 $ echo $?
 6
@@ -308,11 +308,10 @@ A run that ended in failure (or was interrupted) can be re-run without manual re
 | R-2 | No orphaned Xvfb holds the display | `pgrep -a Xvfb` | Returns nothing (the pre-flight also cleans orphaned instances with logging) |
 | R-3 | No stale X11 lock files remain for the display the script uses | `ls /tmp/.X*-lock` | The script's chosen display has no lock, or the lock's owning PID is dead. The pre-flight removes stale locks belonging to dead PIDs for the chosen display only — a lock owned by a live process aborts the run with exit `10` and is never removed |
 | R-4 | The smoke-test lock is free | The previous run has exited (the kernel releases the `flock` on process death, even after SIGKILL) | The lock is acquirable — a second run no longer exits with `6` |
-| R-5 | No stale crash file can mask the result | The pre-flight deletes `SMAPI-crash.txt` before launch | The pre-flight reports the removal, or the file was already absent |
+| R-5 | No leftover SMAPI crash marker can hang or mask the run | The pre-flight removes the leftover crash **marker** (`smapi-internal/StardewModdingAPI.crash.marker`) and the crash log (`SMAPI-crash.txt`) before launch | Both are absent before launch — SMAPI's leftover-crash handling performs a blocking keypress read that would hang a headless run |
 | R-6 | No leftover temp directories | `ls -d /tmp/livingroots-smoke.* 2>/dev/null` | Empty — the EXIT trap removed them, or they were removed manually after a SIGKILL |
 | R-7 | The mod build under test is the intended one | The script rebuilds and compares SHA-256 digests of the deployed assembly against the fresh build | The digests match — a mismatch aborts the run before launch |
 | R-8 | No stale SMAPI log can be mistaken for this run's | The pre-flight removes `SMAPI-latest.txt`; the script also requires the current run's `Log started at {UTC} UTC` sentinel | The sentinel's timestamp is not older than the run's launch timestamp |
-| R-9 | No stale crash file can hang or mask the run | The pre-flight removes `SMAPI-crash.txt` | The file is absent before launch — SMAPI's leftover-crash handling performs a blocking keypress read |
 
 **Rule:** the script is idempotent (FR-008) — a re-run under the same conditions produces the same verdict. If a re-run produces a *different* verdict than the previous run with identical inputs, one of the preconditions above was violated.
 
