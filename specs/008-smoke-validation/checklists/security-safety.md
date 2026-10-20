@@ -23,10 +23,10 @@
 
 ## 2. Process Management Security
 
-- [x] 2.1 Process detection uses `pgrep -x` (exact match) or `pidof` — never `ps | grep` piping
-- [x] 2.2 When killing by pattern, `pgrep -f` uses the most specific pattern possible (full binary path)
+- [x] 2.1 Process detection identifies the game by executable path, never by `ps | grep` piping (resolved by decision — a candidate PID qualifies only when `/proc/$PID/exe` resolves under the resolved game directory (`StardewModdingAPI` or `StardewValley`). `pgrep -x` MUST NOT be used for the apphost: the kernel's process name is truncated to 15 characters and `StardewModdingAPI` is 17, so an exact-name match can never succeed — verified locally against procps-ng 4.0.6, which refuses the pattern outright. `pidof` matches on the untruncated name and on `/proc/$PID/exe` and is the acceptable alternative — FR-011, round-6 clarification)
+- [x] 2.2 When killing by pattern, the most specific identifier possible is used (resolved by decision — identification is by `/proc/$PID/exe` restricted to the resolved game path, not by a command-line pattern. `pgrep -f` over-matches deterministically: it was observed matching the invoking shell whose command line merely contained the target name — FR-011)
 - [x] 2.3 After spawning the game, the actual PID is captured from `$!` and stored
-- [x] 2.4 Before sending any signal to a stored PID, process identity is verified via `/proc/$PID/exe` or `/proc/$PID/comm`
+- [x] 2.4 Before sending any signal to a PID, process identity is verified via `/proc/$PID/exe` (resolved by decision — the rule now has FR backing and an explicit scope. Any PID **discovered by scanning the process table** MUST be verified before it is signalled; the script's own spawned PID needs no check, because an unreaped child stays a zombie and the kernel does not recycle a zombie PID (documented in `pidfd_open(2)` NOTES; GNU `timeout` relies on the same invariant). `/proc/$PID/comm` is no longer offered as an alternative — it is a 15-character truncated, process-writable name, not an identity token — FR-011)
 - [x] 2.5 SIGTERM → grace period (15-30s) → SIGKILL escalation is implemented with configurable timeout
 - [x] 2.6 SIGTERM/SIGINT traps forward the signal to child processes before exiting
 - [x] 2.7 Process exit is verified using `kill -0 "$PID"` or `wait` after SIGKILL
@@ -88,7 +88,7 @@
 - [x] 6.7 SIGKILL usage is logged (indicates graceful shutdown failed — potential data corruption risk)
 - [x] 6.8 `timeout --signal=TERM --kill-after=30s` is used as a safety net for unresponsive processes
 - [x] 6.9 Mod-specific save triggers that must be invoked before termination are documented
-- [x] 6.10 An X11 lock file owned by a **live** process is never removed — the run aborts with exit code `10` instead; only a lock whose owning PID is dead is treated as stale and reclaimed (mirrors xorg-server's `LockServer()` ESRCH/EPERM semantics — verified against xorg-server 21.1.24 `os/utils.c`: `kill(l_pid, 0)` returning `ESRCH` means stale and the lock is unlinked, while `EPERM` or success means live and the server refuses to start leaving the lock intact; FR-012 item 5 now also pins the lock file's fixed 11-byte `"%10lu\n"` format, whose leading-space padding MUST be stripped, and treats a non-11-byte lock as bogus/stale)
+- [x] 6.10 An X11 lock file owned by a **live** process is never removed — the run aborts with exit code `10` instead; only a lock whose owning PID is dead is treated as stale and reclaimed (mirrors xorg-server's `LockServer()` ESRCH/EPERM semantics — verified against xorg-server 21.1.24 `os/utils.c`: `kill(l_pid, 0)` returning `ESRCH` means stale and the lock is unlinked, while `EPERM` or success means live and the server refuses to start leaving the lock intact; FR-012 item 5 now also pins the lock file's fixed 11-byte `"%10lu\n"` format, whose leading-space padding MUST be stripped, and treats a non-11-byte lock as bogus/stale. Resolved by decision: the EXIT-trap cleanup removes X locks **only for the display this script allocated** and, for the lock file, only when its owning PID is dead — FR-010 item 3, round-6 clarification)
 
 ---
 
@@ -145,7 +145,7 @@
 | 1 | `eval "$user_input"` | Arbitrary code execution | Never use `eval` with external input |
 | 2 | `rm /tmp/$filename` (fixed) | Symlink attack | `rm -- "$tmpfile"` from `mktemp` |
 | 3 | `curl $url` (unquoted) | Argument injection | `curl -- "$url"` with validation |
-| 4 | `ps aux \| grep "game"` | Fragile matching | `pgrep -x` or `pidof` |
+| 4 | `ps aux \| grep "game"` | Fragile matching | `pidof`, or `/proc/$PID/exe` restricted to the resolved game path — `pgrep -x` cannot match the 17-character apphost name |
 | 5 | `kill -9 $pid` immediately | Data corruption | SIGTERM first, then SIGKILL |
 | 6 | `echo $var` (unquoted) | Word splitting, globbing | `echo "$var"` (always quote) |
 | 7 | `cd $dir` without validation | Path traversal | `cd -- "$dir"` + prefix check |
