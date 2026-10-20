@@ -18,7 +18,7 @@ The script follows a strict lifecycle: pre-flight validation → build & verify 
 
 **Process-group mechanism**: the game is launched with bash job control (`set -m`) enabled for the launch only, so the game's process-group ID equals its PID and `kill -- -$!` signals exactly that group. No extra dependency (`setsid`) is introduced. Every group signal is preceded by an assertion that the group ID differs from the script's own group ID and from `1` (FR-005).
 
-**Launch Invocation**: `./StardewModdingAPI --no-terminal`, executed with the game installation directory as the working directory. SMAPI 4.x is a **self-contained .NET 6 `linux-x64`** deployment (`libcoreclr.so`, `libhostfxr.so`, `libhostpolicy.so` ship in the game folder), so **no system .NET runtime and no Mono runtime** is required to *launch* the game or probed by the pre-flight. (The .NET **SDK** is a separate requirement: FR-016 rebuilds the mod before each run, so `dotnet` must be on `PATH` — a missing SDK exits `9`.) The launcher must be run in place: a relocated copy does **not** abort with SIGABRT — measured against the installed 4.5.2 apphost it exits **154** (assembly missing), **131** (.NET runtime missing) or **137** (CoreCLR init failed), all of which FR-007's translation table maps to `2` (SMAPI not functional).
+**Launch Invocation**: `./StardewModdingAPI --no-terminal`, executed with the game installation directory as the working directory. SMAPI 4.x is a **self-contained .NET 6 `linux-x64`** deployment (`libcoreclr.so`, `libhostfxr.so`, `libhostpolicy.so` ship in the game folder), so **no system .NET runtime and no Mono runtime** is required to *launch* the game or probed by the pre-flight. (The .NET **SDK** is a separate requirement: FR-016 rebuilds the mod before each run, so `dotnet` must be on `PATH` — a missing SDK exits `9`.) The launcher must be run in place: a relocated copy fails in one of four measured ways — **154** (assembly missing), **131** (.NET runtime missing), **135** (partial runtime — "Could not resolve CoreCLR path") or **134** (SIGABRT: the runtime is present but the game files are not, so SMAPI's `AssertGamePresent()` calls `PressAnyKeyToExit()`, whose `Console.ReadKey()` throws on the `/dev/null` stdin FR-005 mandates). FR-007's translation table maps the first, second and fourth to `2` (SMAPI not functional) and the third to `13`.
 
 **Display allocation**: Xvfb is started with `-displayfd`, so the **X server itself** binds the first free display and writes the number back; the script never chooses a display number and never touches `/tmp/.X{n}-lock` files (`-displayfd` disables the server lock entirely). The script records the reported number for the cleanup phase and exports `DISPLAY` from it.
 
@@ -51,7 +51,7 @@ The script follows a strict lifecycle: pre-flight validation → build & verify 
 
 | Decision | Resolution |
 |----------|------------|
-| Success signal | SMAPI's `Loaded N mods:` / `Skipped mods` output — the mod's own marker is reported but does not gate (FR-003) |
+| Success signal | SMAPI's loaded-mods block / `   Skipped mods` section — the skipped-mods header carries **three** leading spaces and the loaded-mods header is `Loaded N mods:` or `Loaded 0 mods.`; the mod's own marker is reported but does not gate (FR-003) |
 | Build provenance | Rebuild, remove deploy target first, compare SHA-256 digests (FR-016) |
 | Mods directory | Resolved explicitly via `--mods-path`, default `<game-path>/Mods` (FR-017) |
 | Log freshness | Evaluate only lines after SMAPI's `Log started at {UTC} UTC` sentinel, plus an inode-change assertion (FR-002) |
@@ -64,7 +64,7 @@ The script follows a strict lifecycle: pre-flight validation → build & verify 
 | Artifact identity | **Deploy effectiveness**: the build's deploy target is pinned to the resolved `--mods-path` (`-p:GameModsPath`) and the deployed assembly's digest is compared with the fresh build's **within the run**. No cross-build digest comparison, and no source-correspondence claim (the assembly carries no build identity) |
 | Path validation | Canonicalize with `realpath`, then a component-boundary prefix test, on paths the script *constructs*; user-supplied roots are their own bases. ASCII allowlist `[A-Za-z0-9._/-]+` replaces Unicode normalization |
 | Log freshness | Evaluate every gating signal only against lines after the `Log started at {UTC} UTC` sentinel; the **header region** (version banner, `Mods go here:`) precedes the sentinel and is context only. The `Mods go here:` path is `~`-anonymised |
-| Trap design | One `EXIT` trap (registered exactly once) plus `INT`/`TERM`/`HUP` handlers that reset-and-re-raise; `trap '' INT TERM` is prohibited; cleanup is idempotent and time-bounded |
+| Trap design | One `EXIT` trap (registered exactly once) plus `INT`/`TERM`/`HUP` handlers that reset-and-re-raise; `trap '' INT TERM` is prohibited; cleanup is idempotent and time-bounded. The script runs under `set -Eeuo pipefail` — the `-E` is required so the `ERR` trap is inherited by shell functions and can report the enclosing function name (FR-014) |
 
 ## Constitution Check
 
@@ -74,14 +74,14 @@ The Living Roots constitution (v2.0.0) defines three quality gates. This feature
 
 | Gate | Application to This Feature | Status |
 |------|---------------------------|--------|
-| **Gate 1 — Static Checks and Tests Pass** | The script must be syntactically valid (`bash -n`), pass `shellcheck`, and produce correct exit codes for all defined scenarios. Round 7 added a `bash -n` + `shellcheck` step to `lefthook.yml`'s pre-commit hook (no CI job, no `required_status_checks` entry, so the repo's dormant-job warning is respected) | ⏳ Pending implementation — the script does not exist yet; the lint hook is wired but has nothing to lint |
+| **Gate 1 — Static Checks and Tests Pass** | The script must be syntactically valid (`bash -n`), pass `shellcheck`, and produce correct exit codes for all defined scenarios. Round 7 added a `bash -n` + `shellcheck` step to `lefthook.yml`'s pre-commit hook (no CI job, no `required_status_checks` entry, so the repo's dormant-job warning is respected). Round 8 fixed the hook: `bash -n` is now run **per file** (the previous `bash -n {staged_files}` parsed only the first file and silently passed a broken second one — measured), and the `shellcheck` step is skipped when the binary is absent, because `shellcheck` is **not installed** on the maintainer's machine and the hook would otherwise abort every commit that touches `scripts/*.sh` | ⏳ Pending implementation — the script does not exist yet; the lint hook is wired but has nothing to lint |
 | **Gate 2 — Product-Level Quality Bar** | The script must be usable without documentation (clear `--help`, actionable error messages following "What → Where → How to fix" pattern). Must produce deterministic, idempotent results. | ✅ Pass — spec defines clear UX contracts |
 | **Gate 3 — End-to-End Verification** | The script must actually launch the real game with the real mod and detect load success/failure. This is the entire purpose of the feature. | ⏳ **Not satisfied — awaiting execution.** The gate is a runtime gate; it was previously marked passed on the strength of the *specification* alone, which does not satisfy it. It can only be marked passed after a real run against the installed game. Note also that `Xvfb` is not installed on the maintainer's machine, so the first run requires `xorg-x11-server-Xvfb` (or `xvfb`) to be installed first — until it is, the pre-flight fails closed with exit code `9` (missing host tool) |
 
 **Constitutional Principles Compliance**:
 
 - **DDD**: Not applicable — this is a maintainer tool, not domain logic.
-- **Security-First**: The script handles filesystem paths (SMAPI log location, mod data folder) and must sanitize/validate all paths. The mod's existing `SanitizePathSegments` pattern is referenced. Exit codes and error messages must not leak sensitive system details.
+- **Security-First**: The script handles filesystem paths (SMAPI log location, mod data folder) and must sanitize/validate all paths. The surviving control is FR-012 item 7 — canonicalization with `realpath` plus a component-boundary prefix test — and **not** a port of the mod's `SanitizePathSegments`, which round 7 dropped as vacuous for this CLI surface. Exit codes and error messages must not leak sensitive system details.
 - **Async-Only**: Not applicable — bash script, not .NET async code.
 - **TDD**: Not applicable — bash script, not .NET unit tests. Validation is via execution.
 - **YAGNI**: The script implements only what the spec requires. No CI integration, no save check, no parallel execution, no configuration files.

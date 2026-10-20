@@ -143,8 +143,8 @@ The **oracle** for every test case is the FR-007 exit-code contract (`data-model
 | TC-4 | Game already running | Verify an existing game instance is detected and not clobbered | Must | FR-011, SC-007 | An existing Stardew Valley/SMAPI process | Script run **without** `--force` | Exit `7`; error listing the conflicting PIDs | _(record)_ | ☐ Pass ☐ Fail |
 | TC-5 | Concurrent execution prevention | Verify a second instance cannot run concurrently | Must | FR-002, SC-008 | A second instance already holds the lock | Second script instance started while the first is running | Exit `6`; lock contention error; second instance exits immediately | _(record)_ | ☐ Pass ☐ Fail |
 | TC-6 | Timeout | Verify the configurable timeout is honoured | Must | FR-009, SC-001 | Game that does not produce the SMAPI log | Script run with `--timeout 30`; no log produced within 30s | Exit `4`; timeout error with the log path and the `--timeout` hint | _(record)_ | ☐ Pass ☐ Fail |
-| TC-7 | Interruption | Verify cleanup runs and the exit status is the POSIX signal status | Must | FR-005, FR-010, SC-010 | Script in its wait/poll phase | User presses Ctrl+C (SIGINT) | Exit `130`; cleanup ran (game killed, Xvfb killed, the script's own display locks removed, temp files cleaned) | _(record)_ | ☐ Pass ☐ Fail |
-| TC-8 | Pre-flight dependency missing | Verify the pre-flight fails closed when a required host tool is absent | Must | FR-012 items 7–8, SC-009 | Environment without `python3`/`uconv` | Script run with the normalizer removed from `PATH` | Exit `9`; pre-flight error naming the missing normalizer and the fix | _(record)_ | ☐ Pass ☐ Fail |
+| TC-7 | Interruption | Verify cleanup runs and the exit status is the POSIX signal status | Must | FR-005, FR-010, SC-010 | Script in its wait/poll phase | User presses Ctrl+C (SIGINT) | Exit `130`; cleanup ran (game killed, Xvfb killed, the socket of the display this script allocated removed, temp files cleaned) | _(record)_ | ☐ Pass ☐ Fail |
+| TC-8 | Pre-flight dependency missing | Verify the pre-flight fails closed when a required host tool is absent | Must | FR-012 item 8, SC-009 | Environment without `Xvfb` on `PATH` | Script run with `Xvfb` removed from `PATH` | Exit `9`; pre-flight error naming the missing tool and the package that provides it (`xorg-x11-server-Xvfb`) | _(record)_ | ☐ Pass ☐ Fail |
 | TC-9 | Deploy ineffective | Verify the deployed assembly is byte-identical to the one this run built | Must | FR-016, SC-012 | The build cannot replace the deployed assembly in the resolved mods path | Make the resolved mods path read-only (or seed a stale `LivingRoots.dll` and make the deploy a no-op), then run the script | Exit `12` **before** the game launches; the message names both SHA-256 digests | _(record)_ | ☐ Pass ☐ Fail |
 | TC-10 | Stale log cannot produce a false pass | Verify a stale success marker cannot make the run pass | Must | FR-002, SC-011 | A previous run left an `SMAPI-latest.txt` containing the mod's success marker | Seed a stale log, then run the script against a mod that fails to load | Exit `5` (not `0`); the stale marker is ignored because it precedes the current run's `Log started at` sentinel | _(record)_ | ☐ Pass ☐ Fail |
 | TC-11 | Mod skipped by SMAPI | Verify a SMAPI skip is reported as a mod-load failure with SMAPI's reason | Must | FR-003, FR-006, SC-013 | Installed SMAPI older than the mod's `MinimumApiVersion` | Run the script with an incompatible SMAPI version | Exit `5`; report states SMAPI's skip reason ("needs SMAPI X or later") | _(record)_ | ☐ Pass ☐ Fail |
@@ -247,7 +247,7 @@ $ echo $?
 $ ./scripts/smoke-validation.sh
 ERROR: Another smoke test instance is running.
   What: Lock file is held by another process
-  Where: ${XDG_RUNTIME_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}}/livingroots-smoke/livingroots-smoke.lock
+  Where: ${XDG_RUNTIME_DIR}/livingroots-smoke.lock   (or ${XDG_STATE_HOME:-$HOME/.local/state}/livingroots-smoke/livingroots-smoke.lock when XDG_RUNTIME_DIR is unset)
   Fix: Wait for the other instance to complete
 $ echo $?
 6
@@ -273,7 +273,7 @@ $ echo $?
 
 **Given**: Script is running and user presses Ctrl+C
 **When**: SIGINT received
-**Then**: EXIT trap runs cleanup (game killed, Xvfb killed, locks removed), exit code `130`
+**Then**: EXIT trap runs cleanup (game killed, Xvfb killed, the socket of the display this script allocated removed), exit code `130`
 
 ```bash
 $ ./scripts/smoke-validation.sh
@@ -297,14 +297,14 @@ Ordered by **decreasing likelihood**, with **cost as the tiebreak** (Google SRE 
 | D-2 | `ls -l ~/.steam/steam/steamapps/common/"Stardew Valley"/StardewModdingAPI{,.dll} ~/.steam/steam/steamapps/common/"Stardew Valley"/smapi-internal/SMAPI.Toolkit*.dll` | all four files exist | D-3 | re-run the SMAPI installer in the game directory | the markers exist; the run reaches the next step |
 | D-3 | `cat ~/.steam/steam/steamapps/common/"Stardew Valley"/steam_appid.txt` | `413150` | D-4 | restore `steam_appid.txt` from a Steam install | the file contains `413150` |
 | D-4 | `pidof StardewValley; pidof StardewModdingAPI` | both return nothing | D-5 | close the game, or re-run with `--force` | no game process remains |
-| D-5 | `ls /tmp/.X*-lock` and `pidof Xvfb` | no orphan Xvfb holds a display | D-6 | kill the orphan Xvfb (the script allocates its own display via `-displayfd`, so a stale lock is harmless) | no orphan Xvfb remains |
+| D-5 | `pgrep -a Xvfb` | no orphan Xvfb holds a display | D-6 | kill the orphan Xvfb manually (the script allocates its own display via `-displayfd`, so a stale lock is harmless and the pre-flight only reports orphans) | no orphan Xvfb remains |
 | D-6 | `LIBGL_ALWAYS_SOFTWARE=1 glxinfo -B \| grep -E 'llvmpipe\|softpipe'` | `OpenGL renderer string: llvmpipe` | D-7 | install Mesa's software rasteriser (`mesa-dri-drivers`); confirm `GALLIUM_DRIVER=llvmpipe` is exported | the renderer string reports a software rasteriser |
 | D-7 | `glxinfo \| grep -E 'GL_ARB_framebuffer_object\|GL_EXT_framebuffer_object'` | one extension is listed | D-8 | update Mesa — the game's MonoGame backend requires FBO support | the extension is listed |
 | D-8 | `tail -30 ~/.config/StardewValley/ErrorLogs/SMAPI-latest.txt` | the current run's `Loaded N mods:` block is present | D-9 | see D-9…D-12 by the exit code | the mod appears in the block |
-| D-9 | exit code `9` | — | D-9a | the message names the missing tool; install it | the run proceeds past the tool sweep |
-| D-10 | exit code `2` | — | D-10a | SMAPI is broken or misplaced — re-run the SMAPI installer; a relocated launcher exits `154`/`131` | SMAPI starts |
-| D-11 | exit code `15` | — | D-11a | SMAPI exited without writing a log — check for a stale `StardewModdingAPI.deps.json` and re-run the SMAPI installer | SMAPI writes a log |
-| D-12 | exit code `12` | — | D-12a | the deploy did not take effect — make sure the resolved mods path is writable and that `dotnet build` succeeds | the digests match and the run proceeds |
+| D-9 | exit code `9` | the tool sweep passed, so the missing-tool error names a tool that was found at sweep time but became unavailable (or the run was invoked with a restricted `PATH`) | see the remediation in this row | the message names the missing tool; install it and re-run | the run proceeds past the tool sweep |
+| D-10 | exit code `2` | SMAPI is installed and functional | see the remediation in this row | SMAPI is broken or misplaced — re-run the SMAPI installer; a relocated launcher exits `154` (no assembly), `131` (no runtime), `134` (runtime present, game files absent) or `135` (partial runtime) | SMAPI starts |
+| D-11 | exit code `15` | SMAPI wrote a log | see the remediation in this row | SMAPI exited without writing a log — check for a stale `StardewModdingAPI.deps.json` and re-run the SMAPI installer | SMAPI writes a log |
+| D-12 | exit code `12` | the deployed assembly matches the fresh build | see the remediation in this row | the deploy did not take effect — make sure the resolved mods path is writable and that `dotnet build` succeeds | the digests match and the run proceeds |
 
 ### Exit-code index (quick lookup)
 
@@ -399,7 +399,7 @@ A run that ended in failure (or was interrupted) can be re-run without manual re
 | # | Precondition | How to verify | Satisfied when |
 |---|--------------|---------------|----------------|
 | R-1 | No Stardew Valley/SMAPI process is still running | `pidof StardewValley; pidof StardewModdingAPI` | Both commands return nothing (or `--force` is used). `pidof` is used rather than `pgrep -x` because the kernel's process name is truncated to 15 characters and `StardewModdingAPI` is 17 — an exact-name match can never succeed |
-| R-2 | No orphaned Xvfb holds the display | `pgrep -a Xvfb` | Returns nothing (the pre-flight also cleans orphaned instances with logging) |
+| R-2 | No orphaned Xvfb is left over from a previous crashed run | `pgrep -a Xvfb` | Returns nothing. The pre-flight **detects and reports** orphaned Xvfb instances but MUST NOT signal them — under `Xvfb -displayfd` the server writes no lock file, so there is no way to prove ownership of a foreign X server, and the display number is allocated by the server (FR-012 item 10). Kill them manually |
 | R-3 | No orphaned Xvfb holds a display | `pidof Xvfb` | No orphan Xvfb remains. The script allocates its own display with `Xvfb -displayfd`, so it never reads or writes `/tmp/.X{n}-lock` files — the server binds a free display atomically and writes no lock at all |
 | R-4 | The smoke-test lock is free | The previous run has exited (the kernel releases the `flock` on process death, even after SIGKILL) | The lock is acquirable — a second run no longer exits with `6` |
 | R-5 | No leftover SMAPI crash marker can hang or mask the run | The pre-flight removes the leftover crash **marker** (`smapi-internal/StardewModdingAPI.crash.marker`) and the crash log (`SMAPI-crash.txt`) before launch | Both are absent before launch — SMAPI's leftover-crash handling performs a blocking keypress read that would hang a headless run |

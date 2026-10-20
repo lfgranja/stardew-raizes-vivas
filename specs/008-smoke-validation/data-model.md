@@ -35,12 +35,12 @@ The smoke validation script has no persistent data model of its own — it reads
 |--------|---------|
 | `SMAPI <ver> with Stardew Valley <ver> on <os>` | Version banner — the installed SMAPI version. **Written before the run sentinel** (see below) |
 | `Mods go here: <path>` | The mods directory SMAPI actually resolved. **Written before the run sentinel**, and the path is **tilde-anonymised** (`$HOME` → `~`) by `PathUtilities.AnonymizePathForDisplay` — a literal comparison against an absolute resolved path fails |
-| `Loaded N mods:` + `   <Name> <Version> by <Author>` (optionally ` \| <Description>`) | Mods SMAPI loaded — the mod MUST appear here. With zero mods SMAPI writes `Loaded 0 mods.` (period, not colon) |
-| `Skipped mods` + `      - <Name> <Version> because <reason>` | Mods SMAPI skipped — the mod MUST NOT appear here. The section header and its entries are logged by **SMAPI core** at Error level, so they are outside the mod-scoped gate |
+| `Loaded N mods:` + `   <Name> <Version> by <Author>` (optionally ` \| <Description>`) | Mods SMAPI loaded — the mod MUST appear here. With zero mods SMAPI writes `Loaded 0 mods.` (period, not colon), so **both** forms MUST be accepted and the zero-mod form MUST be an immediate mod-load failure, not a missing block |
+| `   Skipped mods` + `      - <Name> <Version> because <reason>` | Mods SMAPI skipped — the mod MUST NOT appear here. The header literal carries **three** leading spaces (`"   Skipped mods"`, upstream `LogManager.cs:411`) and its entries **six** (`LogManager.cs:428`); anchoring on the unpadded header makes this leg vacuous and reports a skipped mod as a pass. The section header and its entries are logged by **SMAPI core** at Error level, so they are outside the mod-scoped gate |
 
 **Mod success marker (reported, not gating)**: `The 'Stardew Valley - Living Roots' mod was loaded successfully!` (Info level). Emitted **by the mod**, not by SMAPI, from its `GameLaunched` handler (`ModController.cs:959`) — it therefore appears only after the game reaches the title screen, which requires a working graphics device.
 
-**Failure Markers**: Error and Alert level entries attributable to the mod. Absence of the mod from the `Loaded N mods:` block (or its presence in `Skipped mods`) also indicates failure.
+**Failure Markers**: Error and Alert level entries attributable to the mod. Absence of the mod from the loaded-mods block (or its presence in the `   Skipped mods` section) also indicates failure.
 
 **Crash Override**: `SMAPI-crash.txt` (if present) overrides `SMAPI-latest.txt` and indicates failure. It is a **copy of the log**, written at the moment of the crash.
 
@@ -109,14 +109,14 @@ The smoke validation script has no persistent data model of its own — it reads
 |------|----------|---------|
 | 0 | `EX_OK` | Success — mod loaded without errors |
 | 1 | `EX_GAME_NOT_FOUND` | Game installation not found at expected path |
-| 2 | `EX_SMAPI_NOT_FOUND` | SMAPI not installed or not functional (includes a relocated/broken launcher — the apphost exits 154 / 131 / 137) |
+| 2 | `EX_SMAPI_NOT_FOUND` | SMAPI not installed or not functional (includes a relocated/broken launcher — the apphost exits 154 / 131 / 134 / 135) |
 | 3 | `EX_GRAPHICS_UNUSABLE` | Graphics environment **present but unusable** — no `GLX`/`RANDR`, no software renderer, or no framebuffer-object support |
 | 4 | `EX_TIMEOUT` | Game did not produce log within timeout window |
-| 5 | `EX_MOD_LOAD_FAILURE` | Mod failed to load (Error/Alert in log, absent from `Loaded N mods:`, or present in `Skipped mods`) |
+| 5 | `EX_MOD_LOAD_FAILURE` | Mod failed to load (Error/Alert in log, absent from the loaded-mods block, or present in the `   Skipped mods` section) |
 | 6 | `EX_LOCK_CONTENTION` | Another smoke test instance is running (flock failed) |
 | 7 | `EX_PROCESS_CONFLICT` | Existing Stardew Valley/SMAPI process detected |
 | 9 | `EX_MISSING_DEPENDENCY` | A required host tool is absent (`Xvfb`, `xdpyinfo`, `glxinfo`, `flock`, `timeout`, `mktemp`, `stat`, `realpath`, `pgrep`/`pidof`, `sha256sum`, `date`, `grep`, `dotnet`, `bash` 4+) |
-| 10 | `EX_DISPLAY_CONFLICT` | The virtual display could not be allocated or started — Xvfb failed, or reported no display number |
+| 10 | `EX_DISPLAY_UNAVAILABLE` | The virtual display could not be allocated or started — Xvfb failed, or reported no display number. (Renamed from `EX_DISPLAY_CONFLICT` in round 8: the conflict policy was dropped with the fixed `:99` display, and the server now allocates the display atomically) |
 | 11 | `EX_STEAM_PREREQ_MISSING` | `steam_appid.txt` absent or not `413150` |
 | 12 | `EX_BUILD_ARTIFACT_FAILURE` | The mod failed to build, or the deployed assembly is missing, older, or not byte-identical to the fresh build |
 | 13 | `EX_INTERNAL_ERROR` | The script itself broke — an unhandled error caught by the ERR trap, a failed PGID assertion, or an unmapped child status |
@@ -150,6 +150,7 @@ The smoke validation script has no persistent data model of its own — it reads
 | `127` (not found) | `9` |
 | `131` (the .NET runtime could not be started by the SMAPI apphost) | `2` |
 | `134` (SIGABRT) | `2` |
+| `135` (a partial runtime — "Could not resolve CoreCLR path") | `13` |
 | `137` (SIGKILL) | `5` when it is the game process, `2` when it is the SMAPI apphost, `13` otherwise |
 | `154` (the SMAPI apphost cannot find its own assembly) | `2` |
 | `128+N` for SIGINT/SIGTERM/SIGHUP on the script itself | `128+N`, unchanged |
@@ -239,4 +240,4 @@ Script (no persistent data model; writes only a diagnostic run log)
 [Terminate Game] ──→ [Success Exit (0)]
 ```
 
-**Capture Log Baseline** records the UTC launch timestamp `T0` and the inode of `SMAPI-latest.txt` before the game starts, and removes any pre-existing `SMAPI-latest.txt` and `SMAPI-crash.txt`. **Build & Verify Artifact** rebuilds the mod, removes the deploy target first, and compares SHA-256 digests; a failure exits before the game is ever launched.
+**Capture Log Baseline** records the UTC launch timestamp `T0` and the inode of `SMAPI-latest.txt` before the game starts, and removes any pre-existing `SMAPI-latest.txt` and `SMAPI-crash.txt` from the log directory **and** SMAPI's leftover crash marker from the game directory (`<game-path>/smapi-internal/StardewModdingAPI.crash.marker`) — the marker, not the crash log, is what gates SMAPI's blocking keypress read. **Build & Verify Artifact** rebuilds the mod, removes the deploy target first, and compares SHA-256 digests; a failure exits before the game is ever launched.

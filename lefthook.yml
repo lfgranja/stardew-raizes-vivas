@@ -8,14 +8,32 @@ pre-commit:
       # Gate 1 of the Living Roots constitution: the smoke-validation script
       # must be syntactically valid before it is run. `bash -n` parses without
       # executing, so it is safe on every commit.
+      #
+      # NOTE: `bash -n {staged_files}` parses only the FIRST file — the rest are
+      # passed as arguments and never parsed. Measured: `bash -n good.sh bad.sh`
+      # exits 0 even when bad.sh has a syntax error. The loop below parses every
+      # staged file individually.
       glob: "scripts/*.sh"
-      run: bash -n {staged_files} && echo "✔️ bash -n OK"
+      run: |
+        for f in {staged_files}; do
+          bash -n "$f" || exit 1
+        done
+        echo "✔️ bash -n OK"
     shellcheck:
       # The same gate, statically. No CI job is added (the repo's CI note warns
       # against promoting a dormant check), and nothing here needs the game
       # installation — unlike the `Build and Test` workflow.
+      #
+      # shellcheck is not installed on every machine (it is absent on the
+      # maintainer's host), and a missing binary would abort the commit. The
+      # step is skipped with a warning in that case rather than failing.
       glob: "scripts/*.sh"
-      run: shellcheck {staged_files} && echo "✔️ shellcheck OK"
+      run: |
+        if ! command -v shellcheck >/dev/null 2>&1; then
+          echo "⚠️ shellcheck not installed — skipping the static shell lint gate"
+          exit 0
+        fi
+        shellcheck {staged_files} && echo "✔️ shellcheck OK"
 
 pre-push:
   parallel: true

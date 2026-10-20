@@ -8,6 +8,24 @@
 
 ---
 
+> ## ⚠️ PARTIALLY SUPERSEDED (2026-10-19, rounds 7 and 8) — READ BEFORE USING THIS FILE
+>
+> This file is the **evidence base** for the security posture. It is **not normative**: `spec.md` is. Several of its recommendations were **rejected by the user** in the round-7 security decision and were never updated here, so a reader who follows this file would implement a design the spec explicitly forbids. The corrections are:
+>
+> | Section | Its recommendation | The normative position (spec.md) |
+> |---|---|---|
+> | **1.3** | Percent-decode once, with a `python3` helper | **Rejected.** The percent-encoding clause was dropped — the CLI surface has no percent-encoded input. |
+> | **1.5** | NFC normalization via `python3`/`uconv`, fail closed if absent | **Rejected.** NFC is a provable no-op for ASCII paths (UAX #15) and is not a homoglyph defence (UTS #39). FR-012 item 7 uses an explicit ASCII allowlist and **requires no normalizer dependency**. |
+> | **1.6** | Reject absolute paths | **Rejected.** FR-017 says an absolute `--mods-path` is accepted as-is and is its own base. |
+> | **1.7** | Lock file inside `mktemp -d`, opened with `exec 9>"$lockfile"` | **Rejected and inverted.** FR-002 requires a **stable, per-user** path (`${XDG_RUNTIME_DIR}/livingroots-smoke.lock`) — a per-run directory means two concurrent instances lock *different inodes* and mutual exclusion is zero — opened with `exec 9<>` (read-write, create-if-absent), never `exec 9>` (which truncates and follows symlinks). The lock file is **never removed**. |
+> | **1.7 / 8.3** | `O_NOFOLLOW` via an external helper | **Rejected.** Bash exposes no `O_NOFOLLOW`; the symlink check is demoted to a diagnostic, not a gate. |
+> | **1.10** | Port `SanitizePathSegments()` into a `path-sanitize.sh` helper | **Rejected.** The mod's pattern was not ported; the surviving control is canonicalisation plus a component-boundary prefix test (FR-012 item 7). `plan.md` was also corrected in round 8 — it still cited the port. |
+> | **Header** | Cites `BashFAQ/062` | **Wrong citation.** `BashFAQ/062` is *"How do I create a temporary file in a secure manner?"*; the trap reference is `BashFAQ/047`. Corrected in `spec.md` and `research.md` in round 7; this file's header was missed. |
+>
+> The **surviving** load-bearing rule is *"open directly, branch on the result"* — do not stat a path and then act on it — together with `realpath` canonicalisation and a component-boundary prefix test on the paths the script constructs. Where this file's recommendations agree with the spec (atomic creation via `mktemp`/`O_EXCL`, `0700` directories, ownership checks, `|| true` isolation on cleanup steps), they stand.
+
+---
+
 ## 1.3 — Paths containing `../` sequences (literal or percent-encoded) rejected after canonicalization
 
 **Finding**: CWE-22 / CWE-23. A denylist that strips `../` is bypassable via double encoding (`%252e%252e%252f`), partial sequences (`.../...//` → `../` after naive removal, CWE-182), and OS-specific separators. OWASP requires decode → canonicalize → validate (CWE-180), and forbids re-decoding. Bash has no native canonicalizer; `realpath -e`/`readlink -f` resolves `..` and symlinks at the OS level. Percent-encoded input must be decoded *once* before canonicalization, then the canonical result must be re-checked. The robust check is not "does the string contain `../`" but "does the canonicalized path remain under the approved base prefix".

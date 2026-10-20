@@ -16,7 +16,7 @@
 **Alternatives Considered**:
 - Running without env vars → SMAPI hangs waiting for terminal input
 - Using `xvfb-run` wrapper → 26-40% failure rate per Debian bug #1095028; manual Xvfb lifecycle is more reliable
-- Using `SMAPI_NO_TERMINAL` only → misses TRACE-level diagnostics needed for failure analysis
+- Using `SMAPI_NO_TERMINAL` only → the TRACE-level entries in the **log file** are written unconditionally, so nothing is missed; `SMAPI_DEVELOPER_MODE` only adds console verbosity
 
 **Source**: SMAPI official documentation (smapi.io/smodder-guide); Debian bug #1095028 (xvfb-run flaky behavior)
 
@@ -26,7 +26,9 @@
 
 **Decision**: Direct Xvfb lifecycle management (launch → use → kill) within the script
 
-**Rationale**: Direct management gives the script full control over the display resource, including cleanup on failure. The script starts Xvfb on a specific display number (`:99`), waits for it to be ready, launches the game with `DISPLAY=:99`, and kills Xvfb during cleanup. This is more reliable than `xvfb-run` which has documented race conditions (26-40% failure rate in CI environments).
+**Rationale**: Direct management gives the script full control over the display resource, including cleanup on failure. The script starts Xvfb with `-displayfd`, so the **X server itself** binds the first free display and writes the number back; the script reads it and exports `DISPLAY` from it. It then launches the game and kills Xvfb during cleanup. This is more reliable than `xvfb-run` which has documented race conditions (26-40% failure rate in CI environments).
+
+> **Corrected 2026-10-19 (round 8).** This section originally read "The script starts Xvfb on a specific display number (`:99`), waits for it to be ready, launches the game with `DISPLAY=:99`". That is superseded by the round-7 display decision: the fixed `:99` was dropped because the server allocates the display atomically under `-displayfd`, and the server writes **no lock file** at all in that mode (parsing `-displayfd` sets `nolock = TRUE`, so `LockServer()` returns without writing `/tmp/.X{n}-lock`). The script therefore never chooses, probes, creates or removes a display number's lock file (FR-012 item 5, FR-010 item 3).
 
 **Alternatives Considered**:
 - `xvfb-run` wrapper → unreliable per Debian bug #1095028; doesn't allow custom display number
@@ -96,7 +98,9 @@ The **authoritative success signal is SMAPI's own mod-resolution output**, not t
 
 **Decision**: Trap SIGINT/SIGTERM + EXIT trap for universal cleanup
 
-**Rationale**: Bash's EXIT trap fires on all exit paths (normal, error, signal). The script traps SIGINT/SIGTERM to forward signals to child processes, then the EXIT trap runs full cleanup: kill game (SIGTERM → SIGKILL), kill Xvfb, remove X11 locks, remove temp files. Each cleanup step is guarded with `|| true` so one failure doesn't prevent others. Cleanup order is reverse of allocation.
+**Rationale**: Bash's EXIT trap fires on all exit paths (normal, error, signal). The script traps SIGINT/SIGTERM to forward signals to child processes, then the EXIT trap runs full cleanup: kill game (SIGTERM → SIGKILL), kill Xvfb, remove the socket of the display this script allocated, remove temp files. Each cleanup step is guarded with `|| true` so one failure doesn't prevent others. Cleanup order is reverse of allocation.
+
+> **Corrected 2026-10-19 (round 8).** The earlier wording "remove X11 locks" is superseded: under `-displayfd` the server writes no lock file, and FR-010 item 3 forbids the script from creating or removing `/tmp/.X{n}-lock` files. Only the **socket** of the script's own display is removed.
 
 **Alternatives Considered**:
 - No signal handling → orphaned game processes and X servers
@@ -111,9 +115,11 @@ The **authoritative success signal is SMAPI's own mod-resolution output**, not t
 
 **Decision**: One distinct exit code per failure category (a bespoke, sysexits-*style* taxonomy — see the supersession note below)
 
-**Rationale**: A per-category code lets a caller (here: the maintainer) classify the failure without reading the run log, and lets a future CI router branch on the category. The script uses: 0 (success), 1 (game not found), 2 (SMAPI not found or not functional), 3 (graphics present but unusable), 4 (timeout), 5 (mod load failure), 6 (lock contention), 7 (process conflict), 9 (missing host tool or runtime dependency), 10 (display conflict), 11 (Steam API prerequisite missing), 12 (build or artifact-identity failure), 13 (internal script error), plus the POSIX `128+N` interruption codes (130 = SIGINT, 143 = SIGTERM). Every child status is translated into one of these before the script exits — no subprocess-specific status may ever become the script's final code (FR-007's translation table).
+**Rationale**: A per-category code lets a caller (here: the maintainer) classify the failure without reading the run log, and lets a future CI router branch on the category. The script uses: 0 (success), 1 (game not found), 2 (SMAPI not found or not functional), 3 (graphics present but unusable), 4 (timeout), 5 (mod load failure), 6 (lock contention), 7 (process conflict), 9 (missing host tool or runtime dependency), 10 (the virtual display could not be allocated or started), 11 (Steam API prerequisite missing), 12 (build or artifact-identity failure), 13 (internal script error), 14 (usage or CLI-argument error), 15 (the game produced no SMAPI log), 16 (mods path or mod manifest invalid), plus the POSIX `128+N` interruption codes (129 = SIGHUP, 130 = SIGINT, 143 = SIGTERM). Every child status is translated into one of these before the script exits — no subprocess-specific status may ever become the script's final code (FR-007's translation table).
 
 > **Superseded 2026-10-19 (round 6)** — this section originally read "Follow sysexits.h convention". `sysexits.h` defines only 64–78 (`EX__BASE` = 64) and two of the three BSDs have deprecated it (FreeBSD: "legacy … use is discouraged"; OpenBSD: "Do not use them"), so codes 1–13 are **not** sysexits values. The phrase "sysexits.h convention" is withdrawn: the scheme is sysexits-*style* (one code per failure class) with bespoke values, allocated additively. Earlier revisions of this section also listed `8 (interrupted)` (retired in round 2 in favour of POSIX `128+N`) and omitted 9/10/11 (added in the environment-verified round). The canonical table is `data-model.md` → "Exit Codes"; FR-007 is the normative source.
+>
+> **Corrected 2026-10-19 (round 8)** — this section's own list was still the round-4 list: it omitted `14`, `15`, `16` and `129` (all added in round 7) and still called `10` a "display conflict", a label the round-7 decision replaced with "the virtual display could not be allocated or started" (the constant was renamed to `EX_DISPLAY_UNAVAILABLE` in `data-model.md` in round 8). The list above is now complete and matches FR-007 and the canonical table.
 
 **Alternatives Considered**:
 - Binary 0/1 → insufficient for actionable diagnostics
