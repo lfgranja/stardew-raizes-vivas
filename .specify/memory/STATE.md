@@ -1,50 +1,46 @@
-# Session State — feat/005-soil-health-to-crop-growth
+# Session State — feat/008-smoke-validation
 
-**Date**: 2026-10-17
-**Branch**: `feat/005-soil-health-to-crop-growth` (current)
-**Feature**: Soil Health → Crop Growth (spec 005)
+**Date**: 2026-10-19
+**Branch**: `fix/protected-paths-script-confirm` (carries the 008 spec work)
+**Feature**: Smoke Validation Script (spec 008)
 
 ## COMPLETION SUMMARY
 
-### Prerequisites (Step 1)
-- `check-prerequisites.sh --json --require-tasks --include-tasks` → PASSED
-- FEATURE_DIR = /home/luis/development/stardew-raizes-vivas/specs/005-soil-health-to-crop-growth
-- AVAILABLE_DOCS = research.md, data-model.md, contracts/, quickstart.md, tasks.md
+### Checklist review round 5 (2026-10-19) — DONE
+- 4 checklists with unchecked items reviewed by 4 parallel review agents; 6 background
+  research agents gathered external evidence.
+- **Result: 344/344 → 360/360 checkbox items passing across all 5 checklists**
+  (operational-readiness 92/92 · requirements 16/16 · script-reliability 88/88 ·
+  security-safety 82/82 · smapi-integration 82/82).
+- 9 atomic commits (`feat/fix/docs: … — <file> — <why>`), format gate green.
 
-### Checklists (Step 2)
-- All 5 checklists: 100% checked → PASS (0 unchecked items)
-- requirements.md (16/16), verification-pipeline.md, band-scale-host-authority.md, growth-performance.md, harvest-quality-extra.md
+### Evidence-resolved corrections applied
+- **Bash trap semantics** (measured on bash 5.3.9): an inherited `EXIT` trap does **not**
+  fire in command substitution / `( )` / background jobs / pipeline stages / functions-in-
+  subshells — only the parent fires it, once. FR-005 now states the single-trap rule.
+- `research.md` §5 still listed the superseded `8 (interrupted)` code → corrected to FR-007.
+- `smapi-integration` 1.3 → `SMAPI_DEVELOPER_MODE` gates console verbosity only.
+- `operational-readiness` 2.8 → now states the `timeout` 124→4 translation exception.
+- `security-safety` Anti-Patterns row 9 + item 9.4 → aligned with the minimal Xvfb posture
+  (spec.md:177). Residual risk recorded in spec.md Assumptions.
+- FR-012 item 5 → pinned the X11 lock file's 11-byte `"%10lu\n"` format and the
+  ESRCH/EPERM liveness test (xorg-server 21.1.24 `os/utils.c`).
+- `spec.md` interruption clarification → `BashFAQ/062` corrected to `BashFAQ/047`.
 
-### Context Loaded (Step 3)
-- spec.md, plan.md, data-model.md, contracts/i-soil-health-service.md, research.md, quickstart.md, tasks.md all read
-- constitution.md v2.0.0 (Principle VI multiplayer) confirmed
+### BLOCKED — awaiting the user's answers to 5 batch questions
+1. Pre-flight dependency exit code: `3` (graphics) vs `9` (missing binary) overlap.
+2. No code for "the script itself broke" / "the build failed"; `sysexits.h` label is wrong.
+3. How the game enters its own process group (setsid / `set -m` / `timeout` / descendant walk).
+4. X11 lock removal scope in the EXIT-trap cleanup (FR-010(3) vs FR-012(5)).
+5. `--force` PID identity verification (`pgrep -x` is non-functional for the 17-char apphost).
 
-### Project Setup (Step 4)
-- .gitignore exists — C#/.NET patterns complete (bin/, obj/, *.user, *.suo, packages/, *.log, .env*, etc.)
-- No Docker/eslint/prettier/npm/terraform/helm needed (C#/.NET project)
+## REMAINING (cannot be completed by agent — requires the real game)
+- The script itself does not exist yet (`scripts/smoke-validation.sh`).
+- Xvfb is **not installed** on the maintainer's machine (pre-flight will exit `3`).
+- Gate 3 (end-to-end verification) stays ⏳ until a real run succeeds.
 
-### Implementation State (verified by subagents)
-- **All 21 RED PHASE test files exist** (T016-T036) — 0 missing
-- **Build**: `dotnet build` → 0 errors, succeeds
-- **Tests**: 1264 total, 1259 passed, 4 failed (all PRE-EXISTING, unrelated to feature 005)
-  - UnicodeNormalizer_NormalizesFullwidthCharacters (.NET Normalize() doesn't convert fullwidth)
-  - ProductionSources_NoUnreferencedConstantsSurvive (Constants.cs not found — pre-existing)
-  - FalseComment_InvalidDropInShake_MatchesCode (Constants.cs not found — pre-existing)
-  - T031b_OverlayDistinguishable (flaky FsCheck — passes individually)
-- **SC-008 automated gate**: `CollectCompost_WhenInventoryRefuses_RetainsBinReadyState` → PASSES
-- **All implementation T101-T108 complete** in source (growth modifier, quality roll, extra harvest, chunk mechanism, harvest feedback, host lock, concurrency guard, idempotency, fallback)
-
-### Changes Made This Session
-- `LivingRoots/Domain/AGENTS.md` — band scale table reconciled to ROADMAP.md [0,30]/[31,70]/[71,100] (T117)
-- `LivingRoots/Domain/IColorInterpolationService.cs` — XML doc comment reconciled to ROADMAP scale (T118)
-- `LivingRoots/Domain/Visualization/AGENTS.md` — band scale table reconciled to ROADMAP scale (T119)
-- Committed as `2b9cb2e` (pre-commit hook `dotnet format --verify-no-changes` passed)
-
-### Remaining (cannot be completed by agent — requires GamePath / live game)
-- **SC-008 manual GamePath play-through** — requires live Stardew Valley session; automated portion PASSES
-- **GamePath spike (A1)** — verify Crop.newDay ordering with vanilla growth; requires live game
-- **SC-009 / FR-009 manual observation** — full loop play-through; requires live game
-
-### Blockers for Yield Activation (FR-002/FR-003)
-- SC-008 rollback verification = absolute blocker (clarification 2026-10-16 Option A)
-- Automated portion GREEN; manual GamePath portion owed
+## Notes
+- Working tree also contains pre-existing changes not made by this session:
+  `.specify/bugs/protected-paths-script-missing/test.md` (modified) and
+  `.specify/assessments/automate-ingame-testing/` (untracked). Do not commit those here.
+- Previous session (feat/005-soil-health-to-crop-growth) is complete and committed; see git log.
