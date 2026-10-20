@@ -128,7 +128,8 @@ The smoke validation script has no persistent data model of its own — it reads
 | 13 | `EX_INTERNAL_ERROR` | The script itself broke — an unhandled error caught by the ERR trap, a failed PGID assertion, or an unmapped child status |
 | 14 | `EX_USAGE_ERROR` | Usage or CLI-argument error — unknown option, missing required argument, malformed value |
 | 15 | `EX_NO_LOG_PRODUCED` | The game exited (including status `0`) but produced no SMAPI log |
-| 16 | `EX_MOD_MANIFEST_INVALID` | The resolved mods directory, the mod folder, `manifest.json`, or its `UniqueID` is missing or invalid |
+| 16 | `EX_MOD_MANIFEST_INVALID` | The resolved mods path violates FR-012 item 7's path rules, is not a directory, or the mod folder / `manifest.json` / its `UniqueID` is missing or invalid |
+| 17 | `EX_MOD_RESOLUTION_ABORTED` | SMAPI aborted before mod resolution — the run sentinel was observed but the mod-resolution header never appeared, and the process exited. Classified from the **log**, not from the status, because the statuses such an abort produces are already claimed by other categories |
 | 129 | `EX_SIGHUP` | Script terminated by SIGHUP (POSIX 128+1) |
 | 130 | `EX_SIGINT` | Script interrupted by SIGINT (POSIX 128+2) |
 | 143 | `EX_SIGTERM` | Script terminated by SIGTERM (POSIX 128+15) |

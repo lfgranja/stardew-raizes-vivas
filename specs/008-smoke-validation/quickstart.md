@@ -15,7 +15,7 @@ Before running the smoke validation script, ensure:
 4. **Mesa software rendering** is usable, and `mesa-utils` provides `glxinfo` and `xdpyinfo`. The pre-flight starts the virtual display and asserts, in layers: `xdpyinfo` reports the `GLX` and `RANDR` extensions; `glxinfo -B` under `LIBGL_ALWAYS_SOFTWARE=1` exits **0** (it exits **255**, not 1, on failure); the `OpenGL renderer string` is `llvmpipe` or `softpipe`; and **full `glxinfo` reports `GL_ARB_framebuffer_object` or `GL_EXT_framebuffer_object`** (or the GL version is ≥ 3.0). That last layer is load-bearing — the game's MonoGame backend throws `PlatformNotSupportedException: MonoGame requires either ARB_framebuffer_object or EXT_framebuffer_object` when a context lacks FBOs, and `glxinfo -B` prints no extension list, so it cannot detect that failure. A missing `glxinfo`/`xdpyinfo` exits `9`; a stack that is present but cannot provide usable software OpenGL exits `3`
 5. **The Living Roots mod** is deployed into the resolved mods directory (default `~/.steam/steam/steamapps/common/Stardew Valley/Mods/LivingRoots/`). The script rebuilds and redeploys it on every run — with the build's deploy target pinned to the resolved mods path — and verifies the deployed assembly by SHA-256 digest, so a manual deploy is not required. **Note:** the script *deletes and recreates* that directory on every run
 6. **Bash 4+** is available (standard on Linux)
-7. **ASCII host paths** — path components are validated against `[A-Za-z0-9._/-]+`. No Unicode normalization is performed and **no normalizer dependency is required**: NFC is a provable no-op for ASCII paths (UAX #15) and is not a homoglyph defence (that needs UTS #39)
+7. **Host paths may contain spaces and non-ASCII characters** — the game directory is `~/.steam/steam/steamapps/common/Stardew Valley/` and the game assembly is `Stardew Valley.dll`. **No character allowlist is applied to environment-derived names** and **no normalizer dependency is required**: path safety rests on `realpath` canonicalization, the component-boundary prefix test, and correct quoting of every path expansion (FR-012 item 7). NFC is a provable no-op for ASCII paths (UAX #15) and is not a homoglyph defence (that needs UTS #39)
 8. **The .NET SDK (`dotnet`) IS required on the host** — the script rebuilds the mod before every run (FR-016). The *game* needs no host .NET runtime: the Steam install ships a self-contained .NET 6 `linux-x64` runtime (`libcoreclr.so`, `libhostfxr.so`, `libhostpolicy.so` in the game folder). Mono is not involved.
 9. **The remaining host tools** — `flock`, `timeout`, `mktemp`, `stat`, `realpath`, `pgrep` (or `pidof`), `sha256sum`, `date` and `grep` — must be on `PATH`. The pre-flight verifies each with `command -v` and exits `9` naming the missing one (FR-012 item 8)
 
@@ -36,6 +36,66 @@ Before running the smoke validation script, ensure:
 **Expected outcome (failure)**: Non-zero exit code with descriptive message following "What → Where → How to fix" pattern.
 
 Each run writes a diagnostic log to `${XDG_STATE_HOME:-$HOME/.local/state}/living-roots-smoke/runs/<run-id>.log`. The path and the run ID are printed in the summary on stdout.
+
+### Command-Line Options
+
+The table below is a **verbatim copy** of the normative option table in `spec.md` → "Command-Line Options (normative)". If the two ever differ, the spec wins.
+
+| Option | Argument | Default | Description |
+|--------|----------|---------|-------------|
+| `--game-path` | `DIR` | `~/.steam/steam/steamapps/common/Stardew Valley/` | Game installation root; also the launch working directory and the base for a relative `--mods-path` |
+| `--mods-path` | `DIR` | `<game-path>/Mods` | Mods directory handed to SMAPI and pinned as the build's deploy target |
+| `--mod-project` | `FILE` | `<repo-root>/LivingRoots/LivingRoots.csproj` (`<repo-root>` = `SCRIPT_DIR/..`) | The project rebuilt and digest-verified before the launch |
+| `--timeout` | `SECONDS` | `120` | The game-launch-to-verdict deadline (the two-phase wait) |
+| `--build-timeout` | `SECONDS` | `300` | The bound on the rebuild-and-verify phase; expiry exits `12` |
+| `--grace-period` | `SECONDS` | `15` | The SIGTERM → SIGKILL escalation window |
+| `--smapi-log` | `FILE` | `~/.config/StardewValley/ErrorLogs/SMAPI-latest.txt` | The SMAPI log polled for readiness and for the verdict |
+| `--force` | *(none — flag)* | off | Terminate an existing game instance instead of aborting (the identified PID only) |
+| `--help` | *(none — flag)* | — | Print usage to stdout and exit `0` |
+| `-h` | *(none — flag)* | — | Alias for `--help` |
+| `--version` | *(none — flag)* | — | Print `<name> <VERSION>` to stdout and exit `0` |
+
+Argument syntax: `--opt VALUE` and `--opt=VALUE` are both accepted and equivalent. `--` terminates option processing. Long-option names are **not** abbreviated — `--mod` is ambiguous between `--mod-project` and `--mods-path` and is rejected, and `--mods` would silently mean `--mods-path`. The script takes no positional arguments; one is a usage error (exit `14`).
+
+### Game Installation Path
+
+```bash
+# Default: ~/.steam/steam/steamapps/common/Stardew Valley/
+./scripts/smoke-validation.sh
+
+# Point the launch at a different installation
+./scripts/smoke-validation.sh --game-path "/path/to/Stardew Valley"
+```
+
+A relative `--mods-path` is resolved against the resolved game directory (FR-017). The path may contain spaces; it is passed to every external command behind `--` and is never re-parsed by a shell.
+
+### SMAPI Log Path
+
+```bash
+# Default: ~/.config/StardewValley/ErrorLogs/SMAPI-latest.txt
+./scripts/smoke-validation.sh
+
+# Poll a different SMAPI log
+./scripts/smoke-validation.sh --smapi-log /path/to/SMAPI-latest.txt
+```
+
+### Grace Period
+
+```bash
+# Default: 15 seconds
+./scripts/smoke-validation.sh
+
+# Give the game 30 seconds to exit before SIGKILL
+./scripts/smoke-validation.sh --grace-period 30
+```
+
+### Help and Version
+
+```bash
+./scripts/smoke-validation.sh --help     # usage, options, environment, exit codes
+./scripts/smoke-validation.sh -h         # alias for --help
+./scripts/smoke-validation.sh --version  # "<name> <VERSION>", exit 0
+```
 
 ### Configurable Timeout
 
@@ -155,7 +215,7 @@ The **oracle** for every test case is the FR-007 exit-code contract (`data-model
 
 | # | Test item / feature | Objective | Priority | Traceability | Input | Execution condition | Expected output | Actual output | Pass/Fail |
 |---|-----------|-----------|----------|---------------|-------|---------------------|-----------------|---------------|-----------|
-| TC-1 | Mod loads successfully | Verify the mod resolves and loads in the real game with no errors | Must | FR-006, SC-002 | Default install paths, mod deployed, no save loaded | Script run with no arguments; **launch-to-verdict** within `--timeout` (default 120 s) | Exit `0`; `SUCCESS: Mod loaded without errors.`; the mod appears in SMAPI's loaded-mods block; game and Xvfb terminated; no orphaned processes; the per-phase durations and the total wall time are recorded in the run log | _(record)_ | ☐ Pass ☐ Fail |
+| TC-1 | Mod loads successfully | Verify the mod resolves and loads in the real game with no errors | Must | FR-006, SC-002 | Default install paths, mod deployed, no save loaded | Script run with no arguments; **launch-to-verdict** within `--timeout` (default 120 s) | Exit `0`; `SUCCESS: Mod loaded without errors.`; the mod appears in SMAPI's loaded-mods block; game and Xvfb terminated; no orphaned processes; the per-phase durations and the total wall time are recorded in the run log; and the run log records the launch contract — the apphost was invoked as `./StardewModdingAPI --no-terminal` with the game directory as the working directory, `SMAPI_NO_TERMINAL=true`, `SMAPI_DEVELOPER_MODE=true`, `LIBGL_ALWAYS_SOFTWARE=1`, `GALLIUM_DRIVER=llvmpipe`, `SDL_VIDEODRIVER=x11`, `SDL_AUDIODRIVER=dummy` and `ALSOFT_DRIVERS=null` were exported, Xvfb was started with `-nolisten tcp -displayfd`, and `DISPLAY` was set from the reported display number | _(record)_ | ☐ Pass ☐ Fail |
 | TC-2 | Mod load-time error | Verify a mod-scoped Error entry fails the run and is reported | Must | FR-003, FR-006, SC-003 | Mod build with a failing `ModEntry.Entry()` | Script run with no arguments | Exit `5`; failure message with "What → Where → How to fix" and SMAPI log context | _(record)_ | ☐ Pass ☐ Fail |
 | TC-3 | Game not installed | Verify the pre-flight fails closed on a missing game install | Must | FR-007, FR-012, SC-009 | `--game-path` pointing at a non-existent directory | Script run with `--game-path <missing>` | Exit `1`; actionable pre-flight error naming the missing path | _(record)_ | ☐ Pass ☐ Fail |
 | TC-4 | Game already running | Verify an existing game instance is detected and not clobbered | Must | FR-011, SC-007 | An existing Stardew Valley/SMAPI process | Script run **without** `--force` | Exit `7`; error listing the conflicting PIDs | _(record)_ | ☐ Pass ☐ Fail |
@@ -173,7 +233,31 @@ The **oracle** for every test case is the FR-007 exit-code contract (`data-model
 | TC-16 | `--help` completeness | Verify `--help` documents every contract the spec requires | Must | FR-015, SC-006 | — | `smoke-validation.sh --help` | Exits `0`; stdout documents the usage, every option (including `--game-path`, `--mods-path`, `--mod-project`, `--timeout`, `--build-timeout`, `--grace-period`, `--smapi-log`, `--force`, `--help`/`-h` and `--version`), at least one example, the "Environment (set automatically)" section, the run-log location, the run-ID format, the `VERSION`, and **every** exit code in the FR-007 table | _(record)_ | ☐ Pass ☐ Fail |
 | TC-17 | Status translation | Verify no raw subprocess status ever becomes the script's final code | Must | FR-007 | — | Feed each raw child status in the FR-007 translation table to the translator | Each status maps to its documented exit code (`124`→`4`, `125`→`13`, `126`→`9`, `127`→`9`, `131`→`2`, `134`→`2`, `137`→`5`/`2`/`13`, `154`→`2`, `128+N` unchanged, any other non-zero → `13`) | _(record)_ | ☐ Pass ☐ Fail |
 
-**Execution order**: TC-1 → TC-2 → … → TC-17 (29119-3 §8.4.6 *Ordered test cases*). A failure in one case does **not** skip the independent cases that follow; TC-1 is always run first because it is the canary for the environment.
+| TC-18 | `--version` and the `-h` alias | Verify the script prints its version on stdout and exits 0, and that `-h` is accepted as an alias for `--help` | Must | FR-015, SC-006 | — | `smoke-validation.sh --version` and `smoke-validation.sh -h` (no game, no display, no build required) | `--version` exits `0`; stdout is exactly `<name> <VERSION>` (one line, matching the `VERSION` in the run-log header and the stdout summary) and nothing is written to stderr; `-h` exits `0` and produces byte-identical output to `--help` | _(record)_ | ☐ Pass ☐ Fail |
+| TC-19 | Usage / CLI-argument error | Verify an unknown option and a malformed option value are rejected by the argument parser with the dedicated usage code | Must | FR-007, FR-015 | — | `smoke-validation.sh --no-such-option` and `smoke-validation.sh --timeout abc` | Both exit `14`; the message names the offending option and its expected form; nothing is launched (no SMAPI log touched, no game process, no display started, no build run); the run log records the rejection | _(record)_ | ☐ Pass ☐ Fail |
+| TC-20 | Invalid `--mods-path` rejected before launch | Verify a mods path that cannot host the deploy target is rejected by the pre-flight with the code the FR-007 taxonomy assigns to that condition | Must | FR-007, FR-012 item 7, FR-017 | A `--mods-path` that does not exist or is not a directory | `smoke-validation.sh --mods-path "$TMP/no-such-mods-dir"` | Exit `16` **before** the build and before any launch; the message names the offending path and says what was expected of it; the build is not run, the deploy target is not touched, and no game process starts | _(record)_ | ☐ Pass ☐ Fail |
+| TC-21 | SMAPI not functional | Verify the FR-012 item 2 marker check fails closed and reports SMAPI as the missing component | Must | FR-002, FR-007, FR-012 item 2 | A game directory that contains `Stardew Valley.dll`, `StardewModdingAPI`, `StardewModdingAPI.dll` and `smapi-internal/SMAPI.Toolkit.dll` but **not** `smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll` | `smoke-validation.sh --game-path "$FIXTURE/game-broken-smapi"` | Exit `2`; the message names SMAPI as the failed component, the missing marker file and the SMAPI-reinstall remediation; the game is not launched and the build step is not reached | _(record)_ | ☐ Pass ☐ Fail |
+| TC-22 | Steam prerequisite missing | Verify the `steam_appid.txt` check fails closed with the dedicated code | Must | FR-007, FR-012 item 9 | A game directory identical to the real one except `steam_appid.txt` contains a wrong app id | `smoke-validation.sh --game-path "$FIXTURE/game-bad-steam"` | Exit `11`; the message names `steam_appid.txt`, the expected id `413150` and the observed value; the game is not launched | _(record)_ | ☐ Pass ☐ Fail |
+| TC-23 | Virtual display cannot be allocated | Verify a present-but-failing Xvfb is reported as a display-allocation failure, distinct from a missing tool (`9`) and an unusable graphics stack (`3`) | Must | FR-007, FR-012 item 5 | A stub `Xvfb` earlier on `PATH` that exits non-zero without printing a display number | `PATH="$FIXTURE/stub:$PATH" smoke-validation.sh` with `Xvfb`, `xdpyinfo` and `glxinfo` all present | Exit `10`; the message states that the virtual display could not be allocated or started and names `Xvfb`; the graphics probe is not reached, and the failure is **not** reported as `9` or `3` | _(record)_ | ☐ Pass ☐ Fail |
+| TC-24 | Internal script error | Verify an unhandled error is reported by the ERR trap with the internal-error code and never as a raw child status | Should | FR-007, FR-014 | `XDG_STATE_HOME` pointing at a directory that is not writable | `XDG_STATE_HOME="$TMP/readonly" smoke-validation.sh` | Exit `13`; the ERR trap reports the script name, the failing line number, the enclosing function and the exit code; the exit code is **not** the raw status of the failing command (e.g. not `1`) | _(record)_ | ☐ Pass ☐ Fail |
+| TC-25 | Idempotency | Verify two consecutive runs under identical conditions produce the same verdict | Must | FR-008, SC-001, SC-015 | Default install paths, mod deployed, TC-1 already passed in this session | Run `smoke-validation.sh` twice in sequence, unmodified | Both runs exit with the same code and print the same verdict line; the second run finds no state left by the first (no stale log is reused, the deploy is redone, the lock is re-acquirable); the two run logs differ only in run ID and timestamps | _(record)_ | ☐ Pass ☐ Fail |
+| TC-26 | Build timeout | Verify the rebuild phase is bounded and reports the build failure distinctly | Should | FR-007, FR-016 (b) | A `--build-timeout` small enough to expire during the rebuild | `smoke-validation.sh --build-timeout 1` with a cold build | Exit `12`; the message names the elapsed time and the bound that expired; the game is never launched | _(record)_ | ☐ Pass ☐ Fail |
+
+#### Requirement-Coverage Summary
+
+ISO/IEC/IEEE 29119-3 §6.2.4.3 requires the test scope to identify excluded features **and the rationale for excluding them**. This table records the deliberate exclusions; everything else is traced in the `Traceability` column of the table above.
+
+| Requirement / area | Covered by | Status | Rationale / where it is covered instead |
+|---|---|---|---|
+| FR-001 (launch contract) | TC-1, TC-15 | Covered | Asserted from the run log (FR-014): the apphost invocation and working directory, the exported environment, and the Xvfb flags. No extra run required |
+| FR-002, FR-003, FR-005…FR-007, FR-009…FR-012, FR-014…FR-017 | TC-1…TC-17 | Covered | — |
+| FR-004, SC-004, SC-005 | — | **Not tested (deferred)** | Deferred by FR-004: the automated script cannot load a save (SMAPI has no CLI save selection; the mod is purely reactive). The title screen is the expected state | Manual play-through; spec 005 / the deferred US2 scenarios |
+| FR-008, SC-015 | TC-25 | Covered | — |
+| FR-013 | — | **Not tested (out of scope)** | Local-first by FR-013; no `--json` mode exists and CI integration is out of scope | n/a — explicitly out of scope |
+| Exit code `17` | TC-26, TC-19 | Partially covered | `17` is the log-based classification for "SMAPI aborted before mod resolution"; it is reachable by injecting a leftover crash marker. The marker path is exercised by hand, not by a numbered TC | Manual injection of `smapi-internal/StardewModdingAPI.crash.marker` |
+| Exit code `129` | — | **Waived** | SIGHUP shares the FR-005 handler with SIGINT (proven by TC-7); the handler is the risk, not the code value | TC-7 |
+
+**Execution order**: TC-1 → TC-2 → … → TC-26 (29119-3 §8.4.6 *Ordered test cases*). A failure in one case does **not** skip the independent cases that follow; TC-1 is always run first because it is the canary for the environment. **TC-18…TC-24 and TC-26 are launch-free** — they use fixtures and a stubbed `PATH` and need neither the game nor the display, so they can be executed *before* `Xvfb` is installed; TC-25 runs immediately after TC-1.
 
 ### Scenario 1: Mod Loads Successfully
 
@@ -345,6 +429,7 @@ Ordered by **decreasing likelihood**, with **cost as the tiebreak** (Google SRE 
 | 15 | The game exited without producing a SMAPI log | SMAPI re-asserted its dependency manifest and asked for a relaunch — re-run the SMAPI installer, then re-run the script | SMAPI writes a log |
 | 16 | The resolved mods path, the mod folder, `manifest.json`, or its `UniqueID` is invalid | Check `--mods-path`; the mod folder must contain `LivingRoots/manifest.json` with `UniqueID` = `lfgranja.LivingRoots` | the manifest check passes |
 | 8 | **Retired** (round 2) — superseded by the POSIX `128+N` interruption codes | — | never reused; a new code is always allocated above the highest published code |
+| 17 | SMAPI aborted before mod resolution — the run sentinel was seen but the mod-resolution header never appeared, and the process exited | Classified from the **log**, not the status. Check for a leftover `smapi-internal/StardewModdingAPI.crash.marker` or `…update.marker` (the pre-flight removes both), and for a graphics-device failure in the log | SMAPI resolves the mods and the block appears |
 | 129 / 130 / 143 | Script terminated by SIGHUP / SIGINT / SIGTERM | Normal — cleanup was run | — |
 
 ---

@@ -170,6 +170,8 @@
 
 ## Round-8 Verification Note
 
+**Final state: 82/82 items passing.** The intermediate state after the review was 79 `[x]` and 3 `[ ]` (6.1, 6.2, 7.5); all three were closed by the round-8 user decisions — 6.1 and 6.2 by FR-002's new **two-phase wait** (the sentinel establishes readiness, then the script keeps polling within the same deadline for the mod-resolution header, because the header is written only after the graphics device is created — measured ≈14 s after the sentinel unloaded, 28–42 s under host load), and 7.5 by the launch-scoped `--timeout` plus the per-phase timings the run log now records. Across the five checklists the round-8 result is **361/361**.
+
 Every SMAPI-format claim in this checklist was re-verified against the upstream **4.5.2** sources (`/tmp/opencode/smapi-src/`, byte-identical to the `4.5.2` tag — the locally extracted `LogManager.cs` matches `src/SMAPI/Framework/Logging/LogManager.cs` by MD5) and, where it was cheap, against the **installed 4.5.2+821167e5…** build on the maintainer's machine.
 
 **Measured on the installed build** (all runs with stdin redirected from `/dev/null`):
