@@ -7,7 +7,7 @@
 
 ## Overview
 
-The smoke validation script has no persistent data model of its own — it reads external artifacts (SMAPI log, mod build artifact, mod data files) and produces a single exit code. The one thing it writes is a per-run diagnostic log (see the Run Log entity). This document defines the external data structures the script interacts with and the internal state it tracks during execution.
+The smoke validation script has no persistent data model of its own — it reads external artifacts (SMAPI log, mod build artifact, mod data files) and produces a single exit code. Its only *retained* output is a per-run diagnostic log (see the Run Log entity); the rest of what it writes is listed exhaustively in `spec.md` → Scope → **Declared side effects** (the build output, the deployed mod tree, the lock file it leaves in place, the X11 socket and temp directory it creates and removes). This document defines the external data structures the script interacts with and the internal state it tracks during execution.
 
 ---
 
@@ -25,7 +25,7 @@ The smoke validation script has no persistent data model of its own — it reads
 
 > **Corrected 2026-10-19 (round 8).** The earlier "padded to 5 characters" was incomplete rather than wrong: it is right for the six public levels but the internal `ConsoleLogLevel` enum also contains `Critical` and `Success`, and `PadRight(5)` is a no-op on them, so `CRITICAL` (8 characters) reaches the log file and shifts the source column. The level must therefore be bound **by label**, not by a 5-character column slice. Verified against upstream `src/SMAPI/Framework/Monitor.cs` (`MaxLevelLength`, `LogStrings`) and the installed 4.5.2 binary. The level still lives **inside** the bracket group — there is no `[ERROR]` token — so Error/Alert must be matched on the level **label**, never as a literal `[ERROR]` substring.
 
-**Levels** (6): `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `ALERT`
+**Levels**: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `ALERT` (the public `LogLevel` enum — the field renders 5 characters wide, with `INFO`/`WARN` carrying a trailing pad space) **plus `CRITICAL`** (8 characters), which SMAPI core emits from `Monitor.LogFatal` (malicious-mod detection, `ExitGameImmediately`). `SUCCESS` exists in SMAPI's internal level enum but is written only to the **installer console**, never to the log file.
 
 **Mod Identification**: The mod's manifest name is `Stardew Valley - Living Roots`. The script filters log entries by this name in the source column to isolate mod-specific messages.
 
@@ -182,7 +182,7 @@ A pre-flight probe that fails is translated by the **category of the probe**, no
 ## Entity Relationships
 
 ```
-Script (no persistent data model; writes only a diagnostic run log)
+Script (no persistent data model; retains only a diagnostic run log — see spec.md → Scope → Declared side effects for the full write set)
   ├── reads  → SMAPI Log File (~/.config/StardewValley/ErrorLogs/SMAPI-latest.txt)
   ├── reads  → Mod Data Files (~/.config/StardewValley/.smapi/mod-data/lfgranja.LivingRoots/*.json) [deferred — not implemented]
   ├── builds & verifies → Mod Build Artifact (<mods-path>/LivingRoots/) via SHA-256 digest comparison

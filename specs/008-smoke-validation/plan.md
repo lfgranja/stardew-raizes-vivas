@@ -24,7 +24,7 @@ The script follows a strict lifecycle: pre-flight validation → build & verify 
 
 **Artifact identity**: the build's deploy target is pinned to the resolved `--mods-path` via `-p:GameModsPath`, and the deployed assembly's SHA-256 digest is compared with the freshly built one **within the same run** — the standard deploy-effectiveness assertion (file-integrity monitoring / SLSA subject digest). The digest is never compared across runs, because the .NET compiler's deterministic content hash is a function of the absolute source path.
 
-**Storage**: No persistent data model. The script writes exactly one thing: a per-run diagnostic log at `${XDG_STATE_HOME:-$HOME/.local/state}/living-roots-smoke/runs/<run-id>.log` (FR-014).
+**Storage**: No persistent data model of the script's own — it reads external artifacts (the SMAPI log, the mod build artifact, the mod data files) and produces a single exit code. What it **writes** is more than one thing, and the exhaustive list is in `spec.md` → Scope → **Declared side effects**: the per-run diagnostic log at `${XDG_STATE_HOME:-$HOME/.local/state}/living-roots-smoke/runs/<run-id>.log` (FR-014), the build output in `LivingRoots/bin/` and `LivingRoots/obj/` plus the NuGet cache, the deployed mod tree under the resolved mods path, the lock file it leaves in place, the X11 socket it creates and removes, and the temp directory it creates and removes.
 
 **Testing**: Manual validation via script execution against real game installation; exit code verification
 

@@ -6,96 +6,60 @@
 
 ## COMPLETION SUMMARY
 
-### Checklist review round 7 (2026-10-19) — DONE
-- All 5 checklists re-verified against the current artifacts by **5 parallel review agents**;
-  **8 external research agents** gathered evidence (bash trap/process-group semantics,
-  lockfile design, exit-code taxonomy, TOCTOU/file-safety, headless graphics probing,
-  IEEE 829 → ISO/IEC/IEEE 29119, CLI output & error-message design, artifact identity &
-  reproducible builds).
-- **Result: 360/360 → 317/361 → 361/361 items passing** (operational-readiness 92/92 ·
-  requirements 16/16 · script-reliability 89/89 · security-safety 82/82 ·
-  smapi-integration 82/82). 44 items were left unchecked pending the user's answers and
-  were then re-validated once the answers landed.
-- 12 atomic commits (`fix/docs: … — <file> — <why>`), format gate green.
+### Checklist review round 8 (2026-10-19) — IN PROGRESS
+- All 5 checklists re-verified against the current artifacts by **5 parallel review agents**
+  (one per checklist), each **editing its own checklist** to set the correct `[x]`/`[ ]`
+  marker and rewrite stale justifications.
+- **10 parallel research agents** gathered evidence: path-allowlist scope; declared
+  side-effect completeness; test-coverage gaps (ISO/IEC/IEEE 29119); timeout budget scope;
+  SMAPI marker-file semantics; process-group signal hygiene; TOCTOU / "open directly,
+  branch on the result"; umask & file-mode policy; CLI option inventory contract;
+  SMAPI log-parsing robustness.
+- Primary sources used throughout: the upstream **SMAPI 4.5.2** source
+  (`Pathoschild/SMAPI` tag `4.5.2`, commit `821167e5c511bf3a2d98f604e5e838561c469219`,
+  extracted at `/tmp/opencode/smapi-src/`) — byte-identical to the installed binary at
+  `~/.steam/steam/steamapps/common/Stardew Valley`.
 
-### Round-7 user decisions (2026-10-19) — user accepted all 10 recommendations
-1. **Artifact identity** → deploy effectiveness: pin the deploy target with
-   `-p:GameModsPath=<resolved>`, compare digests **within the run only**, add a
-   `--mod-project` option; the claim is "the deploy took effect", not source correspondence.
-2. **Exit codes** → add `14` usage, `15` no-log, `16` mods-path/manifest; make `11`
-   reachable via a `steam_appid.txt` check; add `131`/`154` → `2` to the translation table;
-   formalise "retired codes are never reused" and "next value above the highest published code".
-3. **Security posture** → minimal: drop the NFC/`python3` dependency for an ASCII allowlist;
-   drop the vacuous path rules (percent-encoding, absolute-path rejection, save-name
-   allowlist, metacharacter rejection, `printf '%q'`, the `sanitize_path_segments()` port);
-   keep "open directly, branch on the result" as the load-bearing rule.
-4. **Display allocation** → `Xvfb -displayfd`; the fixed `:99` and the whole
-   `/tmp/.X{n}-lock` → exit-`10` policy are dropped; exit `10` = the display could not be
-   allocated or started. The pre-flight order is pinned (tools → paths → Steam → crash
-   marker → display + graphics probe).
-5. **Timeout/readiness** → `timeout` wraps only the log poll; readiness is the sentinel
-   alone; the verdict is evaluated immediately after it; the escalation window is
-   `--grace-period` (15 s).
-6. **Scope** → add a `## Scope` section with declared side effects; re-word SC-004/005/006;
-   re-label US2's scenarios as deferred future-state.
-7. **Test coverage** → add TC-15 (run log/ID/VERSION/streams), TC-16 (`--help` completeness),
-   TC-17 (status translation); fix TC-9/TC-12/TC-14.
-8. **Diagnostic guide** → ordered branching ladder D-1…D-12, exit-code table kept as an index.
-9. **CI / shell lint** → `bash -n` + `shellcheck` in `lefthook.yml` pre-commit; no CI job.
-10. **Log header + env var** → exempt the banner and `Mods go here:` from the post-sentinel
-    rule (context only, `~`-anonymised); drop `SMAPI_USE_CURRENT_SHELL`.
+### Round-8 findings that were MATERIAL (all corrected in the artifacts)
+1. **The success gate's skip-leg was vacuous** — SMAPI writes the skipped-mods header with
+   three leading spaces *inside the message*, so an unpadded anchor never matched and a
+   **skipped** mod was reported as a **pass**. FR-003 now pins three explicitly scoped legs.
+2. **The level field is variable width** — `PadRight(MaxLevelLength)` is a no-op on the
+   internal `CRITICAL` (8 chars), which shifts the source column by 3. The level must be
+   bound by **label**, never by a column slice.
+3. **The sentinel is TRACE-level** (`Monitor.Log` defaults to `LogLevel.Trace`), so a
+   parser reading only `INFO`+ never finds the run boundary.
+4. **Continuation lines** carry no prefix and the log is **mixed CRLF/LF**; any `$`-anchored
+   pattern never matches a CRLF-terminated line.
+5. **The crash marker *aborts* (exit 1), it does not hang**, under the script's `/dev/null`
+   stdin — and it is **not self-clearing**, so every later run fails identically.
+6. **The `Loaded N mods:` gate is not graphics-independent** — SMAPI creates the graphics
+   device before resolving mods, so a graphics failure yields a timeout (`4`), the very
+   misclassification the spec forbids.
+7. **`set -m` must wrap each child launch**; enabling it script-wide breaks the `INT`
+   handler (measured under a pty).
+8. **The timeout is launch-scoped**, and the rebuild was previously **unbounded**.
+9. **The path allowlist rejects the script's own default** `--game-path` and the game
+   assembly it must find — an unsatisfiable requirement. **Still open (D1).**
+10. **The `lefthook.yml` `bash -n` gate parsed only the first staged file** — a broken
+    second file passed. Fixed to parse every file.
+11. **The game was not muted** — Xvfb virtualizes the display, not the audio device, so the
+    run would have played the title-screen music on the maintainer's speakers. Now muted
+    via `SDL_AUDIODRIVER=dummy` + `ALSOFT_DRIVERS=null`.
 
-### Round-7 evidence-resolved corrections (no decision needed) — applied
-- **SMAPI log format**: level field padded to **5** (not 8) + one separator space; there is
-  **no `[ERROR]` token** — the level lives inside the bracket group and must be matched as a
-  column. FR-003, `data-model.md`, `research.md` corrected.
-- **Crash marker**: SMAPI's blocking `Console.ReadKey()` is gated by
-  `smapi-internal/StardewModdingAPI.crash.marker`, **not** by `SMAPI-crash.txt` (which is
-  only a log copy). FR-002 now requires removing the marker.
-- **Relocated apphost** exits **154** (no dll) / **131** (no runtime) / **137** (no CoreCLR) —
-  never 134. FR-001's rationale about SMAPI's path resolution was wrong and is corrected.
-- **`SMAPI_USE_CURRENT_SHELL` does not exist** in SMAPI 4.5.2 (only `SMAPI_NO_TERMINAL`,
-  `SMAPI_MODS_PATH`, `SMAPI_DEVELOPER_MODE`).
-- **`Mods go here:` is `~`-anonymised**; the version banner and that line precede the
-  `Log started at` sentinel.
-- **Sentinel** = `Log started at <UtcNow:s> UTC` — no offset, so the `T0` comparison must
-  treat it as UTC; the inode baseline must be captured **before** the stale log is removed.
-- **Trap design pinned**: reset-and-re-raise (`trap - SIG; kill -SIG $$`), `trap '' INT TERM`
-  **prohibited**, `wait -f`, children with `</dev/null`.
-- **Lock file pinned**: stable per-user XDG path, `exec 9<>` (never `>`), never removed.
-- `Fix:` (not `hint:`) is the trailing remediation key; `research.md`'s four stale claims
-  (`DEVELOPER_MODE`, `pgrep`, `BashFAQ/062`, "mod's own data folder") corrected.
-- The **graphics probe** must assert the game-specific capability (FBO / GL ≥ 3.0) — the
-  maintainer's real failure was MonoGame's `PlatformNotSupportedException`, which
-  `glxinfo -B` cannot detect.
+### Round-8 open decisions (raised as a batch)
+- **D1** — path-allowlist scope (the default `--game-path` contains a space).
+- **D2** — adopt a single normative CLI options table?
+- **D3** — exit-code gaps: `16` unreachable, FR-012 item 7 assigns no code, "SMAPI aborted
+  before mod resolution" has no code.
+- **D4** — test-coverage gaps (FR-001/FR-008/FR-013; exit codes 2/10/11/13/14/16).
+- **D5** — where the "open directly, branch on the result" rule lives.
 
-### BLOCKED — awaiting implementation
-- The script itself does not exist yet (`scripts/smoke-validation.sh`).
-- Xvfb is **not installed** on the maintainer's machine (pre-flight will exit `9`).
-- Gate 3 (end-to-end verification) stays ⏳ until a real run succeeds.
-- Gate 1 now has a wired `bash -n` + `shellcheck` hook, but nothing to lint yet.
-
-### Round 6 decisions (2026-10-19) — user accepted all 5 recommendations
-1. `9` = required host tool **absent**; `3` = graphics stack **present but unusable**.
-   Required-tool set enumerated in FR-012 item 8.
-2. "sysexits.h convention" label **withdrawn** (it is not sysexits numbering).
-   Codes `12` (build/artifact failure) and `13` (internal error) added additively.
-   FR-007 now has a general translation table — no raw child status ever escapes.
-3. Game launched under bash job control (`set -m`) → PGID == PID; mandatory PGID
-   assertion before every group signal. No new dependency.
-4. EXIT trap removes X locks only for the script's own display and only when the
-   owning PID is dead. *(Superseded in round 7 — under `-displayfd` the server writes no
-   lock file at all.)*
-5. Process identity by `/proc/$PID/exe` restricted to the resolved game path;
-   `pgrep -x` is non-functional for the 17-char apphost — use `pidof`.
-
-## Notes
-- **Round-7 side effect**: two review agents ran `dotnet build`, which re-deployed
-  `LivingRoots.dll` into `~/.steam/.../Mods/LivingRoots/` (mtime 21:01 and 21:21). The
-  repository working tree is unaffected (`LivingRoots/bin/` is gitignored). The deployed
-  copy is now the current build, so the stale-artifact scenario TC-9 assumes no longer
-  holds on this machine (it will need re-seeding).
-- Working tree also contains pre-existing changes not made by this session:
-  `.specify/bugs/protected-paths-script-missing/test.md` (modified) and
-  `.specify/assessments/automate-ingame-testing/` (untracked). Do not commit those here.
-- Previous session (feat/005-soil-health-to-crop-growth) is complete and committed; see git log.
+### Environment facts (re-verified 2026-10-19)
+- `Xvfb` **NOT installed** → the pre-flight exits `9`; **no end-to-end run is possible** and
+  every TC is unexecuted. `shellcheck` also absent (the lint gate now skips it).
+- `uconv` absent (irrelevant — the normalizer dependency was dropped in round 7).
+- Steam install path is a **symlink chain** (`~/.steam/steam` → `~/.local/share/Steam`);
+  bash `$PWD` is logical, `/proc` is physical.
+- Measured: rebuild 6.6 s warm / 5.0–26.2 s under load; launch→verdict ~15 s unloaded /
+  29.6–41.8 s under load; digest comparison ~37 ms.

@@ -98,7 +98,7 @@ A relative `--mods-path` is resolved against the game directory, matching SMAPI'
 
 1. **Tool sweep** — every required host tool is verified with `command -v`; a missing one exits `9` naming the tool (FR-012 item 8)
 2. **Game & SMAPI checks** — the game installation and SMAPI's markers; then the Steam prerequisite `steam_appid.txt` (FR-012 items 1, 2, 9)
-3. **Stale-artifact cleanup** — a leftover `SMAPI-crash.txt` and SMAPI's crash **marker** are removed, because the marker is what gates SMAPI's blocking keypress read (FR-012 item 6)
+3. **Stale-artifact cleanup** — a leftover `SMAPI-crash.txt` and SMAPI's **crash and update markers** (`smapi-internal/StardewModdingAPI.crash.marker` and `…update.marker`) are removed, because a marker is what makes SMAPI perform a keypress read that aborts the headless launch before mod resolution (FR-012 item 6)
 4. **Virtual display + graphics probe** — Xvfb is started with `-displayfd` (the server allocates a free display and reports it back), then the layered software-OpenGL probe runs against it (FR-012 items 4, 5)
 5. **Build & verify artifact** — `dotnet build --configuration Release --no-incremental` with `-p:GameModsPath="<resolved mods path>"`, after removing the deploy target; the deployed assembly's SHA-256 digest is compared with the freshly built one. **A mismatch aborts the run before the game is launched** (FR-016)
 6. **Mod manifest check** — the resolved mods path contains `LivingRoots/manifest.json` with a matching `UniqueID` (FR-017)
@@ -365,7 +365,7 @@ When the script fails and the troubleshooting table does not resolve it, escalat
 
 1. **Timestamps** — run start (ISO 8601 UTC), failure detection time, last SMAPI log line time, script `$VERSION`.
 2. **Exit code** — numeric code and the documented category (0=success, 1=game, 2=SMAPI, 3=graphics-unusable, 4=timeout, 5=mod failure, 6=lock, 7=process conflict, 9=missing dependency, 10=display allocation failure, 11=Steam prerequisite, 12=build/artifact failure, 13=internal error, 14=usage error, 15=no log produced, 16=mods path/manifest invalid, 129/130/143=interrupted).
-3. **Error text** — exact error message emitted by the script plus the last 20–30 lines of `SMAPI-latest.txt` (including Trace entries following any Error).
+3. **Error text** — exact error message emitted by the script plus the **matched failure record together with its continuation lines** from `SMAPI-latest.txt` (including every mod Trace record that follows the failure — those carry the exception type and HResult). A fixed `tail -N` window is **not** used: a .NET stack trace is routinely 20–40 lines long, so such a window can consist entirely of stack frames while omitting the record that names the failure.
 4. **Repro steps** — exact command invoked (with flags), environment (game path, SMAPI version, mod version/git commit), and a clean rerun result.
 5. **System context** — conflicting PIDs (if any), lock file path, Xvfb display number, temp directory, OS/kernel.
 6. **Run log** — the path to the run log for the failed run (`${XDG_STATE_HOME:-$HOME/.local/state}/living-roots-smoke/runs/<run-id>.log`). The run log contains the run ID, the script `$VERSION`, the launch timestamp, and every lifecycle event, so it is the primary artifact for reconstructing the run.
@@ -385,7 +385,7 @@ Mods path:     <path>
 SMAPI version: <version>
 Last log line: <timestamp>
 Error text:    <exact script error>
-SMAPI excerpt: <last 20-30 lines>
+SMAPI excerpt: <the matched failure record and its continuation lines>
 Repro:         <steps>
 ```
 
@@ -421,7 +421,7 @@ A run that ended in failure (or was interrupted) can be re-run without manual re
 | R-2 | No orphaned Xvfb is left over from a previous crashed run | `pgrep -a Xvfb` | Returns nothing. The pre-flight **detects and reports** orphaned Xvfb instances but MUST NOT signal them — under `Xvfb -displayfd` the server writes no lock file, so there is no way to prove ownership of a foreign X server, and the display number is allocated by the server (FR-012 item 10). Kill them manually |
 | R-3 | No orphaned Xvfb holds a display | `pidof Xvfb` | No orphan Xvfb remains. The script allocates its own display with `Xvfb -displayfd`, so it never reads or writes `/tmp/.X{n}-lock` files — the server binds a free display atomically and writes no lock at all |
 | R-4 | The smoke-test lock is free | The previous run has exited (the kernel releases the `flock` on process death, even after SIGKILL) | The lock is acquirable — a second run no longer exits with `6` |
-| R-5 | No leftover SMAPI crash marker can hang or mask the run | The pre-flight removes the leftover crash **marker** (`smapi-internal/StardewModdingAPI.crash.marker`) and the crash log (`SMAPI-crash.txt`) before launch | Both are absent before launch — SMAPI's leftover-crash handling performs a blocking keypress read that would hang a headless run |
+| R-5 | No leftover SMAPI marker can abort or mask the run | The pre-flight removes SMAPI's leftover **crash and update markers** (`<game-path>/smapi-internal/StardewModdingAPI.crash.marker` and `…update.marker`) and the crash log (`SMAPI-crash.txt`) before launch | Both markers are absent before launch — with the stdin redirected from `/dev/null`, SMAPI's leftover-marker keypress read throws and aborts the launch with status `1` *before* mod resolution, and the marker is not self-clearing on that path, so every later run would fail identically |
 | R-6 | No leftover temp directories | `ls -d /tmp/livingroots-smoke.* 2>/dev/null` | Empty — the EXIT trap removed them, or they were removed manually after a SIGKILL |
 | R-7 | The mod build under test is the one this run produced | The script rebuilds with the deploy target pinned to the resolved mods path, and compares SHA-256 digests of the deployed assembly against the fresh build | The digests match — a mismatch, a missing file, or an older file aborts the run with exit `12` before launch |
 | R-8 | No stale SMAPI log can be mistaken for this run's | The pre-flight removes `SMAPI-latest.txt`; the script also requires the current run's `Log started at {UTC} UTC` sentinel | The sentinel's timestamp is not older than the run's launch timestamp |

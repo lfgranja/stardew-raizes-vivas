@@ -113,7 +113,7 @@ The **authoritative success signal is SMAPI's own mod-resolution output**, not t
 
 ## 5. Exit Code Conventions
 
-**Decision**: One distinct exit code per failure category (a bespoke, sysexits-*style* taxonomy — see the supersession note below)
+**Decision**: One distinct exit code per failure category (a bespoke one-code-per-failure-class taxonomy — see the supersession note below)
 
 **Rationale**: A per-category code lets a caller (here: the maintainer) classify the failure without reading the run log, and lets a future CI router branch on the category. The script uses: 0 (success), 1 (game not found), 2 (SMAPI not found or not functional), 3 (graphics present but unusable), 4 (timeout), 5 (mod load failure), 6 (lock contention), 7 (process conflict), 9 (missing host tool or runtime dependency), 10 (the virtual display could not be allocated or started), 11 (Steam API prerequisite missing), 12 (build or artifact-identity failure), 13 (internal script error), 14 (usage or CLI-argument error), 15 (the game produced no SMAPI log), 16 (mods path or mod manifest invalid), plus the POSIX `128+N` interruption codes (129 = SIGHUP, 130 = SIGINT, 143 = SIGTERM). Every child status is translated into one of these before the script exits — no subprocess-specific status may ever become the script's final code (FR-007's translation table).
 
@@ -123,7 +123,7 @@ The **authoritative success signal is SMAPI's own mod-resolution output**, not t
 
 **Alternatives Considered**:
 - Binary 0/1 → insufficient for actionable diagnostics
-- Real `sysexits.h` values (64+) → accurate numbering, but renumbers 11 already-documented codes and the TC-1…TC-14 matrix, and sysexits' own categories (mail/network failure classes) do not fit a game-launch tool
+- Real `sysexits.h` values (64+) → accurate numbering, but renumbers 11 already-documented codes and the TC-1…TC-17 matrix, and sysexits' own categories (mail/network failure classes) do not fit a game-launch tool
 - Raw child-status passthrough → directly violates FR-007; `dotnet build` exits `1`, which collides with "game not found"
 
 **Source**: sysexits.h man page (for the 64–78 range and the "do not use them" position of OpenBSD/FreeBSD); POSIX.1-2024 XCU `exit` (reserved 126/127/128/>128); GNU coreutils `timeout(1)` (124/125/126/127/137); Bazel's published exit-code table (build failure vs test failure vs internal error); pytest's `ExitCode` enum; ABSG Appendix E (user-defined codes should avoid 1–2, 126–165, 255)
