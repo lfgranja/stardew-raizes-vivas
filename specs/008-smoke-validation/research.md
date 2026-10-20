@@ -102,18 +102,18 @@ The **authoritative success signal is SMAPI's own mod-resolution output**, not t
 
 ## 5. Exit Code Conventions
 
-**Decision**: Follow sysexits.h convention with distinct codes per failure category
+**Decision**: One distinct exit code per failure category (a bespoke, sysexits-*style* taxonomy — see the supersession note below)
 
-**Rationale**: sysexits.h provides standard exit codes that are self-documenting and CI-friendly. The script uses: 0 (success), 1 (game not found), 2 (SMAPI not found), 3 (Xvfb not available), 4 (timeout), 5 (mod load failure), 6 (lock contention), 7 (process conflict), 9 (missing host tool or runtime dependency), 10 (display conflict), 11 (Steam API prerequisite missing), plus the POSIX `128+N` interruption codes (130 = SIGINT, 143 = SIGTERM). This allows callers (including future CI) to distinguish failure modes programmatically.
+**Rationale**: A per-category code lets a caller (here: the maintainer) classify the failure without reading the run log, and lets a future CI router branch on the category. The script uses: 0 (success), 1 (game not found), 2 (SMAPI not found or not functional), 3 (graphics present but unusable), 4 (timeout), 5 (mod load failure), 6 (lock contention), 7 (process conflict), 9 (missing host tool or runtime dependency), 10 (display conflict), 11 (Steam API prerequisite missing), 12 (build or artifact-identity failure), 13 (internal script error), plus the POSIX `128+N` interruption codes (130 = SIGINT, 143 = SIGTERM). Every child status is translated into one of these before the script exits — no subprocess-specific status may ever become the script's final code (FR-007's translation table).
 
-> **Superseded 2026-10-19** — this section originally listed `8 (interrupted)`. The round-2 clarification (spec.md Clarifications → "Session 2026-10-19 (checklist review — round 2)") replaced it with the POSIX `128+N` convention, and the environment-verified corrections added codes 9/10/11. The canonical table is `data-model.md` → "Exit Codes (sysexits.h convention)"; FR-007 is the normative source.
+> **Superseded 2026-10-19 (round 6)** — this section originally read "Follow sysexits.h convention". `sysexits.h` defines only 64–78 (`EX__BASE` = 64) and two of the three BSDs have deprecated it (FreeBSD: "legacy … use is discouraged"; OpenBSD: "Do not use them"), so codes 1–13 are **not** sysexits values. The phrase "sysexits.h convention" is withdrawn: the scheme is sysexits-*style* (one code per failure class) with bespoke values, allocated additively. Earlier revisions of this section also listed `8 (interrupted)` (retired in round 2 in favour of POSIX `128+N`) and omitted 9/10/11 (added in the environment-verified round). The canonical table is `data-model.md` → "Exit Codes"; FR-007 is the normative source.
 
 **Alternatives Considered**:
 - Binary 0/1 → insufficient for actionable diagnostics
-- Custom arbitrary codes → not standard; harder to remember
-- sysexits.h `EX_*` constants → standard, widely recognized
+- Real `sysexits.h` values (64+) → accurate numbering, but renumbers 11 already-documented codes and the TC-1…TC-14 matrix, and sysexits' own categories (mail/network failure classes) do not fit a game-launch tool
+- Raw child-status passthrough → directly violates FR-007; `dotnet build` exits `1`, which collides with "game not found"
 
-**Source**: sysexits.h (BSD convention); IEEE 829-2008 (test exit codes)
+**Source**: sysexits.h man page (for the 64–78 range and the "do not use them" position of OpenBSD/FreeBSD); POSIX.1-2024 XCU `exit` (reserved 126/127/128/>128); GNU coreutils `timeout(1)` (124/125/126/127/137); Bazel's published exit-code table (build failure vs test failure vs internal error); pytest's `ExitCode` enum; ABSG Appendix E (user-defined codes should avoid 1–2, 126–165, 255)
 
 ---
 
@@ -173,8 +173,8 @@ The saveId is sanitized via Unicode normalization (FormC) and filename sanitizat
 | 3 | Parse SMAPI-latest.txt with mod name filter | High | SMAPI source + mod manifest |
 | 4 | flock for concurrency prevention | High | Kernel-managed atomicity |
 | 5 | pgrep for process detection | High | Politowski et al. 2022 |
-| 6 | EXIT trap + signal forwarding | High | BashFAQ/062, Rasheed et al. 2022 |
-| 7 | sysexits.h exit codes | High | BSD standard, IEEE 829-2008 |
+| 6 | EXIT trap + signal forwarding | High | BashFAQ/047, Rasheed et al. 2022 |
+| 7 | One exit code per failure category | High | POSIX.1-2024 XCU `exit`; GNU `timeout(1)`; Bazel exit-code table |
 | 8 | Data file naming from ModConstants | High | Codebase (ModConstants.cs) |
 | 9 | Terminate after success marker | High | Codebase (ModController.cs) |
 | 10 | Pre-flight validation | High | Existing CI patterns |
