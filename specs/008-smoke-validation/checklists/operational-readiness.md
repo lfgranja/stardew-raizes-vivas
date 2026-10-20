@@ -9,12 +9,12 @@
 ## 1. Pre-Flight Validation
 
 - [x] 1.1 Script has a dedicated pre-flight phase that runs before any state-changing command
-- [x] 1.2 All required environment variables are validated up front with explicit error messages
+- [x] 1.2 No user-supplied environment variables are required, so there is nothing to validate up front — FR-015 states that the automation env vars (`SMAPI_*`, `LIBGL_*`, `GALLIUM_DRIVER`, `SDL_VIDEODRIVER`, `DISPLAY`) "are managed by the script and are not user-configurable", and `plan.md`'s Constraints record "Configuration via CLI arguments with documented defaults (no config file, no env-var mechanism)". The only environment variable the script *honours* is `XDG_STATE_HOME` (the standard location override), which is optional with a documented `$HOME/.local/state` fallback
 - [x] 1.3 All required commands are verified with `command -v` (never `which`)
 - [x] 1.4 Required input files/directories are checked for existence and readability
-- [x] 1.5 Checks are ordered cheapest-first (env vars → command existence → files → service health)
-- [x] 1.6 Script uses fail-fast or collect-all pattern consistently (not ad hoc)
-- [x] 1.7 Every check emits context-rich pass/fail messages (which path, which command, which threshold)
+- [ ] 1.5 Checks are ordered cheapest-first (env vars → command existence → files → service health) — **UNRESOLVED**: FR-012 enumerates its pre-flight items in a different order — (1) game install, (2) SMAPI markers, (3) Xvfb presence, (4) **start the virtual display + `xdpyinfo` + `glxinfo` probe**, (5) X11 locks, (6) crash file, (7) normalizer, (8) `command -v` of every host tool — so the cheap tool sweep is *last* and the expensive display probe is *fourth*. Worse, the enumeration is not executable as written: item (4) starts the display while item (5) detects an orphaned Xvfb or a live-owned lock on the chosen display and aborts with `10`, so the script's own Xvfb would trip its own lock check. Pending the round-7 decision on the pre-flight order.
+- [ ] 1.6 Script uses fail-fast or collect-all pattern consistently (not ad hoc) — **UNRESOLVED**: FR-012 item 8 says a missing tool "MUST fail closed with exit code `9` and **name the tool**" (singular) but never says whether every missing tool is reported or only the first; FR-007 requires "a distinct code per failure category", which does not discriminate one-per-run from all-at-once. Two implementers will produce different run logs and different error text. Pending the round-7 decision.
+- [x] 1.7 Every **failing** check emits a context-rich message (which path, which command, which threshold) following the "What → Where → How to fix" pattern — FR-007 mandates it for failures. **Passing** checks are recorded in the run log at INFO level (FR-014 requires the run log to contain every line the script emits at any level) and are mirrored to stderr only under `--verbose`; stdout carries exactly one line, the verdict, so it stays greppable. No external convention requires a PASS line per check (GNU `rsync` "works silently" by default; POSIX reserves stderr for error-time diagnostics)
 - [x] 1.8 Non-zero exit code is guaranteed on any pre-flight failure
 - [x] 1.9 No hardcoded assumptions about environment shape; uses config values/arguments with documented defaults
 - [x] 1.10 A skipped check is clearly labeled `SKIPPED:` and counted separately from passes
@@ -29,8 +29,8 @@
 - [x] 2.3 Exit code 2 is returned for validation/policy failures (script ran correctly but check failed) (resolved by decision — the generic 2=validation-failure convention never applied; FR-007 assigns `5` = mod load failure to "the script ran correctly but the check failed" and keeps `2` = SMAPI not found or not functional — spec.md FR-007, data-model.md exit-code table)
 - [x] 2.4 No exit codes use reserved values (126, 127, 128+n, 130, 255) for non-standard purposes (resolved — the FR-007 translation table maps the reserved child statuses into documented categories (126→9, 127→9) and the only `128+N` values that reach the caller are the standard signal statuses 130 and 143; no category borrows a reserved value for a non-reserved meaning — FR-007, data-model.md translation note)
 - [x] 2.5 All exit codes are documented in the script header and `--help` output
-- [x] 2.6 Exit code semantics are consistent with the documented scheme across all failure modes (resolved — the two categories that previously overlapped now have disjoint, decidable definitions: `9` = a required host tool is **absent**, `3` = the graphics stack is **present but unusable**; every failure mode maps to exactly one of the 13 documented codes, and every child status is translated through the FR-007 table — spec.md FR-007, FR-012 items 3/4/7/8, data-model.md exit-code table)
-- [x] 2.7 CI pipeline correctly interprets the script's exit codes (non-zero = failure)
+- [ ] 2.6 Exit code semantics are consistent with the documented scheme across all failure modes — **UNRESOLVED**: the `9`-vs-`3` split is genuinely sound (FR-012 items 3/4/7/8; FR-007; `data-model.md` exit-code table), but three failure modes are **not** in the table: (a) FR-017's pre-flight mods-dir / `manifest.json` / `UniqueID` verification; (b) CLI argument errors; (c) the game exiting `0` without producing a log. The item's own parenthetical claim that "every failure mode maps to exactly one of the 13 documented codes" is also a **miscount** — FR-007 defines **12** failure codes (1–7, 9–13) plus `0`, `130` and `143` = 15 values. Pending the round-7 exit-code decision.
+- [ ] 2.7 CI pipeline correctly interprets the script's exit codes (non-zero = failure) — **UNVERIFIABLE as stated**: FR-013 puts CI integration out of scope ("no CI integration … in the current scope") and `plan.md`'s Constraints record "Local execution only (no CI integration in current scope)". There is no CI pipeline that consumes this script, so "CI pipeline correctly interprets" cannot be checked. What *is* true and specified is that the exit-code contract is CI-interpretable (0 = success, non-zero = failure) and documented. Pending the round-7 decision on whether CI integration stays out of scope.
 - [x] 2.8 Child command exit codes are propagated (not swallowed or collapsed to 1) (reworded by decision — a child status is **never** propagated literally: FR-007 requires every child status to be translated into a documented category, so `dotnet build` exiting `1` can no longer masquerade as "game not found". The translation table (124→4, 125→13, 126→9, 127→9, 134→2, 137→5/13, 128+N unchanged, everything else→13) is normative — FR-007, data-model.md translation note)
 - [x] 2.9 `set -euo pipefail` is used so pipeline failures are caught
 - [x] 2.10 One distinct exit code per failure category is followed (0=success, 1=game, 2=SMAPI, 3=graphics-unusable, 4=timeout, 5=mod failure, 6=lock, 7=process conflict, 9=missing dependency, 10=display conflict, 11=Steam prerequisite, 12=build/artifact failure, 13=internal error, 130/143=signals) (resolved by decision — the scheme is sysexits-*style* (one code per failure class) with bespoke values, **not** the `sysexits.h` numbering, which begins at `EX__BASE` = 64 and has been deprecated by FreeBSD and OpenBSD; the "sysexits.h convention" label is withdrawn and codes are allocated additively — FR-007, data-model.md exit-code table, round-6 clarification)
@@ -46,7 +46,7 @@
 - [x] 3.5 Error messages go to stderr (not stdout)
 - [x] 3.6 Error messages include relevant context (file paths, command names, expected vs actual values)
 - [x] 3.7 Separate messages exist for each known cause (no single generic catch-all)
-- [x] 3.8 When a next step is known, a `hint:` line follows the error
+- [x] 3.8 When a next step is known, a `Fix:` line follows the error — the key is **`Fix:`**, not `hint:`: all six normative worked examples in `quickstart.md` use `What:` / `Where:` / `Error:` / `Fix:`, and FR-007 makes the remediation **mandatory** ("an actionable remediation hint"), whereas `hint:` reads as advisory. The token `hint:` appeared only in this checklist and in FR-007's prose as the *word*, never as a key
 - [x] 3.9 Error messages do not expose secrets (tokens, passwords, API keys)
 - [x] 3.10 The "What → Where → How to fix" pattern is used consistently across all error paths
 - [x] 3.11 Failure reports include last 20-30 lines of SMAPI log with Trace-level entries following any Error
@@ -55,8 +55,8 @@
 
 ## 4. Script Documentation
 
-- [x] 4.1 Script has a header block with name, purpose, authors, version, last updated
-- [x] 4.2 `--help` / `-h` flag prints usage, options, and examples to stdout, exits 0
+- [x] 4.1 Script has a header block with name, purpose, version and a usage pointer — the **authors** and **last updated** fields are dropped: the project is single-maintainer (`plan.md` → Target Platform), "authors" is not knowable, and "last updated" has no format or source of truth. The normative content is the `VERSION` constant, which FR-014 requires to be reported in the run-log header, the stdout summary and `--help`
+- [x] 4.2 `--help` prints usage, options, and examples to stdout, exits 0 — GNU Coding Standards §4.8: "All programs should support two standard options: `--version` and `--help`", both "on standard output, then exit successfully". `-h` is accepted as an **alias** for `--help` but is never the canonical spelling (it is not universal — `ls -h` is `--human-readable`). `--version` prints `<name> <VERSION>` to stdout and exits `0`; it is listed in FR-015's option set
 - [x] 4.3 `usage()` function prints to stderr and is called on argument errors
 - [x] 4.4 All exit codes are documented in `--help` output
 - [x] 4.5 Prerequisites section lists required commands, env vars, and file paths
@@ -73,14 +73,14 @@
 
 - [x] 5.1 Script exits non-zero on any failure (CI can rely on exit code alone)
 - [x] 5.2 stdout carries data/reports; stderr carries errors and human-readable messages
-- [x] 5.3 `--json` flag (or equivalent) produces machine-parseable output for fine-grained CI routing (deferred by FR-013 — spec.md:92 excludes any machine-parseable (`--json`) mode from the current scope; the deferral is recorded at spec.md:181 and spec.md:189, with plan.md:34 and plan.md:70; FR-014 (spec.md:99) makes the exit code the sole machine-readable signal)
-- [x] 5.4 JSON output includes stable fields: `ok`, `checks[]`, `warnings[]`, `errors[]`, `exit_code` (deferred with the `--json` mode by FR-013 — spec.md:92; no machine-parseable output exists in the current scope, so the stable-field contract is undefined; the exit code remains the only machine-readable signal (spec.md:99))
-- [x] 5.5 JSON output does not contain secrets (deferred with the `--json` mode by FR-013 — spec.md:92; no JSON output exists in the current scope, and the no-secrets rule for the human-readable output is already covered by checklist 3.9 and plan.md:67)
-- [x] 5.6 Script can be called from a CI pipeline step (GitLab `script:`, Azure DevOps `Bash@3`, GitHub Actions `run:`)
-- [x] 5.7 Commands containing colons are properly quoted for YAML parsing
-- [x] 5.8 `&&` chaining is wrapped in parentheses to preserve failure semantics in CI
+- [x] 5.3 `--json` flag (or equivalent) produces machine-parseable output for fine-grained CI routing (deferred by FR-013 — FR-013 excludes any machine-parseable (`--json`) mode from the current scope; the deferral is recorded in spec.md's Clarifications ("Session 2026-10-19 (checklist review)": "Support `--json`/CI mode? → A: No — defer; local-first") and ("round 3": "Should `--json`/CI output be added? → A: No — defer (local-first, YAGNI)"), with `plan.md`'s Constraints and YAGNI note; FR-014 makes the exit code the sole machine-readable signal)
+- [x] 5.4 JSON output includes stable fields: `ok`, `checks[]`, `warnings[]`, `errors[]`, `exit_code` (deferred with the `--json` mode by FR-013 — FR-013 excludes any machine-parseable output mode from the current scope, so the stable-field contract is undefined; the exit code remains the only machine-readable signal, and FR-014's "Streams (MUST)" keeps the stdout verdict and the stderr diagnostics separate)
+- [x] 5.5 JSON output does not contain secrets (deferred with the `--json` mode by FR-013 — no JSON output exists in the current scope, and the no-secrets rule for the human-readable output is already covered by checklist 3.9 and `plan.md`'s Constitution Compliance ("Exit codes and error messages must not leak sensitive system details"))
+- [ ] 5.6 Script can be called from a CI pipeline step (GitLab `script:`, Azure DevOps `Bash@3`, GitHub Actions `run:`) — **UNVERIFIABLE as stated**: none of those three CI systems is named in any artifact, and FR-013 puts CI out of scope, so nothing constrains the script to be CI-callable. The script-side property that *is* specified is that it needs no TTY (`SMAPI_NO_TERMINAL=true`, `--no-terminal`) and signals its outcome through the exit code. Pending the round-7 decision on whether CI integration stays out of scope.
+- [ ] 5.7 Commands containing colons are properly quoted for YAML parsing — **UNVERIFIABLE / N/A**: no artifact mentions YAML or YAML quoting; CI is out of scope (FR-013) and no command in the spec is YAML-parsed. The shell-level property that *is* specified is that every expansion is quoted (`security-safety.md` 5.2) and that paths containing spaces or colons are therefore safe. Pending the round-7 decision on whether CI integration stays out of scope.
+- [ ] 5.8 `&&` chaining is wrapped in parentheses to preserve failure semantics in CI — **UNVERIFIABLE / N/A**: no artifact contains an `&&` chain or a CI snippet; the only supporting text is this checklist's own "Common Gaps" table and `security-safety.md`'s `set -euo pipefail`, both shell-level rather than CI-level. The script-side property that *is* specified is that the script's own command chaining is `set -euo pipefail`-safe and that no child status escapes untranslated (FR-007). Pending the round-7 decision on whether CI integration stays out of scope.
 - [x] 5.9 Script does not depend on interactive terminal features when run in CI
-- [x] 5.10 Environment variables needed by the script are documented and settable via CI variables
+- [x] 5.10 Environment variables needed by the script are documented and settable via CI variables — **reworded**: the script needs **no** user-supplied environment variable (FR-015: the automation env vars "are managed by the script and are not user-configurable"; `plan.md`: "no config file, no env-var mechanism"), so "settable via CI variables" is vacuous for them. The only honoured override is `XDG_STATE_HOME`, the standard location override for the run log, which a CI job may set to redirect it
 - [x] 5.11 Script uses proper exit codes (0/non-zero) so CI integration is straightforward
 
 ---
@@ -91,8 +91,8 @@
 - [x] 6.2 `set -euo pipefail` is at the top of the script
 - [x] 6.3 All variable references are quoted (double quotes for substitution, single quotes for literals)
 - [x] 6.4 Functions use `local` variables (no accidental globals)
-- [x] 6.5 Script is modular — reusable logic is in sourced library files (out of scope by design — plan.md:95-99 records the Structure Decision "Single-file bash script at scripts/smoke-validation.sh", the clarification at spec.md:190 keeps sourced modules out of scope, and plan.md:70 (YAGNI) and security-safety.md item 1.10 agree)
-- [x] 6.6 Configuration is externalized (CLI args with documented defaults: `--game-path`, `--mods-path`, `--timeout`, `--grace-period`, `--smapi-log`, `--force`)
+- [x] 6.5 Script is modular — reusable logic is in sourced library files (out of scope by design — `plan.md`'s "Structure Decision" records "Single-file bash script at `scripts/smoke-validation.sh`", the Clarifications ("round 2") keep sourced modules out of scope, and `plan.md`'s YAGNI note and `security-safety.md` item 1.10 agree)
+- [x] 6.6 Configuration is externalized (CLI args with documented defaults: `--game-path`, `--mods-path`, `--timeout`, `--grace-period`, `--smapi-log`, `--force`) — note that a `--mod-project` option is needed for FR-016's rebuild and does not yet exist (tracked in script-reliability 4.12–4.14)
 - [x] 6.7 Structured logging is used (log_info/log_warn/log_error, not bare echo)
 - [x] 6.8 Log messages are timestamped
 - [x] 6.9 Log messages include run ID / correlation ID for multi-run tracing (FR-014 — the run ID `<UTC>-<PID>` is stamped on every run-log line and reported in the summary and in every error message)
@@ -102,7 +102,7 @@
 - [x] 6.13 Script follows a consistent naming convention (functions, variables, files)
 - [x] 6.14 No SUID/SGID on the script
 - [x] 6.15 `mktemp` is used for temp files (not predictable paths)
-- [x] 6.16 Script anchors paths to its own location: `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"`
+- [x] 6.16 Script anchors paths to its own location: `SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` — the idiom itself is sound, but note that `SCRIPT_DIR` appears in **no** artifact, and the script currently has **no specified way to locate the mod project it must build** (FR-016 runs `dotnet build` without naming a path, and the option list has no `--mod-project`). That gap is tracked in script-reliability items 4.12–4.14 and is part of the round-7 decision
 - [x] 6.17 No CRLF line endings (checked with `file script.sh`)
 - [x] 6.18 `printf` is used instead of `echo -e` for escape sequences (portability)
 - [x] 6.19 The verdict goes to stdout and all level-prefixed diagnostics go to stderr; the exit code remains the sole machine-readable signal (FR-013, FR-014)
@@ -115,26 +115,26 @@
 - [x] 7.1 A troubleshooting guide exists (quickstart.md contains one)
 - [x] 7.2 The guide starts with symptom descriptions (not internal component names)
 - [x] 7.3 A quick-checks table maps symptoms to most common causes and fixes
-- [x] 7.4 Diagnostic steps are ordered cheapest-first
-- [x] 7.5 Each diagnostic step has an explicit expected result
-- [x] 7.6 Each step branches clearly: "If you see X, go to Fix A. If not, continue."
-- [x] 7.7 Each resolution includes the expected result once fixed
+- [ ] 7.4 Diagnostic steps are ordered cheapest-first — **UNRESOLVED**: `quickstart.md`'s Troubleshooting section is a **flat 3-column lookup table** (`| Symptom | Likely Cause | Remediation |`), not an ordered diagnostic procedure. The only ordered procedures in the document are "What the script does before it launches the game" and "Post-Run Verification", neither of which is symptom-driven. The established practice (Google SRE Ch. 12 "perform the tests in decreasing order of likelihood, considering possible risks"; Cisco *IT Essentials* 4.2 "starting with the quickest and easiest"; Wikipedia *Troubleshooting* "check for frequently encountered or easily tested conditions first") calls for an ordered, branching ladder with an explicit expected result per step. Converting the table into one is ≈4–6 h of documentation work. Pending the round-7 decision on how deep the guide should go.
+- [ ] 7.5 Each diagnostic step has an explicit expected result — **PARTIAL**: two rows state a verifiable outcome ("verify `LIBGL_ALWAYS_SOFTWARE=1 glxinfo -B` reports `llvmpipe`"; "check the SMAPI log `Loaded N mods:` / `Skipped mods` blocks"); the rest give a fix without a post-fix observation (e.g. code `6` → "Wait for other instance to finish"; code `13` → "Read the run log"). Depends on the same decision as 7.4. Pending the round-7 decision on how deep the guide should go.
+- [ ] 7.6 Each step branches clearly: "If you see X, go to Fix A. If not, continue." — **NOT PRESENT**: no branching flow exists in any artifact — `quickstart.md`'s Troubleshooting section is flat, one-shot advice, and the phrase "If you see" appears nowhere outside this checklist. Depends on the same decision as 7.4. Pending the round-7 decision on how deep the guide should go.
+- [ ] 7.7 Each resolution includes the expected result once fixed — **PARTIAL**: the Remediation column gives a fix without naming the observable state that indicates the problem is resolved for most rows (e.g. code `6`, `7`, `11`, `12`); two rows do. Depends on the same decision as 7.4. Pending the round-7 decision on how deep the guide should go.
 - [x] 7.8 An escalation path names the contact, channel, and required evidence
 - [x] 7.9 Escalation evidence requirements are specified (timestamps, logs, error text, repro steps)
 
 ---
 
-## 8. IEEE 829-Inspired Test Documentation
+## 8. ISO/IEC/IEEE 29119-Inspired Test Documentation
 
 - [x] 8.1 Pass/fail criteria are defined before the script runs (not after)
 - [x] 8.2 A test log is produced chronologically (IEEE 829 test log concept)
-- [x] 8.3 Suspension criteria are defined (when to stop the script early)
-- [x] 8.4 Resumption requirements are defined (what must be true to re-run) — quickstart.md "Resumption Requirements" (R-1…R-7)
+- [x] 8.3 Suspension criteria are defined (when to stop the script early) — `quickstart.md` "Suspension Criteria" (S-1…S-3): campaign-level criteria, the authority that may suspend/resume (the L1 maintainer), and what is recorded on suspension. Suspension is deliberately a **campaign-level** concept, not a per-run state: an individual run always terminates with an exit code from the FR-007 taxonomy, so no new exit code is needed (ISO/IEC/IEEE 29119-3 §6.2.7.9 → ISO/IEC/IEEE 29119-2 §8.4.4 NOTE 1)
+- [x] 8.4 Resumption requirements are defined (what must be true to re-run) — quickstart.md "Resumption Requirements" (R-1…R-9) **and** "Activities to Be Repeated on Resumption" (which testing activities must be repeated — the second half of ISO/IEC/IEEE 29119-3 §6.2.7.9 / IEEE 829-2008 §9.2.7)
 - [x] 8.5 Environmental needs are documented (hardware, software, tools)
 - [x] 8.6 Features NOT tested are explicitly listed (scope boundaries — save check deferred)
 - [x] 8.7 Test items are identified (what specifically is being validated)
-- [x] 8.8 Each test case has: input, execution condition, expected output, actual output, pass/fail — quickstart.md "Test Case Documentation (IEEE 829-style)" (TC-1…TC-14)
-- [x] 8.9 Resumption requirements cover the stale-log and stale-artifact preconditions (quickstart.md R-1…R-9)
+- [x] 8.8 Each test case has: input, execution condition, expected output, actual output, pass/fail — quickstart.md "Test Case Specification" (TC-1…TC-14), now carrying the ISO/IEC/IEEE 29119-3 Annex A fields: unique identifier, **Objective**, **Priority**, **Traceability** (FR-/SC-), **Preconditions**, Inputs, Expected results, Actual results, Test result — plus a stated **execution order** and a named **oracle** (the FR-007 exit-code contract plus the `Log started at` sentinel predicate)
+- [x] 8.9 Resumption requirements cover the stale-log and stale-artifact preconditions (quickstart.md R-1…R-9 — R-7 covers the artifact identity, R-8 the stale log, R-5 the leftover crash marker)
 
 ---
 
