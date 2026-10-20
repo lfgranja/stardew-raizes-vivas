@@ -126,6 +126,25 @@ HARNESS_ORIGINAL_XDG_STATE_HOME="${XDG_STATE_HOME-}"
 HARNESS_ORIGINAL_XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR-}"
 HARNESS_ORIGINAL_XDG_CONFIG_HOME="${XDG_CONFIG_HOME-}"
 
+# The values inherited from the real environment for the two log-staging
+# variables. They are restored when the sandbox is cleaned up, so sourcing the
+# library into an interactive shell leaves the caller's environment as it was.
+HARNESS_ORIGINAL_FAKE_SMAPI_LOG_TEMPLATE="${FAKE_SMAPI_LOG_TEMPLATE-}"
+HARNESS_ORIGINAL_FAKE_SMAPI_LOG_TARGET="${FAKE_SMAPI_LOG_TARGET-}"
+HARNESS_ORIGINAL_FAKE_SMAPI_LOG_TEMPLATE_SET=0
+HARNESS_ORIGINAL_FAKE_SMAPI_LOG_TARGET_SET=0
+if [[ -n "${FAKE_SMAPI_LOG_TEMPLATE+x}" ]]; then
+    HARNESS_ORIGINAL_FAKE_SMAPI_LOG_TEMPLATE_SET=1
+fi
+if [[ -n "${FAKE_SMAPI_LOG_TARGET+x}" ]]; then
+    HARNESS_ORIGINAL_FAKE_SMAPI_LOG_TARGET_SET=1
+fi
+
+# The staged log template and target. Empty until stage_log_for_launch is
+# called; see the section of the same name below.
+HARNESS_FAKE_LOG_TEMPLATE=""
+HARNESS_FAKE_LOG_TARGET=""
+
 # ---------------------------------------------------------------------------
 # Counters and captured results
 # ---------------------------------------------------------------------------
@@ -399,6 +418,10 @@ assert_contains_line() {
 # The env overrides for the current invocation; populated by run_script_env.
 RUN_ENV_ASSIGNMENTS=()
 
+# The hard deadline, in seconds, applied to the current invocation. 0 means
+# "no deadline" — the historical behaviour of run_script / run_script_env.
+RUN_DEADLINE_SECS=0
+
 # _sandbox_home / _sandbox_state_home / _sandbox_runtime_dir / _sandbox_config_home —
 # the sanitised value for each state-affecting variable. A caller that changed the
 # variable since the harness was loaded has overridden it deliberately; otherwise
@@ -480,11 +503,29 @@ _run_script_impl() {
     env_args+=("XDG_STATE_HOME=$(_sandbox_state_home)")
     env_args+=("XDG_RUNTIME_DIR=$(_sandbox_runtime_dir)")
     env_args+=("XDG_CONFIG_HOME=$(_sandbox_config_home)")
+    # The staged log template/target travel with the script under test, so the
+    # fake apphost it launches inherits them and can produce the log. When
+    # nothing is staged the two are set to the empty string, which scrubs any
+    # value that happens to sit in the caller's environment: the stub must
+    # never pick up a stray template from the outside.
+    env_args+=("FAKE_SMAPI_LOG_TEMPLATE=$HARNESS_FAKE_LOG_TEMPLATE")
+    env_args+=("FAKE_SMAPI_LOG_TARGET=$HARNESS_FAKE_LOG_TARGET")
     if (( ${#RUN_ENV_ASSIGNMENTS[@]} > 0 )); then
         env_args+=("${RUN_ENV_ASSIGNMENTS[@]}")
     fi
 
-    if env "${env_args[@]}" "$HARNESS_SCRIPT" "$@" >"$out_file" 2>"$err_file"; then
+    if (( RUN_DEADLINE_SECS > 0 )) && command -v timeout >/dev/null 2>&1; then
+        # The hard deadline wraps the whole invocation, so a script that hangs
+        # can never outlive the test. `timeout` runs the command in its own
+        # process group and signals the group, so the game the script
+        # launched dies with it.
+        if env "${env_args[@]}" timeout --kill-after=5 "$RUN_DEADLINE_SECS" \
+            "$HARNESS_SCRIPT" "$@" >"$out_file" 2>"$err_file"; then
+            RUN_CODE=0
+        else
+            RUN_CODE=$?
+        fi
+    elif env "${env_args[@]}" "$HARNESS_SCRIPT" "$@" >"$out_file" 2>"$err_file"; then
         RUN_CODE=0
     else
         RUN_CODE=$?
@@ -501,7 +542,32 @@ _run_script_impl() {
 # and capture its output and exit status.
 run_script() {
     RUN_ENV_ASSIGNMENTS=()
+    RUN_DEADLINE_SECS=0
     _run_script_impl "$@"
+}
+
+# run_script_deadline <seconds> [args...] — like run_script, but the script
+# under test is wrapped in a hard deadline, so a script that hangs can never
+# outlive the test.
+#
+# The deadline is a HARNESS-level guard, not a verdict: it is deliberately
+# larger than any budget the script itself enforces, so the script's own
+# `--timeout` / `--build-timeout` fire first and the run reports the code the
+# script chose. `timeout`'s own 124 is reported verbatim, which makes a
+# deadline that fired visible as such.
+run_script_deadline() {
+    local seconds="${1-}"
+
+    if [[ ! "$seconds" =~ ^[0-9]{1,15}$ ]] || [[ "$seconds" =~ ^0+$ ]]; then
+        printf 'run_script_deadline: a positive number of seconds is required\n' >&2
+        return 1
+    fi
+
+    RUN_ENV_ASSIGNMENTS=()
+    RUN_DEADLINE_SECS="$seconds"
+    _run_script_impl "${@:2}"
+    RUN_DEADLINE_SECS=0
+    return 0
 }
 
 # run_script_env <env-assignments...> -- [args...] — like run_script, but with
@@ -509,6 +575,7 @@ run_script() {
 # sanitised values for that invocation.
 run_script_env() {
     RUN_ENV_ASSIGNMENTS=()
+    RUN_DEADLINE_SECS=0
     local seen_separator=0
     local arg
     local -a script_args=()
@@ -541,13 +608,67 @@ fixture_root() {
 
 # _write_apphost_stub <path> — a stand-in for SMAPI's native apphost. It never
 # touches a game installation and never launches the game.
+#
+# The stub is also the suite's LOG PRODUCER. When the environment names a
+# template and a target
+#
+#   FAKE_SMAPI_LOG_TEMPLATE   a readable file holding the log to produce
+#   FAKE_SMAPI_LOG_TARGET     the path the log is written to
+#
+# the stub copies the template to the target and rewrites the run sentinel's
+# timestamp to the CURRENT UTC time. The rewrite happens HERE, at launch time,
+# and not when the template is written: the script under test records the
+# launch timestamp T0 before it starts the game and then accepts only a
+# sentinel that is not older than T0 (FR-002), so a template carrying a fixed
+# past timestamp would be classified as stale and the run would time out
+# waiting for a sentinel that never arrives. Because the stub starts after T0
+# was recorded, the sentinel it writes is newer than T0 by construction.
+#
+# With no template named, the stub writes NO log at all and exits 0 — the
+# behaviour that makes the "the game produced no SMAPI log" case (exit 15)
+# reachable.
+#
+# The stub prints nothing on stdout and touches nothing outside the target
+# path (and, when the target's parent does not exist yet, that parent
+# directory).
 _write_apphost_stub() {
     local path="${1-}"
     cat > "$path" <<'STUB'
 #!/usr/bin/env bash
 # Test stub standing in for SMAPI's native apphost (./StardewModdingAPI).
 # It launches nothing and touches nothing outside the fixture tree.
-printf 'StardewModdingAPI stub: no game launched\n'
+#
+# With FAKE_SMAPI_LOG_TEMPLATE set it produces the log the script under test
+# polls: the template is copied to FAKE_SMAPI_LOG_TARGET and the run
+# sentinel's timestamp is rewritten to the CURRENT UTC time, so the log
+# always belongs to the run that is starting now. The copy is byte-for-byte
+# apart from that substitution, so a CRLF template stays CRLF.
+#
+# The timestamp is computed HERE — at launch time — on purpose: a sentinel
+# stamped when the template was written would be older than the launch
+# timestamp T0 and would be rejected as stale (FR-002).
+set -u
+
+template="${FAKE_SMAPI_LOG_TEMPLATE:-}"
+target="${FAKE_SMAPI_LOG_TARGET:-}"
+
+if [[ -n "$template" && -n "$target" && -f "$template" ]]; then
+    parent="${target%/*}"
+    if [[ -n "$parent" && "$parent" != "$target" ]]; then
+        mkdir -p -- "$parent" 2>/dev/null || true
+    fi
+    now="$(date -u '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || printf '')"
+    # The sentinel's shape is `Log started at {UTC timestamp} UTC`, where the
+    # timestamp is the round-trip sortable `s` pattern. The pattern is greedy
+    # up to the LAST " UTC" of the line, so a trailing CR (a CRLF template)
+    # survives the substitution untouched.
+    if [[ -n "$now" ]]; then
+        sed "s/Log started at .* UTC/Log started at ${now} UTC/" -- "$template" > "$target" 2>/dev/null || true
+    else
+        cat -- "$template" > "$target" 2>/dev/null || true
+    fi
+fi
+
 exit 0
 STUB
     chmod 0755 -- "$path" 2>/dev/null || true
@@ -632,6 +753,75 @@ exit 1
 STUB
     chmod 0755 -- "$path" 2>/dev/null || true
     LAST_FIXTURE="$path"
+    return 0
+}
+
+# ---------------------------------------------------------------------------
+# Staging a log for the launch
+#
+# The script under test is a PIPELINE, not a log parser: it polls a log path
+# for the run sentinel and only then evaluates the gate. A test that points
+# --smapi-log at a static fixture therefore measures nothing — the fixture
+# carries a fixed, past sentinel, the script classifies it as stale (FR-002)
+# and waits for a sentinel that never arrives.
+#
+# The fix is to let the LAUNCH produce the log. The fake apphost copies a
+# template and stamps the sentinel with the current UTC time, so the log it
+# writes always belongs to the run that is starting now. The template and the
+# target MUST be different paths: the script removes a stale log before it
+# launches, so a template that lived at the log path would be deleted before
+# the apphost could copy it.
+# ---------------------------------------------------------------------------
+
+# fresh_sentinel_for_now — print the current UTC time in the `s` format
+# (YYYY-MM-DDTHH:MM:SS), which is the exact shape of SMAPI's run sentinel
+# (`Log started at {UTC timestamp} UTC`).
+#
+# The apphost stub computes the same value with the same format string; the
+# two must stay in step, because the sentinel the stub writes is the one the
+# script under test compares against its launch timestamp.
+fresh_sentinel_for_now() {
+    date -u '+%Y-%m-%dT%H:%M:%S'
+}
+
+# stage_log_for_launch <template> <target>
+#
+# Stage a log for the NEXT run_script invocation: the fake apphost copies
+# <template> to <target> when the script launches it, stamping the run
+# sentinel with the current UTC time.
+#
+# The two variables are exported into the harness's own environment — the
+# script under test and the apphost it launches are children of this shell
+# and inherit them — and are also handed to the script under test explicitly
+# by run_script, so the staging survives a script that scrubs its
+# environment. They never reach the real user's environment: the values
+# captured at load time are restored when the sandbox is cleaned up.
+#
+# Calling it again replaces the staged pair, so a test can stage a different
+# log for every case.
+stage_log_for_launch() {
+    local template="${1-}"
+    local target="${2-}"
+
+    if [[ -z "$template" || -z "$target" ]]; then
+        printf 'stage_log_for_launch: a template and a target are required\n' >&2
+        return 1
+    fi
+
+    HARNESS_FAKE_LOG_TEMPLATE="$template"
+    HARNESS_FAKE_LOG_TARGET="$target"
+    export FAKE_SMAPI_LOG_TEMPLATE="$template"
+    export FAKE_SMAPI_LOG_TARGET="$target"
+    return 0
+}
+
+# unstage_log_for_launch — forget the staged log, so the next launch produces
+# no log at all. Idempotent.
+unstage_log_for_launch() {
+    HARNESS_FAKE_LOG_TEMPLATE=""
+    HARNESS_FAKE_LOG_TARGET=""
+    export FAKE_SMAPI_LOG_TEMPLATE=""
+    export FAKE_SMAPI_LOG_TARGET=""
     return 0
 }
 
@@ -825,11 +1015,22 @@ cleanup_fixtures() {
 }
 
 # cleanup_sandbox — remove the whole per-test sandbox (fixtures plus the
-# redirected state roots). Idempotent.
+# redirected state roots) and restore the two log-staging variables to the
+# values they had when the library was loaded. Idempotent.
 cleanup_sandbox() {
     cleanup_fixtures
     if [[ -n "$HARNESS_SANDBOX" && -d "$HARNESS_SANDBOX" ]]; then
         rm -rf -- "$HARNESS_SANDBOX" 2>/dev/null || true
+    fi
+    if (( HARNESS_ORIGINAL_FAKE_SMAPI_LOG_TEMPLATE_SET == 1 )); then
+        export FAKE_SMAPI_LOG_TEMPLATE="$HARNESS_ORIGINAL_FAKE_SMAPI_LOG_TEMPLATE"
+    else
+        unset -v FAKE_SMAPI_LOG_TEMPLATE 2>/dev/null || true
+    fi
+    if (( HARNESS_ORIGINAL_FAKE_SMAPI_LOG_TARGET_SET == 1 )); then
+        export FAKE_SMAPI_LOG_TARGET="$HARNESS_ORIGINAL_FAKE_SMAPI_LOG_TARGET"
+    else
+        unset -v FAKE_SMAPI_LOG_TARGET 2>/dev/null || true
     fi
     return 0
 }
