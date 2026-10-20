@@ -96,27 +96,45 @@ The smoke validation script has no persistent data model of its own — it reads
 | `launch_t0` | epoch/ISO | UTC launch timestamp, used to validate the log sentinel |
 | `log_baseline_inode` | integer | Inode of `SMAPI-latest.txt` before launch (absent ⇒ recorded as none) |
 
-### Exit Codes (sysexits.h convention)
+### Exit Codes (one code per failure category — sysexits-*style*, not `sysexits.h` numbering)
 
 | Code | Constant | Meaning |
 |------|----------|---------|
 | 0 | `EX_OK` | Success — mod loaded without errors |
 | 1 | `EX_GAME_NOT_FOUND` | Game installation not found at expected path |
-| 2 | `EX_SMAPI_NOT_FOUND` | SMAPI not installed or not functional |
-| 3 | `EX_XVFB_NOT_AVAILABLE` | Xvfb / graphics environment unavailable (incl. no usable software OpenGL) |
+| 2 | `EX_SMAPI_NOT_FOUND` | SMAPI not installed or not functional (includes a launcher that aborts with SIGABRT → 134) |
+| 3 | `EX_GRAPHICS_UNUSABLE` | Graphics environment **present but unusable** — no `GLX`/`RANDR`, or no software renderer |
 | 4 | `EX_TIMEOUT` | Game did not produce log within timeout window |
 | 5 | `EX_MOD_LOAD_FAILURE` | Mod failed to load (Error/Alert in log, absent from `Loaded N mods:`, or present in `Skipped mods`) |
 | 6 | `EX_LOCK_CONTENTION` | Another smoke test instance is running (flock failed) |
 | 7 | `EX_PROCESS_CONFLICT` | Existing Stardew Valley/SMAPI process detected |
-| 9 | `EX_MISSING_DEPENDENCY` | Missing host tool or unresolvable runtime dependency |
+| 9 | `EX_MISSING_DEPENDENCY` | A required host tool is absent, or the runtime cannot be resolved (`Xvfb`, `xdpyinfo`, `glxinfo`, `python3`/`uconv`, `flock`, `timeout`, `mktemp`, `stat`, `realpath`, `pgrep`/`pidof`, `sha256sum`, `dotnet`) |
 | 10 | `EX_DISPLAY_CONFLICT` | X display owned by a live server, or a stale X11 lock could not be reclaimed |
 | 11 | `EX_STEAM_PREREQ_MISSING` | `steam_appid.txt` absent or wrong |
+| 12 | `EX_BUILD_ARTIFACT_FAILURE` | The mod failed to build, or the deployed assembly's digest does not match the fresh build |
+| 13 | `EX_INTERNAL_ERROR` | The script itself broke — an unhandled error caught by the ERR trap, or an unmapped child status |
 | 130 | `EX_SIGINT` | Script interrupted by SIGINT (POSIX 128+2) |
 | 143 | `EX_SIGTERM` | Script terminated by SIGTERM (POSIX 128+15) |
 
-**Timeout code note**: `4` (`EX_TIMEOUT`) is canonical. The `timeout` utility's native status `124` is translated to `4` at the script boundary, so no subprocess-specific status ever becomes the script's final code (FR-007).
+**Numbering note**: this is a bespoke, sysexits-*style* taxonomy — one code per failure class — and **not** the `sysexits.h` numbering, which begins at `EX__BASE` = 64 (FreeBSD deprecated the interface; OpenBSD says "Do not use them"). The phrase "sysexits.h convention" is withdrawn. Codes are allocated **additively**: an existing code is never re-assigned, and a new category takes the next unused low value. Code `8` was retired (interruption uses POSIX `128+N`) and is not reused.
 
-**Interruption note**: interrupted runs use the POSIX `128+N` convention (130 / 143). The earlier `8 = EX_INTERRUPTED` value was superseded — `sysexits.h` defines no value below 64, so it would be neither a sysexits value nor POSIX-compliant.
+**Translation note (FR-007)**: no subprocess-specific status may ever become the script's final code. Every child status is translated before the script exits:
+
+| Child status | Script exit code |
+|--------------|------------------|
+| `0` | `0` |
+| `124` (`timeout` expired) | `4` |
+| `125` (`timeout` itself failed) | `13` |
+| `126` (found but not executable) | `9` |
+| `127` (not found) | `9` |
+| `134` (SIGABRT — e.g. a relocated SMAPI launcher) | `2` |
+| `137` (SIGKILL) | `5` when it is the game process, `13` otherwise |
+| `128+N` for SIGINT/SIGTERM on the script itself | `128+N`, unchanged |
+| any other non-zero | `13` |
+
+A pre-flight probe that fails is translated by the **category of the probe**, not by the raw status it happened to return.
+
+**Interruption note**: interrupted runs use the POSIX `128+N` convention (130 / 143). The earlier `8 = EX_INTERRUPTED` value was superseded and is not reused.
 
 ### Log Check Result
 
