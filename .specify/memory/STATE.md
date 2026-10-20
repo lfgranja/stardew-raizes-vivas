@@ -27,17 +27,23 @@
   ESRCH/EPERM liveness test (xorg-server 21.1.24 `os/utils.c`).
 - `spec.md` interruption clarification → `BashFAQ/062` corrected to `BashFAQ/047`.
 
-### BLOCKED — awaiting the user's answers to 5 batch questions
-1. Pre-flight dependency exit code: `3` (graphics) vs `9` (missing binary) overlap.
-2. No code for "the script itself broke" / "the build failed"; `sysexits.h` label is wrong.
-3. How the game enters its own process group (setsid / `set -m` / `timeout` / descendant walk).
-4. X11 lock removal scope in the EXIT-trap cleanup (FR-010(3) vs FR-012(5)).
-5. `--force` PID identity verification (`pgrep -x` is non-functional for the 17-char apphost).
-
-## REMAINING (cannot be completed by agent — requires the real game)
+### BLOCKED — awaiting implementation
 - The script itself does not exist yet (`scripts/smoke-validation.sh`).
-- Xvfb is **not installed** on the maintainer's machine (pre-flight will exit `3`).
+- Xvfb is **not installed** on the maintainer's machine (pre-flight will exit `9`).
 - Gate 3 (end-to-end verification) stays ⏳ until a real run succeeds.
+
+### Round 6 decisions (2026-10-19) — user accepted all 5 recommendations
+1. `9` = required host tool **absent**; `3` = graphics stack **present but unusable**.
+   Required-tool set enumerated in FR-012 item 8.
+2. "sysexits.h convention" label **withdrawn** (it is not sysexits numbering).
+   Codes `12` (build/artifact failure) and `13` (internal error) added additively.
+   FR-007 now has a general translation table — no raw child status ever escapes.
+3. Game launched under bash job control (`set -m`) → PGID == PID; mandatory PGID
+   assertion before every group signal. No new dependency.
+4. EXIT trap removes X locks only for the script's own display and only when the
+   owning PID is dead.
+5. Process identity by `/proc/$PID/exe` restricted to the resolved game path;
+   `pgrep -x` is non-functional for the 17-char apphost — use `pidof`.
 
 ## Notes
 - Working tree also contains pre-existing changes not made by this session:
