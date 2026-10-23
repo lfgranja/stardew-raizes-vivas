@@ -264,9 +264,18 @@ namespace LivingRoots.Tests.Visualization
         /// Edge cases (0, NaN, infinities) are covered by fact tests.
         /// The zero tile must never contribute an overlay; a
         /// finite non-zero sibling draws exactly one overlay.
+        /// The sibling is generated as a positive integer 1-100 (its real
+        /// domain), so the property cannot flake on a generated 0.
         /// </summary>
         [Property(MaxTest = 100)]
-        public void T222_GetOverlays_HealthZero_RendersZeroOverlays(float tileHealth)
+        public Property T222_GetOverlays_HealthZero_RendersZeroOverlays()
+        {
+            return Prop.ForAll(
+                Arb.From(PositiveHealthGenerator()),
+                tileHealth => ZeroTile_RendersZeroOverlays(tileHealth));
+        }
+
+        private bool ZeroTile_RendersZeroOverlays(float tileHealth)
         {
             // Arrange — the pinned zero tile plus the generated
             // sibling, both inside the viewport.
@@ -294,6 +303,7 @@ namespace LivingRoots.Tests.Visualization
             // Positive health should produce exactly one overlay for the arbitrary tile
             Assert.Single(overlays);
             Assert.Equal(arbitraryTile, overlays[0].TilePosition);
+            return true;
         }
 
         [Fact]

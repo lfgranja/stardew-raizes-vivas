@@ -4,52 +4,54 @@
 - **Tested**: 2026-10-19
 - **Assessment**: ./assessment.md
 - **Fix**: ./fix.md
-- **Result**: partial
+- **Result**: verified
 
 ## Summary
 
-The three reported failures no longer reproduce: the targeted suite is 47/47 and the full suite passes locally (1268 passed, 1 skipped, 0 failed). The fix held with no regressions. The result is `partial` because the `Build and Test` workflow itself was **not** re-run (no push), and a **pre-existing flaky** property test (`T031b`) can still intermittently redden the full suite — so the CI job is not yet *reliably* green.
+The three reported failures no longer reproduce, and the `Build and Test` workflow is **green on `dev`**. The fix was delivered via PR #285 (`fix/build-and-test-failures` → `dev`, merge commit `8f30f22`); all four checks on the merge commit report `success`, including `Build and Test`. One earlier CI run flaked on the pre-existing `T031b` property test (unrelated to this fix) and passed on re-run — see Residual Risks.
 
 ## Checks Performed
 
 | Check | Command / Action | Result | Notes |
 |-------|------------------|--------|-------|
 | Reproduction (post-fix) — the 3 reported failures | `dotnet test --filter "FullyQualifiedName~UnicodeNormalizer|FullyQualifiedName~ProductionSourceGuardTests"` | **pass** | 47/47 (was 3 failing). |
-| New / updated tests | same run (includes the 2 added normalizer tests) | **pass** | `UnicodeNormalizer_NormalizesFullwidthDigitsAndPunctuation`, `UnicodeNormalizer_PreservesNonLatinScript`. |
-| Regression suite | `dotnet test Stardew-LivingRoots.sln --no-build -c Release` | **pass (with a pre-existing flaky test)** | Rerun: 1268 passed, 1 skipped, **0 failed**. One earlier run hit the pre-existing flaky `T031b`. |
+| New / updated tests | same run (2 added normalizer tests) | **pass** | `UnicodeNormalizer_NormalizesFullwidthDigitsAndPunctuation`, `UnicodeNormalizer_PreservesNonLatinScript`. |
+| Regression suite | `dotnet test Stardew-LivingRoots.sln --no-build -c Release` | **pass** | 1268 passed, 1 skipped, 0 failed. |
 | Build | `dotnet build -c Release` | **pass** | 0 errors, 15 pre-existing warnings. |
 | Lint / format | `dotnet format Stardew-LivingRoots.sln --verify-no-changes` | **pass** | exit 0. |
-| CI job (`Build and Test`) | push to `dev` + observe the workflow | **not-run** | `dev` is protected (PR required); not exercised by this command. |
+| **CI reproduction — `Build and Test` on the PR** | PR #285 check runs | **pass** | First run failed on the flaky `T031b` (1267 passed / 1 failed — the 3 reported tests passed); re-run: `success`. |
+| **CI reproduction — `Build and Test` on `dev`** | `gh api …/commits/8f30f22/check-runs` | **pass** | Merge commit `8f30f22`: `Build and Test: success`, `Check Formatting: success`, `Check Protected Paths: success`, `SonarCloud Code Analysis: success`. |
 
 ## Output Excerpts
 
-Targeted reproduction (the 3 previously-failing tests + 2 new):
+PR #285 first CI run (the 3 reported tests pass; only the pre-existing flaky test fails):
 
 ```
-Aprovado! – Com falha: 0, Aprovado: 47, Ignorado: 0, Total: 47
+Total tests: 1269   Passed: 1267   Failed: 1
+[FAIL] LivingRoots.Tests.Invariants.VisualizationInvariantsTests.T031b_OverlayDistinguishable_DistinctHealth_DistinctColors
 ```
 
-Full regression suite (rerun):
+`dev` merge commit `8f30f22` check runs:
+
+```
+SonarCloud Code Analysis: completed success
+Check Protected Paths:    completed success
+Build and Test:           completed success
+Check Formatting:         completed success
+```
+
+Local full suite:
 
 ```
 Aprovado! – Com falha: 0, Aprovado: 1268, Ignorado: 1, Total: 1269
 ```
 
-Pre-existing flaky test seen in one full-suite run (unrelated to the fix):
-
-```
-[FAIL] LivingRoots.Tests.Invariants.VisualizationInvariantsTests.T031b_OverlayDistinguishable_DistinctHealth_DistinctColors
-Falsifiable, after 3 tests … Original: (87.47000122f, 70.93000031f)
-```
-
-`T031b` passes in isolation (`Aprovado! 1/1`); its counterexample `(87.47, 70.93)` is the known pre-existing `ColorInterpolationService` category-gap bug: `GetCategoryForHealth` returns `Unknown` for the `(70, 71)` gap while `GetColorForHealth` returns the Healthy colour.
-
 ## Residual Risks
 
-- **The CI job was not exercised.** The local run uses the same `dotnet test` command and the same game assemblies the workflow provisions, and the three reported failures were environment-independent — so CI is *expected* green, but this is not confirmed server-side.
-- **A pre-existing flaky test can still redden the suite.** `T031b_OverlayDistinguishable_DistinctHealth_DistinctColors` fails intermittently in full-suite runs (observed roughly 1 in 3), so `Build and Test` is not yet *reliably* green even after this fix. It is not caused by this change — it is the `ColorInterpolationService` `(70, 71)` gap already logged in `.specify/bugs/sonarcloud-reliability-rating/fix.md`. `T222_GetOverlays_HealthZero_RendersZeroOverlays` is a second pre-existing flaky property test.
-- **The `MaxTilledTiles` wiring is a production change** in the crop-growth path (output-preserving by construction, but not exercised by a live-game run).
+- **Pre-existing flaky property tests remain.** The first CI run on PR #285 failed on `T031b_OverlayDistinguishable_DistinctHealth_DistinctColors` (a real `ColorInterpolationService` category gap at `(70, 71)`: `GetCategoryForHealth` returns `Unknown` while `GetColorForHealth` returns the Healthy colour) and passed on re-run; `T222_GetOverlays_HealthZero_RendersZeroOverlays` (FsCheck edge-case floats) can flake similarly. Neither is caused by this fix, but together they mean `Build and Test` can still go red intermittently (~1 in 3 full-suite runs observed). **This is the last blocker to a reliably green CI and should be filed as its own bug.**
+- The `MaxTilledTiles` wiring is a production change in the crop-growth path (output-preserving by construction, but not exercised by a live-game run).
+- 11 `CS8602` warnings in `LivingRoots.Tests/Invariants/SoilHealthPersistenceInvariantsTests.cs` remain (pre-existing).
 
 ## Recommendation
 
-Hold as `partial` and push the branch to confirm the workflow turns green (the local reproduction is already green). Separately, file a bug for the `ColorInterpolationService` `(70, 71)` category gap — until that flakiness is removed, `Build and Test` will keep going red intermittently regardless of this fix. If the CI run on the push is green, this bug can be closed.
+**Close the bug — verified end-to-end.** The three reported failures are fixed and `Build and Test` is green on `dev` (`8f30f22`). File a separate bug for the flaky property tests (`T031b`, `T222`) so the workflow stops flaking red; until then, a red `Build and Test` may be that flakiness rather than a regression.
