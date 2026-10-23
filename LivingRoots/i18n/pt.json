@@ -2,6 +2,5 @@
   "message.compost.invalid-tile": "O composto só pode ser aplicado em solo arado.",
   "message.compost.max-health": "Este solo já está com a saúde máxima.",
   "message.compost.action-conflict": "Outro jogador já está interagindo com este tile.",
-  "message.harvest.inventory-full": "Seu inventário está cheio!",
-  "message.accessibility.patterns-hidden": "Padrões de acessibilidade ocultos: tiles visíveis demais."
+  "message.harvest.inventory-full": "Seu inventário está cheio!"
 }

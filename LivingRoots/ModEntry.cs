@@ -42,106 +42,92 @@ namespace LivingRoots
         {
             _helper = helper;
 
-            try
-            {
-                // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031).
-                // T137 (FR-012): subscribe through the stored handler field so Dispose
-                // detaches the exact delegate instance — a method-group subscription
-                // leaves no readable reference to release on unload.
-                _onAssetRequestedHandler = OnAssetRequested;
-                helper.Events.Content.AssetRequested += _onAssetRequestedHandler;
+            // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031).
+            // T137 (FR-012): subscribe through the stored handler field so Dispose
+            // detaches the exact delegate instance — a method-group subscription
+            // leaves no readable reference to release on unload.
+            _onAssetRequestedHandler = OnAssetRequested;
+            helper.Events.Content.AssetRequested += _onAssetRequestedHandler;
 
-                // Create domain services - Composition Root
-                var unicodeNormalizationService = new UnicodeNormalizationService();
-                var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
-                var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
-                var pathValidationService = new PathValidationService(unicodeNormalizationService);
-                var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
+            // Create domain services - Composition Root
+            var unicodeNormalizationService = new UnicodeNormalizationService();
+            var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
+            var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
+            var pathValidationService = new PathValidationService(unicodeNormalizationService);
+            var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
 
-                // Create application services
-                var modDataService = new ModDataService(helper, this.Monitor, modLogic);
+            // Create application services
+            var modDataService = new ModDataService(helper, this.Monitor, modLogic);
 
-                // Create the soil health service with the required dependencies
-                var soilHealthService = new SoilHealthService(modDataService, this.Monitor, fileNameSanitizationService);
-                _soilHealthService = soilHealthService;
+            // Create the soil health service with the required dependencies
+            var soilHealthService = new SoilHealthService(modDataService, this.Monitor, fileNameSanitizationService);
+            _soilHealthService = soilHealthService;
 
-                // Create the save ID provider with monitor for logging
-                var saveIdProvider = new SaveIdProvider(this.Monitor);
+            // Create the save ID provider with monitor for logging
+            var saveIdProvider = new SaveIdProvider(this.Monitor);
 
-                // Create testable interface implementations (Fix-4)
-                var timeProvider = new TimeProvider();
-                var seasonProvider = new SeasonProvider();
-                var playerProvider = new PlayerProvider();
+            // Create testable interface implementations (Fix-4)
+            var timeProvider = new TimeProvider();
+            var seasonProvider = new SeasonProvider();
+            var playerProvider = new PlayerProvider();
 
-                // T055 (U3, FR-019): ONE host-authoritative lock
-                // service, created here and passed to both the
-                // controller and the bin service. Two `?? new`
-                // fallbacks would hand each class a disjoint
-                // lock registry, so a tile one of them locked
-                // would look free to the other.
-                var hostAtomicLockService = new HostAtomicLockService();
+            // T055 (U3, FR-019): ONE host-authoritative lock
+            // service, created here and passed to both the
+            // controller and the bin service. Two `?? new`
+            // fallbacks would hand each class a disjoint
+            // lock registry, so a tile one of them locked
+            // would look free to the other.
+            var hostAtomicLockService = new HostAtomicLockService();
 
-                // Create composting services
-                // T141: OrganicWasteValidator takes the monitor for trace
-                // diagnostics of accepted/rejected waste (IOrganicWasteValidator).
-                var organicWasteValidator = new OrganicWasteValidator(this.Monitor);
-                var compostingBinFactory = new CompostingBinFactory();
-                var playerInventory = new PlayerInventory();
-                // T054 (FR-008a): SMAPI's translation helper, injected
-                // into every service that renders a refusal message so
-                // Game1.showRedMessage shows the player's language.
-                var translationHelper = helper.Translation;
-                var locationProvider = new LocationProvider();
-                var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, hostAtomicLockService: hostAtomicLockService, translationHelper: translationHelper);
-                var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
+            // Create composting services
+            var organicWasteValidator = new OrganicWasteValidator();
+            var compostingBinFactory = new CompostingBinFactory();
+            var playerInventory = new PlayerInventory();
+            // T054 (FR-008a): SMAPI's translation helper, injected
+            // into every service that renders a refusal message so
+            // Game1.showRedMessage shows the player's language.
+            var translationHelper = helper.Translation;
+            var locationProvider = new LocationProvider();
+            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, hostAtomicLockService: hostAtomicLockService, translationHelper: translationHelper);
+            var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
 
-                // Create soil decay service
-                var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
-                var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider, timeProvider);
+            // Create soil decay service
+            var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
+            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider);
 
-                // Create visualization services (F4 — DI wiring per Phase 9/10)
-                var colorInterpolationService = new ColorInterpolationService();
-                var visualizationConfigService = new VisualizationConfigurationService(modDataService, this.Monitor, fileNameSanitizationService);
-                var hudNotifier = new HudNotifierImpl(translationHelper);
-                var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor, hudNotifier);
+            // Create visualization services (F4 — DI wiring per Phase 9/10)
+            var colorInterpolationService = new ColorInterpolationService();
+            var visualizationConfigService = new VisualizationConfigurationService(modDataService, this.Monitor, fileNameSanitizationService);
+            var hudNotifier = new HudNotifierImpl();
+            var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor, hudNotifier);
 
-                // Wire reactive cache invalidation upon soil health change (T036, FR-010).
-                // T137 (FR-012): a stored named handler rather than an anonymous
-                // lambda — an anonymous subscription has no readable reference, so
-                // it can never be detached and keeps the visualization service
-                // alive through the event past mod unload.
-                _onTileHealthChangedHandler = (_, _, _) => visualizationService.InvalidateCache();
-                soilHealthService.OnTileHealthChanged += _onTileHealthChangedHandler;
+            // Wire reactive cache invalidation upon soil health change (T036, FR-010).
+            // T137 (FR-012): a stored named handler rather than an anonymous
+            // lambda — an anonymous subscription has no readable reference, so
+            // it can never be detached and keeps the visualization service
+            // alive through the event past mod unload.
+            _onTileHealthChangedHandler = (_, _, _) => visualizationService.InvalidateCache();
+            soilHealthService.OnTileHealthChanged += _onTileHealthChangedHandler;
 
-                // Create controller with dependency injection.
-                // T069 (FR-004): the color interpolator is the
-                // SAME instance the visualization service holds,
-                // so a configuration change applies the custom
-                // category palette live (SetCategoryColors) —
-                // without this wiring the controller's palette
-                // application is a null-conditional no-op and
-                // the interpolator keeps its ModConstants
-                // defaults.
-                // T055 (U3): the player provider (live hoe
-                // feedback — a null provider silently skips
-                // HandleHoeUsage) and the shared host atomic
-                // lock service (the same instance the bin
-                // service holds) are injected here, not left
-                // to the constructor's `?? new` fallbacks.
-                _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService);
+            // Create controller with dependency injection.
+            // T069 (FR-004): the color interpolator is the
+            // SAME instance the visualization service holds,
+            // so a configuration change applies the custom
+            // category palette live (SetCategoryColors) —
+            // without this wiring the controller's palette
+            // application is a null-conditional no-op and
+            // the interpolator keeps its ModConstants
+            // defaults.
+            // T055 (U3): the player provider (live hoe
+            // feedback — a null provider silently skips
+            // HandleHoeUsage) and the shared host atomic
+            // lock service (the same instance the bin
+            // service holds) are injected here, not left
+            // to the constructor's `?? new` fallbacks.
+            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService);
 
-                // Register events through the Controller
-                _controller.RegisterEvents();
-            }
-            catch (Exception ex)
-            {
-                // T254 (FR-014): a failure anywhere in the DI graph or event
-                // registration must never prevent the mod from loading or break
-                // gameplay. Report in sanitized form only — the exception type
-                // plus HResult at Trace — never the raw message or stack trace
-                // (FR-015 convention).
-                this.Monitor.Log($"LivingRoots entry wiring failed: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Trace);
-            }
+            // Register events through the Controller
+            _controller.RegisterEvents();
         }
 
         /*********
@@ -253,7 +239,7 @@ namespace LivingRoots
                     {
                         Name = "Compost",
                         DisplayName = "Compost",
-                        Description = $"Organic compost rich in microbial life. Restores {ModConstants.RestorationAmount:F0} soil health to tilled tiles.",
+                        Description = "Organic compost rich in microbial life. Restores 15 soil health to tilled tiles.",
                         Type = "Basic",
                         Category = ModConstants.CompostCategoryId,
                         Price = 10,
@@ -377,14 +363,7 @@ namespace LivingRoots
                 e.Edit(asset =>
                 {
                     var data = asset.AsDictionary<string, StardewValley.GameData.Machines.MachineData>().Data;
-
-                    // T193 (FR-001a/FR-001b): the key is the bin's fully qualified
-                    // item id — ModConstants.MachineCompostingBinId ALREADY carries
-                    // the "(BC)" prefix, so it must be used verbatim. Prefixing it
-                    // again produced "(BC)(BC)LivingRoots.CompostingBin", which no
-                    // placed bin resolves to, leaving DaysUntilReady and every other
-                    // native machine rule unreachable.
-                    var binId = ModConstants.MachineCompostingBinId; // "(BC)LivingRoots.CompostingBin"
+                    var binId = $"(BC){ModConstants.MachineCompostingBinId}";
                     data[binId] = new StardewValley.GameData.Machines.MachineData
                     {
                         // T053 (FR-001b): fairy dust would accelerate the
@@ -395,29 +374,44 @@ namespace LivingRoots
                             new StardewValley.GameData.Machines.MachineOutputRule
                             {
                                 Id = "Default",
-                                // T249 (FR-003, specs/002 FR-008): every trigger derives
-                                // from the validator-owned qualifying set — the five
-                                // vanilla category context tags plus the modded
-                                // inclusion tag — each ANDed with the validator-owned
-                                // exclusion override, so the native machine filter and
-                                // the mod's AddWaste path accept the same items. Each
-                                // trigger ANDs its tags; any matching trigger starts
-                                // the rule. The modded trigger consumes
-                                // OrganicWasteValidator.MachineWasteTags verbatim, so
-                                // the inclusion tag is stated once, in the validator,
-                                // and can never drift (T223 pins the registered
-                                // MachineData; T120 pins the tag-rule parity).
+                                // T053 (FR-003): the native input filter mirrors
+                                // OrganicWasteValidator's hybrid validation:
+                                // inclusion tag "compostable_item" OR vanilla
+                                // category IDs (-74 seeds, -75 vegetables,
+                                // -79 fruits, -80 flowers, -81 greens),
+                                // with exclusion tag "not_compostable"
+                                // overriding everything. Each trigger ANDs its
+                                // tags; any matching trigger starts the rule.
+                                // The positive tag set mirrors OrganicWasteValidator's
+                                // inherited qualifying set (spec 002 FR-008)
+                                // so the native machine path and the mod's
+                                // AddWaste path accept the same items, and
+                                // !not_compostable keeps explicitly excluded
+                                // items out even when they match a category.
+                                // (T133 FR-003) Machine rule triggers use the validator-owned waste set:
+                                // inclusion tag "compostable_item" OR vanilla category IDs (-74 seeds, -75 vegetables,
+                                // -79 fruits, -80 flowers, -81 greens), with exclusion tag "not_compostable" overriding
+                                // everything. Each trigger ANDs its tags; any matching trigger starts the rule.
+                                // The positive tag set mirrors OrganicWasteValidator's
+                                // inherited qualifying set (spec 002 FR-008) so the native machine path and the mod's
+                                // AddWaste path accept the same items, and
+                                // !not_compostable keeps explicitly excluded items out even when they match a category.
                                 Triggers = new System.Collections.Generic.List<StardewValley.GameData.Machines.MachineOutputTriggerRule>
                                 {
-                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Seeds", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { OrganicWasteValidator.CategorySeedsTag, "!" + OrganicWasteValidator.NotCompostableTag }, RequiredCount = 1 },
-                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Vegetable", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { OrganicWasteValidator.CategoryVegetableTag, "!" + OrganicWasteValidator.NotCompostableTag }, RequiredCount = 1 },
-                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Fruits", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { OrganicWasteValidator.CategoryFruitsTag, "!" + OrganicWasteValidator.NotCompostableTag }, RequiredCount = 1 },
-                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Flowers", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { OrganicWasteValidator.CategoryFlowersTag, "!" + OrganicWasteValidator.NotCompostableTag }, RequiredCount = 1 },
-                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Greens", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { OrganicWasteValidator.CategoryGreensTag, "!" + OrganicWasteValidator.NotCompostableTag }, RequiredCount = 1 },
-                                    // The modded trigger consumes the validator-owned set
-                                    // verbatim — the inclusion tag is stated once, in the
-                                    // validator, never restated here.
-                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Modded", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string>(OrganicWasteValidator.MachineWasteTags), RequiredCount = 1 }
+                                    // (T133 FR-003) Machine triggers use the validator-owned waste set:
+                                    // items carrying "compostable_item" are accepted; "not_compostable" overrides everything.
+                                    // Vanilla category IDs are mirrored as context tags: category_seeds(-74),
+                                    // category_vegetable(-75), category_fruits(-79), category_flowers(-80),
+                                    // category_greens(-81). Any matching trigger starts the rule.
+new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Compost", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "compostable_item" }, RequiredCount = 1 },
+                                    // T133: category-based acceptance mirrors OrganicWasteValidator's hybrid validation
+new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Seeds", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_seeds", "!not_compostable" }, RequiredCount = 1 },
+new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Vegetables", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_vegetable", "!not_compostable" }, RequiredCount = 1 },
+new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Fruits", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_fruits", "!not_compostable" }, RequiredCount = 1 },
+new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Flowers", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_flowers", "!not_compostable" }, RequiredCount = 1 },
+new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Greens", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_greens", "!not_compostable" }, RequiredCount = 1 },
+                                    // T133: items with "not_compostable" are rejected regardless of other tags
+new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Modded", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "compostable_item", "!not_compostable" }, RequiredCount = 1 }
                                 },
                                 OutputItem = new System.Collections.Generic.List<StardewValley.GameData.Machines.MachineItemOutput>
                                 {
