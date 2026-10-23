@@ -1,5 +1,3 @@
-using StardewValley;
-
 namespace LivingRoots.Domain;
 
 /// <summary>
@@ -9,8 +7,8 @@ namespace LivingRoots.Domain;
 public interface IPlayerProvider
 {
     /// <summary>Gets the current player (Farmer).</summary>
-    Farmer CurrentPlayer { get; }
+    StardewValley.Farmer CurrentPlayer { get; }
 
     /// <summary>Gets the player's currently held item, or null if none.</summary>
-    Item? CurrentItem { get; }
+    StardewValley.Item? CurrentItem { get; }
 }
