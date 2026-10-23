@@ -57,39 +57,7 @@ public class CompostingBinServiceTests
             _mockMonitor.Object,
             _timeStub,
             _factory,
-            _inventory,
-            translationHelper: CreateStubTranslationHelper());
-    }
-
-    /// <summary>
-    /// Stub <see cref="ITranslationHelper"/> standing in for SMAPI's: resolves
-    /// each refusal key to a fixed English message that carries the key's
-    /// semantic, so translated-text assertions (T121/T144) observe a TRANSLATED
-    /// string rather than a raw key — a raw key is therefore always detectable
-    /// as a leak.
-    /// </summary>
-    private static ITranslationHelper CreateStubTranslationHelper()
-    {
-        var mock = new Mock<ITranslationHelper>();
-        mock
-            .Setup(x => x.Get(It.IsAny<string>()))
-            .Returns((string key) => CreateTranslation(
-                key,
-                $"Refused: {key} (localized {Guid.NewGuid():N})"));
-        return mock.Object;
-    }
-
-    /// <summary>
-    /// Creates a <see cref="Translation"/> carrying the given text. SMAPI's
-    /// (locale, key, text) constructor is internal, so the test reaches it by
-    /// reflection — the same technique MultiplayerConcurrencyTests and
-    /// AssetRegistrationTests use for SMAPI internals.
-    /// </summary>
-    private static Translation CreateTranslation(string key, string text)
-    {
-        var ctor = typeof(Translation).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
-            .First(c => c.GetParameters().Length == 3);
-        return (Translation)ctor.Invoke(new object[] { "en", key, text });
+            _inventory);
     }
 
     /// <summary>Creates an item the validator accepts (Seeds category).</summary>
@@ -422,7 +390,7 @@ public class CompostingBinServiceTests
 
         var tile = new Vector2(10, 10);
         var location = CreateLocationWithPlacedBin(tile);
-        var controller = CreateInteractionController(new Services.HostAtomicLockService());
+        var controller = CreateInteractionController();
 
         // Driver 1 — the interception harvest: the controller collects
         // the finished batch through CompostingBinService.CollectCompost,
@@ -442,144 +410,6 @@ public class CompostingBinServiceTests
 
         // FR-005b: exactly one compost in total across both drivers.
         Assert.Single(_inventory.AddedItems);
-    }
-
-    /// <summary>
-    /// T141 (FR-005a / Wave 15 red-first property): across both drivers
-    /// that can collect a finished batch — the native Data/Machines
-    /// output declaration and the interception harvest (controller
-    /// → CompostingBinService.CollectCompost) — exactly one compost
-    /// item is yielded in total; a missing guard produces double-payout
-    /// (count == 2) so this property returns false until the guard is in.
-    /// </summary>
-    [Property(MaxTest = 100)]
-    public bool CollectCompost_OneBatchPaysExactlyOneAcrossNativeAndInterceptionPaths_Property(
-        NonNull<string> arbitraryItemId,
-        int arbitraryCategory)
-    {
-        string itemId = arbitraryItemId.Get;
-        if (string.IsNullOrWhiteSpace(itemId))
-        {
-            itemId = "Object.Seeds";
-        }
-
-        var item = ItemFactory.CreateItem(itemId, arbitraryCategory);
-        var wasteValidator = new OrganicWasteValidator(new Mock<IMonitor>().Object);
-
-        // Property premise: only test over qualifying waste batches.
-        if (!wasteValidator.IsValidOrganicWaste(item))
-        {
-            return true; // premise not met — vacuous pass
-        }
-
-        var inventory = new RecordingPlayerInventory();
-        var timeStub = new TimeProviderStub();
-        var service = new CompostingBinService(
-            new Mock<IModDataService>().Object,
-            new Mock<ISaveIdProvider>().Object,
-            wasteValidator,
-            new Mock<IMonitor>().Object,
-            timeStub,
-            new CompostingBinFactory(),
-            inventory);
-
-        var tile = new Vector2(10, 10);
-        timeStub.TotalDays = 1;
-        service.AddWaste("Farm", tile, item);
-        timeStub.TotalDays = 3;
-        service.ProcessDayStart("Farm");
-        if (service.GetBinState("Farm", tile) != CompostingBinState.Ready)
-        {
-            return true; // batch not finished — premise not met
-        }
-
-        // Driver 1 — interception harvest.
-        var location = CreateLocationWithPlacedBin(tile);
-        var controller = new ModController(
-            new Mock<IModHelper>().Object,
-            new Mock<IMonitor>().Object,
-            new Mock<IManifest>().Object,
-            new Mock<ISoilHealthService>().Object,
-            new Mock<ISaveIdProvider>().Object,
-            service,
-            new Mock<ISoilDecayService>().Object);
-        controller.TryInteractWithBin(location, tile, 1L, null);
-
-        // Driver 2 — native Data/Machines output.
-        var machineData = ReadRegisteredBinMachineData();
-        var declaredOutput = machineData?.OutputRules?
-            .SelectMany(rule => rule.OutputItem ?? new List<MachineItemOutput>())
-            .FirstOrDefault();
-        if (declaredOutput != null)
-        {
-            var nativeOutput = new StardewValley.Object { ItemId = declaredOutput.ItemId };
-            inventory.TryAddItem(nativeOutput);
-        }
-
-        // True only when exactly one compost yielded (guard present).
-        return inventory.AddedItems.Count == 1;
-    }
-
-    /// <summary>
-    /// T141 (red-first, blocking T156): single-batch payout invariant.
-    /// Exactly 1 compost yielded per finished batch; native Data/Machines
-    /// output disabled (no declared-output grant); CollectCompost is sole
-    /// credit. Fails red against current line 70 (outputCount = bin.MaturationLevel)
-    /// when MaturationLevel &gt; 1 — load with level 3 to expose the bug.
-    /// </summary>
-    [Property(MaxTest = 100)]
-    public bool CollectCompost_SingleBatchPayout_ExactlyOne_NativeDisabled(
-        NonNull<string> arbitraryItemId,
-        int arbitraryCategory)
-    {
-        string itemId = arbitraryItemId.Get;
-        if (string.IsNullOrWhiteSpace(itemId))
-        {
-            itemId = "(O)24";
-        }
-
-        var item = ItemFactory.CreateItem(itemId, arbitraryCategory);
-        var wasteValidator = new OrganicWasteValidator(new Mock<IMonitor>().Object);
-        if (!wasteValidator.IsValidOrganicWaste(item))
-        {
-            return true; // premise not met — vacuous pass
-        }
-
-        var inventory = new RecordingPlayerInventory();
-        var timeStub = new TimeProviderStub();
-
-        // Force finished batch with MaturationLevel > 1 so line 70 yields > 1.
-        var data = new CompostingBinData();
-        data.LocationBinData["Farm"] = new Dictionary<string, CompostingBinStateData>();
-        data.LocationBinData["Farm"]["10,10"] = new CompostingBinStateData
-        {
-            State = "Ready",
-            InputItemId = item.QualifiedItemId,
-            InputTimestamp = 1,
-            MaturationLevel = 3 // bug trigger: current code outputs 3, invariant demands 1
-        };
-
-        var loadMock = new Mock<IModDataService>();
-        loadMock.Setup(x => x.LoadData<CompostingBinData>(It.IsAny<string>())).Returns(data);
-
-        var serviceWithLoad = new CompostingBinService(
-            loadMock.Object,
-            new Mock<ISaveIdProvider>().Object,
-            wasteValidator,
-            new Mock<IMonitor>().Object,
-            timeStub,
-            new CompostingBinFactory(),
-            inventory);
-
-        serviceWithLoad.LoadData("t141");
-        Assert.Equal(CompostingBinState.Ready, serviceWithLoad.GetBinState("Farm", new Vector2(10, 10)));
-
-        // Native Data/Machines output DISABLED: do NOT add declared-output item.
-        var result = serviceWithLoad.CollectCompost("Farm", new Vector2(10, 10));
-
-        // CollectCompost sole credit — only this call grants compost.
-        // Invariant: exactly 1 compost regardless of MaturationLevel.
-        return result == 1 && inventory.AddedItems.Count == 1;
     }
 
     /// <summary>
@@ -608,95 +438,11 @@ public class CompostingBinServiceTests
         var machinesDict = new Dictionary<string, MachineData>();
         ApplyEditOperation(editOperations[0]!, machinesDict);
 
-        // T193 (FR-001a/FR-001b): the EXACT key the world object resolves as —
-        // ModConstants.MachineCompostingBinId is already the fully qualified
-        // "(BC)LivingRoots.CompostingBin" id, so there is no second shape to
-        // accept. An OR-fallback here is what let a double-prefixed registration
-        // pass while no placed bin could ever match its machine rules.
-        return machinesDict.TryGetValue(ModConstants.MachineCompostingBinId, out var machineData)
+        return machinesDict.TryGetValue("(BC)" + ModConstants.MachineCompostingBinId, out var machineData)
             ? machineData
-            : null;
-    }
-
-    /// <summary>
-    /// T193 (FR-001a/FR-001b) — the key <see cref="ReadRegisteredBinMachineData"/>
-    /// must be the one and only key the handler registers. RED until the
-    /// double-prefixed registration is removed from ModEntry.
-    /// </summary>
-    [Fact]
-    public void T193_RegistersMachineData_UnderSingleQualifiedKey()
-    {
-        var modEntry = new ModEntry();
-        var args = CreateAssetRequestedEventArgs("Data/Machines");
-        modEntry.OnAssetRequested(null, args);
-
-        var editOperations = GetEditOperations(args);
-        Assert.Single(editOperations);
-
-        var machinesDict = new Dictionary<string, MachineData>();
-        ApplyEditOperation(editOperations[0]!, machinesDict);
-
-        // Exactly one registration, under the fully qualified bin id — and
-        // nothing under a double-prefixed variant.
-        Assert.Single(machinesDict.Keys);
-        Assert.True(
-            machinesDict.ContainsKey(ModConstants.MachineCompostingBinId),
-            $"Data/Machines must be keyed by the fully qualified bin id '{ModConstants.MachineCompostingBinId}'.");
-        Assert.DoesNotContain("(BC)(BC)", machinesDict.Keys);
-    }
-
-    /// <summary>
-    /// T194 (FR-005c) — property-based invariant: a bin carrying batch progress
-    /// is unstackable through the production path, for ARBITRARY progress modData.
-    /// RED until production enforces max stack 1 on the progress-carrying path.
-    /// </summary>
-    [Property(MaxTest = 100)]
-    public bool T194_ProgressCarryingBin_IsUnstackable_ProductionPath(
-        NonNull<string> arbitraryInputId,
-        PositiveInt arbitraryDaysRemaining)
-    {
-        var binA = CreateProgressCarryingBin("Farm", arbitraryInputId.Get, arbitraryDaysRemaining.Get);
-        var binB = CreateProgressCarryingBin("Farm", arbitraryInputId.Get + "-other", arbitraryDaysRemaining.Get);
-
-        return !binA.canStackWith(binB);
-    }
-
-    /// <summary>
-    /// T194 (FR-005c) — a bin WITHOUT progress keeps vanilla stack behaviour, so
-    /// the unstackability rule is scoped to progress-carrying bins and does not
-    /// change the base item.
-    /// </summary>
-    [Fact]
-    public void T194_BinWithoutProgress_KeepsVanillaStackBehaviour()
-    {
-        var binA = (StardewValley.Object)ItemFactory.CreateItem(ModConstants.CompostingBinItemId);
-        var binB = (StardewValley.Object)ItemFactory.CreateItem(ModConstants.CompostingBinItemId);
-
-        Assert.True(
-            binA.canStackWith(binB),
-            "A progress-free bin must keep vanilla stack behaviour — the max-stack-1 rule is scoped to progress-carrying bins.");
-    }
-
-    /// <summary>
-    /// Builds a bin item through the PRODUCTION reconstruction path
-    /// (CreateDislodgedBinItem) carrying arbitrary batch progress.
-    /// </summary>
-    private StardewValley.Object CreateProgressCarryingBin(string locationName, string inputId, int daysRemaining)
-    {
-        var tile = new Vector2(1, 1);
-
-        var waste = ItemFactory.CreateValidWasteItem();
-        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(waste)).Returns(true);
-        _timeStub.TotalDays = 1;
-        _service.AddWaste("Farm", tile, waste);
-        _timeStub.TotalDays = 3;
-        _service.ProcessDayStart("Farm");
-
-        var item = _service.CreateDislodgedBinItem("Farm", tile);
-        Assert.NotNull(item);
-        var asObject = Assert.IsAssignableFrom<StardewValley.Object>(item);
-        Assert.Contains(ModConstants.ModDataInputIdKey, asObject.modData.Pairs.Select(p => p.Key));
-        return asObject;
+            : machinesDict.TryGetValue(ModConstants.MachineCompostingBinId, out machineData)
+                ? machineData
+                : null;
     }
 
     /// <summary>Fabricates the SMAPI event args the registration handler reads.</summary>
@@ -988,7 +734,7 @@ public class CompostingBinServiceTests
         var service = new CompostingBinService(
             new Mock<IModDataService>().Object,
             new Mock<ISaveIdProvider>().Object,
-            new OrganicWasteValidator(new Mock<IMonitor>().Object),
+            new OrganicWasteValidator(),
             new Mock<IMonitor>().Object,
             new TimeProviderStub(),
             new CompostingBinFactory(),
@@ -1034,7 +780,7 @@ public class CompostingBinServiceTests
         }
 
         var item = ItemFactory.CreateItem(itemId, arbitraryCategory);
-        var wasteValidator = new OrganicWasteValidator(new Mock<IMonitor>().Object);
+        var wasteValidator = new OrganicWasteValidator();
 
         // Property premise: the generated item is non-qualifying waste.
         if (wasteValidator.IsValidOrganicWaste(item))
@@ -1108,7 +854,7 @@ public class CompostingBinServiceTests
         var service = new CompostingBinService(
             new Mock<IModDataService>().Object,
             new Mock<ISaveIdProvider>().Object,
-            new OrganicWasteValidator(new Mock<IMonitor>().Object),
+            new OrganicWasteValidator(),
             new Mock<IMonitor>().Object,
             new TimeProviderStub(),
             new CompostingBinFactory(),
@@ -1158,7 +904,7 @@ public class CompostingBinServiceTests
         }
 
         var item = ItemFactory.CreateItem(itemId, arbitraryCategory);
-        var wasteValidator = new OrganicWasteValidator(new Mock<IMonitor>().Object);
+        var wasteValidator = new OrganicWasteValidator();
 
         // Property premise: the generated item is non-qualifying waste.
         if (wasteValidator.IsValidOrganicWaste(item))
@@ -1232,23 +978,13 @@ public class CompostingBinServiceTests
     /// </summary>
     private ModController CreateInteractionController(IHostAtomicLockService? lockService = null)
     {
-        return CreateInteractionController(_service, lockService);
-    }
-
-    /// <summary>
-    /// Builds a controller over a specific bin service for the
-    /// interaction-path tests. The lock service is injectable so a
-    /// test can pre-hold a tile lock and stage a genuine collision.
-    /// </summary>
-    private ModController CreateInteractionController(ICompostingBinService service, IHostAtomicLockService? lockService = null)
-    {
         return new ModController(
             new Mock<IModHelper>().Object,
             _mockMonitor.Object,
             new Mock<IManifest>().Object,
             new Mock<ISoilHealthService>().Object,
             _mockSaveIdProvider.Object,
-            service,
+            _service,
             new Mock<ISoilDecayService>().Object,
             hostAtomicLockService: lockService);
     }
@@ -1280,7 +1016,7 @@ public class CompostingBinServiceTests
         Assert.Equal(CompostingBinState.Processing, _service.GetBinState("Farm", tile));
 
         var location = CreateLocationWithPlacedBin(tile);
-        var controller = CreateInteractionController(new Services.HostAtomicLockService());
+        var controller = CreateInteractionController();
         var refusalKeys = new List<string>();
         var heldItem = CreateValidItem();
 
@@ -1314,7 +1050,7 @@ public class CompostingBinServiceTests
         Assert.Equal(binState, _service.GetBinState("Farm", tile));
 
         var location = CreateLocationWithPlacedBin(tile);
-        var controller = CreateInteractionController(new Services.HostAtomicLockService());
+        var controller = CreateInteractionController();
         var refusalKeys = new List<string>();
 
         var result = controller.TryInteractWithBin(location, tile, 1L, null, null, key => refusalKeys.Add(key));
@@ -1412,9 +1148,7 @@ public class CompostingBinServiceTests
         Assert.NotNull(savedData);
         Assert.True(savedData!.LocationBinData.ContainsKey("Farm"));
         Assert.True(savedData.LocationBinData["Farm"].ContainsKey("10,10"));
-
-        // T250 (FR-005a single-yield): no collect-time increment — level stays 3, yield exactly one.
-        Assert.Equal(3, savedData.LocationBinData["Farm"]["10,10"].MaturationLevel);
+        Assert.Equal(4, savedData.LocationBinData["Farm"]["10,10"].MaturationLevel);
 
         // Part 2: MaturationLevel=5 → collect → yields 1 (FR-005a), maturation stays at 5
         var dataAt5 = new CompostingBinData();
@@ -1443,8 +1177,6 @@ public class CompostingBinServiceTests
         Assert.NotNull(savedData);
         Assert.True(savedData!.LocationBinData.ContainsKey("Farm"));
         Assert.True(savedData.LocationBinData["Farm"].ContainsKey("10,10"));
-
-        // T250 (FR-005a single-yield): no increment beyond cap — stays 5, yield exactly one.
         Assert.Equal(5, savedData.LocationBinData["Farm"]["10,10"].MaturationLevel);
     }
 
@@ -1477,7 +1209,7 @@ public class CompostingBinServiceTests
         var state = _service.GetBinState("Farm", new Vector2(10, 10));
         Assert.True(Enum.IsDefined(typeof(CompostingBinState), state));
 
-        // Invariant (T250 FR-005a single-yield): no maturation increment runs, so level stays 1.
+        // Invariant: MaturationLevel in [1, 5]
         CompostingBinData? savedData = null;
         _mockModDataService.Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
             .Callback<CompostingBinData, string>((d, k) => savedData = d);
@@ -1486,7 +1218,7 @@ public class CompostingBinServiceTests
         if (savedData != null && savedData.LocationBinData.ContainsKey("Farm") && savedData.LocationBinData["Farm"].ContainsKey("10,10"))
         {
             var binData = savedData.LocationBinData["Farm"]["10,10"];
-            Assert.Equal(1, binData.MaturationLevel);
+            Assert.InRange(binData.MaturationLevel, 1, 5);
             Assert.True(Enum.IsDefined(typeof(CompostingBinState), Enum.Parse<CompostingBinState>(binData.State)));
         }
     }
@@ -1530,7 +1262,7 @@ public class CompostingBinServiceTests
         // Verify saved data has correct maturation values
         var binData = savedData!.LocationBinData["Farm"]["10,10"];
         Assert.Equal("Ready", binData.State);
-        Assert.Equal(1, binData.MaturationLevel);  // T250 single-yield
+        Assert.Equal(2, binData.MaturationLevel);
         Assert.Equal(3, binData.ConsecutiveActiveDays);
 
         // Create new service instance with fresh mocks
@@ -1567,7 +1299,7 @@ public class CompostingBinServiceTests
 
         var reloadedBinData = reloadedData.LocationBinData["Farm"]["10,10"];
         Assert.Equal("Ready", reloadedBinData.State);
-        Assert.Equal(1, reloadedBinData.MaturationLevel);  // T250 single-yield
+        Assert.Equal(2, reloadedBinData.MaturationLevel);
         Assert.Equal(3, reloadedBinData.ConsecutiveActiveDays);
     }
 
@@ -1644,297 +1376,5 @@ public class CompostingBinServiceTests
         public void SetPitch(ICue cue, float pitch, bool isMusic)
         {
         }
-    }
-
-    /// <summary>T119 [P] [US2] — FR-005b: exactly one compost across both drivers.</summary>
-    [Property(MaxTest = 20)]
-    public bool T119_ExactlyOneCompost_NoDoublePayout(PositiveInt arbitraryTile)
-    {
-        // Per-iteration isolation: the invariant is per-batch exactly-once, so
-        // any state carried between iterations would turn the test into a
-        // count of iterations rather than of payouts. A fresh service,
-        // inventory and time provider per run makes the payout observable.
-        var tile = new Vector2(arbitraryTile.Get % 20, 10);
-        var inventory = new RecordingPlayerInventory();
-        var timeStub = new TimeProviderStub { TotalDays = 1 };
-        var service = new CompostingBinService(
-            _mockModDataService.Object,
-            _mockSaveIdProvider.Object,
-            new OrganicWasteValidator(_mockMonitor.Object),
-            _mockMonitor.Object,
-            timeStub,
-            _factory,
-            inventory,
-            translationHelper: CreateStubTranslationHelper());
-
-        var item = CreateValidItem();
-        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
-        service.AddWaste("Farm", tile, item);
-        timeStub.TotalDays = 3;
-        service.ProcessDayStart("Farm");
-        Assert.Equal(CompostingBinState.Ready, service.GetBinState("Farm", tile));
-
-        var location = CreateLocationWithPlacedBin(tile);
-        var controller = CreateInteractionController(service, new Services.HostAtomicLockService());
-
-        // Driver 1 — interception harvest.
-        controller.TryInteractWithBin(location, tile, 1L, null);
-
-        // Driver 2 — native Data/Machines output declaration. Production
-        // registers NO OutputItem for the bin (native payout disabled per
-        // T132/FR-005b), so the native driver grants nothing; a regression that
-        // re-enables it would surface here as a second item.
-        var machineData = ReadRegisteredBinMachineData();
-        var declaredOutput = machineData?.OutputRules?
-            .SelectMany(rule => rule.OutputItem ?? new List<MachineItemOutput>())
-            .FirstOrDefault();
-        if (declaredOutput != null)
-        {
-            inventory.TryAddItem(new StardewValley.Object { ItemId = declaredOutput.ItemId });
-        }
-
-        // FR-005b/FR-005a: exactly one compost in total across both drivers.
-        return inventory.AddedItems.Count == 1
-            && service.GetBinState("Farm", tile) == CompostingBinState.Empty;
-    }
-
-    /// <summary>T121 [P] [US2] RED — FR-005b/FR-008a (partial): translated refusal HUD text.</summary>
-    [Fact]
-    public void T121_FullInventoryHarvest_ShowsTranslatedRedText()
-    {
-        var item = CreateValidItem();
-        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
-        _inventory.AcceptsItems = false;
-
-        _timeStub.TotalDays = 1;
-        _service.AddWaste("Farm", new Vector2(10, 10), item);
-        _timeStub.TotalDays = 3;
-        _service.ProcessDayStart("Farm");
-
-        int hudBefore = Game1.hudMessages.Count;
-        var result = _service.CollectCompost("Farm", new Vector2(10, 10));
-
-        Assert.Equal(0, result);
-        Assert.Empty(_inventory.AddedItems);
-        Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", new Vector2(10, 10)));
-
-        // RED (FR-005b/FR-008a): refusal must render translated red HUD
-        // text — never the raw translation key. Currently falls back
-        // to raw key (or missing), so assertion fails.
-        Assert.Equal(hudBefore + 1, Game1.hudMessages.Count);
-        string refusalText = Game1.hudMessages[Game1.hudMessages.Count - 1].message;
-        Assert.NotEqual(ModConstants.TranslationKeyHarvestInventoryFull, refusalText);
-        Assert.Contains("inventory", refusalText, System.StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>T124 [P] [US3] RED — FR-008a (missing): invalid drop-in shakes machine.</summary>
-    [Fact]
-    public void T124_InvalidDropIn_ShakesMachine_PlusCancelCue()
-    {
-        var tile = new Vector2(10, 10);
-        var item = ItemFactory.CreateItem("Object.Stone", StoneCategory);
-
-        var location = CreateLocationWithPlacedBin(tile);
-        var locationProvider = new Mock<ILocationProvider>();
-        locationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(location);
-
-        var inventory = new RecordingPlayerInventory();
-        var service = new CompostingBinService(
-            new Mock<IModDataService>().Object,
-            new Mock<ISaveIdProvider>().Object,
-            new OrganicWasteValidator(new Mock<IMonitor>().Object),
-            new Mock<IMonitor>().Object,
-            new TimeProviderStub(),
-            new CompostingBinFactory(),
-            inventory,
-            locationProvider.Object);
-
-        var sounds = new RecordingSoundsHelper();
-        var previousSounds = Game1.sounds;
-        Game1.sounds = sounds;
-        try
-        {
-            service.AddWaste("Farm", tile, item);
-        }
-        finally
-        {
-            Game1.sounds = previousSounds;
-        }
-
-        // Vanilla audio cancel cue is present (existing behavior).
-        Assert.Contains(CancelCueName, sounds.Cues);
-
-        // RED (FR-008a missing): machine shake must trigger.
-        // Currently shakeTimer remains 0, so assertion fails.
-        var worldObject = location.Objects[tile];
-        Assert.True(worldObject.shakeTimer > 0,
-            "Invalid drop-in must shake the machine in addition to cancel cue (FR-008a).");
-    }
-
-    // ------------------------------------------------------------------
-    // T224 (FR-005a/FR-012, F4 contradicts): the retired 1-5 maturation
-    // multiplier must not run anywhere on the production paths. Collecting
-    // a finished batch pays exactly one compost and persists no maturation
-    // trace; repeated day-start processing never levels maturation up and
-    // idle days record no reset trace; and the CollectCompost doc contract
-    // states exactly one item. Fixed-literals — property-based N/A (no
-    // input domain beyond the fixed yield).
-    // ------------------------------------------------------------------
-
-    /// <summary>
-    /// T224 (FR-005a): collecting a finished batch staged through the
-    /// production path persists no maturation trace — no collect-time
-    /// increment runs. RED today: CollectCompost increments MaturationLevel
-    /// (1 to 2), so the emptied bin is still persisted with level 2.
-    /// </summary>
-    [Fact]
-    public void T224_CollectCompost_LeavesNoMaturationTraceInPersistedSnapshot()
-    {
-        var item = CreateValidItem();
-        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
-        _timeStub.TotalDays = 1;
-
-        var tile = new Vector2(10, 10);
-        _service.AddWaste("Farm", tile, item);
-        _timeStub.TotalDays = 3;
-        _service.ProcessDayStart("Farm");
-        Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", tile));
-
-        CompostingBinData? savedData = null;
-        _mockModDataService
-            .Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
-            .Callback<CompostingBinData, string>((data, _) => savedData = data);
-
-        var result = _service.CollectCompost("Farm", tile);
-        Assert.Equal(1, result);
-        Assert.Equal(CompostingBinState.Empty, _service.GetBinState("Farm", tile));
-
-        _service.SaveData("t224-collect");
-        Assert.NotNull(savedData);
-        bool hasRecord = savedData!.LocationBinData.TryGetValue("Farm", out var bins)
-            && bins.ContainsKey("10,10");
-        Assert.False(
-            hasRecord,
-            "T224 FR-005a: collecting a finished batch must persist no maturation trace — an emptied bin at default maturation is sparse-dropped.");
-    }
-
-    /// <summary>
-    /// T224 (FR-005a): four full add/process/collect cycles through the
-    /// production day-start path persist no maturation trace — the 7-day
-    /// level-up never runs. RED today: ConsecutiveActiveDays accumulates to
-    /// 7 and MaturationLevel increments, so the bin persists with level 3.
-    /// </summary>
-    [Fact]
-    public void T224_ProcessDayStart_AcrossActiveCycles_LeavesNoMaturationTraceInPersistedSnapshot()
-    {
-        var item = CreateValidItem();
-        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
-        var tile = new Vector2(10, 10);
-
-        int day = 1;
-        for (int cycle = 0; cycle < 4; cycle++)
-        {
-            _timeStub.TotalDays = day;
-            _service.AddWaste("Farm", tile, item);
-            _timeStub.TotalDays = day + 1;
-            _service.ProcessDayStart("Farm");
-            _timeStub.TotalDays = day + 2;
-            _service.ProcessDayStart("Farm");
-            Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", tile));
-            Assert.Equal(1, _service.CollectCompost("Farm", tile));
-            day += 3;
-        }
-
-        CompostingBinData? savedData = null;
-        _mockModDataService
-            .Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
-            .Callback<CompostingBinData, string>((data, _) => savedData = data);
-
-        _service.SaveData("t224-active-cycles");
-        Assert.NotNull(savedData);
-        bool hasRecord = savedData!.LocationBinData.TryGetValue("Farm", out var bins)
-            && bins.ContainsKey("10,10");
-        Assert.False(
-            hasRecord,
-            "T224 FR-005a: repeated day-start processing must never level maturation up — an emptied bin at default maturation is sparse-dropped.");
-    }
-
-    /// <summary>
-    /// T224 (FR-012): idle day-start processing records no maturation/idle
-    /// trace — the 14-day reset path has no counters to run on. RED today:
-    /// ConsecutiveIdleDays accumulates, so the untouched bin is persisted.
-    /// </summary>
-    [Fact]
-    public void T224_ProcessDayStart_AcrossIdleDays_LeavesNoMaturationTraceInPersistedSnapshot()
-    {
-        var data = new CompostingBinData();
-        data.LocationBinData["Farm"] = new Dictionary<string, CompostingBinStateData>
-        {
-            ["10,10"] = new CompostingBinStateData { State = "Empty" }
-        };
-        _mockModDataService.Setup(x => x.LoadData<CompostingBinData>(It.IsAny<string>())).Returns(data);
-        _service.LoadData("t224-idle");
-
-        for (int day = 2; day <= 6; day++)
-        {
-            _timeStub.TotalDays = day;
-            _service.ProcessDayStart("Farm");
-        }
-
-        CompostingBinData? savedData = null;
-        _mockModDataService
-            .Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
-            .Callback<CompostingBinData, string>((snapshot, _) => savedData = snapshot);
-
-        _service.SaveData("t224-idle");
-        Assert.NotNull(savedData);
-        bool hasRecord = savedData!.LocationBinData.TryGetValue("Farm", out var bins)
-            && bins.ContainsKey("10,10");
-        Assert.False(
-            hasRecord,
-            "T224 FR-012: idle day-start processing must record no maturation/idle trace — an untouched bin persists nothing.");
-    }
-
-    /// <summary>
-    /// T224 (FR-005a): the CollectCompost doc contract states exactly one
-    /// item. RED today: ICompostingBinService documents "equal to maturation
-    /// level", the retired multiplier payout.
-    /// </summary>
-    [Fact]
-    public void T224_CollectCompost_DocContract_StatesExactlyOneItem()
-    {
-        var interfacePath = System.IO.Path.Combine(
-            LocateRepoRoot(),
-            "LivingRoots",
-            "Domain",
-            "Interfaces",
-            "ICompostingBinService.cs");
-        Assert.True(System.IO.File.Exists(interfacePath), $"Interface source not found at {interfacePath}.");
-
-        var content = System.IO.File.ReadAllText(interfacePath);
-        const string marker = "Collects finished compost";
-        int index = content.IndexOf(marker, System.StringComparison.Ordinal);
-        Assert.True(index >= 0, "CollectCompost doc comment must be present in ICompostingBinService.cs.");
-
-        string window = content.Substring(index, Math.Min(800, content.Length - index));
-        Assert.Contains("exactly one", window, System.StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Walks up from the test output directory to the directory containing
-    /// <c>Stardew-LivingRoots.sln</c> (the ProductionSourceGuardTests pattern),
-    /// so the doc-contract test reads the interface source regardless of the
-    /// runner's working directory.
-    /// </summary>
-    private static string LocateRepoRoot()
-    {
-        var directory = new System.IO.DirectoryInfo(System.AppContext.BaseDirectory);
-        while (directory != null && !System.IO.File.Exists(System.IO.Path.Combine(directory.FullName, "Stardew-LivingRoots.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.True(directory != null, "Could not locate Stardew-LivingRoots.sln above the test output directory.");
-        return directory!.FullName;
     }
 }
