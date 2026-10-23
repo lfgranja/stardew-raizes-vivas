@@ -5,13 +5,13 @@ using StardewValley;
 namespace LivingRoots.Services.Visualization
 {
     /// <summary>
-    /// Production <see cref="IHudNotifier"/>: routes the accessibility
+    /// Production <see cref="IAccessibilityNotifier"/>: routes the accessibility
     /// degradation notice through the game's own HUD message system
     /// (FR-009). Deliberately the only seam here — this feature builds no UI
     /// of its own (FR-008a), so a notice is a native red message, in the game's
     /// font, without new artwork.
     /// </summary>
-    public sealed class HudNotifierImpl : IHudNotifier
+    public sealed class AccessibilityNotifierImpl : IAccessibilityNotifier
     {
         /// <summary>
         /// Translation key for the accessibility-degradation notice, shipped in
@@ -25,7 +25,7 @@ namespace LivingRoots.Services.Visualization
         /// Creates the notifier.
         /// </summary>
         /// <param name="translationHelper">SMAPI's translation helper, so the notice renders in the player's language (FR-008a). Null only when a caller constructs the notifier without it; the notice then falls back to the English source text so it is never dropped.</param>
-        public HudNotifierImpl(ITranslationHelper? translationHelper = null)
+        public AccessibilityNotifierImpl(ITranslationHelper? translationHelper = null)
         {
             _translationHelper = translationHelper;
         }

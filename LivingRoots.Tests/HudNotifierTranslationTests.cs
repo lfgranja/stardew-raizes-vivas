@@ -15,7 +15,7 @@ using Xunit;
 namespace LivingRoots.Tests;
 
 /// <summary>
-/// Tests for <see cref="HudNotifierImpl"/> rendering translated text (FR-008a, F12, T232).
+/// Tests for <see cref="AccessibilityNotifierImpl"/> rendering translated text (FR-008a, F12, T232).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -65,9 +65,9 @@ public class HudNotifierTranslationTests
     /// unchanged.
     /// </summary>
     /// <returns>The notifier under test.</returns>
-    private static IHudNotifier CreateNotifier(ITranslationHelper helper)
+    private static IAccessibilityNotifier CreateNotifier(ITranslationHelper helper)
     {
-        return new HudNotifierImpl(helper);
+        return new AccessibilityNotifierImpl(helper);
     }
 
     /// <summary>
@@ -165,9 +165,9 @@ public class HudNotifierTranslationTests
     /// never the raw key and never the English source text.
     /// </summary>
     /// <remarks>
-    /// RED today: <see cref="HudNotifierImpl"/> renders hardcoded English
+    /// RED today: <see cref="AccessibilityNotifierImpl"/> renders hardcoded English
     /// with no i18n key and no <see cref="ITranslationHelper"/>
-    /// (HudNotifierImpl.cs:21), and no locale file ships the notice key —
+    /// (AccessibilityNotifierImpl.cs:21), and no locale file ships the notice key —
     /// so the locale-file assertions and the rendered-text equality below
     /// all fail for that reason. Green (T258: helper injection plus the key
     /// in default/en/pt.json) makes every assertion pass.

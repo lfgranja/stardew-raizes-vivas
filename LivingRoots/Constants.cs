@@ -60,6 +60,9 @@ namespace LivingRoots
         // degradation decision or re-spam the one-time degradation toast.
         public const int DegradationRecoveryThreshold = 980;
         public const float DefaultOpacity = 0.5f;
+        // Minimum pattern opacity for accessibility (FR-001). Pattern tones
+        // are opaque at PatternAlphaPinned = 1.0 regardless of this value.
+        public const float PatternMinOpacity = 0.7f;
         // FR-001 (T131/T139): pattern element opacity is a pinned
         // constant 1.0, independent of the configured overlay
         // opacity — the tones are opaque and are never composited
@@ -195,5 +198,10 @@ namespace LivingRoots
         public const string TranslationKeyCompostMaxHealth = "message.compost.max-health";
         public const string TranslationKeyCompostActionConflict = "message.compost.action-conflict";
         public const string TranslationKeyHarvestInventoryFull = "message.harvest.inventory-full";
+
+        // T136 (FR-008a): the native machine rejection cue for an invalid
+        // drop-in — vanilla audio cancel cue plus machine shake. Applies
+        // worldObject.shakeTimer directly so no second shake path exists.
+        public const int BinInvalidDropInShakeTimerMs = 750;
     }
 }
