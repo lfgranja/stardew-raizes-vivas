@@ -1,5 +1,5 @@
-using FsCheck;
-using FsCheck.Xunit;
+using System;
+using System.Collections.Generic;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Models;
 using Xunit;
@@ -7,152 +7,196 @@ using Xunit;
 namespace LivingRoots.Tests;
 
 /// <summary>
-/// T000-R2 (spec 004, Phase 0 RED): design-invariant tests for the
-/// <see cref="CompostingBinStateModel"/> runtime state machine —
-/// Empty→Processing→Ready monotonicity (never skip, never regress) and
-/// the single-batch yield contract (max stack = 1 while progress is
-/// carried). RED-phase only: pins the model contract before T006 lands
-/// the state-machine transitions. Not integration tests.
+/// Unit tests for <see cref="CompostingBinStateModel"/> progress retention and modData serialization.
 /// </summary>
 public class CompostingBinStateModelTests
 {
-    /// <summary>
-    /// T000-R2.1: a fresh model starts Empty — no input, no progress.
-    /// </summary>
     [Fact]
-    public void DefaultState_IsEmpty()
+    public void DaysRemaining_DefaultsToZero()
     {
-        var bin = new CompostingBinStateModel();
-
-        Assert.Equal(CompostingBinState.Empty, bin.State);
-        Assert.Null(bin.InputItemId);
-        Assert.Null(bin.InputTimestamp);
+        var model = new CompostingBinStateModel();
+        Assert.Equal(0, model.DaysRemaining);
     }
 
-    /// <summary>
-    /// T000-R2.2: transitions are monotonic — Empty→Processing→Ready, each
-    /// step advances the ordinal by exactly one; never skips, never regresses.
-    /// </summary>
     [Fact]
-    public void StateTransitions_AreMonotonic_NeverSkipOrRegress()
+    public void DaysRemaining_CanBeSetAndRetrieved()
     {
-        var bin = new CompostingBinStateModel();
-        int previousOrdinal = (int)bin.State;
-
-        Assert.Equal(CompostingBinState.Empty, bin.State);
-
-        bin.State = CompostingBinState.Processing;
-        Assert.Equal(CompostingBinState.Processing, bin.State);
-        Assert.True((int)bin.State == previousOrdinal + 1, "Processing must advance the ordinal by exactly one");
-        previousOrdinal = (int)bin.State;
-
-        bin.State = CompostingBinState.Ready;
-        Assert.Equal(CompostingBinState.Ready, bin.State);
-        Assert.True((int)bin.State == previousOrdinal + 1, "Ready must advance the ordinal by exactly one");
+        var model = new CompostingBinStateModel { DaysRemaining = 2 };
+        Assert.Equal(2, model.DaysRemaining);
     }
 
-    /// <summary>
-    /// T000-R2.3 — ForAll(state =&gt; Enum.IsDefined(typeof(CompostingBinState), state)):
-    /// every generated state is a defined CompostingBinState member
-    /// (Empty/Processing/Ready).
-    /// </summary>
-    [Property(MaxTest = 100)]
-    public bool State_IsAlwaysAValidEnumValue_ForAll(int seed)
+    [Fact]
+    public void PopulateFromModData_WithProcessingData_SetsStateAndProperties()
     {
-        var state = (CompostingBinState)Modulo(seed, 3);
-
-        return Enum.IsDefined(typeof(CompostingBinState), state);
-    }
-
-    /// <summary>
-    /// T000-R2.4 — ForAll(tileX, tileY =&gt; model.TileX == tileX &amp;&amp; model.TileY == tileY):
-    /// tile coordinates round-trip through the model.
-    /// </summary>
-    [Property(MaxTest = 100)]
-    public bool TileCoordinates_CanBeSetAndRetrieved_ForAll(int tileX, int tileY)
-    {
-        var bin = new CompostingBinStateModel { TileX = tileX, TileY = tileY };
-
-        return bin.TileX == tileX && bin.TileY == tileY;
-    }
-
-    /// <summary>
-    /// T000-R2.5 — ForAll(state =&gt; (int)state is within [Empty, Ready]):
-    /// the state machine is bounded — no ordinal below Empty or above Ready,
-    /// so the cycle can never escape the defined states.
-    /// </summary>
-    [Property(MaxTest = 100)]
-    public bool StateMachine_MonotonicityInvariant_BoundedOrdinals_ForAll(int seed)
-    {
-        var state = (CompostingBinState)Modulo(seed, 3);
-        int ordinal = (int)state;
-
-        return ordinal >= (int)CompostingBinState.Empty
-            && ordinal <= (int)CompostingBinState.Ready;
-    }
-
-    /// <summary>
-    /// T000-R2.6 — ForAll(bin =&gt; bin.State != Ready || bin.InputItemId != null):
-    /// a bin may only reach Ready while an input batch is recorded — Ready
-    /// requires input (batch-yield provenance, FR-005a). The model is built
-    /// under the seam's consistency rule: Empty carries no input;
-    /// Processing/Ready always carry one.
-    /// </summary>
-    [Property(MaxTest = 100)]
-    public bool BatchYield_ReadyRequiresInputItemId_ForAll(int stateSeed, NonNull<string> itemId)
-    {
-        var state = (CompostingBinState)Modulo(stateSeed, 3);
-        var bin = CreateConsistentBin(state, itemId.Get);
-
-        return bin.State != CompostingBinState.Ready || bin.InputItemId != null;
-    }
-
-    /// <summary>
-    /// T000-R2.7 — ForAll(bin =&gt; (bin.State == Processing || bin.State == Ready)
-    /// ? bin.InputItemId != null : true): while any progress is active the
-    /// batch is unstackable (max stack = 1) and must carry its input
-    /// provenance; Empty carries none.
-    /// </summary>
-    [Property(MaxTest = 100)]
-    public bool MaxStack_OneWhenProgressActive_ForAll(int stateSeed, NonNull<string> itemId)
-    {
-        var state = (CompostingBinState)Modulo(stateSeed, 3);
-        var bin = CreateConsistentBin(state, itemId.Get);
-
-        return bin.State == CompostingBinState.Processing || bin.State == CompostingBinState.Ready
-            ? bin.InputItemId != null
-            : true;
-    }
-
-    /// <summary>
-    /// Builds a model under the seam's consistency rule: Empty forces both
-    /// input fields to null; Processing/Ready always carry an item ID and a
-    /// timestamp.
-    /// </summary>
-    private static CompostingBinStateModel CreateConsistentBin(CompostingBinState state, string inputItemId)
-    {
-        var bin = new CompostingBinStateModel
+        var model = new CompostingBinStateModel();
+        var modData = new Dictionary<string, string>
         {
-            State = state,
-            InputItemId = state == CompostingBinState.Empty ? null : inputItemId,
-            InputTimestamp = state == CompostingBinState.Empty ? null : 1
+            [ModConstants.ModDataInputIdKey] = "(O)24",
+            [ModConstants.ModDataDaysRemainingKey] = "1"
         };
 
-        return bin;
+        model.PopulateFromModData(modData);
+
+        Assert.Equal("(O)24", model.InputItemId);
+        Assert.Equal(1, model.DaysRemaining);
+        Assert.Equal(CompostingBinState.Processing, model.State);
     }
 
-    /// <summary>
-    /// Non-negative modulo for generated seeds, so arbitrary (including
-    /// negative) FsCheck integers map into a fixed range.
-    /// </summary>
-    private static int Modulo(int value, int modulus)
+    [Fact]
+    public void PopulateFromModData_WithZeroDaysRemaining_SetsReadyState()
     {
-        int remainder = value % modulus;
-        if (remainder < 0)
+        var model = new CompostingBinStateModel();
+        var modData = new Dictionary<string, string>
         {
-            remainder += modulus;
-        }
+            [ModConstants.ModDataInputIdKey] = "(O)24",
+            [ModConstants.ModDataDaysRemainingKey] = "0"
+        };
 
-        return remainder;
+        model.PopulateFromModData(modData);
+
+        Assert.Equal("(O)24", model.InputItemId);
+        Assert.Equal(0, model.DaysRemaining);
+        Assert.Equal(CompostingBinState.Ready, model.State);
+    }
+
+    [Fact]
+    public void PopulateFromModData_WithNegativeDaysRemaining_ClampsToZeroAndReady()
+    {
+        var model = new CompostingBinStateModel();
+        var modData = new Dictionary<string, string>
+        {
+            [ModConstants.ModDataInputIdKey] = "(O)24",
+            [ModConstants.ModDataDaysRemainingKey] = "-3"
+        };
+
+        model.PopulateFromModData(modData);
+
+        Assert.Equal("(O)24", model.InputItemId);
+        Assert.Equal(0, model.DaysRemaining);
+        Assert.Equal(CompostingBinState.Ready, model.State);
+    }
+
+    [Fact]
+    public void PopulateFromModData_WithMissingDaysRemaining_DefaultsToMaturationDays()
+    {
+        var model = new CompostingBinStateModel();
+        var modData = new Dictionary<string, string>
+        {
+            [ModConstants.ModDataInputIdKey] = "(O)24"
+        };
+
+        model.PopulateFromModData(modData);
+
+        Assert.Equal("(O)24", model.InputItemId);
+        Assert.Equal(ModConstants.MaturationDays, model.DaysRemaining);
+        Assert.Equal(CompostingBinState.Processing, model.State);
+    }
+
+    [Fact]
+    public void PopulateFromModData_WithInvalidDaysRemaining_DefaultsToMaturationDays()
+    {
+        var model = new CompostingBinStateModel();
+        var modData = new Dictionary<string, string>
+        {
+            [ModConstants.ModDataInputIdKey] = "(O)24",
+            [ModConstants.ModDataDaysRemainingKey] = "not-a-number"
+        };
+
+        model.PopulateFromModData(modData);
+
+        Assert.Equal("(O)24", model.InputItemId);
+        Assert.Equal(ModConstants.MaturationDays, model.DaysRemaining);
+        Assert.Equal(CompostingBinState.Processing, model.State);
+    }
+
+    [Fact]
+    public void PopulateFromModData_WithEmptyInput_SetsEmptyState()
+    {
+        var model = new CompostingBinStateModel
+        {
+            InputItemId = "(O)24",
+            DaysRemaining = 1,
+            State = CompostingBinState.Processing
+        };
+        var modData = new Dictionary<string, string>();
+
+        model.PopulateFromModData(modData);
+
+        Assert.Null(model.InputItemId);
+        Assert.Equal(0, model.DaysRemaining);
+        Assert.Equal(CompostingBinState.Empty, model.State);
+    }
+
+    [Fact]
+    public void PopulateFromModData_ThrowsArgumentNullException_WhenModDataIsNull()
+    {
+        var model = new CompostingBinStateModel();
+        Assert.Throws<ArgumentNullException>(() => model.PopulateFromModData(null!));
+    }
+
+    [Fact]
+    public void WriteToModData_WithActiveProgress_WritesKeys()
+    {
+        var model = new CompostingBinStateModel
+        {
+            InputItemId = "(O)16",
+            DaysRemaining = 2,
+            State = CompostingBinState.Processing
+        };
+        var modData = new Dictionary<string, string>();
+
+        model.WriteToModData(modData);
+
+        Assert.Equal("(O)16", modData[ModConstants.ModDataInputIdKey]);
+        Assert.Equal("2", modData[ModConstants.ModDataDaysRemainingKey]);
+    }
+
+    [Fact]
+    public void WriteToModData_WithEmptyBin_RemovesProgressKeys()
+    {
+        var model = new CompostingBinStateModel
+        {
+            InputItemId = null,
+            DaysRemaining = 0,
+            State = CompostingBinState.Empty
+        };
+        var modData = new Dictionary<string, string>
+        {
+            [ModConstants.ModDataInputIdKey] = "(O)16",
+            [ModConstants.ModDataDaysRemainingKey] = "1"
+        };
+
+        model.WriteToModData(modData);
+
+        Assert.False(modData.ContainsKey(ModConstants.ModDataInputIdKey));
+        Assert.False(modData.ContainsKey(ModConstants.ModDataDaysRemainingKey));
+    }
+
+    [Fact]
+    public void WriteToModData_ThrowsArgumentNullException_WhenModDataIsNull()
+    {
+        var model = new CompostingBinStateModel();
+        Assert.Throws<ArgumentNullException>(() => model.WriteToModData(null!));
+    }
+
+    [Fact]
+    public void RoundTrip_ProgressSerialization_PreservesState()
+    {
+        var original = new CompostingBinStateModel
+        {
+            InputItemId = "(O)88",
+            DaysRemaining = 1,
+            State = CompostingBinState.Processing
+        };
+        var modData = new Dictionary<string, string>();
+
+        original.WriteToModData(modData);
+
+        var restored = new CompostingBinStateModel();
+        restored.PopulateFromModData(modData);
+
+        Assert.Equal(original.InputItemId, restored.InputItemId);
+        Assert.Equal(original.DaysRemaining, restored.DaysRemaining);
+        Assert.Equal(original.State, restored.State);
     }
 }
