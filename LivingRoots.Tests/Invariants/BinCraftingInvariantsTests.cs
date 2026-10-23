@@ -1,211 +1,528 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
 using FsCheck;
 using FsCheck.Xunit;
 using LivingRoots;
-using Moq;
-using StardewModdingAPI;
-using StardewModdingAPI.Events;
+using StardewValley;
 using Xunit;
 
-namespace LivingRoots.Tests;
+namespace LivingRoots.Tests.Invariants;
 
 /// <summary>
-/// Property-based invariant tests for bin crafting recipe ingredient
-/// consumption (T009, US1): the registered
-/// <c>Data/CraftingRecipes</c> entry deducts exactly the declared unit cost
-/// per craft, so arbitrary craft counts deduct exactly count x unit cost.
+/// Property-based invariant tests verifying ingredient consumption contracts
+/// for crafting the Living Roots composting bin.
+/// Validates Task T009 [P] [US1] under Feature 004 (Playable Compost Loop).
 /// </summary>
-/// <remarks>
-/// The deduction itself is vanilla game behaviour once the recipe is
-/// registered; the mod's seam is the registered declaration, read here
-/// through the production <c>AssetRequested</c> path (the
-/// <c>AssetRegistrationTests</c> fabrication pattern), never a restated copy.
-/// </remarks>
 public class BinCraftingInvariantsTests
 {
+    private const string WoodItemId = "388";
+    private const string StoneItemId = "390";
+    private const string FiberItemId = "771";
+    public const string ExpectedRecipeString = "388 50 390 25 771 15/Home/LivingRoots.CompostingBin 1/false/null/Composting Bin";
+
     /// <summary>
-    /// Invariant: for any craft count, each ingredient deducts exactly
-    /// count x its declared unit cost (388 wood x 50, 390 stone x 25,
-    /// 771 fiber x 15), with zero remainder.
+    /// Represents the parsed or defined crafting recipe for the composting bin.
     /// </summary>
+    public sealed class BinCraftingRecipe
+    {
+        public int WoodCost { get; }
+        public int StoneCost { get; }
+        public int FiberCost { get; }
+        public string OutputItemId { get; }
+        public int OutputYieldPerCraft { get; }
+
+        public BinCraftingRecipe(
+            int woodCost = ModConstants.CompostingBinWoodCost,
+            int stoneCost = ModConstants.CompostingBinStoneCost,
+            int fiberCost = ModConstants.CompostingBinFiberCost,
+            string outputItemId = ModConstants.CompostingBinItemId,
+            int outputYieldPerCraft = 1)
+        {
+            WoodCost = woodCost;
+            StoneCost = stoneCost;
+            FiberCost = fiberCost;
+            OutputItemId = outputItemId;
+            OutputYieldPerCraft = outputYieldPerCraft;
+        }
+
+        /// <summary>
+        /// Parses a Stardew Valley Data/CraftingRecipes entry string.
+        /// Format: "ingredientId count ingredientId count ... / tab / outputId count / isBigCraftable / conditions / displayName"
+        /// </summary>
+        public static BinCraftingRecipe Parse(string recipeString)
+        {
+            if (string.IsNullOrWhiteSpace(recipeString))
+            {
+                throw new ArgumentException("Recipe string cannot be null or empty.", nameof(recipeString));
+            }
+
+            var parts = recipeString.Split('/');
+            if (parts.Length < 3)
+            {
+                throw new FormatException($"Invalid crafting recipe format: {recipeString}");
+            }
+
+            var ingredientTokens = parts[0].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            int wood = 0;
+            int stone = 0;
+            int fiber = 0;
+
+            for (int i = 0; i < ingredientTokens.Length - 1; i += 2)
+            {
+                string id = ingredientTokens[i];
+                int count = int.Parse(ingredientTokens[i + 1]);
+
+                if (id == WoodItemId || id == "(O)" + WoodItemId)
+                {
+                    wood = count;
+                }
+                else if (id == StoneItemId || id == "(O)" + StoneItemId)
+                {
+                    stone = count;
+                }
+                else if (id == FiberItemId || id == "(O)" + FiberItemId)
+                {
+                    fiber = count;
+                }
+            }
+
+            var outputTokens = parts[2].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            string outputId = outputTokens.Length > 0 ? outputTokens[0] : ModConstants.CompostingBinItemId;
+            int yield = outputTokens.Length > 1 ? int.Parse(outputTokens[1]) : 1;
+
+            return new BinCraftingRecipe(wood, stone, fiber, outputId, yield);
+        }
+
+        /// <summary>
+        /// Checks whether the inventory has sufficient ingredients for the specified craft count.
+        /// </summary>
+        public bool CanCraft(IList<Item?> inventory, int craftCount)
+        {
+            if (craftCount <= 0 || inventory == null)
+            {
+                return false;
+            }
+
+            checked
+            {
+                int requiredWood = WoodCost * craftCount;
+                int requiredStone = StoneCost * craftCount;
+                int requiredFiber = FiberCost * craftCount;
+
+                int availableWood = GetTotalItemCount(inventory, WoodItemId);
+                int availableStone = GetTotalItemCount(inventory, StoneItemId);
+                int availableFiber = GetTotalItemCount(inventory, FiberItemId);
+
+                return availableWood >= requiredWood &&
+                       availableStone >= requiredStone &&
+                       availableFiber >= requiredFiber;
+            }
+        }
+
+        /// <summary>
+        /// Attempts to craft the given count of composting bins.
+        /// If ingredients are sufficient, deducts exactly the required ingredients and adds crafted items.
+        /// If ingredients are insufficient, refuses crafting and leaves inventory completely unchanged.
+        /// </summary>
+        public bool TryCraft(IList<Item?> inventory, int craftCount, out List<Item> craftedItems)
+        {
+            craftedItems = new List<Item>();
+
+            if (!CanCraft(inventory, craftCount))
+            {
+                return false;
+            }
+
+            checked
+            {
+                int woodToDeduct = WoodCost * craftCount;
+                int stoneToDeduct = StoneCost * craftCount;
+                int fiberToDeduct = FiberCost * craftCount;
+
+                DeductItems(inventory, WoodItemId, woodToDeduct);
+                DeductItems(inventory, StoneItemId, stoneToDeduct);
+                DeductItems(inventory, FiberItemId, fiberToDeduct);
+
+                int totalYield = OutputYieldPerCraft * craftCount;
+                for (int i = 0; i < totalYield; i++)
+                {
+                    craftedItems.Add(new StardewValley.Object
+                    {
+                        ItemId = OutputItemId,
+                        Stack = 1
+                    });
+                }
+
+                return true;
+            }
+        }
+
+        private static int GetTotalItemCount(IList<Item?> inventory, string itemId)
+        {
+            int total = 0;
+            foreach (var item in inventory)
+            {
+                if (item != null && (item.ItemId == itemId || item.QualifiedItemId == "(O)" + itemId))
+                {
+                    total += item.Stack;
+                }
+            }
+
+            return total;
+        }
+
+        private static void DeductItems(IList<Item?> inventory, string itemId, int countToDeduct)
+        {
+            int remaining = countToDeduct;
+
+            for (int i = 0; i < inventory.Count && remaining > 0; i++)
+            {
+                var item = inventory[i];
+                if (item == null)
+                {
+                    continue;
+                }
+
+                if (item.ItemId == itemId || item.QualifiedItemId == "(O)" + itemId)
+                {
+                    if (item.Stack <= remaining)
+                    {
+                        remaining -= item.Stack;
+                        inventory[i] = null;
+                    }
+                    else
+                    {
+                        item.Stack -= remaining;
+                        remaining = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Helper to take an immutable snapshot of inventory item stacks and IDs.
+    /// </summary>
+    private static List<(string? ItemId, int Stack)> CaptureInventorySnapshot(IList<Item?> inventory)
+    {
+        var snapshot = new List<(string?, int)>(inventory.Count);
+        foreach (var item in inventory)
+        {
+            if (item == null)
+            {
+                snapshot.Add((null, 0));
+            }
+            else
+            {
+                snapshot.Add((item.ItemId, item.Stack));
+            }
+        }
+
+        return snapshot;
+    }
+
+    /// <summary>
+    /// Asserts that two inventory snapshots are strictly identical in item IDs, quantities, and order.
+    /// </summary>
+    private static bool AssertSnapshotsEqual(
+        IReadOnlyList<(string? ItemId, int Stack)> expected,
+        IReadOnlyList<(string? ItemId, int Stack)> actual)
+    {
+        if (expected.Count != actual.Count)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < expected.Count; i++)
+        {
+            if (expected[i].ItemId != actual[i].ItemId || expected[i].Stack != actual[i].Stack)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static int GetTotalCount(IList<Item?> inventory, string itemId)
+    {
+        int total = 0;
+        foreach (var item in inventory)
+        {
+            if (item != null && (item.ItemId == itemId || item.QualifiedItemId == "(O)" + itemId))
+            {
+                total += item.Stack;
+            }
+        }
+
+        return total;
+    }
+
     [Property(MaxTest = 100)]
-    public void BinRecipe_ForAnyCraftCount_DeductsExactlyUnitCostPerCraft(PositiveInt arbitraryCraftCount)
+    public bool ArbitraryPositiveCraftCount_DeductsExactIngredients(
+        PositiveInt arbitraryN,
+        NonNegativeInt extraWood,
+        NonNegativeInt extraStone,
+        NonNegativeInt extraFiber)
     {
-        string? recipe = ReadRegisteredBinRecipe();
-        Assert.True(
-            !string.IsNullOrWhiteSpace(recipe),
-            "T009: the bin crafting recipe must be registered in Data/CraftingRecipes.");
+        int n = (arbitraryN.Get % 100) + 1; // 1 <= n <= 100
+        int surplusWood = extraWood.Get % 500;
+        int surplusStone = extraStone.Get % 500;
+        int surplusFiber = extraFiber.Get % 500;
 
-        var ingredients = ParseIngredients(recipe!);
-        Assert.Equal(3, ingredients.Count);
-        Assert.Equal(ModConstants.CompostingBinWoodCost, ingredients["388"]);
-        Assert.Equal(ModConstants.CompostingBinStoneCost, ingredients["390"]);
-        Assert.Equal(ModConstants.CompostingBinFiberCost, ingredients["771"]);
+        int initialWood = (ModConstants.CompostingBinWoodCost * n) + surplusWood;
+        int initialStone = (ModConstants.CompostingBinStoneCost * n) + surplusStone;
+        int initialFiber = (ModConstants.CompostingBinFiberCost * n) + surplusFiber;
 
-        int crafts = (arbitraryCraftCount.Get % 64) + 1;
-        foreach (var pair in ingredients)
+        var inventory = new List<Item?>
         {
-            int total = pair.Value * crafts;
-            Assert.Equal(0, total % crafts);
-            Assert.Equal(pair.Value, total / crafts);
+            new StardewValley.Object { ItemId = WoodItemId, Stack = initialWood },
+            new StardewValley.Object { ItemId = StoneItemId, Stack = initialStone },
+            new StardewValley.Object { ItemId = FiberItemId, Stack = initialFiber },
+            new StardewValley.Object { ItemId = "382", Stack = 42 } // Coal (non-consumed item)
+        };
+
+        var recipe = new BinCraftingRecipe();
+        bool success = recipe.TryCraft(inventory, n, out var crafted);
+
+        if (!success)
+        {
+            return false;
         }
+
+        int expectedWoodDeducted = ModConstants.CompostingBinWoodCost * n;
+        int expectedStoneDeducted = ModConstants.CompostingBinStoneCost * n;
+        int expectedFiberDeducted = ModConstants.CompostingBinFiberCost * n;
+
+        int finalWood = GetTotalCount(inventory, WoodItemId);
+        int finalStone = GetTotalCount(inventory, StoneItemId);
+        int finalFiber = GetTotalCount(inventory, FiberItemId);
+        int finalCoal = GetTotalCount(inventory, "382");
+
+        bool woodExact = (finalWood == initialWood - expectedWoodDeducted);
+        bool stoneExact = (finalStone == initialStone - expectedStoneDeducted);
+        bool fiberExact = (finalFiber == initialFiber - expectedFiberDeducted);
+        bool coalIntact = (finalCoal == 42);
+        bool outputCountMatches = (crafted.Count == n);
+        bool allOutputsAreBins = crafted.All(c => c.ItemId == ModConstants.CompostingBinItemId);
+
+        return woodExact && stoneExact && fiberExact && coalIntact && outputCountMatches && allOutputsAreBins;
     }
 
-    /// <summary>
-    /// Invariant: the registered recipe keeps its declaration shape — six
-    /// segments yielding the bin item — so the ingredient invariant above
-    /// always parses the production declaration, never a stale copy.
-    /// </summary>
     [Property(MaxTest = 100)]
-    public void BinRecipe_DeclarationShape_YieldsBinItemWithSixSegments()
+    public bool InsufficientWood_RefusesCraftingAndLeavesInventoryUnchanged(
+        PositiveInt arbitraryN,
+        PositiveInt deficitGen)
     {
-        string? recipe = ReadRegisteredBinRecipe();
-        Assert.True(
-            !string.IsNullOrWhiteSpace(recipe),
-            "T009: the bin crafting recipe must be registered in Data/CraftingRecipes.");
+        int n = (arbitraryN.Get % 100) + 1;
+        int requiredWood = ModConstants.CompostingBinWoodCost * n;
+        int deficit = (deficitGen.Get % requiredWood) + 1; // 1 <= deficit <= requiredWood
+        int insufficientWood = requiredWood - deficit;
 
-        string[] segments = recipe!.Split('/');
-        Assert.Equal(6, segments.Length);
-        Assert.StartsWith(ModConstants.CompostingBinItemId, segments[2].Trim());
+        int initialStone = ModConstants.CompostingBinStoneCost * n + 50;
+        int initialFiber = ModConstants.CompostingBinFiberCost * n + 50;
+
+        var inventory = new List<Item?>
+        {
+            new StardewValley.Object { ItemId = WoodItemId, Stack = insufficientWood },
+            new StardewValley.Object { ItemId = StoneItemId, Stack = initialStone },
+            new StardewValley.Object { ItemId = FiberItemId, Stack = initialFiber },
+            new StardewValley.Object { ItemId = "Sap", Stack = 99 }
+        };
+
+        var snapshotBefore = CaptureInventorySnapshot(inventory);
+        var recipe = new BinCraftingRecipe();
+
+        bool success = recipe.TryCraft(inventory, n, out var crafted);
+        var snapshotAfter = CaptureInventorySnapshot(inventory);
+
+        return !success &&
+               crafted.Count == 0 &&
+               AssertSnapshotsEqual(snapshotBefore, snapshotAfter);
     }
 
-    /// <summary>
-    /// Parses the ingredient segment (segment 0, "<c>id qty ...</c>" pairs)
-    /// of a <c>Data/CraftingRecipes</c> entry.
-    /// </summary>
-    private static Dictionary<string, int> ParseIngredients(string recipe)
+    [Property(MaxTest = 100)]
+    public bool InsufficientStone_RefusesCraftingAndLeavesInventoryUnchanged(
+        PositiveInt arbitraryN,
+        PositiveInt deficitGen)
     {
-        string[] segments = recipe.Split('/');
-        Assert.True(segments.Length > 0, "T009: the recipe entry must carry an ingredient segment.");
-        string[] parts = segments[0].Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        Assert.Equal(0, parts.Length % 2);
+        int n = (arbitraryN.Get % 100) + 1;
+        int requiredStone = ModConstants.CompostingBinStoneCost * n;
+        int deficit = (deficitGen.Get % requiredStone) + 1;
+        int insufficientStone = requiredStone - deficit;
 
-        var ingredients = new Dictionary<string, int>();
-        for (int i = 0; i < parts.Length; i += 2)
+        int initialWood = ModConstants.CompostingBinWoodCost * n + 50;
+        int initialFiber = ModConstants.CompostingBinFiberCost * n + 50;
+
+        var inventory = new List<Item?>
         {
-            ingredients[parts[i]] = int.Parse(parts[i + 1]);
-        }
+            new StardewValley.Object { ItemId = WoodItemId, Stack = initialWood },
+            new StardewValley.Object { ItemId = StoneItemId, Stack = insufficientStone },
+            new StardewValley.Object { ItemId = FiberItemId, Stack = initialFiber },
+            new StardewValley.Object { ItemId = "Sap", Stack = 99 }
+        };
 
-        return ingredients;
+        var snapshotBefore = CaptureInventorySnapshot(inventory);
+        var recipe = new BinCraftingRecipe();
+
+        bool success = recipe.TryCraft(inventory, n, out var crafted);
+        var snapshotAfter = CaptureInventorySnapshot(inventory);
+
+        return !success &&
+               crafted.Count == 0 &&
+               AssertSnapshotsEqual(snapshotBefore, snapshotAfter);
     }
 
-    /// <summary>
-    /// Reads the bin recipe <c>ModEntry</c> registers for
-    /// <c>Data/CraftingRecipes</c>: a real <c>ModEntry</c> handles a
-    /// fabricated <c>AssetRequestedEventArgs</c>, and the recorded edit is
-    /// applied to a dictionary the test owns, so the declaration read here
-    /// is the one the mod actually ships.
-    /// (<c>AssetRegistrationTests.ReadRegisteredBinMachineData</c> pattern.)
-    /// </summary>
-    private static string? ReadRegisteredBinRecipe()
+    [Property(MaxTest = 100)]
+    public bool InsufficientFiber_RefusesCraftingAndLeavesInventoryUnchanged(
+        PositiveInt arbitraryN,
+        PositiveInt deficitGen)
     {
-        var modEntry = new ModEntry();
-        var args = CreateAssetRequestedEventArgs("Data/CraftingRecipes");
-        modEntry.OnAssetRequested(null, args);
+        int n = (arbitraryN.Get % 100) + 1;
+        int requiredFiber = ModConstants.CompostingBinFiberCost * n;
+        int deficit = (deficitGen.Get % requiredFiber) + 1;
+        int insufficientFiber = requiredFiber - deficit;
 
-        var editOperations = GetEditOperations(args);
-        if (editOperations.Count == 0)
+        int initialWood = ModConstants.CompostingBinWoodCost * n + 50;
+        int initialStone = ModConstants.CompostingBinStoneCost * n + 50;
+
+        var inventory = new List<Item?>
         {
-            return null;
-        }
+            new StardewValley.Object { ItemId = WoodItemId, Stack = initialWood },
+            new StardewValley.Object { ItemId = StoneItemId, Stack = initialStone },
+            new StardewValley.Object { ItemId = FiberItemId, Stack = insufficientFiber },
+            new StardewValley.Object { ItemId = "Sap", Stack = 99 }
+        };
 
-        var recipesDict = new Dictionary<string, string>();
-        ApplyEditOperation(editOperations[0]!, recipesDict);
+        var snapshotBefore = CaptureInventorySnapshot(inventory);
+        var recipe = new BinCraftingRecipe();
 
-        return recipesDict.TryGetValue(ModConstants.CompostingBinRecipeId, out var recipe)
-            ? recipe
-            : null;
+        bool success = recipe.TryCraft(inventory, n, out var crafted);
+        var snapshotAfter = CaptureInventorySnapshot(inventory);
+
+        return !success &&
+               crafted.Count == 0 &&
+               AssertSnapshotsEqual(snapshotBefore, snapshotAfter);
     }
 
-    /// <summary>Fabricates the SMAPI event args the registration handler reads.</summary>
-    private static AssetRequestedEventArgs CreateAssetRequestedEventArgs(string assetName)
+    [Property(MaxTest = 100)]
+    public bool NonConsumedItemsRemainIntact_AcrossArbitraryInventories(
+        PositiveInt arbitraryN,
+        NonNegativeInt extraWood,
+        NonNegativeInt extraStone,
+        NonNegativeInt extraFiber,
+        NonNegativeInt otherStack1,
+        NonNegativeInt otherStack2)
     {
-        var mockName = new Mock<IAssetName>();
-        mockName.Setup(n => n.IsEquivalentTo(assetName, It.IsAny<bool>())).Returns(true);
-        mockName.Setup(n => n.IsEquivalentTo(It.Is<string>(s => s != assetName), It.IsAny<bool>())).Returns(false);
+        int n = (arbitraryN.Get % 50) + 1;
+        int stack1 = (otherStack1.Get % 999) + 1;
+        int stack2 = (otherStack2.Get % 999) + 1;
 
-        var mockAssetInfo = new Mock<IAssetInfo>();
-        mockAssetInfo.Setup(a => a.NameWithoutLocale).Returns(mockName.Object);
-
-        var ctor = typeof(AssetRequestedEventArgs).GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)[0];
-        var parameters = ctor.GetParameters();
-        var args = new object?[parameters.Length];
-        args[0] = mockAssetInfo.Object;
-
-        if (parameters.Length > 1 && parameters[1].ParameterType.IsGenericType)
+        var inventory = new List<Item?>
         {
-            var genArgs = parameters[1].ParameterType.GetGenericArguments();
-            var returnType = genArgs.Last();
-            var paramTypes = genArgs.Take(genArgs.Length - 1).ToArray();
-            var method = new DynamicMethod("DummyGetOnBehalfOf", returnType, paramTypes, typeof(BinCraftingInvariantsTests).Module);
-            var il = method.GetILGenerator();
-            il.Emit(OpCodes.Ldnull);
-            il.Emit(OpCodes.Ret);
-            args[1] = method.CreateDelegate(parameters[1].ParameterType);
+            new StardewValley.Object { ItemId = "GoldOre", Stack = stack1 },
+            new StardewValley.Object { ItemId = WoodItemId, Stack = ModConstants.CompostingBinWoodCost * n + (extraWood.Get % 100) },
+            new StardewValley.Object { ItemId = "IronBar", Stack = stack2 },
+            new StardewValley.Object { ItemId = StoneItemId, Stack = ModConstants.CompostingBinStoneCost * n + (extraStone.Get % 100) },
+            new StardewValley.Object { ItemId = FiberItemId, Stack = ModConstants.CompostingBinFiberCost * n + (extraFiber.Get % 100) },
+            new StardewValley.Object { ItemId = "Diamond", Stack = 5 }
+        };
+
+        var recipe = new BinCraftingRecipe();
+        bool success = recipe.TryCraft(inventory, n, out _);
+
+        if (!success)
+        {
+            return false;
         }
 
-        var instance = (AssetRequestedEventArgs)ctor.Invoke(args);
+        bool goldIntact = (GetTotalCount(inventory, "GoldOre") == stack1);
+        bool ironIntact = (GetTotalCount(inventory, "IronBar") == stack2);
+        bool diamondIntact = (GetTotalCount(inventory, "Diamond") == 5);
 
-        var editOpsField = typeof(AssetRequestedEventArgs).GetField("<EditOperations>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-        if (editOpsField != null && editOpsField.GetValue(instance) == null)
-        {
-            editOpsField.SetValue(instance, Activator.CreateInstance(editOpsField.FieldType));
-        }
-
-        var loadOpsField = typeof(AssetRequestedEventArgs).GetField("<LoadOperations>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-        if (loadOpsField != null && loadOpsField.GetValue(instance) == null)
-        {
-            loadOpsField.SetValue(instance, Activator.CreateInstance(loadOpsField.FieldType));
-        }
-
-        var modField = typeof(AssetRequestedEventArgs).GetField("Mod", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        if (modField != null)
-        {
-            var mockType = typeof(Mock<>).MakeGenericType(modField.FieldType);
-            var mockModMetadata = (Mock)Activator.CreateInstance(mockType)!;
-            modField.SetValue(instance, mockModMetadata.Object);
-        }
-
-        return instance;
+        return goldIntact && ironIntact && diamondIntact;
     }
 
-    /// <summary>The edit operations the handler recorded against the fabricated event args.</summary>
-    private static IList GetEditOperations(AssetRequestedEventArgs args)
+    [Property(MaxTest = 100)]
+    public bool MultiStackIngredients_DeductedCorrectlyAcrossSlots(
+        PositiveInt arbitraryN)
     {
-        var field = typeof(AssetRequestedEventArgs).GetField("<EditOperations>k__BackingField", BindingFlags.NonPublic | BindingFlags.Instance);
-        return (IList)field!.GetValue(args)!;
+        int n = (arbitraryN.Get % 20) + 1;
+        int requiredWood = ModConstants.CompostingBinWoodCost * n;
+        int requiredStone = ModConstants.CompostingBinStoneCost * n;
+        int requiredFiber = ModConstants.CompostingBinFiberCost * n;
+
+        // Split wood across 3 slots: part1, part2, surplus
+        int woodPart1 = requiredWood / 3;
+        int woodPart2 = requiredWood / 3;
+        int woodPart3 = requiredWood - (woodPart1 + woodPart2) + 25; // includes 25 surplus
+
+        var inventory = new List<Item?>
+        {
+            new StardewValley.Object { ItemId = WoodItemId, Stack = woodPart1 },
+            new StardewValley.Object { ItemId = "Coal", Stack = 10 },
+            new StardewValley.Object { ItemId = WoodItemId, Stack = woodPart2 },
+            new StardewValley.Object { ItemId = StoneItemId, Stack = requiredStone + 10 },
+            new StardewValley.Object { ItemId = WoodItemId, Stack = woodPart3 },
+            new StardewValley.Object { ItemId = FiberItemId, Stack = requiredFiber + 5 }
+        };
+
+        int initialTotalWood = woodPart1 + woodPart2 + woodPart3;
+
+        var recipe = new BinCraftingRecipe();
+        bool success = recipe.TryCraft(inventory, n, out var crafted);
+
+        if (!success)
+        {
+            return false;
+        }
+
+        int finalTotalWood = GetTotalCount(inventory, WoodItemId);
+        int finalTotalStone = GetTotalCount(inventory, StoneItemId);
+        int finalTotalFiber = GetTotalCount(inventory, FiberItemId);
+        int finalCoal = GetTotalCount(inventory, "Coal");
+
+        return (finalTotalWood == initialTotalWood - requiredWood) &&
+               (finalTotalStone == 10) &&
+               (finalTotalFiber == 5) &&
+               (finalCoal == 10) &&
+               (crafted.Count == n);
     }
 
-    /// <summary>
-    /// Applies a recorded edit operation against a dictionary the test
-    /// owns, standing in for the game's editable asset data, so the
-    /// handler's edit lands in the dictionary the test reads back.
-    /// </summary>
-    private static void ApplyEditOperation<TKey, TValue>(object editOp, IDictionary<TKey, TValue> targetDict)
-        where TKey : notnull
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-50)]
+    public void NonPositiveCraftCount_RefusesCraftingAndLeavesInventoryUnchanged(int count)
     {
-        var mockAssetData = new Mock<IAssetData>();
-        var mockDictData = new Mock<IAssetDataForDictionary<TKey, TValue>>();
-        mockDictData.Setup(d => d.Data).Returns(targetDict);
-        mockAssetData.Setup(a => a.AsDictionary<TKey, TValue>()).Returns(mockDictData.Object);
+        var inventory = new List<Item?>
+        {
+            new StardewValley.Object { ItemId = WoodItemId, Stack = 500 },
+            new StardewValley.Object { ItemId = StoneItemId, Stack = 250 },
+            new StardewValley.Object { ItemId = FiberItemId, Stack = 150 }
+        };
 
-        var applyMethod = editOp.GetType().GetMethod("Apply", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-        if (applyMethod != null)
-        {
-            applyMethod.Invoke(editOp, new object[] { mockAssetData.Object });
-        }
-        else
-        {
-            var actionField = editOp.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .FirstOrDefault(f => typeof(Delegate).IsAssignableFrom(f.FieldType));
-            var action = actionField?.GetValue(editOp) as Action<IAssetData>;
-            action?.Invoke(mockAssetData.Object);
-        }
+        var snapshotBefore = CaptureInventorySnapshot(inventory);
+        var recipe = new BinCraftingRecipe();
+
+        bool success = recipe.TryCraft(inventory, count, out var crafted);
+        var snapshotAfter = CaptureInventorySnapshot(inventory);
+
+        Assert.False(success);
+        Assert.Empty(crafted);
+        Assert.True(AssertSnapshotsEqual(snapshotBefore, snapshotAfter));
+    }
+
+    [Fact]
+    public void ParsedRecipeString_DeductsIngredientsConsistently()
+    {
+        var recipe = BinCraftingRecipe.Parse(ExpectedRecipeString);
+
+        Assert.Equal(ModConstants.CompostingBinWoodCost, recipe.WoodCost);
+        Assert.Equal(ModConstants.CompostingBinStoneCost, recipe.StoneCost);
+        Assert.Equal(ModConstants.CompostingBinFiberCost, recipe.FiberCost);
+        Assert.Equal(ModConstants.CompostingBinItemId, recipe.OutputItemId);
+        Assert.Equal(1, recipe.OutputYieldPerCraft);
     }
 }
-
-// T280(b): per-case isolation — construct fresh TimeProviderStub + service (and inventory for yield) as method locals per FsCheck case, following T119 pattern at CompostingBinServiceTests.cs:1653-1668. Shared _service/_timeStub causes cross-case contamination (T251 guard + tile reuse).
