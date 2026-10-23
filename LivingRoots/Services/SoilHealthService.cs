@@ -8,6 +8,8 @@ namespace LivingRoots.Services
 {
     public class SoilHealthService(IModDataService modDataService, IMonitor monitor, IFileNameSanitizationService fileNameSanitizationService) : ISoilHealthService
     {
+        public event Action<string, Vector2, float>? OnTileHealthChanged;
+
         private readonly IModDataService _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
         private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
         private readonly IFileNameSanitizationService _fileNameSanitizationService = fileNameSanitizationService ?? throw new ArgumentNullException(nameof(fileNameSanitizationService));
@@ -18,40 +20,6 @@ namespace LivingRoots.Services
 
         // Lock object for thread safety
         private readonly object _lock = new();
-
-        // T034/T104 (FR-010): reactive notification so the visualization
-        // service invalidates its overlay cache on the SAME frame the health
-        // changed — zero polling lag. Raised outside the lock (never while
-        // _lock is held) so a slow subscriber cannot stall mutations.
-        public event Action<string, Vector2, float>? OnTileHealthChanged;
-
-        /// <summary>
-        /// Raises <see cref="OnTileHealthChanged"/> for a tile whose health was
-        /// mutated (FR-010). The value is re-read from the cache under the lock
-        /// so subscribers always receive the post-mutation value, including the
-        /// clamped one. Safe to call from any thread; a null subscriber list is
-        /// a no-op.
-        /// </summary>
-        /// <param name="locationName">Location whose tile changed.</param>
-        /// <param name="tile">Tile that changed.</param>
-        private void RaiseTileHealthChanged(string locationName, Vector2 tile)
-        {
-            var handler = OnTileHealthChanged;
-            if (handler == null)
-                return;
-
-            var currentHealth = GetSoilHealth(locationName, tile);
-            try
-            {
-                handler(locationName, tile, currentHealth);
-            }
-            catch (Exception ex)
-            {
-                // FR-011: a failing subscriber must never break the mutation
-                // or bubble into game loop code. Sanitized per FR-015.
-                _monitor.Log($"Tile health change subscriber failed: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Trace);
-            }
-        }
 
         // Flag to prevent SaveData from executing if LoadData was aborted due to limits
         // This avoids overwriting valid on-disk data with an empty or incomplete in-memory state
@@ -540,8 +508,6 @@ namespace LivingRoots.Services
 
                 // Add trace-level exception details for debugging without leaking message content
                 _monitor.Log($"SaveData exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-
-                // Add stack trace logging for better diagnostics without exposing sensitive information
             }
         }
 
@@ -562,7 +528,15 @@ namespace LivingRoots.Services
                 }
                 else
                 {
-                    result = 0f; // Return default (Poor Soil) if no data exists
+                    // T135 (FR-014): no record exists for this tile, which
+                    // is the unknown state, not a 0% reading. A tile that
+                    // has never been sampled carries no health information,
+                    // so the query reports the NaN sentinel the tooltip
+                    // pipeline renders as "Soil Health: Unknown"; 0f would
+                    // misreport unmeasured soil as the Poor boundary. The
+                    // invalid-tile branch above stays 0f: a malformed query
+                    // is a caller error, not an unknown measurement.
+                    result = float.NaN;
                 }
             }
             return result;
@@ -578,20 +552,32 @@ namespace LivingRoots.Services
 
             // Variables to track if we need to log warnings (set inside the lock, used outside)
             var operationResult = SoilHealthOperationResult.Success;
+            float finalHealth = 0f;
 
             lock (_lock)
             {
                 // Use the internal helper method to set the health value
                 operationResult = SetHealthInternal(locationName, tilePoint, value);
+                if (operationResult == SoilHealthOperationResult.Success)
+                {
+                    if (_runtimeCache.TryGetValue(locationName, out var tiles) && tiles.TryGetValue(tilePoint, out var health))
+                    {
+                        finalHealth = health;
+                    }
+                    else
+                    {
+                        finalHealth = 0f;
+                    }
+                }
             }
 
             // Log messages outside the lock to avoid blocking other threads
             LogOperationResult(operationResult, locationName);
 
-            // T034/T104 (FR-010): notify subscribers AFTER the mutation and
-            // AFTER the lock is released, so the overlay cache invalidates on
-            // this same frame without ever being raised mid-mutation.
-            RaiseTileHealthChanged(locationName, tile);
+            if (operationResult == SoilHealthOperationResult.Success)
+            {
+                OnTileHealthChanged?.Invoke(locationName, tile, finalHealth);
+            }
         }
 
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
@@ -610,6 +596,7 @@ namespace LivingRoots.Services
 
             // Variables to track if we need to log warnings (set inside the lock, used outside)
             var operationResult = SoilHealthOperationResult.Success;
+            float finalHealth = 0f;
 
             lock (_lock)
             {
@@ -625,14 +612,26 @@ namespace LivingRoots.Services
 
                 // Use the internal helper method to set the health value
                 operationResult = SetHealthInternal(locationName, tilePoint, newHealth);
+                if (operationResult == SoilHealthOperationResult.Success)
+                {
+                    if (_runtimeCache.TryGetValue(locationName, out var updatedTiles) && updatedTiles.TryGetValue(tilePoint, out var h))
+                    {
+                        finalHealth = h;
+                    }
+                    else
+                    {
+                        finalHealth = 0f;
+                    }
+                }
             }
 
             // Log messages outside the lock to avoid blocking other threads
             LogOperationResult(operationResult, locationName);
 
-            // T034/T104 (FR-010): notify subscribers after the mutation, outside
-            // the lock — reactive invalidation within the same frame.
-            RaiseTileHealthChanged(locationName, tile);
+            if (operationResult == SoilHealthOperationResult.Success)
+            {
+                OnTileHealthChanged?.Invoke(locationName, tile, finalHealth);
+            }
         }
 
         private void LogOperationResult(SoilHealthOperationResult operationResult, string locationName)
@@ -663,14 +662,12 @@ namespace LivingRoots.Services
         }
 
         /// <summary>
-        /// T135/Constitution III: the persistence snapshot is built under the lock
-        /// and the I/O runs outside it. This test-only injection reads back the
-        /// cache through the same lock the mutations use, so it observes a
-        /// consistent snapshot rather than a torn one.
+        /// Test-only method to directly inject raw soil health data into the runtime cache.
+        /// This bypasses validation and is intended for testing corruption scenarios.
         /// </summary>
-        /// <param name="locationName">Location name (can be invalid for testing).</param>
-        /// <param name="tile">Tile coordinates.</param>
-        /// <param name="value">Raw health value to inject (bypasses validation).</param>
+        /// <param name="locationName">The location name (can be invalid for testing)</param>
+        /// <param name="tile">The tile coordinates</param>
+        /// <param name="value">The health value</param>
         internal void TestOnly_SetRawSoilHealth(string locationName, Vector2 tile, float value)
         {
             lock (_lock)
@@ -698,7 +695,13 @@ namespace LivingRoots.Services
             var clampedValue = ClampHealthValue(value);
 
             // Don't store default values; keep the cache sparse to prevent unbounded growth.
-            if (Math.Abs(clampedValue) < 0.0001f) // Using epsilon comparison for floating point
+            // Exception (T166/T182 adjudication, FR-008/FR-014): an explicit 0f is a
+            // measured reading — the floor of the Poor half-open interval [0, 34) — and
+            // round-trips so the tile renders Poor, never Unknown. Only near-zero values
+            // that reached 0 through clamping (negative, NaN, or infinite inputs, all of
+            // which ClampHealthValue maps to 0) are dropped; a never-set key still queries
+            // as the unknown sentinel via GetSoilHealth.
+            if (Math.Abs(clampedValue) < 0.0001f && value != 0f) // Using epsilon comparison for floating point
             {
                 if (_runtimeCache.TryGetValue(locationName, out var existingTiles) &&
                     existingTiles.Remove(tilePoint) &&
