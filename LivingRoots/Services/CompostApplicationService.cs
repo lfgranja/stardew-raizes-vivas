@@ -1,5 +1,4 @@
 using LivingRoots.Domain;
-using LivingRoots.Domain.Services;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewValley;
@@ -16,153 +15,60 @@ public class CompostApplicationService(
     private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
     private readonly IPlayerProvider _playerProvider = playerProvider ?? throw new ArgumentNullException(nameof(playerProvider));
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
-    /// <summary>
-    /// T054/T149 (FR-008a): SMAPI's translation helper. Null only when a
-    /// caller constructs the service without it (legacy test doubles);
-    /// <see cref="TranslateRefusalMessage"/> then falls back to the key so
-    /// no refusal site ever silently drops its message.
-    /// </summary>
+
+    // T054 (FR-008a): SMAPI translation helper for refusal messages.
+    // Optional so headless test doubles (which have no translation
+    // pipeline) keep constructing the service; a null helper falls
+    // back to the raw key, which is the pre-T054 behaviour.
     private readonly ITranslationHelper? _translationHelper = translationHelper;
-
-    /// <summary>
-    /// Resolves a refusal message through SMAPI's translation helper so the
-    /// player sees their own language (FR-008a). The helper is resolved per
-    /// call, never cached, because the locale can change mid-session.
-    /// </summary>
-    /// <param name="messageKey">Translation key registered in i18n/default.json.</param>
-    /// <returns>The localized text, or the key itself when no helper is wired.</returns>
-    private string TranslateRefusalMessage(string messageKey)
-    {
-        if (_translationHelper == null)
-        {
-            return messageKey;
-        }
-
-        return _translationHelper.Get(messageKey);
-    }
-
-    /// <summary>
-    /// T057/FR-007: the player is holding compost when the held item resolves
-    /// to it in any of the forms the item takes — the qualified id the game
-    /// composes while a type definition is registered ("(O)LivingRoots.Compost"),
-    /// the fully qualified constant, or the bare ItemId a test host (or an
-    /// item created without a registry) reports. Checking one form only
-    /// silently refuses a legitimately held compost.
-    /// </summary>
-    private static bool HoldsCompost(Item heldItem)
-    {
-        return heldItem.QualifiedItemId == ModConstants.CompostItemId
-            || heldItem.QualifiedItemId == ModConstants.QualifiedCompostItemId
-            || heldItem.ItemId == ModConstants.CompostItemId
-            || heldItem.ItemId == ModConstants.QualifiedCompostItemId;
-    }
-
-    /// <summary>
-    /// T197 (FR-002): the location gate for compost application, using the same
-    /// greenhouse-like acceptance rule <c>ModController.TryPlaceBin</c> accepts
-    /// placement with (T105) — a modded greenhouse is a greenhouse too. The farm
-    /// always accepts, a greenhouse-like location accepts, and every other
-    /// location is refused with the invalid-tile refusal.
-    /// </summary>
-    /// <remarks>
-    /// The rule itself lives in <see cref="GreenhouseLocationRule"/> so placement
-    /// and application can never disagree: a bin placed in a modded greenhouse
-    /// must have its compost applicable there too.
-    /// </remarks>
-    /// <param name="location">The location compost is being applied in.</param>
-    /// <param name="locationName">The resolved name used in the refusal text.</param>
-    /// <returns>
-    /// <c>false</c> when the location refuses application and the invalid-tile
-    /// refusal has been rendered, sounded and logged — <c>true</c> when the caller
-    /// may proceed.
-    /// </returns>
-    private bool ValidateLocation(GameLocation location, string locationName)
-    {
-        if (!location.IsFarm && !GreenhouseLocationRule.IsGreenhouseLike(location))
-        {
-            Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyCompostInvalidTile));
-            _monitor.Log($"Compost rejected: {locationName} is not farm or greenhouse-like.", LogLevel.Trace);
-            Game1.playSound("cancel");
-            return false;
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// T266 (FR-007): clears the active inventory slot when a consumed compost
-    /// stack empties, so no zero-stack item remains — the
-    /// <c>ModController.TryPlaceBin</c> slot-clearing pattern applied to the
-    /// compost-application path.
-    /// </summary>
-    /// <remarks>
-    /// The farmer inventory slot is the production truth: nulling it clears
-    /// the active slot in-game. A settable provider cell (unit-test doubles
-    /// expose a setter while <c>IPlayerProvider.CurrentItem</c> stays
-    /// get-only, so no existing implementer breaks) is cleared as a fallback
-    /// only when it still holds the consumed reference — a get-only provider
-    /// is simply left alone.
-    /// </remarks>
-    /// <param name="consumed">The held item just consumed.</param>
-    private void ClearConsumedHeldItemSlot(Item consumed)
-    {
-        if (consumed.Stack > 0)
-        {
-            return;
-        }
-
-        var items = _playerProvider.CurrentPlayer?.Items;
-        if (items != null)
-        {
-            int index = items.IndexOf(consumed);
-            if (index != -1)
-            {
-                items[index] = null!;
-                return;
-            }
-        }
-
-        if (ReferenceEquals(_playerProvider.CurrentItem, consumed))
-        {
-            var currentItemProperty = _playerProvider.GetType().GetProperty("CurrentItem");
-            if (currentItemProperty != null && currentItemProperty.CanWrite)
-            {
-                currentItemProperty.SetValue(_playerProvider, null);
-            }
-        }
-    }
 
     public bool TryApplyCompost(GameLocation location, Vector2 tile)
     {
         var locationName = location.Name ?? "Unknown";
 
-        if (!ValidateLocation(location, locationName))
+        if (!location.IsFarm && locationName != "Greenhouse")
         {
+            _monitor.Log($"Compost rejected: {locationName} is not farm or Greenhouse.", LogLevel.Trace);
+            Game1.playSound("cancel");
+            Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyCompostInvalidTile));
             return false;
         }
 
         if (!location.terrainFeatures.TryGetValue(tile, out var terrainFeature)
             || terrainFeature is not HoeDirt)
         {
-            Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyCompostInvalidTile));
             _monitor.Log("Compost rejected: target tile is not tilled soil.", LogLevel.Trace);
             Game1.playSound("cancel");
+            Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyCompostInvalidTile));
             return false;
         }
 
         var currentHealth = _soilHealthService.GetSoilHealth(locationName, tile);
+        // FR-014: an absent record is the unknown sentinel (float.NaN) — "no data", not a
+        // 0% reading. Resolve it to the same 0 baseline the producer's UpdateHealth applies
+        // to an absent record (the first application on unmeasured soil lands at exactly the
+        // restoration amount), so the sentinel never reaches the arithmetic or the summary:
+        // NaN >= MaxSoilHealth is false, so the maximum-health rejection would not catch it,
+        // and the applied health and the "{currentHealth:F1} -> {newHealth:F1}" line would
+        // otherwise interpolate NaN.
+        if (float.IsNaN(currentHealth))
+        {
+            currentHealth = 0f;
+        }
         if (currentHealth >= ModConstants.MaxSoilHealth)
         {
-            Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyCompostMaxHealth));
             _monitor.Log("Compost rejected: tile already at maximum health.", LogLevel.Trace);
             Game1.playSound("cancel");
+            Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyCompostMaxHealth));
             return false;
         }
 
         var heldItem = _playerProvider.CurrentItem;
-        if (heldItem == null || !HoldsCompost(heldItem))
+        if (heldItem == null ||
+            (heldItem.QualifiedItemId != ModConstants.CompostItemId &&
+             heldItem.QualifiedItemId != ModConstants.QualifiedCompostItemId &&
+             heldItem.ItemId != ModConstants.CompostItemId))
         {
-            Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyCompostInvalidTile));
             _monitor.Log("Compost rejected: player not holding compost.", LogLevel.Trace);
             Game1.playSound("cancel");
             return false;
@@ -172,9 +78,8 @@ public class CompostApplicationService(
         _soilHealthService.UpdateHealth(locationName, tile, ModConstants.RestorationAmount);
 
         heldItem.Stack--;
-        ClearConsumedHeldItemSlot(heldItem);
 
-        var worldPosition = new Vector2(tile.X * 64f + 32f, tile.Y * 64f);
+        var worldPosition = new Vector2(tile.X * (float)ModConstants.TileSize + 32f, tile.Y * (float)ModConstants.TileSize);
         var sprite = new TemporaryAnimatedSprite(
             null,
             Rectangle.Empty,
@@ -185,7 +90,7 @@ public class CompostApplicationService(
             false,
             false);
         sprite.text = $"+{ModConstants.RestorationAmount:F0}";
-        sprite.color = Color.Green;
+        sprite.color = ModConstants.CompostSpriteColor;
         sprite.alphaFade = 0.02f;
         sprite.motion = new Vector2(0, -0.5f);
         location.TemporarySprites.Add(sprite);
@@ -195,16 +100,22 @@ public class CompostApplicationService(
                      LogLevel.Trace);
         return true;
     }
-}
 
-// FR-008a assertion: refusal messages must never expose raw translation keys
-#if DEBUG
-internal static class TranslationSafetyAssert
-{
-    public static void AssertNoRawKey(string message)
+    /// <summary>
+    /// Resolves a refusal translation key (T054, FR-008a) through the
+    /// injected <see cref="ITranslationHelper"/> so the red HUD message
+    /// renders in the player's language. Falls back to the raw key when
+    /// no helper was injected (headless test doubles), which preserves
+    /// the pre-T054 behaviour for those hosts. Resolved per call, never
+    /// cached — the locale can change mid-session.
+    /// </summary>
+    private string TranslateRefusalMessage(string messageKey)
     {
-        if (message != null && (message.Contains("TranslationKey") || message.Contains("key.") || message.StartsWith("com")))
-            System.Diagnostics.Debug.Assert(false, "FR-008a: raw translation key leaked: " + message);
+        if (_translationHelper == null)
+        {
+            return messageKey;
+        }
+
+        return _translationHelper.Get(messageKey);
     }
 }
-#endif
