@@ -72,33 +72,69 @@ namespace LivingRoots.Services.Visualization
         /// <summary>
         /// Renders floating health text above the targeted tile for 1000ms with
         /// a linear fade-out animation. No-op if the text duration has elapsed.
+        /// The text is white — a constant, never a health- or category-derived
+        /// color (FR-003): the category is already conveyed by the text
+        /// content and the tile overlay color, so the color interpolation
+        /// service is never consulted for the text color.
         /// </summary>
         /// <param name="spriteBatch">SpriteBatch for drawing.</param>
         /// <param name="feedback">Feedback state containing tile position and health data.</param>
         /// <param name="gameTime">Current game time for animation progress.</param>
         public void RenderFloatingText(SpriteBatch spriteBatch, HoeFeedback feedback, GameTime gameTime)
         {
-            if (spriteBatch == null || feedback == null)
+            if (feedback == null)
                 return;
 
             long elapsedMs = GetElapsedMilliseconds(feedback, gameTime);
             if (elapsedMs < 0 || elapsedMs >= feedback.TextDuration)
                 return;
 
+            var anchor = ComputeFloatingTextAnchor(feedback, elapsedMs);
+            RenderFloatingText(spriteBatch, feedback, anchor, elapsedMs);
+        }
+
+        /// <summary>
+        /// Renders the floating text at a precomputed anchor. The anchor is
+        /// logged before the sprite-batch guard so the position function
+        /// stays observable on every in-window frame even when the host
+        /// cannot supply a SpriteBatch — the headless unit-test host passes
+        /// null, and the trace log is the only frame-level observable of
+        /// where the text draws.
+        /// </summary>
+        /// <param name="spriteBatch">SpriteBatch for drawing.</param>
+        /// <param name="feedback">Feedback state containing the health text.</param>
+        /// <param name="anchor">Precomputed floating-text anchor.</param>
+        /// <param name="elapsedMs">Milliseconds into the feedback's text window.</param>
+        private void RenderFloatingText(SpriteBatch spriteBatch, HoeFeedback feedback, FloatingTextAnchor anchor, long elapsedMs)
+        {
+            _monitor.Log($"Hoe feedback text: {feedback.HealthText} at ({anchor.Position.X}, {anchor.Position.Y})", LogLevel.Trace);
+
+            if (spriteBatch == null)
+                return;
+
+            // FR-003: linear fade-out over the text window, applied to the
+            // white text and its drop shadow together so neither outlives
+            // the other. Base tones from ModConstants (T185); the alpha is
+            // the window opacity scaled to the byte range — the conversion
+            // idiom the category-color alpha application uses — so both
+            // fade together.
             float progress = feedback.TextDuration > 0
                 ? elapsedMs / (float)feedback.TextDuration
                 : 1.0f;
             float opacity = 1.0f - progress;
+            var textColor = ModConstants.FloatingTextColor;
+            textColor.A = (byte)(opacity * 255f);
+            var shadowColor = ModConstants.FloatingTextShadowColor;
+            shadowColor.A = (byte)(opacity * 128f);
 
-            Color textColor = _colorInterpolationService.GetColorForHealth(feedback.HealthValue, opacity);
-            Vector2 screenPos = TileToScreenPosition(feedback.TilePosition);
-
-            // Center text horizontally above the tile
+            // Center the measured string on the anchor and draw it with a
+            // 1px drop shadow so it stays legible over any backdrop.
             Vector2 textSize = Game1.smallFont.MeasureString(feedback.HealthText);
             Vector2 textPos = new Vector2(
-                screenPos.X + (ModConstants.TileSize / 2) - (textSize.X / 2),
-                screenPos.Y - textSize.Y - 4);
+                anchor.Position.X - (textSize.X / 2),
+                anchor.Position.Y - textSize.Y);
 
+            spriteBatch.DrawString(Game1.smallFont, feedback.HealthText, textPos + Vector2.One, shadowColor);
             spriteBatch.DrawString(Game1.smallFont, feedback.HealthText, textPos, textColor);
         }
 
@@ -168,11 +204,87 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <summary>
-        /// Converts tile coordinates to screen-space pixel coordinates.
+        /// Converts tile coordinates to screen-space pixel
+        /// coordinates through the game's own world→screen
+        /// derivation: the tile's world position
+        /// (<c>tile * tileSize</c>) is localized with
+        /// <c>Game1.GlobalToLocal</c> — which subtracts the
+        /// pixel-space <c>Game1.viewport</c> origin — and
+        /// scaled with <c>Utility.ModifyCoordinatesForUIScale</c>,
+        /// which folds in the zoom level
+        /// (<c>Game1.options.zoomLevel</c>) and the UI scale
+        /// (<c>Game1.options.uiScale</c>), so the flash lands
+        /// on the targeted tile at any camera offset and any
+        /// zoom / UI scale (FR-003, FR-018, US3/AC4 — the
+        /// same derivation the floating-text anchor and the
+        /// tile-overlay destination follow, T183). The
+        /// derivation runs through the shared
+        /// <see cref="ScreenPositionDerivation"/>, which
+        /// resolves the legacy tile-space position when the
+        /// game state is unavailable (the headless unit-test
+        /// host — the identity at the default zoom and UI
+        /// scale, so the T160 camera-relative expectations
+        /// hold at unity zoom / UI scale).
         /// </summary>
         private static Vector2 TileToScreenPosition(Point tilePosition)
         {
-            return new Vector2(tilePosition.X * ModConstants.TileSize, tilePosition.Y * ModConstants.TileSize);
+            var worldPosition = new Vector2(
+                tilePosition.X * ModConstants.TileSize,
+                tilePosition.Y * ModConstants.TileSize);
+            return ScreenPositionDerivation.ToScreenPosition(worldPosition);
+        }
+
+        /// <summary>
+        /// Computes the floating-text anchor for the feedback's
+        /// current elapsed lifetime: horizontally centered on the
+        /// targeted tile, starting above the tile's top edge and
+        /// drifting upward over the text window (FR-003). The
+        /// tile-center world position follows the game's own
+        /// world→screen derivation —
+        /// <c>Utility.ModifyCoordinatesForUIScale(
+        /// Game1.GlobalToLocal(worldPosition))</c>, which folds
+        /// in the viewport origin, the zoom level and the UI
+        /// scale — through the shared
+        /// <see cref="ScreenPositionDerivation"/>, which
+        /// resolves the legacy tile-space position when the game
+        /// state is unavailable (the headless unit-test host —
+        /// the identity at the default zoom and UI scale) — and
+        /// the drift is a screen-space rate
+        /// (ModConstants.FloatingTextDriftPixelsPerMs)
+        /// subtracted from that derived screen position, so the
+        /// text stays above the targeted tile at any camera
+        /// offset and any zoom / UI scale (FR-003, FR-018,
+        /// US3/AC4 — the same derivation the flash rect and the
+        /// tile-overlay destination follow, T183).
+        /// </summary>
+        /// <param name="feedback">Feedback state containing the tile position.</param>
+        /// <param name="elapsedMs">Milliseconds into the feedback's text window.</param>
+        /// <returns>The anchor the floating text draws from.</returns>
+        private static FloatingTextAnchor ComputeFloatingTextAnchor(HoeFeedback feedback, long elapsedMs)
+        {
+            var worldCenter = new Vector2(
+                feedback.TilePosition.X * ModConstants.TileSize + ModConstants.TileSize / 2,
+                feedback.TilePosition.Y * ModConstants.TileSize);
+            var screenPosition = ScreenPositionDerivation.ToScreenPosition(worldCenter);
+            var position = new Vector2(
+                screenPosition.X,
+                screenPosition.Y - elapsedMs * ModConstants.FloatingTextDriftPixelsPerMs);
+            return new FloatingTextAnchor(position);
+        }
+
+        /// <summary>
+        /// The anchor the floating text draws from — the point the position
+        /// function resolves for the feedback's current elapsed lifetime,
+        /// logged as the frame-level observable of the drawn position.
+        /// </summary>
+        private readonly struct FloatingTextAnchor
+        {
+            public FloatingTextAnchor(Vector2 position)
+            {
+                Position = position;
+            }
+
+            public Vector2 Position { get; }
         }
 
         /// <summary>

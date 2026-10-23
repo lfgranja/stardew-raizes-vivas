@@ -1,4 +1,3 @@
-using System.Threading;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Visualization;
 using StardewModdingAPI;
@@ -7,12 +6,25 @@ namespace LivingRoots.Services.Visualization
 {
     /// <summary>
     /// Manages loading, saving, and accessing visualization configuration.
-    /// Configuration is persisted per-save via IModDataService.
-    /// Invalid persisted values are replaced with defaults on load per FR-006.
+    /// The configuration scope is the mod folder — one config.json per
+    /// installation, shared by every save (true-global per spec Session
+    /// 2026-10-06), never keyed by save ID. The validated configuration is
+    /// cached in memory after the initial load and frames are served from
+    /// the cache without re-reading the persisted JSON; the cache is
+    /// invalidated only by the file-change signal (
+    /// <see cref="NotifyConfigurationChanged"/>) per T083 (F2, FR-005,
+    /// FR-019, FR-020). Invalid persisted values are replaced with defaults
+    /// on load per FR-006.
     /// </summary>
     public class VisualizationConfigurationService : IVisualizationConfigurationService
     {
-        private const string DataKeyPrefix = "visualization_config_";
+        /// <summary>
+        /// The persistence key of the single mod-folder config.json.
+        /// The key never incorporates the save identifier, so every save
+        /// of the installation resolves the same configuration
+        /// (true-global scope per spec Session 2026-10-06).
+        /// </summary>
+        private const string ConfigDataKey = "visualization_config_modfolder";
 
         /// <summary>Degradation modes accepted by <see cref="VisualizationConfiguration.AccessibilityDegradation"/>.</summary>
         private static readonly string[] ValidDegradationModes = { "auto", "never", "notify" };
@@ -23,16 +35,15 @@ namespace LivingRoots.Services.Visualization
         private VisualizationConfiguration _configuration = new();
 
         /// <summary>
-        /// T069/T083: set by <see cref="NotifyConfigurationChanged"/> when the
-        /// persisted configuration was changed out of band. LoadConfiguration
-        /// re-reads storage unconditionally, so this flag records the signal
-        /// for observability and for callers that need to know a reload was
-        /// pending; it is cleared on the next load.
+        /// Cache-coordination flag for the game loop: 1 when the in-memory
+        /// configuration does not reflect the persisted store and the next
+        /// <see cref="LoadConfiguration"/> must re-read it (the initial
+        /// state, and every file-change signal); 0 when the cache is current
+        /// and frames are served from memory. Flipped with
+        /// <see cref="System.Threading.Interlocked"/> so the signalling
+        /// thread and the render-thread reload coordinate without a lock.
         /// </summary>
-        private bool _configurationDirty;
-
-        /// <summary>Whether a signal from <see cref="NotifyConfigurationChanged"/> is still pending.</summary>
-        public bool HasPendingConfigurationChange => Volatile.Read(ref _configurationDirty);
+        private int _configurationCacheInvalidated = 1;
 
         public VisualizationConfigurationService(
             IModDataService dataService,
@@ -60,6 +71,18 @@ namespace LivingRoots.Services.Visualization
                 return;
             }
 
+            // Serve frames from the in-memory cache (T083, F2, FR-020):
+            // the persisted store is re-read only when the cache was
+            // invalidated — the initial load, or an explicit file-change
+            // signal. Re-reading on every call would be a blocking disk
+            // hit inside ModConstants.MaxRenderTimeMs on every rendered
+            // frame, the exact cost T083 removes. The flag is consumed
+            // atomically so concurrent callers never double-read.
+            if (System.Threading.Interlocked.Exchange(ref _configurationCacheInvalidated, 0) == 0)
+            {
+                return;
+            }
+
             try
             {
                 var key = BuildDataKey(saveId);
@@ -67,23 +90,41 @@ namespace LivingRoots.Services.Visualization
                 _configuration = loaded == null
                     ? CreateDefaults()
                     : Validate(loaded);
-
-                // T069/T083: a signalled external edit has now been applied, so
-                // clear the signal. Cleared BEFORE any early return so a failed
-                // reload is retried on the following frame rather than being
-                // silently dropped.
-                _configurationDirty = false;
             }
             catch (ArgumentException)
             {
                 _monitor.Log("VisualizationConfigurationService: saveId rejected by sanitization. Using defaults.", LogLevel.Warn);
                 _configuration = CreateDefaults();
+                // Keep the cache invalidated so the next load retries
+                // instead of serving defaults indefinitely.
+                System.Threading.Interlocked.Exchange(ref _configurationCacheInvalidated, 1);
             }
             catch (Exception)
             {
                 _monitor.Log("VisualizationConfigurationService: Failed to load config. Using defaults.", LogLevel.Warn);
                 _configuration = CreateDefaults();
+                // Keep the cache invalidated so the next load retries
+                // instead of serving defaults indefinitely.
+                System.Threading.Interlocked.Exchange(ref _configurationCacheInvalidated, 1);
             }
+        }
+
+        /// <summary>
+        /// Signals that the persisted configuration file changed out of
+        /// band (an external edit of the mod-folder config.json), so the
+        /// next <see cref="LoadConfiguration"/> re-reads the persisted
+        /// store once and applies the change within the next render frame
+        /// (FR-005 hot-reload, FR-019, SC-003). The render frame calls
+        /// <see cref="LoadConfiguration"/> every frame; this signal is
+        /// what makes that call re-read instead of serving the in-memory
+        /// cache. Lock-free: the flag is flipped with
+        /// <see cref="System.Threading.Interlocked"/>, so the game-loop
+        /// thread that signals and the render thread that reloads
+        /// coordinate without a lock (T083).
+        /// </summary>
+        public void NotifyConfigurationChanged()
+        {
+            System.Threading.Interlocked.Exchange(ref _configurationCacheInvalidated, 1);
         }
 
         /// <inheritdoc />
@@ -123,21 +164,17 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <summary>
-        /// T069/T083: signals that the persisted configuration changed out of
-        /// band. The next <see cref="LoadConfiguration"/> then re-reads the
-        /// mod-folder store instead of serving the in-memory cache, so the
-        /// change applies within one render frame (FR-005).
+        /// Validates the save identifier and returns the persistence key
+        /// of the mod-folder config.json. The key is the installation-
+        /// wide constant (<see cref="ConfigDataKey"/>) — the
+        /// configuration scope is the mod folder, shared by every save,
+        /// so the key never incorporates the save identifier (true-global
+        /// per spec Session 2026-10-06). The identifier is still
+        /// validated so a garbage identifier fails fast exactly as the
+        /// per-save keying did.
         /// </summary>
-        public void NotifyConfigurationChanged()
-        {
-            _configurationDirty = true;
-        }
-
-        /// <summary>
-        /// Builds the persistence key for a save, sanitizing the save identifier first.
-        /// </summary>
-        /// <param name="saveId">Raw save identifier.</param>
-        /// <returns>Sanitized, prefixed data key.</returns>
+        /// <param name="saveId">Raw save identifier, validated but not keyed.</param>
+        /// <returns>The mod-folder configuration persistence key.</returns>
         /// <exception cref="ArgumentException">Thrown when the save identifier does not sanitize to a usable value.</exception>
         private string BuildDataKey(string saveId)
         {
@@ -146,7 +183,7 @@ namespace LivingRoots.Services.Visualization
             {
                 throw new ArgumentException("Sanitized saveId is empty.", nameof(saveId));
             }
-            return DataKeyPrefix + sanitized;
+            return ConfigDataKey;
         }
 
         /// <summary>
@@ -168,11 +205,10 @@ namespace LivingRoots.Services.Visualization
                     ? configuration.AccessibilityDegradation
                     : defaults.AccessibilityDegradation,
 
-                // ColorDTO channels are bytes, so every stored value is already in range.
-                PoorColor = configuration.PoorColor,
-                ModerateColor = configuration.ModerateColor,
-                HealthyColor = configuration.HealthyColor,
-                UnknownColor = configuration.UnknownColor
+                PoorColor = ValidateColor(configuration.PoorColor, defaults.PoorColor, nameof(VisualizationConfiguration.PoorColor)),
+                ModerateColor = ValidateColor(configuration.ModerateColor, defaults.ModerateColor, nameof(VisualizationConfiguration.ModerateColor)),
+                HealthyColor = ValidateColor(configuration.HealthyColor, defaults.HealthyColor, nameof(VisualizationConfiguration.HealthyColor)),
+                UnknownColor = ValidateColor(configuration.UnknownColor, defaults.UnknownColor, nameof(VisualizationConfiguration.UnknownColor))
             };
 
             if (!IsValidOpacity(configuration.Opacity))
@@ -223,6 +259,39 @@ namespace LivingRoots.Services.Visualization
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Replaces an invalid color with its ModConstants default, warning once per field.
+        /// </summary>
+        /// <param name="color">Color to validate.</param>
+        /// <param name="defaultColor">Default color to substitute when invalid.</param>
+        /// <param name="fieldName">Configuration field name, used in the warning.</param>
+        /// <returns>The original color when valid; otherwise the default color.</returns>
+        private ColorDTO ValidateColor(ColorDTO color, ColorDTO defaultColor, string fieldName)
+        {
+            if (IsValidColor(color))
+            {
+                return color;
+            }
+
+            _monitor.Log(
+                $"VisualizationConfigurationService: invalid {fieldName} ({color.R}, {color.G}, {color.B}, {color.A}) replaced with default ({defaultColor.R}, {defaultColor.G}, {defaultColor.B}, {defaultColor.A}).",
+                LogLevel.Warn);
+            return defaultColor;
+        }
+
+        /// <summary>
+        /// Checks whether a color is usable for rendering.
+        /// ColorDTO channels are bytes, so out-of-range channels cannot occur;
+        /// the invalid states are the all-zero "unset" struct and zero alpha,
+        /// which would render an invisible overlay.
+        /// </summary>
+        /// <param name="color">Color to check.</param>
+        /// <returns>True when the color carries a non-zero alpha channel.</returns>
+        private static bool IsValidColor(ColorDTO color)
+        {
+            return color.A != 0;
         }
 
         /// <summary>
