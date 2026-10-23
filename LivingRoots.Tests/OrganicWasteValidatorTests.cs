@@ -1,7 +1,5 @@
 using LivingRoots.Domain.Services;
 using LivingRoots.Tests.Fixtures;
-using Moq;
-using StardewModdingAPI;
 using StardewValley;
 using Xunit;
 
@@ -33,7 +31,6 @@ public class OrganicWasteValidatorTests
     /// <summary>Vanilla item category: Wood (not organic waste).</summary>
     private const int WoodCategory = -14;
 
-    private readonly Mock<IMonitor> _mockMonitor;
     private readonly OrganicWasteValidator _validator;
 
     /// <summary>
@@ -43,8 +40,7 @@ public class OrganicWasteValidatorTests
     public OrganicWasteValidatorTests()
     {
         GameStateFixture.Install();
-        _mockMonitor = new Mock<IMonitor>();
-        _validator = new OrganicWasteValidator(_mockMonitor.Object);
+        _validator = new OrganicWasteValidator();
     }
 
     private static Item CreateItem(int category)
