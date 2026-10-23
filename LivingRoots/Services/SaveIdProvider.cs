@@ -58,7 +58,7 @@ namespace LivingRoots.Services
             catch (Exception ex)
             {
                 // Never surface the raw exception message; type name only.
-                _monitor?.Log($"GetSaveId: Exception occurred: {ex.GetType().FullName}", LogLevel.Trace);
+                _monitor?.Log($"GetSaveId: Exception occurred: {ex.GetType().Name}", LogLevel.Trace);
                 return null;
             }
         }
