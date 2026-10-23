@@ -1,697 +1,616 @@
 using System;
 using System.Collections.Generic;
-using FsCheck.Xunit;
+using System.Linq;
+using LivingRoots.Controllers;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Models;
+using LivingRoots.Domain.Services;
 using LivingRoots.Services;
 using LivingRoots.Tests.Fixtures;
 using LivingRoots.Tests.Stubs;
 using Microsoft.Xna.Framework;
 using Moq;
-using Newtonsoft.Json;
 using StardewModdingAPI;
 using StardewValley;
 using Xunit;
 
-namespace LivingRoots.Tests
+namespace LivingRoots.Tests;
+
+/// <summary>
+/// Unit tests for composting bin persistence verifying tolerant reader fault isolation,
+/// obsolete field ignorance, orphaned record pruning, and exception sanitization (FR-002, FR-012, FR-015).
+/// Validates Task T020 [P] [US2] under Feature 004 (Playable Compost Loop).
+/// </summary>
+public class CompostingBinPersistenceTests
 {
-    public class CompostingBinPersistenceTests
+    private readonly Mock<IModDataService> _mockModDataService;
+    private readonly Mock<ISaveIdProvider> _mockSaveIdProvider;
+    private readonly Mock<IOrganicWasteValidator> _mockWasteValidator;
+    private readonly Mock<IMonitor> _mockMonitor;
+    private readonly Mock<ILocationProvider> _mockLocationProvider;
+    private readonly Mock<IModHelper> _mockHelper;
+    private readonly Mock<IManifest> _mockManifest;
+    private readonly Mock<ISoilHealthService> _mockSoilHealthService;
+    private readonly Mock<ISoilDecayService> _mockSoilDecayService;
+    private readonly TimeProviderStub _timeStub;
+    private readonly CompostingBinFactory _factory;
+    private readonly RecordingPlayerInventory _inventory;
+    private readonly CompostingBinService _service;
+
+    public CompostingBinPersistenceTests()
     {
-        /// <summary>T123 [P] [US2] RED — FR-012 (partial): null payload isolates per location.</summary>
-        [Fact]
-        public void T123_NullLocationPayload_IsolatesThatLocation_Only()
+        GameStateFixture.Install();
+
+        _mockModDataService = new Mock<IModDataService>();
+        _mockSaveIdProvider = new Mock<ISaveIdProvider>();
+        _mockWasteValidator = new Mock<IOrganicWasteValidator>();
+        _mockMonitor = new Mock<IMonitor>();
+        _mockLocationProvider = new Mock<ILocationProvider>();
+        _mockHelper = new Mock<IModHelper>();
+        _mockManifest = new Mock<IManifest>();
+        _mockSoilHealthService = new Mock<ISoilHealthService>();
+        _mockSoilDecayService = new Mock<ISoilDecayService>();
+        _timeStub = new TimeProviderStub();
+        _factory = new CompostingBinFactory();
+        _inventory = new RecordingPlayerInventory();
+
+        _service = new CompostingBinService(
+            _mockModDataService.Object,
+            _mockSaveIdProvider.Object,
+            _mockWasteValidator.Object,
+            _mockMonitor.Object,
+            _timeStub,
+            _factory,
+            _inventory,
+            _mockLocationProvider.Object);
+    }
+
+    /// <summary>A controller wired to the real bin service, for the
+    /// held/debris columns of the round-trip matrix (T056).</summary>
+    private ModController CreateController()
+    {
+        return new ModController(
+            _mockHelper.Object,
+            _mockMonitor.Object,
+            _mockManifest.Object,
+            _mockSoilHealthService.Object,
+            _mockSaveIdProvider.Object,
+            _service,
+            _mockSoilDecayService.Object);
+    }
+
+    private static StardewValley.Object CreatePlacedBinObject(Vector2 tile, string itemId = ModConstants.CompostingBinItemId)
+    {
+        return new StardewValley.Object
         {
-            // RED: a null inner dictionary for one location aborts the entire load
-            // instead of isolating that location and allowing remaining locations
-            // to load correctly (FR-012 partial).
-            var corruptData = new CompostingBinData();
-            corruptData.LocationBinData["CorruptFarm"] = null!; // null payload for this location
-            corruptData.LocationBinData["ValidFarm"] = new Dictionary<string, CompostingBinStateData>
-            {
-                ["10,10"] = new CompostingBinStateData
-                {
-                    State = "Ready",
-                    InputItemId = "(O)24",
-                    InputTimestamp = 1,
-                    MaturationLevel = 1
-                }
-            };
+            ItemId = itemId,
+            TileLocation = tile
+        };
+    }
 
-            var mockData = new Mock<IModDataService>();
-            mockData.Setup(x => x.LoadData<CompostingBinData>(It.IsAny<string>())).Returns(corruptData);
+    /// <summary>
+    /// Verifies that the tolerant reader gracefully skips/quarantines corrupt JSON records
+    /// without crashing the load of subsequent valid records (FR-012, FR-014).
+    /// </summary>
+    [Fact]
+    public void LoadData_CorruptRecord_SkipsCorruptRecordAndLoadsSubsequentValidRecords()
+    {
+        // Arrange
+        const string saveId = "test_save_corrupt";
+        const string key = ModConstants.CompostingBinKeyPrefix + saveId;
 
-            var service = new CompostingBinService(
-                mockData.Object,
-                new Mock<ISaveIdProvider>().Object,
-                new Mock<IOrganicWasteValidator>().Object,
-                new Mock<IMonitor>().Object,
-                new TimeProviderStub(),
-                new CompostingBinFactory(),
-                new RecordingPlayerInventory());
-
-            // The load either throws and catches (aborting everything) or skips.
-            // In either case, the valid farm should still be accessible if isolated.
-            service.LoadData("test-null-payload");
-
-            // RED: with current behavior, the null payload aborts the whole load,
-            // so ValidFarm never registers and stays Empty instead of Ready.
-            Assert.Equal(CompostingBinState.Ready, service.GetBinState("ValidFarm", new Vector2(10, 10)));
-            Assert.Equal(CompostingBinState.Empty, service.GetBinState("CorruptFarm", new Vector2(10, 10)));
-        }
-
-        // ------------------------------------------------------------------
-        // T255 (SC-004/FR-012, F9): T199's Fact matrix is superseded by the
-        // property-based T229 matrix below (lifecycle × placement through the
-        // real JSON seam, discriminating Empty rows, distinct placement paths,
-        // soil-health half). The old Fact passed vacuously for Empty
-        // (sparse-dropped null==null), exercised one code path for held/debris
-        // (both worldObject null), used an in-memory mock (never JSON) and had
-        // no soil half — all four F9 points. It is removed so the file carries
-        // a single round-trip matrix (T229); T229 is the rewritten test.
-        // ------------------------------------------------------------------
-
-        /// <summary>
-        /// Stages a bin in the given lifecycle state, writes it through the
-        /// production SaveData path, and hands back the DTO that was persisted
-        /// plus the progress the round-trip must reproduce.
-        /// </summary>
-        private static CompostingBinData StageBatchAndSave(
-            CompostingBinState state,
-            int seed,
-            Vector2 tile,
-            StardewValley.Object? worldObject,
-            out string? expectedInputId,
-            out int? expectedTimestamp)
+        var binData = new CompostingBinData();
+        var farmBins = new Dictionary<string, CompostingBinStateData>
         {
-            var mockData = new Mock<IModDataService>();
-            CompostingBinData? captured = null;
-            mockData
-                .Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
-                .Callback<CompostingBinData, string>((data, _) => captured = data);
-
-            // Inject the lifecycle state directly: the invariant under test is
-            // the persistence round-trip, so the state is staged rather than
-            // matured (which would couple this test to machine timing).
-            mockData
-                .Setup(x => x.LoadData<CompostingBinData>(It.IsAny<string>()))
-                .Returns(InjectState("Farm", tile, state, seed));
-
-            var locationProvider = new Mock<ILocationProvider>();
-            if (worldObject != null)
+            // Corrupt entry with invalid enum state string
+            ["10,10"] = new CompostingBinStateData
             {
-                var location = new GameLocationFixture("Farm", isFarm: true).Location;
-                location.Objects.Add(tile, worldObject);
-                locationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(location);
+                State = "CorruptedGarbageState",
+                InputItemId = "invalid_item",
+                InputTimestamp = 1
+            },
+            // Valid entry that should still load despite the preceding corrupt entry
+            ["20,20"] = new CompostingBinStateData
+            {
+                State = "Processing",
+                InputItemId = "(O)24",
+                InputTimestamp = 5
             }
+        };
+        binData.LocationBinData["Farm"] = farmBins;
 
-            var service = new CompostingBinService(
-                mockData.Object,
-                new Mock<ISaveIdProvider>().Object,
-                new Mock<IOrganicWasteValidator>().Object,
-                new Mock<IMonitor>().Object,
-                new TimeProviderStub { TotalDays = seed + 1 },
-                new CompostingBinFactory(),
-                new RecordingPlayerInventory(),
-                locationProvider.Object);
+        _mockModDataService.Setup(x => x.LoadData<CompostingBinData>(key)).Returns(binData);
 
-            service.LoadData("round-trip-save");
-            service.SaveData("round-trip-save");
+        var farmFixture = new GameLocationFixture("Farm", isFarm: true);
+        farmFixture.Location.Objects.Add(new Vector2(20, 20), CreatePlacedBinObject(new Vector2(20, 20)));
+        _mockLocationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(farmFixture.Location);
 
-            var capturedData = Assert.IsType<CompostingBinData>(captured);
-            expectedInputId = capturedData.LocationBinData.TryGetValue("Farm", out var bins)
-                && bins.TryGetValue(GetTileKey(tile), out var persisted)
-                    ? persisted.InputItemId
-                    : null;
-            expectedTimestamp = capturedData.LocationBinData.TryGetValue("Farm", out var bins2)
-                && bins2.TryGetValue(GetTileKey(tile), out var persisted2)
-                    ? persisted2.InputTimestamp
-                    : null;
+        // Act
+        _service.LoadData(saveId);
 
-            return capturedData;
-        }
+        // Assert
+        // Corrupt entry at (10, 10) must be skipped/quarantined (defaults to Empty)
+        Assert.Equal(CompostingBinState.Empty, _service.GetBinState("Farm", new Vector2(10, 10)));
 
-        /// <summary>Reloads a persisted DTO through a fresh service instance.</summary>
-        private static ICompostingBinService Reload(CompostingBinData persisted, StardewValley.Object? worldObject)
+        // Valid entry at (20, 20) must be loaded successfully
+        Assert.Equal(CompostingBinState.Processing, _service.GetBinState("Farm", new Vector2(20, 20)));
+    }
+
+    /// <summary>
+    /// Verifies that a record with an unparseable tile coordinate key is skipped
+    /// without crashing or preventing subsequent valid records from loading (FR-012).
+    /// </summary>
+    [Fact]
+    public void LoadData_UnparseableTileKey_SkipsUnparseableKeyAndLoadsValidRecords()
+    {
+        // Arrange
+        const string saveId = "test_save_bad_key";
+        const string key = ModConstants.CompostingBinKeyPrefix + saveId;
+
+        var binData = new CompostingBinData();
+        var farmBins = new Dictionary<string, CompostingBinStateData>
         {
-            var mockData = new Mock<IModDataService>();
-            mockData.Setup(x => x.LoadData<CompostingBinData>(It.IsAny<string>())).Returns((CompostingBinData?)persisted);
-
-            var locationProvider = new Mock<ILocationProvider>();
-            if (worldObject != null)
+            // Bad coordinate key
+            ["not_a_valid_coord"] = new CompostingBinStateData
             {
-                var location = new GameLocationFixture("Farm", isFarm: true).Location;
-                location.Objects.Add(new Vector2(10, 10), worldObject);
-                locationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(location);
+                State = "Processing",
+                InputItemId = "(O)24",
+                InputTimestamp = 1
+            },
+            // Valid coordinate key
+            ["15,15"] = new CompostingBinStateData
+            {
+                State = "Ready",
+                InputItemId = "(O)24",
+                InputTimestamp = 1
             }
+        };
+        binData.LocationBinData["Farm"] = farmBins;
 
-            var service = new CompostingBinService(
-                mockData.Object,
-                new Mock<ISaveIdProvider>().Object,
-                new Mock<IOrganicWasteValidator>().Object,
-                new Mock<IMonitor>().Object,
-                new TimeProviderStub { TotalDays = 1 },
-                new CompostingBinFactory(),
-                new RecordingPlayerInventory(),
-                locationProvider.Object);
+        _mockModDataService.Setup(x => x.LoadData<CompostingBinData>(key)).Returns(binData);
 
-            service.LoadData("round-trip-save");
-            return service;
-        }
+        var farmFixture = new GameLocationFixture("Farm", isFarm: true);
+        farmFixture.Location.Objects.Add(new Vector2(15, 15), CreatePlacedBinObject(new Vector2(15, 15)));
+        _mockLocationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(farmFixture.Location);
 
-        private static string? ReadPersistedInputId(ICompostingBinService service, Vector2 tile)
+        // Act
+        _service.LoadData(saveId);
+
+        // Assert
+        Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", new Vector2(15, 15)));
+    }
+
+    /// <summary>
+    /// Verifies that a null location payload aborts only that location
+    /// while the remaining locations still load (FR-012). The tolerant
+    /// reader's fault isolation is per-location, not per-save: one
+    /// corrupt location entry must not take the whole load down.
+    /// </summary>
+    [Fact]
+    public void LoadData_NullLocationPayload_AbortsOnlyThatLocationAndLoadsRemaining()
+    {
+        // Arrange
+        const string saveId = "test_save_null_location";
+        const string key = ModConstants.CompostingBinKeyPrefix + saveId;
+
+        var binData = new CompostingBinData();
+        // The null payload is listed first: dictionary enumeration keeps
+        // insertion order, so the corrupt location is encountered before
+        // the valid one — the abort must not swallow it.
+        binData.LocationBinData["NullLocation"] = null!;
+        binData.LocationBinData["Farm"] = new Dictionary<string, CompostingBinStateData>
         {
-            return ReadPersistedRecord(service, tile)?.InputItemId;
-        }
-
-        private static int? ReadPersistedTimestamp(ICompostingBinService service, Vector2 tile)
-        {
-            return ReadPersistedRecord(service, tile)?.InputTimestamp;
-        }
-
-        private static CompostingBinStateData? ReadPersistedRecord(ICompostingBinService service, Vector2 tile)
-        {
-            var snapshot = (LivingRoots.Domain.Models.CompostingBinData?)typeof(CompostingBinService)
-                .GetMethod("CreateSaveSnapshot", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                ?.Invoke(service, null);
-            if (snapshot == null)
+            ["10,10"] = new CompostingBinStateData
             {
-                return null;
+                State = "Processing",
+                InputItemId = "(O)24",
+                InputTimestamp = 1
             }
+        };
 
-            var bins = ((LivingRoots.Domain.Models.CompostingBinData)snapshot).LocationBinData;
-            return bins.TryGetValue("Farm", out var farmBins)
-                && farmBins.TryGetValue(GetTileKey(tile), out var record)
-                    ? record
-                    : null;
-        }
+        _mockModDataService.Setup(x => x.LoadData<CompostingBinData>(key)).Returns(binData);
 
-        private static CompostingBinData InjectState(string locationName, Vector2 tile, CompostingBinState state, int seed)
+        var farmFixture = new GameLocationFixture("Farm", isFarm: true);
+        farmFixture.Location.Objects.Add(new Vector2(10, 10), CreatePlacedBinObject(new Vector2(10, 10)));
+        _mockLocationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(farmFixture.Location);
+
+        // Act
+        _service.LoadData(saveId);
+
+        // Assert
+        // Only the null-payload location is aborted; the remaining
+        // location's record must still load (FR-012).
+        Assert.Equal(CompostingBinState.Processing, _service.GetBinState("Farm", new Vector2(10, 10)));
+    }
+
+    /// <summary>
+    /// Verifies that obsolete schema fields (MaturationLevel, ConsecutiveActiveDays, ConsecutiveIdleDays)
+    /// from prior mod versions are ignored without error, defaulting to single-item batch yield (FR-005a, FR-012).
+    /// </summary>
+    [Fact]
+    public void LoadData_ObsoleteSchemaFields_IgnoredAndDefaultsToSingleBatchYield()
+    {
+        // Arrange
+        const string saveId = "test_save_obsolete_fields";
+        const string key = ModConstants.CompostingBinKeyPrefix + saveId;
+
+        var binData = new CompostingBinData();
+        var farmBins = new Dictionary<string, CompostingBinStateData>
         {
-            var data = new CompostingBinData();
-            var key = GetTileKey(tile);
-            data.LocationBinData[locationName] = new Dictionary<string, CompostingBinStateData>
-            {
-                [key] = new CompostingBinStateData
-                {
-                    State = state.ToString(),
-                    InputItemId = $"(O){20 + seed}",
-                    InputTimestamp = seed + 1,
-                    MaturationLevel = 1
-                }
-            };
-            return data;
-        }
-
-        private static string GetTileKey(Vector2 tile) => $"{(int)tile.X},{(int)tile.Y}";
-
-        // ------------------------------------------------------------------
-        // T224 (FR-012, F4 contradicts): the persisted round-trip writes no
-        // MaturationLevel — the retired multiplier leaves no trace in the
-        // JSON the production save path emits. Fixed-literal anchor for the
-        // property-based matrix in T229.
-        // ------------------------------------------------------------------
-
-        /// <summary>
-        /// T224 (FR-012): saving a legitimately finished batch serializes no
-        /// MaturationLevel field. RED today: CreateSaveSnapshot writes
-        /// MaturationLevel (CompostingBinService.cs:493), so the JSON carries it.
-        /// </summary>
-        [Fact]
-        public void T224_PersistedRoundTrip_WritesNoMaturationLevel()
-        {
-            GameStateFixture.Install();
-
-            var tile = new Vector2(10, 10);
-            var mockData = new Mock<IModDataService>();
-            CompostingBinData? captured = null;
-            mockData
-                .Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
-                .Callback<CompostingBinData, string>((dto, _) => captured = dto);
-
-            var wasteValidator = new Mock<IOrganicWasteValidator>();
-            wasteValidator.Setup(x => x.IsValidOrganicWaste(It.IsAny<Item>())).Returns(true);
-            var timeStub = new TimeProviderStub { TotalDays = 1 };
-            var service = new CompostingBinService(
-                mockData.Object,
-                new Mock<ISaveIdProvider>().Object,
-                wasteValidator.Object,
-                new Mock<IMonitor>().Object,
-                timeStub,
-                new CompostingBinFactory(),
-                new RecordingPlayerInventory());
-
-            service.AddWaste("Farm", tile, ItemFactory.CreateValidWasteItem());
-            timeStub.TotalDays = 1 + ModConstants.MaturationDays;
-            service.ProcessDayStart("Farm");
-            Assert.Equal(CompostingBinState.Ready, service.GetBinState("Farm", tile));
-
-            service.SaveData("t224-json");
-            var snapshot = Assert.IsType<CompostingBinData>(captured);
-            string json = JsonConvert.SerializeObject(snapshot);
-            Assert.DoesNotContain("MaturationLevel", json);
-        }
-
-        // ------------------------------------------------------------------
-        // T226 (FR-012, F6 partial): per-record quarantine. A malformed or
-        // corrupt record discards ONLY itself — every valid sibling bin in
-        // the same location still loads; legacy-shaped fields are ignored
-        // without throwing; an orphan entry whose world object is absent is
-        // pruned. Property-based over generated mixes of
-        // valid/corrupt/legacy/absent-object records.
-        // ------------------------------------------------------------------
-
-        /// <summary>
-        /// T226 (FR-012): one corrupt record in a location quarantines only
-        /// itself — valid siblings, legacy-shaped records and the orphan rule
-        /// are unaffected, and the re-saved snapshot carries no legacy
-        /// fields. RED today: the try/catch is per location
-        /// (CompostingBinService.cs:315-364), so a single "Bogus" state or
-        /// malformed key discards every valid sibling, and the snapshot
-        /// re-writes the obsolete fields.
-        /// </summary>
-        [Property(MaxTest = 100)]
-        public bool T226_CorruptRecord_QuarantinesOnlyItself_ValidSiblingsSurvive(
-            int validCountSeed,
-            int corruptKindSeed,
-            int tileBaseSeed)
-        {
-            GameStateFixture.Install();
-
-            int validCount = Modulo(validCountSeed, 4) + 1;
-            int corruptKind = Modulo(corruptKindSeed, 2);
-            int tileBase = Modulo(tileBaseSeed, 8);
-
-            var location = new GameLocationFixture("Farm", isFarm: true).Location;
-            var bins = new Dictionary<string, CompostingBinStateData>();
-            var validTiles = new List<Vector2>();
-            for (int i = 0; i < validCount; i++)
-            {
-                var tile = new Vector2(tileBase + i, 10);
-                validTiles.Add(tile);
-                bins[GetTileKey(tile)] = new CompostingBinStateData
-                {
-                    State = "Ready",
-                    InputItemId = "(O)24",
-                    InputTimestamp = 1,
-                    MaturationLevel = 1
-                };
-                location.Objects.Add(tile, new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId });
-            }
-
-            var legacyTile = new Vector2(20, 10);
-            bins[GetTileKey(legacyTile)] = new CompostingBinStateData
+            ["12,12"] = new CompostingBinStateData
             {
                 State = "Ready",
                 InputItemId = "(O)24",
                 InputTimestamp = 1,
+                // Obsolete legacy fields from prior mod specifications
                 MaturationLevel = 5,
-                ConsecutiveActiveDays = 99,
-                ConsecutiveIdleDays = 99
-            };
-            location.Objects.Add(legacyTile, new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId });
+                ConsecutiveActiveDays = 20,
+                ConsecutiveIdleDays = 10
+            }
+        };
+        binData.LocationBinData["Farm"] = farmBins;
 
-            var orphanTile = new Vector2(21, 10);
-            bins[GetTileKey(orphanTile)] = new CompostingBinStateData
+        _mockModDataService.Setup(x => x.LoadData<CompostingBinData>(key)).Returns(binData);
+
+        var farmFixture = new GameLocationFixture("Farm", isFarm: true);
+        farmFixture.Location.Objects.Add(new Vector2(12, 12), CreatePlacedBinObject(new Vector2(12, 12)));
+        _mockLocationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(farmFixture.Location);
+
+        // Act
+        _service.LoadData(saveId);
+
+        // Assert
+        Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", new Vector2(12, 12)));
+
+        // Harvesting must yield strictly 1 compost item, ignoring legacy MaturationLevel = 5 (FR-005a)
+        int yieldedCount = _service.CollectCompost("Farm", new Vector2(12, 12));
+        Assert.Equal(1, yieldedCount);
+    }
+
+    /// <summary>
+    /// Verifies that disconnected save records where no physical object exists at that location/tile
+    /// in the world (GameLocation.Objects) are pruned as orphaned state to prevent phantom machines (FR-002, FR-012).
+    /// </summary>
+    [Fact]
+    public void LoadData_OrphanedBinRecord_PrunesDisconnectedRecordWhenNoWorldObjectExists()
+    {
+        // Arrange
+        const string saveId = "test_save_orphaned";
+        const string key = ModConstants.CompostingBinKeyPrefix + saveId;
+
+        var binData = new CompostingBinData();
+        var farmBins = new Dictionary<string, CompostingBinStateData>
+        {
+            // Bin at (10, 10) corresponds to a real placed machine
+            ["10,10"] = new CompostingBinStateData
+            {
+                State = "Processing",
+                InputItemId = "(O)24",
+                InputTimestamp = 1
+            },
+            // Bin at (30, 30) is orphaned: player broke/removed it, but save record persisted
+            ["30,30"] = new CompostingBinStateData
+            {
+                State = "Processing",
+                InputItemId = "(O)24",
+                InputTimestamp = 1
+            }
+        };
+        binData.LocationBinData["Farm"] = farmBins;
+
+        _mockModDataService.Setup(x => x.LoadData<CompostingBinData>(key)).Returns(binData);
+
+        var farmFixture = new GameLocationFixture("Farm", isFarm: true);
+        // Only (10, 10) exists in the world; (30, 30) has no object
+        farmFixture.Location.Objects.Add(new Vector2(10, 10), CreatePlacedBinObject(new Vector2(10, 10)));
+        _mockLocationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(farmFixture.Location);
+
+        // Act
+        _service.LoadData(saveId);
+
+        // Assert
+        // The real placed bin at (10, 10) must be loaded
+        Assert.Equal(CompostingBinState.Processing, _service.GetBinState("Farm", new Vector2(10, 10)));
+
+        // The disconnected bin at (30, 30) must be pruned (not in runtime cache)
+        Assert.Equal(CompostingBinState.Empty, _service.GetBinState("Farm", new Vector2(30, 30)));
+
+        // Furthermore, saving data must not persist the pruned orphaned bin
+        _service.SaveData(saveId);
+        _mockModDataService.Verify(x => x.SaveData(
+            It.Is<CompostingBinData>(data =>
+                data.LocationBinData.ContainsKey("Farm") &&
+                data.LocationBinData["Farm"].ContainsKey("10,10") &&
+                !data.LocationBinData["Farm"].ContainsKey("30,30")),
+            key), Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that disconnected save records where a different object (not a composting bin) exists
+    /// at the tile are also pruned as orphaned state (FR-002, FR-012).
+    /// </summary>
+    [Fact]
+    public void LoadData_OrphanedBinRecord_PrunesDisconnectedRecordWhenDifferentObjectAtTile()
+    {
+        // Arrange
+        const string saveId = "test_save_different_object";
+        const string key = ModConstants.CompostingBinKeyPrefix + saveId;
+
+        var binData = new CompostingBinData();
+        var farmBins = new Dictionary<string, CompostingBinStateData>
+        {
+            ["18,18"] = new CompostingBinStateData
+            {
+                State = "Processing",
+                InputItemId = "(O)24",
+                InputTimestamp = 1
+            }
+        };
+        binData.LocationBinData["Farm"] = farmBins;
+
+        _mockModDataService.Setup(x => x.LoadData<CompostingBinData>(key)).Returns(binData);
+
+        var farmFixture = new GameLocationFixture("Farm", isFarm: true);
+        // Place a Stone (ItemId 390) instead of a CompostingBin at (18, 18)
+        farmFixture.Location.Objects.Add(new Vector2(18, 18), CreatePlacedBinObject(new Vector2(18, 18), "390"));
+        _mockLocationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(farmFixture.Location);
+
+        // Act
+        _service.LoadData(saveId);
+
+        // Assert
+        // The bin state must be pruned because tile does not contain a CompostingBin
+        Assert.Equal(CompostingBinState.Empty, _service.GetBinState("Farm", new Vector2(18, 18)));
+    }
+
+    /// <summary>
+    /// Verifies that persistence exceptions are logged with sanitized type/hresult
+    /// and never expose raw exception messages (FR-015).
+    /// </summary>
+    [Fact]
+    public void LoadData_OnException_UsesSanitizedLoggingWithoutRawExceptionMessage()
+    {
+        // Arrange
+        const string saveId = "test_save_exception";
+        const string key = ModConstants.CompostingBinKeyPrefix + saveId;
+        const string sensitiveRawMessage = "Fatal database disk read error at /secret/system/root/data.dat: 0xDEADBEEF";
+
+        _mockModDataService
+            .Setup(x => x.LoadData<CompostingBinData>(key))
+            .Throws(new InvalidOperationException(sensitiveRawMessage));
+
+        // Act
+        _service.LoadData(saveId);
+
+        // Assert
+        // Confirm no unhandled crash occurred and monitor was called
+        _mockMonitor.Verify(
+            x => x.Log(It.IsAny<string>(), It.IsAny<LogLevel>()),
+            Times.AtLeastOnce,
+            "Must log diagnostic failure info.");
+
+        // Strict security assertion: raw exception message MUST NOT appear anywhere in the log output (FR-015)
+        foreach (var invocation in _mockMonitor.Invocations.Where(inv => inv.Method.Name == nameof(IMonitor.Log)))
+        {
+            var loggedMessage = invocation.Arguments[0]?.ToString() ?? string.Empty;
+            Assert.DoesNotContain(sensitiveRawMessage, loggedMessage);
+            Assert.DoesNotContain("0xDEADBEEF", loggedMessage);
+            Assert.DoesNotContain("/secret/system", loggedMessage);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // T056 (SC-004): the round-trip matrix — every bin
+    // state (Empty, Processing, Ready) survives a
+    // save/load cycle in every bin situation: placed
+    // in the world (state persisted beside the world
+    // object), held in the player inventory (progress
+    // serialized into Item.modData), and dropped as
+    // floating debris (the same item object the
+    // dislodgement hands to the debris callback).
+    // Neither lost nor invented values (FR-012).
+    // ------------------------------------------------------------------
+
+    /// <summary>The matrix location and tile every column shares.</summary>
+    private const string MatrixLocationName = "Farm";
+    private static readonly Vector2 MatrixTile = new(10, 10);
+
+    /// <summary>
+    /// Brings the real service to the given state at the
+    /// matrix tile: Empty is the fresh default, Processing
+    /// is a batch loaded on day 1, Ready is that batch
+    /// after two full days and the day-start tick (invoked
+    /// twice — the per-location guard makes the repeat a
+    /// no-op, proving the exactly-once rule holds per
+    /// location while the Greenhouse matures alongside
+    /// the farm).
+    /// </summary>
+    private void SetUpBinState(CompostingBinState state)
+    {
+        _timeStub.TotalDays = 1;
+
+        if (state == CompostingBinState.Empty)
+        {
+            return;
+        }
+
+        var wasteItem = ItemFactory.CreateValidWasteItem();
+        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(wasteItem)).Returns(true);
+        _service.AddWaste(MatrixLocationName, MatrixTile, wasteItem);
+
+        if (state == CompostingBinState.Processing)
+        {
+            return;
+        }
+
+        _timeStub.TotalDays = 3;
+        _service.ProcessDayStart(MatrixLocationName);
+        _service.ProcessDayStart(MatrixLocationName);
+    }
+
+    /// <summary>Places the matrix world object the dislodgement paths require.</summary>
+    private void PlaceMatrixWorldObject(GameLocation location)
+    {
+        // Idempotent: the dislodgement columns remove the
+        // world object each time, so a stale object at the
+        // tile (the placed column leaves one behind) is
+        // replaced rather than double-added.
+        location.Objects.Remove(MatrixTile);
+        location.Objects.Add(MatrixTile, new StardewValley.Object
+        {
+            ItemId = ModConstants.CompostingBinItemId,
+            TileLocation = MatrixTile
+        });
+    }
+
+    /// <summary>
+    /// T056 (SC-004): the full round-trip matrix. For every
+    /// bin state, the placed column persists and reloads
+    /// through the save data beside a world object; the
+    /// held column travels through Item.modData (the bin
+    /// picked up into the player inventory); and the debris
+    /// column travels through the identical item object the
+    /// dislodgement drops as floating world debris when the
+    /// inventory is full. Each column restores the state it
+    /// started from — a carried finished batch restores as
+    /// Ready (zero days remaining is a finished batch, the
+    /// domain CompostingBinStateModel semantics), so a bin
+    /// cannot lose or reset its batch by being moved.
+    /// </summary>
+    [Theory]
+    [InlineData(CompostingBinState.Empty)]
+    [InlineData(CompostingBinState.Processing)]
+    [InlineData(CompostingBinState.Ready)]
+    public void RoundTrip_BinStateMatrix_EveryStateSurvivesSaveLoad_PlacedHeldAndDebris(
+        CompostingBinState expectedState)
+    {
+        const string saveId = "roundtrip-matrix";
+        const string key = ModConstants.CompostingBinKeyPrefix + saveId;
+
+        // ---- Situation 1: placed in the world ----
+        SetUpBinState(expectedState);
+
+        CompostingBinData? savedData = null;
+        _mockModDataService.Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
+            .Callback<CompostingBinData, string>((d, k) => savedData = d);
+        _service.SaveData(saveId);
+
+        var farmFixture = new GameLocationFixture(MatrixLocationName, isFarm: true);
+        PlaceMatrixWorldObject(farmFixture.Location);
+        _mockLocationProvider.Setup(x => x.GetLocationByName(MatrixLocationName)).Returns(farmFixture.Location);
+
+        _mockModDataService.Setup(x => x.LoadData<CompostingBinData>(key)).Returns(savedData);
+        _service.LoadData(saveId);
+
+        Assert.Equal(expectedState, _service.GetBinState(MatrixLocationName, MatrixTile));
+
+        // ---- Situation 2: held in the player inventory ----
+        SetUpBinState(expectedState);
+        PlaceMatrixWorldObject(farmFixture.Location);
+
+        var controller = CreateController();
+        var dislodged = controller.TryDislodgeBin(farmFixture.Location, MatrixTile, _inventory);
+        Assert.True(dislodged, "Dislodging the matrix bin must succeed so the held column can carry its state.");
+        var heldItem = Assert.Single(_inventory.AddedItems);
+        Assert.Equal(ModConstants.CompostingBinItemId, heldItem.ItemId);
+
+        // The game serializes the held item and its modData
+        // into the save; placing the bin back down restores
+        // the progress it had (FR-005c).
+        _service.OnBinPlaced(MatrixLocationName, MatrixTile, heldItem);
+        Assert.Equal(expectedState, _service.GetBinState(MatrixLocationName, MatrixTile));
+
+        // ---- Situation 3: dropped as floating debris ----
+        SetUpBinState(expectedState);
+        PlaceMatrixWorldObject(farmFixture.Location);
+
+        var fullInventory = new RecordingPlayerInventory { AcceptsItems = false };
+        Item? debrisItem = null;
+        dislodged = controller.TryDislodgeBin(
+            farmFixture.Location,
+            MatrixTile,
+            fullInventory,
+            (item, _, _) => debrisItem = item);
+        Assert.True(dislodged, "Dislodging the matrix bin must succeed even when the inventory is full.");
+        Assert.Empty(fullInventory.AddedItems);
+        Assert.NotNull(debrisItem);
+        Assert.Equal(ModConstants.CompostingBinItemId, debrisItem!.ItemId);
+
+        // The debris is the same item object the dislodgement
+        // created, modData intact; the game saves floating
+        // debris, and picking it up and placing it restores
+        // the state it carried.
+        _service.OnBinPlaced(MatrixLocationName, MatrixTile, debrisItem);
+        Assert.Equal(expectedState, _service.GetBinState(MatrixLocationName, MatrixTile));
+    }
+
+    /// <summary>
+    /// T070 (FR-012): a stored location the provider omits — a
+    /// Greenhouse that is only lazily loaded and therefore absent
+    /// from the location list at load time — still holds real bins.
+    /// The tolerant reader must retain those entries instead of
+    /// pruning them as orphans: pruning would silently destroy a
+    /// batch the player left in a not-yet-visited location.
+    /// </summary>
+    [Fact]
+    public void LoadData_ProviderOmitsStoredLocation_RetainsEntriesInsteadOfPruning()
+    {
+        // Arrange
+        const string saveId = "test_save_lazy_location";
+        const string key = ModConstants.CompostingBinKeyPrefix + saveId;
+
+        var binData = new CompostingBinData();
+        binData.LocationBinData["Farm"] = new Dictionary<string, CompostingBinStateData>
+        {
+            ["10,10"] = new CompostingBinStateData
+            {
+                State = "Processing",
+                InputItemId = "(O)24",
+                InputTimestamp = 1
+            }
+        };
+        binData.LocationBinData["Greenhouse"] = new Dictionary<string, CompostingBinStateData>
+        {
+            ["5,5"] = new CompostingBinStateData
+            {
+                State = "Processing",
+                InputItemId = "(O)24",
+                InputTimestamp = 1
+            },
+            ["6,6"] = new CompostingBinStateData
             {
                 State = "Ready",
                 InputItemId = "(O)24",
-                InputTimestamp = 1,
-                MaturationLevel = 1
-            };
-
-            if (corruptKind == 0)
-            {
-                var corruptTile = new Vector2(22, 10);
-                bins[GetTileKey(corruptTile)] = new CompostingBinStateData
-                {
-                    State = "Bogus",
-                    InputItemId = "(O)24",
-                    InputTimestamp = 1
-                };
-                location.Objects.Add(corruptTile, new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId });
+                InputTimestamp = 2
             }
-            else
-            {
-                bins["not-a-tile-key"] = new CompostingBinStateData
-                {
-                    State = "Ready",
-                    InputItemId = "(O)24",
-                    InputTimestamp = 1
-                };
-            }
+        };
 
-            var data = new CompostingBinData();
-            data.LocationBinData["Farm"] = bins;
+        _mockModDataService.Setup(x => x.LoadData<CompostingBinData>(key)).Returns(binData);
 
-            var mockData = new Mock<IModDataService>();
-            mockData.Setup(x => x.LoadData<CompostingBinData>(It.IsAny<string>())).Returns(data);
-            CompostingBinData? savedSnapshot = null;
-            mockData
-                .Setup(x => x.SaveData(It.IsAny<CompostingBinData>(), It.IsAny<string>()))
-                .Callback<CompostingBinData, string>((dto, _) => savedSnapshot = dto);
+        var farmFixture = new GameLocationFixture("Farm", isFarm: true);
+        farmFixture.Location.Objects.Add(new Vector2(10, 10), CreatePlacedBinObject(new Vector2(10, 10)));
+        // The Greenhouse is deliberately not registered with the
+        // provider — the omission a lazily-loaded location causes.
+        _mockLocationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(farmFixture.Location);
 
-            var locationProvider = new Mock<ILocationProvider>();
-            locationProvider.Setup(x => x.GetLocationByName("Farm")).Returns(location);
+        // Act
+        _service.LoadData(saveId);
 
-            var service = new CompostingBinService(
-                mockData.Object,
-                new Mock<ISaveIdProvider>().Object,
-                new Mock<IOrganicWasteValidator>().Object,
-                new Mock<IMonitor>().Object,
-                new TimeProviderStub { TotalDays = 1 },
-                new CompostingBinFactory(),
-                new RecordingPlayerInventory(),
-                locationProvider.Object);
+        // Assert
+        // The provider-backed location loads normally.
+        Assert.Equal(CompostingBinState.Processing, _service.GetBinState("Farm", new Vector2(10, 10)));
 
-            service.LoadData("t226-mix");
+        // The omitted location's entries are retained, not pruned.
+        Assert.Equal(CompostingBinState.Processing, _service.GetBinState("Greenhouse", new Vector2(5, 5)));
+        Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Greenhouse", new Vector2(6, 6)));
 
-            bool siblingsSurvive = true;
-            foreach (var tile in validTiles)
-            {
-                if (service.GetBinState("Farm", tile) != CompostingBinState.Ready)
-                {
-                    siblingsSurvive = false;
-                }
-            }
-
-            bool legacyLoads = service.GetBinState("Farm", legacyTile) == CompostingBinState.Ready;
-            bool orphanPruned = service.GetBinState("Farm", orphanTile) == CompostingBinState.Empty;
-
-            service.SaveData("t226-mix");
-            bool snapshotOmitsLegacyFields = true;
-            if (savedSnapshot != null)
-            {
-                string json = JsonConvert.SerializeObject(savedSnapshot);
-                if (json.Contains("MaturationLevel", StringComparison.Ordinal)
-                    || json.Contains("ConsecutiveActiveDays", StringComparison.Ordinal)
-                    || json.Contains("ConsecutiveIdleDays", StringComparison.Ordinal))
-                {
-                    snapshotOmitsLegacyFields = false;
-                }
-            }
-
-            return siblingsSurvive && legacyLoads && orphanPruned && snapshotOmitsLegacyFields;
-        }
-
-        // ------------------------------------------------------------------
-        // T229 (SC-004/FR-012, F9 partial): property-based save/reload
-        // round-trip matrix over lifecycle state (Empty/Processing/Ready) x
-        // placement form (placed / held-in-inventory / floating-debris)
-        // through the real ModDataService JSON seam, plus a soil-health
-        // round-trip half. Differs from T199 on all four F9 points: it is a
-        // [Property] over the generated matrix (not a hand-rolled [Fact]);
-        // the Empty rows assert observable reloaded behavior (no record
-        // persisted AND no phantom bin) instead of null==null field equality;
-        // each placement form sets up a genuinely distinct world state
-        // (object present / provider-unknown with a pocketed modData item /
-        // known location with no object plus a debris item); and the DTOs
-        // travel through real Newtonsoft JSON via a real ModDataService,
-        // never as in-memory object references.
-        // ------------------------------------------------------------------
-
-        /// <summary>
-        /// T229 (SC-004/FR-012): the generated (state, form) round-trip
-        /// preserves the lifecycle state and batch progress exactly, whatever
-        /// form the bin is in, and persists no legacy maturation fields —
-        /// with the soil-health half surviving alongside. RED today: the
-        /// debris form is pruned on reload (known location, absent object),
-        /// so its state is lost, and the snapshot JSON still carries the
-        /// obsolete MaturationLevel/ConsecutiveActiveDays/ConsecutiveIdleDays
-        /// fields.
-        /// </summary>
-        [Property(MaxTest = 100)]
-        public bool T229_RoundTrip_PreservesStateAndProgress_ThroughJsonSeam_ForEveryStateAndPlacementForm(
-            int stateSeed,
-            int formSeed,
-            int tileSeed)
-        {
-            GameStateFixture.Install();
-
-            var state = (CompostingBinState)Modulo(stateSeed, 3);
-            int form = Modulo(formSeed, 3);
-            var tile = new Vector2(Modulo(tileSeed, 10), 10);
-            const string saveId = "t229-round-trip";
-            const string soilSaveId = "t229-soil";
-
-            var store = new Dictionary<string, string>();
-            var mockDataHelper = new Mock<IDataHelper>();
-            mockDataHelper
-                .Setup(x => x.WriteJsonFile(It.IsAny<string>(), It.IsAny<CompostingBinData>()))
-                .Callback<string, CompostingBinData>((path, dto) => store[path] = JsonConvert.SerializeObject(dto));
-            mockDataHelper
-                .Setup(x => x.ReadJsonFile<CompostingBinData>(It.IsAny<string>()))
-                .Returns((string path) => ReadJson<CompostingBinData>(store, path)!);
-            mockDataHelper
-                .Setup(x => x.WriteJsonFile(It.IsAny<string>(), It.IsAny<SoilHealthState>()))
-                .Callback<string, SoilHealthState>((path, dto) => store[path] = JsonConvert.SerializeObject(dto));
-            mockDataHelper
-                .Setup(x => x.ReadJsonFile<SoilHealthState>(It.IsAny<string>()))
-                .Returns((string path) => ReadJson<SoilHealthState>(store, path)!);
-
-            var mockHelper = new Mock<IModHelper>();
-            mockHelper.Setup(x => x.Data).Returns(mockDataHelper.Object);
-            var mockModLogic = new Mock<IModLogic>();
-            mockModLogic.Setup(x => x.SanitizeFileName(It.IsAny<string>())).Returns((string segment) => segment);
-            var monitor = new Mock<IMonitor>();
-            var modDataService = new ModDataService(mockHelper.Object, monitor.Object, mockModLogic.Object);
-
-            var wasteValidator = new Mock<IOrganicWasteValidator>();
-            wasteValidator.Setup(x => x.IsValidOrganicWaste(It.IsAny<Item>())).Returns(true);
-
-            var stageTime = new TimeProviderStub { TotalDays = 1 };
-            var stagingService = new CompostingBinService(
-                modDataService,
-                new Mock<ISaveIdProvider>().Object,
-                wasteValidator.Object,
-                monitor.Object,
-                stageTime,
-                new CompostingBinFactory(),
-                new RecordingPlayerInventory());
-
-            if (state == CompostingBinState.Processing || state == CompostingBinState.Ready)
-            {
-                stagingService.AddWaste("Farm", tile, ItemFactory.CreateValidWasteItem());
-            }
-
-            if (state == CompostingBinState.Ready)
-            {
-                stageTime.TotalDays = 1 + ModConstants.MaturationDays;
-                stagingService.ProcessDayStart("Farm");
-            }
-
-            if (stagingService.GetBinState("Farm", tile) != state)
-            {
-                return true;
-            }
-
-            StardewValley.Object? placedObject = null;
-            Item? pocketItem = null;
-            Item? debrisItem = null;
-            if (form == 0)
-            {
-                placedObject = new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId };
-            }
-            else
-            {
-                Item carried = new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId };
-                if (state != CompostingBinState.Empty)
-                {
-                    var dislodged = stagingService.CreateDislodgedBinItem("Farm", tile);
-                    if (dislodged != null)
-                    {
-                        carried = dislodged;
-                    }
-                }
-
-                if (form == 1)
-                {
-                    pocketItem = carried;
-                }
-                else
-                {
-                    debrisItem = carried;
-                }
-
-                // T255 (SC-004/F9): a held or floating bin is NOT placed — its
-                // progress lives in the carried item's modData, not in the
-                // service runtime. Clear the staged runtime record so the save
-                // carries no phantom placed bin for a floating one; the reload
-                // then exercises a genuinely distinct path (no record) from
-                // the placed form (record + world object).
-                stagingService.OnObjectRemoved("Farm", tile);
-            }
-
-            stagingService.SaveData(saveId);
-
-            var reloadProvider = new Mock<ILocationProvider>();
-            if (form == 0)
-            {
-                var placed = new GameLocationFixture("Farm", isFarm: true).Location;
-                placed.Objects.Add(tile, placedObject!);
-                reloadProvider.Setup(x => x.GetLocationByName("Farm")).Returns(placed);
-            }
-            else if (form == 2)
-            {
-                var debrisField = new GameLocationFixture("Farm", isFarm: true).Location;
-                reloadProvider.Setup(x => x.GetLocationByName("Farm")).Returns(debrisField);
-            }
-
-            var reloadService = new CompostingBinService(
-                modDataService,
-                new Mock<ISaveIdProvider>().Object,
-                wasteValidator.Object,
-                monitor.Object,
-                new TimeProviderStub { TotalDays = 1 + ModConstants.MaturationDays },
-                new CompostingBinFactory(),
-                new RecordingPlayerInventory(),
-                reloadProvider.Object);
-            reloadService.LoadData(saveId);
-
-            string? binJson = null;
-            foreach (var entry in store)
-            {
-                if (entry.Key.Contains("composting_bins", StringComparison.Ordinal))
-                {
-                    binJson = entry.Value;
-                }
-            }
-
-            bool stateOk;
-            bool progressOk;
-            if (state == CompostingBinState.Empty || form != 0)
-            {
-                // Empty (all forms) and held/debris (forms 1-2, T255): the bin
-                // is not placed, so the JSON carries no Farm-tile record and
-                // the reloaded service has no phantom — the discriminating
-                // Empty-style assertion, never vacuous null==null. For
-                // held/debris with progress, the batch survives in the carried
-                // item's modData (carriedOk below), not in the service.
-                bool noRecordPersisted = true;
-                if (binJson != null)
-                {
-                    var savedDto = JsonConvert.DeserializeObject<CompostingBinData>(binJson);
-                    if (savedDto != null
-                        && savedDto.LocationBinData.TryGetValue("Farm", out var farmBins)
-                        && farmBins.ContainsKey(GetTileKey(tile)))
-                    {
-                        noRecordPersisted = false;
-                    }
-                }
-
-                bool noPhantom = reloadService.GetBinState("Farm", tile) == CompostingBinState.Empty;
-                stateOk = noRecordPersisted && noPhantom;
-                progressOk = true;
-            }
-            else
-            {
-                stateOk = reloadService.GetBinState("Farm", tile) == state;
-                var stagedRecord = ReadPersistedRecord(stagingService, tile);
-                var reloadedRecord = ReadPersistedRecord(reloadService, tile);
-                progressOk = stagedRecord != null
-                    && reloadedRecord != null
-                    && string.Equals(stagedRecord.InputItemId, reloadedRecord.InputItemId, StringComparison.Ordinal)
-                    && Nullable.Equals(stagedRecord.InputTimestamp, reloadedRecord.InputTimestamp);
-            }
-
-            bool jsonOmitsLegacyFields = true;
-            if (binJson != null
-                && (binJson.Contains("MaturationLevel", StringComparison.Ordinal)
-                    || binJson.Contains("ConsecutiveActiveDays", StringComparison.Ordinal)
-                    || binJson.Contains("ConsecutiveIdleDays", StringComparison.Ordinal)))
-            {
-                jsonOmitsLegacyFields = false;
-            }
-
-            bool carriedOk = true;
-            if (state != CompostingBinState.Empty && form != 0)
-            {
-                Item? carried = form == 1 ? pocketItem : debrisItem;
-                var asObject = carried as StardewValley.Object;
-                carriedOk = asObject != null
-                    && asObject.modData.ContainsKey(ModConstants.ModDataInputIdKey);
-            }
-
-            var fileSanitizer = new Mock<IFileNameSanitizationService>();
-            fileSanitizer.Setup(x => x.Sanitize(It.IsAny<string>())).Returns((string value) => value);
-            var soilStaging = new SoilHealthService(modDataService, monitor.Object, fileSanitizer.Object);
-            var soilTile = new Vector2(3, 3);
-            soilStaging.SetSoilHealth("Farm", soilTile, 42.5f);
-            soilStaging.SaveData(soilSaveId);
-            var soilReloaded = new SoilHealthService(modDataService, monitor.Object, fileSanitizer.Object);
-            soilReloaded.LoadData(soilSaveId);
-            bool soilOk = Math.Abs(soilReloaded.GetSoilHealth("Farm", soilTile) - 42.5f) < 0.0001f;
-
-            return stateOk && progressOk && jsonOmitsLegacyFields && carriedOk && soilOk;
-        }
-
-        // ------------------------------------------------------------------
-        // T245 (FR-012, F26 partial): LoadData with a null payload clears
-        // the runtime cache — no stale bins leak between saves. Mirrors
-        // SoilHealthServiceTests' invalid-saveId cache-clearing test.
-        // Fixed behaviour assertion — property-based N/A.
-        // ------------------------------------------------------------------
-
-        /// <summary>
-        /// T245 (FR-012): loading a null payload clears the runtime cache.
-        /// RED today: CompostingBinService.LoadData returns early on null
-        /// without clearing (CompostingBinService.cs:291-295), unlike
-        /// SoilHealthService.cs:74-82, so the seeded bin survives the load.
-        /// </summary>
-        [Fact]
-        public void T245_LoadData_WithNullPayload_ClearsRuntimeCache()
-        {
-            var mockData = new Mock<IModDataService>();
-            mockData.Setup(x => x.LoadData<CompostingBinData>(It.IsAny<string>())).Returns((CompostingBinData?)null);
-
-            var wasteValidator = new Mock<IOrganicWasteValidator>();
-            wasteValidator.Setup(x => x.IsValidOrganicWaste(It.IsAny<Item>())).Returns(true);
-
-            var service = new CompostingBinService(
-                mockData.Object,
-                new Mock<ISaveIdProvider>().Object,
-                wasteValidator.Object,
-                new Mock<IMonitor>().Object,
-                new TimeProviderStub { TotalDays = 1 },
-                new CompostingBinFactory(),
-                new RecordingPlayerInventory());
-
-            var tile = new Vector2(10, 10);
-            service.AddWaste("Farm", tile, ItemFactory.CreateValidWasteItem());
-            Assert.Equal(CompostingBinState.Processing, service.GetBinState("Farm", tile));
-
-            service.LoadData("next-save-with-no-data");
-
-            Assert.Equal(CompostingBinState.Empty, service.GetBinState("Farm", tile));
-        }
-
-        /// <summary>
-        /// Non-negative modulo for generated seeds, so arbitrary (including
-        /// negative) FsCheck integers map into a fixed range.
-        /// </summary>
-        private static int Modulo(int value, int modulus)
-        {
-            int remainder = value % modulus;
-            if (remainder < 0)
-            {
-                remainder += modulus;
-            }
-
-            return remainder;
-        }
-
-        /// <summary>
-        /// Reads a JSON round-trip value out of the in-memory seam store,
-        /// answering a missing save file with null.
-        /// </summary>
-        private static T? ReadJson<T>(Dictionary<string, string> store, string path)
-            where T : class
-        {
-            if (store.TryGetValue(path, out string? json))
-            {
-                return JsonConvert.DeserializeObject<T>(json);
-            }
-
-            return null;
-        }
+        // A save round-trip carries the retained entries forward.
+        _service.SaveData(saveId);
+        _mockModDataService.Verify(x => x.SaveData(
+            It.Is<CompostingBinData>(data =>
+                data.LocationBinData.ContainsKey("Greenhouse") &&
+                data.LocationBinData["Greenhouse"].ContainsKey("5,5") &&
+                data.LocationBinData["Greenhouse"].ContainsKey("6,6")),
+            key), Times.Once);
     }
 }

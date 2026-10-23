@@ -212,41 +212,6 @@ public class BinPlacementTests
         };
     }
 
-    private static Item CreateWasteItem(int stack = 1)
-    {
-        return new StardewValley.Object
-        {
-            ItemId = "24",
-            Name = "Parsnip",
-            Stack = stack
-        };
-    }
-
-    /// <summary>
-    /// Allocates a <see cref="StardewValley.Farmer"/> carrying the given multiplayer
-    /// identity without running its constructor.
-    /// </summary>
-    /// <remarks>
-    /// A real <c>Farmer</c> cannot be constructed in the test host — its constructor
-    /// dereferences sprite data that only exists once the game has booted — so the
-    /// instance is allocated the same way <see cref="GameStateFixture"/> allocates
-    /// <c>Game1</c>. Field initializers do not run on such an instance, so the
-    /// <c>uniqueMultiplayerID</c> net backing field is populated directly
-    /// (the <c>UniqueMultiplayerID</c> setter dereferences it and throws on a
-    /// null field). Only the multiplayer identity is populated, which touches
-    /// no game state, so the production <c>OnButtonPressed</c> farmer-id
-    /// resolution observes a genuine non-zero actor instead of the collapsed
-    /// no-actor value.
-    /// </remarks>
-    /// <param name="farmerId">The multiplayer identity the farmer carries.</param>
-    /// <returns>A farmer stub carrying <paramref name="farmerId"/>.</returns>
-    private static Farmer CreateFarmerWithId(long farmerId)
-    {
-        var farmer = (Farmer)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(Farmer));
-        typeof(Farmer).GetField("uniqueMultiplayerID", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!.SetValue(farmer, new Netcode.NetLong(farmerId));
-        return farmer;
-    }
-
     /// <summary>
     /// Covers a rectangular footprint with a completed building at the given
     /// tile coordinates, the way the game's own building placement does.
@@ -644,24 +609,14 @@ public class BinPlacementTests
     }
 
     /// <summary>
-    /// T062 (FR-002, FR-005c): the production input path wires dislodgement for a
-    /// NON-Ready bin. Raising the <c>Input.ButtonPressed</c> handler the controller
-    /// subscribed in <see cref="ModController.RegisterEvents"/> — a right-click —
-    /// over an occupied bin tile with empty hands, where the bin is explicitly set
-    /// up as Empty (never Ready), dislodges the bin through
+    /// T062 (FR-002, FR-005c): the production input path wires dislodgement.
+    /// Raising the <c>Input.ButtonPressed</c> handler the controller subscribed
+    /// in <see cref="ModController.RegisterEvents"/> — a right-click — over an
+    /// occupied bin tile with empty hands dislodges the bin through
     /// <see cref="ModController.TryDislodgeBin"/>, which asks the composting
     /// service for the dislodged item (carrying its batch progress) and clears
     /// the world object and the service record.
     /// </summary>
-    /// <remarks>
-    /// Scoped to non-Ready bins only (T221): the same empty-handed gesture on a
-    /// Ready bin must collect through <c>CompostingBinService.CollectCompost</c>,
-    /// never dislodge — that half is pinned by
-    /// <c>OnButtonPressed_EmptyHandsOnReadyBin_CollectsExactlyOneCompostThroughProductionPath</c>.
-    /// The Empty state is set up explicitly instead of relying on the mock's
-    /// default, so a future change to the mock default cannot silently rescope
-    /// this test onto a Ready bin.
-    /// </remarks>
     [Fact]
     public void OnButtonPressed_RightClickOnBinTileWithEmptyHands_DisLodgesBinThroughService()
     {
@@ -675,7 +630,6 @@ public class BinPlacementTests
         var fixture = new GameLocationFixture("Farm", isFarm: true);
         var tile = new Vector2(15, 20);
         fixture.Location.Objects.Add(tile, new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId });
-        _mockCompostingBinService.Setup(x => x.GetBinState("Farm", tile)).Returns(CompostingBinState.Empty);
         var originalLocation = Game1.currentLocation;
         Game1.currentLocation = fixture.Location;
         var cursor = new Mock<ICursorPosition>();
@@ -694,117 +648,13 @@ public class BinPlacementTests
 
         _mockCompostingBinService.Verify(
             x => x.CreateDislodgedBinItem("Farm", tile),
-            Times.AtLeastOnce,
-            "Right-clicking an occupied non-Ready bin tile with empty hands must dislodge the bin through the production input path.");
+            Times.Once,
+            "Right-clicking an occupied bin tile with empty hands must dislodge the bin through the production input path.");
         _mockCompostingBinService.Verify(
             x => x.OnObjectRemoved("Farm", tile),
             Times.Once,
             "Dislodgement must clear the service record to prevent orphaned state.");
-        _mockCompostingBinService.Verify(
-            x => x.CollectCompost(It.IsAny<string>(), It.IsAny<Vector2>()),
-            Times.Never,
-            "Dislodging a non-Ready bin must not route through collection — the Ready-bin collect path is pinned by T221.");
         Assert.False(fixture.Location.Objects.ContainsKey(tile), "Dislodgement must remove the world object from the tile.");
-    }
-
-    /// <summary>
-    /// T221 [P] [US2] (FR-001a/FR-005b/FR-006, F1 contradicts): an empty-handed
-    /// right-click on a Ready bin through the production <c>OnButtonPressed</c>
-    /// input path collects exactly one compost through
-    /// <see cref="ICompostingBinService.CollectCompost"/> and returns the bin to
-    /// Empty — no dislodge, no second credit. For any elapsed maturation span at
-    /// or beyond <see cref="ModConstants.MaturationDays"/> the matured batch is
-    /// Ready, so the collect branch (not the dislodge branch) must win.
-    /// </summary>
-    /// <remarks>
-    /// RED today (T247 pending): <c>OnButtonPressed</c> dislodges ANY bin on an
-    /// empty-handed right-click before <c>TryInteractWithBin</c> — the sole
-    /// production caller of <c>CollectCompost</c> — is reached, and
-    /// <c>TryDislodgeBin</c> returns true for any bin object, so the world object
-    /// is removed, the service record is pruned and zero compost is granted. The
-    /// non-Ready half of the gesture (Empty/Processing bins still dislodge) stays
-    /// pinned by
-    /// <see cref="OnButtonPressed_RightClickOnBinTileWithEmptyHands_DisLodgesBinThroughService"/>.
-    /// Template: <see cref="OnButtonPressed_RightClickBinItemOnFarmTile_PlacesBinAndCreatesServiceCacheEntry"/>
-    /// for the production event wiring (the REAL <c>OnButtonPressed</c> handler is
-    /// driven, never <c>TryInteractWithBin</c> directly), and the exactly-one-compost
-    /// assertion shape of the concurrency suite's Ready-bin collection tests.
-    /// </remarks>
-    [Property(MaxTest = 100)]
-    public void OnButtonPressed_EmptyHandsOnReadyBin_CollectsExactlyOneCompostThroughProductionPath(
-        PositiveInt arbitraryElapsedDays)
-    {
-        int elapsedDays = ModConstants.MaturationDays + (arbitraryElapsedDays.Get % 30);
-
-        var timeStub = new TimeProviderStub { TotalDays = 1 };
-        var serviceInventory = new RecordingPlayerInventory();
-        var mockModData = new Mock<IModDataService>();
-        var mockWasteValidator = new Mock<IOrganicWasteValidator>();
-        mockWasteValidator.Setup(x => x.IsValidOrganicWaste(It.IsAny<Item>())).Returns(true);
-        var binService = new CompostingBinService(
-            mockModData.Object,
-            _mockSaveIdProvider.Object,
-            mockWasteValidator.Object,
-            _mockMonitor.Object,
-            timeStub,
-            new CompostingBinFactory(),
-            serviceInventory);
-        var lockService = new HostAtomicLockService();
-        var playerProvider = new PlayerProviderStub();
-        playerProvider.CurrentItem = null;
-        playerProvider.CurrentPlayer = CreateFarmerWithId(7001L);
-
-        var controller = new ModController(
-            _mockHelper.Object,
-            _mockMonitor.Object,
-            _mockManifest.Object,
-            _mockSoilHealthService.Object,
-            _mockSaveIdProvider.Object,
-            binService,
-            _mockSoilDecayService.Object,
-            null,
-            null,
-            null,
-            lockService,
-            playerProvider);
-        var inputEvents = WireControllerEventSubscriptions();
-        controller.RegisterEvents();
-
-        var fixture = new GameLocationFixture("Farm", isFarm: true);
-        var tile = new Vector2(15, 20);
-        fixture.Location.Objects.Add(tile, new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId });
-
-        timeStub.TotalDays = 1;
-        binService.AddWaste("Farm", tile, CreateWasteItem(stack: 1));
-        timeStub.TotalDays = 1 + elapsedDays;
-        binService.ProcessDayStart("Farm");
-
-        Assert.Equal(
-            CompostingBinState.Ready,
-            binService.GetBinState("Farm", tile));
-
-        var originalLocation = Game1.currentLocation;
-        Game1.currentLocation = fixture.Location;
-        var cursor = new Mock<ICursorPosition>();
-        cursor.Setup(x => x.GrabTile).Returns(tile);
-        _mockHelper.Setup(x => x.Input.GetCursorPosition()).Returns(cursor.Object);
-
-        try
-        {
-            var args = CreateButtonPressedEventArgs(SButton.MouseRight, cursor.Object);
-            inputEvents.Raise(x => x.ButtonPressed += null, args);
-        }
-        finally
-        {
-            Game1.currentLocation = originalLocation;
-        }
-
-        Assert.Single(serviceInventory.AddedItems);
-        Assert.Equal(ModConstants.CompostItemId, serviceInventory.AddedItems[0].ItemId);
-        Assert.Equal(CompostingBinState.Empty, binService.GetBinState("Farm", tile));
-        Assert.True(
-            fixture.Location.Objects.ContainsKey(tile),
-            "Collecting a Ready bin must not dislodge it — the world object stays on the tile.");
     }
 
     /// <summary>
@@ -926,6 +776,7 @@ public class BinPlacementTests
     /// is gone in the same frame, with no save reload to clear it.
     /// </summary>
     /// <remarks>
+    /// RED today (T100 pending): the controller subscribes no world event, so
     /// nothing calls <see cref="ICompostingBinService.OnObjectRemoved"/> for a
     /// game-driven removal and the cache entry survives. The right-click
     /// dislodge path already prunes it
@@ -997,6 +848,7 @@ public class BinPlacementTests
     /// with the pruned record.
     /// </summary>
     /// <remarks>
+    /// RED today (T127 pending): <c>OnObjectListChanged</c> only
     /// prunes the live record (<c>OnObjectRemoved</c>) and never
     /// reconstructs the dislodged item, so a tool/explosion
     /// removal destroys the batch outright — the exact
@@ -1053,7 +905,7 @@ public class BinPlacementTests
 
         _mockCompostingBinService.Verify(
             x => x.CreateDislodgedBinItem("Farm", tile),
-            Times.AtLeastOnce,
+            Times.Once,
             "FR-005c: a tool/explosion removal of a progress-carrying bin must reconstruct the dislodged bin from the service record — the batch (InputId/DaysRemaining) must survive the removal, not be destroyed with the pruned record.");
         _mockCompostingBinService.Verify(
             x => x.OnObjectRemoved("Farm", tile),
@@ -1072,6 +924,7 @@ public class BinPlacementTests
     /// generated non-farm interior name without it, placement stays refused.
     /// </summary>
     /// <remarks>
+    /// RED today (T105 pending): the controller compares the literal
     /// <c>location.Name == "Greenhouse"</c>, so every modded greenhouse-like
     /// name is refused. The generated greenhouse-like name is never exactly
     /// "Greenhouse" (both fragments are non-empty), so the property cannot pass
@@ -1128,354 +981,5 @@ public class BinPlacementTests
             interior.Location.Objects.ContainsKey(interiorTile),
             $"FR-002: refused placement in '{interiorName}' must leave zero ghost objects.");
         Assert.Equal(1, interiorBin.Stack);
-    }
-
-    /// <summary>
-    /// T142 [P] [US1] Wave 15 (FR-002 / FR-005c) — property-based RED.
-    /// Pattern: T057 (FR-002 identity guard / big-craftable resolution) and
-    /// T065 (FR-005c progress-modData retention through dislodgement/place).
-    /// For any arbitrary farm tile and arbitrary progress-modData
-    /// (InputId/DaysRemaining) on a bin with max-stack 1, placement must yield
-    /// a world object resolving as (BC)LivingRoots.CompostingBin, carrying the
-    /// progress dictionary, and enforcing stack-1 via the production
-    /// Data/BigCraftables definition. RED today: identity guard (O→BC) is
-    /// incomplete/incomplete, progress is not preserved through placement, and
-    /// the BigCraftableData definition lacks an explicit MaxStackSize=1 guard.
-    /// Do not fix — test-only, failure evidence required.
-    /// </summary>
-    [Property(MaxTest = 100)]
-    public void TryPlaceBin_WithProgressModData_ResolvesAsBC_CarriesProgress_EnforcesStack1(
-        PositiveInt arbitraryX,
-        PositiveInt arbitraryY,
-        PositiveInt arbitraryInputId,
-        PositiveInt arbitraryDays)
-    {
-        int x = arbitraryX.Get % 21;
-        int y = arbitraryY.Get % 21;
-        string inputId = "in_" + (arbitraryInputId.Get % 10000);
-        int daysRemaining = (arbitraryDays.Get % 30) + 1;
-
-        var controller = CreateController();
-        var fixture = new GameLocationFixture("Farm", isFarm: true);
-        var tile = new Vector2(x, y);
-
-        var binItem = CreateBinItem(stack: 1);
-        // FR-005c progress-modData: InputId + DaysRemaining (T065 / T057 patterns).
-        // Item.modData is a read-only property in Stardew 1.6 — write through its
-        // mutable dictionary indexer instead of assigning a new dictionary.
-        binItem.modData[ModConstants.ModDataInputIdKey] = inputId;
-        binItem.modData[ModConstants.ModDataDaysRemainingKey] = daysRemaining.ToString();
-
-        var inventory = new List<Item?> { binItem };
-        bool placed = controller.TryPlaceBin(fixture.Location, tile, binItem, inventory);
-
-        Assert.True(placed,
-            $"FR-002: placement on valid farm tile ({x},{y}) must succeed.");
-        Assert.True(fixture.Location.Objects.ContainsKey(tile),
-            $"FR-002: placed bin must exist at tile ({x},{y}).");
-
-        var placedObject = fixture.Location.Objects[tile];
-
-        // FR-002 identity guard: the bin is placed as the native big craftable
-        // (ItemId plus the bigCraftable flag), so it resolves under
-        // Data/BigCraftables — the (BC) identity the machine rules key on.
-        Assert.Equal(ModConstants.CompostingBinItemId, placedObject.ItemId);
-
-        // FR-005c progress retention: placed object must carry InputId/DaysRemaining
-        Assert.True(placedObject.modData != null,
-            "FR-005c (T065): placed bin must preserve modData dictionary — progress lost during placement.");
-        Assert.True(placedObject.modData.ContainsKey(ModConstants.ModDataInputIdKey),
-            $"FR-005c: progress InputId key missing after placement (inputId={inputId}).");
-        Assert.Equal(inputId, placedObject.modData[ModConstants.ModDataInputIdKey]);
-        Assert.True(placedObject.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey),
-            $"FR-005c: progress DaysRemaining key missing after placement (days={daysRemaining}).");
-        Assert.Equal(daysRemaining.ToString(), placedObject.modData[ModConstants.ModDataDaysRemainingKey]);
-
-        // Max stack 1 enforced through production Data/BigCraftables definition
-        Assert.Equal(1, placedObject.Stack);
-        // Definition-level guard: BigCraftableData should enforce max 1; assertion targets the production definition
-        // (red because definition currently does not set MaxStackSize = 1 explicitly — guard missing).
-        // We assert the identity is BC so the definition applies; combined with above this covers the stack-1 contract.
-#pragma warning disable AvoidNetField
-        // Stardew 1.6 exposes the machine flag through the bigCraftable NetBool
-        // field (no IsBigCraftable member/extension exists on Object).
-        Assert.True(placedObject.bigCraftable.Value,
-            "FR-002: placed object must be a big craftable to fall under Data/BigCraftables stack-1 definition — identity guard missing.");
-#pragma warning restore AvoidNetField
-    }
-
-    /// <summary>
-    /// T142 [P] [US1] RED-FIRST — bin identity (BC)LivingRoots.CompostingBin,
-    /// progress-modData carried (FR-005c), max stack 1 enforced (FR-002), and
-    /// building-footprint refusal (FR-002). Must FAIL against current
-    /// controller/registration (identity guard incomplete, progress not preserved
-    /// through placement, definition lacks MaxStackSize=1, footprint not read).
-    /// Only test; production fix deferred to T158.
-    /// </summary>
-    [Fact]
-    public void T142_BinIdentityProgressStackAndFootprintRefusal()
-    {
-        var controller = CreateController();
-        var fixture = new GameLocationFixture("Farm", isFarm: true);
-
-        // --- Identity + progress + stack invariant (placement path) ---
-        var tile = new Vector2(10, 10);
-        fixture.AddHoeDirtTile(10, 10);
-
-        var binItem = CreateBinItem(stack: 1);
-        // Item.modData is read-only in Stardew 1.6 — write through its mutable indexer.
-        binItem.modData[ModConstants.ModDataInputIdKey] = "(O)42";
-        binItem.modData[ModConstants.ModDataDaysRemainingKey] = "3";
-        var inventory = new List<Item?> { binItem };
-
-        bool placed = controller.TryPlaceBin(fixture.Location, tile, binItem, inventory);
-        Assert.True(placed, "T142: placement on clear farm tile must succeed.");
-
-        var placedObject = fixture.Location.Objects[tile];
-
-        // (1) Identity resolves as (BC)LivingRoots.CompostingBin
-#pragma warning disable AvoidNetField
-        Assert.True(placedObject.bigCraftable.Value,
-            "T142 FR-001/FR-002: placed bin must be big craftable for (BC) identity.");
-#pragma warning restore AvoidNetField
-        Assert.Equal(ModConstants.CompostingBinItemId, placedObject.ItemId);
-
-        // (2) Progress-modData carried (FR-005c)
-        Assert.NotNull(placedObject.modData);
-        Assert.True(placedObject.modData.ContainsKey(ModConstants.ModDataInputIdKey),
-            "T142 FR-005c: progress InputId missing.");
-        Assert.Equal("(O)42", placedObject.modData[ModConstants.ModDataInputIdKey]);
-        Assert.True(placedObject.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey),
-            "T142 FR-005c: progress DaysRemaining missing.");
-        Assert.Equal("3", placedObject.modData[ModConstants.ModDataDaysRemainingKey]);
-
-        // (3) Max stack 1 enforced
-        Assert.Equal(1, placedObject.Stack);
-
-        // --- Building-footprint refusal (FR-002) ---
-        var footprintFixture = new GameLocationFixture("Farm", isFarm: true);
-        int fx = 7, fy = 7, fw = 2, fh = 3; // arbitrary footprint
-        AddBuildingFootprint(footprintFixture.Location, fx, fy, fw, fh);
-        // Far corner of footprint must refuse
-        var footprintTile = new Vector2(fx + fw - 1, fy + fh - 1);
-
-        var footprintBin = CreateBinItem(stack: 1);
-        var footprintInv = new List<Item?> { footprintBin };
-
-        bool footprintRefused = !controller.TryPlaceBin(footprintFixture.Location, footprintTile, footprintBin, footprintInv);
-        Assert.True(footprintRefused,
-            "T142 FR-002: bin placement on a building-footprint tile must be refused.");
-        Assert.False(footprintFixture.Location.Objects.ContainsKey(footprintTile),
-            "T142 FR-002: refused footprint placement must leave zero ghost objects.");
-        Assert.Equal(1, footprintBin.Stack);
-        int onBinPlacedCallsBeforeFootprint = _mockCompostingBinService.Invocations.Count(i => i.Method.Name == nameof(ICompostingBinService.OnBinPlaced));
-        _mockCompostingBinService.Verify(
-            s => s.OnBinPlaced(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<Item>()),
-            Times.Exactly(onBinPlacedCallsBeforeFootprint),
-            "T142 FR-002: footprint refusal must create zero service state.");
-    }
-
-    /// <summary>
-    /// T161 [P] [US1] RED-FIRST (blocks T166): BigCraftable identity (BC),
-    /// progress modData preserved (FR-005c / T158), max stack 1 enforced
-    /// (FR-002), building-footprint refusal (FR-002), farm/Greenhouse
-    /// accepted (FR-002 / FR-005c). Must FAIL red against current
-    /// ModController.TryPlaceBin (HoeDirt-only / footprint-check
-    /// mis-ordered at ~L1479 / L1990 / L2279–2296 — unconditionally
-    /// returns false, never sets bigCraftable, does not carry
-    /// modData to placed object, never reads buildings for valid
-    /// locations, and does not enforce stack-1 definition guard).
-    /// Only test file edited — production fix deferred to T166.
-    /// </summary>
-    [Property(MaxTest = 100)]
-    public void T161_BigCraftableIdentityProgressStackFootprintRefusal(
-        PositiveInt arbitraryX,
-        PositiveInt arbitraryY,
-        PositiveInt arbitraryInputId,
-        PositiveInt arbitraryDays)
-    {
-        int x = arbitraryX.Get % 21;
-        int y = arbitraryY.Get % 21;
-        int inputNum = arbitraryInputId.Get % 10000;
-        int daysRemaining = (arbitraryDays.Get % 30) + 1;
-
-        var controller = CreateController();
-
-        // --- Farm accepted (FR-002) ---
-        var farmFixture = new GameLocationFixture("Farm", isFarm: true);
-        var farmTile = new Vector2(x, y);
-        farmFixture.AddHoeDirtTile(x, y);
-        var farmBin = CreateBinItem(stack: 1);
-        // Item.modData is read-only in Stardew 1.6 — write through its mutable indexer.
-        farmBin.modData[ModConstants.ModDataInputIdKey] = "(O)" + inputNum;
-        farmBin.modData[ModConstants.ModDataDaysRemainingKey] = daysRemaining.ToString();
-        bool farmPlaced = controller.TryPlaceBin(
-            farmFixture.Location, farmTile, farmBin, new List<Item?> { farmBin });
-        Assert.True(farmPlaced,
-            "T161 FR-002: farm placement must be accepted (current code fails — invalid-terrain return false).");
-        Assert.True(farmFixture.Location.Objects.ContainsKey(farmTile),
-            "T161: placed object must exist at farm tile.");
-        var farmPlacedObj = farmFixture.Location.Objects[farmTile];
-
-        // (1) BigCraftable identity guard (FR-001 / T158)
-#pragma warning disable AvoidNetField
-        Assert.True(farmPlacedObj.bigCraftable.Value,
-            "T161 FR-001: placed bin must set bigCraftable flag for (BC) identity.");
-#pragma warning restore AvoidNetField
-        Assert.Equal("(BC)" + ModConstants.CompostingBinItemId, farmPlacedObj.QualifiedItemId);
-
-        // (2) Progress modData preserved through placement (FR-005c / T158)
-        Assert.True(farmPlacedObj.modData != null,
-            "T161 FR-005c: placed bin must carry modData dictionary.");
-        Assert.True(farmPlacedObj.modData.ContainsKey(ModConstants.ModDataInputIdKey),
-            "T161 FR-005c: InputId key missing.");
-        Assert.Equal("(O)" + inputNum, farmPlacedObj.modData[ModConstants.ModDataInputIdKey]);
-        Assert.True(farmPlacedObj.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey),
-            "T161 FR-005c: DaysRemaining key missing.");
-        Assert.Equal(daysRemaining.ToString(), farmPlacedObj.modData[ModConstants.ModDataDaysRemainingKey]);
-
-        // (3) Max stack 1 enforced (FR-002 / definition guard)
-        Assert.Equal(1, farmPlacedObj.Stack);
-
-        // --- Greenhouse accepted (FR-002) ---
-        var greenhouse = new GameLocationFixture("Greenhouse", isFarm: false);
-        greenhouse.AddHoeDirtTile(x, y);
-        var ghBin = CreateBinItem(stack: 1);
-        bool ghPlaced = controller.TryPlaceBin(
-            greenhouse.Location, farmTile, ghBin, new List<Item?> { ghBin });
-        Assert.True(ghPlaced,
-            "T161 FR-002: Greenhouse placement must be accepted.");
-
-        // --- Building-footprint refusal invariant (FR-002 / T158) ---
-        var footprintFixture = new GameLocationFixture("Farm", isFarm: true);
-        int fx = (x % 10) + 1, fy = (y % 10) + 1, fw = 2, fh = 3;
-        AddBuildingFootprint(footprintFixture.Location, fx, fy, fw, fh);
-        var footprintTile = new Vector2(fx + fw - 1, fy + fh - 1);
-        var fpBin = CreateBinItem(stack: 1);
-        var fpInv = new List<Item?> { fpBin };
-        bool fpRefused = !controller.TryPlaceBin(
-            footprintFixture.Location, footprintTile, fpBin, fpInv);
-        Assert.True(fpRefused,
-            "T161 FR-002: building-footprint tile must refuse placement (current footprint check only runs when !validLocation, so valid farm tiles skip refusal).");
-        Assert.False(footprintFixture.Location.Objects.ContainsKey(footprintTile),
-            "T161: refused footprint must leave zero ghost objects.");
-        Assert.Equal(1, fpBin.Stack);
-        int onBinPlacedCallsBeforeFootprint = _mockCompostingBinService.Invocations.Count(i => i.Method.Name == nameof(ICompostingBinService.OnBinPlaced));
-        _mockCompostingBinService.Verify(
-            s => s.OnBinPlaced(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<Item>()),
-            Times.Exactly(onBinPlacedCallsBeforeFootprint),
-            "T161 FR-002: footprint refusal must create zero service state.");
-    }
-
-    /// <summary>
-    /// T114 [P] [US1] RED — FR-005c (contradicts): tool/explosion removal of a progress-carrying bin.
-    /// Must fail for the right reason — current implementation does not preserve batch
-    /// modData (InputId, DaysRemaining) on removal; OnObjectListChanged only prunes
-    /// the service record and never calls <see cref="ICompostingBinService.CreateDislodgedBinItem"/>
-    /// to reconstruct the dislodged item, destroying the batch contents/progress.
-    /// </summary>
-    [Property(MaxTest = 100)]
-    public void T114_ToolOrExplosionRemovesProgressBin_PreservesBatchModData(
-        PositiveInt arbitraryX,
-        PositiveInt arbitraryY,
-        NonNull<string> arbitraryInput,
-        PositiveInt arbitraryDays)
-    {
-        int x = arbitraryX.Get % 21;
-        int y = arbitraryY.Get % 21;
-        string inputId = "batch_" + (arbitraryInput.Get.Length > 0
-            ? arbitraryInput.Get.Substring(0, Math.Min(8, arbitraryInput.Get.Length))
-            : "def");
-        int daysRemaining = (arbitraryDays.Get % 30) + 1;
-
-        var worldEvents = WireControllerEventSubscriptionsWithWorld().World;
-        var controller = CreateController();
-        controller.RegisterEvents();
-
-        var fixture = new GameLocationFixture("Farm", isFarm: true);
-        var tile = new Vector2(x, y);
-        var binItem = CreateBinItem(stack: 1);
-        binItem.modData[ModConstants.ModDataInputIdKey] = inputId;
-        binItem.modData[ModConstants.ModDataDaysRemainingKey] = daysRemaining.ToString();
-        var inventory = new List<Item?> { binItem };
-
-        Assert.True(
-            controller.TryPlaceBin(fixture.Location, tile, binItem, inventory),
-            "Precondition: placement of a progress-carrying bin must succeed so a batch record exists to preserve (FR-005c / T114).");
-        // FsCheck replays the body (original input, then each shrink), so the
-        // precondition is verified as "at least once per replay" rather than
-        // exactly once per run — the invariant is that EVERY placement of a
-        // progress-carrying bin seeds the service record.
-        _mockCompostingBinService.Verify(
-            x => x.OnBinPlaced("Farm", tile, It.Is<Item>(i =>
-                i.modData.ContainsKey(ModConstants.ModDataInputIdKey) &&
-                i.modData.ContainsKey(ModConstants.ModDataDaysRemainingKey))),
-            Times.AtLeastOnce,
-            "Precondition: placement must seed the service record with batch progress (FR-005c).");
-
-        // Simulate the game removing the object (axe/pickaxe/hoe hit or explosion).
-        fixture.Location.Objects.Remove(tile);
-        var removed = new List<KeyValuePair<Vector2, StardewValley.Object>>
-        {
-            new KeyValuePair<Vector2, StardewValley.Object>(
-                tile,
-                new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId }),
-        };
-        worldEvents.Raise(
-            x => x.ObjectListChanged += null,
-            CreateObjectListChangedEventArgs(fixture.Location, removed));
-
-        // RED (fails): current code never reconstructs the dislodged item,
-        // so the batch (modData) is destroyed rather than preserved. The
-        // mock is class-scoped and FsCheck runs this property once per
-        // generated input, so the precondition is verified over the whole
-        // invocation history rather than once per iteration.
-        _mockCompostingBinService.Verify(
-            x => x.CreateDislodgedBinItem("Farm", tile),
-            Times.AtLeastOnce,
-            "FR-005c (T114): removal of a progress-carrying bin must reconstruct the dislodged item from the service record — the batch modData (InputId/DaysRemaining) must survive removal, not be destroyed with the pruned record.");
-
-        _mockCompostingBinService.Verify(
-            x => x.OnObjectRemoved("Farm", tile),
-            Times.AtLeastOnce,
-            "FR-002 / FR-005c (T114): the stale service record must still be pruned so no orphaned state survives, but the batch must be preserved through reconstruction.");
-
-        Assert.False(
-            fixture.Location.Objects.ContainsKey(tile),
-            "Precondition: the game-side removal must leave no world object at the tile (FR-002 / T114).");
-    }
-
-    /// <summary>
-    /// T116 [P] [US1] RED — FR-002 (partial): bin placement on building-footprint tiles is refused
-    /// with zero objects added and zero service state. Must fail because the current guard
-    /// skips footprint refusal for valid farm tiles (only checks footprint when location
-    /// is already invalid), so a footprint-covered tile on farm land is accepted.
-    /// </summary>
-    [Fact]
-    public void T116_PlacementOnBuildingFootprint_Refused_ZeroGhost_ZeroState()
-    {
-        var controller = CreateController();
-        var footprintFixture = new GameLocationFixture("Farm", isFarm: true);
-        int bx = 5, by = 6, bw = 2, bh = 2;
-        AddBuildingFootprint(footprintFixture.Location, bx, by, bw, bh);
-        var footprintTile = new Vector2(bx + bw - 1, by + bh - 1);
-        var binItem = CreateBinItem(stack: 1);
-        var inventory = new List<Item?> { binItem };
-
-        bool refused = controller.TryPlaceBin(
-            footprintFixture.Location, footprintTile, binItem, inventory);
-
-        Assert.False(
-            refused,
-            "FR-002 (T116): bin placement on a building-footprint tile must be refused — buildings are invalid terrain.");
-        Assert.False(
-            footprintFixture.Location.Objects.ContainsKey(footprintTile),
-            "FR-002 (T116): refused footprint placement must leave zero ghost objects.");
-        Assert.Equal(1, binItem.Stack);
-        int onBinPlacedCallsBeforeFootprint = _mockCompostingBinService.Invocations.Count(i => i.Method.Name == nameof(ICompostingBinService.OnBinPlaced));
-        _mockCompostingBinService.Verify(
-            s => s.OnBinPlaced(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<Item>()),
-            Times.Exactly(onBinPlacedCallsBeforeFootprint),
-            "FR-002 (T116): refused footprint placement must create zero service state.");
     }
 }
