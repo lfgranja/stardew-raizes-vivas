@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -7,247 +8,571 @@ using LivingRoots.Domain;
 using LivingRoots.Tests.Fixtures;
 using StardewValley;
 
-namespace LivingRoots.Tests.Stubs
+namespace LivingRoots.Tests.Stubs;
+
+/// <summary>
+/// Stub representing an individual simulated farmer in a multiplayer session.
+/// Implements <see cref="IPlayerProvider"/> and tracks inventory, held items, and action results
+/// for concurrent multi-farmer simulation and test assertions.
+/// </summary>
+public class MultiplayerFarmerStub : IPlayerProvider
 {
+    private readonly ConcurrentBag<string> _refusalMessages = new();
+    private int _attemptCount;
+    private int _successCount;
+    private int _refusedCount;
+    private Farmer _currentPlayer = null!;
+    private Item? _currentItem;
+
     /// <summary>
-    /// T002 (spec 004 Phase 1): a concurrent multi-farmer context stub simulating
-    /// the multiplayer actors the host-authoritative locking behaviour is
-    /// specified against. A real <see cref="Farmer"/> cannot be constructed in a
-    /// unit-test host — its constructor dereferences sprite data that only exists
-    /// once the game has booted — so each simulated farmer carries just the state
-    /// the concurrency tests observe: the multiplayer ID FR-019 locks on, the held
-    /// item the deposit path consumes, a recording inventory, and the refusal
-    /// messages the conflict sites emit.
+    /// Initializes a new instance of the <see cref="MultiplayerFarmerStub"/> class.
     /// </summary>
-    /// <remarks>
-    /// T141 (Constitution III): this stub is async-only from the start — no
-    /// <c>.Result</c>, <c>.Wait()</c> or <c>.GetAwaiter().GetResult()</c> anywhere.
-    /// Synchronisation uses a barrier so "both players act at the same tick" is a
-    /// real rendezvous, not a scheduling accident.
-    /// </remarks>
-    public sealed class MultiplayerFarmerStub
+    /// <param name="farmerId">The unique multiplayer ID of this farmer.</param>
+    /// <param name="name">The display name of the farmer.</param>
+    /// <param name="isHost">True if this farmer is the host player; otherwise, false.</param>
+    public MultiplayerFarmerStub(long farmerId = 1L, string name = "Host", bool isHost = true)
     {
-        private readonly List<string> _refusalMessages = new();
+        FarmerId = farmerId;
+        Name = name;
+        IsHost = isHost;
+        Inventory = new RecordingPlayerInventory();
+    }
 
-        private MultiplayerFarmerStub(long farmerId, string role)
+    /// <summary>
+    /// Gets or sets the unique multiplayer ID of this farmer.
+    /// </summary>
+    public long FarmerId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the unique multiplayer ID matching Stardew Valley conventions.
+    /// </summary>
+    public long UniqueMultiplayerID
+    {
+        get
         {
-            FarmerId = farmerId;
-            Role = role;
+            return FarmerId;
         }
-
-        /// <summary>Multiplayer ID the atomic lock keys on (FR-019).</summary>
-        public long FarmerId { get; }
-
-        /// <summary>
-        /// T125 (FR-019): the multiplayer ID exactly as the production
-        /// TryApplyCompostWithLock / TryInteractWithBin entry points key the
-        /// host-authoritative lock on. An alias of <see cref="FarmerId"/> kept
-        /// distinct so the simulation reads the way the game code does.
-        /// </summary>
-        public long UniqueMultiplayerID => FarmerId;
-
-        /// <summary>"Host" or "Farmhand" — the role the ID belongs to.</summary>
-        public string Role { get; }
-
-        /// <summary>The farm-scoped recording inventory this farmer deposits into.</summary>
-        public RecordingPlayerInventory Inventory { get; } = new();
-
-        /// <summary>Item currently held, or null for empty hands.</summary>
-        public Item? CurrentItem { get; private set; }
-
-        /// <summary>Count of interactions this farmer recorded as successful.</summary>
-        public int SuccessCount { get; private set; }
-
-        /// <summary>Refusal translation keys this farmer was shown, in order.</summary>
-        public IReadOnlyList<string> RefusalMessages => _refusalMessages;
-
-        /// <summary>Count of refusals this farmer recorded.</summary>
-        public int RefusedCount => _refusalMessages.Count;
-
-        /// <summary>Sets the held item, as a player equipping a slot would.</summary>
-        public void SetHeldItem(Item? item)
+        set
         {
-            CurrentItem = item;
-        }
-
-        /// <summary>Empties the hands, as a player putting an item away would.</summary>
-        public void ClearHeldItem()
-        {
-            CurrentItem = null;
-        }
-
-        /// <summary>Records a refusal translation key (FR-008a).</summary>
-        public void RecordRefusal(string messageKey)
-        {
-            _refusalMessages.Add(messageKey);
-        }
-
-        /// <summary>Records a successful interaction (FR-019 first-wins).</summary>
-        public void RecordSuccess()
-        {
-            SuccessCount++;
-        }
-
-        /// <summary>
-        /// Creates a host + farmhand pair sharing one simulation context.
-        /// </summary>
-        /// <param name="hostId">Multiplayer ID of the host.</param>
-        /// <param name="farmhandId">Multiplayer ID of the farmhand.</param>
-        /// <returns>The pair and the context that drives them simultaneously.</returns>
-        public static (MultiplayerFarmerStub host, MultiplayerFarmerStub farmhand, MultiplayerSimulationContext context) CreatePair(
-            long hostId = 1L,
-            long farmhandId = 2L)
-        {
-            var host = new MultiplayerFarmerStub(hostId, "Host");
-            var farmhand = new MultiplayerFarmerStub(farmhandId, "Farmhand");
-            return (host, farmhand, new MultiplayerSimulationContext(host, farmhand));
-        }
-
-        /// <summary>
-        /// Creates a session of one host plus <paramref name="farmhandCount"/>
-        /// farmhands, each with a distinct multiplayer ID.
-        /// </summary>
-        /// <param name="farmhandCount">Number of farmhands beyond the host.</param>
-        public static MultiplayerSimulationContext CreateSession(int farmhandCount)
-        {
-            if (farmhandCount < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(farmhandCount), farmhandCount, "Farmhand count cannot be negative.");
-            }
-
-            var host = new MultiplayerFarmerStub(1L, "Host");
-            var farmers = new List<MultiplayerFarmerStub> { host };
-            for (var i = 0; i < farmhandCount; i++)
-            {
-                farmers.Add(new MultiplayerFarmerStub(i + 2L, "Farmhand"));
-            }
-
-            return new MultiplayerSimulationContext(farmers.ToArray());
+            FarmerId = value;
         }
     }
 
     /// <summary>
-    /// T002: the driver that runs the simulated farmers' actions at the same
-    /// instant. Every action first waits on a barrier shared with all other
-    /// participants, so "two players acted simultaneously" means the actions
-    /// entered the controller within the same scheduling window — the closest
-    /// deterministic equivalent of a simultaneous multiplayer tick available on
-    /// a single-threaded test host.
+    /// Gets or sets the farmer name.
     /// </summary>
-    public sealed class MultiplayerSimulationContext : IPlayerProvider
+    public string Name { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this farmer is the host.
+    /// </summary>
+    public bool IsHost { get; set; }
+
+    /// <summary>
+    /// Gets or sets the recorded inventory for this farmer.
+    /// </summary>
+    public RecordingPlayerInventory Inventory { get; set; }
+
+    /// <summary>
+    /// Gets or sets the underlying <see cref="Farmer"/> game entity.
+    /// </summary>
+    public Farmer CurrentPlayer
     {
-        private readonly MultiplayerFarmerStub[] _farmers;
-        private readonly Barrier _barrier;
-
-        internal MultiplayerSimulationContext(params MultiplayerFarmerStub[] farmers)
+        get
         {
-            _farmers = farmers ?? throw new ArgumentNullException(nameof(farmers));
-            if (_farmers.Length == 0)
-            {
-                throw new ArgumentException("At least one farmer is required.", nameof(farmers));
-            }
+            return _currentPlayer;
+        }
+        set
+        {
+            _currentPlayer = value;
+        }
+    }
 
-            _barrier = new Barrier(_farmers.Length);
-            _activeFarmer = _farmers[0];
+    /// <summary>
+    /// Gets or sets the current held item for this farmer.
+    /// </summary>
+    public Item? CurrentItem
+    {
+        get
+        {
+            return _currentItem;
+        }
+        set
+        {
+            _currentItem = value;
+        }
+    }
+
+    /// <summary>
+    /// Gets all refusal messages recorded for this farmer.
+    /// </summary>
+    public IReadOnlyList<string> RefusalMessages
+    {
+        get
+        {
+            return _refusalMessages.ToArray();
+        }
+    }
+
+    /// <summary>
+    /// Gets the number of actions attempted by this farmer.
+    /// </summary>
+    public int AttemptCount
+    {
+        get
+        {
+            return Volatile.Read(ref _attemptCount);
+        }
+    }
+
+    /// <summary>
+    /// Gets the number of actions that succeeded for this farmer.
+    /// </summary>
+    public int SuccessCount
+    {
+        get
+        {
+            return Volatile.Read(ref _successCount);
+        }
+    }
+
+    /// <summary>
+    /// Gets the number of actions that were refused for this farmer.
+    /// </summary>
+    public int RefusedCount
+    {
+        get
+        {
+            return Volatile.Read(ref _refusedCount);
+        }
+    }
+
+    /// <summary>
+    /// Sets the currently held item.
+    /// </summary>
+    /// <param name="item">The item to hold.</param>
+    public void SetHeldItem(Item? item)
+    {
+        CurrentItem = item;
+    }
+
+    /// <summary>
+    /// Clears the currently held item.
+    /// </summary>
+    public void ClearHeldItem()
+    {
+        CurrentItem = null;
+    }
+
+    /// <summary>
+    /// Records an attempt to perform an action.
+    /// </summary>
+    public void RecordAttempt()
+    {
+        Interlocked.Increment(ref _attemptCount);
+    }
+
+    /// <summary>
+    /// Records a successfully completed action.
+    /// </summary>
+    public void RecordSuccess()
+    {
+        Interlocked.Increment(ref _successCount);
+    }
+
+    /// <summary>
+    /// Records a refused action along with the refusal explanation message.
+    /// </summary>
+    /// <param name="message">The refusal message or translation key shown to the farmer.</param>
+    public void RecordRefusal(string message)
+    {
+        Interlocked.Increment(ref _refusedCount);
+        if (!string.IsNullOrEmpty(message))
+        {
+            _refusalMessages.Add(message);
+        }
+    }
+
+    /// <summary>
+    /// Resets attempt, success, and refusal counters and clears recorded refusal messages.
+    /// </summary>
+    public void ResetMetrics()
+    {
+        Interlocked.Exchange(ref _attemptCount, 0);
+        Interlocked.Exchange(ref _successCount, 0);
+        Interlocked.Exchange(ref _refusedCount, 0);
+        while (_refusalMessages.TryTake(out _))
+        {
+        }
+    }
+
+    /// <summary>
+    /// Factory method to create a host farmer stub.
+    /// </summary>
+    /// <param name="id">Farmer ID.</param>
+    /// <param name="name">Farmer name.</param>
+    /// <returns>A configured host farmer stub.</returns>
+    public static MultiplayerFarmerStub CreateHost(long id = 1L, string name = "Host")
+    {
+        return new MultiplayerFarmerStub(id, name, isHost: true);
+    }
+
+    /// <summary>
+    /// Factory method to create a farmhand stub.
+    /// </summary>
+    /// <param name="id">Farmer ID.</param>
+    /// <param name="name">Farmer name.</param>
+    /// <returns>A configured farmhand stub.</returns>
+    public static MultiplayerFarmerStub CreateFarmhand(long id = 2L, string name = "Farmhand")
+    {
+        return new MultiplayerFarmerStub(id, name, isHost: false);
+    }
+
+    /// <summary>
+    /// Factory method to create a context containing the specified farmers.
+    /// </summary>
+    /// <param name="farmers">The farmers participating in the session.</param>
+    /// <returns>A configured multiplayer farmer context.</returns>
+    public static MultiplayerFarmerContext CreateContext(params MultiplayerFarmerStub[] farmers)
+    {
+        return new MultiplayerFarmerContext(farmers);
+    }
+
+    /// <summary>
+    /// Factory method to create a standard session with one host and the specified number of farmhands.
+    /// </summary>
+    /// <param name="farmhandCount">Number of farmhands to create.</param>
+    /// <returns>A configured multiplayer farmer context.</returns>
+    public static MultiplayerFarmerContext CreateSession(int farmhandCount = 1)
+    {
+        var farmers = new List<MultiplayerFarmerStub>
+        {
+            CreateHost(1L, "Host")
+        };
+
+        for (int i = 1; i <= farmhandCount; i++)
+        {
+            farmers.Add(CreateFarmhand(i + 1L, $"Farmhand_{i}"));
         }
 
-        /// <summary>The farmer the participant is currently acting as.</summary>
-        private MultiplayerFarmerStub _activeFarmer;
+        return new MultiplayerFarmerContext(farmers);
+    }
 
-        /// <summary>
-        /// Selects the farmer whose context the next call resolves. The
-        /// production entry points (<see cref="TryApplyCompostWithLock"/>,
-        /// TryInteractWithBin) take a farmer ID but the services read the held
-        /// item through <see cref="IPlayerProvider"/>, so the simulation must be
-        /// told which actor is acting — otherwise a two-player test would watch
-        /// one farmer's item being consumed for the other's action.
-        /// </summary>
-        /// <param name="farmer">The farmer about to act.</param>
-        public void SetActiveFarmer(MultiplayerFarmerStub farmer)
+    /// <summary>
+    /// Factory method to create a two-player host and farmhand pair with their coordinating context.
+    /// </summary>
+    /// <param name="hostId">Host farmer ID.</param>
+    /// <param name="farmhandId">Farmhand farmer ID.</param>
+    /// <returns>The host stub, farmhand stub, and shared context.</returns>
+    public static (MultiplayerFarmerStub Host, MultiplayerFarmerStub Farmhand, MultiplayerFarmerContext Context) CreatePair(
+        long hostId = 1L,
+        long farmhandId = 2L)
+    {
+        var host = CreateHost(hostId, "Host");
+        var farmhand = CreateFarmhand(farmhandId, "Farmhand");
+        var context = CreateContext(host, farmhand);
+        return (host, farmhand, context);
+    }
+}
+
+/// <summary>
+/// Provides a concurrent multi-farmer context stub for simulating multiple farmers
+/// acting concurrently on items, bins, and tiles.
+/// Manages player registration, thread-safe and async-local context dispatch,
+/// and barrier synchronization for race condition testing.
+/// </summary>
+public class MultiplayerFarmerContext : IPlayerProvider
+{
+    private static readonly AsyncLocal<MultiplayerFarmerStub?> CurrentAmbientFarmer = new();
+    private readonly List<MultiplayerFarmerStub> _farmers = new();
+    private readonly object _syncLock = new();
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MultiplayerFarmerContext"/> class.
+    /// </summary>
+    /// <param name="farmers">Initial farmers in the session.</param>
+    public MultiplayerFarmerContext(IEnumerable<MultiplayerFarmerStub>? farmers = null)
+    {
+        if (farmers != null)
         {
-            _activeFarmer = farmer ?? throw new ArgumentNullException(nameof(farmer));
+            foreach (var farmer in farmers)
+            {
+                if (farmer != null)
+                {
+                    _farmers.Add(farmer);
+                }
+            }
         }
 
-        /// <summary>The farmer whose held item the provider currently resolves.</summary>
-        public MultiplayerFarmerStub ActiveFarmer => _activeFarmer;
-
-        /// <inheritdoc />
-        /// <remarks>
-        /// T125: the context is also the <see cref="IPlayerProvider"/> the
-        /// production CompostApplicationService resolves held items through, so
-        /// the SC-010 headline test drives the real service instead of an
-        /// inline reimplementation. <see cref="IPlayerProvider.CurrentPlayer"/>
-        /// returns a real <c>Farmer</c>, which cannot be constructed in a
-        /// unit-test host, so it throws here — no production path in this test
-        /// touches it.
-        /// </remarks>
-        public Farmer CurrentPlayer => throw new NotSupportedException(
-            "A real Farmer cannot be constructed in a unit-test host; use the farmer stub's held item instead.");
-
-        /// <inheritdoc />
-        public Item? CurrentItem => _activeFarmer.CurrentItem;
-
-        /// <summary>Every farmer participating in this simulation, in join order.</summary>
-        public IReadOnlyList<MultiplayerFarmerStub> AllFarmers => _farmers;
-
-        /// <summary>
-        /// Runs <paramref name="action"/> for every farmer, released from a
-        /// single barrier so all of them start together. Async-only (T141): the
-        /// barrier uses a participant-limit timeout rather than any blocking
-        /// wait on an uncompleted task.
-        /// </summary>
-        /// <typeparam name="T">Result type of one farmer's action.</typeparam>
-        /// <param name="action">Action to run per farmer.</param>
-        /// <returns>The results, in farmer order.</returns>
-        public async Task<IReadOnlyList<T>> RunSimultaneouslyAsync<T>(Func<MultiplayerFarmerStub, Task<T>> action)
+        if (_farmers.Count == 0)
         {
-            if (action == null)
+            _farmers.Add(MultiplayerFarmerStub.CreateHost());
+        }
+    }
+
+    /// <summary>
+    /// Gets all farmers currently registered in the multiplayer context.
+    /// </summary>
+    public IReadOnlyList<MultiplayerFarmerStub> AllFarmers
+    {
+        get
+        {
+            lock (_syncLock)
             {
-                throw new ArgumentNullException(nameof(action));
+                return _farmers.ToList();
             }
+        }
+    }
 
-            // Clone the barrier each run so a context can be reused across acts
-            // within one test while still rendezvousing every act. The timeout
-            // turns a participant that never arrives (an action that threw
-            // before the rendezvous) into a failure instead of hanging the
-            // whole run forever.
-            var barrier = new Barrier(_farmers.Length);
-            var tasks = _farmers.Select(async farmer =>
+    /// <summary>
+    /// Gets the host farmer in the session.
+    /// </summary>
+    public MultiplayerFarmerStub Host
+    {
+        get
+        {
+            lock (_syncLock)
             {
-                // Rendezvous: every participant reaches this point before any
-                // of them enters the action, so the actions overlap.
-                await Task.Yield();
-                barrier.SignalAndWait(TimeSpan.FromSeconds(30));
+                var host = _farmers.FirstOrDefault(f => f.IsHost);
+                return host ?? _farmers[0];
+            }
+        }
+    }
 
-                return await action(farmer);
-            });
+    /// <summary>
+    /// Gets all farmhands in the session.
+    /// </summary>
+    public IReadOnlyList<MultiplayerFarmerStub> Farmhands
+    {
+        get
+        {
+            lock (_syncLock)
+            {
+                return _farmers.Where(f => !f.IsHost).ToList();
+            }
+        }
+    }
 
-            return await Task.WhenAll(tasks);
+    /// <summary>
+    /// Gets the farmer active in the current ambient async execution flow,
+    /// or falls back to the host farmer if no ambient farmer is set.
+    /// </summary>
+    public MultiplayerFarmerStub CurrentFarmer
+    {
+        get
+        {
+            return CurrentAmbientFarmer.Value ?? Host;
+        }
+    }
+
+    /// <inheritdoc />
+    public Farmer CurrentPlayer
+    {
+        get
+        {
+            return CurrentFarmer.CurrentPlayer;
+        }
+    }
+
+    /// <inheritdoc />
+    public Item? CurrentItem
+    {
+        get
+        {
+            return CurrentFarmer.CurrentItem;
+        }
+    }
+
+    /// <summary>
+    /// Adds a new farmhand to the multiplayer session.
+    /// </summary>
+    /// <param name="id">Unique multiplayer ID.</param>
+    /// <param name="name">Farmhand name.</param>
+    /// <returns>The created farmhand stub.</returns>
+    public MultiplayerFarmerStub AddFarmhand(long id, string name)
+    {
+        lock (_syncLock)
+        {
+            var farmhand = MultiplayerFarmerStub.CreateFarmhand(id, name);
+            _farmers.Add(farmhand);
+            return farmhand;
+        }
+    }
+
+    /// <summary>
+    /// Finds a farmer by their unique multiplayer ID.
+    /// </summary>
+    /// <param name="id">Farmer ID.</param>
+    /// <returns>The matching farmer stub, or null if not found.</returns>
+    public MultiplayerFarmerStub? GetFarmer(long id)
+    {
+        lock (_syncLock)
+        {
+            return _farmers.FirstOrDefault(f => f.FarmerId == id);
+        }
+    }
+
+    /// <summary>
+    /// Establishes an ambient execution scope where the specified farmer is active.
+    /// </summary>
+    /// <param name="farmer">The farmer to set as active.</param>
+    /// <returns>A disposable scope that restores the previous ambient farmer on disposal.</returns>
+    public IDisposable UseFarmer(MultiplayerFarmerStub farmer)
+    {
+        var previous = CurrentAmbientFarmer.Value;
+        CurrentAmbientFarmer.Value = farmer;
+        return new FarmerScope(previous);
+    }
+
+    /// <summary>
+    /// Executes an asynchronous action in the context of the specified farmer.
+    /// </summary>
+    /// <param name="farmer">The farmer performing the action.</param>
+    /// <param name="action">The asynchronous action.</param>
+    /// <returns>A task representing the completion of the action.</returns>
+    public async Task RunAsAsync(MultiplayerFarmerStub farmer, Func<Task> action)
+    {
+        using (UseFarmer(farmer))
+        {
+            await action().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Executes an asynchronous function in the context of the specified farmer and returns the result.
+    /// </summary>
+    /// <typeparam name="T">The return type.</typeparam>
+    /// <param name="farmer">The farmer performing the action.</param>
+    /// <param name="action">The asynchronous function returning a result.</param>
+    /// <returns>The result of the action.</returns>
+    public async Task<T> RunAsAsync<T>(MultiplayerFarmerStub farmer, Func<Task<T>> action)
+    {
+        using (UseFarmer(farmer))
+        {
+            return await action().ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Executes a synchronous action in the context of the specified farmer.
+    /// </summary>
+    /// <param name="farmer">The farmer performing the action.</param>
+    /// <param name="action">The synchronous action.</param>
+    public void RunAs(MultiplayerFarmerStub farmer, Action action)
+    {
+        using (UseFarmer(farmer))
+        {
+            action();
+        }
+    }
+
+    /// <summary>
+    /// Executes a synchronous function in the context of the specified farmer and returns the result.
+    /// </summary>
+    /// <typeparam name="T">The return type.</typeparam>
+    /// <param name="farmer">The farmer performing the action.</param>
+    /// <param name="action">The synchronous function.</param>
+    /// <returns>The result of the action.</returns>
+    public T RunAs<T>(MultiplayerFarmerStub farmer, Func<T> action)
+    {
+        using (UseFarmer(farmer))
+        {
+            return action();
+        }
+    }
+
+    /// <summary>
+    /// Simulates concurrent actions by all registered farmers simultaneously using barrier synchronization
+    /// to maximize thread contention on shared resources (tiles, bins, locks).
+    /// </summary>
+    /// <typeparam name="T">Result type of each farmer action.</typeparam>
+    /// <param name="action">Action to run for each farmer concurrently.</param>
+    /// <returns>Array of results corresponding to each farmer.</returns>
+    public async Task<T[]> RunSimultaneouslyAsync<T>(Func<MultiplayerFarmerStub, Task<T>> action)
+    {
+        List<MultiplayerFarmerStub> snapshot;
+        lock (_syncLock)
+        {
+            snapshot = _farmers.ToList();
         }
 
-        /// <summary>
-        /// Non-generic overload for void-ish actions: a lambda returning
-        /// <see cref="Task.CompletedTask"/> binds here rather than failing T
-        /// inference.
-        /// </summary>
-        /// <param name="action">Action to run per farmer.</param>
-        public async Task RunSimultaneouslyAsync(Func<MultiplayerFarmerStub, Task> action)
+        if (snapshot.Count == 0)
         {
-            if (action == null)
+            return Array.Empty<T>();
+        }
+
+        using var readyBarrier = new Barrier(snapshot.Count + 1);
+        var startSignal = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var tasks = snapshot.Select(farmer => Task.Run(async () =>
+        {
+            using (UseFarmer(farmer))
             {
-                throw new ArgumentNullException(nameof(action));
+                farmer.RecordAttempt();
+                readyBarrier.SignalAndWait();
+                await startSignal.Task.ConfigureAwait(false);
+                return await action(farmer).ConfigureAwait(false);
             }
+        })).ToArray();
 
-            var barrier = new Barrier(_farmers.Length);
-            var tasks = _farmers.Select(async farmer =>
-            {
-                await Task.Yield();
-                barrier.SignalAndWait(TimeSpan.FromSeconds(30));
+        // Wait until all worker tasks have reached the barrier
+        readyBarrier.SignalAndWait();
 
-                await action(farmer);
-            });
+        // Release all concurrent tasks at the exact same instant once all have reached the barrier
+        startSignal.SetResult(true);
+        return await Task.WhenAll(tasks).ConfigureAwait(false);
+    }
 
-            await Task.WhenAll(tasks);
+    /// <summary>
+    /// Simulates concurrent actions by all registered farmers simultaneously without return values.
+    /// </summary>
+    /// <param name="action">Action to run for each farmer concurrently.</param>
+    /// <returns>A task representing completion of all concurrent actions.</returns>
+    public async Task RunSimultaneouslyAsync(Func<MultiplayerFarmerStub, Task> action)
+    {
+        await RunSimultaneouslyAsync(async farmer =>
+        {
+            await action(farmer).ConfigureAwait(false);
+            return true;
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Simulates concurrent actions synchronously on thread pool threads with barrier synchronization.
+    /// </summary>
+    /// <typeparam name="T">Result type.</typeparam>
+    /// <param name="action">Synchronous action to execute per farmer.</param>
+    /// <returns>Array of results.</returns>
+    public T[] RunSimultaneously<T>(Func<MultiplayerFarmerStub, T> action)
+    {
+        return RunSimultaneouslyAsync(farmer => Task.FromResult(action(farmer))).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Simulates concurrent actions synchronously on thread pool threads without return values.
+    /// </summary>
+    /// <param name="action">Synchronous action to execute per farmer.</param>
+    public void RunSimultaneously(Action<MultiplayerFarmerStub> action)
+    {
+        RunSimultaneouslyAsync(farmer =>
+        {
+            action(farmer);
+            return Task.CompletedTask;
+        }).GetAwaiter().GetResult();
+    }
+
+    private sealed class FarmerScope : IDisposable
+    {
+        private readonly MultiplayerFarmerStub? _previous;
+
+        public FarmerScope(MultiplayerFarmerStub? previous)
+        {
+            _previous = previous;
+        }
+
+        public void Dispose()
+        {
+            CurrentAmbientFarmer.Value = _previous;
         }
     }
 }
