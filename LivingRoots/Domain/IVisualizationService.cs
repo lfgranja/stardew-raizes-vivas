@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -11,13 +12,32 @@ namespace LivingRoots.Domain
     public interface IVisualizationService
     {
         /// <summary>
+        /// Initializes the service with the white texture used for drawing
+        /// rectangles. Must be called before the first draw call, once the
+        /// shared <c>VisualizationTextures.WhiteTexture</c> reference exists.
+        /// </summary>
+        /// <param name="whiteTexture">White 1x1 texture for rectangle draws.</param>
+        void Initialize(Texture2D whiteTexture);
+
+        /// <summary>
+        /// Sets the tile health data used for overlay rendering.
+        /// Called by the game event handler before each render frame.
+        /// </summary>
+        /// <param name="tileHealthData">Tile coordinates mapped to soil health values.</param>
+        void SetTileHealthData(Dictionary<Point, float> tileHealthData);
+
+        /// <summary>
         /// Renders soil health overlays for all visible tilled tiles.
         /// Called after game world rendering completes.
         /// </summary>
         /// <param name="spriteBatch">SpriteBatch for drawing</param>
         /// <param name="viewport">Current viewport bounds in tile coordinates</param>
         /// <param name="gameTime">Current game time for animation</param>
-        /// <param name="mapBounds">Active map extent in tile units, or null when unavailable; clamps culling to the map.</param>
+        /// <param name="mapBounds">
+        /// Optional map bounds in tile units. When supplied, the
+        /// visible tile range is clamped to them (FR-018); when
+        /// omitted, only the map origin is enforced.
+        /// </param>
         void RenderOverlays(SpriteBatch spriteBatch, Rectangle viewport, GameTime gameTime, Rectangle? mapBounds = null);
 
         /// <summary>
@@ -36,6 +56,20 @@ namespace LivingRoots.Domain
         /// <param name="spriteBatch">SpriteBatch for drawing</param>
         /// <param name="gameTime">Current game time for animation</param>
         void RenderHoeFeedback(SpriteBatch spriteBatch, GameTime gameTime);
+
+        /// <summary>
+        /// Renders the hoe-feedback floating text on the
+        /// screen-space render event (FR-024, DC-3): the
+        /// floating text draws above all vanilla content
+        /// (the HUD, menus, and cursor), while the flash
+        /// stays on the world-space event through
+        /// <see cref="RenderHoeFeedback"/>. The screen-space
+        /// handler invokes it with the same sprite batch and
+        /// frame game time.
+        /// </summary>
+        /// <param name="spriteBatch">SpriteBatch for the screen-space draw.</param>
+        /// <param name="gameTime">Current frame game time.</param>
+        void RenderHoeFeedbackFloatingText(SpriteBatch spriteBatch, GameTime gameTime);
 
         /// <summary>
         /// Triggers hoe feedback for a specific tile.
@@ -77,40 +111,12 @@ namespace LivingRoots.Domain
         void ClearCursorTile();
 
         /// <summary>
-        /// Installs the shared white texture the draw calls run through. Called
-        /// from the render frame once a SpriteBatch exists.
-        /// </summary>
-        /// <param name="whiteTexture">1x1 white texture used for rectangle drawing.</param>
-        void Initialize(Texture2D whiteTexture);
-
-        /// <summary>
-        /// Supplies the soil-health snapshot the overlay pipeline renders from.
-        /// </summary>
-        /// <param name="tileHealthData">Tile position to health value map.</param>
-        void SetTileHealthData(Dictionary<Point, float> tileHealthData);
-
-        /// <summary>
-        /// Resets the FR-015 tooltip throttle window, so the leading-edge rule
-        /// applies fresh after a menu open/close cycle.
+        /// Resets the tooltip throttle state so the FR-015
+        /// leading-edge rule applies fresh to the next hover.
+        /// Called when the last open menu closes (FR-025):
+        /// the throttle window must not survive a menu
+        /// open/close cycle.
         /// </summary>
         void ResetTooltipThrottle();
-
-        /// <summary>
-        /// Renders the screen-space half of hoe feedback: the floating text that
-        /// must draw above all vanilla content. The flash half stays world-space
-        /// on <see cref="RenderHoeFeedback"/>.
-        /// </summary>
-        /// <param name="spriteBatch">SpriteBatch for drawing.</param>
-        /// <param name="gameTime">Current game time for animation.</param>
-        void RenderHoeFeedbackFloatingText(SpriteBatch spriteBatch, GameTime gameTime);
-
-        /// <summary>
-        /// Spec 005 (A4): emits a floating-text message when a soil-health tier
-        /// modifies the harvest outcome (quality boost or extra harvest). Reuses
-        /// the existing floating-text render path — no new assets or i18n keys.
-        /// </summary>
-        /// <param name="tilePosition">Tile where the harvest occurred.</param>
-        /// <param name="message">Feedback message to display.</param>
-        void TriggerHarvestFeedback(Microsoft.Xna.Framework.Point tilePosition, string message);
     }
 }
