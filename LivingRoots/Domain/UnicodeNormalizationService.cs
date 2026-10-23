@@ -16,7 +16,6 @@ namespace LivingRoots.Domain
     /// 3. Zero-width and bidirectional characters: Removed completely for security
     /// 4. Control characters: Removed completely
     /// 5. Precomposed characters: Simplified to base forms (e.g., 'ø' → 'o')
-    /// 6. Fullwidth ASCII variants (U+FF01–U+FF5E): Mapped to their ASCII equivalents
     /// </remarks>
     public class UnicodeNormalizationService : IUnicodeNormalizationService
     {
@@ -247,16 +246,6 @@ namespace LivingRoots.Domain
         /// <returns>The simplified character or string.</returns>
         private static string SimplifyCharacter(char c)
         {
-            // Fullwidth ASCII variants (U+FF01–U+FF5E) are homoglyphs of the
-            // printable ASCII range (U+0021–U+007E). Map them to their ASCII
-            // equivalents so, e.g., "ＡＢＣ" normalizes to "ABC" — this is the
-            // compatibility mapping that FormC (used for the rest of the
-            // pipeline) deliberately does not perform.
-            if (c >= '\uFF01' && c <= '\uFF5E')
-            {
-                return ((char)(c - 0xFEE0)).ToString();
-            }
-
             // Handle specific precomposed characters that should be simplified
             switch (c)
             {

@@ -1,6 +1,5 @@
 using LivingRoots.Domain;
 using LivingRoots.Domain.Interfaces;
-using LivingRoots.Domain.Services;
 using LivingRoots.Domain.Visualization;
 using LivingRoots.Services;
 using LivingRoots.Services.Visualization;
@@ -31,7 +30,6 @@ namespace LivingRoots.Controllers
         internal const int DisposedFlag = 1 << 2;
         internal const int OnSaveLoadedExecutingFlag = 1 << 3;
         internal const int OnSavingExecutingFlag = 1 << 4;
-        internal const int OnDayStartedExecutingFlag = 1 << 7;
         internal const int UnregisteringFlag = 1 << 5;
         internal const int RegisteringFlag = 1 << 6;
         internal int _state = 0; // Combine flags in single volatile field
@@ -157,14 +155,6 @@ namespace LivingRoots.Controllers
         // GameTime captured from UpdateTicked for use in render events
         private GameTime _lastGameTime = new();
 
-        // T114 (FR-002/FR-003): harvest tracking — mature crops detected via
-        // UpdateTicked polling. When a mature crop disappears from a tile, it
-        // was harvested. The dictionary maps location name -> (tile -> crop).
-        private readonly System.Collections.Generic.Dictionary<string,
-            System.Collections.Generic.Dictionary<Microsoft.Xna.Framework.Vector2,
-                StardewValley.Crop>> _matureCrops = new();
-        private readonly object _harvestLock = new();
-
         // Console command registration state
         private readonly object _commandLock = new();
 
@@ -273,12 +263,6 @@ namespace LivingRoots.Controllers
                     worldEvents.ObjectListChanged += localObjectListChangedHandler;
                 }
 
-                // T114 (FR-002/FR-003): UpdateTicked is always subscribed
-                // (not just when visualization is available) so harvest
-                // detection works even without the visualization service.
-                _onUpdateTickedHandler = OnUpdateTicked;
-                gameLoop.UpdateTicked += _onUpdateTickedHandler;
-
                 // Subscribe to visualization events if services are available
                 if (_visualizationService != null)
                 {
@@ -286,6 +270,9 @@ namespace LivingRoots.Controllers
                     localButtonReleasedHandler = _onButtonReleasedHandler ??= OnButtonReleased;
                     _helper.Events.Display.RenderedWorld += localRenderedWorldHandler;
                     _helper.Events.Input.ButtonReleased += localButtonReleasedHandler;
+
+                    _onUpdateTickedHandler = OnUpdateTicked;
+                    gameLoop.UpdateTicked += _onUpdateTickedHandler;
 
                     // T126 (FR-025, DC-4): pause/resume rendering
                     // around in-game menus. MenuChanged rides the
@@ -1343,11 +1330,6 @@ namespace LivingRoots.Controllers
                 ToColor(active.HealthyColor),
                 ToColor(active.UnknownColor));
 
-            // T253 (FR-010, F7): a configuration change (opacity, palette,
-            // patterns) invalidates the overlay cache, so the next frame
-            // recomputes instead of serving the stale cached list.
-            _visualizationService?.InvalidateCache();
-
             _visualizationConfigService.SaveConfiguration(saveId);
         }
 
@@ -1563,10 +1545,6 @@ namespace LivingRoots.Controllers
             // elapsed delta is zero, so every same-tile
             // tooltip refresh is suppressed forever).
             _lastGameTime = StardewValley.Game1.currentGameTime;
-
-            // T114 (FR-002/FR-003): harvest detection — scan for mature
-            // crops and detect when one disappears (was harvested).
-            DetectAndApplyHarvestModifiers();
         }
 
         /// <summary>
@@ -1736,463 +1714,46 @@ namespace LivingRoots.Controllers
         {
             if (IsDisposed()) return;
 
-            ExecuteWithConcurrencyGuard(OnDayStartedExecutingFlag, "OnDayStarted", () =>
-            {
-                try
-                {
-                    // T074 (FR-004, T063): the SMAPI DayStarted
-                    // event fires once per day for the whole host —
-                    // not once per location — so a day-start path
-                    // that only processes Game1.currentLocation
-                    // silently starves every other farm location's
-                    // bins and soil. The mod's bins live on the
-                    // farm and in the Greenhouse (FR-002, T057),
-                    // the complete set of farm locations a save
-                    // holds, so the day tick reaches the location
-                    // the host occupies plus the farm locations it
-                    // does not: the Greenhouse, and the farm
-                    // itself, whose location name is "Farm" for
-                    // every farm type — no per-day guard exists
-                    // at this layer. The set below dedups a
-                    // location named twice within a single tick
-                    // (the occupied farm overlaps the literal
-                    // pair); repeat same-day deliveries still
-                    // reach the services — any per-location day
-                    // guard (T251) lives in CompostingBinService,
-                    // not here.
-                    var farmLocationNames = new HashSet<string>();
-                    var currentLocationName = StardewValley.Game1.currentLocation?.Name;
-                    if (!string.IsNullOrEmpty(currentLocationName))
-                    {
-                        farmLocationNames.Add(currentLocationName);
-                    }
-
-                    farmLocationNames.Add("Greenhouse");
-                    farmLocationNames.Add("Farm");
-
-                    foreach (var locationName in farmLocationNames)
-                    {
-                        // T134 (FR-012/FR-014): narrow the day-start try per location,
-                        // so a corrupt record in one location cannot abort the day
-                        // tick for the others — the Greenhouse still matures when
-                        // the Farm's tick throws.
-                        try
-                        {
-                            _compostingBinService.ProcessDayStart(locationName);
-                            _soilDecayService.ProcessDayStart(locationName);
-
-                            // Spec 005 (FR-001): soil-health growth modifier applied to
-                            // Crop.phaseDays at DayStarted. Host-only (FR-006).
-                            if (StardewModdingAPI.Context.IsMainPlayer)
-                            {
-                                ApplySoilGrowthModifier(locationName);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _monitor.Log($"Error processing day start for location '{locationName}'.", LogLevel.Error);
-                            _monitor.Log($"Day start exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _monitor.Log("Error in day started handler.", LogLevel.Error);
-                    _monitor.Log($"Day started exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                }
-            });
-        }
-
-        /// <summary>
-        /// Spec 005 (FR-002): harvest quality roll. Poor forces 0 (only tier
-        /// with override exception), Moderate keeps vanilla roll, Healthy adds
-        /// SoilQualityHealthyBoost. Compositional (A2).
-        /// </summary>
-        public static float ComputeHarvestQualityRoll(float health, float vanillaRoll)
-        {
-            if (health <= 30f) return 0f;
-            if (health <= 70f) return Math.Clamp(vanillaRoll, 0f, 1f);
-            return Math.Clamp(vanillaRoll + ModConstants.SoilQualityHealthyBoost, 0f, 1f);
-        }
-
-        /// <summary>
-        /// Spec 005 (FR-003): per-tile extra harvest probability. Healthy
-        /// tiles get base + SoilExtraHarvestHealthyBoost; others keep base.
-        /// </summary>
-        public static float ComputeExtraHarvestProb(float health, float baseProb)
-        {
-            if (health >= 71f) return Math.Clamp(baseProb + ModConstants.SoilExtraHarvestHealthyBoost, 0f, 1f);
-            return Math.Clamp(baseProb, 0f, 1f);
-        }
-
-        /// <summary>
-        /// Spec 005 (FR-002/FR-003): harvest-time modifier entry point. Applies
-        /// the tile-health quality roll and extra-harvest probability to the
-        /// vanilla values. Returns true when a tier actually modified the outcome
-        /// (so callers can emit floating-text feedback, A4). Safe to call with a
-        /// null visualization service (no feedback emitted).
-        /// </summary>
-        /// <summary>
-        /// Spec 005 (FR-001 contingency, Q7): returns the start indices of
-        /// disjoint chunks of size <paramref name="chunkSize"/> covering
-        /// <paramref name="totalTiles"/> tiles using a prime-modulus stride of
-        /// <paramref name="stride"/> (default 61). Used to spread work across
-        /// ticks when the linear scan exceeds the 5ms budget at 40,000 tiles.
-        /// </summary>
-        public static System.Collections.Generic.List<int> GetChunkStartIndices(int totalTiles, int chunkSize, int stride = 61)
-        {
-            var result = new System.Collections.Generic.List<int>();
-            if (totalTiles <= 0 || chunkSize <= 0) return result;
-
-            int chunks = (totalTiles + chunkSize - 1) / chunkSize;
-            // Prime-modulus stride produces a permutation of chunk indices so
-            // no chunk is processed twice and none is missed.
-            for (int i = 0; i < chunks; i++)
-            {
-                int idx = (i * stride) % chunks;
-                result.Add(idx * chunkSize);
-            }
-
-            // De-duplicate (stride may collide for small chunk counts) while
-            // preserving coverage.
-            var seen = new System.Collections.Generic.HashSet<int>();
-            var deduped = new System.Collections.Generic.List<int>();
-            foreach (var s in result)
-            {
-                if (seen.Add(s)) deduped.Add(s);
-            }
-
-            // Ensure full coverage: append any missing chunk starts.
-            for (int c = 0; c < chunks; c++)
-            {
-                int s = c * chunkSize;
-                if (seen.Add(s)) deduped.Add(s);
-            }
-
-            return deduped;
-        }
-
-        public bool ApplyHarvestModifiers(string locationName, Microsoft.Xna.Framework.Vector2 tile,
-            float vanillaRoll, float baseExtraProb, out float qualityRoll, out float extraProb)
-        {
-            qualityRoll = vanillaRoll;
-            extraProb = baseExtraProb;
-
-            var health = _soilHealthService.GetSoilHealth(locationName, tile);
-            if (float.IsNaN(health) || float.IsInfinity(health) || health < 0f || health > 100f)
-            {
-                return false;
-            }
-
-            var newQuality = ComputeHarvestQualityRoll(health, vanillaRoll);
-            var newExtra = ComputeExtraHarvestProb(health, baseExtraProb);
-
-            bool modified = Math.Abs(newQuality - vanillaRoll) > 0.0001f
-                || Math.Abs(newExtra - baseExtraProb) > 0.0001f;
-
-            qualityRoll = newQuality;
-            extraProb = newExtra;
-
-            if (modified && _visualizationService != null)
-            {
-                try
-                {
-                    var message = newQuality < vanillaRoll
-                        ? "Quality reduced (Poor soil)"
-                        : "Quality boosted (Healthy soil)";
-                    _visualizationService.TriggerHarvestFeedback(tile.ToPoint(), message);
-                }
-                catch
-                {
-                    // Best-effort feedback; never fail the harvest.
-                }
-            }
-
-            return modified;
-        }
-
-        /// <summary>
-        /// T114 (FR-002/FR-003): scans the current location for mature crops and
-        /// detects when one disappears (was harvested). When a harvest is detected,
-        /// computes the vanilla roll, calls ApplyHarvestModifiers, and applies the
-        /// results to the harvested item in the player's inventory.
-        /// </summary>
-        private void DetectAndApplyHarvestModifiers()
-        {
             try
             {
-                var location = StardewValley.Game1.currentLocation;
-                if (location == null) return;
-
-                var locationName = location.Name;
-                if (string.IsNullOrEmpty(locationName)) return;
-
-                var currentMatureCrops = new System.Collections.Generic.Dictionary<
-                    Microsoft.Xna.Framework.Vector2, StardewValley.Crop>();
-
-                foreach (var kvp in location.terrainFeatures.Pairs)
+                // T074 (FR-004, T063): the SMAPI DayStarted
+                // event fires once per day for the whole host —
+                // not once per location — so a day-start path
+                // that only processes Game1.currentLocation
+                // silently starves every other farm location's
+                // bins and soil. The mod's bins live on the
+                // farm and in the Greenhouse (FR-002, T057),
+                // the complete set of farm locations a save
+                // holds, so the day tick reaches the location
+                // the host occupies plus the farm locations it
+                // does not: the Greenhouse, and the farm
+                // itself, whose location name is "Farm" for
+                // every farm type. Each service keeps its own
+                // exactly-once-per-day, per-location guard
+                // (T056 in CompostingBinService, T068 in
+                // SoilDecayService), so a location named twice
+                // on the same day — the occupied farm overlaps
+                // the literal pair — is ticked once.
+                var farmLocationNames = new HashSet<string>();
+                var currentLocationName = StardewValley.Game1.currentLocation?.Name;
+                if (!string.IsNullOrEmpty(currentLocationName))
                 {
-                    if (kvp.Value is StardewValley.TerrainFeatures.HoeDirt hoeDirt
-                        && hoeDirt.crop != null
-                        && IsCropMature(hoeDirt.crop))
-                    {
-                        currentMatureCrops[kvp.Key] = hoeDirt.crop;
-                    }
+                    farmLocationNames.Add(currentLocationName);
                 }
 
-                System.Collections.Generic.Dictionary<Microsoft.Xna.Framework.Vector2, StardewValley.Crop>? previouslyTracked;
-                lock (_harvestLock)
-                {
-                    _matureCrops.TryGetValue(locationName, out previouslyTracked);
-                }
+                farmLocationNames.Add("Greenhouse");
+                farmLocationNames.Add("Farm");
 
-                if (previouslyTracked != null)
+                foreach (var locationName in farmLocationNames)
                 {
-                    foreach (var kvp in previouslyTracked)
-                    {
-                        // currentMatureCrops is filled by the foreach above. S4158's
-                        // "known to be empty" is a SonarSource-confirmed false positive
-                        // for collections populated inside a loop, whose support in the
-                        // dataflow engine is poor (sonar-dotnet#1042 / #767).
-                        if (!currentMatureCrops.ContainsKey(kvp.Key)) //NOSONAR
-                        {
-                            ApplyHarvestModifiersToTile(locationName, kvp.Key, kvp.Value);
-                        }
-                    }
-                }
-
-                lock (_harvestLock)
-                {
-                    _matureCrops[locationName] = currentMatureCrops;
+                    _compostingBinService.ProcessDayStart(locationName);
+                    _soilDecayService.ProcessDayStart(locationName);
                 }
             }
             catch (Exception ex)
             {
-                _monitor.Log($"Harvest detection error: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-            }
-        }
-
-        /// <summary>
-        /// T114: returns true when the crop has reached its final phase and
-        /// the current phase's day count has elapsed (ready to harvest).
-        /// </summary>
-        private static bool IsCropMature(StardewValley.Crop crop)
-        {
-            if (crop.phaseDays == null || crop.phaseDays.Count == 0) return false;
-            var currentPhase = crop.currentPhase.Value;
-            var dayOfPhase = crop.dayOfCurrentPhase.Value;
-            if (currentPhase < 0 || currentPhase >= crop.phaseDays.Count) return false;
-            return currentPhase == crop.phaseDays.Count - 1
-                && dayOfPhase >= crop.phaseDays[currentPhase];
-        }
-
-        /// <summary>
-        /// T114 (FR-002/FR-003): applies harvest modifiers when a mature crop
-        /// disappears from a tile (was harvested). Computes the vanilla roll,
-        /// calls ApplyHarvestModifiers, and applies the modified quality/extra
-        /// to the harvested item in the player's inventory.
-        /// </summary>
-        private void ApplyHarvestModifiersToTile(string locationName, Microsoft.Xna.Framework.Vector2 tile, StardewValley.Crop crop)
-        {
-            try
-            {
-                var farmer = StardewValley.Game1.player;
-                if (farmer == null) return;
-
-                var farmingLevel = farmer.FarmingLevel;
-                var vanillaRoll = 0.2f * farmingLevel / 10f + 0.01f;
-
-                var baseExtraProb = 0f;
-                var cropData = StardewValley.Game1.cropData;
-                var harvestId = crop.indexOfHarvest?.ToString() ?? string.Empty;
-                if (cropData != null && !string.IsNullOrEmpty(harvestId) && cropData.TryGetValue(harvestId, out var data))
-                {
-                    baseExtraProb = (float)data.ExtraHarvestChance;
-                }
-
-                float qualityRoll, extraProb;
-                bool modified = ApplyHarvestModifiers(locationName, tile, vanillaRoll, baseExtraProb, out qualityRoll, out extraProb);
-
-                if (!modified) return;
-
-                var random = StardewValley.Game1.random;
-
-                var harvestedItems = farmer.Items;
-                if (harvestedItems == null) return;
-
-                foreach (var item in harvestedItems)
-                {
-                    if (item == null) continue;
-                    if (item is not StardewValley.Object obj) continue;
-
-                    if (qualityRoll <= 0f)
-                    {
-                        obj.Quality = 0;
-                    }
-                    else if (qualityRoll < 1f)
-                    {
-                        var roll = (float)random.NextDouble();
-                        if (roll < qualityRoll)
-                        {
-                            obj.Quality = Math.Min(obj.Quality + 1, 3);
-                        }
-                    }
-
-                    if (extraProb > baseExtraProb)
-                    {
-                        var extraRoll = (float)random.NextDouble();
-                        if (extraRoll < extraProb - baseExtraProb)
-                        {
-                            var extraItem = new StardewValley.Object(obj.ParentSheetIndex.ToString(), 1);
-                            farmer.addItemByMenuIfNecessary(extraItem);
-                        }
-                    }
-
-                    break;
-                }
-            }
-            catch (Exception ex)
-            {
-                _monitor.Log($"Harvest modifier application error: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-            }
-        }
-
-        /// <summary>
-        /// Spec 005 (FR-001): applies the soil-health growth modifier to
-        /// Crop.phaseDays for every tilled tile in the given location.
-        /// Poor (0-30) => 1.15x (slower), Moderate (31-70) => 1.00x (vanilla),
-        /// Healthy (71-100) => 0.85x (faster). Compositional: applied to base
-        /// phaseDays before vanilla modifiers (A2).
-        /// </summary>
-        private readonly System.Collections.Generic.Dictionary<object, int[]> _soilGrowthBasePhaseDays =
-            new System.Collections.Generic.Dictionary<object, int[]>();
-        private readonly System.Collections.Generic.HashSet<string> _soilGrowthProcessedLocations =
-            new System.Collections.Generic.HashSet<string>();
-        private string? _soilGrowthLastDayKey;
-
-        private void ApplySoilGrowthModifier(string locationName)
-        {
-            try
-            {
-                // Per-location day guard: a single DayStarted delivery must not
-                // re-scale the same location twice (multiplayer duplicate
-                // deliveries / re-entrancy). Reset the processed set on a new day.
-                var dayKey = $"{StardewValley.Game1.currentSeason}_{StardewValley.Game1.dayOfMonth}_{StardewValley.Game1.year}";
-                if (_soilGrowthLastDayKey != dayKey)
-                {
-                    _soilGrowthLastDayKey = dayKey;
-                    _soilGrowthProcessedLocations.Clear();
-                }
-
-                if (!_soilGrowthProcessedLocations.Add(locationName))
-                {
-                    return;
-                }
-
-                var location = StardewValley.Game1.getLocationFromName(locationName);
-                if (location == null) return;
-
-                var farmerId = StardewValley.Game1.player == null ? 0L : StardewValley.Game1.player.UniqueMultiplayerID;
-
-                // Collect tilled tiles first so the work can be spread across
-                // chunks (FR-001 contingency, Q7) when the linear scan would
-                // exceed the 5ms budget at 40,000 tiles.
-                var tilledTiles = new System.Collections.Generic.List<(Microsoft.Xna.Framework.Vector2 Key, StardewValley.TerrainFeatures.HoeDirt HoeDirt)>();
-                foreach (var kvp in location.terrainFeatures.Pairs)
-                {
-                    if (kvp.Value is not StardewValley.TerrainFeatures.HoeDirt hoeDirt2) continue;
-                    if (hoeDirt2.crop == null) continue;
-                    tilledTiles.Add((new Microsoft.Xna.Framework.Vector2(kvp.Key.X, kvp.Key.Y), hoeDirt2));
-                }
-
-                // T071 (spec 005 FR-001, Q7): the chunk mechanism activates only
-                // at or above the measured 40,000-tile budget
-                // (ModConstants.MaxTilledTiles); below it the linear scan already
-                // fits the 5ms budget, so a single chunk covers the whole list.
-                // Chunk size is ~1,000 tiles (spec 005 T070).
-                int chunkSize = tilledTiles.Count >= ModConstants.MaxTilledTiles
-                    ? 1000
-                    : Math.Max(1, tilledTiles.Count);
-                var chunkStarts = GetChunkStartIndices(tilledTiles.Count, chunkSize);
-                foreach (var chunkStart in chunkStarts)
-                {
-                    int chunkEnd = Math.Min(chunkStart + chunkSize, tilledTiles.Count);
-                    for (int ci = chunkStart; ci < chunkEnd; ci++)
-                    {
-                        var entry = tilledTiles[ci];
-                        var hoeDirt = entry.HoeDirt;
-                        var tile = new Microsoft.Xna.Framework.Vector2(entry.Key.X, entry.Key.Y);
-
-                        // FR-007: fall back to vanilla (1.00x) when health data is
-                        // missing/corrupted/out-of-bounds. Sparse save never persists
-                        // 0, so a 0 result means "no data" -> vanilla.
-                        var health = _soilHealthService.GetSoilHealth(locationName, tile);
-                        if (float.IsNaN(health) || float.IsInfinity(health) ||
-                            health < 0f || health > 100f || health <= 0f)
-                        {
-                            continue;
-                        }
-
-                        float multiplier;
-                        if (health <= 30f) multiplier = ModConstants.SoilGrowthPoorMultiplier;
-                        else if (health <= 70f) multiplier = 1.0f;
-                        else multiplier = ModConstants.SoilGrowthHealthyMultiplier;
-
-                        if (Math.Abs(multiplier - 1.0f) < 0.0001f) continue;
-
-                        if (hoeDirt.crop == null) continue;
-                        var crop = hoeDirt.crop;
-
-                        // Host-authoritative atomic lock (Principle VI / T101).
-                        if (_hostAtomicLockService != null && farmerId != 0L)
-                        {
-                            if (!_hostAtomicLockService.TryAcquireLock(locationName, tile, farmerId))
-                            {
-                                continue;
-                            }
-                        }
-
-                        try
-                        {
-                            // Idempotent scaling: restore base phase durations before
-                            // applying the multiplier so repeated calls never compound.
-                            if (!_soilGrowthBasePhaseDays.TryGetValue(crop, out var baseDays))
-                            {
-                                baseDays = new int[crop.phaseDays.Count];
-                                for (int b = 0; b < crop.phaseDays.Count; b++)
-                                {
-                                    baseDays[b] = crop.phaseDays[b];
-                                }
-
-                                _soilGrowthBasePhaseDays[crop] = baseDays;
-                            }
-
-                            // phaseDays is a NetIntList (per-phase durations); scale each
-                            // entry multiplicatively. The list field itself is read-only,
-                            // so mutate elements in place.
-                            var count = Math.Min(crop.phaseDays.Count, baseDays.Length);
-                            for (int i = 0; i < count; i++)
-                            {
-                                var restored = baseDays[i];
-                                var scaled = (int)Math.Round(restored * multiplier);
-                                if (scaled < 1) scaled = 1;
-                                crop.phaseDays[i] = scaled;
-                            }
-                        }
-                        finally
-                        {
-                            if (_hostAtomicLockService != null && farmerId != 0L)
-                            {
-                                _hostAtomicLockService.ReleaseLock(locationName, tile, farmerId);
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _monitor.Log($"Error applying soil growth modifier for location '{locationName}'.", LogLevel.Error);
-                _monitor.Log($"ApplySoilGrowthModifier exception: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                _monitor.Log("Error in day started handler.", LogLevel.Error);
+                _monitor.Log($"Day started exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
             }
         }
 
@@ -2233,47 +1794,7 @@ namespace LivingRoots.Controllers
                 {
                     if (removed.Value.ItemId == ModConstants.CompostingBinItemId)
                     {
-                        // T127 (FR-005c): reconstruct dislodged bin carrying progress
-                        // modData BEFORE the record is pruned, so the batch
-                        // (InputId/DaysRemaining) survives removal instead of being
-                        // destroyed with the pruned record.
-                        var dislodgedItem = _compostingBinService.CreateDislodgedBinItem(e.Location.Name, removed.Key);
                         _compostingBinService.OnObjectRemoved(e.Location.Name, removed.Key);
-                        if (dislodgedItem == null)
-                        {
-                            continue;
-                        }
-
-                        // T131 (FR-005c): route the reconstructed bin back into the
-                        // player's inventory when there is space, and drop debris
-                        // only when the inventory refused it. A removed bin is never
-                        // silently destroyed.
-                        bool addedToInventory = false;
-                        try
-                        {
-                            var player = StardewValley.Game1.player;
-                            if (player != null)
-                            {
-                                addedToInventory = player.addItemToInventoryBool(dislodgedItem);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            // Headless hosts (Game1.player unallocated) take the debris
-                            // path below. Sanitized per FR-015.
-                            _monitor.Log($"Dislodged bin inventory return unavailable: {ex.GetType().FullName}, HResult: {ex.HResult}", LogLevel.Trace);
-                        }
-
-                        if (!addedToInventory && StardewValley.Game1.currentLocation != null)
-                        {
-                            // Inventory full (or unavailable): floating debris retains
-                            // the item's modData (FR-005c), so progress is not lost.
-                            StardewValley.Game1.createItemDebris(
-                                dislodgedItem,
-                                removed.Key * (float)ModConstants.TileSize,
-                                -1,
-                                e.Location);
-                        }
                     }
                 }
             }
@@ -2318,32 +1839,12 @@ namespace LivingRoots.Controllers
                 // held-item information, which counts as
                 // empty hands.
                 var heldItem = _playerProvider?.CurrentItem;
-                // T128 (FR-019): the farmer id is the multiplayer identity the
-                // host-authoritative lock keys on. An unresolved provider or
-                // player yields no id at all — it is NOT coerced into a valid
-                // actor: the downstream fail-closed guards (TryInteractWithBin,
-                // TryApplyCompostWithLock) treat id 0 as "no actor" and refuse,
-                // rather than letting a collapsed id act as a second farmer.
-                // T128 (FR-019): the farmer id is the multiplayer identity the
-                // host-authoritative lock keys on. An unresolved provider or
-                // player yields no id at all — it is NOT coerced into a valid
-                // actor: the fail-closed guards downstream treat a missing id
-                // as "no actor" and refuse, instead of letting a collapsed id
-                // act as a second farmer. GetValueOrDefault keeps the "no
-                // actor" value explicit rather than hiding it in a coalesce.
-                long? resolvedFarmerId = _playerProvider?.CurrentPlayer?.UniqueMultiplayerID
-                    ?? StardewValley.Game1.player?.UniqueMultiplayerID;
-                long farmerId = resolvedFarmerId.GetValueOrDefault();
+                var farmerId = _playerProvider?.CurrentPlayer?.UniqueMultiplayerID ?? 0L;
 
-                // T267 (FR-002): the held-item gate accepts exactly the item-id
-                // forms CompostApplicationService.HoldsCompost accepts, so every
-                // accepted form reaches application rather than silently falling
-                // through to the bin paths.
                 if (heldItem != null &&
                     (heldItem.QualifiedItemId == ModConstants.CompostItemId ||
                      heldItem.QualifiedItemId == ModConstants.QualifiedCompostItemId ||
-                     heldItem.ItemId == ModConstants.CompostItemId ||
-                     heldItem.ItemId == ModConstants.QualifiedCompostItemId))
+                     heldItem.ItemId == ModConstants.CompostItemId))
                 {
                     if (TryApplyCompostWithLock(location, binTile, farmerId, msg => StardewValley.Game1.showRedMessage(TranslateRefusalMessage(msg))))
                     {
@@ -2370,22 +1871,13 @@ namespace LivingRoots.Controllers
                     }
                 }
 
-                // T131 FR-005c: route dislodged bin into inventory when space is available
-                // (debris only when full). Pass a PlayerInventory instance so the dislodged
-                // bin carrying progress lands in inventory rather than always becoming debris.
-                // T247 (FR-001a/FR-005b/FR-006): a Ready bin with empty hands must
-                // collect through TryInteractWithBin below — the sole production
-                // caller of CompostingBinService.CollectCompost, which grants
-                // exactly one compost and returns the bin to Empty while the
-                // world object stays on the tile — never dislodge.
-                // TryDislodgeBin returns true for any bin object, so the
-                // dislodge yields whenever the bin is Ready. A non-Ready bin
-                // keeps the existing dislodge behaviour. The Data/Machines
-                // native payout stays disabled, so exactly one driver pays
-                // (no double-payout).
-                if (heldItem == null
-                    && _compostingBinService.GetBinState(location.Name, binTile) != Domain.CompostingBinState.Ready
-                    && TryDislodgeBin(location, binTile, inventory: new PlayerInventory(), onDropDebris: null))
+                // T073 (FR-002, FR-005c): a right-click
+                // with empty hands on a placed bin dislodges
+                // it — the yielded item carries its batch
+                // progress, and the world object and the
+                // service record are cleared together (zero
+                // orphaned state).
+                if (heldItem == null && TryDislodgeBin(location, binTile))
                 {
                     return;
                 }
@@ -2733,7 +2225,18 @@ namespace LivingRoots.Controllers
             // keeps the cache and the world object in
             // lockstep — vanilla placement would place the
             // machine without either. Three fixes land at
-            // T166 / FR-002: allow farm / Greenhouse with HoeDirt; relax invalid-terrain refusal
+            // this intercept: (1) the previous HoeDirt-only
+            // requirement contradicted FR-002 (farm land is
+            // placeable land, tilled or not — only water,
+            // buildings and non-farm interiors are invalid
+            // terrain), so the terrain check is relaxed to an
+            // explicit water refusal below; (2) the deposit
+            // path (TryInteractWithBin) gates on the world
+            // object being the bin big craftable, so a stale
+            // cache record can never act as a ghost bin;
+            // (3) a deposit the bin accepts consumes one unit
+            // of the held stack, ending the infinite-waste
+            // loop of re-depositing a never-consumed item.
             if (IsDisposed())
             {
                 return false;
@@ -2769,26 +2272,9 @@ namespace LivingRoots.Controllers
             // tiles, buildings and non-farm,
             // non-greenhouse interiors are
             // invalid terrain).
-            bool locationValid = location.IsFarm || IsGreenhouseLikeLocation(location);
-
-            // T129 (FR-002): refuse placement on building footprint tiles
-            if (locationValid)
+            bool validLocation = location.IsFarm || IsGreenhouseLikeLocation(location);
+            if (!validLocation)
             {
-                foreach (var building in location.buildings)
-                {
-                    var bTileX = building.tileX.Value;
-                    var bTileY = building.tileY.Value;
-                    if (tile.X >= bTileX && tile.X < bTileX + building.tilesWide.Value &&
-                        tile.Y >= bTileY && tile.Y < bTileY + building.tilesHigh.Value)
-                    {
-                        return false;
-                    }
-                }
-            }
-
-            if (!locationValid)
-            {
-                // Non-farm/non-greenhouse locations are refused
                 return false;
             }
 
@@ -2835,24 +2321,6 @@ namespace LivingRoots.Controllers
             // object would read as a different item.
             var placedObject = new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId, TileLocation = tile };
             placedObject.bigCraftable.Value = true;
-
-            // T142/T005c-1 (FR-005c): the world object carries the batch
-            // progress the held item serialized, so the placement is itself
-            // evidence of the batch — the dislodge path reads the service
-            // record, but the world object is what the game persists, and a
-            // placed bin whose record disagrees with its object is the
-            // duplication hazard FR-002 exists to prevent.
-            if (binItem.modData != null)
-            {
-                // T142/FR-005c: Item.modData is a KeyValuePair-shaped map in
-                // Stardew 1.6, so read it through Pairs and write each entry
-                // through the placed object's indexer.
-                foreach (var entry in binItem.modData.Pairs)
-                {
-                    placedObject.modData[entry.Key] = entry.Value;
-                }
-            }
-
             location.Objects.Add(tile, placedObject);
 
             _compostingBinService.OnBinPlaced(location.Name, tile, binItem);
@@ -2902,20 +2370,12 @@ namespace LivingRoots.Controllers
         /// not a greenhouse, so non-farm
         /// interiors without it stay refused.
         /// </summary>
-        /// <remarks>
-        /// T197 (FR-002): the rule itself lives
-        /// in <see cref="GreenhouseLocationRule"/>
-        /// so the placement gate and the compost
-        /// application gate cannot disagree —
-        /// a bin placed here must have its
-        /// compost applicable here too. Only the
-        /// game-type seam is kept here.
-        /// </remarks>
         /// <param name="location">The location to classify.</param>
         /// <returns>True when the location name is greenhouse-like.</returns>
         private static bool IsGreenhouseLikeLocation(StardewValley.GameLocation location)
         {
-            return GreenhouseLocationRule.IsGreenhouseLike(location);
+            return location.Name != null &&
+                location.Name.Contains("Greenhouse", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -2954,12 +2414,6 @@ namespace LivingRoots.Controllers
             location.Objects.Remove(tile);
             _compostingBinService.OnObjectRemoved(location.Name, tile);
 
-            if (dislodgedItem == null)
-            {
-                // No progress record to preserve — nothing to reconstruct.
-                return true;
-            }
-
             bool added = false;
             if (inventory != null)
             {
@@ -2972,7 +2426,7 @@ namespace LivingRoots.Controllers
                 {
                     onDropDebris(dislodgedItem, tile, location);
                 }
-                else if (StardewValley.Game1.currentLocation != null)
+                else
                 {
                     StardewValley.Game1.createItemDebris(dislodgedItem, tile * (float)ModConstants.TileSize, -1, location);
                 }
@@ -2988,13 +2442,6 @@ namespace LivingRoots.Controllers
         /// <param name="tile">The tile coordinate of the bin.</param>
         /// <param name="farmer">The farmer performing the dislodgement.</param>
         /// <returns>True if bin was dislodged; false if no bin existed at tile.</returns>
-        /// <summary>
-        /// Validates terrain and map criteria and dislodges a composting bin at
-        /// the target tile on behalf of a farmer. T131 (FR-005c): the
-        /// reconstructed bin is routed into the farmer's inventory whenever
-        /// there is space, and only drops as floating debris when the inventory
-        /// refused it — so a removed bin is never silently destroyed.
-        /// </summary>
         public bool TryDislodgeBin(StardewValley.GameLocation location, Microsoft.Xna.Framework.Vector2 tile, StardewValley.Farmer farmer)
         {
             if (farmer == null)
@@ -3002,7 +2449,7 @@ namespace LivingRoots.Controllers
                 throw new ArgumentNullException(nameof(farmer));
             }
 
-            return TryDislodgeBin(location, tile, new FarmerInventoryAdapter(farmer), null);
+            return TryDislodgeBin(location, tile, null, null);
         }
 
         /// <summary>
@@ -3050,21 +2497,35 @@ namespace LivingRoots.Controllers
                 return false;
             }
 
-            // T128 (FR-019): fail-closed guard — interaction refused (not silently
-            // allowed) when no host-authoritative atomic lock service is available,
-            // when the farmer identifier collapsed to the no-actor value (T128 guards this),
-            // or when the lock is already held by another farmer. The refusal
-            // handler receives the conflict message key; zero mutation occurs.
-            if (farmerId == 0L)
+            // T081b (Constitution V, FR-019) + T106:
+            // a controller built without a
+            // lock service has no contention
+            // to resolve, so acquisition
+            // trivially succeeds and the
+            // release is a no-op — never a
+            // second, disjoint lock registry.
+            // T106 keeps this permissive site
+            // on purpose: ModControllerTests
+            // constructs 7-arg controllers
+            // (null lock) and pins the
+            // permissive outcome, and this
+            // call only decides conflict
+            // messaging. The state-mutating
+            // compost application path
+            // (TryApplyCompostWithLock) is
+            // the fail-closed one — refusing
+            // there costs a deposit, while
+            // guessing "no contention" during
+            // an actual cross-host write is
+            // the hazard FR-019 exists to
+            // prevent.
+            if (!(_hostAtomicLockService?.TryAcquireLock(location.Name, tile, farmerId) ?? true))
             {
-                refusalHandler?.Invoke(ModConstants.TranslationKeyCompostActionConflict);
-                return false;
-            }
-
-            if (_hostAtomicLockService == null ||
-                !_hostAtomicLockService.TryAcquireLock(location.Name, tile, farmerId))
-            {
-                // T118 FR-019: refuse when lock service absent or acquisition fails
+                // T077 (FR-008a, FR-019): a tile
+                // lock already held by another farmer
+                // is the one bin interaction that
+                // still owes the conflict key — a
+                // genuine concurrency collision.
                 refusalHandler?.Invoke(ModConstants.TranslationKeyCompostActionConflict);
                 return false;
             }
@@ -3097,7 +2558,6 @@ namespace LivingRoots.Controllers
                         if (_compostingBinService.GetBinState(location.Name, tile) != Domain.CompostingBinState.Empty)
                         {
                             heldItem.Stack--;
-                            ClearConsumedHeldItemSlot(heldItem);
                         }
 
                         return true;
@@ -3144,49 +2604,6 @@ namespace LivingRoots.Controllers
             finally
             {
                 _hostAtomicLockService?.ReleaseLock(location.Name, tile, farmerId);
-            }
-        }
-
-        /// <summary>
-        /// Clears the active inventory slot when a consumed held-item stack
-        /// empties, so no zero-stack item remains (T266, FR-007) — the
-        /// <see cref="TryPlaceBin(StardewValley.GameLocation, Microsoft.Xna.Framework.Vector2, StardewValley.Item, System.Collections.Generic.IList{StardewValley.Item})"/>
-        /// slot-clearing pattern applied to the bin-deposit path.
-        /// </summary>
-        /// <remarks>
-        /// The farmer inventory slot is the production truth: nulling it
-        /// clears the active slot in-game. A settable provider cell
-        /// (unit-test doubles expose a setter while the provider seam stays
-        /// get-only, so no existing implementer breaks) is cleared as a
-        /// fallback only when it still holds the consumed reference — a
-        /// get-only provider is simply left alone.
-        /// </remarks>
-        /// <param name="consumed">The held item just consumed.</param>
-        private void ClearConsumedHeldItemSlot(StardewValley.Item consumed)
-        {
-            if (consumed.Stack > 0)
-            {
-                return;
-            }
-
-            var items = _playerProvider?.CurrentPlayer?.Items;
-            if (items != null)
-            {
-                int index = items.IndexOf(consumed);
-                if (index != -1)
-                {
-                    items[index] = null!;
-                    return;
-                }
-            }
-
-            if (ReferenceEquals(_playerProvider?.CurrentItem, consumed))
-            {
-                var currentItemProperty = _playerProvider?.GetType().GetProperty("CurrentItem");
-                if (currentItemProperty != null && currentItemProperty.CanWrite)
-                {
-                    currentItemProperty.SetValue(_playerProvider, null);
-                }
             }
         }
 
@@ -3241,13 +2658,6 @@ namespace LivingRoots.Controllers
             if (_hostAtomicLockService == null)
             {
                 _monitor.Log("Compost application refused: no host atomic lock service is injected, so tile contention cannot be resolved (FR-019).", LogLevel.Warn);
-
-                // T122 (FR-008a): a refusal the player cannot see is a refusal
-                // they cannot understand. The conflict is reported through the
-                // refusal handler, which the input boundary translates into the
-                // game's own on-screen message — never silence (FR-019: the
-                // refused player must be told).
-                refusalHandler?.Invoke(ModConstants.TranslationKeyCompostActionConflict);
                 return false;
             }
 
