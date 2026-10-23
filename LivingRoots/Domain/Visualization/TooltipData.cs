@@ -1,3 +1,4 @@
+using LivingRoots;
 using Microsoft.Xna.Framework;
 
 namespace LivingRoots.Domain.Visualization;
@@ -15,7 +16,7 @@ public class TooltipData
     public Vector2 Position { get; set; }
 
     /// <summary>Background color. Default dark translucent for ≥4.5:1 readability.</summary>
-    public Color BackgroundColor { get; set; } = new Color(0, 0, 0, 217);
+    public Color BackgroundColor { get; set; } = ModConstants.TooltipPanelColor;
 
     /// <summary>Text color. Default white for maximum readability.</summary>
     public Color TextColor { get; set; } = Color.White;
