@@ -1,5 +1,3 @@
-using StardewValley;
-
 namespace LivingRoots.Domain
 {
     /// <summary>
@@ -16,6 +14,6 @@ namespace LivingRoots.Domain
         /// </summary>
         /// <param name="item">Item to add.</param>
         /// <returns>True when the item was accepted; false when the inventory refused it.</returns>
-        bool TryAddItem(Item item);
+        bool TryAddItem(StardewValley.Item item);
     }
 }

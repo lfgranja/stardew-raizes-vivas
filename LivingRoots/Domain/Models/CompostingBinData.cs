@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Newtonsoft.Json;
 
 namespace LivingRoots.Domain.Models;
 
@@ -31,28 +30,11 @@ public class CompostingBinStateData
     public int? InputTimestamp { get; set; }
 
     /// <summary>Maturation level (1-5).</summary>
-    /// <remarks>
-    /// T252 (FR-005a/FR-012): retired multiplier — the JSON seam ignores it
-    /// (JsonIgnore) so no maturation trace is re-written to disk. Kept
-    /// in memory for save-compat observability only.
-    /// </remarks>
-    [JsonIgnore]
-    [System.Text.Json.Serialization.JsonIgnore]
     public int MaturationLevel { get; set; } = 1;
 
     /// <summary>Consecutive idle days since last activity (0-14).</summary>
-    /// <remarks>
-    /// T252 (FR-012): retired idle-reset counter — ignored by the JSON seam.
-    /// </remarks>
-    [JsonIgnore]
-    [System.Text.Json.Serialization.JsonIgnore]
     public int ConsecutiveIdleDays { get; set; } = 0;
 
     /// <summary>Consecutive active days (Processing state) for maturation increment.</summary>
-    /// <remarks>
-    /// T252 (FR-012): retired level-up counter — ignored by the JSON seam.
-    /// </remarks>
-    [JsonIgnore]
-    [System.Text.Json.Serialization.JsonIgnore]
     public int ConsecutiveActiveDays { get; set; } = 0;
 }
