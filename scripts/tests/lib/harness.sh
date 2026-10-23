@@ -13,6 +13,12 @@
 #     assertion records a failure and the test continues, so one run reports every
 #     broken expectation instead of only the first.
 #
+#   * skip / require_tool — a skipped expectation is reported as an `ok` and
+#     counted as a pass, but it is ALSO counted in TESTS_SKIPPED, and the
+#     summary reports that count on a line of its own (`# skipped: N`). The
+#     runner reads the summary back, so a file whose every case was skipped is
+#     never reported as a file that passed.
+#
 #   * run_script / run_script_env — invoke `scripts/smoke-validation.sh` with a
 #     SANITISED environment and capture stdout → RUN_STDOUT, stderr → RUN_STDERR and
 #     the exit status → RUN_CODE. The script's own output is captured, never leaked
@@ -105,6 +111,7 @@ if [[ -z "$HARNESS_SANDBOX" || ! -d "$HARNESS_SANDBOX" ]]; then
     # Without a sandbox the state roots below would point at absolute paths such
     # as /state, so the library refuses to load rather than risk touching them.
     printf 'harness: could not create the per-test sandbox under %s\n' "${TMPDIR:-/tmp}" >&2
+    # shellcheck disable=SC2317  # `exit 1` is reached only when the library is EXECUTED rather than sourced
     return 1 2>/dev/null || exit 1
 fi
 chmod 0700 -- "$HARNESS_SANDBOX" 2>/dev/null || true
@@ -153,15 +160,19 @@ TESTS_RUN=0
 TESTS_PASSED=0
 TESTS_FAILED=0
 
+# The number of expectations that were SKIPPED.
+#
+# A skip still counts towards TESTS_RUN and TESTS_PASSED — a skipped
+# expectation is not a failure — so those two counters alone cannot tell
+# "everything passed" from "nothing was actually tested". This counter is the
+# only place the difference is recorded, and the runner reads it to give a
+# file whose every case was skipped a verdict that is not PASS.
+TESTS_SKIPPED=0
+
 RUN_STDOUT=""
 RUN_STDERR=""
 RUN_CODE=0
 RUN_PERFORMED=0
-
-# The path most recently created by a fixture builder. It is part of the
-# library's public surface (a test may read it), hence the SC2034 exemption.
-# shellcheck disable=SC2034
-LAST_FIXTURE=""
 
 # Set to 1 by finish_tests so the EXIT trap does not report a second summary.
 HARNESS_FINISHED=0
@@ -205,11 +216,15 @@ fail() {
 
 # skip <label> <tool> — record a skipped expectation (reported as an `ok`, because
 # a skipped test is not a failure).
+#
+# The skip is counted in TESTS_SKIPPED as well, so the summary can report how
+# many of the recorded expectations never actually ran.
 skip() {
     local label="${1-}"
     local tool="${2-}"
     TESTS_RUN=$((TESTS_RUN + 1))
     TESTS_PASSED=$((TESTS_PASSED + 1))
+    TESTS_SKIPPED=$((TESTS_SKIPPED + 1))
     printf 'ok - %s (skipped: %s missing)\n' "$label" "$tool"
 }
 
@@ -503,6 +518,16 @@ _run_script_impl() {
     env_args+=("XDG_STATE_HOME=$(_sandbox_state_home)")
     env_args+=("XDG_RUNTIME_DIR=$(_sandbox_runtime_dir)")
     env_args+=("XDG_CONFIG_HOME=$(_sandbox_config_home)")
+    # The .NET SDK is used by the build phase (FR-016). A sandboxed HOME has
+    # no NuGet cache and triggers a first-run setup, so the cache location is
+    # pinned to the real one and the first-run ceremony is switched off —
+    # otherwise every build case would need the network.
+    if [[ -d "${HARNESS_ORIGINAL_HOME}/.nuget/packages" ]]; then
+        env_args+=("NUGET_PACKAGES=${HARNESS_ORIGINAL_HOME}/.nuget/packages")
+    fi
+    env_args+=("DOTNET_CLI_TELEMETRY_OPTOUT=1")
+    env_args+=("DOTNET_NOLOGO=1")
+    env_args+=("DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1")
     # The staged log template/target travel with the script under test, so the
     # fake apphost it launches inherits them and can produce the log. When
     # nothing is staged the two are set to the empty string, which scrubs any
@@ -531,7 +556,15 @@ _run_script_impl() {
         RUN_CODE=$?
     fi
 
+    # RUN_STDOUT and RUN_STDERR are the library's public result surface: the
+    # suites that source this file READ them after a run. ShellCheck analyses
+    # one file at a time and cannot see those readers, so it reports the two
+    # assignments as unused. They are deliberately NOT exported — the captured
+    # output would otherwise leak into the environment of the script under
+    # test.
+    # shellcheck disable=SC2034  # read by the suites that source this library
     RUN_STDOUT="$(cat -- "$out_file")"
+    # shellcheck disable=SC2034  # read by the suites that source this library
     RUN_STDERR="$(cat -- "$err_file")"
     rm -f -- "$out_file" "$err_file"
     RUN_PERFORMED=1
@@ -684,6 +717,48 @@ STUB
 #   <dest>/smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll
 #   <dest>/steam_appid.txt                                (413150)
 #   <dest>/Mods/
+# _link_game_references <dest>
+#
+# The build phase (FR-016) compiles the mod against the GAME's reference
+# assemblies, which ModBuildConfig takes from $(GamePath). A fake game
+# directory without them fails with hundreds of missing-type errors, so the
+# real installation's assemblies are provided.
+#
+# The files the pre-flight's base check applies to (the SMAPI installation)
+# are COPIED, so they resolve inside the fake directory; the game's own
+# assemblies are SYMLINKED, because the base check does not apply to them.
+_link_game_references() {
+    local dest="${1-}"
+    local game_dir="${HOME-}/.steam/steam/steamapps/common/Stardew Valley"
+    local file name
+
+    [[ -d "$game_dir" ]] || return 0
+
+    for file in \
+        "${game_dir}/StardewModdingAPI.dll" \
+        "${game_dir}/smapi-internal/SMAPI.Toolkit.dll" \
+        "${game_dir}/smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" \
+        "${game_dir}/smapi-internal/0Harmony.dll"; do
+        [[ -f "$file" ]] || continue
+        name="${file##*/}"
+        if [[ "$name" == "StardewModdingAPI.dll" ]]; then
+            cp -f -- "$file" "${dest}/${name}" 2>/dev/null || true
+        else
+            cp -f -- "$file" "${dest}/smapi-internal/${name}" 2>/dev/null || true
+        fi
+    done
+
+    for file in \
+        "${game_dir}/Stardew Valley.dll" \
+        "${game_dir}/StardewValley.GameData.dll" \
+        "${game_dir}/MonoGame.Framework.dll" \
+        "${game_dir}/xTile.dll"; do
+        [[ -f "$file" ]] || continue
+        name="${file##*/}"
+        ln -sf -- "$file" "${dest}/${name}" 2>/dev/null || true
+    done
+}
+
 make_fake_game_dir() {
     local dest="${1-}"
     if [[ -z "$dest" ]]; then
@@ -693,12 +768,18 @@ make_fake_game_dir() {
     fixture_root >/dev/null
     mkdir -p -- "$dest/smapi-internal" "$dest/Mods" || return 1
     : > "$dest/Stardew Valley.dll" || return 1
-    : > "$dest/StardewModdingAPI.dll" || return 1
+    # The fake SMAPI assembly must look like a real .NET assembly: FR-012
+    # item 2 requires the version to be PARSEABLE, so an empty file would
+    # make the pre-flight report "SMAPI not functional" for every fixture.
+    printf 'MZ\000\000' > "$dest/StardewModdingAPI.dll" || return 1
+    printf '4.5.2' >> "$dest/StardewModdingAPI.dll" || return 1
     : > "$dest/smapi-internal/SMAPI.Toolkit.dll" || return 1
     : > "$dest/smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" || return 1
     printf '%s\n' "$HARNESS_STEAM_APP_ID" > "$dest/steam_appid.txt" || return 1
     _write_apphost_stub "$dest/StardewModdingAPI"
-    LAST_FIXTURE="$dest"
+    # LAST: the real reference assemblies replace the empty placeholders the
+    # build phase would otherwise fail to compile against.
+    _link_game_references "$dest"
     return 0
 }
 
@@ -712,7 +793,6 @@ make_broken_smapi_dir() {
     fi
     make_fake_game_dir "$dest" || return 1
     rm -f -- "$dest/smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" || return 1
-    LAST_FIXTURE="$dest"
     return 0
 }
 
@@ -725,7 +805,6 @@ make_bad_steam_dir() {
     fi
     make_fake_game_dir "$dest" || return 1
     printf '99999\n' > "$dest/steam_appid.txt" || return 1
-    LAST_FIXTURE="$dest"
     return 0
 }
 
@@ -752,7 +831,6 @@ printf 'Xvfb stub: failed to start the virtual display\n' >&2
 exit 1
 STUB
     chmod 0755 -- "$path" 2>/dev/null || true
-    LAST_FIXTURE="$path"
     return 0
 }
 
@@ -772,17 +850,6 @@ STUB
 # launches, so a template that lived at the log path would be deleted before
 # the apphost could copy it.
 # ---------------------------------------------------------------------------
-
-# fresh_sentinel_for_now — print the current UTC time in the `s` format
-# (YYYY-MM-DDTHH:MM:SS), which is the exact shape of SMAPI's run sentinel
-# (`Log started at {UTC timestamp} UTC`).
-#
-# The apphost stub computes the same value with the same format string; the
-# two must stay in step, because the sentinel the stub writes is the one the
-# script under test compares against its launch timestamp.
-fresh_sentinel_for_now() {
-    date -u '+%Y-%m-%dT%H:%M:%S'
-}
 
 # stage_log_for_launch <template> <target>
 #
@@ -812,16 +879,6 @@ stage_log_for_launch() {
     HARNESS_FAKE_LOG_TARGET="$target"
     export FAKE_SMAPI_LOG_TEMPLATE="$template"
     export FAKE_SMAPI_LOG_TARGET="$target"
-    return 0
-}
-
-# unstage_log_for_launch — forget the staged log, so the next launch produces
-# no log at all. Idempotent.
-unstage_log_for_launch() {
-    HARNESS_FAKE_LOG_TEMPLATE=""
-    HARNESS_FAKE_LOG_TARGET=""
-    export FAKE_SMAPI_LOG_TEMPLATE=""
-    export FAKE_SMAPI_LOG_TARGET=""
     return 0
 }
 
@@ -977,7 +1034,6 @@ make_log_fixture() {
             return 1
             ;;
     esac
-    LAST_FIXTURE="$dest"
     return 0
 }
 
@@ -998,7 +1054,6 @@ make_stale_log() {
         _log_line "12:00:00" "ERROR" "SMAPI" "   Skipped mods"
         _log_line "12:00:00" "ERROR" "SMAPI" "      - ${HARNESS_MOD_NAME} ${HARNESS_MOD_VERSION} ${HARNESS_SKIP_REASON}"
     } > "$dest"
-    LAST_FIXTURE="$dest"
     return 0
 }
 
@@ -1060,10 +1115,10 @@ require_tool() {
 }
 
 # integration_skipped — true when the integration suite was asked to be skipped.
-# T012 declares SMOKE_SKIP_INTEGRATION=1; SKIP_INTEGRATION is accepted as an
-# alias.
+# T012 declares SMOKE_SKIP_INTEGRATION=1, and it is the only switch that
+# selects the skip.
 integration_skipped() {
-    case "${SMOKE_SKIP_INTEGRATION:-${SKIP_INTEGRATION:-}}" in
+    case "${SMOKE_SKIP_INTEGRATION:-}" in
         1|true|yes|on) return 0 ;;
         *) return 1 ;;
     esac
@@ -1074,8 +1129,21 @@ integration_skipped() {
 # ---------------------------------------------------------------------------
 
 # assert_summary — print the totals.
+#
+# The `# tests: …` line keeps its established shape: TESTS_RUN counts every
+# recorded expectation, and a skipped expectation counts as a pass because it
+# is not a failure. The number of skipped expectations is reported on a line of
+# its own, and only when there is something to report, so a run without a skip
+# prints exactly what it always printed.
+#
+# The runner reads the two lines back to tell a file that ran cases from a
+# file whose every case was skipped: the counts are equal only when nothing
+# was actually tested.
 assert_summary() {
     printf '# tests: %d, passed: %d, failed: %d\n' "$TESTS_RUN" "$TESTS_PASSED" "$TESTS_FAILED"
+    if (( TESTS_SKIPPED > 0 )); then
+        printf '# skipped: %d\n' "$TESTS_SKIPPED"
+    fi
 }
 
 # finish_tests — print the summary and exit: 1 when any assertion failed, 0
@@ -1098,23 +1166,36 @@ finish_tests() {
 # run as well.
 # ---------------------------------------------------------------------------
 
-# _harness_run_previous_trap <definition> — run the action of a trap definition
-# captured with `trap -p EXIT`. The definition looks like
+# _harness_run_previous_trap <definition> [status] — run the action of a trap
+# definition captured with `trap -p EXIT`. The definition looks like
 #
 #     trap -- 'echo bye' EXIT
 #
-# so the action is recovered by letting the shell re-parse it. The action runs in
-# a subshell: an `exit` inside it must not pre-empt the harness's own exit code.
+# and it is a COMPLETE shell command. It is replayed VERBATIM — as it stands,
+# without being split into words and re-quoted — inside a subshell: the
+# subshell installs the trap and then leaves, and leaving is what triggers the
+# action. The shell that printed the definition also parses it back, so the
+# action's own arguments and quoting survive exactly as the caller wrote them.
+#
+# The action runs in a subshell: an `exit` inside it must not pre-empt the
+# harness's own exit code. <status> is the exit status the action observes —
+# the status the shell was leaving with — and defaults to the caller's.
 _harness_run_previous_trap() {
+    local incoming_status=$?
     local definition="${1-}"
     [[ -n "$definition" ]] || return 0
-    local rest="${definition#trap }"
-    rest="${rest#-- }"
-    local action=""
-    eval "set -- $rest" 2>/dev/null || return 0
-    action="${1-}"
-    [[ -n "$action" ]] || return 0
-    ( eval "$action" ) || true
+    local status="${2:-$incoming_status}"
+    case "$status" in
+        ''|*[!0-9]*) status=0 ;;
+    esac
+    (
+        # The subshell's own EXIT trap is cleared first, so the harness's trap
+        # can never fire again inside the replay — not even when the
+        # definition fails to parse.
+        trap - EXIT
+        eval "$definition" 2>/dev/null || true
+        exit "$status"
+    ) || true
     return 0
 }
 
@@ -1133,7 +1214,7 @@ _harness_exit_trap() {
             assert_summary
         fi
     fi
-    _harness_run_previous_trap "$HARNESS_PREVIOUS_EXIT_TRAP"
+    _harness_run_previous_trap "$HARNESS_PREVIOUS_EXIT_TRAP" "$rc"
     exit "$rc"
 }
 
