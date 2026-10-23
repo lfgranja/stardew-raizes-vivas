@@ -482,3 +482,9 @@ graphify-out/
 # Proprietary Stardew Valley assemblies fetched from builddeps repo (gamepath-v1).
 # Must never be committed; see .specify/bugs/gamepath-not-gitignored/assessment.md.
 
+
+# Universal editor/IDE artifacts
+.DS_Store
+Thumbs.db
+*.swp
+.idea/

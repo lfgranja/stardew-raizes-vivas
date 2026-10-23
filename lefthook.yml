@@ -17,9 +17,9 @@ pre-commit:
       # The glob covers the feature script AND the test suite
       # (`scripts/tests/**/*.sh`), so a broken test file is caught at commit time
       # just like a broken script.
-      glob: |
-        scripts/*.sh
-        scripts/tests/**/*.sh
+      glob:
+        - "scripts/*.sh"
+        - "scripts/tests/**/*.sh"
       run: |
         for f in {staged_files}; do
           bash -n "$f" || exit 1
@@ -33,21 +33,59 @@ pre-commit:
       # shellcheck is not installed on every machine (it is absent on the
       # maintainer's host), and a missing binary would abort the commit. The
       # step is skipped with a warning in that case rather than failing.
-      glob: |
-        scripts/*.sh
-        scripts/tests/**/*.sh
+      #
+      # Every staged file is linted ON ITS OWN, exactly as the `shell-syntax`
+      # step above parses every staged file on its own: a finding is then
+      # attributed to the file it belongs to, and one bad file does not hide
+      # the others. The severity is shellcheck's DEFAULT — style, warning and
+      # info alike — which is what catches the findings this gate exists for.
+      #
+      # `-x` is deliberately NOT used: the harness is linted in its own right
+      # by this very step (it matches the glob below), so following it from
+      # the test files would only report its findings a second time.
+      glob:
+        - "scripts/*.sh"
+        - "scripts/tests/**/*.sh"
       run: |
         if ! command -v shellcheck >/dev/null 2>&1; then
           echo "⚠️ shellcheck not installed — skipping the static shell lint gate"
           exit 0
         fi
-        shellcheck {staged_files} && echo "✔️ shellcheck OK"
+        shellcheck_status=0
+        shellcheck_files=0
+        for f in {staged_files}; do
+          [ -n "$f" ] || continue
+          shellcheck_files=$((shellcheck_files + 1))
+          shellcheck "$f" || shellcheck_status=1
+        done
+        if [ "$shellcheck_files" -eq 0 ]; then
+          echo "⚠️ no staged shell file — skipping the static shell lint gate"
+          exit 0
+        fi
+        if [ "$shellcheck_status" -ne 0 ]; then
+          exit 1
+        fi
+        echo "✔️ shellcheck OK"
 
 pre-push:
   parallel: true
   commands:
     tests:
       run: dotnet test
+    # Constitution Gate 3 ("End-to-End Verification") applies to every change
+    # that touches runnable code — and `scripts/smoke-validation.sh` is runnable
+    # code. Without a hook, a change to it that breaks every case still passes
+    # `dotnet test`, passes `bash -n` (syntax only) and is pushed.
+    #
+    # This step runs the feature's OWN verification vehicle: the launch-free
+    # suites. `SMOKE_SKIP_INTEGRATION=1` keeps the integration suite out of the
+    # push path on purpose — it rebuilds the mod, writes into the repository
+    # tree and drives the real game, which is too heavy for every push. The
+    # integration suite is the Gate-3 evidence and is run deliberately, not
+    # automatically; a file whose every case was skipped is reported as
+    # `SKIP <file>`, never as `PASS`.
+    smoke-suite:
+      run: SMOKE_SKIP_INTEGRATION=1 scripts/tests/run-all.sh
 
 # EXAMPLE USAGE:
 #
