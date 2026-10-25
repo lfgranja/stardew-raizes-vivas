@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [x] No `[NEEDS CLARIFICATION]` markers without resolution (Q1–Q5 + Q6 execution all resolved 2026-10-25; mechanism B / env A / signal B / cost A / CI A / execution A; protocol documented, manual verification executed, `test.md` → `verified`).
+- [x] No `[NEEDS CLARIFICATION]` markers without resolution (Q1–Q9 resolved 2026-10-25; Clarify 2026-10-25: Q1→A verification NOT executed (ACs reverted to `[ ]`), Q2→A pipeline scriptado local COMPLETA, Q3→A escala 34/67 + `verified` = 1 sessão + 3 sinais + qualidade de colheita diferida; D1 e formato de evidência resolvidos autonomamente).
 - [x] Requirements are testable (FR-001a/b/c: checklist documented; FR-002: growth hook response; FR-003: save-file comparison path)
 - [x] Success criteria measurable (quantitative: `In-game runs`; qualitative: reproducible protocol)
 - [x] Success criteria technology-agnostic (no mention of `Harmony` vs `Postfix` in success criteria — uses observable outcome)
@@ -32,5 +32,6 @@
 ## Notes
 
 - Specification is for a **verification / process feature**, not a gameplay feature. It describes what must be verified (Phase 2 hook response) and how (protocol + save comparison), rather than designing new gameplay mechanics.
-- The 3 `[NEEDS CLARIFICATION]` markers are appropriate and explicitly bounded — they ask for mechanism/environment/signal, not design choices (those are settled by `problem.md` and `fix.md`).
+- All clarification questions (Q1–Q9 + 3 new from Clarify 2026-10-25) are resolved: verification not executed (ACs reverted to `[ ]`), automation scope = local scripted pipeline, thresholds = 34/67 with `verified` = 1 session + 3 signals, harvest quality deferred, D1 scoped as separate obligation, evidence format standardized. No unresolved markers remain.
 - The spec aligns with `assess.decide` (`go`) and `fix.md` (Phase 2 hook implemented, `ComputeHarvestQualityRoll` removed, `ApplySoilGrowthModifier()` real).
+- Round 3 Clarify (2026-10-25): 4 items resolved autonomously (growth direction corrected to poor −1 / healthy +1; farm-location scope; host guard + idempotency; DayStarted ordering). 1 design question remains open (naive ±1 vs. multiplicative phaseDays) — see spec "Open Questions / Clarifications". Planning should wait for resolution.
