@@ -64,10 +64,12 @@
 
 ## Evidence Artifacts
 
+The **canonical** bundle layout is the MIRROR-style `evidence-bundle-<run-id>/` defined in `contracts/verification-protocol.md` (FR-001c): `manifest.json` (schema version, run id, timestamp, tool/game/mod versions, environment, SHA-256 per file) + `claims.json` + `artifacts/` + JUnit XML + Allure JSON, with honesty levels W/R/E. The list below is the **simplified human-readable view** of the minimum artifact set; a bundle is not complete without `manifest.json` + `claims.json` + per-file SHA-256.
+
 After successful verification, the following artifacts should exist:
 
 ```
-verification/009-end-to-end-game-verification/
+verification/009-end-to-end-game-verification/   # simplified view (canonical = evidence-bundle-<run-id>/)
 ├── observation-notes.md       # Typed notes per criterion (not "looked fine")
 ├── save-diff.json             # Before/after SoilHealthState JSON diff
 ├── smapi-log-excerpt.txt      # SMAPI console excerpt (no WARN/ERROR)

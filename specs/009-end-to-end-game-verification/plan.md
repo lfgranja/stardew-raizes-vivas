@@ -31,7 +31,7 @@ This feature addresses the Gate 3 verification gap: the mod builds and passes te
 | III. Async-Only (NON-NEGOTIABLE) | ✅ PASS | Growth modifier is synchronous game-loop code (no I/O). Save comparator is read-only comparison of already-persisted JSON. No `.Result`/`.Wait()`. |
 | IV. TDD | ✅ PASS | Red-phase tests exist (`T114_T126_RedPhaseTests.cs`). Must be rewritten to pass with corrected hook. New tests for growth modifier correction (multiplicative, DayEnding, host guard, idempotency, all locations) must be written before implementation. |
 | V. Simplicity/YAGNI | ✅ PASS | Only save comparator in scope. Reflector, structured logger, scripted runner deferred until 2+ features reuse (Regra dos Três). No premature abstractions. |
-| VI. Multiplayer (NON-NEGOTIABLE) | ✅ PASS | Host guard (`if (!Context.IsMainPlayer) return;`) at top of `OnDayStarted`. Farm state is host-authoritative. Single-player is degenerate case. Farmhands must not execute growth modifier. |
+| VI. Multiplayer (NON-NEGOTIABLE) | ✅ PASS | Host guard (`if (!Context.IsMainPlayer) return;`) at top of `OnDayEnding`. Farm state is host-authoritative. Single-player is degenerate case. Farmhands must not execute growth modifier. |
 
 **Gate result: PASS** — no violations. All principles aligned.
 
@@ -103,7 +103,7 @@ Research has been completed across multiple prior sessions (assessments, clarify
 
 ### R3: Host Guard & Idempotency
 
-- **Decision**: Add `if (!Context.IsMainPlayer) return;` at top of `OnDayStarted`/`OnDayEnding`; add idempotency key (season:dayOfMonth:year) to prevent reprocessing on save/load.
+- **Decision**: Add `if (!Context.IsMainPlayer) return;` at top of `OnDayEnding` (where the growth modifier runs); add idempotency key (`season:dayOfMonth:year`, invariant culture) to prevent reprocessing on save/load. `OnDayStarted` subscription remains for composting bins and soil decay (no host guard change there beyond existing).
 - **Rationale**: `DayStarted`/`DayEnding` fires on farmhands too. Without host guard, farmhands would execute the modifier, violating Constitution VI (host-authoritative). Without idempotency, save/load (which re-fires events) would double-apply the modifier.
 - **Alternatives considered**: No guard (current) — rejected because it violates multiplayer-first principle. Host-only execution — accepted as the correct pattern.
 

@@ -86,7 +86,7 @@ Formal SC-009 checklist. Structure:
 
 ### Save Comparator
 
-**Location**: `LivingRoots.Tests/` (C# test utility) or `scripts/` (bash/python)
+**Location**: `LivingRoots.Tests/` (C# xUnit utility — canonical; `scripts/` is reserved for environment/smoke validation and is NOT used for the save comparator)
 
 Before/after `SoilHealthState` JSON diff tool. Reads `modData/soil_health_data_{saveId}.json` files.
 
