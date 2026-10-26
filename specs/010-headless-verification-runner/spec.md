@@ -7,6 +7,15 @@
 
 **Assessment artifacts**: `.specify/assessments/end-to-end-game-verification/` (intake, research, problem, concept, decision — verdict: go, Option B fully headless)
 
+## Clarifications
+
+### Session 2026-10-26
+
+- Q: What format should scenario definitions use? → A: **JSON** (validated against a JSON Schema) as the canonical machine format, with an optional human-facing Markdown companion checklist. JSON has no parser dependency in .NET (`System.Text.Json` is built-in); YAML is not used anywhere in the stack and would add a dependency (YAGNI). Thresholds reference `ModConstants` values by name and numeric value.
+- Q: How should `Crop.currentPhase`/`dayOfCurrentPhase` be captured unattended? → A: **In-process dump** (verification mod writes JSON at `DayEnding` after `ApplySoilGrowthModifier`, atomic temp-file+rename, "done" sentinel) as the primary oracle; **save-file inspection** of serialized Crop data as an independent cross-check (divergence is diagnostic). Screenshots/OCR are supporting evidence only.
+- Q: What mechanism should the runner use to inject scenarios? → A: **SMAPI macros** (`debug runmacro <file>`) for deterministic batch command execution (sleep, warp, item give) + **save file seeding** (StarDojo pattern) for reproducible initial conditions + **custom mod console commands** (e.g., `lr_dump_crop_phase`) for mod-specific state capture. Input simulation (xdotool) is excluded (fragile, non-deterministic). No verification bot mod needed — macros + seeding + custom commands provide sufficient determinism with lower effort and risk. Prior art: StarDojo (arXiv:2507.07445, ECCV 2026).
+- Q: How should the runner acquire game files? → A: **Private repository download via GitHub API** using a secret token (`BUILDDEPS_TOKEN`), following the same pattern already used by the dormant `Build and Test` workflow (`.github/workflows/build-and-test.yml`). The user's legally purchased game files are uploaded to a private repo; the runner downloads, verifies checksum, and extracts. This eliminates SteamCMD, Steam Guard, and interactive authentication entirely. The runner fails fast if the token is missing or the repo is inaccessible. No proprietary assemblies are distributed in the public repo.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Maintainer runs full verification unattended (Priority: P1) 🎯 MVP
@@ -43,7 +52,7 @@ As a contributor, I want to define a new scenario (checklist + thresholds) for m
 
 ### User Story 3 - CI runs verification on a self-hosted runner (Priority: P3)
 
-As CI infrastructure, I want the runner to be invocable from a self-hosted runner (with `STARDEW_GAME_PATH` and Steam credentials configured), so that verification can be triggered automatically on push/PR without a human, while public CI remains dormant.
+As CI infrastructure, I want the runner to be invocable from a self-hosted runner (with access to the private builddeps repository via `BUILDDEPS_TOKEN`), so that verification can be triggered automatically on push/PR without a human, while public CI remains dormant.
 
 **Why this priority**: Tertiary — the runner must first work locally; CI integration is a follow-on. Public CI (`Build and Test`) stays dormant due to proprietary-DLL barriers.
 
@@ -51,14 +60,14 @@ As CI infrastructure, I want the runner to be invocable from a self-hosted runne
 
 **Acceptance Scenarios**:
 
-1. **Given** a self-hosted runner with `STARDEW_GAME_PATH` and Steam credentials configured, **When** the runner is invoked in CI mode, **Then** it runs headless, produces JUnit XML + Allure JSON, and exits with a non-zero code on `fail`/`errored`/`partial`.
+1. **Given** a self-hosted runner with access to the private builddeps repository via `BUILDDEPS_TOKEN`, **When** the runner is invoked in CI mode, **Then** it downloads game files, runs headless, produces JUnit XML + Allure JSON, and exits with a non-zero code on `fail`/`errored`/`partial`.
 2. **Given** the public (GitHub-hosted) CI, **When** a PR is opened, **Then** the runner is NOT invoked (public CI has no game files); the manual/local runner remains the verification path.
 
 ---
 
 ### Edge Cases
 
-- What happens when Steam Guard requires interactive authentication? The runner must fail with a clear error and instructions for pre-authentication, not hang indefinitely.
+- What happens when the private builddeps repository is inaccessible or the token is missing/invalid? The runner must fail fast with a clear error naming the missing token or repository, before attempting any download.
 - What happens when the game version or SMAPI version mismatches the mod's expected version? The runner must detect and report the mismatch before scenario execution.
 - What happens when a scenario step times out (e.g., crop does not grow within expected days)? The runner must abort with `errored`/`partial` and attach artifacts.
 - What happens when the save file is corrupted or missing after the session? The runner must report `errored` with the before/after state, not crash.
@@ -76,20 +85,20 @@ As CI infrastructure, I want the runner to be invocable from a self-hosted runne
 #### Host & Environment
 
 - **FR-001**: The runner MUST verify that `STARDEW_GAME_PATH` is set and points to a valid Stardew Valley + SMAPI installation before any other step; if not, it MUST fail fast with a clear, actionable error.
-- **FR-002**: The runner MUST acquire game files via SteamCMD on a host with a licensed Steam account, handling Steam Guard pre-authentication; if authentication cannot be completed non-interactively, it MUST fail with instructions rather than hang.
+- **FR-002**: The runner MUST acquire game files from a **private repository** (e.g., `lfgranja/stardew-raizes-vivas-builddeps` or equivalent) via the GitHub API, authenticated with a secret token (`BUILDDEPS_TOKEN` or equivalent), following the same pattern already used by the dormant `Build and Test` workflow (`.github/workflows/build-and-test.yml`). The runner MUST verify the token is present and valid before attempting download; if the token is missing or the repository is inaccessible, it MUST fail fast with a clear, actionable error. The runner MUST NOT use SteamCMD or interactive Steam authentication — the private-repo pattern eliminates the Steam Guard barrier entirely. The downloaded archive MUST be verified (checksum) before extraction.
 - **FR-003**: The runner MUST start a virtual display (Xvfb) and verify it is available before launching the game; if Xvfb fails to start, the runner MUST abort with a clear error.
 - **FR-004**: The runner MUST deploy the mod (and the verification mod) into the game's `Mods/` folder and verify deployment succeeded before launch.
 
 #### Launch & Scenario Injection
 
 - **FR-005**: The runner MUST launch Stardew Valley under SMAPI headlessly and wait for the game to reach a ready state (mod loaded, save available) before injecting the scenario.
-- **FR-006**: The runner MUST inject the scenario into the game without human input, using either a verification mod that drives the scenario on game events (place bin, insert waste, sleep N days, harvest, apply compost, dump state) or SMAPI console commands; the injection mechanism MUST be documented and reproducible.
-- **FR-007**: The runner MUST support a scenario definition (checklist + thresholds) as input, so that different features can be verified without modifying the runner's core.
+- **FR-006**: The runner MUST inject the scenario into the game without human input using **SMAPI macros** (`debug runmacro <file>`) for deterministic batch command execution (sleep, warp, item give, etc.) combined with **save file seeding** (StarDojo pattern) for reproducible initial conditions, plus **custom mod console commands** (e.g., `lr_dump_crop_phase`) for mod-specific state capture. The injection mechanism MUST be documented and reproducible. Input simulation (xdotool) is explicitly excluded (fragile, non-deterministic). A verification bot mod is NOT required — SMAPI macros + save seeding + custom commands provide sufficient determinism with lower effort and risk.
+- **FR-007**: The runner MUST support a scenario definition (checklist + thresholds) as input, so that different features can be verified without modifying the runner's core. The scenario definition MUST be authored as **JSON** (validated against a JSON Schema), with an optional human-facing **Markdown** companion checklist for contributor readability. JSON is the canonical machine format (no parser dependency in .NET — `System.Text.Json` is built-in; YAML is not used anywhere in the stack and would add a dependency, violating YAGNI). Thresholds in the scenario MUST reference `ModConstants` values by name and numeric value.
 - **FR-008**: The runner MUST validate the scenario definition before launch (required fields, valid thresholds, valid boundaries); if invalid, it MUST fail fast with a field-level error.
 
 #### Signal Capture & Evaluation
 
-- **FR-009**: The runner MUST capture all three signals for every run: (i) `SoilHealthState` JSON delta (before/after `modData/soil_health_data_{saveId}.json`), (ii) `Crop.currentPhase` / `dayOfCurrentPhase` delta (via in-process dump or save-file inspection), and (iii) SMAPI console log excerpt confirming event execution and elapsed ms.
+- **FR-009**: The runner MUST capture all three signals for every run: (i) `SoilHealthState` JSON delta (before/after `modData/soil_health_data_{saveId}.json`), (ii) `Crop.currentPhase` / `dayOfCurrentPhase` delta captured via **in-process dump** (a verification mod/bot hook writes a JSON dump at `DayEnding` after `ApplySoilGrowthModifier`, with before/after pairs, atomic temp-file+rename, and a "done" sentinel) as the primary oracle, with **save-file inspection** of serialized `Crop` data as an independent cross-check (divergence between dump and save is diagnostic, not noise), and (iii) SMAPI console log excerpt confirming event execution and elapsed ms.
 - **FR-010**: The runner MUST apply the threshold rules: poor soil (health < 34) MUST slow growth (1.15× on `phaseDays`), healthy soil (health ≥ 67) MUST accelerate growth (0.85×), moderate [34, 67) MUST be unchanged (1.00×); `phaseDays` MUST never go below 1 and the 99999 sentinel MUST never be touched. Tiles with NaN health MUST be skipped (no change).
 - **FR-011**: The runner MUST compute a pass/fail/errored/partial/skipped verdict using the 4-state model: crash → `errored` with attached artifacts; incomplete signal set → `partial` (never auto-promoted to `pass`); transient/environmental failure → retry with bounded attempts and per-attempt logging; confirmed flaky → quarantine with owner and time-box.
 - **FR-012**: The runner MUST use the `SaveComparator` (0.0001f float tolerance, missing keys treated as 0, NaN tiles ignored) for the SoilHealthState delta, producing `added`/`removed`/`changed` entries.
@@ -124,7 +133,7 @@ As CI infrastructure, I want the runner to be invocable from a self-hosted runne
 ### Non-Functional Requirements
 
 - **NFR-001**: The runner MUST be reproducible on any host with `STARDEW_GAME_PATH` set and a licensed Steam account; it MUST NOT require changes to the mod's source code.
-- **NFR-002**: The runner MUST NOT distribute or embed proprietary game assemblies (`.gamepath`); it MUST rely on a pre-configured host.
+- **NFR-002**: The runner MUST NOT distribute or embed proprietary game assemblies in the public repository; it MUST acquire them from a private repository via authenticated API (secret token). The runner relies on a pre-configured host with access to the private repo.
 - **NFR-003**: The runner MUST produce a non-zero exit code on `fail`/`errored`/`partial` for CI integration.
 - **NFR-004**: The runner MUST log each step with timestamps for debugging; on failure, it MUST attach all available artifacts.
 
@@ -147,8 +156,8 @@ As CI infrastructure, I want the runner to be invocable from a self-hosted runne
 
 ## Assumptions
 
-- **A1**: A host with `STARDEW_GAME_PATH` set and a licensed Steam account is available (the runner does not remove this prerequisite; it standardizes execution on such a host).
-- **A2**: Steam Guard / SteamCMD authentication can be pre-configured on the host (interactive setup once, then non-interactive runs); if not, the runner fails with instructions rather than hanging.
+- **A1**: A host with access to the private builddeps repository (via `BUILDDEPS_TOKEN` secret) is available; the runner downloads game files from there rather than via SteamCMD. The user's legally purchased game files are hosted in the private repo (same pattern as the dormant `Build and Test` workflow).
+- **A2**: The private builddeps repository contains a complete, valid game + SMAPI installation archive (`gamepath.zip` or equivalent) with all 6 required assemblies; the runner verifies checksums before extraction.
 - **A3**: Xvfb + MonoGame rendering is stable enough for unattended scenario execution on Linux (precedent: JunimoServer runs Stardew + SMAPI headless on Linux via Docker/Xvfb).
 - **A4**: Scenario injection can be driven by a verification mod (bot mod) or SMAPI console commands without human input (precedent: dedicated-server mods automate host behavior).
 - **A5**: `Crop.currentPhase` / `dayOfCurrentPhase` can be captured unattended via in-process dump to file/log or save-file inspection of serialized Crop data.
