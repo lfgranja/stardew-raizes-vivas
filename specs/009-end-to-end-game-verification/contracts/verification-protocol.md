@@ -1,6 +1,8 @@
 # Verification Protocol Contract: End-to-End In-Game Verification (Gate 3)
 
 **Feature**: 009-end-to-end-game-verification
+
+> **Scope note (remediation)**: This document is the *interface/protocol specification*. The per-criterion observation checklist lives in `../checklists/gate3-verification-contract.md` (T030); requirements-quality validation lives in `../checklists/verification-protocol.md`. See those for non-overlapping concerns.
 **Date**: 2026-10-25
 **Label**: SC-009 (project-specific Living Roots identifier — NOT an IEEE/ISO/SMAPI standard)
 
@@ -23,8 +25,8 @@ This contract defines the verification protocol that must be followed to claim `
 | SC-001 | Poor-tile growth slower | Plant same seed on Poor (health < 34) + Medium (34–67) tiles; compare days to harvest | Poor > Medium (days) |
 | SC-002 | Healthy-tier growth faster | Plant same seed on Healthy (≥67) + Medium tiles; compare days to harvest | Healthy < Medium (days) |
 | SC-003 | Medium-tier parity | Compare Medium tile to vanilla (no compost) | Medium = vanilla (days) |
-| SC-004 | Harvest quality reflects tier | Harvest ≥10 from each tier; compare quality distribution | Poor=0 stars, Medium=vanilla, Healthy>vanilla |
-| SC-005 | Extra harvest on Healthy | Count extra items over ≥10 harvests per tier | Healthy > base rate |
+| SC-004 | Harvest quality reflects tier | Harvest ≥10 from each tier; compare quality distribution | DEFERRED — out of scope for `verified` claim (spec §Non-Goals; `ComputeHarvestQualityRoll` not implemented). Included for completeness only. |
+| SC-005 | Extra harvest on Healthy | Count extra items over ≥10 harvests per tier | DEFERRED — out of scope for `verified` claim (spec §Non-Goals). Included for completeness only. |
 | SC-007 | Save/reload preserves effect | Save, exit, reload; verify health + growth state | Health value unchanged; multiplier reapplied |
 
 ## Growth Hook Specific Criteria (Spec 009 Addition)
@@ -45,11 +47,41 @@ This contract defines the verification protocol that must be followed to claim `
 - [ ] **Artifact**: Save-file diff (`modData/soil_health_data_{saveId}.json` before vs after; `SoilHealthState` JSON delta). Save comparator must confirm expected health delta.
 - [ ] **Log**: SMAPI console excerpt (`SMAPI-latest.txt`) — no WARN/ERROR; confirm no "Skipping mod" message; confirm `DayEnding` event fired; confirm `ApplySoilGrowthModifier` executed; no exception traces.
 
+## Canonical Artifact Structure (FR-001c is authoritative)
+Canonical structure (MIRROR-style): `evidence-bundle-<run-id>/` with:
+- `manifest.json` (schema version, run id, timestamp ISO 8601, tool/game/mod versions, environment) carrying SHA-256 per file
+- `claims.json` (claim → evidence pointer, risk, safe wording)
+- `artifacts/` (screenshots, SMAPI logs, save-deltas before/after, reflection outputs)
+- JUnit XML (CI integration) and Allure JSON (rich report)
+Quickstart's simpler `verification/009-end-to-end-game-verification/` structure is a simplified view; FR-001c is canonical for evidence bundles.
+
+## Honesty Levels (W/R/E) — Assignment Criteria
+- **W (launch/connect):** Assigned when tooling/launch is verified (SMAPI loads, mod connects) but no runtime evidence is collected.
+- **R (runtime evidence collected):** Assigned when evidence artifacts are present and valid (save delta, log excerpt, observation notes).
+- **E (human judgment):** Assigned only by the maintainer. Never auto-assigned. Requires W + R as prerequisites.
+Assignment rule: W → R → E (sequential). E cannot be assigned without both W and R. Auto-promotion to E is prohibited.
+
+## Save Comparator Specification
+- **Form:** C# test utility (consistent with project tech stack: .NET 6, xUnit). Located in `LivingRoots.Tests/`.
+- **Input:** Two `modData/soil_health_data_{saveId}.json` files (before and after).
+- **Comparison algorithm:** Key-based by `(LocationName, "X,Y")`. Float tolerance: 0.0001f (matching sparse cache threshold). Missing keys treated as 0 (sparse cache). Output: JSON diff with `added`/`removed`/`changed` entries per tile.
+- **Validation:** Detects expected health delta. Ignores NaN tiles (out of scope for `verified`).
+
+## Cross-Cutting Non-Functional Checks (Principles II, III, VI)
+| # | Check | Method | Pass Threshold |
+|---|-------|--------|----------------|
+| 1 | No raw exception/stack trace in SMAPI log | Grep `SMAPI-latest.txt` for `Exception`, `at LivingRoots` | 0 matches |
+| 2 | Soil health values in bounds (0–100) | Inspect `soil_health_data_{saveId}.json` | All values ∈ [0,100] |
+| 3 | Save file path resolves under mod-data dir | Verify file location | No `..` or traversal in path |
+| 4 | No homoglyph/Unicode anomaly in save key | Inspect save filename | FormC-normalized, no mixed-script |
+| 5 | No UI freeze or deadlock during save/reload | Observe game responsiveness | Game remains responsive; DayEnding fires within expected timeframe; no "not responding" state |
+| 6 | Growth modifier scan completes within 5 ms | SMAPI log (LogLevel.Trace) shows elapsed ms | ≤5 ms for up to 40,000 tilled tiles |
+
 ## Post-State Comparison
 
 - [ ] Pre-state screenshot vs post-state screenshot (same camera/zoom if overlay involved)
 - [ ] Pre-state save artifacts vs post-state artifacts (diff of `SoilHealthState` persistence fields)
-- [ ] No unexpected secondary effects (nearby tiles unchanged; other mods not skipped; no new ERROR entries)
+- [ ] No unexpected secondary effects: (1) nearby tiles (within 3-tile radius of modified tiles) unchanged vs pre-state baseline; (2) no new ERROR/WARN entries in SMAPI log vs pre-state log snapshot; (3) other mods still loaded (no "Skipping mod" messages); (4) composting bin state unchanged unless expected; (5) no changes to unrelated modData files. Baseline = pre-state capture (save backup + log snapshot).
 - [ ] Divergence handling: if signals disagree, document as gap (not partial success). Do NOT auto-promote `partial` to `pass`.
 
 ## Claim Discipline
