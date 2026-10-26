@@ -1,5 +1,7 @@
 # Verification Protocol Quality Checklist: End-to-End In-Game Verification (Gate 3)
 
+> **Scope note (remediation)**: This is the *requirements-quality* checklist for the verification protocol. The interface/protocol spec is `../contracts/verification-protocol.md`; the per-criterion SC-009 observation checklist is `./gate3-verification-contract.md` (T030).
+
 **Purpose**: Validate that the verification protocol requirements (SC-009) are complete, clear, consistent, and measurable — testing the protocol specification itself, not whether verification has been executed.
 **Created**: 2026-10-25
 **Feature**: [spec.md](../spec.md)
@@ -8,71 +10,71 @@
 
 ## Protocol Completeness
 
-- [ ] CHK001 - Are all pre-state capture requirements specified (save backup, mod versions, log rotation, screenshot, state variables)? [Completeness, Spec §Assumptions, Contracts §Pre-State]
-- [ ] CHK002 - Are all per-criterion observation requirements defined with specific pass thresholds? [Completeness, Contracts §Per-Criterion Observation]
-- [ ] CHK003 - Are all three signal requirements (observation, artifact, log) specified with minimum content standards? [Completeness, Spec §FR-001c, Contracts §Multi-Signal Evidence]
-- [ ] CHK004 - Are all post-state comparison requirements specified (screenshot diff, save diff, side-effect check)? [Completeness, Contracts §Post-State Comparison]
-- [ ] CHK005 - Are all claim discipline requirements specified (exact wording, status labels, honesty levels)? [Completeness, Spec §FR-001c, Contracts §Claim Discipline]
-- [ ] CHK006 - Is the ≤30 min reproducibility requirement specified with measurement method? [Completeness, Spec §Success Criteria Qualitative] [Gap]
-- [ ] CHK007 - Are all evidence artifact requirements specified (file names, formats, storage location)? [Completeness, Spec §FR-001c, Quickstart §Evidence Artifacts]
+- [x] CHK001 - Are all pre-state capture requirements specified (save backup, mod versions, log rotation, screenshot, state variables)? [Completeness, Spec §Assumptions, Contracts §Pre-State]
+- [x] CHK002 - Are all per-criterion observation requirements defined with specific pass thresholds? [Completeness, Contracts §Per-Criterion Observation]
+- [x] CHK003 - Are all three signal requirements (observation, artifact, log) specified with minimum content standards? [Completeness, Spec §FR-001c, Contracts §Multi-Signal Evidence]
+- [x] CHK004 - Are all post-state comparison requirements specified (screenshot diff, save diff, side-effect check)? [Completeness, Contracts §Post-State Comparison]
+- [x] CHK005 - Are all claim discipline requirements specified (exact wording, status labels, honesty levels)? [Completeness, Spec §FR-001c, Contracts §Claim Discipline]
+- [x] CHK006 - Is the ≤30 min reproducibility requirement specified with measurement method? [Completeness, Spec §Success Criteria Qualitative] [Gap] — Measurement method specified in spec.md Success Criteria: start (open checklist) to stop (verdict written); inclusions/exclusions; self-timed wall-clock; over-budget recorded as deviation per IEEE 1012 §3.7.3.
+- [x] CHK007 - Are all evidence artifact requirements specified (file names, formats, storage location)? [Completeness, Spec §FR-001c, Quickstart §Evidence Artifacts] — Canonical artifact structure resolved in contracts/verification-protocol.md: FR-001c MIRROR-style is authoritative; quickstart is simplified view. Files, formats, storage location all specified.
 
 ## Protocol Clarity
 
-- [ ] CHK008 - Is "observation evidence" quantified (typed notes per criterion, not "looked fine")? [Clarity, Contracts §Multi-Signal Evidence]
-- [ ] CHK009 - Is "artifact evidence" quantified (save-file diff with specific fields and thresholds)? [Clarity, Spec §FR-001b]
-- [ ] CHK010 - Is "log evidence" quantified (no WARN/ERROR, event fired, no skipped mods)? [Clarity, Contracts §Multi-Signal Evidence]
-- [ ] CHK011 - Is "divergence handling" specified (if signals disagree → document as gap, not partial success)? [Clarity, Contracts §Post-State Comparison]
-- [ ] CHK012 - Is "partial" status defined with clear promotion rules (never auto-promoted to pass)? [Clarity, Spec §FR-001c]
-- [ ] CHK013 - Are the honesty levels (W/R/E) defined with clear assignment criteria? [Clarity, Spec §FR-001c]
-- [ ] CHK014 - Is the save comparator's comparison algorithm specified (which fields, tolerance, output)? [Clarity, Spec §FR-001b] [Gap]
+- [x] CHK008 - Is "observation evidence" quantified (typed notes per criterion, not "looked fine")? [Clarity, Contracts §Multi-Signal Evidence]
+- [x] CHK009 - Is "artifact evidence" quantified (save-file diff with specific fields and thresholds)? [Clarity, Spec §FR-001b]
+- [x] CHK010 - Is "log evidence" quantified (no WARN/ERROR, event fired, no skipped mods)? [Clarity, Contracts §Multi-Signal Evidence]
+- [x] CHK011 - Is "divergence handling" specified (if signals disagree → document as gap, not partial success)? [Clarity, Contracts §Post-State Comparison]
+- [x] CHK012 - Is "partial" status defined with clear promotion rules (never auto-promoted to pass)? [Clarity, Spec §FR-001c]
+- [x] CHK013 - Are the honesty levels (W/R/E) defined with clear assignment criteria? [Clarity, Spec §FR-001c]
+- [x] CHK014 - Is the save comparator's comparison algorithm specified (which fields, tolerance, output)? [Clarity, Spec §FR-001b] [Gap] — Specified in contracts/verification-protocol.md: C# test utility; key-based by (LocationName, "X,Y"); float tolerance 0.0001f; missing keys treated as 0; output JSON diff with added/removed/changed.
 
 ## Protocol Consistency
 
-- [ ] CHK015 - Are the 3-signal requirements consistent between FR-001b, FR-001c, FR-002b, and FR-003a? [Consistency, Spec §Functional Requirements]
-- [ ] CHK016 - Are the pass thresholds (34/67) consistent between the protocol and HealthCategory.cs? [Consistency, Spec §FR-002b, Contracts §Per-Criterion Observation]
-- [ ] CHK017 - Are the "verified" and "independently verified" labels consistently used? [Consistency, Spec §Clarifications, Contracts §Claim Discipline]
-- [ ] CHK018 - Are the 4-state failure model (pass/fail/errored/partial/skipped) consistent with the 3-signal requirement? [Consistency, Spec §FR-001c]
-- [ ] CHK019 - Are the SC-001 through SC-007 criteria in the protocol consistent with the spec's success criteria? [Consistency, Contracts §Per-Criterion Observation, Spec §Success Criteria]
+- [x] CHK015 - Are the 3-signal requirements consistent between FR-001b, FR-001c, FR-002b, and FR-003a? [Consistency, Spec §Functional Requirements]
+- [x] CHK016 - Are the pass thresholds (34/67) consistent between the protocol and HealthCategory.cs? [Consistency, Spec §FR-002b, Contracts §Per-Criterion Observation]
+- [x] CHK017 - Are the "verified" and "independently verified" labels consistently used? [Consistency, Spec §Clarifications, Contracts §Claim Discipline]
+- [x] CHK018 - Are the 4-state failure model (pass/fail/errored/partial/skipped) consistent with the 3-signal requirement? [Consistency, Spec §FR-001c]
+- [x] CHK019 - Are the SC-001 through SC-007 criteria in the protocol consistent with the spec's success criteria? [Consistency, Contracts §Per-Criterion Observation, Spec §Success Criteria]
 
 ## Protocol Measurability
 
-- [ ] CHK020 - Can each per-criterion pass threshold be objectively measured (days to harvest, quality distribution, extra harvest count)? [Measurability, Contracts §Per-Criterion Observation]
-- [ ] CHK021 - Can the 3-signal evidence requirement be objectively verified (all three present or not)? [Measurability, Contracts §Multi-Signal Evidence]
-- [ ] CHK022 - Can the "≤30 min" reproducibility be objectively measured? [Measurability, Spec §Success Criteria Qualitative] [Gap]
-- [ ] CHK023 - Can "no unexpected secondary effects" be objectively verified? [Measurability, Contracts §Post-State Comparison] [Ambiguity]
+- [x] CHK020 - Can each per-criterion pass threshold be objectively measured (days to harvest, quality distribution, extra harvest count)? [Measurability, Contracts §Per-Criterion Observation]
+- [x] CHK021 - Can the 3-signal evidence requirement be objectively verified (all three present or not)? [Measurability, Contracts §Multi-Signal Evidence]
+- [x] CHK022 - Can the "≤30 min" reproducibility be objectively measured? [Measurability, Spec §Success Criteria Qualitative] [Gap] — Measurement method specified in spec.md Success Criteria: start (open checklist) to stop (verdict written); inclusions/exclusions; self-timed wall-clock; over-budget recorded as deviation per IEEE 1012 §3.7.3.
+- [x] CHK023 - Can "no unexpected secondary effects" be objectively verified? [Measurability, Contracts §Post-State Comparison] [Ambiguity] — Defined in contracts/verification-protocol.md Post-State Comparison: (1) nearby tiles (3-tile radius) unchanged vs pre-state; (2) no new ERROR/WARN vs pre-state log; (3) other mods still loaded; (4) composting bin state unchanged unless expected; (5) no changes to unrelated modData files. Baseline = pre-state capture.
 
 ## Protocol Coverage
 
-- [ ] CHK024 - Are primary flow requirements (maintainer verifies) complete? [Coverage, Spec §US1, Contracts §Per-Criterion Observation]
-- [ ] CHK025 - Are secondary flow requirements (contributor reproduces) complete? [Coverage, Spec §US2]
-- [ ] CHK026 - Are recovery flow requirements (save preservation, retry, flaky quarantine) specified? [Coverage, Spec §FR-001c, §Assumptions]
-- [ ] CHK027 - Are exception flow requirements (crash → errored, incomplete → partial) specified? [Coverage, Spec §FR-001c]
-- [ ] CHK028 - Are non-functional requirements (performance, security, reliability) specified for the protocol? [Coverage, Spec §FR-001b] [Gap]
+- [x] CHK024 - Are primary flow requirements (maintainer verifies) complete? [Coverage, Spec §US1, Contracts §Per-Criterion Observation]
+- [x] CHK025 - Are secondary flow requirements (contributor reproduces) complete? [Coverage, Spec §US2]
+- [x] CHK026 - Are recovery flow requirements (save preservation, retry, flaky quarantine) specified? [Coverage, Spec §FR-001c, §Assumptions]
+- [x] CHK027 - Are exception flow requirements (crash → errored, incomplete → partial) specified? [Coverage, Spec §FR-001c]
+- [x] CHK028 - Are non-functional requirements (performance, security, reliability) specified for the protocol? [Coverage, Spec §FR-001b] [Gap] — Specified in contracts/verification-protocol.md Cross-Cutting Non-Functional Checks: 6 items (no raw exceptions, bounds checking, path sanitization, Unicode normalization, no UI freeze/deadlock, ≤5 ms scan). Also in FR-002a (performance, security/async).
 
 ## Protocol Edge Cases
 
-- [ ] CHK029 - Are NaN tile handling requirements specified for the protocol? [Edge Case, Spec §Assumptions, Contracts §Growth Hook Specific Criteria]
-- [ ] CHK030 - Are Moderate band [34,67) requirements specified for the protocol? [Edge Case, Spec §FR-002b]
-- [ ] CHK031 - Are save preservation requirements specified for the protocol? [Edge Case, Spec §Assumptions]
-- [ ] CHK032 - Are D1 multi-client requirements scoped as separate from the protocol? [Edge Case, Spec §Dependencies]
-- [ ] CHK033 - Are harvest quality requirements explicitly deferred in the protocol? [Edge Case, Spec §FR-002b, §Non-Goals]
+- [x] CHK029 - Are NaN tile handling requirements specified for the protocol? [Edge Case, Spec §Assumptions, Contracts §Growth Hook Specific Criteria]
+- [x] CHK030 - Are Moderate band [34,67) requirements specified for the protocol? [Edge Case, Spec §FR-002b]
+- [x] CHK031 - Are save preservation requirements specified for the protocol? [Edge Case, Spec §Assumptions]
+- [x] CHK032 - Are D1 multi-client requirements scoped as separate from the protocol? [Edge Case, Spec §Dependencies]
+- [x] CHK033 - Are harvest quality requirements explicitly deferred in the protocol? [Edge Case, Spec §FR-002b, §Non-Goals] — SC-004 and SC-005 in contracts/verification-protocol.md Per-Criterion Observation table now marked "DEFERRED — out of scope for verified claim (spec §Non-Goals; ComputeHarvestQualityRoll not implemented)." Contradiction resolved.
 
 ## Protocol Dependencies & Assumptions
 
-- [ ] CHK034 - Are all protocol dependencies validated (GamePath, SMAPI, save backup)? [Dependencies, Spec §Dependencies]
-- [ ] CHK035 - Are all protocol assumptions testable or explicitly marked as untestable? [Assumptions, Spec §Assumptions]
-- [ ] CHK036 - Is the T114-T126 red-phase test dependency specified for the protocol? [Dependencies, Spec §Dependencies]
+- [x] CHK034 - Are all protocol dependencies validated (GamePath, SMAPI, save backup)? [Dependencies, Spec §Dependencies]
+- [x] CHK035 - Are all protocol assumptions testable or explicitly marked as untestable? [Assumptions, Spec §Assumptions] — Assumptions table added to spec.md §Assumptions with testability column.
+- [x] CHK036 - Is the T114-T126 red-phase test dependency specified for the protocol? [Dependencies, Spec §Dependencies]
 
 ## Protocol Ambiguities & Conflicts
 
-- [ ] CHK037 - Is the save comparator's form (C# test vs bash script vs Python) specified? [Ambiguity, Spec §FR-001b] [Gap]
-- [ ] CHK038 - Is the relationship between the manual protocol (SC-009) and the scripted pipeline (save comparator) clearly defined? [Ambiguity, Spec §FR-001a, §FR-003a] [Resolved Round 6]
-- [ ] CHK039 - Are there any remaining [NEEDS CLARIFICATION] markers in the protocol? [Ambiguity, Spec §Open Questions]
+- [x] CHK037 - Is the save comparator's form (C# test vs bash script vs Python) specified? [Ambiguity, Spec §FR-001b] [Gap] — Specified in contracts/verification-protocol.md Save Comparator Specification: C# test utility (consistent with project tech stack .NET 6, xUnit). Located in LivingRoots.Tests/.
+- [x] CHK038 - Is the relationship between the manual protocol (SC-009) and the scripted pipeline (save comparator) clearly defined? [Ambiguity, Spec §FR-001a, §FR-003a] [Resolved Round 6]
+- [x] CHK039 - Are there any remaining [NEEDS CLARIFICATION] markers in the protocol? [Ambiguity, Spec §Open Questions]
 
 ## Traceability
 
-- [ ] CHK040 - Does ≥80% of items include at least one traceability reference? [Traceability]
-- [ ] CHK041 - Are all protocol requirements traceable to spec sections or contract sections? [Traceability, Spec §FR-001, Contracts]
+- [x] CHK040 - Does ≥80% of items include at least one traceability reference? [Traceability]
+- [x] CHK041 - Are all protocol requirements traceable to spec sections or contract sections? [Traceability, Spec §FR-001, Contracts]
 
 ## Notes
 
