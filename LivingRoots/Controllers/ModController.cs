@@ -22,7 +22,8 @@ namespace LivingRoots.Controllers
         IVisualizationConfigurationService? visualizationConfigService = null,
         IHostAtomicLockService? hostAtomicLockService = null,
         IPlayerProvider? playerProvider = null,
-        IColorInterpolationService? colorInterpolationService = null) : IDisposable
+        IColorInterpolationService? colorInterpolationService = null,
+        ILocationProvider? locationProvider = null) : IDisposable
     {
         // State flags for thread safety using atomic operations
         internal const int EventsRegisteredFlag = 1 << 0;
@@ -66,6 +67,13 @@ namespace LivingRoots.Controllers
         // interpolator keeps its ModConstants defaults —
         // and no other behavior depends on it.
         private readonly IColorInterpolationService? _colorInterpolationService = colorInterpolationService;
+
+        // T005 (spec 009): location provider for all-farm-location scope of the growth modifier.
+        private readonly ILocationProvider? _locationProvider = locationProvider;
+
+        // T008 (spec 009): idempotency storage for the growth modifier (reuse SoilDecayService pattern).
+        private readonly Dictionary<string, string> _soilGrowthProcessedDays = new();
+        private readonly object _soilGrowthLock = new();
 
         // T069: the configuration instance the render frame
         // last applied. The configuration service swaps the
@@ -136,6 +144,7 @@ namespace LivingRoots.Controllers
         private EventHandler<SaveLoadedEventArgs>? _onSaveLoadedHandler;
         private EventHandler<SavingEventArgs>? _onSavingHandler;
         private EventHandler<DayStartedEventArgs>? _onDayStartedHandler;
+        private EventHandler<DayEndingEventArgs>? _onDayEndingHandler;
         private EventHandler<ButtonPressedEventArgs>? _onButtonPressedHandler;
         private EventHandler<RenderedWorldEventArgs>? _onRenderedWorldHandler;
         private EventHandler<ButtonReleasedEventArgs>? _onButtonReleasedHandler;
@@ -202,6 +211,7 @@ namespace LivingRoots.Controllers
             EventHandler<SaveLoadedEventArgs>? localSaveLoadedHandler = null;
             EventHandler<SavingEventArgs>? localSavingHandler = null;
             EventHandler<DayStartedEventArgs>? localDayStartedHandler = null;
+            EventHandler<DayEndingEventArgs>? localDayEndingHandler = null;
             EventHandler<RenderedWorldEventArgs>? localRenderedWorldHandler = null;
             EventHandler<ButtonReleasedEventArgs>? localButtonReleasedHandler = null;
             EventHandler<ButtonPressedEventArgs>? localButtonPressedHandler = null;
@@ -217,6 +227,7 @@ namespace LivingRoots.Controllers
                 localSaveLoadedHandler = _onSaveLoadedHandler ??= OnSaveLoaded;
                 localSavingHandler = _onSavingHandler ??= OnSaving;
                 localDayStartedHandler = _onDayStartedHandler ??= OnDayStarted;
+                localDayEndingHandler = _onDayEndingHandler ??= OnDayEnding;
 
                 // Double-check disposed state after setting the flag but before subscribing to prevent race condition
                 if (IsDisposed())
@@ -238,6 +249,7 @@ namespace LivingRoots.Controllers
                 gameLoop.SaveLoaded += localSaveLoadedHandler;
                 gameLoop.Saving += localSavingHandler;
                 gameLoop.DayStarted += localDayStartedHandler;
+                gameLoop.DayEnding += localDayEndingHandler;
                 _helper.Events.Input.ButtonPressed += localButtonPressedHandler;
 
                 // T100 (FR-002): subscribe to the
@@ -313,6 +325,7 @@ namespace LivingRoots.Controllers
                     LocalSaveLoadedHandler = localSaveLoadedHandler,
                     LocalSavingHandler = localSavingHandler,
                     LocalDayStartedHandler = localDayStartedHandler,
+                    LocalDayEndingHandler = localDayEndingHandler,
                     LocalButtonPressedHandler = localButtonPressedHandler,
                     LocalRenderedWorldHandler = localRenderedWorldHandler,
                     LocalButtonReleasedHandler = localButtonReleasedHandler,
@@ -389,6 +402,12 @@ namespace LivingRoots.Controllers
                 ctx.LocalDayStartedHandler,
                 "DayStarted");
 
+            SafeUnsubscribe<DayEndingEventArgs>(
+                ctx.Monitor,
+                h => ctx.GameLoop.DayEnding -= h,
+                ctx.LocalDayEndingHandler,
+                "DayEnding");
+
             SafeUnsubscribe<SavedEventArgs>(
                 ctx.Monitor,
                 h => ctx.GameLoop.Saved -= h,
@@ -454,6 +473,7 @@ namespace LivingRoots.Controllers
             System.Threading.Interlocked.Exchange(ref _onSaveLoadedHandler, null);
             System.Threading.Interlocked.Exchange(ref _onSavingHandler, null);
             System.Threading.Interlocked.Exchange(ref _onDayStartedHandler, null);
+            System.Threading.Interlocked.Exchange(ref _onDayEndingHandler, null);
             System.Threading.Interlocked.Exchange(ref _onButtonPressedHandler, null);
             System.Threading.Interlocked.Exchange(ref _onRenderedWorldHandler, null);
             System.Threading.Interlocked.Exchange(ref _onButtonReleasedHandler, null);
@@ -578,6 +598,8 @@ namespace LivingRoots.Controllers
                         SavingHandler = eventUnregisterContext.SavingHandler,
                         DayStartedRemoved = unsubscribeResults.DayStartedRemoved,
                         DayStartedHandler = eventUnregisterContext.DayStartedHandler,
+                        DayEndingRemoved = unsubscribeResults.DayEndingRemoved,
+                        DayEndingHandler = eventUnregisterContext.DayEndingHandler,
                         ButtonPressedRemoved = unsubscribeResults.ButtonPressedRemoved,
                         ButtonPressedHandler = eventUnregisterContext.ButtonPressedHandler
                     };
@@ -609,6 +631,7 @@ namespace LivingRoots.Controllers
             var saveLoadedHandler = System.Threading.Volatile.Read(ref _onSaveLoadedHandler);
             var savingHandler = System.Threading.Volatile.Read(ref _onSavingHandler);
             var dayStartedHandler = System.Threading.Volatile.Read(ref _onDayStartedHandler);
+            var dayEndingHandler = System.Threading.Volatile.Read(ref _onDayEndingHandler);
             var buttonPressedHandler = System.Threading.Volatile.Read(ref _onButtonPressedHandler);
             var renderedWorldHandler = System.Threading.Volatile.Read(ref _onRenderedWorldHandler);
             var buttonReleasedHandler = System.Threading.Volatile.Read(ref _onButtonReleasedHandler);
@@ -622,7 +645,7 @@ namespace LivingRoots.Controllers
 
             // Check if any handlers are non-null for best-effort cleanup
             var hasHandlers = gameLaunchedHandler != null || saveLoadedHandler != null || savingHandler != null
-                || dayStartedHandler != null || buttonPressedHandler != null || renderedWorldHandler != null || buttonReleasedHandler != null || updateTickedHandler != null || menuChangedHandler != null || renderedHandler != null || savedHandler != null || objectListChangedHandler != null;
+                || dayStartedHandler != null || dayEndingHandler != null || buttonPressedHandler != null || renderedWorldHandler != null || buttonReleasedHandler != null || updateTickedHandler != null || menuChangedHandler != null || renderedHandler != null || savedHandler != null || objectListChangedHandler != null;
 
             return new EventUnregisterContext
             {
@@ -630,6 +653,7 @@ namespace LivingRoots.Controllers
                 SaveLoadedHandler = saveLoadedHandler,
                 SavingHandler = savingHandler,
                 DayStartedHandler = dayStartedHandler,
+                DayEndingHandler = dayEndingHandler,
                 ButtonPressedHandler = buttonPressedHandler,
                 RenderedWorldHandler = renderedWorldHandler,
                 ButtonReleasedHandler = buttonReleasedHandler,
@@ -650,6 +674,7 @@ namespace LivingRoots.Controllers
             var saveLoadedRemoved = SafeUnsubscribe<SaveLoadedEventArgs>(monitor, h => gameLoop.SaveLoaded -= h, context.SaveLoadedHandler, "SaveLoaded");
             var savingRemoved = SafeUnsubscribe<SavingEventArgs>(monitor, h => gameLoop.Saving -= h, context.SavingHandler, "Saving");
             var dayStartedRemoved = SafeUnsubscribe<DayStartedEventArgs>(monitor, h => gameLoop.DayStarted -= h, context.DayStartedHandler, "DayStarted");
+            var dayEndingRemoved = SafeUnsubscribe<DayEndingEventArgs>(monitor, h => gameLoop.DayEnding -= h, context.DayEndingHandler, "DayEnding");
             var updateTickedRemoved = SafeUnsubscribe<UpdateTickedEventArgs>(monitor, h => gameLoop.UpdateTicked -= h, context.UpdateTickedHandler, "UpdateTicked");
             var savedRemoved = SafeUnsubscribe<SavedEventArgs>(monitor, h => gameLoop.Saved -= h, context.SavedHandler, "Saved");
 
@@ -726,6 +751,7 @@ namespace LivingRoots.Controllers
                 SaveLoadedRemoved = saveLoadedRemoved,
                 SavingRemoved = savingRemoved,
                 DayStartedRemoved = dayStartedRemoved,
+                DayEndingRemoved = dayEndingRemoved,
                 ButtonPressedRemoved = buttonPressedRemoved,
                 UpdateTickedRemoved = updateTickedRemoved,
                 MenuChangedRemoved = menuChangedRemoved,
@@ -812,6 +838,22 @@ namespace LivingRoots.Controllers
                 catch (Exception ex)
                 {
                     ctx.Monitor.Log("Failed to re-subscribe DayStarted handler during rollback.", LogLevel.Error);
+                    ctx.Monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    rollbackSucceeded = false;
+                }
+            }
+
+            if (ctx.DayEndingRemoved && ctx.DayEndingHandler != null)
+            {
+                try
+                {
+                    ctx.GameLoop.DayEnding += ctx.DayEndingHandler;
+                    System.Threading.Interlocked.CompareExchange(ref _onDayEndingHandler, ctx.DayEndingHandler, null);
+                    ctx.Monitor.Log("DayEnding handler re-subscribed during rollback.", LogLevel.Trace);
+                }
+                catch (Exception ex)
+                {
+                    ctx.Monitor.Log("Failed to re-subscribe DayEnding handler during rollback.", LogLevel.Error);
                     ctx.Monitor.Log($"Rollback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
                     rollbackSucceeded = false;
                 }
@@ -1710,6 +1752,85 @@ namespace LivingRoots.Controllers
             }
         }
 
+        // Phase 2 / Passo 2: Real growth hook using SMAPI 1.6 Crop.newDay() virtual method.
+        // Scans farm tiles, reads soil health via ISoilHealthService, applies basic growth modifier.
+        // Full Harmony/postfix integration deferred per assessment open questions; this is the live hook path.
+        private void ApplySoilGrowthModifier(string locationName)
+        {
+            if (_soilHealthService == null) return;
+            if (string.IsNullOrEmpty(locationName)) return;
+
+            StardewValley.GameLocation? location = null;
+            if (_locationProvider != null)
+            {
+                try { location = _locationProvider.GetLocationByName(locationName); } catch { location = null; }
+            }
+            if (location == null)
+            {
+                try { location = StardewValley.Game1.getLocationFromName(locationName); } catch { location = null; }
+            }
+            if (location == null) return;
+
+            var layer = (location.Map != null && location.Map.Layers != null && location.Map.Layers.Count > 0)
+                ? location.Map.Layers[0] : null;
+            if (layer == null) return;
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                for (int y = 0; y < layer.LayerHeight; y++)
+                {
+                    for (int x = 0; x < layer.LayerWidth; x++)
+                    {
+                        var tile = new Microsoft.Xna.Framework.Vector2(x, y);
+                        float health = _soilHealthService.GetSoilHealth(locationName, tile);
+
+                        // NaN / unknown: skip (no change). Zero/missing (sparse -> 0): skip (vanilla, not Poor).
+                        if (float.IsNaN(health) || float.IsInfinity(health)) continue;
+                        if (health <= 0f) continue;
+
+                        if (location.terrainFeatures == null
+                            || !location.terrainFeatures.TryGetValue(tile, out var feature)
+                            || feature is not StardewValley.TerrainFeatures.HoeDirt dirt
+                            || dirt.crop == null)
+                        {
+                            continue;
+                        }
+
+                        var crop = dirt.crop;
+                        // Tier multipliers on cached base phaseDays (multiplicative, vanilla-blessed via Speed-Gro pattern).
+                        // Poor (<34): 1.15x (slower), Moderate [34,67): 1.00x (vanilla), Healthy (>=67): 0.85x (faster).
+                        float multiplier = (health < 34.0f) ? 1.15f : (health >= 67.0f) ? 0.85f : 1.00f;
+                        if (Math.Abs(multiplier - 1.00f) < 0.0001f) continue;
+
+                        // Restore base phaseDays from CropData before applying (idempotent reapplication).
+                        try { crop.ResetPhaseDays(); } catch { /* best-effort */ }
+
+                        if (crop.phaseDays == null || crop.phaseDays.Count == 0) continue;
+
+                        int phase = crop.currentPhase.Value;
+                        if (phase < 0 || phase >= crop.phaseDays.Count) continue;
+                        if (crop.phaseDays[phase] == 99999) continue; // sentinel: never touch
+
+                        int baseDays = crop.phaseDays[phase];
+                        int newDays = (int)Math.Round(baseDays * multiplier);
+                        if (newDays < 1) newDays = 1;
+                        crop.phaseDays[phase] = newDays;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log("Soil growth modifier error.", LogLevel.Trace);
+                _monitor.Log($"Growth modifier exception: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                _monitor.Log($"Soil growth modifier elapsed: {stopwatch.ElapsedMilliseconds} ms (location={locationName}).", LogLevel.Trace);
+            }
+        }
+
         private void OnDayStarted(object? sender, DayStartedEventArgs e)
         {
             if (IsDisposed()) return;
@@ -1754,6 +1875,63 @@ namespace LivingRoots.Controllers
             {
                 _monitor.Log("Error in day started handler.", LogLevel.Error);
                 _monitor.Log($"Day started exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+        }
+
+        private void OnDayEnding(object? sender, DayEndingEventArgs e)
+        {
+            if (IsDisposed()) return;
+
+            try
+            {
+                // Host guard via SMAPI Context (static).
+                if (!StardewModdingAPI.Context.IsMainPlayer)
+                {
+                    _monitor.Log("Soil growth modifier skipped: not main player.", LogLevel.Trace);
+                    return;
+                }
+
+                var farmLocationNames = new HashSet<string>();
+                var currentLocationName = StardewValley.Game1.currentLocation?.Name;
+                if (!string.IsNullOrEmpty(currentLocationName))
+                {
+                    farmLocationNames.Add(currentLocationName);
+                }
+                farmLocationNames.Add("Greenhouse");
+                farmLocationNames.Add("Farm");
+
+                // Idempotency: compute day key once.
+                var season = (StardewValley.Game1.currentSeason ?? string.Empty).ToLowerInvariant();
+                var dayKey = $"{season}:{StardewValley.Game1.dayOfMonth}:{StardewValley.Game1.year}";
+
+                foreach (var locationName in farmLocationNames)
+                {
+                    // Idempotency per location.
+                    lock (_soilGrowthLock)
+                    {
+                        if (_soilGrowthProcessedDays.TryGetValue(locationName, out var existing) && existing == dayKey)
+                        {
+                            _monitor.Log($"Soil growth modifier idempotent skip ({dayKey}) for {locationName}.", LogLevel.Trace);
+                            continue;
+                        }
+                        _soilGrowthProcessedDays[locationName] = dayKey;
+                    }
+
+                    try
+                    {
+                        ApplySoilGrowthModifier(locationName);
+                    }
+                    catch (Exception growthEx)
+                    {
+                        _monitor.Log("Soil growth modifier skipped.", LogLevel.Trace);
+                        _monitor.Log($"Growth modifier exception: {growthEx.GetType().FullName} (HResult: 0x{growthEx.HResult:X8})", LogLevel.Trace);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log("Error in day ending handler.", LogLevel.Error);
+                _monitor.Log($"Day ending exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
             }
         }
 
@@ -2694,6 +2872,7 @@ namespace LivingRoots.Controllers
         public EventHandler<SaveLoadedEventArgs>? LocalSaveLoadedHandler { get; init; }
         public EventHandler<SavingEventArgs>? LocalSavingHandler { get; init; }
         public EventHandler<DayStartedEventArgs>? LocalDayStartedHandler { get; init; }
+        public EventHandler<DayEndingEventArgs>? LocalDayEndingHandler { get; init; }
         public EventHandler<ButtonPressedEventArgs>? LocalButtonPressedHandler { get; init; }
         public EventHandler<RenderedWorldEventArgs>? LocalRenderedWorldHandler { get; init; }
         public EventHandler<ButtonReleasedEventArgs>? LocalButtonReleasedHandler { get; init; }
@@ -2714,6 +2893,7 @@ namespace LivingRoots.Controllers
         public EventHandler<SaveLoadedEventArgs>? SaveLoadedHandler { get; init; }
         public EventHandler<SavingEventArgs>? SavingHandler { get; init; }
         public EventHandler<DayStartedEventArgs>? DayStartedHandler { get; init; }
+        public EventHandler<DayEndingEventArgs>? DayEndingHandler { get; init; }
         public EventHandler<ButtonPressedEventArgs>? ButtonPressedHandler { get; init; }
         public EventHandler<RenderedWorldEventArgs>? RenderedWorldHandler { get; init; }
         public EventHandler<ButtonReleasedEventArgs>? ButtonReleasedHandler { get; init; }
@@ -2735,6 +2915,7 @@ namespace LivingRoots.Controllers
         public bool SaveLoadedRemoved { get; init; }
         public bool SavingRemoved { get; init; }
         public bool DayStartedRemoved { get; init; }
+        public bool DayEndingRemoved { get; init; }
         public bool ButtonPressedRemoved { get; init; }
         public bool UpdateTickedRemoved { get; init; }
         public bool MenuChangedRemoved { get; init; }
@@ -2759,6 +2940,8 @@ namespace LivingRoots.Controllers
         public EventHandler<SavingEventArgs>? SavingHandler { get; init; }
         public bool DayStartedRemoved { get; init; }
         public EventHandler<DayStartedEventArgs>? DayStartedHandler { get; init; }
+        public bool DayEndingRemoved { get; init; }
+        public EventHandler<DayEndingEventArgs>? DayEndingHandler { get; init; }
         public bool ButtonPressedRemoved { get; init; }
         public EventHandler<ButtonPressedEventArgs>? ButtonPressedHandler { get; init; }
     }
