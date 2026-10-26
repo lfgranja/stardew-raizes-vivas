@@ -1761,7 +1761,11 @@ namespace LivingRoots.Controllers
         // Full Harmony/postfix integration deferred per assessment open questions; this is the live hook path.
         private void ApplySoilGrowthModifier(string locationName)
         {
-            if (_soilHealthService == null) return;
+            if (_soilHealthService == null)
+            {
+                _monitor.Log("Soil growth modifier skipped: SoilHealthService unavailable.", LogLevel.Trace);
+                return;
+            }
             if (string.IsNullOrEmpty(locationName)) return;
 
             StardewValley.GameLocation? location = null;
@@ -1925,7 +1929,7 @@ namespace LivingRoots.Controllers
                 // Idempotency: compute day key once.
                 var seasonRaw = _seasonProvider != null ? _seasonProvider.CurrentSeason : StardewValley.Game1.currentSeason;
                 var season = (seasonRaw ?? string.Empty).ToLowerInvariant();
-                var dayKey = $"{season}:{StardewValley.Game1.dayOfMonth}:{StardewValley.Game1.year}";
+                var dayKey = string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}:{1}:{2}", season, StardewValley.Game1.dayOfMonth, StardewValley.Game1.year);
 
                 foreach (var locationName in farmLocationNames)
                 {
