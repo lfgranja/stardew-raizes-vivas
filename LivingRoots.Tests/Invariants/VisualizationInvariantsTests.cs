@@ -335,7 +335,8 @@ public class VisualizationInvariantsTests
         var service = new VisualizationService(
             colorMock.Object,
             configMock.Object,
-            Mock.Of<IMonitor>());
+            Mock.Of<IMonitor>(),
+            Mock.Of<IHudNotifier>());
 
         return (service, colorMock);
     }
@@ -361,7 +362,7 @@ public class VisualizationInvariantsTests
                 AccessibilityDegradation = "never"
             });
 
-        return new OverlayRenderer(colorMock.Object, configMock.Object, Mock.Of<IMonitor>());
+        return new OverlayRenderer(colorMock.Object, configMock.Object, Mock.Of<IMonitor>(), Mock.Of<IHudNotifier>());
     }
 
     /// <summary>

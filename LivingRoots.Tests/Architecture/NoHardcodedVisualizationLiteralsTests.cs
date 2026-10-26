@@ -7,7 +7,7 @@ namespace LivingRoots.Tests.Architecture
     /// <summary>
     /// T176 (Phase 20 Wave 1, TDD RED): source-architecture assertions that the
     /// visualization literals enumerated below live in <c>ModConstants</c>
-    /// (<c>LivingRoots/Constants.cs</c>), not inline at their use sites.
+    /// (<c>LivingRoots/ModConstants.cs</c>), not inline at their use sites.
     /// Every use-site assertion fails today (red) — each literal is still
     /// hardcoded at the site the task lists. The two tests at the end pin the
     /// allowlist: the ModConstants palette definitions (the palette's legitimate
@@ -136,10 +136,10 @@ namespace LivingRoots.Tests.Architecture
         public void ModConstants_RemainsTheAllowlistedHomeOfTheVisualizationPalette()
         {
             // Allowlist: the ModConstants palette definitions themselves
-            // (Constants.cs lines 31-34, 66-67, 72, 92-97). These are the
+            // (ModConstants.cs lines 31-34, 66-67, 72, 92-97). These are the
             // single source of truth the use-site assertions above defer to —
             // a color literal is only a violation outside this file.
-            var source = ReadProductionSource("LivingRoots", "Constants.cs");
+            var source = ReadProductionSource("LivingRoots", "ModConstants.cs");
 
             var allowlistedDeclarations = new[]
             {

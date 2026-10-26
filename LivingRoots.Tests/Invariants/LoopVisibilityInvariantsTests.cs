@@ -524,7 +524,7 @@ public class LoopVisibilityInvariantsTests
         try
         {
             // ---- PLACE — the bin becomes a tracked, dislodgable machine ----
-            binService.OnBinPlaced("Farm", binTile);
+            binService.OnBinPlaced("Farm", binTile, null);
             placeObservable = binService.CreateDislodgedBinItem("Farm", binTile) != null;
 
             // ---- INSERT — Empty → Processing transition trace ----

@@ -26,7 +26,7 @@ Pure business logic — no SMAPI dependencies. Game types (`StardewValley.*`, `M
 ## Key Values
 
 - `CompostingBinState`: `Empty=0`, `Processing=1`, `Ready=2`
-- `HealthCategory` intervals (ROADMAP.md scale, spec 005 FR-004): Poor [0,30], Moderate [31,70], Healthy [71,100]
+- `HealthCategory` intervals (governing scale, spec 009 supersedes spec 005 FR-004): Poor [0,34), Moderate [34,67), Healthy [67,100] (code: `HealthCategory.cs`, `Constants.cs` `PoorModerateBandEdge=34`, `ModerateHealthyBandEdge=67`). Legacy 30/31/70/71 (ROADMAP.md, spec 005 FR-004) is superseded for verification/growth logic.
 - `SeasonalDecayMultiplier`: Spring 0.5x, Summer 1.5x, Fall 0.5x, Winter 0.0x
 
 ## Anti-Patterns

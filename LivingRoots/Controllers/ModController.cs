@@ -32,6 +32,7 @@ namespace LivingRoots.Controllers
         internal const int DisposedFlag = 1 << 2;
         internal const int OnSaveLoadedExecutingFlag = 1 << 3;
         internal const int OnSavingExecutingFlag = 1 << 4;
+        internal const int OnDayStartedExecutingFlag = 1 << 7;
         internal const int UnregisteringFlag = 1 << 5;
         internal const int RegisteringFlag = 1 << 6;
         internal int _state = 0; // Combine flags in single volatile field
@@ -1848,13 +1849,29 @@ namespace LivingRoots.Controllers
         }
 
         // T043 (spec 009): chunk start indices for the chunked scan path (~1000 tiles/chunk, prime-modulus stride 61).
-        public static System.Collections.Generic.IEnumerable<int> GetChunkStartIndices(int totalTiles, int chunkSize)
+        public static System.Collections.Generic.List<int> GetChunkStartIndices(int totalTiles, int chunkSize)
         {
-            if (totalTiles <= 0 || chunkSize <= 0) yield break;
-            for (int i = 0; i < totalTiles; i += chunkSize)
+            return GetChunkStartIndices(totalTiles, chunkSize, 1);
+        }
+
+        public static System.Collections.Generic.List<int> GetChunkStartIndices(int totalTiles, int chunkSize, int stride)
+        {
+            var result = new System.Collections.Generic.List<int>();
+            if (totalTiles <= 0 || chunkSize <= 0) return result;
+            int numChunks = (totalTiles + chunkSize - 1) / chunkSize;
+            if (stride <= 0) stride = 1;
+            var visited = new bool[numChunks];
+            for (int i = 0; i < numChunks; i++)
             {
-                yield return i;
+                int chunk = (i * stride) % numChunks;
+                while (visited[chunk])
+                {
+                    chunk = (chunk + 1) % numChunks;
+                }
+                visited[chunk] = true;
+                result.Add(chunk * chunkSize);
             }
+            return result;
         }
 
         private void OnDayStarted(object? sender, DayStartedEventArgs e)

@@ -24,7 +24,7 @@ namespace LivingRoots.Tests.Visualization
             _mockMonitor = new Mock<IMonitor>();
             _mockConfigService.Setup(c => c.GetConfiguration()).Returns(new VisualizationConfiguration { HoeFeedbackEnabled = true });
             _mockColorService.Setup(c => c.GetCategoryForHealth(It.IsAny<float>())).Returns(HealthCategory.Healthy);
-            _service = new VisualizationService(_mockColorService.Object, _mockConfigService.Object, _mockMonitor.Object);
+            _service = new VisualizationService(_mockColorService.Object, _mockConfigService.Object, _mockMonitor.Object, Mock.Of<IHudNotifier>());
         }
 
         /// <summary>

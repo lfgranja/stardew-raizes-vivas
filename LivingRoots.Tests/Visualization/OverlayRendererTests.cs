@@ -36,7 +36,8 @@ namespace LivingRoots.Tests.Visualization
             _renderer = new OverlayRenderer(
                 _mockColorService.Object,
                 _mockConfigService.Object,
-                _mockMonitor.Object);
+                _mockMonitor.Object,
+                Mock.Of<IHudNotifier>());
         }
 
         /// <summary>
@@ -179,7 +180,7 @@ namespace LivingRoots.Tests.Visualization
             var visibleCount = ModConstants.DegradationTileThreshold + 1;
 
             // Act
-            var result = OverlayRenderer.CheckDegradation(visibleCount, "auto");
+            var result = _renderer.CheckDegradation(visibleCount, "auto");
 
             // Assert
             Assert.True(result);
@@ -192,7 +193,7 @@ namespace LivingRoots.Tests.Visualization
             var visibleCount = ModConstants.DegradationTileThreshold + 1;
 
             // Act
-            var result = OverlayRenderer.CheckDegradation(visibleCount, "never");
+            var result = _renderer.CheckDegradation(visibleCount, "never");
 
             // Assert
             Assert.False(result);
@@ -206,8 +207,8 @@ namespace LivingRoots.Tests.Visualization
             var belowThreshold = ModConstants.DegradationTileThreshold - 1;
 
             // Act
-            var atResult = OverlayRenderer.CheckDegradation(atThreshold, "auto");
-            var belowResult = OverlayRenderer.CheckDegradation(belowThreshold, "auto");
+            var atResult = _renderer.CheckDegradation(atThreshold, "auto");
+            var belowResult = _renderer.CheckDegradation(belowThreshold, "auto");
 
             // Assert
             Assert.False(atResult);

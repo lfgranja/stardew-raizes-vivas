@@ -25,7 +25,7 @@ namespace LivingRoots.Tests.Visualization
             _mockColorService = new Mock<IColorInterpolationService>();
             _mockMonitor = new Mock<IMonitor>();
             _mockConfigService.Setup(c => c.GetConfiguration()).Returns(new VisualizationConfiguration { TooltipsEnabled = true });
-            _service = new VisualizationService(_mockColorService.Object, _mockConfigService.Object, _mockMonitor.Object);
+            _service = new VisualizationService(_mockColorService.Object, _mockConfigService.Object, _mockMonitor.Object, Mock.Of<IHudNotifier>());
         }
 
         /// <summary>

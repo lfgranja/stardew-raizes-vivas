@@ -38,7 +38,8 @@ public class VisualizationServiceTests
         _service = new VisualizationService(
             _mockColorService.Object,
             _mockConfigService.Object,
-            _mockMonitor.Object);
+            _mockMonitor.Object,
+            Mock.Of<IHudNotifier>());
     }
 
     // ── Construction guards ───────────────────────────────────
@@ -50,7 +51,8 @@ public class VisualizationServiceTests
         Assert.Throws<ArgumentNullException>(() => new VisualizationService(
             null!,
             _mockConfigService.Object,
-            _mockMonitor.Object));
+            _mockMonitor.Object,
+            Mock.Of<IHudNotifier>()));
     }
 
     /// <summary>A null configuration service is rejected at construction.</summary>
@@ -60,7 +62,8 @@ public class VisualizationServiceTests
         Assert.Throws<ArgumentNullException>(() => new VisualizationService(
             _mockColorService.Object,
             null!,
-            _mockMonitor.Object));
+            _mockMonitor.Object,
+            Mock.Of<IHudNotifier>()));
     }
 
     /// <summary>A null monitor is rejected at construction.</summary>
@@ -70,7 +73,8 @@ public class VisualizationServiceTests
         Assert.Throws<ArgumentNullException>(() => new VisualizationService(
             _mockColorService.Object,
             _mockConfigService.Object,
-            null!));
+            null!,
+            Mock.Of<IHudNotifier>()));
     }
 
     // ── Initialize guard ──────────────────────────────────────
@@ -183,7 +187,8 @@ public class VisualizationServiceTests
                 var service = new VisualizationService(
                     colorMock.Object,
                     configMock.Object,
-                    Mock.Of<IMonitor>());
+                    Mock.Of<IMonitor>(),
+                    Mock.Of<IHudNotifier>());
 
                 if (tileData != null)
                 {

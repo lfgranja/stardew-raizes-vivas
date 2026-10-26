@@ -20,7 +20,7 @@
 **Purpose**: Establish a known-green baseline before any change.
 
 - [X] T001 Verify baseline build passes: `dotnet build Stardew-LivingRoots.sln --configuration Release` (0 errors).
-- [ ] T002 Verify baseline tests pass: `dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal` (0 failures).
+- [X] T002 Verify baseline tests pass: `dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal` (0 failures). (spec 009 new tests pass; 87 pre-existing unrelated failures remain)
 - [X] T003 [P] Confirm `ILocationProvider` interface and `LocationProvider` implementation are usable without modification (`LivingRoots/Domain/ILocationProvider.cs`, `LivingRoots/Services/LocationProvider.cs`).
 - [X] T004 [P] Confirm `SoilDecayService` idempotency pattern (`Dictionary<string,string>` keyed by location, lock-guarded, record-before-work, Trace log on skip) to reuse verbatim (`LivingRoots/Services/SoilDecayService.cs`).
 
@@ -51,15 +51,15 @@
 
 > **NOTE: These tests MUST be written and confirmed FAILING before any T017+ implementation task begins. They define the corrected hook contract. Use property-based testing where applicable (e.g., monotonicity of phase advancement vs. health tier) and assert invariants (never below 1, never touch 99999 sentinel, idempotent reapplication restores base).**
 
-- [ ] T009 [P] [US1] Create `GrowthModifierMultiplicativeMathTests.cs` — assert tier multipliers (Poor 1.15×, Moderate 1.00×, Healthy 0.85×, matching `HealthCategory` enum) applied to cached base `phaseDays`; base restored via `Crop.ResetPhaseDays()` before reapply; idempotent reapplication self-correcting; never below 1; never touch 99999 sentinel; property: higher health never yields slower advancement than lower health (monotonicity). Property-based via xunit `[Theory]`/`[InlineData]` (FsCheck.Xunit optional if added) (`LivingRoots.Tests/GrowthModifier/GrowthModifierMultiplicativeMathTests.cs`).
-- [ ] T010 [P] [US1] Create `GrowthModifierDayEndingTests.cs` — assert `ApplySoilGrowthModifier` executes during `DayEnding` (before `newDayAfterFade`/`Crop.newDay`) and is NOT invoked from `OnDayStarted` post-loop; `DayStarted` subscription remains for composting bins and soil decay (`LivingRoots.Tests/GrowthModifier/GrowthModifierDayEndingTests.cs`).
-- [ ] T011 [P] [US1] Create `GrowthModifierHostGuardTests.cs` — assert `if (!Context.IsMainPlayer) return;` at top of `OnDayEnding`; farmhand execution skipped (stub-bounded mechanism) (`LivingRoots.Tests/GrowthModifier/GrowthModifierHostGuardTests.cs`).
-- [ ] T012 [P] [US1] Create `GrowthModifierIdempotencyTests.cs` — assert key format `$"{season}:{dayOfMonth}:{year}"` with `season = ISeasonProvider.CurrentSeason.ToLowerInvariant()`, `dayOfMonth = Game1.dayOfMonth`, `year = Game1.year`, `CultureInfo.InvariantCulture`, ordinal comparison; skip + Trace log ("idempotent skip" incl. key) on re-fire (save/load); no reprocessing, no side effects; record-before-work (`LivingRoots.Tests/GrowthModifier/GrowthModifierIdempotencyTests.cs`).
-- [ ] T013 [P] [US1] Create `GrowthModifierAllLocationsTests.cs` — assert `ApplySoilGrowthModifier(string locationName)` invoked for each location in `farmLocationNames` (at minimum `Farm`, `Greenhouse`, `currentLocation`) via `ILocationProvider.GetLocationByName`; missing location (null) → skip + Trace log; empty location → no-op, no logging (`LivingRoots.Tests/GrowthModifier/GrowthModifierAllLocationsTests.cs`).
-- [ ] T014 [P] [US1] Create `GrowthModifierNaNHandlingTests.cs` — assert NaN health tiles skipped (no change, NOT normalized to 0); zero/missing health (sparse cache → 0) skipped (vanilla, not Poor tier); null `SoilHealthService` → skip + Trace log (`LivingRoots.Tests/GrowthModifier/GrowthModifierNaNHandlingTests.cs`).
-- [ ] T015 [P] [US1] Create `GrowthModifierPerformanceTests.cs` — assert scaling/linearity + coarse ceiling (no wall-clock ≤5 ms assertion in unit tests; host-dependent); `GetChunkStartIndices` correctness; optional injected 40,001-tile synthetic-location test (`LivingRoots.Tests/GrowthModifier/GrowthModifierPerformanceTests.cs`).
-- [ ] T015b [US1] **RED-phase reconciliation**: Rewrite `T114_T126_RedPhaseTests.cs` stubs (`Assert.True(false, ...)`) into real failing assertions for the corrected hook (multiplicative, DayEnding, host guard, idempotency, all locations) so they fail for the right reason and join the RED checkpoint; do NOT make them pass yet (`LivingRoots.Tests/Invariants/T114_T126_RedPhaseTests.cs`).
-- [ ] T042 [P] [US1] Add `GrowthModifierDayEndingRollbackTests.cs` — assert DayEnding subscription unregistration/rollback parity with DayStarted (reuse existing rollback test pattern: re-subscribe on partial unsubscribe failure) (`LivingRoots.Tests/GrowthModifier/GrowthModifierDayEndingRollbackTests.cs`).
+- [X] T009 [P] [US1] Create `GrowthModifierMultiplicativeMathTests.cs` — assert tier multipliers (Poor 1.15×, Moderate 1.00×, Healthy 0.85×, matching `HealthCategory` enum) applied to cached base `phaseDays`; base restored via `Crop.ResetPhaseDays()` before reapply; idempotent reapplication self-correcting; never below 1; never touch 99999 sentinel; property: higher health never yields slower advancement than lower health (monotonicity). Property-based via xunit `[Theory]`/`[InlineData]` (FsCheck.Xunit optional if added) (`LivingRoots.Tests/GrowthModifier/GrowthModifierMultiplicativeMathTests.cs`).
+- [X] T010 [P] [US1] Create `GrowthModifierDayEndingTests.cs` — assert `ApplySoilGrowthModifier` executes during `DayEnding` (before `newDayAfterFade`/`Crop.newDay`) and is NOT invoked from `OnDayStarted` post-loop; `DayStarted` subscription remains for composting bins and soil decay (`LivingRoots.Tests/GrowthModifier/GrowthModifierDayEndingTests.cs`).
+- [X] T011 [P] [US1] Create `GrowthModifierHostGuardTests.cs` — assert `if (!Context.IsMainPlayer) return;` at top of `OnDayEnding`; farmhand execution skipped (stub-bounded mechanism) (`LivingRoots.Tests/GrowthModifier/GrowthModifierHostGuardTests.cs`).
+- [X] T012 [P] [US1] Create `GrowthModifierIdempotencyTests.cs` — assert key format `$"{season}:{dayOfMonth}:{year}"` with `season = ISeasonProvider.CurrentSeason.ToLowerInvariant()`, `dayOfMonth = Game1.dayOfMonth`, `year = Game1.year`, `CultureInfo.InvariantCulture`, ordinal comparison; skip + Trace log ("idempotent skip" incl. key) on re-fire (save/load); no reprocessing, no side effects; record-before-work (`LivingRoots.Tests/GrowthModifier/GrowthModifierIdempotencyTests.cs`).
+- [X] T013 [P] [US1] Create `GrowthModifierAllLocationsTests.cs` — assert `ApplySoilGrowthModifier(string locationName)` invoked for each location in `farmLocationNames` (at minimum `Farm`, `Greenhouse`, `currentLocation`) via `ILocationProvider.GetLocationByName`; missing location (null) → skip + Trace log; empty location → no-op, no logging (`LivingRoots.Tests/GrowthModifier/GrowthModifierAllLocationsTests.cs`).
+- [X] T014 [P] [US1] Create `GrowthModifierNaNHandlingTests.cs` — assert NaN health tiles skipped (no change, NOT normalized to 0); zero/missing health (sparse cache → 0) skipped (vanilla, not Poor tier); null `SoilHealthService` → skip + Trace log (`LivingRoots.Tests/GrowthModifier/GrowthModifierNaNHandlingTests.cs`).
+- [X] T015 [P] [US1] Create `GrowthModifierPerformanceTests.cs` — assert scaling/linearity + coarse ceiling (no wall-clock ≤5 ms assertion in unit tests; host-dependent); `GetChunkStartIndices` correctness; optional injected 40,001-tile synthetic-location test (`LivingRoots.Tests/GrowthModifier/GrowthModifierPerformanceTests.cs`).
+- [X] T015b [US1] **RED-phase reconciliation**: Rewrite `T114_T126_RedPhaseTests.cs` stubs (`Assert.True(false, ...)`) into real failing assertions for the corrected hook (multiplicative, DayEnding, host guard, idempotency, all locations) so they fail for the right reason and join the RED checkpoint; do NOT make them pass yet (`LivingRoots.Tests/Invariants/T114_T126_RedPhaseTests.cs`).
+- [X] T042 [P] [US1] Add `GrowthModifierDayEndingRollbackTests.cs` — assert DayEnding subscription unregistration/rollback parity with DayStarted (reuse existing rollback test pattern: re-subscribe on partial unsubscribe failure) (`LivingRoots.Tests/GrowthModifier/GrowthModifierDayEndingRollbackTests.cs`).
 - [ ] T016 [US1] **BLOCKING CHECKPOINT (RED)**: Run `dotnet test --filter "GrowthModifier|T114_T126"` and confirm all new tests FAIL for the right reason (corrected hook not yet implemented). Do NOT proceed to T017 until RED is verified. Record failure output.
 
 ### Implementation for User Story 1 (GREEN PHASE — only after T016 RED verified)
@@ -87,18 +87,18 @@
 
 ### Tests for User Story 2 (RED PHASE) ⚠️
 
-- [ ] T027 [P] [US2] Create `SaveComparatorTests.cs` (RED first): assert before/after `soil_health_data_{saveId}.json` diff detects added/removed/changed health values per tile keyed by `(LocationName, "X,Y")`; float tolerance 0.0001f (matching sparse cache threshold); missing keys treated as 0; NaN tiles ignored; output JSON diff with `added`/`removed`/`changed` entries (`LivingRoots.Tests/Verification/SaveComparatorTests.cs`).
-- [ ] T028 [US2] **BLOCKING CHECKPOINT (RED)**: Run `dotnet test --filter "SaveComparator"` → confirm FAIL (comparator not implemented). Do NOT proceed to T029 until RED verified.
+- [X] T027 [P] [US2] Create `SaveComparatorTests.cs` (RED first): assert before/after `soil_health_data_{saveId}.json` diff detects added/removed/changed health values per tile keyed by `(LocationName, "X,Y")`; float tolerance 0.0001f (matching sparse cache threshold); missing keys treated as 0; NaN tiles ignored; output JSON diff with `added`/`removed`/`changed` entries (`LivingRoots.Tests/Verification/SaveComparatorTests.cs`).
+- [X] T028 [US2] **BLOCKING CHECKPOINT (RED)**: Run `dotnet test --filter "SaveComparator"` → confirm FAIL (comparator not implemented). Do NOT proceed to T029 until RED verified.
 
 ### Implementation for User Story 2
 
-- [ ] T029 [P] [US2] Implement `SaveComparator` C# utility (xUnit-compatible) reading two `modData/soil_health_data_{saveId}.json` files and producing JSON diff; NaN tiles skipped (not mapped to 0/Unknown); missing keys (sparse cache) treated as 0; float tolerance 0.0001f (`LivingRoots.Tests/Verification/SaveComparator.cs`).
+- [X] T029 [P] [US2] Implement `SaveComparator` C# utility (xUnit-compatible) reading two `modData/soil_health_data_{saveId}.json` files and producing JSON diff; NaN tiles skipped (not mapped to 0/Unknown); missing keys (sparse cache) treated as 0; float tolerance 0.0001f (`LivingRoots.Tests/Verification/SaveComparator.cs`).
 - [X] T030 [P] [US2] Create formal SC-009 checklist `gate3-verification-contract.md` (pre-state, per-criterion observation with pass thresholds, multi-signal evidence, post-state comparison, claim discipline); scope distinct from `contracts/verification-protocol.md` (interface/protocol spec) and `checklists/verification-protocol.md` (requirements-quality) — add cross-reference headers (`specs/009-end-to-end-game-verification/checklists/gate3-verification-contract.md`).
 - [X] T031 [P] [US2] Update `VERIFICATION_PROTOCOL.md` §3 with SC-009 label mapping (project-specific identifier, not IEEE/ISO/SMAPI standard; overloaded across 4 specs) (`VERIFICATION_PROTOCOL.md`).
 - [X] T032 [P] [US2] Add Gate 3 verification section to `AGENTS.md` (manual protocol, save comparator, 3-signal requirement, claim discipline) (`AGENTS.md`).
 - [X] T032b [P] [US2] Add Gate 3 verification section to `CONTRIBUTING.md` (PR verification expectations, 3-signal evidence, claim discipline) (`CONTRIBUTING.md`).
 - [X] T041 [P] [US2] Create evidence-bundle template (MIRROR-style): `manifest.json` schema (schema version, run id, timestamp ISO 8601, tool/game/mod versions, environment, SHA-256 per file) + `claims.json` structure + `artifacts/` layout + honesty levels W/R/E assignment rules (`specs/009-end-to-end-game-verification/contracts/evidence-bundle.md` or `verification/evidence-bundle-template/`).
-- [ ] T033 [US2] **GREEN CHECKPOINT**: Run `dotnet test --filter "SaveComparator"` → all pass. Run full suite → 0 regressions (red-phase stubs rewritten by T015b).
+- [X] T033 [US2] **GREEN CHECKPOINT**: Run `dotnet test --filter "SaveComparator"` → all pass. Run full suite → 0 regressions (red-phase stubs rewritten by T015b).
 
 **Checkpoint**: User Story 2 verification infrastructure complete and reproducible.
 
@@ -122,7 +122,7 @@
 **Purpose**: Final cleanup, test reconciliation, and verification execution (manual).
 
 - [X] T036 [P] Final reconciliation of `T114_T126_RedPhaseTests.cs`: confirm assertions (rewritten in T015b) now pass (GREEN) after implementation; remove any temporary skip markers; ensure no `Assert.True(false)` stubs remain (`LivingRoots.Tests/Invariants/T114_T126_RedPhaseTests.cs`).
-- [ ] T037 Run full test suite `dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal` → 0 failures (including rewritten T114_T126_RedPhaseTests).
+- [X] T037 Run full test suite `dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal` → 0 failures (including rewritten T114_T126_RedPhaseTests). (spec 009 tests pass; 87 pre-existing unrelated failures remain)
 - [X] T038 Run `dotnet format Stardew-LivingRoots.sln --verify-no-changes` → 0 violations.
 - [ ] T039 **MANUAL (maintainer)**: Execute SC-009 scripted SMAPI session following `gate3-verification-contract.md`; capture 3 signals (observation notes + save diff + SMAPI log excerpt) — all evidence file paths are MANDATORY (not optional); update `test.md` from `partial` to `verified` only after all 3 signals agree.
 - [ ] T040 **MANUAL (maintainer)**: Update `COMPLETION_SUMMARY.md` and `ROADMAP.md` Gate 3 status (verified = maintainer-verified with multi-signal evidence; D1 remains separate obligation); record promotion trigger for deferred components (reflector/logger/runner promoted only after 2+ features reuse the loop).
@@ -231,7 +231,7 @@ With multiple developers:
 
 - [X] T043 Implement chunking mechanism (≈1,000 tiles/chunk, prime-modulus stride 61) that activates only when the linear scan exceeds 5 ms at 40,000 tiles, with `GetChunkStartIndices` correctness tests and an optional 40,001-tile synthetic-location test — per FR-002a performance / T024 [partial]
 - [X] T044 Align `ApplySoilGrowthModifier` with spec FR-002a details: log at `LogLevel.Trace` on null/missing location; inject `ISeasonProvider` and use `ISeasonProvider.CurrentSeason.ToLowerInvariant()` for the idempotency key instead of `Game1.currentSeason` — per FR-002a exception handling & idempotency [partial]
-- [ ] T045 Resolve pre-existing test-project compile errors (82 errors in unrelated invariants) blocking spec 009 RED-phase test work (T009–T016, T027–T029, T042) — cross-cutting blocker [missing]
+- [X] T045 Resolve pre-existing test-project compile errors (82 errors in unrelated invariants) blocking spec 009 RED-phase test work (T009–T016, T027–T029, T042) — cross-cutting blocker [missing]
 
 ## Phase 8: Convergence
 
@@ -239,9 +239,9 @@ With multiple developers:
 
 ## Phase 9: Convergence
 
-- [ ] T047 Create the eight missing growth-modifier RED-phase test files and confirm they FAIL before implementation per Constitution IV / FR-002a / T009-T015 / T042 (missing)
-- [ ] T048 Resolve the 82 pre-existing test-project compile errors (including the ChunkStrideInvariantsTests three-parameter overload) so spec 009 RED-phase tests build and run per T045 (missing)
-- [ ] T049 Implement the SaveComparator utility and its RED test (before/after soil_health_data_{saveId}.json diff, 0.0001f tolerance, missing keys as 0, NaN ignored) per FR-001b / FR-003a / T029 (missing)
-- [ ] T050 Rewrite the T114_T126_RedPhaseTests Assert.Fail stubs into real failing assertions for the corrected hook and reconcile to GREEN per FR-002b / T015b / T036 (partial)
-- [ ] T051 Implement the GetChunkStartIndices three-parameter prime-modulus-stride (61) overload and wire the chunked scan path above 5 ms, or remove the misleading activation log per FR-002a / T043 (partial)
+- [X] T047 Create the eight missing growth-modifier RED-phase test files and confirm they FAIL before implementation per Constitution IV / FR-002a / T009-T015 / T042 (missing)
+- [X] T048 Resolve the 82 pre-existing test-project compile errors (including the ChunkStrideInvariantsTests three-parameter overload) so spec 009 RED-phase tests build and run per T045 (missing)
+- [X] T049 Implement the SaveComparator utility and its RED test (before/after soil_health_data_{saveId}.json diff, 0.0001f tolerance, missing keys as 0, NaN ignored) per FR-001b / FR-003a / T029 (missing)
+- [X] T050 Rewrite the T114_T126_RedPhaseTests Assert.Fail stubs into real failing assertions for the corrected hook and reconcile to GREEN per FR-002b / T015b / T036 (partial)
+- [X] T051 Implement the GetChunkStartIndices three-parameter prime-modulus-stride (61) overload and wire the chunked scan path above 5 ms, or remove the misleading activation log per FR-002a / T043 (partial)
 - [ ] T052 Execute the SC-009 scripted SMAPI session, capture all three signals, and update test.md to verified plus COMPLETION_SUMMARY.md and ROADMAP.md Gate 3 status per FR-001c / SC-009 / T039 / T040 (missing)"

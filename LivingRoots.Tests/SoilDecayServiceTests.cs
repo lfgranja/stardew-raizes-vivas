@@ -42,7 +42,8 @@ public class SoilDecayServiceTests
             _mockMonitor.Object,
             _seasonalMultiplier,
             _seasonStub,
-            _mockLocationProvider.Object);
+            _mockLocationProvider.Object,
+            new TimeProviderStub());
     }
 
     /// <summary>Builds a farm location holding one bare tilled tile.</summary>

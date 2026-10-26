@@ -16,13 +16,15 @@ public class SoilDecayService(
     IMonitor monitor,
     SeasonalDecayMultiplier seasonalDecayMultiplier,
     ISeasonProvider seasonProvider,
-    ILocationProvider locationProvider) : ISoilDecayService
+    ILocationProvider locationProvider,
+    ITimeProvider timeProvider) : ISoilDecayService
 {
     private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
     private readonly SeasonalDecayMultiplier _seasonalDecayMultiplier = seasonalDecayMultiplier ?? throw new ArgumentNullException(nameof(seasonalDecayMultiplier));
     private readonly ISeasonProvider _seasonProvider = seasonProvider ?? throw new ArgumentNullException(nameof(seasonProvider));
     private readonly ILocationProvider _locationProvider = locationProvider ?? throw new ArgumentNullException(nameof(locationProvider));
+    private readonly ITimeProvider _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     // T068 (FR-013): the exactly-once-per-day guard
     // is keyed by (day, location) — the duplicate
@@ -72,7 +74,7 @@ public class SoilDecayService(
         // when decay work is about to run, so a
         // location that appears later on the same
         // day is still processed.
-        var currentDay = Game1.dayOfMonth;
+        var currentDay = _timeProvider.TotalDays;
         lock (_lock)
         {
             if (_lastProcessedDayByLocation.TryGetValue(locationName, out var lastProcessedDay) &&
