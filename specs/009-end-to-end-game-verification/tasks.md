@@ -235,4 +235,4 @@ With multiple developers:
 
 ## Phase 8: Convergence
 
-- [ ] T046 Align `ApplySoilGrowthModifier` with spec FR-002a exception handling & idempotency details: log at `LogLevel.Trace` when `SoilHealthService` is null; format idempotency key with `CultureInfo.InvariantCulture` (per spec FR-002a) — per FR-002a [partial]
+- [X] T046 Align `ApplySoilGrowthModifier` with spec FR-002a exception handling & idempotency details: log at `LogLevel.Trace` when `SoilHealthService` is null; format idempotency key with `CultureInfo.InvariantCulture` (per spec FR-002a) — per FR-002a [partial]
