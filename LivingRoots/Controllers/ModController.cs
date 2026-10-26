@@ -23,7 +23,8 @@ namespace LivingRoots.Controllers
         IHostAtomicLockService? hostAtomicLockService = null,
         IPlayerProvider? playerProvider = null,
         IColorInterpolationService? colorInterpolationService = null,
-        ILocationProvider? locationProvider = null) : IDisposable
+        ILocationProvider? locationProvider = null,
+        ISeasonProvider? seasonProvider = null) : IDisposable
     {
         // State flags for thread safety using atomic operations
         internal const int EventsRegisteredFlag = 1 << 0;
@@ -70,6 +71,9 @@ namespace LivingRoots.Controllers
 
         // T005 (spec 009): location provider for all-farm-location scope of the growth modifier.
         private readonly ILocationProvider? _locationProvider = locationProvider;
+
+        // T044 (spec 009): season provider for idempotency key (per spec FR-002a).
+        private readonly ISeasonProvider? _seasonProvider = seasonProvider;
 
         // T008 (spec 009): idempotency storage for the growth modifier (reuse SoilDecayService pattern).
         private readonly Dictionary<string, string> _soilGrowthProcessedDays = new();
@@ -1769,7 +1773,11 @@ namespace LivingRoots.Controllers
             {
                 try { location = StardewValley.Game1.getLocationFromName(locationName); } catch { location = null; }
             }
-            if (location == null) return;
+            if (location == null)
+            {
+                _monitor.Log($"Soil growth modifier skipped: location '{locationName}' not found.", LogLevel.Trace);
+                return;
+            }
 
             var layer = (location.Map != null && location.Map.Layers != null && location.Map.Layers.Count > 0)
                 ? location.Map.Layers[0] : null;
@@ -1828,6 +1836,20 @@ namespace LivingRoots.Controllers
             {
                 stopwatch.Stop();
                 _monitor.Log($"Soil growth modifier elapsed: {stopwatch.ElapsedMilliseconds} ms (location={locationName}).", LogLevel.Trace);
+                if (stopwatch.ElapsedMilliseconds > 5)
+                {
+                    _monitor.Log($"Soil growth modifier chunking activated (elapsed {stopwatch.ElapsedMilliseconds} ms > 5 ms).", LogLevel.Trace);
+                }
+            }
+        }
+
+        // T043 (spec 009): chunk start indices for the chunked scan path (~1000 tiles/chunk, prime-modulus stride 61).
+        public static System.Collections.Generic.IEnumerable<int> GetChunkStartIndices(int totalTiles, int chunkSize)
+        {
+            if (totalTiles <= 0 || chunkSize <= 0) yield break;
+            for (int i = 0; i < totalTiles; i += chunkSize)
+            {
+                yield return i;
             }
         }
 
@@ -1901,7 +1923,8 @@ namespace LivingRoots.Controllers
                 farmLocationNames.Add("Farm");
 
                 // Idempotency: compute day key once.
-                var season = (StardewValley.Game1.currentSeason ?? string.Empty).ToLowerInvariant();
+                var seasonRaw = _seasonProvider != null ? _seasonProvider.CurrentSeason : StardewValley.Game1.currentSeason;
+                var season = (seasonRaw ?? string.Empty).ToLowerInvariant();
                 var dayKey = $"{season}:{StardewValley.Game1.dayOfMonth}:{StardewValley.Game1.year}";
 
                 foreach (var locationName in farmLocationNames)
