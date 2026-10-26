@@ -60,7 +60,7 @@
 - [X] T015 [P] [US1] Create `GrowthModifierPerformanceTests.cs` — assert scaling/linearity + coarse ceiling (no wall-clock ≤5 ms assertion in unit tests; host-dependent); `GetChunkStartIndices` correctness; optional injected 40,001-tile synthetic-location test (`LivingRoots.Tests/GrowthModifier/GrowthModifierPerformanceTests.cs`).
 - [X] T015b [US1] **RED-phase reconciliation**: Rewrite `T114_T126_RedPhaseTests.cs` stubs (`Assert.True(false, ...)`) into real failing assertions for the corrected hook (multiplicative, DayEnding, host guard, idempotency, all locations) so they fail for the right reason and join the RED checkpoint; do NOT make them pass yet (`LivingRoots.Tests/Invariants/T114_T126_RedPhaseTests.cs`).
 - [X] T042 [P] [US1] Add `GrowthModifierDayEndingRollbackTests.cs` — assert DayEnding subscription unregistration/rollback parity with DayStarted (reuse existing rollback test pattern: re-subscribe on partial unsubscribe failure) (`LivingRoots.Tests/GrowthModifier/GrowthModifierDayEndingRollbackTests.cs`).
-- [ ] T016 [US1] **BLOCKING CHECKPOINT (RED)**: Run `dotnet test --filter "GrowthModifier|T114_T126"` and confirm all new tests FAIL for the right reason (corrected hook not yet implemented). Do NOT proceed to T017 until RED is verified. Record failure output.
+- [X] T016 [US1] **BLOCKING CHECKPOINT (RED)**: Run `dotnet test --filter "GrowthModifier|T114_T126"` and confirm all new tests FAIL for the right reason (corrected hook not yet implemented). Do NOT proceed to T017 until RED is verified. Record failure output.
 
 ### Implementation for User Story 1 (GREEN PHASE — only after T016 RED verified)
 
@@ -248,7 +248,7 @@ With multiple developers:
 
 ## Phase 10: Convergence
 
-- [ ] T053 Add SC-009 label mapping to `VERIFICATION_PROTOCOL.md` §3 (project-specific identifier, overloaded across 4 specs; cross-reference `gate3-verification-contract.md`) per FR-001c / SC-009 / T031 (partial)
-- [ ] T054 Remove the misleading "chunking activated" log line in `ModController.ApplySoilGrowthModifier` (or wire `GetChunkStartIndices` into the scan path above 5 ms) per FR-002a performance / T024 / T051 (partial)
-- [ ] T055 Reconcile `GrowthModifierDayEndingTests.ApplySoilGrowthModifier_AcceptsLocationName` to use `NonPublic` binding flags (method is private by design) per US1 T010 / Gate 1 (partial)
-- [ ] T056 Update `GrowthModifierIntegrationTests.IdempotencyGuard_FieldsExist` to reflect the spec's `Crop.ResetPhaseDays()` approach (drop `_soilGrowthBasePhaseDays` / `_soilGrowthProcessedLocations` / `_soilGrowthLastDayKey` expectations) per FR-002a / US1 / Gate 1 (partial)
+- [X] T053 Add SC-009 label mapping to `VERIFICATION_PROTOCOL.md` §3 (project-specific identifier, overloaded across 4 specs; cross-reference `gate3-verification-contract.md`) per FR-001c / SC-009 / T031 (partial)
+- [X] T054 Remove the misleading "chunking activated" log line in `ModController.ApplySoilGrowthModifier` (or wire `GetChunkStartIndices` into the scan path above 5 ms) per FR-002a performance / T024 / T051 (partial)
+- [X] T055 Reconcile `GrowthModifierDayEndingTests.ApplySoilGrowthModifier_AcceptsLocationName` to use `NonPublic` binding flags (method is private by design) per US1 T010 / Gate 1 (partial)
+- [X] T056 Update `GrowthModifierIntegrationTests.IdempotencyGuard_FieldsExist` to reflect the spec's `Crop.ResetPhaseDays()` approach (drop `_soilGrowthBasePhaseDays` / `_soilGrowthProcessedLocations` / `_soilGrowthLastDayKey` expectations) per FR-002a / US1 / Gate 1 (partial)

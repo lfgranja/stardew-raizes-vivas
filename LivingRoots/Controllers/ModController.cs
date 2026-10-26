@@ -1841,10 +1841,6 @@ namespace LivingRoots.Controllers
             {
                 stopwatch.Stop();
                 _monitor.Log($"Soil growth modifier elapsed: {stopwatch.ElapsedMilliseconds} ms (location={locationName}).", LogLevel.Trace);
-                if (stopwatch.ElapsedMilliseconds > 5)
-                {
-                    _monitor.Log($"Soil growth modifier chunking activated (elapsed {stopwatch.ElapsedMilliseconds} ms > 5 ms).", LogLevel.Trace);
-                }
             }
         }
 

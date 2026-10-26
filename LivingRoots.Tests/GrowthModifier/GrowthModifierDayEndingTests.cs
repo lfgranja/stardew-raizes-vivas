@@ -9,7 +9,7 @@ namespace LivingRoots.Tests.GrowthModifier
         [Fact]
         public void ApplySoilGrowthModifier_AcceptsLocationName()
         {
-            var m = typeof(ModController).GetMethod("ApplySoilGrowthModifier", BindingFlags.Public | BindingFlags.Instance);
+            var m = typeof(ModController).GetMethod("ApplySoilGrowthModifier", BindingFlags.NonPublic | BindingFlags.Instance);
             Assert.NotNull(m);
             Assert.Single(m!.GetParameters());
             Assert.Equal(typeof(string), m.GetParameters()[0].ParameterType);

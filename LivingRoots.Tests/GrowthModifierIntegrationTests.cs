@@ -58,22 +58,19 @@ namespace LivingRoots.Tests
         [Fact]
         public void IdempotencyGuard_FieldsExist()
         {
+            // Spec FR-002a: base phaseDays are restored via vanilla Crop.ResetPhaseDays(),
+            // NOT an instance-keyed cache (which would orphan across save/reload).
             var basePhaseDaysField = typeof(ModController).GetField(
                 "_soilGrowthBasePhaseDays",
                 BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.NotNull(basePhaseDaysField);
-            Assert.Equal(typeof(System.Collections.Generic.Dictionary<object, int[]>), basePhaseDaysField!.FieldType);
+            Assert.Null(basePhaseDaysField);
 
-            var processedLocationsField = typeof(ModController).GetField(
-                "_soilGrowthProcessedLocations",
+            // Idempotency storage follows the SoilDecayService pattern: per-location day key.
+            var processedDaysField = typeof(ModController).GetField(
+                "_soilGrowthProcessedDays",
                 BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.NotNull(processedLocationsField);
-            Assert.Equal(typeof(System.Collections.Generic.HashSet<string>), processedLocationsField!.FieldType);
-
-            var lastDayKeyField = typeof(ModController).GetField(
-                "_soilGrowthLastDayKey",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            Assert.NotNull(lastDayKeyField);
+            Assert.NotNull(processedDaysField);
+            Assert.Equal(typeof(System.Collections.Generic.Dictionary<string, string>), processedDaysField!.FieldType);
         }
 
         [Fact]
