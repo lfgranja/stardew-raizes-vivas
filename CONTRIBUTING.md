@@ -94,4 +94,12 @@ To start developing "Living Roots," follow the steps below:
 *   **Documentation:** Keep the documentation updated, especially `ROADMAP.md` and `ARCHITECTURE.md`.
 *   **Pixel Art:** If contributing visual assets, try to maintain the Stardew Valley pixel art style.
 
+## Gate 3 — End-to-End Verification (spec 009)
+
+PRs that touch runnable code must include evidence of Gate 3 verification when claiming `verified`:
+*   Manual SMAPI session following `VERIFICATION_PROTOCOL.md` §3 / `specs/009-end-to-end-game-verification/checklists/gate3-verification-contract.md` (SC-009).
+*   3 signals required: observation notes + save-file diff (`modData/soil_health_data_{saveId}.json`, tolerance 0.0001f) + SMAPI log excerpt (no WARN/ERROR).
+*   Claim wording: "verified by manual end-to-end session + multi-signal evidence: observation notes [file], artifact comparison [file], SMAPI log [file], session date [date]."
+*   Never claim "verified by build / N passed." `Build and Test` CI remains dormant.
+
 Thank you for being part of the "Living Roots" community!
