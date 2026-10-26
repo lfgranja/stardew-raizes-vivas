@@ -19,10 +19,10 @@
 
 **Purpose**: Establish a known-green baseline before any change.
 
-- [ ] T001 Verify baseline build passes: `dotnet build Stardew-LivingRoots.sln --configuration Release` (0 errors).
+- [X] T001 Verify baseline build passes: `dotnet build Stardew-LivingRoots.sln --configuration Release` (0 errors).
 - [ ] T002 Verify baseline tests pass: `dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal` (0 failures).
-- [ ] T003 [P] Confirm `ILocationProvider` interface and `LocationProvider` implementation are usable without modification (`LivingRoots/Domain/ILocationProvider.cs`, `LivingRoots/Services/LocationProvider.cs`).
-- [ ] T004 [P] Confirm `SoilDecayService` idempotency pattern (`Dictionary<string,string>` keyed by location, lock-guarded, record-before-work, Trace log on skip) to reuse verbatim (`LivingRoots/Services/SoilDecayService.cs`).
+- [X] T003 [P] Confirm `ILocationProvider` interface and `LocationProvider` implementation are usable without modification (`LivingRoots/Domain/ILocationProvider.cs`, `LivingRoots/Services/LocationProvider.cs`).
+- [X] T004 [P] Confirm `SoilDecayService` idempotency pattern (`Dictionary<string,string>` keyed by location, lock-guarded, record-before-work, Trace log on skip) to reuse verbatim (`LivingRoots/Services/SoilDecayService.cs`).
 
 **Checkpoint**: Baseline green; reusable patterns identified.
 
@@ -32,10 +32,10 @@
 
 **Purpose**: Core wiring that MUST be complete before any user story (growth modifier correction) can be implemented. No user story work may begin until this phase is complete.
 
-- [ ] T005 Add `ILocationProvider? locationProvider = null` parameter to `ModController` primary constructor and store `private readonly ILocationProvider? _locationProvider` field, following the existing nullable-injection pattern (`LivingRoots/Controllers/ModController.cs`).
-- [ ] T006 Wire `locationProvider` instance into `ModController` creation in `ModEntry` (pass `locationProvider: locationProvider`) (`LivingRoots/ModEntry.cs`).
-- [ ] T007 Add `DayEnding` event subscription infrastructure mirroring the `DayStarted` pattern: field `_onDayEndingHandler`, register in `RegisterEvents()`, unregister in disposal, rollback on partial unsubscribe failure (`LivingRoots/Controllers/ModController.cs`).
-- [ ] T008 Add idempotency storage scaffold reusing the `SoilDecayService` pattern: `Dictionary<string, string>` keyed by location name, guarded by a lock, record-before-work, Trace log on skip ("idempotent skip" including the key) (`LivingRoots/Controllers/ModController.cs`).
+- [X] T005 Add `ILocationProvider? locationProvider = null` parameter to `ModController` primary constructor and store `private readonly ILocationProvider? _locationProvider` field, following the existing nullable-injection pattern (`LivingRoots/Controllers/ModController.cs`).
+- [X] T006 Wire `locationProvider` instance into `ModController` creation in `ModEntry` (pass `locationProvider: locationProvider`) (`LivingRoots/ModEntry.cs`).
+- [X] T007 Add `DayEnding` event subscription infrastructure mirroring the `DayStarted` pattern: field `_onDayEndingHandler`, register in `RegisterEvents()`, unregister in disposal, rollback on partial unsubscribe failure (`LivingRoots/Controllers/ModController.cs`).
+- [X] T008 Add idempotency storage scaffold reusing the `SoilDecayService` pattern: `Dictionary<string, string>` keyed by location name, guarded by a lock, record-before-work, Trace log on skip ("idempotent skip" including the key) (`LivingRoots/Controllers/ModController.cs`).
 
 **Checkpoint**: Foundation ready — growth modifier correction can begin.
 
@@ -64,16 +64,16 @@
 
 ### Implementation for User Story 1 (GREEN PHASE — only after T016 RED verified)
 
-- [ ] T017 [US1] Refactor `ApplySoilGrowthModifier` signature to `ApplySoilGrowthModifier(string locationName)`; resolve location via `_locationProvider.GetLocationByName(locationName)` (`LivingRoots/Controllers/ModController.cs`).
-- [ ] T018 [US1] Remove the `ApplySoilGrowthModifier()` call from the post-loop block in `OnDayStarted` (keep composting bins and soil decay calls there) (`LivingRoots/Controllers/ModController.cs`).
-- [ ] T019 [US1] Add `DayEnding` event handler `OnDayEnding` with host guard `if (!Context.IsMainPlayer) return;` at top, before any processing (`LivingRoots/Controllers/ModController.cs`).
-- [ ] T020 [US1] Add idempotency check in `OnDayEnding`: compute key `$"{season}:{dayOfMonth}:{year}"`; if already processed for that location, skip + Trace log ("idempotent skip" incl. key); record-before-work (`LivingRoots/Controllers/ModController.cs`).
-- [ ] T021 [US1] Call `ApplySoilGrowthModifier(locationName)` inside `foreach (var locationName in farmLocationNames)` in `OnDayEnding`, alongside `ProcessDayStart` calls (`LivingRoots/Controllers/ModController.cs`).
-- [ ] T022 [US1] Replace ±1 logic with multiplicative: cache base `phaseDays` via `Crop.ResetPhaseDays()` (restore from `CropData`) before applying tier multiplier; apply Pobre 1.15×, Moderado 1.00×, Saudável 0.85×; never below 1; never touch 99999 sentinel; adjust `dayOfCurrentPhase` accordingly (`LivingRoots/Controllers/ModController.cs`).
-- [ ] T023 [US1] Implement NaN/zero/missing handling: NaN tiles skipped (no change); zero/missing health (sparse → 0) skipped (vanilla); missing location (null) → skip + Trace; null `SoilHealthService` → skip + Trace; empty location → no-op, no logging (`LivingRoots/Controllers/ModController.cs`).
-- [ ] T024 [US1] Add production performance measurement: `Stopwatch` entry→return, log elapsed ms at `LogLevel.Trace` only; chunking (≈1,000 tiles/chunk, prime-modulus stride) activates only above 5 ms (`LivingRoots/Controllers/ModController.cs`).
-- [ ] T025 [US1] Update comments and logging to reflect corrected behavior (DayEnding, multiplicative, host guard, idempotency, all locations) (`LivingRoots/Controllers/ModController.cs`).
-- [ ] T026 [US1] **GREEN CHECKPOINT**: Run `dotnet test --filter "GrowthModifier"` → all pass (0 failures). Run full suite `dotnet test` → 0 regressions (red-phase stubs now rewritten by T015b and expected green). Run `dotnet format --verify-no-changes` → clean.
+- [X] T017 [US1] Refactor `ApplySoilGrowthModifier` signature to `ApplySoilGrowthModifier(string locationName)`; resolve location via `_locationProvider.GetLocationByName(locationName)` (`LivingRoots/Controllers/ModController.cs`).
+- [X] T018 [US1] Remove the `ApplySoilGrowthModifier()` call from the post-loop block in `OnDayStarted` (keep composting bins and soil decay calls there) (`LivingRoots/Controllers/ModController.cs`).
+- [X] T019 [US1] Add `DayEnding` event handler `OnDayEnding` with host guard `if (!Context.IsMainPlayer) return;` at top, before any processing (`LivingRoots/Controllers/ModController.cs`).
+- [X] T020 [US1] Add idempotency check in `OnDayEnding`: compute key `$"{season}:{dayOfMonth}:{year}"`; if already processed for that location, skip + Trace log ("idempotent skip" incl. key); record-before-work (`LivingRoots/Controllers/ModController.cs`).
+- [X] T021 [US1] Call `ApplySoilGrowthModifier(locationName)` inside `foreach (var locationName in farmLocationNames)` in `OnDayEnding`, alongside `ProcessDayStart` calls (`LivingRoots/Controllers/ModController.cs`).
+- [X] T022 [US1] Replace ±1 logic with multiplicative: cache base `phaseDays` via `Crop.ResetPhaseDays()` (restore from `CropData`) before applying tier multiplier; apply Pobre 1.15×, Moderado 1.00×, Saudável 0.85×; never below 1; never touch 99999 sentinel; adjust `dayOfCurrentPhase` accordingly (`LivingRoots/Controllers/ModController.cs`).
+- [X] T023 [US1] Implement NaN/zero/missing handling: NaN tiles skipped (no change); zero/missing health (sparse → 0) skipped (vanilla); missing location (null) → skip + Trace; null `SoilHealthService` → skip + Trace; empty location → no-op, no logging (`LivingRoots/Controllers/ModController.cs`).
+- [X] T024 [US1] Add production performance measurement: `Stopwatch` entry→return, log elapsed ms at `LogLevel.Trace` only; chunking (≈1,000 tiles/chunk, prime-modulus stride) activates only above 5 ms (`LivingRoots/Controllers/ModController.cs`).
+- [X] T025 [US1] Update comments and logging to reflect corrected behavior (DayEnding, multiplicative, host guard, idempotency, all locations) (`LivingRoots/Controllers/ModController.cs`).
+- [X] T026 [US1] **GREEN CHECKPOINT**: Run `dotnet test --filter "GrowthModifier"` → all pass (0 failures). Run full suite `dotnet test` → 0 regressions (red-phase stubs now rewritten by T015b and expected green). Run `dotnet format --verify-no-changes` → clean.
 
 **Checkpoint**: User Story 1 growth modifier correction complete and verified by tests.
 
@@ -93,11 +93,11 @@
 ### Implementation for User Story 2
 
 - [ ] T029 [P] [US2] Implement `SaveComparator` C# utility (xUnit-compatible) reading two `modData/soil_health_data_{saveId}.json` files and producing JSON diff; NaN tiles skipped (not mapped to 0/Unknown); missing keys (sparse cache) treated as 0; float tolerance 0.0001f (`LivingRoots.Tests/Verification/SaveComparator.cs`).
-- [ ] T030 [P] [US2] Create formal SC-009 checklist `gate3-verification-contract.md` (pre-state, per-criterion observation with pass thresholds, multi-signal evidence, post-state comparison, claim discipline); scope distinct from `contracts/verification-protocol.md` (interface/protocol spec) and `checklists/verification-protocol.md` (requirements-quality) — add cross-reference headers (`specs/009-end-to-end-game-verification/checklists/gate3-verification-contract.md`).
-- [ ] T031 [P] [US2] Update `VERIFICATION_PROTOCOL.md` §3 with SC-009 label mapping (project-specific identifier, not IEEE/ISO/SMAPI standard; overloaded across 4 specs) (`VERIFICATION_PROTOCOL.md`).
-- [ ] T032 [P] [US2] Add Gate 3 verification section to `AGENTS.md` (manual protocol, save comparator, 3-signal requirement, claim discipline) (`AGENTS.md`).
-- [ ] T032b [P] [US2] Add Gate 3 verification section to `CONTRIBUTING.md` (PR verification expectations, 3-signal evidence, claim discipline) (`CONTRIBUTING.md`).
-- [ ] T041 [P] [US2] Create evidence-bundle template (MIRROR-style): `manifest.json` schema (schema version, run id, timestamp ISO 8601, tool/game/mod versions, environment, SHA-256 per file) + `claims.json` structure + `artifacts/` layout + honesty levels W/R/E assignment rules (`specs/009-end-to-end-game-verification/contracts/evidence-bundle.md` or `verification/evidence-bundle-template/`).
+- [X] T030 [P] [US2] Create formal SC-009 checklist `gate3-verification-contract.md` (pre-state, per-criterion observation with pass thresholds, multi-signal evidence, post-state comparison, claim discipline); scope distinct from `contracts/verification-protocol.md` (interface/protocol spec) and `checklists/verification-protocol.md` (requirements-quality) — add cross-reference headers (`specs/009-end-to-end-game-verification/checklists/gate3-verification-contract.md`).
+- [X] T031 [P] [US2] Update `VERIFICATION_PROTOCOL.md` §3 with SC-009 label mapping (project-specific identifier, not IEEE/ISO/SMAPI standard; overloaded across 4 specs) (`VERIFICATION_PROTOCOL.md`).
+- [X] T032 [P] [US2] Add Gate 3 verification section to `AGENTS.md` (manual protocol, save comparator, 3-signal requirement, claim discipline) (`AGENTS.md`).
+- [X] T032b [P] [US2] Add Gate 3 verification section to `CONTRIBUTING.md` (PR verification expectations, 3-signal evidence, claim discipline) (`CONTRIBUTING.md`).
+- [X] T041 [P] [US2] Create evidence-bundle template (MIRROR-style): `manifest.json` schema (schema version, run id, timestamp ISO 8601, tool/game/mod versions, environment, SHA-256 per file) + `claims.json` structure + `artifacts/` layout + honesty levels W/R/E assignment rules (`specs/009-end-to-end-game-verification/contracts/evidence-bundle.md` or `verification/evidence-bundle-template/`).
 - [ ] T033 [US2] **GREEN CHECKPOINT**: Run `dotnet test --filter "SaveComparator"` → all pass. Run full suite → 0 regressions (red-phase stubs rewritten by T015b).
 
 **Checkpoint**: User Story 2 verification infrastructure complete and reproducible.
@@ -110,8 +110,8 @@
 
 **Independent Test**: `dotnet build` 0 errors; `dotnet test` 0 failures; `dotnet format --verify-no-changes` clean; `Build and Test` workflow status documented as dormant.
 
-- [ ] T034 [US3] Document CI dormant status and local preflight (`lefthook` pre-commit format check, pre-push test) in `AGENTS.md` CI section (no workflow changes) (`AGENTS.md`).
-- [ ] T035 [US3] Verify `dotnet build Stardew-LivingRoots.sln --configuration Release` → 0 errors and `dotnet test` → 0 failures (already satisfied; re-confirm after US1/US2 changes).
+- [X] T034 [US3] Document CI dormant status and local preflight (`lefthook` pre-commit format check, pre-push test) in `AGENTS.md` CI section (no workflow changes) (`AGENTS.md`).
+- [X] T035 [US3] Verify `dotnet build Stardew-LivingRoots.sln --configuration Release` → 0 errors and `dotnet test` → 0 failures (already satisfied; re-confirm after US1/US2 changes).
 
 **Checkpoint**: User Story 3 (CI/build) confirmed.
 
@@ -121,9 +121,9 @@
 
 **Purpose**: Final cleanup, test reconciliation, and verification execution (manual).
 
-- [ ] T036 [P] Final reconciliation of `T114_T126_RedPhaseTests.cs`: confirm assertions (rewritten in T015b) now pass (GREEN) after implementation; remove any temporary skip markers; ensure no `Assert.True(false)` stubs remain (`LivingRoots.Tests/Invariants/T114_T126_RedPhaseTests.cs`).
+- [X] T036 [P] Final reconciliation of `T114_T126_RedPhaseTests.cs`: confirm assertions (rewritten in T015b) now pass (GREEN) after implementation; remove any temporary skip markers; ensure no `Assert.True(false)` stubs remain (`LivingRoots.Tests/Invariants/T114_T126_RedPhaseTests.cs`).
 - [ ] T037 Run full test suite `dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal` → 0 failures (including rewritten T114_T126_RedPhaseTests).
-- [ ] T038 Run `dotnet format Stardew-LivingRoots.sln --verify-no-changes` → 0 violations.
+- [X] T038 Run `dotnet format Stardew-LivingRoots.sln --verify-no-changes` → 0 violations.
 - [ ] T039 **MANUAL (maintainer)**: Execute SC-009 scripted SMAPI session following `gate3-verification-contract.md`; capture 3 signals (observation notes + save diff + SMAPI log excerpt) — all evidence file paths are MANDATORY (not optional); update `test.md` from `partial` to `verified` only after all 3 signals agree.
 - [ ] T040 **MANUAL (maintainer)**: Update `COMPLETION_SUMMARY.md` and `ROADMAP.md` Gate 3 status (verified = maintainer-verified with multi-signal evidence; D1 remains separate obligation); record promotion trigger for deferred components (reflector/logger/runner promoted only after 2+ features reuse the loop).
 
