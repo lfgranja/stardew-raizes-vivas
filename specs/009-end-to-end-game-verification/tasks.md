@@ -236,3 +236,12 @@ With multiple developers:
 ## Phase 8: Convergence
 
 - [X] T046 Align `ApplySoilGrowthModifier` with spec FR-002a exception handling & idempotency details: log at `LogLevel.Trace` when `SoilHealthService` is null; format idempotency key with `CultureInfo.InvariantCulture` (per spec FR-002a) — per FR-002a [partial]
+
+## Phase 9: Convergence
+
+- [ ] T047 Create the eight missing growth-modifier RED-phase test files and confirm they FAIL before implementation per Constitution IV / FR-002a / T009-T015 / T042 (missing)
+- [ ] T048 Resolve the 82 pre-existing test-project compile errors (including the ChunkStrideInvariantsTests three-parameter overload) so spec 009 RED-phase tests build and run per T045 (missing)
+- [ ] T049 Implement the SaveComparator utility and its RED test (before/after soil_health_data_{saveId}.json diff, 0.0001f tolerance, missing keys as 0, NaN ignored) per FR-001b / FR-003a / T029 (missing)
+- [ ] T050 Rewrite the T114_T126_RedPhaseTests Assert.Fail stubs into real failing assertions for the corrected hook and reconcile to GREEN per FR-002b / T015b / T036 (partial)
+- [ ] T051 Implement the GetChunkStartIndices three-parameter prime-modulus-stride (61) overload and wire the chunked scan path above 5 ms, or remove the misleading activation log per FR-002a / T043 (partial)
+- [ ] T052 Execute the SC-009 scripted SMAPI session, capture all three signals, and update test.md to verified plus COMPLETION_SUMMARY.md and ROADMAP.md Gate 3 status per FR-001c / SC-009 / T039 / T040 (missing)"
