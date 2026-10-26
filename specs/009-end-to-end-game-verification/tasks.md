@@ -232,3 +232,7 @@ With multiple developers:
 - [X] T043 Implement chunking mechanism (≈1,000 tiles/chunk, prime-modulus stride 61) that activates only when the linear scan exceeds 5 ms at 40,000 tiles, with `GetChunkStartIndices` correctness tests and an optional 40,001-tile synthetic-location test — per FR-002a performance / T024 [partial]
 - [X] T044 Align `ApplySoilGrowthModifier` with spec FR-002a details: log at `LogLevel.Trace` on null/missing location; inject `ISeasonProvider` and use `ISeasonProvider.CurrentSeason.ToLowerInvariant()` for the idempotency key instead of `Game1.currentSeason` — per FR-002a exception handling & idempotency [partial]
 - [ ] T045 Resolve pre-existing test-project compile errors (82 errors in unrelated invariants) blocking spec 009 RED-phase test work (T009–T016, T027–T029, T042) — cross-cutting blocker [missing]
+
+## Phase 8: Convergence
+
+- [ ] T046 Align `ApplySoilGrowthModifier` with spec FR-002a exception handling & idempotency details: log at `LogLevel.Trace` when `SoilHealthService` is null; format idempotency key with `CultureInfo.InvariantCulture` (per spec FR-002a) — per FR-002a [partial]
