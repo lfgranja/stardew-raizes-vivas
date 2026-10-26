@@ -245,3 +245,10 @@ With multiple developers:
 - [X] T050 Rewrite the T114_T126_RedPhaseTests Assert.Fail stubs into real failing assertions for the corrected hook and reconcile to GREEN per FR-002b / T015b / T036 (partial)
 - [X] T051 Implement the GetChunkStartIndices three-parameter prime-modulus-stride (61) overload and wire the chunked scan path above 5 ms, or remove the misleading activation log per FR-002a / T043 (partial)
 - [ ] T052 Execute the SC-009 scripted SMAPI session, capture all three signals, and update test.md to verified plus COMPLETION_SUMMARY.md and ROADMAP.md Gate 3 status per FR-001c / SC-009 / T039 / T040 (missing)"
+
+## Phase 10: Convergence
+
+- [ ] T053 Add SC-009 label mapping to `VERIFICATION_PROTOCOL.md` §3 (project-specific identifier, overloaded across 4 specs; cross-reference `gate3-verification-contract.md`) per FR-001c / SC-009 / T031 (partial)
+- [ ] T054 Remove the misleading "chunking activated" log line in `ModController.ApplySoilGrowthModifier` (or wire `GetChunkStartIndices` into the scan path above 5 ms) per FR-002a performance / T024 / T051 (partial)
+- [ ] T055 Reconcile `GrowthModifierDayEndingTests.ApplySoilGrowthModifier_AcceptsLocationName` to use `NonPublic` binding flags (method is private by design) per US1 T010 / Gate 1 (partial)
+- [ ] T056 Update `GrowthModifierIntegrationTests.IdempotencyGuard_FieldsExist` to reflect the spec's `Crop.ResetPhaseDays()` approach (drop `_soilGrowthBasePhaseDays` / `_soilGrowthProcessedLocations` / `_soilGrowthLastDayKey` expectations) per FR-002a / US1 / Gate 1 (partial)
