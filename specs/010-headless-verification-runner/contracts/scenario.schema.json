@@ -110,6 +110,20 @@
       ],
       "title": "Declared environment",
       "description": "Expected execution environment. The runner records the observed values in the evidence bundle and fails fast on a mismatch (FR-008). Declared values make the scenario reproducible without relying on host-global state.",
+      "examples": [
+        {
+          "gameVersion": "1.6.14",
+          "smapiVersion": "4.4.0",
+          "modVersion": "0.4.0",
+          "apiVersion": "1.0.0",
+          "saveId": "farm-year1-day5",
+          "config": {
+            "saveMode": "save",
+            "headless": true,
+            "skipBuild": false
+          }
+        }
+      ],
       "properties": {
         "gameVersion": {
           "$ref": "#/$defs/semver",
@@ -334,6 +348,14 @@
       "default": {},
       "title": "Scenario-level inputs",
       "description": "Explicit scenario-level inputs. No hidden global state, clock, or RNG seed is allowed (C-SCN-20). Omitted members take their declared defaults.",
+      "examples": [
+        {
+          "season": "spring",
+          "day": 5,
+          "weather": "sunny",
+          "money": 500
+        }
+      ],
       "properties": {
         "season": {
           "type": "string",
@@ -417,6 +439,14 @@
       ],
       "title": "Determinism declaration",
       "description": "Explicit statement that re-running the scenario from the same seed/environment yields the same result. Required. Any non-deterministic source must be declared; an undeclared source is a scenario-contract violation.",
+      "examples": [
+        {
+          "idempotent": true,
+          "declaredSources": [
+            "gameClock"
+          ]
+        }
+      ],
       "properties": {
         "idempotent": {
           "const": true,
@@ -830,7 +860,15 @@
       "additionalProperties": false,
       "default": {},
       "title": "Step inputs",
-      "description": "Explicit action-specific inputs. Unknown fields are rejected; omitted fields are absent (no implicit global state).",
+      "description": "Explicit action-specific inputs. Unknown fields are rejected. Every member is optional with explicit absence semantics: when omitted the value is absent (not null and not a default), and the runner MUST reject an action that requires the missing input (exit 14).",
+      "examples": [
+        {
+          "tileX": -10,
+          "tileY": 5,
+          "location": "Farm",
+          "count": 5
+        }
+      ],
       "properties": {
         "tileX": {
           "type": "integer",
@@ -964,6 +1002,30 @@
     "predicate": {
       "title": "Predicate",
       "description": "Machine-evaluable threshold predicate (C-SCN-29). The discriminated 'op' field selects exactly one variant. Two independent readers MUST compute the same pass/fail result from the predicate plus the captured signal.",
+      "examples": [
+        {
+          "op": "multiplier",
+          "field": "phaseDays",
+          "base": "pre.phaseDays",
+          "factor": 1.15,
+          "tolerance": 0.0001
+        },
+        {
+          "op": "between",
+          "field": "soilHealth",
+          "min": 34,
+          "max": 67,
+          "exclusiveMin": false,
+          "exclusiveMax": true,
+          "tolerance": 0.0001
+        },
+        {
+          "op": "sentinel",
+          "field": "phaseDays",
+          "sentinel": "SENTINEL_UNTOUCHED_99999",
+          "mustNotChange": true
+        }
+      ],
       "oneOf": [
         {
           "type": "object",
@@ -1543,6 +1605,16 @@
       ],
       "title": "Host-guard expectations",
       "description": "Observable contract for a farmhand (non-host) scenario. A breach is execution evidence without the skip line.",
+      "examples": [
+        {
+          "skipLine": "Soil growth modifier skipped: not main player.",
+          "forbiddenEvidence": [
+            "elapsedTrace",
+            "phaseDaysMutation"
+          ],
+          "requireSkipLine": true
+        }
+      ],
       "properties": {
         "skipLine": {
           "const": "Soil growth modifier skipped: not main player.",
