@@ -107,7 +107,7 @@ A directory `evidence-bundle-<run-id>/` produced by every run. `runId` format: `
 | File | Purpose |
 |------|---------|
 | `manifest.json` | `schemaVersion`, `runId`, `timestamp` (ISO 8601 UTC), `toolVersions`, `gameVersion`, `modVersion`, `environment`, `subject` (array of `{name, digest: {sha256}}`), `verdict`, `honestyLevel`, `attempts`, optional `integrityFailureRef`, `compatibility`, `commands`, `materials`, `seeds`, `determinism`, completeness flags. `files` is a deprecated alias for `subject` for one major version (C-BND-01). |
-| `manifest.sha256` | Detached SHA-256 of `manifest.json`, published outside the bundle (CI job summary/commit status/durable audit log) so manifest tampering is detectable even if the bundle directory is altered (C-SEC-35). |
+| `manifest.sha256` | Detached SHA-256 of `manifest.json`, published outside the bundle (CI job summary/commit status/durable audit log) so manifest tampering is detectable even if the bundle directory is altered (C-BND-01). |
 | `claims.json` | `claimId`, `evidencePointer`, `risk` (low/medium/high), `honestyLevel` (W/R/E), `safeWording`, `refusalSite` (C-REL-24). |
 | `artifacts/` | Screenshots, SMAPI logs, save-deltas before/after, reflection outputs, Crop-phase dump, Anomaly Report entries. |
 | `attempts/<n>/attempt.json` | Per-attempt metadata (`attempt`, `verdict`, `failureClass`, `signals`, timestamps); stdout/stderr and intermediate artifacts live beside it. Append-only. |
@@ -116,7 +116,7 @@ A directory `evidence-bundle-<run-id>/` produced by every run. `runId` format: `
 | `integrity-failure.json` | Tamper-evident record on integrity failure (FR-024); append-only, retained with the bundle (FR-027). |
 | `compatibility` block | Observed/minimum/maximum/tier per component, `modSelfCheck`, deviation (embedded in manifest). |
 
-Mandatory evidence for honesty level R/E: `commands`, `materials`, at least one seed material, `claims.json`, and recomputed digests (C-SEC-29). A bundle missing any mandatory item for its claimed level fails closed in the offline verifier (C-SEC-34).
+Mandatory evidence for honesty level R/E: `commands`, `materials`, at least one seed material, `claims.json`, and recomputed digests (C-SEC-29). A bundle missing any mandatory item for its claimed level fails closed in the offline verifier (FR-015/C-SEC-29).
 
 ### Run Verdict
 
@@ -132,7 +132,7 @@ The **run outcome** is one of five base verdicts. `flaky` is a derived metadata 
 
 `flaky: true` is metadata on a run whose first attempt failed with a retryable class and a later attempt passed on the same commit/seed/environment. The run outcome is `pass` and the exit code is `0`; flakiness never fails the run by itself. A flaky pass is **not** eligible for auto-promotion to `verified` (FR-016); it is recorded in `test.md` as `partial` with `flaky: true` until a clean non-flaky pass occurs. The resolved policy is recorded in `spec.md` (Clarifications, Session 2026-10-27) and `contracts/exit-codes.md`.
 
-Expected-fail semantics: when `expectedVerdict: fail` matches an actual `fail`, the verdict remains `fail` and the exit code remains `18` (the gameplay assertion failed as designed). A mismatch is a scenario-contract failure and exits `19`. Expected-failure lanes must opt into `--ignore-exit-code 18`; the override is recorded as an audit event. Integrity failures (`19` with `integrity-failure.json`) are never demotable.
+Expected-verdict semantics: a negative or boundary scenario may declare any non-pass `expectedVerdict`. When it matches the actual verdict, the verdict is preserved and the exit code follows that verdict's normal mapping (`fail` → `18`; `errored`/`partial` → `19`; `skipped` → `20`, or `0` in a mixed suite with at least one `pass`). A mismatch — including an unexpected pass — is a scenario-contract failure and exits `19`. Expected-failure lanes must opt into `--ignore-exit-code 18` for a matched `fail`; the override is recorded as an audit event. Integrity failures (`19` with `integrity-failure.json`) are never demotable.
 
 ### Signal Set
 
