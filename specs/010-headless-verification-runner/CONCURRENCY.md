@@ -70,7 +70,7 @@ Owned-display identity is `(display number, Xvfb PID, PID start-time token)`. On
 | Test cases | TC-CON-022..025 |
 | Code | `scripts/lib/concurrency.sh` (`claim_acquire`, `pid_identity`) |
 
-**Conflict predicate.** A conflict exists iff all three hold: (1) the claim file's identity token is live — the PID exists, its `/proc/<pid>/stat` start-time equals the recorded start time, and the recorded cmdline hash equals the current cmdline hash; (2) the claimed resource overlaps this instance (same `saveId`, same milestone save, or same display number); and (3) the claim is not older than the stale-claim grace window (`RunnerClaimStaleGraceMs=30000`). Different save copies, different milestone saves, and different display numbers are not conflicts even when they share a host. A dead or mismatched token makes the claim stale; the runner may remove it only with a compare-and-delete guarded by `O_EXCL` and must re-check the token after acquiring the claim.
+**Conflict predicate.** A conflict exists iff both hold: (1) the claim file's identity token is live — the PID exists, its `/proc/<pid>/stat` start-time equals the recorded start time, and the recorded cmdline hash equals the current cmdline hash; and (2) the claimed resource overlaps this instance (same `saveId`, same milestone save, or same display number). Claim age is never a conflict condition: a live, overlapping claim is a conflict regardless of how long it has existed. Different save copies, different milestone saves, and different display numbers are not conflicts even when they share a host. A dead or mismatched token makes the claim stale; `RunnerClaimStaleGraceMs=30000` applies only to stale-claim cleanup, not to conflict detection. Stale-claim removal requires a separate reclaim guard (`<claim>.reclaim`) created with `O_EXCL|O_CREAT|O_NOFOLLOW|O_CLOEXEC`; the runner MUST re-check the identity token while holding that guard, then `unlink` the stale claim and remove the guard. `O_EXCL` is creation-only and MUST NOT be described as guarding deletion.
 
 ## 6. Atomic writes
 
@@ -96,7 +96,7 @@ Owned-display identity is `(display number, Xvfb PID, PID start-time token)`. On
 | Test cases | TC-CON-026..029 |
 | Code | `scripts/verify-scenario.sh` (`cleanup`, `reap_children`) |
 
-**Orphan registry.** `orphaned-displays.json` is an append-only array inside the evidence bundle. Each entry records `display`, `socketPath`, `observedAtUtc`, `ownerPid` (or `null`), `ownerStartTime` (or `null`), `ownerTokenMatch` (boolean), `classification` (`dead-owner` | `token-mismatch` | `unresponsive`), and `action` (`report-only` | `force-unlinked`). The registry is never edited in place; a later run appends a new file/entry rather than rewriting history. Entries are informational and never trigger a signal to an unowned process.
+**Orphan registry.** `orphaned-displays.json` is an append-only array inside the evidence bundle. Each entry records `display`, `socketPath`, `observedAtUtc`, `ownerPid` (or `null`), `ownerStartTime` (or `null`), `ownerTokenMatch` (boolean), `classification` (`dead-owner` | `token-mismatch` | `unresponsive`), and `action` (`report-only`). The `action` field is always `report-only`: the orphan registry records unknown-ownership displays, which the runner MUST NOT signal or delete. An owned display whose token matches this instance may be force-unlinked during normal cleanup (C-CON-22); that action is recorded in the run log, not in the orphan registry. The registry is never edited in place; a later run appends a new file/entry rather than rewriting history. Entries are informational and never trigger a signal to an unowned process.
 
 ## 8. Test strategy by layer
 
@@ -110,9 +110,25 @@ Coyote and FsCheck are .NET-only; they do not test the bash orchestrator. Bash t
 
 ## 9. TOCTOU review record
 
-| Date | Reviewer | Scope | Finding | Disposition |
-|------|----------|-------|---------|-------------|
-| 2026-10-27 | maintainer (`lfgranja`) | Display cleanup, socket unlink, claim acquisition, atomic restore | Socket existence can change between `stat()` and `unlink()`; PID can be reused between `kill -0` and signal; temp path can be swapped before rename | Unlink only after owned-token match; signal only after PID start-time + cmdline-hash match; `mkstemp`/`O_EXCL` + `O_NOFOLLOW` for attacker-influenced paths; re-check token after claim acquisition; atomic rename from same directory. Residual risk: a privileged local attacker who can rewrite `/proc` is out of scope. |
+**Review basis**: every concurrency primitive is reviewed for a check-then-act sequence. A primitive with no check-then-act sequence is recorded as "no TOCTOU surface" with a one-line justification; a primitive whose check and act are separated is recorded with its guard. Review date 2026-10-27, reviewer maintainer (`lfgranja`); the review is repeated whenever a primitive changes.
+
+| Primitive | Check → act | Finding | Disposition |
+|-----------|-------------|---------|-------------|
+| Display allocation (`-displayfd`) | Read allocated number → bind `DISPLAY` | No shared-path check; the X server allocates atomically | No TOCTOU surface; no lock-file probe |
+| Display cleanup / socket unlink | `stat()` socket → `unlink()` | Socket existence can change between check and act | Unlink only after owned-token (PID + start-time) match; otherwise `orphaned-socket` + report-only |
+| Claim acquisition | `open(O_EXCL)` → write token | Atomic creation; no check-then-act | No TOCTOU surface; `O_EXCL|O_CREAT|O_NOFOLLOW|O_CLOEXEC` |
+| Stale-claim reclaim | Token check → `unlink()` | Token can change or a new owner can claim between check and unlink | Create `<claim>.reclaim` with `O_EXCL`, re-check token while holding it, then unlink; remove guard last |
+| PID liveness / signal | `kill -0` → signal | PID can be reused between check and signal | Start-time + cmdline-hash token match required; unverified PIDs are never signalled |
+| Temp-root creation | `mktemp -d` → use path | Atomic creation; path is private 0700 | No TOCTOU surface; `umask 077` |
+| Save snapshot / restore | Hash source → copy/restore | Source or restore target can change during the operation | Hash before and after; atomic temp+rename restore; mismatch is `errored` (19) |
+| Atomic write | `mkstemp` in target dir → write → `fsync` → `rename` → `fsync` parent | Target path can be swapped before rename | Temp in same directory; `O_NOFOLLOW` for attacker-influenced paths; target unchanged on failure |
+| Orphan registry | Detect socket → append entry | Registry is append-only and informational | No signal or unlink; unknown ownership is report-only |
+| Cleanup / trap | Check temp root → `rm -rf` | Path could be empty or swapped | `${tmpdir:?}` guard; owned 0700 path; failure recorded, exit code preserved |
+| Lock acquisition / release | Poll `flock`/OFD lock → proceed | Advisory lock has no check-then-act gap; timeout is authoritative | Bounded backoff; global lock order `game-cache → build-output → shared-doc`; no whole-run lock |
+| Shared-doc read-merge-write | Read `test.md`/root docs → merge → atomic write | Another writer can change the file between read and write | Hold the short-lived `shared-doc` lock across read-merge-write; atomic rename |
+| Verdict merge | Read per-instance verdict files → merge | Another instance can append between read and merge | Merge under the `shared-doc` lock; per-instance files are append-only until merged |
+
+Residual risk: a privileged local attacker who can rewrite `/proc` or the runner's private temp tree is out of scope.
 
 ## 10. Traceability vocabulary
 

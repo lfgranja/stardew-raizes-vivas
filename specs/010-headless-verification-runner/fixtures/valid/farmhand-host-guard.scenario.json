@@ -70,8 +70,7 @@
     "forbiddenEvidence": [
       "elapsedTrace",
       "phaseDaysMutation"
-    ],
-    "requireSkipLine": true
+    ]
   },
   "determinism": {
     "idempotent": true,

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/lfgranja/stardew-raizes-vivas/specs/010-headless-verification-runner/contracts/scenario.v2.schema.json",
-  "$comment": "Immutable v2 URI. The authored file name is scenario.schema.json; the versioned $id is the contract identity and MUST NOT be reused for a breaking change. A promoted copy under schemas/scenarios/v2/ keeps this $id byte-for-byte, or a new vN file with a new $id is issued. Migration: v1 was a pre-release draft with condition-only thresholds; v2 is the first published immutable version and introduces structured predicates, required environment.apiVersion, required summary/determinism/scenarioKind, and typed initialization commands. v1 is not supported by the v2 runner.",
+  "$id": "urn:lfgranja:livingroots:scenario:v2",
+  "$comment": "Immutable v2 contract identity. The authored file is contracts/scenario.schema.json; the $id is a logical versioned URN, not a file-path mirror, and MUST NOT be reused for a breaking change. A promoted copy under schemas/scenarios/v2/ keeps this $id byte-for-byte, or a new vN file with a new $id is issued. Migration: v1 was a pre-release draft with condition-only thresholds; v2 is the first published immutable version and introduces structured predicates, required environment.apiVersion, required summary/determinism/scenarioKind, and typed initialization commands. v1 is not supported by the v2 runner.",
   "title": "Living Roots Verification Scenario",
   "description": "Canonical machine-readable scenario definition for the headless game verification runner (spec 010). JSON is the canonical format; an optional Markdown companion checklist may accompany it for contributor readability. Draft 2020-12, strict objects, immutable versioned $id. v2 introduces structured predicate thresholds, environment metadata, host-guard fields, typed initialization commands, explicit determinism metadata, and an explicit absence-vs-null policy: null is never a valid value for any field; an omitted optional field takes its declared default, and an omitted required field is invalid.",
   "type": "object",
@@ -29,7 +29,7 @@
     "schemaVersion": {
       "const": 2,
       "title": "Schema version",
-      "description": "Payload version. v2 is the first published schema version and is immutable. Any breaking change requires a new vN file and a new $id; a deprecated alias may be retained for at most one minor version.",
+      "description": "Payload version. v2 is the first published schema version and is immutable. Any breaking change requires a new vN file and a new $id; a deprecated alias may be retained for at most one major version.",
       "examples": [
         2
       ]
@@ -164,7 +164,6 @@
           "type": "object",
           "additionalProperties": false,
           "required": [],
-          "default": {},
           "title": "Runner configuration",
           "description": "Expected runner configuration for this scenario. The object MUST be present; omitted members take their declared defaults.",
           "properties": {
@@ -471,7 +470,6 @@
             ]
           },
           "uniqueItems": true,
-          "default": [],
           "title": "Declared non-deterministic sources",
           "description": "Known sources of non-determinism that the runner must control or record. An empty array asserts full determinism.",
           "examples": [
@@ -645,28 +643,6 @@
         "1.6.14"
       ]
     },
-    "numericValue": {
-      "oneOf": [
-        {
-          "type": "number",
-          "title": "Number",
-          "description": "A finite JSON number.",
-          "examples": [
-            1.15
-          ]
-        },
-        {
-          "const": "NaN",
-          "title": "NaN sentinel",
-          "description": "RFC 8259 has no NaN literal; the string \"NaN\" is the only permitted representation (C-SCN-26). Use the named sentinel enum where missing-key or other named semantics are required.",
-          "examples": [
-            "NaN"
-          ]
-        }
-      ],
-      "title": "Numeric value",
-      "description": "A number or the string \"NaN\". Use the sentinel enum where a named sentinel is required."
-    },
     "soilHealthValue": {
       "oneOf": [
         {
@@ -721,18 +697,6 @@
         "isMainPlayer"
       ]
     },
-    "stringField": {
-      "type": "string",
-      "enum": [
-        "healthTier",
-        "eventName"
-      ],
-      "title": "String signal field",
-      "description": "A signal field with string semantics.",
-      "examples": [
-        "eventName"
-      ]
-    },
     "field": {
       "type": "string",
       "enum": [
@@ -766,7 +730,7 @@
         "PHASE_MINUS_ONE"
       ],
       "title": "Sentinel",
-      "description": "Named sentinel constant (C-SCN-03/C-SCN-27). SENTINEL_UNTOUCHED_99999 = the phaseDays sentinel; NAN_HEALTH = a stored NaN health value (unmeasured, not 0); MISSING_KEY = no SoilHealthState entry (non-participant); HEALTH_LE_ZERO = measured floor at or below zero (non-participant); POOR_POSITIVE_LT_34 = strictly positive health below 34; PHASE_MINUS_ONE = currentPhase < 0, excluded from evaluation.",
+      "description": "Named sentinel constant (C-SCN-03/C-SCN-27). SENTINEL_UNTOUCHED_99999 = the phaseDays sentinel; NAN_HEALTH = a stored NaN health value (unmeasured, not 0); MISSING_KEY = no SoilHealthState entry (unmeasured, non-participant); HEALTH_LE_ZERO = measured health at or below zero (growth non-participant, healthTier nonParticipant); POOR_POSITIVE_LT_34 = strictly positive health below 34 (healthTier poor); PHASE_MINUS_ONE = currentPhase exactly -1 (the game's excluded sentinel phase).",
       "examples": [
         "SENTINEL_UNTOUCHED_99999"
       ]
@@ -1105,7 +1069,7 @@
               "minimum": 0,
               "default": 0.0001,
               "title": "Tolerance",
-              "description": "Absolute tolerance for floating-point comparison. Ignored for boolean and string fields.",
+              "description": "Absolute tolerance for numeric equality. The truth table is: eq -> |left - right| <= tolerance; ne -> |left - right| > tolerance. Ordering operators (lt/lte/gt/gte) compare exact numeric values and ignore tolerance. Ignored for boolean and string fields.",
               "examples": [
                 0.0001
               ]
@@ -1228,7 +1192,7 @@
             "tolerance"
           ],
           "title": "Between predicate",
-          "description": "Asserts that a numeric signal field lies inside an interval. Both bounds are inclusive by default; set exclusiveMin/exclusiveMax to make a bound open. tolerance is applied to both bounds. min MUST be less than or equal to max; the runner rejects min > max as a scenario-contract error (exit 14).",
+          "description": "Asserts that a numeric signal field lies inside an interval. Both bounds are inclusive by default; set exclusiveMin/exclusiveMax to make a bound open. tolerance widens the interval symmetrically: effectiveMin = min - tolerance and effectiveMax = max + tolerance; an inclusive lower bound passes when actual >= effectiveMin, an exclusive lower bound passes when actual > effectiveMin, and the upper bound mirrors this rule. min MUST be less than or equal to max; the runner rejects min > max as a scenario-contract error (exit 14).",
           "properties": {
             "op": {
               "const": "between",
@@ -1297,7 +1261,7 @@
             "factor"
           ],
           "title": "Multiplier predicate",
-          "description": "Asserts that a numeric field equals round(base x factor) within tolerance, clamped to the field minimum when clampToFieldMinimum is true. base is the pre-run capture of the same field; the runner rejects a base whose suffix does not equal field (exit 14). For phaseDays the clamp minimum is 1; the 99999 sentinel is never multiplied.",
+          "description": "Asserts that a numeric field equals the rounded product of base and factor within tolerance, clamped to the field minimum when clampToFieldMinimum is true. Formula: computed = clamp(rounding(base x factor), fieldMinimum) when clampToFieldMinimum is true, otherwise computed = rounding(base x factor); pass iff |actual - computed| <= tolerance. Field minima: phaseDays 1; soilHealth, currentPhase, dayOfCurrentPhase, indexOfHarvest, elapsedMilliseconds, locationsProcessed 0. base is the pre-run capture of the same field; the runner rejects a base whose suffix does not equal field (exit 14). The 99999 phaseDays sentinel is never multiplied or clamped.",
           "properties": {
             "op": {
               "const": "multiplier",
@@ -1348,7 +1312,7 @@
               "type": "boolean",
               "default": true,
               "title": "Clamp to field minimum",
-              "description": "When true, the computed value is clamped to the field minimum declared by the signal (phaseDays minimum 1). The 99999 sentinel is never multiplied or clamped.",
+              "description": "When true, the computed value is clamped to the field minimum: phaseDays 1; soilHealth, currentPhase, dayOfCurrentPhase, indexOfHarvest, elapsedMilliseconds, locationsProcessed 0. The 99999 phaseDays sentinel is never multiplied or clamped.",
               "examples": [
                 true
               ]
@@ -1374,7 +1338,7 @@
             "sentinel"
           ],
           "title": "Sentinel predicate",
-          "description": "Asserts that a named sentinel condition holds for a signal field. The sentinel MUST belong to the field semantic class (mapping enforced below): SENTINEL_UNTOUCHED_99999 -> phaseDays; NAN_HEALTH/MISSING_KEY/HEALTH_LE_ZERO/POOR_POSITIVE_LT_34 -> healthTier; PHASE_MINUS_ONE -> currentPhase.",
+          "description": "Asserts that a named sentinel condition holds for a signal field. The sentinel MUST belong to the field semantic class (mapping enforced below): SENTINEL_UNTOUCHED_99999 -> phaseDays; NAN_HEALTH/MISSING_KEY/HEALTH_LE_ZERO/POOR_POSITIVE_LT_34 -> healthTier; PHASE_MINUS_ONE -> currentPhase. Sentinel baselines: SENTINEL_UNTOUCHED_99999 = phaseDays == 99999; NAN_HEALTH = healthTier unknown with stored-NaN metadata; MISSING_KEY = healthTier unknown with absent-key metadata; HEALTH_LE_ZERO = healthTier nonParticipant; POOR_POSITIVE_LT_34 = healthTier poor; PHASE_MINUS_ONE = currentPhase == -1. When mustNotChange is true, the same condition MUST also hold in the pre-run capture; when false, only the post-run capture is asserted.",
           "properties": {
             "op": {
               "const": "sentinel",
@@ -1464,6 +1428,41 @@
               }
             }
           ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "field"
+          ],
+          "title": "Unchanged predicate",
+          "description": "Asserts that the post-run value equals the pre-run value captured by the same signal, within tolerance. This is the expected-absence/no-mutation oracle, for example a farmhand run where the crop phase must not change. Numeric fields only; tolerance defaults to 0.",
+          "properties": {
+            "op": {
+              "const": "unchanged",
+              "title": "Operator",
+              "description": "No-mutation predicate.",
+              "examples": [
+                "unchanged"
+              ]
+            },
+            "field": {
+              "$ref": "#/$defs/numericField",
+              "title": "Field",
+              "description": "Numeric signal field compared between the pre-run and post-run captures."
+            },
+            "tolerance": {
+              "type": "number",
+              "minimum": 0,
+              "default": 0,
+              "title": "Tolerance",
+              "description": "Absolute tolerance for numeric equality: pass iff |post - pre| <= tolerance.",
+              "examples": [
+                0
+              ]
+            }
+          }
         },
         {
           "type": "object",
@@ -1611,8 +1610,7 @@
           "forbiddenEvidence": [
             "elapsedTrace",
             "phaseDaysMutation"
-          ],
-          "requireSkipLine": true
+          ]
         }
       ],
       "properties": {
@@ -1643,16 +1641,6 @@
               "phaseDaysMutation"
             ]
           ]
-        },
-        "requireSkipLine": {
-          "type": "boolean",
-          "const": true,
-          "default": true,
-          "title": "Require skip line",
-          "description": "Whether the skip line is mandatory. Always true in v2; retained for forward compatibility.",
-          "examples": [
-            true
-          ]
         }
       }
     },
@@ -1660,12 +1648,13 @@
       "type": "string",
       "enum": [
         "unknown",
+        "nonParticipant",
         "poor",
         "moderate",
         "healthy"
       ],
       "title": "Health tier",
-      "description": "Derived soil-health class from C-DMP-01. unknown = missing/NaN (non-participant); poor = strictly positive health < 34; moderate = [34, 67); healthy = >= 67. Zero is a measured floor and maps to poor, never unknown.",
+      "description": "Derived scenario soil-health tier (C-DMP-01). unknown = missing key or stored NaN (unmeasured); nonParticipant = measured health <= 0 (skipped by the growth modifier, never Poor); poor = measured 0 < health < 34; moderate = [34, 67); healthy = >= 67. This is the scenario tier used by predicates. The game's visualization category may still render a measured zero as Poor (HealthCategory.Poor); non-participation is a growth-evaluation concept, not a visualization color.",
       "examples": [
         "poor"
       ]

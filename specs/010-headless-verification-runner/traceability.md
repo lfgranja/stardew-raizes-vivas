@@ -46,17 +46,55 @@
 
 | CHK | Requirement | Test case | Code location |
 |-----|-------------|-----------|---------------|
-| CHK001–CHK005 | FR-020; C-CON-01/C-CON-22 (atomic `-displayfd`, no lock probing, per-instance display, bounded cleanup, orphan detect-and-report) | TC-CON-001..005 | `scripts/verify-scenario.sh` (`display_start`, `display_stop`); `scripts/tests/concurrency.bats` |
-| CHK006–CHK011 | FR-018; SC-005; C-CON-20 (hash-verified backup, disposable copy, sidecars, `errored` on mismatch, atomic sidecar writes) | TC-CON-006..011 | `scripts/verify-scenario.sh` (`save_snapshot`, `save_restore`); `scripts/tests/save-preservation.bats` |
-| CHK012–CHK016 | FR-018/FR-019/FR-020; C-CON-07 (per-instance `XDG_CONFIG_HOME`, `mktemp -d`, `HOME` redirect, trap cleanup, 0700) | TC-CON-012..016 | `scripts/verify-scenario.sh` (`isolate_env`); `scripts/tests/isolation.bats` |
-| CHK017–CHK021 | FR-020; C-CON-08/C-CON-23 (advisory locks only, bounded backoff, OFD preferred, lock order) | TC-CON-017..021 | `scripts/lib/concurrency.sh`; `scripts/tests/locking.bats` |
-| CHK022–CHK025 | FR-020; C-CON-09/C-CON-10 (instance-scoped conflict, atomic claim, PID identity token, unique instance ID) | TC-CON-022..025 | `scripts/lib/concurrency.sh`; `scripts/tests/process-conflict.bats` |
-| CHK026–CHK029 | FR-019; C-CON-01/C-CON-09 (orphan display report-only, reaping, process-group signals, no unrelated kills) | TC-CON-026..029 | `scripts/verify-scenario.sh` (`cleanup`); `scripts/tests/orphans.bats` |
-| CHK030–CHK033 | FR-019/FR-020; C-CON-07/C-CON-12 (`mktemp -d`, trap/finally, local FS only, 0700) | TC-CON-030..033 | `scripts/verify-scenario.sh` (`mktemp`); `scripts/tests/tempdir.bats` |
-| CHK034–CHK037 | FR-020; C-CON-10/C-CON-21 (unique namespace, dynamic display, sidecar isolation, non-interleaved verdicts D1–D5) | TC-CON-034..037 | `scripts/verify-scenario.sh`; `scripts/tests/concurrency.bats` |
-| CHK038–CHK041 | FR-018; C-CON-13/C-CON-20 (hash-verified backup, idempotent restore, atomic restore, original untouched on failure) | TC-CON-038..041 | `scripts/verify-scenario.sh` (`save_restore`); `scripts/tests/save-preservation.bats` |
-| CHK042–CHK045 | C-CON-04/C-CON-14/C-CON-15 (`O_EXCL` + `O_CREAT` + `O_NOFOLLOW`, fsync data+dir, torn-write prevention, documented failure modes) | TC-CON-042..045 | `scripts/lib/concurrency.sh`; `CONCURRENCY.md` |
-| CHK046–CHK049 | FR-023; C-CON-17/C-CON-19/C-CON-21 (local/CI parity, Coyote+FsCheck+stress, TOCTOU review) | TC-CON-046..049 | `scripts/tests/`; `LivingRoots.Tests/` (Coyote/FsCheck) |
+| CHK001 | Atomic display allocation via `-displayfd` (no TOCTOU) — FR-020, C-CON-01 | TC-CON-001 | `scripts/verify-scenario.sh` (`display_start`); `scripts/tests/concurrency.bats` |
+| CHK002 | No `/tmp/.X*-lock` probing; rationale documented — FR-020, C-CON-01 | TC-CON-002 | `CONCURRENCY.md` §Display; `scripts/tests/concurrency.bats` |
+| CHK003 | Per-instance display number — FR-020, C-CON-01 | TC-CON-003 | `scripts/verify-scenario.sh` (`display_start`) |
+| CHK004 | Server-side socket removal on cleanup — FR-020, C-CON-01/C-CON-22 | TC-CON-004 | `scripts/verify-scenario.sh` (`display_stop`); `scripts/tests/orphans.bats` |
+| CHK005 | Orphan detection is report-only (no signalling) — C-CON-01/C-CON-22 | TC-CON-005 | `scripts/verify-scenario.sh` (`orphan_registry`); `scripts/tests/orphans.bats` |
+| CHK006 | Disposable save copy, never the player's save — FR-018, C-CON-20 | TC-CON-006 | `scripts/verify-scenario.sh` (`save_snapshot`) |
+| CHK007 | Byte-identical original via SHA-256 before/after — FR-018, SC-005, C-CON-02 | TC-CON-007 | `scripts/verify-scenario.sh` (`save_hash`) |
+| CHK008 | SHA-256 for saves; 0.0001f float tolerance for deltas — FR-012, C-CON-02 | TC-CON-008 | `LivingRoots/Services/SaveComparator.cs`; `scripts/tests/save-preservation.bats` |
+| CHK009 | Backup of `Saves/<Name>/` and sidecars before mutation — FR-018, C-CON-20 | TC-CON-009 | `scripts/verify-scenario.sh` (`save_snapshot`) |
+| CHK010 | Non-identical save → `errored` with before/after — FR-018, C-CON-03 | TC-CON-010 | `scripts/verify-scenario.sh` (`save_restore`); `scripts/tests/save-preservation.bats` |
+| CHK011 | Atomic sidecar writes (temp→fsync→rename→fsync) — C-CON-04 | TC-CON-011 | `scripts/lib/atomic.sh`; `scripts/tests/atomic.bats` |
+| CHK012 | `XDG_CONFIG_HOME` per-instance absolute temp dir — FR-018, C-CON-05 | TC-CON-012 | `scripts/verify-scenario.sh` (`isolate_env`) |
+| CHK013 | Temp root via `mktemp -d` — FR-020, C-CON-07 | TC-CON-013 | `scripts/verify-scenario.sh` (`isolate_env`) |
+| CHK014 | `HOME` redirected when XDG is ignored — C-CON-05 | TC-CON-014 | `scripts/verify-scenario.sh` (`isolate_env`) |
+| CHK015 | Trap/finally cleanup with observable failure — FR-019, C-CON-06 | TC-CON-015 | `scripts/verify-scenario.sh` (`cleanup`) |
+| CHK016 | Runtime dirs 0700 — C-CON-07 | TC-CON-016 | `scripts/verify-scenario.sh` (`isolate_env`); `scripts/tests/isolation.bats` |
+| CHK017 | No whole-run `flock`; short-lived resource locks only — FR-020, C-CON-08 | TC-CON-017 | `scripts/lib/concurrency.sh`; `CONCURRENCY.md` |
+| CHK018 | Advisory locks only — C-CON-08 | TC-CON-018 | `scripts/lib/concurrency.sh`; `scripts/tests/locking.bats` |
+| CHK019 | Bounded non-blocking lock acquisition — C-CON-08/C-CON-23 | TC-CON-019 | `scripts/lib/concurrency.sh` (`claim_acquire`) |
+| CHK020 | OFD locks preferred — C-CON-08/C-CON-23 | TC-CON-020 | `scripts/lib/concurrency.sh` |
+| CHK021 | Global lock order documented — C-CON-08/C-CON-23 | TC-CON-021 | `CONCURRENCY.md` §Lock Order |
+| CHK022 | Conflict detection scoped to instance's own game process — FR-020, C-CON-09 | TC-CON-022 | `scripts/verify-scenario.sh` (`preflight_process_conflict`) |
+| CHK023 | Atomic check-and-claim (`O_EXCL`, never check-then-create) — C-CON-09 | TC-CON-023 | `scripts/lib/concurrency.sh` (`claim_acquire`); `scripts/tests/process-conflict.bats` |
+| CHK024 | PID liveness via identity token, not `kill -0` alone — C-CON-09 | TC-CON-024 | `scripts/lib/concurrency.sh` (`pid_identity`) |
+| CHK025 | Distinct instance IDs — C-CON-10 | TC-CON-025 | `scripts/verify-scenario.sh` (`instance_init`) |
+| CHK026 | Orphan display detect-and-report only — C-CON-01/C-CON-22 | TC-CON-026 | `scripts/verify-scenario.sh` (`orphan_registry`); `scripts/tests/orphans.bats` |
+| CHK027 | Child reaping (`waitpid`, SIGTERM→SIGKILL) — FR-019, C-CON-11 | TC-CON-027 | `scripts/verify-scenario.sh` (`cleanup`) |
+| CHK028 | Signal forwarding via process group — FR-019, C-CON-11 | TC-CON-028 | `scripts/verify-scenario.sh` (`cleanup`) |
+| CHK029 | Stale-PID safety: never signal without token match — C-CON-09 | TC-CON-029 | `scripts/lib/concurrency.sh` (`pid_identity`) |
+| CHK030 | `mktemp -d`, not deprecated `tempfile` — FR-020, C-CON-07 | TC-CON-030 | `scripts/verify-scenario.sh` (`isolate_env`) |
+| CHK031 | Trap/finally cleanup with observable failure — FR-019, C-CON-06 | TC-CON-031 | `scripts/verify-scenario.sh` (`cleanup`) |
+| CHK032 | Temp dirs on local filesystem only — C-CON-12 | TC-CON-032 | `scripts/verify-scenario.sh` (`assert_local_fs`) |
+| CHK033 | Temp dir permissions 0700 — C-CON-07 | TC-CON-033 | `scripts/verify-scenario.sh` (`isolate_env`) |
+| CHK034 | Unique instance namespace; no shared writable run state — C-CON-10 | TC-CON-034 | `scripts/verify-scenario.sh` (`instance_init`) |
+| CHK035 | Dynamic display allocation — FR-020, C-CON-01 | TC-CON-035 | `scripts/verify-scenario.sh` (`display_start`) |
+| CHK036 | Sidecar isolation via distinct temp roots — FR-020, C-CON-10 | TC-CON-036 | `scripts/verify-scenario.sh` (`isolate_env`) |
+| CHK037 | Correct, non-interleaved verdicts (D1–D5) — C-CON-10/C-CON-21 | TC-CON-037 | `scripts/tests/stress-concurrency.sh` |
+| CHK038 | Hash-verified backup before mutation — FR-018, C-CON-20 | TC-CON-038 | `scripts/verify-scenario.sh` (`save_snapshot`) |
+| CHK039 | Idempotent restore — FR-018, C-CON-13 | TC-CON-039 | `scripts/verify-scenario.sh` (`save_restore`) |
+| CHK040 | Atomic restore — C-CON-13 | TC-CON-040 | `scripts/verify-scenario.sh` (`save_restore`); `scripts/tests/atomic.bats` |
+| CHK041 | Restore failure leaves original untouched — FR-018, C-CON-13 | TC-CON-041 | `scripts/verify-scenario.sh` (`save_restore`) |
+| CHK042 | `O_EXCL` paired with `O_CREAT` for locks/temp — C-CON-14 | TC-CON-042 | `scripts/lib/concurrency.sh`; `scripts/lib/atomic.sh` |
+| CHK043 | `fsync` data before rename, parent after — C-CON-04/C-CON-14 | TC-CON-043 | `scripts/lib/atomic.sh`; `scripts/tests/atomic.bats` |
+| CHK044 | Torn-write prevention for all persisted artifacts — C-CON-04 | TC-CON-044 | `scripts/lib/atomic.sh`; `scripts/tests/atomic.bats` |
+| CHK045 | Atomic operations documented with failure modes — C-CON-15 | TC-CON-045 | `CONCURRENCY.md` |
+| CHK046 | Local/CI parity — FR-023, C-CON-16 | TC-CON-046 | `scripts/tests/` |
+| CHK047 | Concurrency tests (Coyote, FsCheck, bats, stress) — C-CON-19 | TC-CON-047 | `LivingRoots.Tests/`; `scripts/tests/` |
+| CHK048 | CHK → test → code traceability — C-CON-17 | TC-CON-048 | this matrix |
+| CHK049 | TOCTOU review of every primitive — C-CON-18 | TC-CON-049 | `CONCURRENCY.md` §9 |
 
 ## Reliability (`checklists/reliability.md`)
 
@@ -89,34 +127,47 @@
 | CHK045–CHK049 | NFR-004; C-SEC-24/C-SEC-30 (audit events, JSON fields, sensitive-data exclusion, aggregation SHOULD, retention/immutability) | TC-SEC-045..049 | `scripts/lib/logging.sh`; `GOVERNANCE-ANNEX.md` |
 | CHK050–CHK053 | FR-023; C-SEC-19/C-SEC-20/C-SEC-24/C-SEC-26/C-SEC-27 (local/CI parity, threat mapping, ownership, review cadence) | TC-SEC-050..053 | `GOVERNANCE-ANNEX.md`; this matrix |
 
+## Verdict Requirements (`checklists/reliability.md` CHK024–CHK029)
+
+| Verdict | Governing requirement | Exit | Planned test |
+|---------|-----------------------|------|--------------|
+| `pass` | FR-011/C-REL-01; all three signals agree, thresholds satisfied, expected verdict matches | `0` | TC-REL-024, TC-REL-029 |
+| `fail` | FR-011/C-REL-01; threshold/assertion violation or host-guard breach; matched `expectedVerdict: fail` | `18` | TC-REL-025, TC-REL-029 |
+| `errored` | FR-011/C-REL-01/C-CON-03; crash, capture failure, save-preservation breach, version mismatch, expected mismatch | `19` | TC-REL-026, TC-REL-029 |
+| `partial` | FR-011/C-REL-12; incomplete signal set or signal disagreement | `19` | TC-REL-027, TC-REL-029 |
+| `skipped` | FR-011/C-REL-10; quarantined or intentionally not run | `20` all-skipped / `0` mixed | TC-REL-028, TC-REL-029 |
+| `flaky` (derived) | FR-011/C-REL-13/C-REL-26; attempt-1 retryable failure + later pass on same commit/seed/environment | `0`; never promotes | TC-REL-012..016 |
+
 ## Success Criteria (`spec.md` SC-001..SC-014)
 
 | SC | Measurable outcome | Governing requirements | Test case |
 |----|--------------------|------------------------|-----------|
 | SC-001 | One documented invocation completes feature 004's scenario with zero keystrokes and all mandatory artifacts | FR-001–FR-014, FR-019, FR-022, FR-023 | TC-SC-001 |
 | SC-002 | 100% of `pass` host runs have all three signal artifacts and digests; fewer than three signals never `pass` | FR-009, FR-011, FR-014 | TC-SC-002 |
-| SC-003 | Boundary tiers 33/34/66/67 yield 1.15/1.15/1.00/0.85, clamped ≥ 1, sentinel untouched | FR-010, FR-012 | TC-SC-003 |
+| SC-003 | Boundary tiers 33/34/66/67 yield 1.15/1.00/1.00/0.85, clamped ≥ 1; ≤0/missing/NaN unchanged; sentinel untouched | FR-010, FR-012 | TC-SC-003 |
 | SC-004 | A second feature scenario is added with zero runner-source changes and the same bundle schema | FR-022, FR-014 | TC-SC-004 |
 | SC-005 | Source milestone save and restored working copy hash to their pre-run SHA-256; mismatch is `errored` | FR-018, FR-020 | TC-SC-005 |
-| SC-006 | Every published exit code is covered by contract tests: 0, 14, 18, 19, 20, 21 | FR-011, NFR-003 | TC-SC-006 |
+| SC-006 | Every emittable code is covered: 0, 9, 10, 12, 13, 14, 18, 19, 20, 21; inherited pass-through 1–7/15–17; 8 retired; 11 never emitted | FR-011, NFR-003 | TC-SC-006 |
 | SC-007 | Offline verifier recomputes every digest and rejects any single tampered byte per artifact class | FR-015, FR-014 | TC-SC-007 |
 | SC-008 | A clean Linux host follows `quickstart.md` and completes within 30 minutes, excluding acquisition | FR-001–FR-005, FR-023 | TC-SC-008 |
 | SC-009 | Flaky attempt-1 failure + later pass exits `0` with `flaky: true`; 2 flaky runs create a candidate; no flaky/quarantined promotion | FR-011, FR-016 | TC-SC-009 |
-| SC-010 | After one discarded warmup, every measured per-location elapsed value is ≤ 5 ms or the run fails; Gen0 delta recorded | FR-013 | TC-SC-010 |
-| SC-011 | K ≥ 30 concurrent instances use 30 distinct displays and save copies, with 0 interleaved verdicts and 0 hash mismatches | FR-020, C-CON-21 | TC-SC-011 |
+| SC-010 | After one discarded warmup, every measured per-location elapsed value is ≤ 5 ms or the run fails; young-generation collection-count delta recorded | FR-013 | TC-SC-010 |
+| SC-011 | K ≥ 30 concurrent instances use K distinct display identities and save copies, with 0 interleaved verdicts and 0 hash mismatches | FR-020, C-CON-21 | TC-SC-011 |
 | SC-012 | 100% of tampered archives are rejected before launch with `integrity-failure.json` and no retry | FR-024, FR-025, C-SEC-28 | TC-SC-012 |
 | SC-013 | 100% of audit/evidence artifacts export to durable storage and are retained ≥ 365 days; early deletion requires an approval event | FR-027, C-SEC-24, C-SEC-30 | TC-SC-013 |
 | SC-014 | A second maintainer on a different Linux host reproduces the verdict for the same commit, save, and seed | FR-001, FR-006, FR-023 | TC-SC-014 |
 
 ## Coverage Summary
 
-| Checklist | Items | Covered | Gaps |
-|-----------|-------|---------|------|
-| requirements.md | 16 | 16 | 0 |
-| scenario-contract.md | 55 | 55 | 0 |
-| concurrency.md | 49 | 49 | 0 |
-| reliability.md | 59 | 59 | 0 |
-| security.md | 53 | 53 | 0 |
-| **Total** | **232** | **232** | **0** |
+The matrix maps every CHK to a governing requirement, test case, and intended code location. **Mapping is not proof:** a checklist item is `[x]` only when its requirements-quality criterion is actually satisfied, and a test row is only "covered" once the test exists and passes. The last audit (2026-10-27) found 177 pass / 39 fail / 13 unclear / 3 N/A; those gaps are recorded in the checklists and are not hidden by this matrix. The re-audit after the reconciliation pass updates this table.
 
-Every CHK appears in exactly one range row above; the test-case family for a range covers each item in that range. When a test is renamed or a code path moves, update the row in the same PR (enforced by review, not automation).
+| Checklist | Items | Mapped | Audit-pass | Audit-fail | Audit-unclear | N/A |
+|-----------|-------|--------|------------|------------|---------------|-----|
+| requirements.md | 16 | 16 | 6 | 8 | 2 | 0 |
+| scenario-contract.md | 55 | 55 | 37 | 15 | 0 | 3 |
+| concurrency.md | 49 | 49 | 44 | 4 | 1 | 0 |
+| reliability.md | 59 | 59 | 52 | 3 | 4 | 0 |
+| security.md | 53 | 53 | 38 | 9 | 6 | 0 |
+| **Total** | **232** | **232** | **177** | **39** | **13** | **3** |
+
+Concurrency CHK001–CHK049 now have one row each. When a test is renamed or a code path moves, update the row in the same PR (enforced by review, not automation).
