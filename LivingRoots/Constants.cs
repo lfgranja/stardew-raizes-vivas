@@ -209,5 +209,17 @@ namespace LivingRoots
         // drop-in — vanilla audio cancel cue plus machine shake. Applies
         // worldObject.shakeTimer directly so no second shake path exists.
         public const int BinInvalidDropInShakeTimerMs = 750;
+
+        // Advisory lock acquisition (CI/headless runner, CHK018-CHK021).
+        // Non-blocking poll: LOCK_NB / F_OFD_SETLK + bounded exponential
+        // backoff. Neither flock(2) nor OFD locks provide a native timeout
+        // or deadlock detection, so the runner enforces both bounds here.
+        // Global lock order (deadlock prevention): cache -> build -> run.
+        public const int RunnerLockInitialDelayMs = 100;   // first backoff step
+        public const int RunnerLockMaxDelayMs = 2000;      // cap per backoff step
+        public const int RunnerLockBackoffMultiplier = 2;  // exponential factor
+        public const int RunnerLockTotalTimeoutMs = 10000; // hard wall-clock bound
+        public const int RunnerLockMaxRetries = 8;         // attempts before timeout
+        public const int RunnerLockJitterPercent = 25;     // +/- 25% per step
     }
 }
