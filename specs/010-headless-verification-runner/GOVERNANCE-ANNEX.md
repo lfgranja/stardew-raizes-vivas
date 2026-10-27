@@ -52,6 +52,7 @@ Tiered, risk-based (C-SEC-27; C-REL-20). Annual-only review is explicitly reject
 | Date | Type | Scope | Outcome | Reviewer |
 |------|------|-------|---------|----------|
 | 2026-10-27 | Initial baseline | Spec 010 security requirements CHK001–CHK053; ownership assigned; tiered cadence adopted; threat mapping added | Accepted; no open critical findings | `lfgranja` |
+| 2026-10-27 | Threat-mapping correction and token/aggregation controls | Corrected CICD-SEC references; token-in-argv prohibition; token-event source split; 24-hour aggregation; local/CI control matrix | Accepted; no open critical findings | `lfgranja` |
 
 Future reviews append a row; rows are never rewritten.
 
@@ -60,8 +61,23 @@ Future reviews append a row; rows are never rewritten.
 | Date | Type | Scope | Outcome | Reviewer |
 |------|------|-------|---------|----------|
 | 2026-10-27 | Initial baseline | Flaky detection, retry budget, quarantine lifecycle, save preservation, concurrency isolation, evidence completeness | Accepted; quarantine candidate vs confirmed-flaky separated; auto-disable is the only automatic terminal action; deletion requires human approval | `lfgranja` |
+| 2026-10-27 | Guidance crosswalk | Google 2016, Microsoft 2020, Meta PFS 2020, RAFT 2024, Luo et al. 2014; deviations documented | Accepted with documented deviations | `lfgranja` |
 
 Future reliability reviews append a row; rows are never rewritten. A reliability review is triggered by a change to retry/quarantine logic, a save-preservation incident, a concurrency failure, or a new flaky-status threshold.
+
+### Reliability Guidance Crosswalk
+
+Dated 2026-10-27. Each row maps an external source's principle to the governing requirement and records compliance or a deliberate deviation.
+
+| Source | Principle | Requirement(s) | Compliance / deviation |
+|--------|-----------|----------------|------------------------|
+| Google Testing Blog, “Flaky Tests at Google and How We Mitigate Them” (2016) | Re-run failures to distinguish flakiness; move persistently flaky tests out of the blocking CI path | FR-011; C-REL-10/C-REL-14/C-REL-21 | Compliant: bounded retries, 2-run candidate, human approval, 28-day cap, auto-disable. Deviation: no automatic deletion; deletion requires human approval. |
+| Microsoft Research, “A Study on the Lifecycle of Flaky Tests” (2020) | Asynchronous calls are a leading cause; “fixed” claims require empirical verification; track the lifecycle | C-REL-26/C-REL-27; FR-011 | Compliant: derived flaky status, expiry, shadow-pass evidence. Deviation: no automated root-cause classifier in Phase 1. |
+| Meta Engineering, “Probabilistic flakiness: How do you test your tests?” (2020) | Probabilistic flakiness score (failure in a good state); use it to set reliability goals | C-REL-07/C-REL-08/C-REL-26 | Compliant: N ≥ 30 Wilson 95% CI plus pass-rate tiers. Deviation: PFS is a monitoring signal, not a quarantine trigger. |
+| RAFT, “The Effects of Computational Resources on Flaky Tests” (ICST-CCIW 2024; arXiv:2310.12132) | Resource-affected flaky tests; Pearson χ² at p < 0.05 with Benjamini–Hochberg correction; vary resource configurations | C-REL-09/C-REL-26 | Compliant: resource-varied detection is required; χ² + BH are the documented method. Deviation: Phase 1 may use a reduced config matrix until the runner is stable. |
+| Luo et al., “An empirical analysis of flaky tests” (FSE 2014) | Flakiness is common and driven by async, order, and resource factors | C-REL-09/C-REL-26 | Compliant: retry classification plus order/resource detection. |
+
+The crosswalk is reviewed with the reliability review record; a new external source is added only when it changes a requirement or documents a deviation.
 
 ## Audit Event and Retention Mapping
 
@@ -77,6 +93,34 @@ Future reliability reviews append a row; rows are never rewritten. A reliability
 | Application / step log | runner step logs, SMAPI console log | ≥ 30 days | Maintainer |
 
 Logs containing a leaked secret are retained indefinitely with the secret purged and the incident recorded. GitHub Actions artifacts (90-day default) are not the durable store; evidence bundles are exported to durable storage for the 365-day requirement.
+
+### Audit Event Sources and Aggregation
+
+| Event class | Source | Retention | Linkage |
+|-------------|--------|-----------|---------|
+| Runner-emitted events (access, download, integrity, override, quarantine, promotion) | `audit.jsonl` written by each run | ≥ 365 days in the durable store | `runId`, `timestamp`, `actor`, `action`, `resource`, `outcome` |
+| GitHub-emitted events (token creation/rotation/revocation, permission changes, release/asset access) | GitHub organization/repository audit log, exported to the durable store | GitHub plan retention, then the durable store's ≥ 365 days | `actor` + `timestamp` + repository; `runId` recorded when the action is run-scoped |
+| Aggregation results | Scheduled `security-aggregation` workflow | ≥ 365 days | query window, query hash, issue URL |
+
+**Token lifecycle events are not written by the runner.** The runner cannot observe GitHub-side token creation, rotation, or revocation; those events come from the GitHub audit log. The runner's `audit.jsonl` records only token *use* (acquisition attempts, 401/403 outcomes, cache reuse) with a `runId`. The annex's retention table applies to both sources once exported.
+
+**24-hour auth-failure aggregation.** A scheduled workflow (`security-aggregation.yml`, at least daily and after each verification run) queries the durable audit store for the trailing 24-hour window (`windowStart`/`windowEnd` recorded in the query result). Three or more authentication failures (`401`/`403`) in that window open or update a GitHub issue assigned to the security owner, with links to the offending `runId`s. The job records the query window, query hash, result count, and issue URL as a runner-emitted audit event. If the durable store is unavailable, the job opens an infrastructure issue and does not silently treat the window as clean. This is the Phase 1 mechanism; SIEM ingestion remains deferred.
+
+### Local/CI Control Matrix
+
+| Control | Local | CI | Enforcement |
+|---------|-------|----|-------------|
+| Non-root startup guard (`EUID != 0`) | Required | Required | Code (`verify-scenario.sh` startup guard) |
+| `BUILDDEPS_TOKEN` required | Only when acquisition is required | Only when acquisition is required | Code (FR-001/FR-002) |
+| Cache isolation (`cache-mode`) | N/A — local filesystem cache is single-process | Per-job (`read`/`write`/`write-only`/`none`) | Platform + code re-verification on reuse |
+| `GITHUB_TOKEN` read-only | N/A | Required (`permissions: contents: read`) | Workflow |
+| High/low runner groups | N/A | Required; no job spans both | Infrastructure + governance |
+| Durable evidence export | Recommended | Required | Code + governance |
+| JUnit XML + Allure JSON | Optional | Required | `--ci` |
+| Non-interactive execution | No (interactive allowed) | Yes | `--ci` |
+| Secret redaction and audit logging | Required | Required | Code (shared logging facade) |
+
+Local-only deviations are limited to the controls marked N/A; all other controls apply in both modes. A local run that cannot satisfy a CI-only control records the deviation in `manifest.json#/environment` and is not eligible for `verified` promotion unless the deviation is reviewed and accepted.
 
 ## Infrastructure Realization (not enforced by code)
 
@@ -99,6 +143,9 @@ FR-026 and C-SEC-26 separate ownership from infrastructure realization. The foll
 | Automatic quarantine disable at the 28-day cap | No approval (automatic terminal action) | `quarantine.json` status + linked issue + audit event |
 | Deletion of a quarantined scenario or its evidence | Maintainer + repo owner | Audit event + documented reason; never automatic |
 | Override of a failing exit code (`--ignore-exit-code`) | Maintainer; only for expected-failure lanes or a documented transient-infrastructure incident | Run log + evidence bundle records the override and listed codes; the verdict is unchanged |
+| Environment override (`--override`) | Maintainer; only declared environment keys (`environment.gameVersion`, `environment.smapiVersion`, `environment.modVersion`, `environment.saveId`, `environment.config.*`); never `testMdPath`, `expectedSignals`, `thresholds`, `playerRole`, or `hostGuard` | `manifest.json#/environmentOverrides` + audit event |
+| Cache bypass (`--force-refresh`) | Maintainer; only for integrity re-acquisition, cache corruption, or a documented cache-staleness incident | Audit event + acquisition record in the bundle |
+| Integrity failure or leaked secret | Never overridable | `integrity-failure.json` / incident record; the run must fail closed |
 | Deletion of audit/evidence before 365-day expiry | Maintainer + repo owner | `integrity-failure.json`/audit event + documented reason |
 | Update to `gamepath.lock.json` | Reviewed PR (maintainer approval) | Git history |
 | Change to the never-quarantine set | Reviewed PR (maintainer approval) | Git history + audit event |
@@ -112,18 +159,18 @@ FR-026 and C-SEC-26 separate ownership from infrastructure realization. The foll
 | CICD-SEC-1 insufficient flow control | FR-001/FR-002 cache-first + pinned digest; C-SEC-22 cache-trust tuple |
 | CICD-SEC-2 inadequate identity management | FR-002 fine-grained PAT; C-SEC-26 ownership |
 | CICD-SEC-3 dependency chain abuse | FR-002 private repo + SHA-256; C-SEC-02 |
-| CICD-SEC-4 poisoned pipeline execution | Strict scenario schema (FR-007); typed `initCommands`; no untrusted interpolation (C-SEC-21) |
+| CICD-SEC-4 poisoned pipeline execution | Strict scenario schema (FR-007); typed `initCommands`; no untrusted interpolation (C-SEC-04/C-SEC-31) |
 | CICD-SEC-5 insufficient PBAC | C-SEC-25 `cache-mode`; least-privilege runner; C-SEC-26 |
-| CICD-SEC-6 insufficient credential hygiene | FR-002 token storage/rotation; C-SEC-05/C-SEC-06 redaction |
-| CICD-SEC-7 insecure system configuration | C-CON-07 permissions; C-SEC-18 runner group |
+| CICD-SEC-6 insufficient credential hygiene | FR-002 token storage/rotation; C-SEC-01/C-SEC-14/C-SEC-21 |
+| CICD-SEC-7 insecure system configuration | C-SEC-13/FR-026 runner groups; C-CON-07 permissions |
 | CICD-SEC-8 unapproved usage | Audit events (C-SEC-24); override approval gate |
 | CICD-SEC-9 improper artifact integrity validation | C-SEC-02/C-SEC-28 fail-closed; `gamepath.lock.json` |
 | CICD-SEC-10 insufficient logging and monitoring | C-SEC-24 audit events; NFR-004 JSON logs |
 | SLSA Build L2/L3 provenance | C-BND-01 manifest + offline verifier (FR-015); Phase 2 Sigstore deferred |
-| Zip-slip / zip-bomb | C-SEC-13 archive-member validation |
-| Path traversal / homoglyph | C-SEC-11/C-SEC-12 sanitization (Form C) |
-| Secret leakage in logs | C-SEC-05/C-SEC-06; NFR-004 |
-| Tamper-evident evidence | C-SEC-14 `integrity-failure.json`; FR-027 retention |
+| Zip-slip / zip-bomb | C-SEC-12/FR-025 archive-member validation |
+| Path traversal / homoglyph | C-SEC-04/C-SEC-31 sanitization (Form C) |
+| Secret leakage in logs | C-SEC-05/C-SEC-09; NFR-004 |
+| Tamper-evident evidence | C-SEC-11/FR-024 `integrity-failure.json`; FR-027 retention |
 
 ## Change Control
 
