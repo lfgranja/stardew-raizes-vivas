@@ -19,6 +19,8 @@ on:
 # No paths-ignore filter, for the same reason code-style.yml has none: this check is cheap,
 # and filtering it would let a documentation-only PR be excluded from a check that may
 # later be required, which then blocks forever waiting on a check that cannot report.
+permissions:
+    contents: read
 jobs:
     protected-paths:
         name: Check Protected Paths
