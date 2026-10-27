@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lfgranja/stardew-raizes-vivas/blob/main/specs/010-headless-verification-runner/contracts/scenario.schema.json",
+  "title": "Living Roots Verification Scenario",
+  "description": "Scenario definition for the headless game verification runner (spec 010). JSON is the canonical machine format; an optional Markdown companion checklist may accompany it for contributor readability.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "scenarioId",
+    "featureSlug",
+    "testMdPath",
+    "playerRole",
+    "milestoneSave",
+    "initCommands",
+    "steps",
+    "thresholds",
+    "expectedSignals",
+    "timeoutSeconds"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "description": "Payload version. Bump only on breaking changes."
+    },
+    "scenarioId": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "featureSlug": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[0-9]{3}-[a-z0-9-]+$"
+    },
+    "testMdPath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path to specs/<NNN-slug>/test.md. Fail-fast validated (FR-008/FR-016)."
+    },
+    "playerRole": {
+      "enum": ["host", "farmhand"],
+      "description": "Expected player role for host-guard scenarios (FR-011)."
+    },
+    "minimumGameVersion": {
+      "type": "string",
+      "description": "Per-scenario game version floor (semver)."
+    },
+    "milestoneSave": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Name/id of the milestone save to seed from (private builddeps repo)."
+    },
+    "initCommands": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "description": "SMAPI macros + custom commands to place bin, insert waste, set crop phases and soil health."
+    },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/step" },
+      "minItems": 1
+    },
+    "thresholds": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/threshold" },
+      "minItems": 1
+    },
+    "expectedSignals": {
+      "type": "array",
+      "items": {
+        "enum": ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"]
+      },
+      "minItems": 3,
+      "uniqueItems": true,
+      "description": "All three mandatory signals required (SC-002)."
+    },
+    "timeoutSeconds": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "$defs": {
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Step action, e.g. 'sleep', 'harvest', 'applyCompost', 'observe'."
+        },
+        "days": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "target": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "threshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal", "condition"],
+      "properties": {
+        "signal": {
+          "enum": ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"]
+        },
+        "condition": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable condition, e.g. 'poor soil slows growth 1.15x'."
+        },
+        "boundary": {
+          "type": "number",
+          "description": "ModConstants boundary value referenced (e.g. 34, 67)."
+        },
+        "modConstant": {
+          "type": "string",
+          "description": "Name of the ModConstants value referenced (e.g. 'SoilHealthPoorThreshold')."
+        },
+        "multiplier": {
+          "type": "number",
+          "description": "Expected growth multiplier (1.15, 0.85, 1.00)."
+        },
+        "minPhaseDays": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "phaseDays must never go below this (minimum 1)."
+        },
+        "sentinelUntouched": {
+          "type": "boolean",
+          "description": "When true, the 99999 sentinel must never be touched."
+        },
+        "nanSkipped": {
+          "type": "boolean",
+          "description": "When true, NaN-health tiles must be skipped (no change)."
+        },
+        "missingKeyNonParticipant": {
+          "type": "boolean",
+          "description": "When true, tiles with no SoilHealthState entry are non-participants (skipped, no change)."
+        }
+      }
+    }
+  }
+}
