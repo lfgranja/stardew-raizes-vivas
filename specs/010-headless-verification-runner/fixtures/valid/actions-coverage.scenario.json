@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 2,
+  "scenarioId": "actions-coverage",
+  "featureSlug": "004-playable-compost-loop",
+  "testMdPath": "specs/004-playable-compost-loop/test.md",
+  "summary": "Action-vocabulary coverage: warp, setSoilHealth, applyCompost, harvest, runMacro.",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.4.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": false
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {
+      "kind": "macro",
+      "file": "macros/place-bin.txt",
+      "description": "place the composting bin on the target tile"
+    },
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health -10 5 34",
+      "description": "seed poor soil on the target tile"
+    }
+  ],
+  "steps": [
+    {
+      "action": "warp",
+      "target": "Farm"
+    },
+    {
+      "action": "setSoilHealth",
+      "target": "-10,5",
+      "inputs": {
+        "soilHealth": 10
+      }
+    },
+    {
+      "action": "applyCompost",
+      "target": "-10,5",
+      "inputs": {
+        "itemId": "771",
+        "count": 5
+      }
+    },
+    {
+      "action": "harvest",
+      "target": "-10,5"
+    },
+    {
+      "action": "runMacro",
+      "target": "farm",
+      "inputs": {
+        "macroFile": "macros/observe.txt"
+      }
+    }
+  ],
+  "thresholds": [
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "currentPhase",
+        "operator": "gte",
+        "right": 0
+      },
+      "description": "sentinel coverage"
+    }
+  ],
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "cropPhaseDelta",
+    "smapiLog"
+  ],
+  "timeoutSeconds": 300,
+  "inputs": {
+    "season": "spring",
+    "day": 5,
+    "weather": "sunny",
+    "money": 500
+  },
+  "rngSeed": 123456789,
+  "time": "2026-10-27T12:00:00Z",
+  "scenarioKind": "boundary",
+  "expectedVerdict": "pass",
+  "determinism": {
+    "idempotent": true,
+    "declaredSources": []
+  }
+}

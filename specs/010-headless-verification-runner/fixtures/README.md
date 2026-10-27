@@ -22,6 +22,10 @@ Contract-test inputs for `contracts/scenario.schema.json` (Draft 2020-12, `schem
 | `negative-incomplete-signals-partial.scenario.json` | Negative scenario: incomplete signals → `partial` |
 | `negative-version-mismatch-errored.scenario.json` | Negative scenario: version mismatch → `errored` |
 | `negative-expected-fail.scenario.json` | Negative scenario: matched `fail` |
+| `negative-skipped.scenario.json` | Negative scenario: matched `skipped` |
+| `sentinel-phase-minus-one.scenario.json` | `PHASE_MINUS_ONE` (`currentPhase == -1`) |
+| `sentinel-poor-positive.scenario.json` | `POOR_POSITIVE_LT_34` (`healthTier: poor`) |
+| `actions-coverage.scenario.json` | All remaining action primitives (`warp`, `setSoilHealth`, `applyCompost`, `harvest`, `runMacro`) |
 | `equivalence-nan-health.scenario.json` | Stored NaN health → `unknown` (never Poor) |
 | `equivalence-missing-key.scenario.json` | Missing key → `unknown` (never Poor) |
 | `equivalence-zero-health.scenario.json` | Measured zero → `nonParticipant` for growth |
@@ -31,7 +35,7 @@ Contract-test inputs for `contracts/scenario.schema.json` (Draft 2020-12, `schem
 | `composite-anyof.scenario.json` | `anyOf` composite predicate |
 | `cmp-boolean-string.scenario.json` | Typed `cmp` on boolean and string fields |
 
-All 24 MUST validate with zero errors. Every fixture includes the required `summary`, `environment.apiVersion`, `determinism`, and `scenarioKind` fields, and uses the v2 predicate shapes (`cmp` with `left`/`operator`/`right`; `between` with `exclusiveMin`/`exclusiveMax`; `multiplier` with `base`/`factor`; `unchanged` with `field`/`tolerance`).
+All 28 MUST validate with zero errors. Every fixture includes the required `summary`, `environment.apiVersion`, `determinism`, and `scenarioKind` fields, and uses the v2 predicate shapes (`cmp` with `left`/`operator`/`right`; `between` with `exclusiveMin`/`exclusiveMax`; `multiplier` with `base`/`factor`; `unchanged` with `field`/`tolerance`).
 
 ## `invalid/`
 
@@ -82,8 +86,10 @@ for p in sorted(pathlib.Path("fixtures/invalid").glob("*.json")):
 for p in sorted(pathlib.Path("fixtures/runner-invalid").glob("*.json")):
     errors = list(v.iter_errors(json.loads(p.read_text())))
     assert not errors, (p, errors)  # schema-valid; runner rejects on cross-field rules
-print("schema OK: 24 valid accepted, 14 invalid rejected with one error each, 2 runner-invalid schema-accepted")
+print("schema OK: 28 valid accepted, 14 invalid rejected with one error each, 2 runner-invalid schema-accepted")
 PY
 ```
 
 `check-jsonschema`/`ajv-cli` in CI MUST produce the same accept/reject outcomes. The invalid files are intentionally minimal: each includes every newly required field except the one defect it is designed to prove, so a failure count greater than one signals an accidental schema regression.
+
+**Cross-validator result (2026-10-27):** Python `jsonschema` 4.26.0 (`Draft202012Validator`) and `ajv-cli` 5 (`--spec=draft2020`) agree exactly: **28/28 valid accepted**, **14/14 invalid rejected**, and **2/2 runner-invalid schema-accepted**. Both validators were run over the same files; this is the C-SCN-38 evidence.

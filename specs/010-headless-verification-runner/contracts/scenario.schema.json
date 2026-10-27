@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:lfgranja:livingroots:scenario:v2",
-  "$comment": "Immutable v2 contract identity. The authored file is contracts/scenario.schema.json; the $id is a logical versioned URN, not a file-path mirror, and MUST NOT be reused for a breaking change. A promoted copy under schemas/scenarios/v2/ keeps this $id byte-for-byte, or a new vN file with a new $id is issued. Migration: v1 was a pre-release draft with condition-only thresholds; v2 is the first published immutable version and introduces structured predicates, required environment.apiVersion, required summary/determinism/scenarioKind, and typed initialization commands. v1 is not supported by the v2 runner.",
+  "$comment": "Cross-field rules that JSON Schema cannot express (between.min <= between.max, multiplier.base suffix == field, and signal-to-field mapping) are enforced by the runner with exit 14 and are enumerated in data-model.md §Validation Rules. The sentinel-to-field map is encoded in the sentinel predicate's if/then branches, and the action-to-required-input map is encoded in $defs/step.allOf. These are machine-evaluable constraints, not unenforced prose. Immutable v2 contract identity. The authored file is contracts/scenario.schema.json; the $id is a logical versioned URN, not a file-path mirror, and MUST NOT be reused for a breaking change. A promoted copy under schemas/scenarios/v2/ keeps this $id byte-for-byte, or a new vN file with a new $id is issued. Migration: v1 was a pre-release draft with condition-only thresholds; v2 is the first published immutable version and introduces structured predicates, required environment.apiVersion, required summary/determinism/scenarioKind, and typed initialization commands. v1 is not supported by the v2 runner.",
   "title": "Living Roots Verification Scenario",
   "description": "Canonical machine-readable scenario definition for the headless game verification runner (spec 010). JSON is the canonical format; an optional Markdown companion checklist may accompany it for contributor readability. Draft 2020-12, strict objects, immutable versioned $id. v2 introduces structured predicate thresholds, environment metadata, host-guard fields, typed initialization commands, explicit determinism metadata, and an explicit absence-vs-null policy: null is never a valid value for any field; an omitted optional field takes its declared default, and an omitted required field is invalid.",
   "type": "object",
@@ -166,6 +166,13 @@
           "required": [],
           "title": "Runner configuration",
           "description": "Expected runner configuration for this scenario. The object MUST be present; omitted members take their declared defaults.",
+          "examples": [
+            {
+              "saveMode": "save",
+              "headless": true,
+              "skipBuild": false
+            }
+          ],
           "properties": {
             "saveMode": {
               "type": "string",
@@ -175,7 +182,7 @@
               ],
               "default": "save",
               "title": "Save mode",
-              "description": "Whether the game may write saves during the scenario. Clean-quit scenarios MUST use save.",
+              "description": "Whether the game may write saves during the scenario. Runner scenarios MUST use save because the evidence bundle depends on the save delta; nosave is reserved for non-Gate-3 smoke use.",
               "examples": [
                 "save"
               ]
@@ -321,7 +328,7 @@
       "maxItems": 3,
       "uniqueItems": true,
       "title": "Expected signals",
-      "description": "All three mandatory signals must be captured for host runs (SC-002). Exactly three unique values are required. Farmhand host-guard runs additionally assert the absence of Crop-phase mutation, as declared by hostGuard.",
+      "description": "All three mandatory signals must be captured for host runs (SC-002). Exactly three unique values are required. The explicit declaration is retained (rather than implied) because it is copied into the evidence bundle's expected-signal set and lets a future scenario kind narrow the set without a reader inferring it from the run type. Farmhand host-guard runs additionally assert the absence of Crop-phase mutation, as declared by hostGuard.",
       "examples": [
         [
           "soilHealthStateDelta",
@@ -513,7 +520,7 @@
       ],
       "default": "pass",
       "title": "Expected verdict",
-      "description": "Expected base run verdict. The runner asserts actual == expected for negative/boundary scenarios and treats a mismatch as a scenario-contract failure (exit 19). 'flaky' is a derived metadata flag, not an expected base verdict. A matched expectedVerdict=fail still exits 18 (the gameplay assertion failed as designed); use --ignore-exit-code 18 only in an explicitly expected-failure lane.",
+      "description": "Expected base run verdict. Positive scenarios require pass; boundary scenarios allow pass or fail; negative scenarios allow any non-pass verdict. The runner asserts actual == expected for every scenario and treats a mismatch as a scenario-contract failure (exit 19). 'flaky' is a derived metadata flag, not an expected base verdict. A matched expectedVerdict=fail still exits 18 (the gameplay assertion failed as designed); use --ignore-exit-code 18 only in an explicitly expected-failure lane.",
       "examples": [
         "pass"
       ]
@@ -702,6 +709,7 @@
       "enum": [
         "soilHealth",
         "healthTier",
+        "soilHealthState",
         "phaseDays",
         "currentPhase",
         "dayOfCurrentPhase",
@@ -959,13 +967,88 @@
         "inputs": {
           "$ref": "#/$defs/stepInputs",
           "title": "Step inputs",
-          "description": "Action-specific inputs. Optional; omitted means an empty object."
+          "description": "Action-specific inputs. Optional; omitted means an empty object, but actions with required inputs must supply them."
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "insertWaste"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "inputs"
+            ],
+            "properties": {
+              "inputs": {
+                "required": [
+                  "itemId",
+                  "count"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "setSoilHealth"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "inputs"
+            ],
+            "properties": {
+              "inputs": {
+                "required": [
+                  "soilHealth"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "runMacro"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "inputs"
+            ],
+            "properties": {
+              "inputs": {
+                "required": [
+                  "macroFile"
+                ]
+              }
+            }
+          }
+        }
+      ]
     },
     "predicate": {
       "title": "Predicate",
-      "description": "Machine-evaluable threshold predicate (C-SCN-29). The discriminated 'op' field selects exactly one variant. Two independent readers MUST compute the same pass/fail result from the predicate plus the captured signal.",
+      "description": "Machine-evaluable threshold predicate (C-SCN-29). The discriminated 'op' field selects exactly one variant. Two independent readers MUST compute the same pass/fail result from the predicate plus the captured signal. If the actual value is absent or the string 'NaN', every numeric predicate (cmp, between, multiplier, unchanged) FAILS with reason 'unmeasured-actual'; only the sentinel predicate may assert unmeasured or missing values. A predicate whose field is not allowed for its signal is a scenario-contract error (exit 14).",
       "examples": [
         {
           "op": "multiplier",
@@ -1062,7 +1145,12 @@
                 }
               ],
               "title": "Comparison operand",
-              "description": "Typed operand; the applicable branch is selected by the field type."
+              "description": "Typed operand; the applicable branch is selected by the field type.",
+              "examples": [
+                34,
+                false,
+                "DayEnding"
+              ]
             },
             "tolerance": {
               "type": "number",
@@ -1166,6 +1254,38 @@
                 "properties": {
                   "right": {
                     "type": "string"
+                  },
+                  "operator": {
+                    "enum": [
+                      "eq",
+                      "ne"
+                    ]
+                  },
+                  "tolerance": {
+                    "const": 0
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "left": {
+                    "const": "soilHealthState"
+                  }
+                },
+                "required": [
+                  "left"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "right": {
+                    "enum": [
+                      "measured",
+                      "missing",
+                      "nan"
+                    ]
                   },
                   "operator": {
                     "enum": [
@@ -1338,7 +1458,7 @@
             "sentinel"
           ],
           "title": "Sentinel predicate",
-          "description": "Asserts that a named sentinel condition holds for a signal field. The sentinel MUST belong to the field semantic class (mapping enforced below): SENTINEL_UNTOUCHED_99999 -> phaseDays; NAN_HEALTH/MISSING_KEY/HEALTH_LE_ZERO/POOR_POSITIVE_LT_34 -> healthTier; PHASE_MINUS_ONE -> currentPhase. Sentinel baselines: SENTINEL_UNTOUCHED_99999 = phaseDays == 99999; NAN_HEALTH = healthTier unknown with stored-NaN metadata; MISSING_KEY = healthTier unknown with absent-key metadata; HEALTH_LE_ZERO = healthTier nonParticipant; POOR_POSITIVE_LT_34 = healthTier poor; PHASE_MINUS_ONE = currentPhase == -1. When mustNotChange is true, the same condition MUST also hold in the pre-run capture; when false, only the post-run capture is asserted.",
+          "description": "Asserts that a named sentinel condition holds for a signal field. The sentinel MUST belong to the field semantic class (mapping enforced below): SENTINEL_UNTOUCHED_99999 -> phaseDays; NAN_HEALTH/MISSING_KEY/HEALTH_LE_ZERO/POOR_POSITIVE_LT_34 -> healthTier; PHASE_MINUS_ONE -> currentPhase. Sentinel baselines: SENTINEL_UNTOUCHED_99999 = phaseDays == 99999; NAN_HEALTH = healthTier unknown AND soilHealthState nan; MISSING_KEY = healthTier unknown AND soilHealthState missing; HEALTH_LE_ZERO = healthTier nonParticipant; POOR_POSITIVE_LT_34 = healthTier poor; PHASE_MINUS_ONE = currentPhase == -1 exactly. The soilHealthState field is what makes NaN and missing distinguishable from the captured signal alone. When mustNotChange is true, the same condition MUST also hold in the pre-run capture; when false, only the post-run capture is asserted.",
           "properties": {
             "op": {
               "const": "sentinel",
@@ -1546,8 +1666,75 @@
         "predicate"
       ],
       "title": "Threshold",
-      "description": "A machine-evaluable acceptance criterion (oracle) for one signal.",
+      "description": "A machine-evaluable acceptance criterion (oracle) for one signal. When the signal is multi-record (cropPhaseDelta or soilHealthStateDelta), `subject` selects the record; if `subject` is omitted, the runner uses the single record named by the scenario step target and fails with exit 14 if zero or more than one record matches (ambiguous-subject). A supplied `subject` that matches zero or multiple records fails with exit 14 (unresolvable-subject). smapiLog is single-record and MUST NOT carry `subject`.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "signal": {
+                "const": "smapiLog"
+              }
+            },
+            "required": [
+              "signal"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "subject"
+              ]
+            }
+          }
+        }
+      ],
       "properties": {
+        "subject": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "title": "Threshold subject",
+          "description": "Optional selector for the record a multi-record signal predicate applies to. If supplied, it MUST match exactly one record; zero or multiple matches exit 14 (unresolvable-subject). Omit only when the scenario step target identifies exactly one record. Forbidden for the single-record smapiLog signal.",
+          "properties": {
+            "location": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "title": "Location",
+              "description": "Location name of the selected record.",
+              "examples": [
+                "Farm"
+              ]
+            },
+            "tileX": {
+              "type": "integer",
+              "minimum": -10000,
+              "maximum": 10000,
+              "title": "Tile X",
+              "description": "Tile X coordinate of the selected record.",
+              "examples": [
+                -10
+              ]
+            },
+            "tileY": {
+              "type": "integer",
+              "minimum": -10000,
+              "maximum": 10000,
+              "title": "Tile Y",
+              "description": "Tile Y coordinate of the selected record.",
+              "examples": [
+                5
+              ]
+            }
+          },
+          "examples": [
+            {
+              "location": "Farm",
+              "tileX": -10,
+              "tileY": 5
+            }
+          ]
+        },
         "signal": {
           "type": "string",
           "enum": [
@@ -1556,7 +1743,7 @@
             "smapiLog"
           ],
           "title": "Signal",
-          "description": "Which captured signal this threshold evaluates.",
+          "description": "Which captured signal this threshold evaluates. Allowed predicate fields by signal: soilHealthStateDelta -> soilHealth, healthTier, soilHealthState; cropPhaseDelta -> phaseDays, currentPhase, dayOfCurrentPhase, fullyGrown, dead, indexOfHarvest, healthTier, soilHealthState; smapiLog -> elapsedMilliseconds, eventName, locationsProcessed, isMainPlayer. The sentinel predicate is additionally allowed and uses the sentinel-to-field mapping. A predicate referencing any other field is a scenario-contract error (exit 14).",
           "examples": [
             "cropPhaseDelta"
           ]
@@ -1570,7 +1757,7 @@
           "maxLength": 100,
           "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
           "title": "ModConstants reference",
-          "description": "Optional name of the ModConstants member whose value the predicate encodes (FR-007). The numeric value in the predicate remains authoritative; the runner may cross-check the name against the compiled constant and fail on mismatch.",
+          "description": "Optional name of the ModConstants member whose value the predicate encodes (FR-007). The numeric value in the predicate remains authoritative. If present, the runner MUST cross-check the name against the compiled constant and MUST fail with exit 14 on mismatch; if absent, no cross-check is performed.",
           "examples": [
             "PoorSoilGrowthMultiplier"
           ]
@@ -1588,7 +1775,7 @@
           "type": "string",
           "default": "",
           "title": "Deprecated condition",
-          "description": "Deprecated alias for description; retained for one major version in schemaVersion 2. Do not use in new scenarios.",
+          "description": "Migration provenance. Retains the v1 human-readable condition so the offline v1-to-v2 migration tool and its reviewer can compare the original prose with the generated predicate. It is never the pass/fail oracle; new v2 scenarios must use description.",
           "examples": [
             "poor soil slows growth 1.15x"
           ]
@@ -1659,13 +1846,5 @@
         "poor"
       ]
     }
-  },
-  "dependentRequired": {
-    "hostGuard": [
-      "playerRole"
-    ],
-    "expectedVerdict": [
-      "scenarioKind"
-    ]
   }
 }

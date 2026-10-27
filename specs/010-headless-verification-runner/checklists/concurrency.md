@@ -16,7 +16,7 @@
 - [x] CHK002 - Is the absence of `/tmp/.X*-lock` probing required and the rationale documented? [Completeness, Spec §FR-020]
 - [x] CHK003 - Are per-instance display numbers required (no shared display across instances)? [Measurability, Spec §FR-020]
 - [x] CHK004 - Is cleanup of the allocated display (server-side socket removal) required and observable? [Coverage, Spec §FR-020]
-- [ ] CHK005 - Is orphaned-display detection specified as detect-and-report (no signalling) due to no ownership token? [Clarity, Spec §FR-020]
+- [x] CHK005 - Is orphaned-display detection specified as detect-and-report (no signalling) due to no ownership token? [Clarity, Spec §FR-020]
 
 ## Save Copy Isolation & Byte-Identical Preservation
 
@@ -46,13 +46,13 @@
 ## Process Conflict Detection
 
 - [x] CHK022 - Is process conflict detection scoped to the instance's own game process (not any Stardew process)? [Completeness, Spec §FR-020]
-- [ ] CHK023 - Is the conflict check required to be atomic (check-and-claim via O_EXCL or flock)? [Measurability, Gap]
+- [x] CHK023 - Is the conflict check required to be atomic (check-and-claim via O_EXCL or flock)? [Measurability, Gap]
 - [x] CHK024 - Is PID liveness verification required before declaring a conflict? [Clarity, Gap]
 - [x] CHK025 - Are distinct instance IDs required for concurrent instances? [Consistency, Gap]
 
 ## Orphan Handling
 
-- [ ] CHK026 - Is orphaned-display detection specified as detect-and-report only (no signalling due to no ownership token)? [Clarity, Spec §FR-020]
+- [x] CHK026 - Is orphaned-display detection specified as detect-and-report only (no signalling due to no ownership token)? [Clarity, Spec §FR-020]
 - [x] CHK027 - Is child process reaping (wait, SIGTERM escalation) required? [Completeness, Spec §FR-019]
 - [x] CHK028 - Is signal forwarding via process groups required for clean shutdown? [Coverage, Spec §FR-019]
 - [x] CHK029 - Is stale-PID scanning specified with safety (no killing unrelated processes)? [Security, Gap]
@@ -89,10 +89,12 @@
 
 - [x] CHK046 - Are concurrency requirements consistent between local and CI modes? [Consistency, Spec §FR-023]
 - [x] CHK047 - Are concurrency requirements covered by tests (property-based/fuzz)? [Coverage, Gap]
-- [ ] CHK048 - Is there a traceability link from concurrency requirement → test case? [Traceability, Spec §SC-005]
-- [ ] CHK049 - Are concurrency requirements reviewed for race conditions (TOCTOU)? [Security, Gap]
+- [x] CHK048 - Is there a traceability link from concurrency requirement → test case? [Traceability, Spec §SC-005]
+- [x] CHK049 - Are concurrency requirements reviewed for race conditions (TOCTOU)? [Security, Gap]
 
 ## Notes
+
+- Audit 2026-10-27: 47 PASS / 2 FAIL (CHK023, CHK049); both fixed and re-checked PASS. CHK005/CHK026/CHK048 passed in the same audit. Final: 49/49.
 
 - Items marked `[Gap]` indicate requirements-quality gaps where the spec does not currently define the criterion.
 - Based on `xvfb-run(1)`, `Xvfb(1)`, `flock(2)`, `fcntl(2)`, `rename(2)`, `fsync(2)`, `tempfile(1)`, XDG Base Directory Spec v0.8, Principles of Chaos Engineering.

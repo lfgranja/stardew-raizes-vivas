@@ -37,7 +37,7 @@
 - [x] CHK017 - Are expected outputs exact values or ranged values with explicit tolerance (0.0001f)? [Measurability, Spec §FR-009]
 - [x] CHK018 - Is the execution environment (game/SMAPI/mod versions, save ID, config) captured in scenario metadata? [Completeness, Spec §FR-002]
 - [x] CHK019 - Is idempotency required (re-running yields same result) with non-determinism explicitly declared? [Consistency, Spec §FR-006]
-- [x] CHK020 - Are scenarios limited to 3-5 steps with decomposition guidance for longer ones? [Clarity, Gap]
+- [x] CHK020 - Are scenarios limited to a manageable maximum (schema `maxItems: 5`; 3–5 recommended) with decomposition guidance for longer ones? [Clarity, Gap]
 
 ## Injection Mechanism Contracts
 
@@ -76,7 +76,7 @@
 - [x] CHK041 - Are common sub-schemas extracted into `$defs` and referenced via `$ref`? [Consistency, Spec §FR-007]
 - [x] CHK042 - Is scenario data parameterized (outline/examples/matrix) rather than copy-pasted? — **N/A for Phase 1** under the Rule of Three: each feature owns one scenario, so copy-paste duplication has not been observed; revisit when ≥3 features share a parameterized shape (C-SCN-08). [Completeness, Spec §FR-007]
 - [x] CHK043 - Are shared preconditions factored into a Background/common block? [Clarity, Gap]
-- [x] CHK044 - Can the same contract drive at least two different runtime implementations? [Measurability, Spec §FR-022]
+- [x] CHK044 - Can the same contract be independently validated by at least two implementations (Phase 1: two independent validators; a second runtime is deferred per C-SCN-38)? [Measurability, Spec §FR-022]
 - [x] CHK045 - Is there a keyword/step library that scenarios reference rather than inline? — **N/A for Phase 1**: composite keyword/step libraries are excluded from schemaVersion 2 and deferred until ≥3 features reuse a composite sequence (C-SCN-32). [Coverage, Gap]
 
 ## Human Readability vs. Machine Validity
@@ -96,6 +96,8 @@
 - [x] CHK055 - Are requirements traceable (link to requirement ID and test case ID)? [Traceability, Spec §SC-001..014]
 
 ## Notes
+
+- Audit 2026-10-27: 41 PASS / 11 FAIL / 3 N/A. Reopened CHK011, CHK013, CHK020, CHK026, CHK034, CHK044, CHK047, CHK050, CHK051, CHK052, CHK053; all re-checked PASS after fixes.
 
 - Items marked `[Gap]` indicate requirements-quality gaps where the spec does not currently define the criterion.
 - Based on JSON Schema spec (draft 2020-12), ISO/IEC/IEEE 29119, IEEE 829, ISO/IEC/IEEE 29148, TestML, Cucumber/Gherkin, US 9,208,064, NASA SWEHB.

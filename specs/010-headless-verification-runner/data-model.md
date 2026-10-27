@@ -31,11 +31,12 @@ A declarative description of a verification scenario, authored as JSON (canonica
 | `steps[].action` | enum | yes | — | Closed primitive vocabulary: `sleep`, `warp`, `harvest`, `applyCompost`, `insertWaste`, `setSoilHealth`, `observe`, `dumpCropPhase`, `runMacro`. |
 | `steps[].target` | string | yes | — | Tile/location/object identifier. |
 | `steps[].days` | integer (1–28) | no | `1` | Days spanned by the action. |
-| `steps[].inputs` | object | no | `{}` | Closed action-specific inputs (`tileX`, `tileY`, `location`, `itemId`, `count`, `soilHealth`, `macroFile`); the object declares `required: []`, so action-specific presence is enforced by the runner. `soilHealth` is the typed 0–100 value; `count` is the item quantity. There is no generic `amount` field. |
-| `thresholds` | array of threshold objects | yes | — | Machine-evaluable oracle; `{signal, predicate, modConstant?, description?, condition?}`. |
+| `steps[].inputs` | object | no | `{}` | Closed action-specific inputs (`tileX`, `tileY`, `location`, `itemId`, `count`, `soilHealth`, `macroFile`); `steps[].allOf` conditionals require `itemId`+`count` for `insertWaste`, `soilHealth` for `setSoilHealth`, and `macroFile` for `runMacro`. `soilHealth` is the typed 0–100 value; `count` is the item quantity. There is no generic `amount` field. |
+| `thresholds` | array of threshold objects | yes | — | Machine-evaluable oracle; `{signal, subject?, predicate, modConstant?, description?, condition?}`. |
+| `thresholds[].subject` | object | no | — | Selector `{location?, tileX?, tileY?}` (`minProperties: 1` if present) for a multi-record `cropPhaseDelta`/`soilHealthStateDelta` predicate. If supplied, it must match exactly one record; zero or multiple matches exit `14` (`unresolvable-subject`). Omitted means the step target must identify exactly one record (`ambiguous-subject`). Forbidden for single-record `smapiLog`. |
 | `thresholds[].predicate` | object | yes | — | Discriminated `op`: `cmp`, `between`, `multiplier`, `sentinel`, `unchanged`, `allOf`/`anyOf`, `not`. |
-| `thresholds[].modConstant` | string | no | — | Optional `ModConstants` member name; the numeric value in the predicate stays authoritative. |
-| `thresholds[].condition` | string | no | `""` | Deprecated alias for `description`; retained for one major version. |
+| `thresholds[].modConstant` | string | no | — | Optional `ModConstants` member name; the numeric value in the predicate stays authoritative. If present, the runner MUST cross-check it and exit `14` on mismatch; absent means no check. |
+| `thresholds[].condition` | string | no | `""` | Migration provenance: the original v1 human condition, retained only so the offline v1→v2 migration reviewer can compare it with the generated `predicate`. Never the oracle; new v2 scenarios use `description`. |
 | `expectedSignals` | array of 3 unique enums | yes | — | Exactly `soilHealthStateDelta`, `cropPhaseDelta`, `smapiLog` (SC-002). |
 | `timeoutSeconds` | integer (1–86400) | no | `300` | Per-scenario timeout; macro timeout is retryable. |
 | `inputs` | object | no | `{}` | Scenario-level inputs: `season` (default `spring`), `day` (default `1`), `weather` (default `sunny`), `money` (default `500`). Declares `required: []`; no hidden global state. |
@@ -103,14 +104,14 @@ The union of `required` arrays in `contracts/scenario.schema.json` is authoritat
 
 #### Predicate semantics
 
-All predicates evaluate against the captured signal named by `thresholds[].signal`; a predicate that references a field not present in that signal is a scenario-contract error (exit 14).
+All predicates evaluate against the captured signal named by `thresholds[].signal`; a predicate that references a field not present in that signal is a scenario-contract error (exit 14). If the actual value is absent or `"NaN"`, every numeric predicate (`cmp`, `between`, `multiplier`, `unchanged`) **fails** with reason `unmeasured-actual`; only the `sentinel` predicate may assert unmeasured or missing values.
 
 | `op` | Pass condition | Operand rules |
 |------|----------------|---------------|
 | `cmp` | `left <operator> right` | `left` is a signal field; `right` is numeric for numeric fields, boolean for boolean fields, and a string for string fields. `lt/lte/gt/gte` only for numeric fields. `"NaN"` is forbidden. `healthTier` operands must use the `unknown/nonParticipant/poor/moderate/healthy` enum. Tolerance truth table: `eq` passes iff `|left − right| <= tolerance`; `ne` passes iff `|left − right| > tolerance`; ordering operators compare exact values and ignore tolerance. |
 | `between` | `effectiveMin <= actual <= effectiveMax` with inclusive bounds by default | Numeric fields only. `effectiveMin = min − tolerance`, `effectiveMax = max + tolerance`; `exclusiveMin`/`exclusiveMax` default `false` (inclusive) and apply to the effective bounds. `tolerance` is required. `min <= max` is enforced by the runner (exit 14 if violated). |
 | `multiplier` | `actual == clamp(rounding(base × factor), fieldMinimum)` within `tolerance` | Numeric fields only. `base` is a pre-run field reference (`pre.<field>`) whose suffix MUST equal `field`; `factor` is bounded to `[0.01, 100]`; `rounding` defaults to `round` (midpoint-to-even) and `clampToFieldMinimum` defaults to `true`. Field minima: `phaseDays` 1; all other numeric fields 0. The 99999 sentinel is never multiplied or clamped. |
-| `sentinel` | Named sentinel condition holds; if `mustNotChange=true`, the same condition also holds in the pre-run capture; if `false`, only the post-run capture is asserted | Sentinel-to-field mapping is enforced: `SENTINEL_UNTOUCHED_99999` → `phaseDays` (`== 99999`); `NAN_HEALTH`/`MISSING_KEY`/`HEALTH_LE_ZERO`/`POOR_POSITIVE_LT_34` → `healthTier` (`unknown`/`unknown`/`nonParticipant`/`poor`); `PHASE_MINUS_ONE` → `currentPhase` (`== -1` exactly). |
+| `sentinel` | Named sentinel condition holds; if `mustNotChange=true`, the same condition also holds in the pre-run capture; if `false`, only the post-run capture is asserted | Sentinel-to-field mapping is enforced: `SENTINEL_UNTOUCHED_99999` → `phaseDays` (`== 99999`); `NAN_HEALTH`/`MISSING_KEY`/`HEALTH_LE_ZERO`/`POOR_POSITIVE_LT_34` → `healthTier` (`unknown`/`unknown`/`nonParticipant`/`poor`), with `NAN_HEALTH` and `MISSING_KEY` further distinguished by `soilHealthState` (`nan` vs `missing`); `PHASE_MINUS_ONE` → `currentPhase` (`== -1` exactly). |
 | `unchanged` | `|post − pre| <= tolerance` | Numeric fields only; `tolerance` defaults to 0. This is the expected-absence/no-mutation oracle (for example, farmhand runs). |
 | `allOf` | All child predicates pass | Short-circuit failure is allowed but all children are recorded. |
 | `anyOf` | At least one child passes | Failure records each child's result. |
@@ -124,9 +125,9 @@ Truth table for the three-valued signal state (present/absent/divergent): a thre
 
 - **Identity**: the contract is identified by the versioned logical `$id` `urn:lfgranja:livingroots:scenario:v2`, not by the authored file name and not by a file path. Published `vN` files and `$id`s are immutable; a breaking change creates a new file and a new `$id`.
 - **Version field**: `schemaVersion` is an integer major (`2`), not SemVer. Because every object is strict (`additionalProperties: false`), any field addition, removal, rename, type change, or constraint tightening is a major bump. There are no minor/patch schema versions.
-- **Compatibility mode**: `BACKWARD_TRANSITIVE` (C-SCN-31). Old scenarios remain readable by the runner for the supported major; the runner rejects an unsupported `schemaVersion` with exit `14`.
+- **Compatibility mode**: `BACKWARD_TRANSITIVE` (C-SCN-31) for published v2-and-later scenarios. The v2 runner does not read the pre-release v1 draft; v1 scenarios must be migrated offline. The runner rejects an unsupported `schemaVersion` with exit `14`.
 - **v1 → v2 migration**: v1 was a pre-release draft with `condition`-only thresholds. v2 replaces `condition` with the structured `predicate` oracle, adds `environment.apiVersion`, makes `summary`/`determinism`/`scenarioKind` required, and removes the unused `stepLibrary`/`keyword`/`args` fields. v1 scenarios are migrated by translating each `condition` into a `predicate` and adding the newly required fields; the runner does not auto-migrate at runtime.
-- **Deprecated aliases**: `condition` (alias for `description`) and `files` (alias for `subject` in the evidence manifest) are retained for one major version, then removed.
+- **Retained compatibility fields**: `condition` (v1 migration provenance, never the oracle) and `files` (alias for `subject` in the evidence manifest) are retained for one major version, then removed.
 
 ### Evidence Bundle
 
@@ -134,7 +135,7 @@ A directory `evidence-bundle-<run-id>/` produced by every run. `runId` format: `
 
 | File | Purpose |
 |------|---------|
-| `manifest.json` | `schemaVersion`, `runId`, `timestamp` (ISO 8601 UTC), `toolVersions`, `gameVersion`, `modVersion`, `environment`, `subject` (array of `{name, digest: {sha256}}`), `verdict`, `honestyLevel`, `attempts`, optional `integrityFailureRef`, `compatibility`, `commands`, `materials`, `seeds`, `determinism`, completeness flags. `files` is a deprecated alias for `subject` for one major version (C-BND-01). |
+| `manifest.json` | `schemaVersion`, `runId`, `timestamp` (ISO 8601 UTC), `toolVersions`, `gameVersion`, `modVersion`, `environment`, `expectedSignals` (copied from the scenario), `subject` (array of `{name, digest: {sha256}}`), `verdict`, `honestyLevel`, `attempts`, optional `integrityFailureRef`, `compatibility`, `commands`, `materials`, `seeds`, `determinism`, completeness flags. `files` is a deprecated alias for `subject` for one major version (C-BND-01). |
 | `manifest.sha256` | **Mandatory** detached SHA-256 anchor of `manifest.json`, stored alongside the bundle (outside `manifest.json` itself) and recorded in the audit log, so manifest tampering is detectable even if the bundle directory is altered (C-BND-01/FR-014). A missing anchor fails offline verification with exit `19`. |
 | `claims.json` | `claimId`, `evidencePointer`, `risk` (low/medium/high), `honestyLevel` (W/R/E), `safeWording`, `refusalSite` (C-REL-24). |
 | `artifacts/` | Screenshots, SMAPI logs, save-deltas before/after, reflection outputs, Crop-phase dump, Anomaly Report entries. |
@@ -173,7 +174,7 @@ The three required signals plus optional visual evidence. Signals are distinct *
 | SMAPI log excerpt | Elapsed-ms trace line + `DayEnding` event name + host-guard skip line when applicable | Yes |
 | Visual evidence | Screenshots/video (optional) | No |
 
-Signal-to-field mapping: `soilHealthStateDelta` → `soilHealth`, `healthTier`, `sentinel`; `cropPhaseDelta` → `phaseDays`, `currentPhase`, `dayOfCurrentPhase`, `fullyGrown`, `dead`, `indexOfHarvest`; `smapiLog` → `elapsedMilliseconds`, `eventName`, `locationsProcessed`, `isMainPlayer`, `sentinel`.
+Signal-to-field mapping (authoritative; the schema's `signal` description repeats it): `soilHealthStateDelta` → `soilHealth`, `healthTier`, `soilHealthState`; `cropPhaseDelta` → `phaseDays`, `currentPhase`, `dayOfCurrentPhase`, `fullyGrown`, `dead`, `indexOfHarvest`, `healthTier`, `soilHealthState`; `smapiLog` → `elapsedMilliseconds`, `eventName`, `locationsProcessed`, `isMainPlayer`. The `sentinel` predicate is additional and uses the sentinel-to-field mapping. `healthTier` is available in both delta signals because the dump carries it alongside the crop record. A predicate referencing a field outside its signal's row is a scenario-contract error (exit `14`).
 
 ### Compat Matrix (`compat-matrix.json`) and Game-Path Lock (`gamepath.lock.json`)
 
@@ -237,7 +238,10 @@ SMAPI-free interface exposed via `ModEntry.GetApi()`.
 
 ## Validation Rules
 
-- Scenario JSON: strict `additionalProperties: false` at every object level; required fields per the schema's `required` arrays (`summary`, `determinism`, `scenarioKind`, and `environment.apiVersion` are required); `testMdPath` must exist and contain the GATE3 markers; `milestoneSave` and macro paths must be relative and traversal-free; `milestoneSave` and `environment.saveId` must both match the selected milestone manifest; `min <= max` for `between`; `cmp` `right` type must match the `left` field type; `multiplier.base` must be `pre.<field>` and its suffix must equal `field`; `sentinel` must map to its declared field; `positive` scenarios can only expect `pass`; `boundary` scenarios can expect `pass`/`fail`; `negative` scenarios must expect a non-pass verdict.
+- Scenario JSON: strict `additionalProperties: false` at every object level; required fields per the schema's `required` arrays (`summary`, `determinism`, `scenarioKind`, and `environment.apiVersion` are required); `testMdPath` must exist and contain the GATE3 markers; `milestoneSave` and macro paths must be relative and traversal-free; `milestoneSave` and `environment.saveId` must both match the selected milestone manifest; `min <= max` for `between`; `cmp` `right` type must match the `left` field type; `multiplier.base` must be `pre.<field>` and its suffix must equal `field`; `sentinel` must map to its declared field; `positive` scenarios can only expect `pass`; `boundary` scenarios can expect `pass`/`fail`; `negative` scenarios must declare a non-pass verdict.
+- **Signal-to-field map** (runner-enforced): `soilHealthStateDelta` → `soilHealth`, `healthTier`, `soilHealthState`; `cropPhaseDelta` → `phaseDays`, `currentPhase`, `dayOfCurrentPhase`, `fullyGrown`, `dead`, `indexOfHarvest`, `healthTier`, `soilHealthState`; `smapiLog` → `elapsedMilliseconds`, `eventName`, `locationsProcessed`, `isMainPlayer`. The `sentinel` predicate is additional and uses the sentinel-to-field mapping. A predicate field outside its signal's row exits `14`.
+- **Action-to-required-input map** (schema conditionals): `insertWaste` → `itemId`, `count`; `setSoilHealth` → `soilHealth`; `runMacro` → `macroFile`; all other actions require no extra inputs beyond `target`.
+- **Unmeasured actual**: numeric predicates on an absent or `"NaN"` actual fail as `unmeasured-actual`; only `sentinel` may assert unmeasured/missing values.
 - Soil health thresholds: poor positive < 34 → 1.15×; healthy ≥ 67 → 0.85×; moderate [34, 67) → 1.00×; `phaseDays` never below 1; 99999 sentinel never touched; NaN tiles skipped; missing key / health ≤ 0 → non-participant.
 - Performance: per-location elapsed ms ≤ 5 (single shot after discarded warmup; young-generation collection-count delta recorded; >0 tagged `gc-attributed`).
 - Save preservation: byte-identical original (tolerance 0.0001f for floats in SaveComparator; NaN ignored; missing key → 0 at persistence layer only).

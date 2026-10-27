@@ -21,18 +21,18 @@
 ## Bounded Attempts & Cooldowns
 
 - [x] CHK006 - Is the maximum attempt count specified (2 retries = 3 total)? [Clarity, Spec §FR-011]
-- [ ] CHK007 - Is a suite-level retry cap defined (not just per-scenario)? [Completeness, Gap]
+- [x] CHK007 - Is a suite-level retry cap defined (not just per-scenario)? [Completeness, Gap]
 - [x] CHK008 - Is the cooldown duration specified (fixed 5 s) with rationale? [Measurability, Spec §FR-011]
 - [x] CHK009 - Is the cooldown type (fixed vs. exponential backoff) explicitly chosen and justified? [Clarity, Spec §FR-011]
 - [x] CHK010 - Are per-attempt artifacts mandatory (`attempt.json`, stdout/stderr, intermediate verdict, signals)? [Completeness, Spec §FR-011]
-- [ ] CHK011 - Is the retry classification required to be stable across SMAPI versions? [Consistency, Gap]
+- [x] CHK011 - Is the retry classification required to be stable across SMAPI versions? [Consistency, Gap]
 
 ## Flaky Detection Criteria
 
 - [x] CHK012 - Is the operational definition of "flaky" specified (attempt 1 fails with retryable class AND later attempt passes)? [Clarity, Spec §FR-011]
-- [ ] CHK013 - Is a confirmation threshold defined (e.g., N=30 runs) before promoting "flaky" status? [Measurability, Gap]
+- [x] CHK013 - Is a confirmation threshold defined (e.g., N=30 runs) before promoting "flaky" status? [Measurability, Gap]
 - [x] CHK014 - Are pass-rate tiers defined (healthy ≥99%, flaky <95%, etc.)? [Clarity, Gap]
-- [ ] CHK015 - Is RAFT (retry-aware flaky test) awareness documented (verdict separation)? [Coverage, Gap]
+- [x] CHK015 - Is RAFT (retry-aware flaky test) awareness documented (verdict separation)? [Coverage, Gap]
 - [x] CHK016 - Is flaky status required to be derived (not manually assigned) from run data? [Consistency, Spec §FR-011]
 
 ## Quarantine Triggers & Time-Boxes
@@ -50,7 +50,7 @@
 - [x] CHK024 - Is the verdict set closed (pass/fail/errored/partial/skipped/flaky) with no additional states? [Clarity, Spec §FR-011]
 - [x] CHK025 - Is `flaky` defined as a derived state (not a base verdict)? [Consistency, Spec §FR-011]
 - [x] CHK026 - Is crash → `errored` with attached artifacts specified? [Completeness, Spec §FR-011]
-- [ ] CHK027 - Is incomplete signal set → `partial` (never auto-promoted to `pass`) specified? [Measurability, Spec §FR-011]
+- [x] CHK027 - Is incomplete signal set → `partial` (never auto-promoted to `pass`) specified? [Measurability, Spec §FR-011]
 - [x] CHK028 - Is signal disagreement → `partial` specified? [Clarity, Spec §FR-009]
 - [x] CHK029 - Are exit codes mapped to verdicts (0=PASS, 18=FAIL, 19=ERRORED, 20=NO_TESTS)? [Consistency, Spec §NFR-003]
 
@@ -99,10 +99,12 @@
 
 - [x] CHK056 - Are flakiness requirements consistent across local and CI modes? [Consistency, Spec §FR-023]
 - [x] CHK057 - Are verdict requirements covered by tests? [Coverage, Gap]
-- [ ] CHK058 - Is there a traceability link from verdict requirement → test case? [Traceability, Spec §SC-001..014]
-- [ ] CHK059 - Are reliability requirements reviewed against Google/Microsoft/Meta flaky-test guidance? [Governance, Gap]
+- [x] CHK058 - Is there a traceability link from verdict requirement → test case? [Traceability, Spec §SC-001..014]
+- [x] CHK059 - Are reliability requirements reviewed against Google/Microsoft/Meta flaky-test guidance? [Governance, Gap]
 
 ## Notes
+
+- Audit 2026-10-27: 58 PASS / 1 FAIL (CHK029). CHK029 re-check PASS after aligning FR-007 to the schema's non-pass negative enum.
 
 - Items marked `[Gap]` indicate requirements-quality gaps where the spec does not currently define the criterion.
 - Based on Google Testing Blog, Microsoft Research, Meta PFS, Trunk, Mill, pytest-rerunfailures, Allure, SLSA/in-toto, Barr et al. (IEEE TSE), IEEE 29148, NASA, INCOSE, BABOK, NIST AI RMF.

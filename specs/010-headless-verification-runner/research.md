@@ -13,7 +13,7 @@ This document consolidates the research and decisions that resolve the `NEEDS CL
 
 ## R-02 — Scenario format: JSON (Draft 2020-12) + optional Markdown companion
 
-- **Decision**: JSON as canonical machine format, validated against a strict JSON Schema (Draft 2020-12, `additionalProperties: false` at every object level, absolute `$id`, `schemaVersion: const 2`, `$defs`). `JsonSchema.Net` on the .NET side; `check-jsonschema`/`ajv-cli` in CI/pre-commit. Optional human-facing Markdown checklist. Thresholds reference `ModConstants` values by name + numeric value; the structured `thresholds[].predicate` is the machine oracle (`condition` is a deprecated human description).
+- **Decision**: JSON as canonical machine format, validated against a strict JSON Schema (Draft 2020-12, `additionalProperties: false` at every object level, a versioned logical `$id` (`urn:lfgranja:livingroots:scenario:v2`), `schemaVersion: const 2`, `$defs`). `JsonSchema.Net` on the .NET side; `check-jsonschema`/`ajv-cli` in CI/pre-commit. Optional human-facing Markdown checklist. Thresholds reference `ModConstants` values by name + numeric value; the structured `thresholds[].predicate` is the machine oracle (`condition` is a deprecated human description).
 - **Rationale**: `System.Text.Json` is built-in (no YAML dependency, YAGNI); schema strictness matches `save-data-schema.md`. Contract at `specs/010-…/contracts/scenario.schema.json` (docs) → `schemas/scenarios/v2/` once ≥3 features reuse.
 - **Alternatives considered**: YAML (adds dependency, not used anywhere in stack); Markdown-only (not machine-validatable).
 

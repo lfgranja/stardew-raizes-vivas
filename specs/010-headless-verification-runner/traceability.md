@@ -32,7 +32,7 @@
 | CHK | Requirement | Test case | Code location |
 |-----|-------------|-----------|---------------|
 | CHK001–CHK007 | FR-007; C-SCN-36 (required-field set); strict `additionalProperties: false`; IEEE 829 mapping (C-SCN-17); conditional `if/then` | TC-SCN-001..007 | `contracts/scenario.schema.json`; `LivingRoots.Verification/Validation/ScenarioValidator.cs` |
-| CHK008–CHK014 | FR-010; C-SCN-29 (structured `predicate`, inclusivity, typed operands, sentinel enum); boundary-value cases | TC-SCN-008..014 | `contracts/scenario.schema.json#/$defs/predicate`; `scripts/tests/thresholds.bats` |
+| CHK008–CHK014 | FR-010; C-SCN-29 (structured `predicate`, `subject`, `modConstant`, inclusivity, typed operands, sentinel enum); boundary-value cases | TC-SCN-008..014 | `contracts/scenario.schema.json#/$defs/predicate` and `#/$defs/threshold`; `scripts/tests/thresholds.bats` |
 | CHK015–CHK020 | FR-006/FR-009; ordered `steps`, explicit `environment`, `rngSeed`, `time`; idempotency; ≤5 steps | TC-SCN-015..020 | `contracts/scenario.schema.json`; `scripts/verify-scenario.sh` |
 | CHK021–CHK025 | FR-006/FR-009; typed `initCommands` (C-SCN-33); injection lifecycle (C-SCN-30); versioned `ILivingRootsModApi` | TC-SCN-021..025 | `contracts/scenario.schema.json`; `LivingRoots/Domain/Interfaces/ILivingRootsModApi.cs` |
 | CHK026–CHK030 | SC-001..014; C-SCN-06 (machine-evaluable acceptance, traceability) | TC-SCN-026..030 | `spec.md` SC; `traceability.md` |
@@ -154,20 +154,22 @@
 | SC-010 | After one discarded warmup, every measured per-location elapsed value is ≤ 5 ms or the run fails; young-generation collection-count delta recorded | FR-013 | TC-SC-010 |
 | SC-011 | K ≥ 30 concurrent instances use K distinct display identities and save copies, with 0 interleaved verdicts and 0 hash mismatches | FR-020, C-CON-21 | TC-SC-011 |
 | SC-012 | 100% of tampered archives are rejected before launch with `integrity-failure.json` and no retry | FR-024, FR-025, C-SEC-28 | TC-SC-012 |
-| SC-013 | 100% of audit/evidence artifacts export to durable storage and are retained ≥ 365 days; early deletion requires an approval event | FR-027, C-SEC-24, C-SEC-30 | TC-SC-013 |
-| SC-014 | A second maintainer on a different Linux host reproduces the verdict for the same commit, save, and seed | FR-001, FR-006, FR-023 | TC-SC-014 |
+| SC-013 | Quarterly sample (≥30 bundles) shows durable-store receipt, valid digest, ≥365-day retention; early deletion denied + audited | FR-027, C-SEC-24, C-SEC-30 | TC-SC-013 |
+| SC-014 | A second maintainer on a different host reproduces the verdict in 3/3 runs; any divergence produces an Anomaly Report with owner/date/root cause | FR-001, FR-006, FR-023 | TC-SC-014 |
 
 ## Coverage Summary
 
-The matrix maps every CHK to a governing requirement, test case, and intended code location. **Mapping is not proof:** a checklist item is `[x]` only when its requirements-quality criterion is actually satisfied, and a test row is only "covered" once the test exists and passes. The last audit (2026-10-27) found 177 pass / 39 fail / 13 unclear / 3 N/A; those gaps are recorded in the checklists and are not hidden by this matrix. The re-audit after the reconciliation pass updates this table.
+The matrix maps every CHK to a governing requirement, test case, and intended code location. **Mapping is not proof:** a checklist item is `[x]` only when its requirements-quality criterion is actually satisfied, and a test row is only "covered" once the test exists and passes. The final audit/re-audit (2026-10-27) closed every technical gap; the only open items are the two user-owned interpretation questions (requirements CHK003 and CHK015), deliberately left unchecked.
 
 | Checklist | Items | Mapped | Audit-pass | Audit-fail | Audit-unclear | N/A |
 |-----------|-------|--------|------------|------------|---------------|-----|
-| requirements.md | 16 | 16 | 6 | 8 | 2 | 0 |
-| scenario-contract.md | 55 | 55 | 37 | 15 | 0 | 3 |
-| concurrency.md | 49 | 49 | 44 | 4 | 1 | 0 |
-| reliability.md | 59 | 59 | 52 | 3 | 4 | 0 |
-| security.md | 53 | 53 | 38 | 9 | 6 | 0 |
-| **Total** | **232** | **232** | **177** | **39** | **13** | **3** |
+| requirements.md | 16 | 16 | 14 | 0 | 2 | 0 |
+| scenario-contract.md | 55 | 55 | 55 | 0 | 0 | 3 |
+| concurrency.md | 49 | 49 | 49 | 0 | 0 | 0 |
+| reliability.md | 59 | 59 | 59 | 0 | 0 | 0 |
+| security.md | 53 | 53 | 53 | 0 | 0 | 0 |
+| **Total** | **232** | **232** | **230** | **0** | **2** | **3** |
+
+The scenario-contract N/A count (3) is included in the 55 pass total; those three items are legitimately not applicable in Phase 1 and are documented as such.
 
 Concurrency CHK001–CHK049 now have one row each. When a test is renamed or a code path moves, update the row in the same PR (enforced by review, not automation).

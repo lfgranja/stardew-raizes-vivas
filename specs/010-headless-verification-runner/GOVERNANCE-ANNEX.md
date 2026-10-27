@@ -135,6 +135,21 @@ FR-026 and C-SEC-26 separate ownership from infrastructure realization. The foll
 | Token phases | Phase 1 fine-grained PAT (`BUILDDEPS_TOKEN`); Phase 2 GitHub App installation token; Phase 3 OIDC federation when the private repo supports it | `lfgranja` |
 | Durable evidence export | Append-only/WORM storage outside GitHub Actions artifacts; annual restore drill | `lfgranja` |
 
+## Deferred Items and Promotion Triggers
+
+This is the single complete list referenced by the spec's Out of Scope section. An item moves into scope only when its trigger is met and the change is recorded here with a date and owner.
+
+| Deferred item | Promotion trigger | Owner |
+|---------------|-------------------|-------|
+| Docker/container delivery | 2+ mods reuse the runner loop (Rule of Three) | `lfgranja` |
+| Sigstore/DSSE signing and attestation | Verifier extracted to an independent tool with 2+ mods, or an external trust boundary appears | `lfgranja` |
+| External SIEM ingestion | A second runner group or an external trust boundary appears | `lfgranja` |
+| Second runtime implementation (non-.NET reference runner) | The .NET runner is stable across ≥2 features and a non-.NET consumer appears | `lfgranja` |
+| Scenario parameterization, outline/matrix, composite keyword/step library | ≥3 features share a parameterized scenario shape | `lfgranja` |
+| GitHub App / OIDC token phases | Runner moves to shared/self-hosted CI or a second maintainer is added | `lfgranja` |
+| Windows/macOS automated execution | Concrete host demand plus a supported headless display path | `lfgranja` |
+| Multi-mod packaging/distribution | ≥2 mods consume the runner as a packaged artifact | `lfgranja` |
+
 ## Approval Gates
 
 | Action | Approver | Audit trail |

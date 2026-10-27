@@ -32,7 +32,11 @@
     },
     {
       "action": "insertWaste",
-      "target": "-10,5"
+      "target": "-10,5",
+      "inputs": {
+        "itemId": "771",
+        "count": 1
+      }
     },
     {
       "action": "sleep",
