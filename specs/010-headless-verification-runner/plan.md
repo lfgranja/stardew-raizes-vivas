@@ -15,12 +15,12 @@ Build a reusable, unattended headless verification runner for Gate 3: a **bash o
 **Primary Dependencies**:
 - Host tools: Xvfb, `gh`, `curl`, `sha256sum`, `jq`, `dotnet` SDK, `flock`, `mktemp`, `realpath` (reuse the spec-008 preflight's 31-external set).
 - Game: Stardew Valley 1.6.x + SMAPI 4.4.0+ (single pinned stable line in `compat-matrix.json`).
-- Mod: `LivingRoots` (production) + `LivingRoots.Verification` (dev/CI-only, depends on LivingRoots via manifest `Dependencies`).
+- Mod: `LivingRoots` (production) + `LivingRoots.Verification` (dev/CI-only, depends on LivingRoots via manifest `Dependencies`). The production manifest MUST declare `"MinimumGameVersion": "1.6.14"` and `"MinimumApiVersion": "4.4.0"`, matching the pinned compatibility line (A15/FR-002).
 - .NET validation: `JsonSchema.Net` (json-everything, MIT, .NET 6) for scenario validation; `check-jsonschema`/`ajv-cli` in CI/pre-commit.
 
 **Storage**: Filesystem only — milestone saves + JSON save manifests in the private builddeps repo; scenario JSON + optional Markdown companion in the public repo; evidence bundles under `evidence-bundle-<run-id>/`; `compat-matrix.json`, `quarantine.json` in-repo; disposable save copies under per-instance `XDG_CONFIG_HOME` temp dirs.
 
-**Testing**: xUnit + Moq for mod unit tests (`LivingRoots.Tests`); bash test suites under `scripts/tests/` (run-all, launch-free); smoke validation (`scripts/smoke-validation.sh`) for mod-load; manual SC-009 protocol retained as fallback.
+**Testing**: xUnit + Moq for mod unit tests (`LivingRoots.Tests`); Microsoft Coyote for deterministic concurrency scheduling of the verification-mod API contract and FsCheck for property-based checks of schema/threshold invariants (both .NET 6-compatible; no Rust-only tooling); bash test suites under `scripts/tests/` (run-all, launch-free); JSON Schema contract tests over `fixtures/valid|invalid`; smoke validation (`scripts/smoke-validation.sh`) for mod-load; manual SC-009 protocol retained as fallback.
 
 **Target Platform**: Linux hosts (Xvfb + software GL) only; self-hosted runners for CI. Windows/macOS use build + unit tests + manual fallback (FR-021).
 
@@ -45,7 +45,7 @@ Build a reusable, unattended headless verification runner for Gate 3: a **bash o
 - **Principle II (Security-First)**: PASS. All filesystem paths (game archive, save copies, evidence bundle) sanitized/validated; checksum verification (SHA-256) mandatory and treated as a security event on mismatch; fine-grained PAT scoped to one repo; no raw exception messages in logs.
 - **Principle III (Async-Only)**: PASS. Mod code uses async/await for I/O; bash orchestrator uses synchronous shell (appropriate for a shell tool, not game code). No `.Result`/`.Wait()`.
 - **Principle IV (TDD)**: PASS with note. The verification mod and `ILivingRootsModApi` will have unit tests; the bash orchestrator has launch-free test suites under `scripts/tests/`. Red-Green-Refactor for the mod API.
-- **Principle V (Simplicity/YAGNI)**: PASS. Bash orchestrator reuses existing substrate instead of inventing Docker/.NET-infra; Docker deferred (Regra dos Três); scenario contract minimal (Rule of Three for extraction to `schemas/scenarios/v1/`).
+- **Principle V (Simplicity/YAGNI)**: PASS. Bash orchestrator reuses existing substrate instead of inventing Docker/.NET-infra; Docker deferred (Regra dos Três); scenario contract minimal (Rule of Three for extraction to `schemas/scenarios/v2/`).
 - **Principle VI (Multiplayer First-Class)**: PASS. The `SoilGrowthModifierCompleted` event carries `IsMainPlayer`; the farmhand path is tested via `debug split` (honesty level W/R only, E never auto-assigned). Host-authoritative lock per location preserved.
 
 **Gate result: PASS** (no violations; Complexity Tracking empty).
@@ -60,9 +60,15 @@ specs/010-headless-verification-runner/
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output
 ├── quickstart.md        # Phase 1 output
+├── GOVERNANCE-ANNEX.md  # Phase 1 output: R/A/C/I ownership + tiered review cadence
+├── traceability.md      # Phase 1 output: CHK → requirement → test case → code location
 ├── contracts/           # Phase 1 output
-│   ├── scenario.schema.json   # (to be authored; Draft 2020-12)
-│   └── exit-codes.md          # (runner exit-code contract)
+│   ├── scenario.schema.json   # Authored; Draft 2020-12, schemaVersion 2
+│   ├── exit-codes.md          # Runner exit-code contract
+│   └── test-md-template.md    # GATE3 block template for feature test.md files
+├── fixtures/            # Scenario fixtures for contract tests
+│   ├── valid/           # ≥5 schema-valid scenarios
+│   └── invalid/         # ≥5 schema-invalid scenarios (one failure each)
 └── tasks.md             # Phase 2 output (/speckit-tasks — not created here)
 ```
 
@@ -90,8 +96,17 @@ LivingRoots.Verification/          # NEW: dev/CI-only SMAPI mod (separate csproj
 
 specs/010-headless-verification-runner/
 ├── contracts/
-│   └── scenario.schema.json       # NEW: scenario contract (Draft 2020-12)
+│   ├── scenario.schema.json       # NEW: scenario contract (Draft 2020-12, schemaVersion 2)
+│   ├── exit-codes.md              # NEW: exit-code contract
+│   └── test-md-template.md        # NEW: GATE3 marker-block template
+├── fixtures/
+│   ├── valid/                     # NEW: schema-valid fixtures (contract tests)
+│   └── invalid/                   # NEW: schema-invalid fixtures (negative tests)
 ├── compat-matrix.json             # NEW: version matrix (in-repo, version-controlled)
+├── gamepath.lock.json             # NEW: authoritative game-archive SHA-256 (reviewed PRs only)
+├── quarantine.json                # NEW: committed quarantine registry
+├── GOVERNANCE-ANNEX.md            # NEW: R/A/C/I ownership + review cadence
+├── traceability.md                # NEW: checklist → requirement → test → code map
 └── (milestone-save manifests live in private builddeps repo)
 ```
 
