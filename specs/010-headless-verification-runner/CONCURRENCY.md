@@ -1,0 +1,127 @@
+# Concurrency Primitives: Headless Game Verification Runner
+
+**Feature**: 010-headless-verification-runner
+**Created**: 2026-10-27
+**Normative source**: FR-018/FR-019/FR-020, C-CON-01…C-CON-23
+**Traceability**: `traceability.md` (CHK → test case → code location)
+
+This document records the invariants, errno failure modes, retryability, and recovery for every concurrency primitive the runner uses. It is the implementation-facing companion to the requirements; where it disagrees with `spec.md`, the spec wins.
+
+## 1. Display allocation (`-displayfd`)
+
+| Property | Contract |
+|----------|----------|
+| Operation | Spawn `Xvfb -displayfd <fd>`; read the allocated display number from the fd |
+| Invariant | Each instance owns exactly one display; the server allocates the number atomically; no `/tmp/.X*-lock` probe |
+| Failure modes | `EAGAIN` (no free display) → display unavailable (exit 10, retryable); `EPIPE`/EOF before a number → internal error (exit 13); `ENOENT` (Xvfb missing) → missing dependency (exit 9) |
+| Retryability | Exit 10 is retryable within the bounded attempt policy; exit 9/13 are not |
+| Recovery | Kill the spawned process group; wait for the server to remove its socket; never unlink a socket the runner did not allocate |
+| Cleanup assertion | `kill -0` ESRCH ≤100 ms; socket ENOENT in 2 consecutive 50 ms polls (about 50 ms total, not 100 ms) ≤500 ms; no `Z` state; `connect()` returns ENOENT/ECONNREFUSED ≤500 ms (C-CON-22) |
+| Test cases | TC-CON-001..005, TC-CON-026..029 |
+| Code | `scripts/verify-scenario.sh` (`display_start`, `display_stop`, `display_verify_cleanup`) |
+
+Owned-display identity is `(display number, Xvfb PID, PID start-time token)`. Only a display whose token matches this instance may be force-unlinked. If the socket persists beyond 500 ms and the token does not match, the runner logs `orphaned-socket`, appends an entry to `orphaned-displays.json`, and MUST NOT unlink it.
+
+## 2. Instance namespace and temp roots
+
+| Property | Contract |
+|----------|----------|
+| Operation | `temp_root="$(mktemp -d)"`; `umask 077`; per-instance `XDG_CONFIG_HOME`, `HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME` |
+| Invariant | No shared writable state between instances; each instance has a unique instance ID and its own save copy |
+| Failure modes | `EEXIST`/`EACCES`/`ENOSPC` → errored (exit 19); `EXDEV` on rename → internal error (exit 13) |
+| Retryability | Not retryable as a class; a fresh attempt may succeed if the cause was transient disk pressure |
+| Recovery | Trap/finally removes the temp root; removal failure is observable in the run log; original save untouched |
+| Test cases | TC-CON-012..016, TC-CON-030..037 |
+| Code | `scripts/verify-scenario.sh` (`isolate_env`, `cleanup`) |
+
+## 3. Save snapshot and restore
+
+| Property | Contract |
+|----------|----------|
+| Operation | Hash original save (`sha256sum`) → copy to temp root → run → restore → re-hash and compare |
+| Invariant | Original save is byte-identical after the run (SC-005); sidecars are backed up in two layers (enumerated + whole mod-data tree) |
+| Failure modes | Hash mismatch → `errored` (exit 19), non-retryable; `ENOSPC`/`EACCES` during restore → original untouched, `errored`; `EXDEV` → copy+fsync fallback |
+| Retryability | Non-identical save is never retried; it is a preservation breach |
+| Recovery | Atomic temp+rename restore; on any pre-rename failure the original remains; before/after hashes recorded in the bundle |
+| Test cases | TC-CON-006..011, TC-CON-038..041 |
+| Code | `scripts/verify-scenario.sh` (`save_snapshot`, `save_restore`) |
+
+## 4. Advisory resource locks
+
+| Property | Contract |
+|----------|----------|
+| Operation | `flock`/OFD lock around shared cache/build resources only; never a whole-run gate |
+| Invariant | Advisory only; no mandatory locking; global order `game-cache → build-output → shared-doc`; local filesystem only; there is no whole-run lock |
+| Failure modes | `EWOULDBLOCK`/`EAGAIN` → poll with backoff; timeout at `RunnerLockTotalTimeoutMs=10000` → lock contention (exit 6, retryable); `ENOLCK`/`ENOTSUP` → internal error (exit 13) |
+| Retryability | Exit 6 is retryable; unsupported locking is not |
+| Recovery | Release in reverse order; bounded poll loop (initial 100 ms, ×2, cap 2000 ms, 8 attempts, ±25% jitter); OFD locks (`F_OFD_SETLK`) preferred over process-associated locks |
+| Test cases | TC-CON-017..021, TC-CON-042..045 |
+| Code | `scripts/lib/concurrency.sh` (`lock_acquire`, `lock_release`) |
+
+## 5. Process-conflict claim
+
+| Property | Contract |
+|----------|----------|
+| Operation | Atomic claim file created with `O_EXCL` + `O_CREAT` + `O_NOFOLLOW`, containing instance ID + PID identity token (starttime + cmdline hash) |
+| Invariant | Check-and-claim is one operation; never signal a PID without token match; scoped to the instance's own game process |
+| Failure modes | `EEXIST` → conflict (exit 7, retryable after the owning process exits); `EACCES`/`ELOOP` → errored (exit 19); stale token → remove claim only after liveness check |
+| Retryability | Exit 7 is retryable; symlink/`ELOOP` is a security event and is not |
+| Recovery | Unverified PIDs are left alone; stale claims are removed only when the identity token is provably dead |
+| Test cases | TC-CON-022..025 |
+| Code | `scripts/lib/concurrency.sh` (`claim_acquire`, `pid_identity`) |
+
+**Conflict predicate.** A conflict exists iff all three hold: (1) the claim file's identity token is live — the PID exists, its `/proc/<pid>/stat` start-time equals the recorded start time, and the recorded cmdline hash equals the current cmdline hash; (2) the claimed resource overlaps this instance (same `saveId`, same milestone save, or same display number); and (3) the claim is not older than the stale-claim grace window (`RunnerClaimStaleGraceMs=30000`). Different save copies, different milestone saves, and different display numbers are not conflicts even when they share a host. A dead or mismatched token makes the claim stale; the runner may remove it only with a compare-and-delete guarded by `O_EXCL` and must re-check the token after acquiring the claim.
+
+## 6. Atomic writes
+
+| Property | Contract |
+|----------|----------|
+| Operation | `mkstemp` in the target directory → write → `fsync` → `rename` → `fsync` parent directory |
+| Invariant | No torn writes; target unchanged on failure; temp unlinked on failure; modes 0600/0700 |
+| Failure modes | `EINTR` → retry the syscall; `ENOSPC`/`EDQUOT` → errored; `EXDEV` → internal error (temp must be in the same directory) |
+| Retryability | `EINTR` is retried inline; space/quota errors are not retryable |
+| Recovery | Remove temp; leave target untouched; record the failure in the run log |
+| Test cases | TC-CON-042..045 |
+| Code | `scripts/lib/concurrency.sh` (`atomic_write`) |
+
+## 7. Orphan handling
+
+| Property | Contract |
+|----------|----------|
+| Operation | Detect orphaned displays via `xdpyinfo` handshake; report only; reap the runner's own children |
+| Invariant | Never signal or delete a display the runner did not allocate; never kill an unrelated PID |
+| Failure modes | `ESRCH` → already gone; `EPERM` → report, do not escalate; `ETIMEDOUT` → report orphaned |
+| Retryability | Detect-and-report only; no retry |
+| Recovery | Process-group SIGTERM → SIGKILL escalation for owned children; orphan report in the evidence bundle |
+| Test cases | TC-CON-026..029 |
+| Code | `scripts/verify-scenario.sh` (`cleanup`, `reap_children`) |
+
+**Orphan registry.** `orphaned-displays.json` is an append-only array inside the evidence bundle. Each entry records `display`, `socketPath`, `observedAtUtc`, `ownerPid` (or `null`), `ownerStartTime` (or `null`), `ownerTokenMatch` (boolean), `classification` (`dead-owner` | `token-mismatch` | `unresponsive`), and `action` (`report-only` | `force-unlinked`). The registry is never edited in place; a later run appends a new file/entry rather than rewriting history. Entries are informational and never trigger a signal to an unowned process.
+
+## 8. Test strategy by layer
+
+| Layer | Tooling | What it proves |
+|-------|---------|----------------|
+| Bash orchestration | `bats` (behavioral cases), `shellcheck` (static defects), a stress harness (`xargs -P` / `GNU parallel`) | Display/temp-root isolation, lock backoff, signal/reap behavior, cleanup idempotency, 30-instance stress (C-CON-21) |
+| .NET domain/services | xUnit + Moq; Microsoft Coyote for writer-interleaving schedules; FsCheck for property-based invariants | SaveComparator determinism, atomic write ordering, state-machine invariants, interleaving-free verdicts |
+| Cross-layer | Differential golden oracle + 1000-run stress harness | Correct, non-interleaved verdicts across K ≥ 30 concurrent instances |
+
+Coyote and FsCheck are .NET-only; they do not test the bash orchestrator. Bash tests are the primary evidence for display allocation, temp-root isolation, lock contention, and process reaping; .NET tests are the primary evidence for persistence and comparator logic. Neither layer alone satisfies C-CON-21.
+
+## 9. TOCTOU review record
+
+| Date | Reviewer | Scope | Finding | Disposition |
+|------|----------|-------|---------|-------------|
+| 2026-10-27 | maintainer (`lfgranja`) | Display cleanup, socket unlink, claim acquisition, atomic restore | Socket existence can change between `stat()` and `unlink()`; PID can be reused between `kill -0` and signal; temp path can be swapped before rename | Unlink only after owned-token match; signal only after PID start-time + cmdline-hash match; `mkstemp`/`O_EXCL` + `O_NOFOLLOW` for attacker-influenced paths; re-check token after claim acquisition; atomic rename from same directory. Residual risk: a privileged local attacker who can rewrite `/proc` is out of scope. |
+
+## 10. Traceability vocabulary
+
+- **Mapped** means a checklist item has a named test case and code location in `traceability.md`; it does not mean the test exists or passes.
+- **Covered** means the named test exists in the repository and has produced a passing result on the current commit.
+- **Verified** means the behavior was observed in an end-to-end run with multi-signal evidence (spec 009 SC-009); it is never inferred from a unit test alone.
+
+A checklist item may be `mapped` without being `covered`; only `covered` items are eligible for a `[x]` requirements-quality mark when the criterion is about implementation evidence. Requirements-quality criteria about the requirement text itself may be marked from the document alone.
+
+## Traceability
+
+The CHK → test case → code location matrix is in `traceability.md` §Concurrency. This file supplies the per-operation invariants and failure modes required by C-CON-15; the matrix is not duplicated here to avoid drift.
