@@ -11,7 +11,7 @@
 
 The runner is a single command a maintainer can run on a Linux machine to prove that a gameplay feature actually works, without opening the game or playing it by hand. It starts a hidden display, launches Stardew Valley through SMAPI, loads a reproducible save, performs a short scripted scenario, and records three independent kinds of evidence: the mod's saved soil-health data, the crop's growth state, and the SMAPI log. It then compares the evidence with the feature's expected thresholds and writes a pass/fail report plus a tamper-evident evidence bundle. On a clean pass it updates the feature's Gate 3 record; on any doubt it refuses to promote the feature.
 
-**Who this is for**: maintainers who need trustworthy Gate 3 evidence; contributors who want to add a scenario for their feature without changing the runner; CI operators who need a machine-readable verdict. The normative technical details live in the FR/NFR sections and the linked contracts under `contracts/`; readers who only need the intent can stop after the user stories and success criteria.
+**Who this is for**: maintainers who need trustworthy Gate 3 evidence; contributors who want to add a scenario for their feature without changing the runner; CI operators who need a machine-readable verdict. This is a **layered specification**: the Plain-Language Summary, User Scenarios, and Success Criteria are written to be restated by a non-specialist; the normative FR/NFR sections use the precise technical vocabulary implementers need and are exempt from lay-readability. Every claim in the summary maps to a requirement ID, and the normative technical details live in the FR/NFR sections and the linked contracts under `contracts/`.
 
 **Glossary**
 

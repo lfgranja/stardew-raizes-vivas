@@ -24,7 +24,7 @@
 | CHK012 | Dependencies and assumptions identified | TC-REQ-012 | `spec.md` A1–A16 |
 | CHK013 | Functional requirements have acceptance criteria | TC-REQ-013 | `spec.md` FR-001..FR-027 |
 | CHK014 | User scenarios cover primary flows | TC-REQ-014 | `spec.md` US1–US3 |
-| CHK015 | Feature meets measurable outcomes | TC-REQ-015 | `spec.md` SC-001..014 |
+| CHK015 | Success criteria are measurable, method-backed, and traceable (spec-time); actual evidence is Gate 3 | TC-REQ-015 | `spec.md` SC-001..014; `contracts/test-md-template.md` (Gate 3) |
 | CHK016 | No implementation leakage | TC-REQ-016 | `spec.md` review |
 
 ## Scenario Contract (`checklists/scenario-contract.md`)
@@ -159,16 +159,16 @@
 
 ## Coverage Summary
 
-The matrix maps every CHK to a governing requirement, test case, and intended code location. **Mapping is not proof:** a checklist item is `[x]` only when its requirements-quality criterion is actually satisfied, and a test row is only "covered" once the test exists and passes. The final audit/re-audit (2026-10-27) closed every technical gap; the only open items are the two user-owned interpretation questions (requirements CHK003 and CHK015), deliberately left unchecked.
+The matrix maps every CHK to a governing requirement, test case, and intended code location. **Mapping is not proof:** a checklist item is `[x]` only when its requirements-quality criterion is actually satisfied, and a test row is only "covered" once the test exists and passes. The final audit/re-audit (2026-10-27) closed every gap. Two user decisions shaped the result: CHK003 is a layered specification (non-technical front matter, precise normative body); CHK015 is spec-time measurability/verification-method/trace, with actual run evidence tracked at Gate 3.
 
 | Checklist | Items | Mapped | Audit-pass | Audit-fail | Audit-unclear | N/A |
 |-----------|-------|--------|------------|------------|---------------|-----|
-| requirements.md | 16 | 16 | 14 | 0 | 2 | 0 |
+| requirements.md | 16 | 16 | 16 | 0 | 0 | 0 |
 | scenario-contract.md | 55 | 55 | 55 | 0 | 0 | 3 |
 | concurrency.md | 49 | 49 | 49 | 0 | 0 | 0 |
 | reliability.md | 59 | 59 | 59 | 0 | 0 | 0 |
 | security.md | 53 | 53 | 53 | 0 | 0 | 0 |
-| **Total** | **232** | **232** | **230** | **0** | **2** | **3** |
+| **Total** | **232** | **232** | **232** | **0** | **0** | **3** |
 
 The scenario-contract N/A count (3) is included in the 55 pass total; those three items are legitimately not applicable in Phase 1 and are documented as such.
 
