@@ -7,7 +7,9 @@ Every feature's `specs/<NNN-slug>/test.md` MUST contain exactly one GATE3 marker
 
 ## Status vocabulary (`testMdStatus`)
 
-The block's `status` field is a **closed three-value enum**. It is not the run verdict, not `gate3Status`, and not `scenarioStatus`.
+The block's `status` field is a **closed three-value enum**: `partial`, `machine-pass`, `verified`. It is not the run verdict and not `scenarioStatus`.
+
+`testMdStatus` (the block field) and `gate3Status` (the feature rollup) are the same closed value: both are `partial | machine-pass | verified`, one recorded at block level and one at feature level, and both are updated by the same qualifying run. Neither is `scenarioStatus`. A `verified` block records that a maintainer applied the `E` judgment on top of `machine-pass`; it does not change what the closed value is.
 
 | Status | Writer | Meaning |
 |--------|--------|---------|
@@ -133,20 +135,20 @@ Promotion conditions are cumulative: `machine-pass` requires a **host** run, `ve
 
 ## Promotion set
 
-Only the following transitions are legal. Anything not listed is rejected (exit `14` for a malformed block, `21` for a claim that overstates evidence). **The runner writes only `partial` and `machine-pass`.**
+Only the following six transitions are legal (C-REL-15). Anything not listed is rejected (exit `14` for a malformed block, `21` for a claim that overstates evidence). **The runner writes only `partial` and `machine-pass`; only a human maintainer writes `verified`.**
 
 | From | To | Condition |
 |------|----|-----------|
 | `partial` | `machine-pass` | Clean, non-flaky **host** `pass`; three signals present and agreeing; honesty level ≥ R; `expectedVerdict` matches |
-| `partial` (flaky pass) | `partial` (flaky: true) | Retry passed but the run is flaky; no promotion |
-| `machine-pass` | `verified` | Human `E` attestation with `reviewer`, `reviewDate`, and `sessionId` recorded; an existing `machine-pass` block is the prerequisite; never written by the runner |
-| `machine-pass` | `partial` | A later run is `fail`, `errored`, `partial`, `skipped`, or a flaky `pass` |
-| `verified` | `machine-pass` | A later clean, non-flaky `pass` replaces the evidence; the prior human `E` attestation is not carried forward |
-| `verified` | `partial` | A later run is `fail`, `errored`, `partial`, `skipped`, or a flaky `pass` |
-| any | `partial` | Manual demotion after evidence review; never silently rewritten to `machine-pass` or `verified` |
-| `partial` (farmhand / split-screen) | `partial` | Always stays `partial`; clean passes are not promotable |
+| `machine-pass` | `machine-pass` | A later clean, non-flaky **host** `pass` refreshes the evidence **only** when the block is already `machine-pass`; the prior block is replaced and never escalates to `verified` |
+| `machine-pass\|verified` | `partial` | A later run is `fail`, `errored`, `partial`, `skipped`, or a flaky `pass`; a `verified` block must be demoted here before any machine refresh |
+| `any` | `partial` | Manual demotion after evidence review; never silently rewritten to `machine-pass` or `verified` |
+| `partial\|machine-pass` | `verified` | Human `E` attestation with `reviewer`, `reviewDate`, and `sessionId` recorded; the block must already be `machine-pass`; never written by the runner |
+| `verified` | `verified` | A later human `E` re-attestation refreshes `reviewer`, `reviewDate`, and `sessionId` on an already `verified` block; machine evidence is not rewritten |
 
-A `fail`, `errored`, `partial`, or `skipped` run never promotes. The runner never writes `verified`; only a human may do so, and only on top of `machine-pass`.
+A `fail`, `errored`, `partial`, or `skipped` run never promotes. A flaky pass and every farmhand/split-screen run stay `partial`; they are not separate rows because their destination is the same `partial` state, and they are never promotable. The runner never writes `verified`; only a human may do so, and only on top of `machine-pass`.
+
+**Why `verified -> machine-pass` is illegal.** A clean machine pass never overwrites a human attestation and never silently discards it. A later clean pass refreshes `machine-pass` only from an existing `machine-pass` block; a `verified` block must first be demoted to `partial` (transition 3), after which the next qualifying run may promote it to `machine-pass` (transition 1). The prior human `E` attestation is never carried forward.
 
 ## Claim discipline
 
