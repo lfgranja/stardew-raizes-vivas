@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lfgranja:livingroots:claims:v1",
+  "$comment": "Machine-readable contract for a finalized bundle claims.json (spec 010, FR-014 and C-REL-24). Every object is strict (additionalProperties: false). The offline verifier tests each claim's refusalSite for liveness and rejects a safeWording/honestyLevel that overstates the evidence (exit 21).",
+  "title": "Living Roots Claims Register",
+  "description": "Claim -> evidence pointers produced by the single ManifestBuilder producer alongside manifest.json. Draft 2020-12, strict objects, immutable versioned $id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "honestyLevel",
+    "claims"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "title": "Claims schema version",
+      "description": "Payload version. v1 is the first published claims schema and is immutable; any breaking change requires a new vN file and a new $id.",
+      "examples": [
+        1
+      ]
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^run-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{4}$",
+      "title": "Run ID",
+      "description": "Must equal the runId recorded in the bundle's manifest.json and the evidence-bundle-<runId>/ directory component.",
+      "examples": [
+        "run-20261027T120000Z-a1b2"
+      ]
+    },
+    "honestyLevel": {
+      "$ref": "#/$defs/honestyLevel",
+      "title": "Bundle honesty level",
+      "description": "Highest honesty level claimed for this bundle. Every claim's honestyLevel MUST NOT exceed it."
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claim"
+      },
+      "uniqueItems": true,
+      "title": "Claims",
+      "description": "Bounded claims, each pointing at evidence in the same bundle. An empty list is legal only when the bundle claims nothing."
+    }
+  },
+  "$defs": {
+    "honestyLevel": {
+      "type": "string",
+      "enum": [
+        "W",
+        "R",
+        "E"
+      ],
+      "title": "Honesty level",
+      "description": "W (launch/connect), R (runtime evidence collected), E (human judgment; assigned only by the maintainer, never auto-assigned). Assignment is sequential W -> R -> E."
+    },
+    "risk": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "Claim risk",
+      "description": "Consequence if the claim is wrong; high-risk claims require the strongest evidence."
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claimId",
+        "evidencePointer",
+        "risk",
+        "honestyLevel",
+        "safeWording",
+        "refusalSite"
+      ],
+      "title": "Claim",
+      "description": "One bounded claim with the evidence that supports it, its risk, its honesty level, the exact wording allowed, and the condition under which it must be refused.",
+      "properties": {
+        "claimId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Claim identifier",
+          "description": "Stable kebab-case identifier, unique within the bundle."
+        },
+        "evidencePointer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "title": "Evidence pointer",
+          "description": "Bundle-relative path (and optional selector) to the artifact that supports the claim."
+        },
+        "risk": {
+          "$ref": "#/$defs/risk"
+        },
+        "honestyLevel": {
+          "$ref": "#/$defs/honestyLevel"
+        },
+        "safeWording": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "title": "Safe wording",
+          "description": "Single sentence that cannot overstate the evidence. The GATE3 block copies this wording verbatim."
+        },
+        "refusalSite": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "title": "Refusal site",
+          "description": "Exact condition under which the claim must be refused (exit 21). The offline verifier tests its liveness."
+        }
+      }
+    }
+  }
+}
