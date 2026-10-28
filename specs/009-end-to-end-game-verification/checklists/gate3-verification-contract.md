@@ -6,6 +6,8 @@
 
 > Scope note: distinct from `../contracts/verification-protocol.md` (interface/protocol spec) and `./verification-protocol.md` (requirements-quality checklist). Cross-reference all three.
 
+> **Automated counterpart (spec 010 FR-021).** The headless verification runner in `specs/010-headless-verification-runner/spec.md` is the automated counterpart to this per-criterion checklist. FR-021 preserves this checklist and `VERIFICATION_PROTOCOL.md` §3 as the documented manual fallback for hosts where the runner cannot execute, requires both documents to cross-link back to spec 010 FR-021, and requires a doc-link check that exits `21` on drift. A runner `machine-pass` is not `verified`; the maintainer E attestation recorded by this checklist remains the only path to `verified`.
+
 ## Pre-State (Baseline — capture BEFORE touching feature)
 
 - [ ] Save-file backup created (copy entire `StardewValley/Saves/` to dated backup directory)
