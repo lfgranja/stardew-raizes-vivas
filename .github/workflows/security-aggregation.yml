@@ -1,0 +1,477 @@
+name: Security Aggregation (24h auth failures)
+
+# Phase 1 scaffold for the 24-hour authentication-failure aggregation required
+# by spec 010 (GOVERNANCE-ANNEX.md, "24-hour auth-failure aggregation").
+# It queries the durable audit store for 401/403 token-use events in the
+# trailing 24 hours and opens or updates one issue assigned to the security
+# owner when the count is >= 3. It never launches the game and needs no
+# proprietary game files, assemblies, or code.
+#
+# Store contract (proprietary-free by design):
+#   `RUNNER_AUDIT_STORE` is a repository variable (`vars.RUNNER_AUDIT_STORE`),
+#   never a secret. It is either:
+#     * an `https://` URL returning newline-delimited JSON (JSONL), or
+#     * a repository-relative or absolute path to a JSONL file already
+#       materialized on the runner (for example by a preceding private step).
+#   Each non-empty line that does not start with `#` is one JSON object:
+#     {"timestamp":"2026-10-27T03:00:00Z","status":401,"runId":"run-..."}
+#   `timestamp` MUST be ISO 8601 with an explicit offset or trailing `Z`.
+#   `status` is the HTTP status of the token-use event (integer or numeric
+#   string). Only 401 and 403 events inside [windowStart, windowEnd) count.
+#   The variable MUST NOT embed credentials; put any authenticated retrieval in
+#   a separate runner-side step and expose only the resulting file to this job.
+#   A malformed line, an unreadable path, or an unreachable URL is a store
+#   failure, never an empty (clean) window.
+#
+# Fail-closed rules:
+#   * RUNNER_AUDIT_STORE unset             -> infrastructure issue + red job
+#   * store unreachable or malformed       -> infrastructure issue + red job
+#   * threshold reached and issue filed    -> green job; the issue is the alert
+#   * issue filing itself fails            -> red job
+#
+# This workflow is an alerting scaffold. It does not attest a verification run,
+# does not write Gate 3 status, and is not a substitute for the durable audit
+# store itself.
+
+on:
+    schedule:
+        # Daily at 03:17 UTC. "At least daily" per GOVERNANCE-ANNEX.md.
+        - cron: '17 3 * * *'
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    issues: write
+
+concurrency:
+    group: security-aggregation
+    cancel-in-progress: false
+
+jobs:
+    aggregate:
+        name: Aggregate trailing 24h 401/403 events
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v4
+
+            - name: Query audit store
+              id: query
+              env:
+                  RUNNER_AUDIT_STORE: ${{ vars.RUNNER_AUDIT_STORE }}
+                  RESULT_PATH: ${{ runner.temp }}/security-aggregation-result.json
+              run: |
+                  set +e
+                  python3 - <<'PY'
+                  import hashlib
+                  import json
+                  import os
+                  import sys
+                  import urllib.parse
+                  import urllib.request
+                  from datetime import datetime, timedelta, timezone
+                  from pathlib import Path
+
+                  STATUSES = (401, 403)
+                  THRESHOLD = 3
+                  WINDOW = timedelta(hours=24)
+                  RESULT_PATH = Path(os.environ.get("RESULT_PATH", "security-aggregation-result.json"))
+                  STORE = (os.environ.get("RUNNER_AUDIT_STORE") or "").strip()
+                  WINDOW_END = datetime.now(timezone.utc).replace(microsecond=0)
+                  WINDOW_START = WINDOW_END - WINDOW
+
+
+                  def iso(value):
+                      return value.isoformat().replace("+00:00", "Z")
+
+
+                  def redact_store(value):
+                      parsed = urllib.parse.urlparse(value)
+                      if not parsed.scheme:
+                          return value
+                      netloc = parsed.netloc
+                      if parsed.username or parsed.password:
+                          host = parsed.hostname or ""
+                          if parsed.port:
+                              host = f"{host}:{parsed.port}"
+                          netloc = f"<redacted>@{host}"
+                      return urllib.parse.urlunparse(
+                          (parsed.scheme, netloc, parsed.path, "", "", "")
+                      )
+
+
+                  # The label is safe to record and to print in an issue: no userinfo,
+                  # query string, or fragment. Repository variables are not secrets.
+                  STORE_LABEL = redact_store(STORE)
+
+                  query_document = {
+                      "windowStart": iso(WINDOW_START),
+                      "windowEnd": iso(WINDOW_END),
+                      "statuses": list(STATUSES),
+                      "store": STORE_LABEL,
+                  }
+                  query_hash = hashlib.sha256(
+                      json.dumps(query_document, sort_keys=True, separators=(",", ":")).encode("utf-8")
+                  ).hexdigest()
+
+
+                  def write_result(result):
+                      RESULT_PATH.write_text(
+                          json.dumps(result, indent=2, sort_keys=True) + "\n",
+                          encoding="utf-8",
+                      )
+                      print(json.dumps(result, indent=2, sort_keys=True))
+
+
+                  def fail(state, message, code):
+                      write_result(
+                          {
+                              "schemaVersion": 1,
+                              "state": state,
+                              "error": message,
+                              "windowStart": iso(WINDOW_START),
+                              "windowEnd": iso(WINDOW_END),
+                              "queryHash": query_hash,
+                              "count": None,
+                              "statusesFilter": list(STATUSES),
+                              "threshold": THRESHOLD,
+                              "store": STORE_LABEL,
+                              "runIds": [],
+                              "evaluatedAt": iso(WINDOW_END),
+                          }
+                      )
+                      print(f"::error::{message}")
+                      sys.exit(code)
+
+
+                  if not STORE:
+                      fail(
+                          "store-unset",
+                          "RUNNER_AUDIT_STORE is not set. Set the repository variable to an "
+                          "https:// JSONL URL or a path to a materialized JSONL audit file; "
+                          "the aggregation fails closed instead of treating the window as clean.",
+                          20,
+                      )
+
+                  parsed_store = urllib.parse.urlparse(STORE)
+                  if parsed_store.scheme not in ("", "https"):
+                      fail(
+                          "store-unavailable",
+                          f"RUNNER_AUDIT_STORE uses unsupported scheme {parsed_store.scheme!r}. "
+                          "Use https:// or a local JSONL path; plain http and object-store "
+                          "schemes are rejected.",
+                          21,
+                      )
+                  if parsed_store.username or parsed_store.password:
+                      fail(
+                          "store-unavailable",
+                          "RUNNER_AUDIT_STORE embeds credentials. Repository variables are not "
+                          "secrets; materialize the store in a separate runner-side step and "
+                          "expose only the resulting file.",
+                          21,
+                      )
+
+                  try:
+                      if parsed_store.scheme == "https":
+                          request = urllib.request.Request(
+                              STORE,
+                              headers={
+                                  "Accept": "application/x-ndjson, application/jsonl, text/plain, */*",
+                                  "User-Agent": "living-roots-security-aggregation/1",
+                              },
+                          )
+                          with urllib.request.urlopen(request, timeout=30) as response:
+                              raw = response.read().decode("utf-8")
+                      else:
+                          store_path = Path(STORE)
+                          if not store_path.is_file():
+                              raise OSError(f"file not found: {STORE}")
+                          raw = store_path.read_text(encoding="utf-8")
+                  except Exception as exc:
+                      fail(
+                          "store-unavailable",
+                          f"RUNNER_AUDIT_STORE could not be read ({type(exc).__name__}: {exc}). "
+                          "The aggregation fails closed instead of treating the window as clean.",
+                          21,
+                      )
+
+                  events = []
+                  run_ids = set()
+                  malformed = []
+                  for line_number, line in enumerate(raw.splitlines(), 1):
+                      text = line.strip()
+                      if not text or text.startswith("#"):
+                          continue
+                      try:
+                          record = json.loads(text)
+                      except json.JSONDecodeError as exc:
+                          malformed.append(f"line {line_number}: invalid JSON ({exc.msg})")
+                          continue
+                      if not isinstance(record, dict):
+                          malformed.append(f"line {line_number}: expected a JSON object")
+                          continue
+
+                      timestamp = record.get("timestamp")
+                      if not isinstance(timestamp, str) or not timestamp.strip():
+                          malformed.append(f"line {line_number}: missing string 'timestamp'")
+                          continue
+
+                      status = record.get("status")
+                      try:
+                          status = int(status)
+                      except (TypeError, ValueError):
+                          malformed.append(f"line {line_number}: 'status' is not an integer")
+                          continue
+
+                      raw_timestamp = timestamp.strip()
+                      if raw_timestamp.endswith("Z"):
+                          raw_timestamp = raw_timestamp[:-1] + "+00:00"
+                      try:
+                          observed_at = datetime.fromisoformat(raw_timestamp)
+                      except ValueError:
+                          malformed.append(f"line {line_number}: 'timestamp' is not ISO 8601")
+                          continue
+                      if observed_at.tzinfo is None:
+                          observed_at = observed_at.replace(tzinfo=timezone.utc)
+                      observed_at = observed_at.astimezone(timezone.utc)
+
+                      if status not in STATUSES:
+                          continue
+                      if not (WINDOW_START <= observed_at < WINDOW_END):
+                          continue
+
+                      events.append(
+                          {
+                              "timestamp": iso(observed_at),
+                              "status": status,
+                              "runId": record.get("runId"),
+                          }
+                      )
+                      run_id = record.get("runId")
+                      if isinstance(run_id, str) and run_id:
+                          run_ids.add(run_id)
+
+                  if malformed:
+                      preview = "; ".join(malformed[:5])
+                      fail(
+                          "store-unavailable",
+                          f"RUNNER_AUDIT_STORE is not valid JSONL: {preview}. "
+                          "The aggregation fails closed instead of treating the window as clean.",
+                          21,
+                      )
+
+                  result = {
+                      "schemaVersion": 1,
+                      "state": "ok",
+                      "windowStart": iso(WINDOW_START),
+                      "windowEnd": iso(WINDOW_END),
+                      "queryHash": query_hash,
+                      "count": len(events),
+                      "threshold": THRESHOLD,
+                      "statusesFilter": list(STATUSES),
+                      "store": STORE_LABEL,
+                      "runIds": sorted(run_ids)[:50],
+                      "matchingEvents": events[:50],
+                      "evaluatedAt": iso(WINDOW_END),
+                  }
+                  write_result(result)
+
+                  if len(events) >= THRESHOLD:
+                      print(
+                          f"::warning::Trailing-24h authentication failures ({len(events)}) "
+                          f"met the threshold ({THRESHOLD}); filing a security issue."
+                      )
+                      sys.exit(10)
+
+                  print(f"Trailing-24h authentication failures below threshold: {len(events)}")
+                  sys.exit(0)
+                  PY
+                  code=$?
+                  set -e
+                  echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+                  echo "result_path=$RESULT_PATH" >> "$GITHUB_OUTPUT"
+                  if [ -f "$RESULT_PATH" ]; then
+                      echo "### Security aggregation result" >> "$GITHUB_STEP_SUMMARY"
+                      echo '```json' >> "$GITHUB_STEP_SUMMARY"
+                      cat "$RESULT_PATH" >> "$GITHUB_STEP_SUMMARY"
+                      echo '```' >> "$GITHUB_STEP_SUMMARY"
+                  fi
+                  exit 0
+
+            - name: Open or update security issue
+              id: security_issue
+              if: steps.query.outputs.exit_code == '10'
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
+                  SECURITY_OWNER: ${{ vars.SECURITY_OWNER || 'lfgranja' }}
+                  RESULT_PATH: ${{ steps.query.outputs.result_path }}
+                  ISSUE_TITLE: '[security-aggregation] Authentication failures detected (401/403)'
+              run: |
+                  set -euo pipefail
+                  body_file="$RUNNER_TEMP/security-aggregation-security-issue.md"
+                  python3 - "$RESULT_PATH" "$body_file" <<'PY'
+                  import json
+                  import sys
+                  from pathlib import Path
+
+                  result_path = Path(sys.argv[1])
+                  body_path = Path(sys.argv[2])
+
+                  try:
+                      result = json.loads(result_path.read_text(encoding="utf-8"))
+                  except Exception as exc:
+                      result = {"error": f"result file unreadable: {exc}"}
+
+                  run_ids = result.get("runIds") or []
+                  lines = [
+                      "## Trailing 24-hour authentication-failure aggregation",
+                      "",
+                      f"- **windowStart**: `{result.get('windowStart')}`",
+                      f"- **windowEnd**: `{result.get('windowEnd')}`",
+                      f"- **queryHash**: `{result.get('queryHash')}`",
+                      f"- **count**: `{result.get('count')}` (threshold: `{result.get('threshold')}`)",
+                      f"- **store**: `{result.get('store')}`",
+                      f"- **evaluatedAt**: `{result.get('evaluatedAt')}`",
+                      "",
+                  ]
+                  if run_ids:
+                      lines.append("### Offending run IDs")
+                      lines.extend(f"- `{run_id}`" for run_id in run_ids)
+                  else:
+                      lines.append("No `runId` was recorded for the matching events.")
+                  lines.extend(
+                      [
+                          "",
+                          "Opened or updated by `.github/workflows/security-aggregation.yml`.",
+                          "This issue is an alert record, not verification evidence and not a Gate 3 status.",
+                      ]
+                  )
+                  body_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                  PY
+
+                  existing="$(gh issue list --state open --limit 200 --json number,title \
+                    | python3 -c 'import json,sys; title=sys.argv[1]; rows=[r for r in json.load(sys.stdin) if r.get("title")==title]; print(rows[0]["number"] if rows else "")' "$ISSUE_TITLE")"
+                  if [ -n "$existing" ]; then
+                      gh issue comment "$existing" --body-file "$body_file"
+                      gh issue edit "$existing" --add-assignee "$SECURITY_OWNER"
+                      issue_url="$(gh issue view "$existing" --json url --jq .url)"
+                  else
+                      issue_url="$(gh issue create --title "$ISSUE_TITLE" --body-file "$body_file" --assignee "$SECURITY_OWNER")"
+                  fi
+
+                  python3 - "$RESULT_PATH" "$issue_url" <<'PY'
+                  import json
+                  import sys
+                  from pathlib import Path
+
+                  result_path = Path(sys.argv[1])
+                  if not result_path.is_file():
+                      raise SystemExit(0)
+                  result = json.loads(result_path.read_text(encoding="utf-8"))
+                  result["issueUrl"] = sys.argv[2]
+                  result_path.write_text(
+                      json.dumps(result, indent=2, sort_keys=True) + "\n",
+                      encoding="utf-8",
+                  )
+                  PY
+
+                  echo "issue_url=$issue_url" >> "$GITHUB_OUTPUT"
+                  echo "::warning::Trailing-24h authentication failures met the threshold; see $issue_url"
+                  {
+                      echo "### Security aggregation alert"
+                      echo ""
+                      echo "Issue: $issue_url"
+                  } >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Open infrastructure issue and fail closed
+              id: infrastructure_issue
+              if: steps.query.outputs.exit_code != '0' && steps.query.outputs.exit_code != '10'
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
+                  SECURITY_OWNER: ${{ vars.SECURITY_OWNER || 'lfgranja' }}
+                  RESULT_PATH: ${{ steps.query.outputs.result_path }}
+                  ISSUE_TITLE: '[security-aggregation] Audit store unavailable'
+              run: |
+                  set -euo pipefail
+                  body_file="$RUNNER_TEMP/security-aggregation-infrastructure-issue.md"
+                  python3 - "$RESULT_PATH" "$body_file" <<'PY'
+                  import json
+                  import sys
+                  from pathlib import Path
+
+                  result_path = Path(sys.argv[1])
+                  body_path = Path(sys.argv[2])
+
+                  try:
+                      result = json.loads(result_path.read_text(encoding="utf-8"))
+                  except Exception as exc:
+                      result = {
+                          "state": "unknown",
+                          "error": f"result file unreadable: {exc}",
+                      }
+
+                  lines = [
+                      "## Security aggregation could not query the audit store",
+                      "",
+                      f"- **state**: `{result.get('state', 'unknown')}`",
+                      f"- **error**: {result.get('error', 'no error detail recorded')}",
+                      f"- **windowStart**: `{result.get('windowStart')}`",
+                      f"- **windowEnd**: `{result.get('windowEnd')}`",
+                      f"- **queryHash**: `{result.get('queryHash')}`",
+                      f"- **store**: `{result.get('store') or '(unset)'}`",
+                      f"- **evaluatedAt**: `{result.get('evaluatedAt')}`",
+                      "",
+                      "**Action**: set `vars.RUNNER_AUDIT_STORE` to an `https://` JSONL URL or a path",
+                      "to a materialized JSONL file, then re-run the workflow. The aggregation job",
+                      "fails closed when the store is unset or unreadable; it never treats the",
+                      "window as clean.",
+                      "",
+                      "Opened by `.github/workflows/security-aggregation.yml`.",
+                  ]
+                  body_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                  PY
+
+                  existing="$(gh issue list --state open --limit 200 --json number,title \
+                    | python3 -c 'import json,sys; title=sys.argv[1]; rows=[r for r in json.load(sys.stdin) if r.get("title")==title]; print(rows[0]["number"] if rows else "")' "$ISSUE_TITLE")"
+                  if [ -n "$existing" ]; then
+                      gh issue comment "$existing" --body-file "$body_file"
+                      gh issue edit "$existing" --add-assignee "$SECURITY_OWNER"
+                      issue_url="$(gh issue view "$existing" --json url --jq .url)"
+                  else
+                      issue_url="$(gh issue create --title "$ISSUE_TITLE" --body-file "$body_file" --assignee "$SECURITY_OWNER")"
+                  fi
+
+                  python3 - "$RESULT_PATH" "$issue_url" <<'PY'
+                  import json
+                  import sys
+                  from pathlib import Path
+
+                  result_path = Path(sys.argv[1])
+                  if not result_path.is_file():
+                      raise SystemExit(0)
+                  result = json.loads(result_path.read_text(encoding="utf-8"))
+                  result["issueUrl"] = sys.argv[2]
+                  result_path.write_text(
+                      json.dumps(result, indent=2, sort_keys=True) + "\n",
+                      encoding="utf-8",
+                  )
+                  PY
+
+                  echo "issue_url=$issue_url" >> "$GITHUB_OUTPUT"
+                  echo "::error::Security aggregation failed closed because the audit store was unavailable; see $issue_url"
+                  exit 1
+
+            - name: Upload aggregation result
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  # Job-scoped record only. The durable, WORM/append-only audit
+                  # store remains the retention source of truth (spec 010 FR-027).
+                  name: security-aggregation-result-${{ github.run_id }}
+                  path: ${{ runner.temp }}/security-aggregation-result.json
+                  if-no-files-found: warn
+                  retention-days: 90
