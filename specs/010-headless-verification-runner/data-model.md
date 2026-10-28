@@ -4,7 +4,7 @@
 **Date**: 2026-10-27
 **Schema**: `contracts/scenario.schema.json` (Draft 2020-12, `schemaVersion: 2`, immutable `$id`)
 
-This document defines the key entities the runner produces and consumes. Three machine-readable contracts are authoritative for field-level validation: `contracts/scenario.schema.json` (scenario input), `contracts/evidence-bundle.schema.json` (finalized `manifest.json`), and `contracts/never-quarantine.schema.json` (never-quarantine registry). This document mirrors them for readability and MUST stay in sync (CI consistency check, C-SCN-36). The on-disk evidence-bundle layout still follows `specs/009-end-to-end-game-verification/contracts/evidence-bundle.md`, with the spec-010 additions recorded below; spec 010 does not maintain a second layout contract.
+This document defines the key entities the runner produces and consumes. Four machine-readable contracts are authoritative for field-level validation: `contracts/scenario.schema.json` (scenario input), `contracts/evidence-bundle.schema.json` (finalized `manifest.json`), `contracts/claims.schema.json` (bundle `claims.json`), and `contracts/never-quarantine.schema.json` (never-quarantine registry). This document mirrors them for readability and MUST stay in sync (CI consistency check, C-SCN-36). The on-disk evidence-bundle layout still follows `specs/009-end-to-end-game-verification/contracts/evidence-bundle.md`, with the spec-010 additions recorded below; spec 010 does not maintain a second layout contract.
 
 ## Entities
 
@@ -14,10 +14,12 @@ The words "pass", "verified", and "status" are ambiguous on their own. Every spe
 
 | Term | Closed value set | Owner / writer | Meaning |
 |------|------------------|----------------|---------|
-| `testMdStatus` | `partial`, `machine-pass`, `verified` | Runner writes `partial`/`machine-pass`; a human maintainer writes `verified` | The `status` field inside one `test.md` GATE3 block. See `contracts/test-md-template.md`. |
-| `gate3Status` | `partial`, `machine-pass`, `verified` | Runner writes `partial`/`machine-pass`; maintainer writes `verified` | Feature-level Gate 3 rollup in root docs / `VERIFICATION_PROTOCOL.md`. It is not a per-run verdict and is never inferred from a single run. |
+| `testMdStatus` | `partial`, `machine-pass`, `verified` | Runner writes `partial`/`machine-pass`; a human maintainer writes `verified` | The block-level `status` field inside one `test.md` GATE3 block. It is the same closed value as `gate3Status` (one block field, one feature rollup), written by the same qualifying run. See `contracts/test-md-template.md`. |
+| `gate3Status` | `partial`, `machine-pass`, `verified` | Runner writes `partial`/`machine-pass`; maintainer writes `verified` | Feature-level Gate 3 rollup in root docs / `VERIFICATION_PROTOCOL.md`. It is the same closed value as `testMdStatus`, written by the same qualifying run; it is not a per-run verdict and is never inferred from a single run. Neither field is `scenarioStatus` or `statisticalStatus`. |
 | `scenarioStatus` | `active` (no registry entry), `candidate`, `quarantined`, `disabled`, `retired` | Automation proposes; a human approves | Quarantine lifecycle state from `quarantine.json`. Only this status affects the blocking gate, and only after human approval. |
-| `statisticalStatus` | `not-evaluated`, `insufficient-data`, `confirmed-flaky` | Runner/analysis, derived | The N ≥ 30 / Wilson 95 % statistical classification. It is not a quarantine stage and is never required for quarantine. |
+| `statisticalStatus` | `not-evaluated`, `insufficient-data`, `confirmed-flaky`, `stable` | Runner/analysis, derived | The N ≥ 30 / Wilson 95 % statistical classification. It is not a quarantine stage and is never required for quarantine. |
+
+`testMdStatus` and `gate3Status` are the same closed value (`partial | machine-pass | verified`): `testMdStatus` is the block-level field inside one `test.md` GATE3 block, and `gate3Status` is the feature-level rollup. The same qualifying run writes both from that value; the runner may write only `partial`/`machine-pass`, while `verified` is written only by the human E attestation. Neither field is `scenarioStatus` or `statisticalStatus`.
 
 The following are **not** statuses and MUST NOT be rendered in a `status` field: the run verdict (`pass`, `fail`, `errored`, `partial`, `skipped`), the derived `flaky` mark, `honestyLevel` (`W`/`R`/`E`), and `compatibility.tier` (`INFO`/`WARN`/`HARD-FAIL`).
 
@@ -29,6 +31,8 @@ Two further collisions are resolved explicitly:
 ### Scenario Definition
 
 A declarative description of a verification scenario, authored as JSON (canonical) with an optional Markdown companion checklist. Consumed by the runner; provided by a feature. Strict `additionalProperties: false` at every object level; unknown fields fail loudly.
+
+The scenario corpus is not limited to spec 009. Spec 004 contributes `specs/004-playable-compost-loop/scenarios/compost-growth-hardening.scenario.json` (`scenarioId: compost-growth-poor-soil`), and spec 005 contributes a planned directory-suite scenario exercised by T110. The files under `specs/010-headless-verification-runner/fixtures/` are contract fixtures, not Gate 3 scenarios; no single scenario is privileged as the only one.
 
 | Field | Type | Required | Default | Notes |
 |-------|------|----------|---------|-------|
@@ -49,7 +53,7 @@ A declarative description of a verification scenario, authored as JSON (canonica
 | `steps[].action` | enum | yes | — | Closed primitive vocabulary: `sleep`, `warp`, `harvest`, `applyCompost`, `insertWaste`, `setSoilHealth`, `observe`, `dumpCropPhase`, `runMacro`. |
 | `steps[].target` | string | yes | — | Tile/location/object identifier. |
 | `steps[].days` | integer (1–28) | no | `1` | Days spanned by the action. |
-| `steps[].inputs` | object | no | `{}` | Closed action-specific inputs (`tileX`, `tileY`, `location`, `itemId`, `count`, `soilHealth`, `macroFile`); `steps[].allOf` conditionals require `itemId`+`count` for `insertWaste`, `soilHealth` for `setSoilHealth`, and `macroFile` for `runMacro`. `soilHealth` is the typed 0–100 value; `count` is the item quantity. There is no generic `amount` field. |
+| `steps[].inputs` | object | no | `{}` | Closed action-specific inputs (`tileX`, `tileY`, `location`, `itemId`, `count`, `soilHealth`, `macroFile`); `steps[].allOf` conditionals require `itemId`+`count` for `insertWaste`, `soilHealth` for `setSoilHealth`, and `macroFile` for `runMacro`; for every other action the members are optional. `soilHealth` is the typed 0–100 value; `count` is the item quantity. There is no generic `amount` field. |
 | `thresholds` | array of threshold objects | yes | — | Machine-evaluable oracle; `{signal, subject?, predicate, modConstant?, description?, condition?}`. |
 | `thresholds[].subject` | object | no | — | Selector `{location?, tileX?, tileY?}` (`minProperties: 1` if present) for a multi-record `cropPhaseDelta`/`soilHealthStateDelta` predicate. If supplied, it must match exactly one record; zero or multiple matches exit `14` (`unresolvable-subject`). Omitted means the step target must identify exactly one record (`ambiguous-subject`). Forbidden for single-record `smapiLog`. |
 | `thresholds[].predicate` | object | yes | — | Discriminated `op`: `cmp`, `between`, `multiplier`, `sentinel`, `unchanged`, `allOf`/`anyOf`, `not`. |
@@ -82,7 +86,7 @@ The union of `required` arrays in `contracts/scenario.schema.json` is authoritat
 | `initCommands[]` (macro) | `kind`, `file` |
 | `initCommands[]` (console) | `kind`, `command` |
 | `steps[]` | `action`, `target` |
-| `steps[].inputs` | none (members optional) |
+| `steps[].inputs` | conditional: `itemId`, `count` (`insertWaste`); `soilHealth` (`setSoilHealth`); `macroFile` (`runMacro`); otherwise members optional |
 | `thresholds[]` | `signal`, `predicate` |
 | `predicate` (`cmp`) | `op`, `left`, `operator`, `right` |
 | `predicate` (`between`) | `op`, `field`, `min`, `max`, `tolerance` |
@@ -211,7 +215,7 @@ A directory `evidence-bundle-<run-id>/` produced by every run. `runId` format: `
 |------|---------|
 | `manifest.json` | The run manifest, written **only** by the single `ManifestBuilder` producer. See the field table below. |
 | `manifest.sha256` | **Mandatory** detached SHA-256 anchor of the finalized `manifest.json`, stored alongside the bundle (outside `manifest.json` itself) and recorded in the audit log, so manifest tampering is detectable even if the bundle directory is altered (C-BND-01/FR-014). It is written after finalization and is the offline verifier's trust root. A missing anchor yields `errored` (exit `19`). |
-| `claims.json` | `claimId`, `evidencePointer`, `risk` (low/medium/high), `honestyLevel` (W/R/E), `safeWording`, `refusalSite` (C-REL-24). Referenced by the manifest as `claimsFile: "claims.json"`. |
+| `claims.json` | `claimId`, `evidencePointer`, `risk` (low/medium/high), `honestyLevel` (W/R/E), `safeWording`, `refusalSite` (C-REL-24). Root object requires `schemaVersion`, `runId`, `honestyLevel`, and `claims`; each claim requires `claimId`, `evidencePointer`, `risk`, `honestyLevel`, `safeWording`, and `refusalSite`, as enforced by `contracts/claims.schema.json` (Draft 2020-12, strict). Referenced by the manifest as `claimsFile: "claims.json"`. |
 | `artifacts/` | Screenshots, SMAPI logs, save-deltas before/after, reflection outputs, Crop-phase dump, Anomaly Report entries. The manifest's `artifacts[]` lists the relative paths. |
 | `attempts/<n>/attempt.json` | Per-attempt metadata (`attempt`, `verdict`, `failureClass`, `signals`, timestamps); stdout/stderr and intermediate artifacts live beside it. Append-only. **This is the only path family allowed inside the top-level `attempts[]`.** |
 | `attempts/<n>/manifest.json` | Per-attempt digest manifest for that attempt's own artifacts. It is listed in the top-level `subject[]` (with its digest), **never** in `attempts[]`. The discarded `attempts/warmup/` directory is not an attempt. |
@@ -222,6 +226,8 @@ A directory `evidence-bundle-<run-id>/` produced by every run. `runId` format: `
 #### Manifest field set (single producer: `ManifestBuilder`)
 
 `ManifestBuilder` is the **only** component allowed to create or modify `manifest.json` and its detached `manifest.sha256`. No other runner component, test harness, or external tool may append to either file. `manifest.sha256` is computed over the finalized manifest bytes and written after the manifest is closed; a producer that writes the anchor first is invalid.
+
+The authoritative required set is `contracts/evidence-bundle.schema.json#/required`: `schemaVersion`, `runId`, `timestamp`, `toolVersions`, `gameVersion`, `modVersion`, `environment`, `expectedSignals`, `subject`, `verdict`, `honestyLevel`, `attempts`, `claimsFile`, and `artifacts`. The schema additionally requires `commands`, `materials`, and `seeds` when `honestyLevel` is `R` or `E`, each with `minItems: 1`. `attempts` may be `[]` before the first attempt exists. The canonical bundle field is `buildSkipped`; `skipBuild` exists only in the scenario input `environment.config` and is never a manifest field.
 
 | Field | Required | Type / values | Notes |
 |-------|----------|---------------|-------|
@@ -238,13 +244,14 @@ A directory `evidence-bundle-<run-id>/` produced by every run. `runId` format: `
 | `files` | no | **same shape as `subject`** | Deprecated alias retained for one major version. It is `{name, digest: {sha256}}`, **not** `{path, sha256}`; the verifier prefers `subject` when both are present. See §Contract alignment for the spec 009 reconciliation item. |
 | `verdict` | yes | `pass`/`fail`/`errored`/`partial`/`skipped` | Aggregate run verdict. `flaky` is never a verdict value. |
 | `honestyLevel` | yes | `W`/`R`/`E` | `E` is human-assigned only. |
-| `attempts` | yes | array of path strings | Append-only; each item matches `attempts/<n>/attempt.json`. Per-attempt manifests are in `subject[]`, never here. |
-| `claimsFile` | yes | `"claims.json"` | Required bundle member. |
+| `attempts` | yes | array of path strings; `[]` allowed | Append-only; each item matches `attempts/<n>/attempt.json`. Empty before a pre-attempt failure. Per-attempt manifests are in `subject[]`, never here. |
+| `claimsFile` | yes | `"claims.json"` | Required bundle member, validated by `contracts/claims.schema.json`. |
 | `artifacts` | yes | array of relative paths | The captured artifacts, including the three mandatory signal artifacts when present. Each path MUST also appear in `subject[].name`. |
+| `buildSkipped` | no | boolean, default `false` | `true` when the run reused a prebuilt mod instead of rebuilding. Canonical bundle field; `skipBuild` is scenario-input config only. |
 | `compatibility` | no | object | Observed/minimum/maximum/tier per component, `modSelfCheck`, `deviation` (embedded in the manifest). |
-| `commands` | no | array of command records | argv, workingDir, timestamps, exitCode, stdout/stderr refs (C-SEC-29). Mandatory for R/E. |
-| `materials` | no | array of resource descriptors | `uri`, `sha256`, `name`, `mediaType`, `size`, `annotations.role`; roles `game-file`, `mod-manifest`, `tool`, `seed-save`, `dataset-instance` (C-SEC-29). Mandatory for R/E. |
-| `seeds` | no | array of seed records | At least one seed material is mandatory for R/E; carries `seedId`, `source`, `baseCommit`/`baseSaveHash`. |
+| `commands` | R/E | array of command records | argv, workingDir, timestamps, exitCode, stdout/stderr refs (C-SEC-29). Conditionally required (`minItems: 1`) for R/E. |
+| `materials` | R/E | array of resource descriptors | `uri`, `sha256`, `name`, `mediaType`, `size`, `annotations.role`; roles `game-file`, `mod-manifest`, `tool`, `seed-save`, `dataset-instance` (C-SEC-29). Conditionally required (`minItems: 1`) for R/E. |
+| `seeds` | R/E | array of seed records | Conditionally required (`minItems: 1`) for R/E; carries `seedId`, `source`, `baseCommit`/`baseSaveHash`. |
 | `determinism` | no | object | `idempotent` (const true) + `declaredSources`; copied from the scenario when present. |
 | `commandsCompleteness`, `materialsCompleteness`, `seedsCompleteness` | no | boolean, default `false` | `true` only when the evidence is provably complete/hermetic (C-SEC-29). |
 | `suiteRerunCount` | no | integer ≥ 0 | Suite reruns consumed (`RunnerMaxSuiteReruns = 4`). |
@@ -273,7 +280,7 @@ Three save terms are distinct and MUST NOT be used interchangeably. The runner n
 
 ### Run Verdict
 
-The **run outcome** is one of five base verdicts. `flaky` is a derived metadata flag, not a base verdict (C-REL-01/C-REL-26). Three flaky axes are kept separate and MUST NOT be conflated: (a) the **per-run mark** (`flaky: true`); (b) the qualified **`scenarioStatus`** (`candidate` → `quarantined` → `disabled`/`retired`, plus the independent `statisticalStatus` `confirmed-flaky`/`insufficient-data`); and (c) the **suite signal** (`healthy` ≥ 99 %, `monitor` 95–99 %, `alert` < 95 %, flaky fraction). Only `scenarioStatus` affects the blocking gate, and only after human approval.
+The **run outcome** is one of five base verdicts. `flaky` is a derived metadata flag, not a base verdict (C-REL-01/C-REL-26). Three flaky axes are kept separate and MUST NOT be conflated: (a) the **per-run mark** (`flaky: true`); (b) the qualified **`scenarioStatus`** (`active` → `candidate` → `quarantined` → `disabled`/`retired`, plus the independent `statisticalStatus` closed set `not-evaluated`/`insufficient-data`/`confirmed-flaky`/`stable`); and (c) the **suite signal** (`healthy` ≥ 99 %, `monitor` 95–99 %, `alert` < 95 %, flaky fraction). Only `scenarioStatus` affects the blocking gate, and only after human approval.
 
 | Verdict | Condition | Exit |
 |---------|-----------|------|
@@ -342,12 +349,12 @@ Committed in-repo at `specs/010-headless-verification-runner/quarantine.json`. T
 | `timeBoxDays` | integer | 14; one 14-day extension (28 total); then auto-disable (not auto-re-enable). |
 | `extensionReason` | string | Required for the single extension; written reason + owner sign-off. |
 | `flakyRunCount` | integer | **The only automatic trigger**: 2 flaky runs in a rolling 14-day window. There is no "2 of the last 3" alternative. |
-| `status` | enum `{candidate, quarantined, disabled, retired}` | `candidate` is automation-proposed and awaits human approval; `quarantined` is approved and in the time-box; `disabled` is the automatic terminal state at the 28-day cap; `retired` is human-approved permanent removal from the suite, distinct from auto-disable. |
+| `status` | enum `{candidate, quarantined, disabled, retired}` | `candidate` is automation-proposed and awaits human approval; `quarantined` is approved and in the time-box; `disabled` is the automatic terminal state at the 28-day cap; `retired` is human-approved permanent removal from the suite, distinct from auto-disable. The `scenarioStatus` value `active` is represented by the absence of a registry entry, not by a stored `status`. |
 | `shadowPassCount` | integer | Consecutive out-of-band shadow passes; ≥ 20 is required for re-enablement. |
 | `shadowHistory` | array of `{runId, verdict, date}` | Append-only shadow-run record; a `fail`/`errored`/`partial` resets the consecutive count. A shadow run is never counted toward promotion or `flakyRunCount`. |
 | `linkedIssue` | string | GitHub issue URL; created/reopened at escalation. |
 
-Gate layering: (1) a single run is `flaky` when attempt 1 fails with a retryable class and a later attempt passes; (2) **only** 2 such runs in the rolling 14-day window make the scenario a **quarantine candidate** (automation opens a pending entry); (3) a human approves entry; (4) `statisticalStatus: confirmed-flaky` is a separate statistical classification requiring N ≥ 30 runs and a Wilson 95 % CI whose upper bound is < 1.0 with point failure rate ≥ 30 %; below N it is `insufficient-data`; (5) pass-rate tiers (`healthy ≥ 99 %`, `monitor 95–99 %`, `< 95 %` alert) are monitoring signals only. Neither `statisticalStatus` nor the tiers is a quarantine trigger, and `confirmed-flaky` is not a quarantine stage.
+Gate layering: (1) a single run is `flaky` when attempt 1 fails with a retryable class and a later attempt passes; (2) **only** 2 such runs in the rolling 14-day window make the scenario a **quarantine candidate** (automation opens a pending entry); (3) a human approves entry; (4) `statisticalStatus: confirmed-flaky` is a separate statistical classification requiring N ≥ 30 runs and a Wilson 95 % CI whose upper bound is < 1.0 with point failure rate ≥ 30 %; below N it is `insufficient-data`, and before any N ≥ 30 evaluation it is `not-evaluated`; a scenario that clears the N ≥ 30 evaluation without the confirmed-flaky condition is `stable`; (5) pass-rate tiers (`healthy ≥ 99 %`, `monitor 95–99 %`, `< 95 %` alert) are monitoring signals only. Neither `statisticalStatus` nor the tiers is a quarantine trigger, and `confirmed-flaky` is not a quarantine stage.
 
 ### Never-Quarantine Registry (`never-quarantine.json`)
 
@@ -364,6 +371,25 @@ Committed in-repo at `specs/010-headless-verification-runner/never-quarantine.js
 Closed class set: `host-guard-breach`, `version-mismatch`, `missing-dependency`, `threshold-violation`, `crash`, `incomplete-signals`, `integrity-failure`, `security-failure`, `deterministic-regression`, `claim-overreach`.
 
 A scenario or run matching any class is **never** proposed for quarantine: the failure is a regression or a security/integrity event to bisect, fix, or escalate. A deterministic 100 %-failing scenario is a regression, not flake. Security/integrity failures and claim overreach are additionally never demotable via `--ignore-exit-code`.
+
+### Promotion Trigger Registry (`promotion-triggers.json`)
+
+Committed in-repo at `specs/010-headless-verification-runner/promotion-triggers.json`. Its shape is exactly `{schemaVersion, components[], transitions[]}`:
+
+```json
+{
+  "schemaVersion": 1,
+  "components": [
+    { "component": "test.md", "owner": "lfgranja", "trigger": "clean non-flaky host pass with three agreeing signals and honesty >= R" },
+    { "component": "ROADMAP.md", "owner": "lfgranja", "trigger": "same qualifying machine-pass run; marker-only update" },
+    { "component": "COMPLETION_SUMMARY.md", "owner": "lfgranja", "trigger": "same qualifying machine-pass run; marker-only update" },
+    { "component": "reflector/logger/runner", "owner": "lfgranja", "trigger": "2+ features reuse the loop (Rule of Three)" }
+  ],
+  "transitions": []
+}
+```
+
+`components[]` declares each promotable component, its owner, and its trigger. `transitions[]` starts empty and is append-only: every qualifying `machine-pass` run appends one record `{component, from, to, runId, owner, recordedAt}`. A transition is never rewritten or removed, and the runner may record only `machine-pass` transitions; `verified` remains the human E attestation. A missing registry is a fail-fast error (exit `14`) and is never created implicitly.
 
 ### Source Milestone Save Manifest (private builddeps repo)
 
