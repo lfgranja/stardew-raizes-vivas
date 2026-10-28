@@ -10,7 +10,7 @@ Build a reusable, unattended headless verification runner for Gate 3: a **bash o
 
 Two supporting components keep the orchestrator thin without creating a second runner:
 
-- `LivingRoots.Verification.Runner/` — a **net6.0 console helper** that performs deterministic, non-orchestrating work only: scenario validation, predicate evaluation, save diffing, archive extraction, and manifest building. It never launches the game, allocates a display, selects a verdict, or promotes documentation.
+- `LivingRoots.Verification.Runner/` — a **net6.0 console helper** that performs deterministic, non-orchestrating work only through exactly four verbs: `validate-scenario`, `evaluate`, `extract`, and `build-manifest`. It never launches the game, allocates a display, selects a verdict, or promotes documentation.
 - `LivingRoots.Verification/` — a **capture-only SMAPI mod** that subscribes to `ILivingRootsModApi.SoilGrowthModifierCompleted` and writes the Crop-phase dump. It contains no scenario validation, threshold evaluation, manifest building, sanitization, save diffing, or extraction.
 
 The only production-code change is an SMAPI mod-provided API (`ILivingRootsModApi` + `SoilGrowthModifierCompleted` event): the interface lives in `Domain/Interfaces/`, the implementation in `Services/`, `ModEntry.GetApi()` returns it, and `ModController` raises it at the tail of `OnDayEnding` after `ApplySoilGrowthModifier`. This lets the verification mod dump Crop phase deterministically without shipping debug code in the production binary (CWE-489).
@@ -48,10 +48,10 @@ The only production-code change is an SMAPI mod-provided API (`ILivingRootsModAp
 - No debug/CWE-489 code in the production binary (FR-004/FR-009); the dump hook lives only in the capture mod.
 - Archive extraction MUST be in-process relative to the extracting component (FR-025): the helper's `ArchiveExtractor` performs member validation and extraction itself and MUST NOT shell out to `unzip`/`7z`/`tar`.
 - Linux/Xvfb only (NFR-001); no Docker in Phase 1 (deferred per Regra dos Três).
-- All constants from `ModConstants` (Principle V / project convention); no hardcoded health values or tile coordinates.
+- All constants live in `LivingRoots/Constants.cs` (class `ModConstants`; Principle V / project convention); no hardcoded health values or tile coordinates.
 - Host-authoritative multiplayer preserved (Principle VI); farmhand path exercised via `debug split`.
 
-**Scale/Scope**: Reusable across the 19 roadmap features and, aspirationally, other mods (A8); the scenario contract is minimal enough for a second feature to adopt without forking the runner (SC-004). **US1 targets feature `004-playable-compost-loop`; US2 targets a different feature slug, `005-soil-health-to-crop-growth`**, with its own `test.md` GATE3 block and scenario. US2 MUST NOT reuse feature 004's slug.
+**Scale/Scope**: Reusable across the 19 roadmap features and, aspirationally, other mods (A8); the scenario contract is minimal enough for a second feature to adopt without forking the runner (SC-004). **US1 targets feature `004-playable-compost-loop`; US2 targets a different feature slug, `005-soil-health-to-crop-growth`**, with its own `test.md` GATE3 block and scenario. US2 MUST NOT reuse feature 004's slug. Suite discovery is implemented once in Phase 2 as the standalone `scripts/lib/suite.sh` (T061b); US2 (T110) adds only the 005 directory-suite fixture/scenario and asserts its diff has zero runner-source changes.
 
 ## Build/Test Prerequisite and `BLOCKED` Semantics
 
@@ -100,6 +100,7 @@ specs/010-headless-verification-runner/
 ├── contracts/           # Phase 1 output
 │   ├── scenario.schema.json          # Authored; Draft 2020-12, schemaVersion 2
 │   ├── evidence-bundle.schema.json   # NEW: machine-readable projection of the spec-009 bundle layout
+│   ├── claims.schema.json            # NEW: strict claim/evidence-pointer contract (FR-014/C-REL-24)
 │   ├── exit-codes.md                 # Runner exit-code contract
 │   └── test-md-template.md           # GATE3 block template for feature test.md files
 ├── fixtures/            # Scenario fixtures for contract tests
@@ -142,9 +143,11 @@ scripts/
 │   ├── evidence.sh              # bundle/attempt dirs, artifact collection, helper invocation
 │   ├── promotion.sh             # GATE3/root-doc marker injection, --check-docs
 │   ├── cleanup.sh               # traps, process-group teardown, temp purge
+│   ├── quit.sh                  # clean quit: save-mode, stability window, SIGKILL backstop
 │   ├── retry.sh                 # classification, 3 attempts, 5 s cooldown
 │   ├── quarantine.sh            # registry, time-box, shadow passes
 │   ├── performance.sh           # warmup discard, 5 ms gate, Gen0 delta
+│   ├── statistics.sh            # Wilson 95% CI, pass-rate tiers, RAFT/BH q <= 0.05
 │   ├── suite.sh                 # discovery, aggregation, suite rerun cap
 │   ├── ci.sh                    # CI-mode detection/flags
 │   ├── reporters.sh             # JUnit XML + Allure JSON
@@ -210,7 +213,7 @@ specs/010-headless-verification-runner/
 
 The bash orchestrator remains the **single entry point** (`scripts/verify-scenario.sh`) for acquiring, launching, injecting, capturing, evaluating, deciding, and promoting. It is **modular, not one literal file**: argument parsing and dispatch live in the entry point, and each concern lives in its own `scripts/lib/*.sh` unit so the implementation can be reviewed and tested without a monolith. The orchestrator, not the helper, owns process lifetime, display allocation, retry, verdict selection, and documentation promotion.
 
-The helper `LivingRoots.Verification.Runner` is a narrowly scoped console process, not a second runner: it has no launch/orchestration/verdict authority and is invoked as a deterministic subprocess for validation, evaluation, extraction, and manifest building. `LivingRoots.Verification` is a peer SMAPI mod with capture-only responsibilities. Docker remains out of Phase 1 (Regra dos Três), and the second-feature proof uses `specs/005-soil-health-to-crop-growth/` without changing runner source.
+The helper `LivingRoots.Verification.Runner` is a narrowly scoped console process, not a second runner: it has no launch/orchestration/verdict authority and is invoked as a deterministic subprocess for validation, evaluation, extraction, and manifest building. `LivingRoots.Verification` is a peer SMAPI mod with capture-only responsibilities. Suite discovery lives once in the standalone Phase 2 library `scripts/lib/suite.sh` (T061b); `scripts/verify-scenario.sh` has exactly two orchestrator-edit tasks (US1 T099 and US3 T120), and the US2 proof (T110) is scenario/fixture-only with zero runner-source changes. Docker remains out of Phase 1 (Regra dos Três), and the second-feature proof uses `specs/005-soil-health-to-crop-growth/` without changing runner source.
 
 ### Phase 1 — Build Wiring and Gate 1
 
@@ -229,6 +232,10 @@ The manifest includes at least:
 - integrity/subject: `subject[]` (`{name, digest:{sha256}}`) covering every artifact, including per-attempt manifests; `files` only as the deprecated one-major alias;
 - evidence provenance: `compatibility` (observed/minimum/maximum/tier per component, `modSelfCheck`, deviation), `commands` (argv arrays, workingDir, timestamps, exitCode, stdout/stderr refs), `materials` (ResourceDescriptor with roles `game-file`, `mod-manifest`, `tool`, `seed-save`, `dataset-instance`), `seeds` (≥1 for R/E, with `seedId`, `source`, `baseCommit`/`baseSaveHash`), `determinism`, and completeness flags (`commandsCompleteness`, `materialsCompleteness`, `seedsCompleteness`);
 - outcome: `verdict`, `honestyLevel`, `attempts[]` (only `attempts/<n>/attempt.json` paths), optional `integrityFailureRef`.
+
+Conditional requirements are authoritative in `contracts/evidence-bundle.schema.json`: for `honestyLevel` `R` or `E`, `commands`, `materials`, and `seeds` are required with `minItems: 1` (each seed carries `baseSaveHash` or `baseCommit` as applicable); for `W` their absence is allowed and the completeness flags must say so. `attempts` may be an empty array for a pre-attempt failure.
+
+`claims.json` is validated against `contracts/claims.schema.json` — strict Draft 2020-12, root required `schemaVersion`, `runId`, `honestyLevel`, `claims`, and per-claim required `claimId`, `evidencePointer`, `risk` (low/medium/high), `honestyLevel` (W/R/E), `safeWording`, `refusalSite`.
 
 `manifest.sha256` is written **after** the top-level manifest is finalized and lives outside `manifest.json`. Each attempt also has its own `attempts/<n>/manifest.json`; per-attempt manifests are listed in the top-level `subject`, never in `attempts[]`. `attempts/warmup/` is retained but is not an attempt and never appears in `attempts[]` (C-BND-01).
 
