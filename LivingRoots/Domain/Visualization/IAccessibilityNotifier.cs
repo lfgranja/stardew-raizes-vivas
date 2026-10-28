@@ -9,7 +9,7 @@ namespace LivingRoots.Domain.Visualization
     /// own HUD (<see cref="StardewValley.Game1.showRedMessage"/>), which needs
     /// <c>Game1</c> allocated and therefore cannot be unit-tested.
     /// </summary>
-    public interface IHudNotifier
+    public interface IAccessibilityNotifier
     {
         /// <summary>
         /// Shows the player a degradation notice explaining that accessibility
