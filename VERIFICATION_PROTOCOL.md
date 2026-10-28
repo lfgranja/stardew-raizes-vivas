@@ -52,6 +52,8 @@ Preference ordering: **Manual end-to-end session → multi-signal capture → sc
 
 In spec 009 specifically, `SC-009` refers to the **manual verification protocol** defined in this §3 — a documented checklist for a real SMAPI play-through of the Phase 2 growth hook. It is distinct from the scripted pipeline (save comparator only, per FR-001a/FR-003); SC-009 is the manual-protocol label, not the automation component. Formal definition: `specs/009-end-to-end-game-verification/spec.md` Success Criteria (SC-009). Per-criterion checklist: `specs/009-end-to-end-game-verification/checklists/gate3-verification-contract.md`. Status: unverified (requires `GamePath` + real SMAPI session).
 
+**Automated counterpart (spec 010).** The headless verification runner specified in `specs/010-headless-verification-runner/spec.md` is the automated fallback counterpart to this manual §3: it runs the Gate 3 evidence triad unattended on a Linux/Xvfb host, while this protocol remains the documented manual fallback where the runner cannot execute. The binding requirement is **FR-021** in that spec, which names this §3 and `specs/009-end-to-end-game-verification/checklists/gate3-verification-contract.md` as the preserved manual fallback, requires both documents to cross-link back to FR-021, and requires a doc-link check that exits `21` on drift. A runner `machine-pass` is not `verified`; only a maintainer's E attestation under this protocol writes `verified`.
+
 Use a reproducible template per feature / gameplay loop segment. Example template for a composting-bin / soil-health mod loop:
 
 ### 3.1 Pre-state (baseline — capture BEFORE touching feature)
