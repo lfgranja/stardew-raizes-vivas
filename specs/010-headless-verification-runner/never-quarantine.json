@@ -14,14 +14,9 @@
   ],
   "criticalPathScenarios": [
     {
-      "scenarioId": "compost-growth",
+      "scenarioId": "compost-growth-poor-soil",
       "featureSlug": "004-playable-compost-loop",
-      "reason": "Core compost-to-growth threshold evaluation; a regression is a deterministic defect, never flake."
-    },
-    {
-      "scenarioId": "save-load-round-trip",
-      "featureSlug": "009-end-to-end-game-verification",
-      "reason": "Save/load round-trip is a critical-path coverage class."
+      "reason": "Core compost-to-growth threshold evaluation on poor soil; a regression is a deterministic defect, never flake."
     }
   ],
   "updatedAt": "2026-10-27T12:00:00Z",
