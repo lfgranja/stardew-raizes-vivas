@@ -80,11 +80,12 @@ rows = []
 for line in promotion.splitlines():
     if not line.startswith("|"):
         continue
-    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    cells = [c.strip() for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
     if len(cells) < 2 or cells[0] in {"From", "------"} or set(cells[0]) <= {"-", " "}:
         continue
     backticked_cells = [
-        re.sub(r"\s*\(.*?\)", "", c).strip().strip("`").strip() for c in cells[:2]
+        re.sub(r"\s*\(.*?\)", "", c).strip().strip("`").replace("\\", "").strip()
+        for c in cells[:2]
     ]
     rows.append((backticked_cells[0], backticked_cells[1]))
 expected_transitions = {
