@@ -87,3 +87,21 @@ The `compostable_item` trigger change improves one direction (items with the tag
    - T143: `dotnet build` ✅ (already passes)  
    - T144: ArchitecturalPlanTests ✅ (84/84 pass)
    - T145: Full test suite including T114-T126
+
+## Gate 3 Verification
+
+<!-- GATE3:BEGIN -->
+- **Status**: partial
+- **Verdict**: —
+- **Flaky**: false
+- **Run ID**: —
+- **Commit**: —
+- **Date**: —
+- **Signals**:
+  - SoilHealthState delta: —
+  - Crop-phase delta: —
+  - SMAPI log: —
+- **Bundle**: —
+- **Honesty level**: —
+- **Claim**: Gate 3 evidence pending; no machine-pass or human verified claim yet.
+<!-- GATE3:END -->

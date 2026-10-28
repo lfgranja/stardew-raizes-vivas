@@ -35,15 +35,18 @@ R = Responsible (does the work), A = Accountable (final decision, exactly one), 
 | Concurrency, isolation, save preservation | `lfgranja` | `lfgranja` | Contributors | Repo owner | 2026-10-27 | 2027-01-27 |
 | Scenario contract and schema evolution | `lfgranja` | `lfgranja` | Contributors | Repo owner | 2026-10-27 | 2027-01-27 |
 | GATE3 promotion and root-doc updates | `lfgranja` | `lfgranja` | Contributors | Repo owner | 2026-10-27 | 2027-01-27 |
+| Gate 3 verdict ownership (`machine-pass` → `verified`) | `lfgranja` | Runner (machine `machine-pass`); maintainer (honesty-level E attestation) | Contributors | Repo owner | 2026-10-27 | 2027-01-27 |
 
 When a second maintainer joins, split A/R by domain and record the change here in a reviewed PR.
+
+**Gate 3 verdict ownership.** The runner is the sole emitter of the machine `machine-pass` mark, and only for a clean, non-flaky `pass` with three agreeing signals on a host run. `verified` is a human claim: it requires the maintainer's honesty-level E attestation over that machine bundle, and the runner never writes it on its own. Farmhand / split-screen (`debug split`) runs are never `machine-pass` — they exercise the host-authority guard only (transport not tested) and are capped at honesty levels W/R regardless of how clean the signal set is. A maintainer may always demote; neither mark is self-certified by the producing run alone.
 
 ## Review Cadence
 
 Tiered, risk-based (C-SEC-27; C-REL-20). Annual-only review is explicitly rejected as an anti-pattern.
 
 1. **Trigger-based (immediate)** — on any change to token handling, cache, extraction, permissions/redaction, a new external integration or dependency, a security incident or near-miss, new threat intelligence, or a change to this annex.
-2. **Quarterly lightweight** — checklist currency (CHK001–CHK053), token rotation verified ≤ 30 days, audit-log spot-check, SLSA level regression, OWASP/SLSA mapping refresh. Recorded in the review record below.
+2. **Quarterly lightweight** — checklist currency (CHK001–CHK059 across the five requirements-quality checklists: requirements, security, concurrency, reliability, scenario-contract), token rotation verified ≤ 30 days, audit-log spot-check, SLSA level regression, OWASP/SLSA mapping refresh. Recorded in the review record below.
 3. **Annual full** — STRIDE threat-model refresh of the runner and supply chain, security-posture evaluation, roadmap refresh, ownership reassignment, SLSA reassessment.
 4. **Per-PR / per-release automated** — existing CI formatting and (when active) build/test checks; schema validation; bundle verification.
 
@@ -53,6 +56,7 @@ Tiered, risk-based (C-SEC-27; C-REL-20). Annual-only review is explicitly reject
 |------|------|-------|---------|----------|
 | 2026-10-27 | Initial baseline | Spec 010 security requirements CHK001–CHK053; ownership assigned; tiered cadence adopted; threat mapping added | Accepted; no open critical findings | `lfgranja` |
 | 2026-10-27 | Threat-mapping correction and token/aggregation controls | Corrected CICD-SEC references; token-in-argv prohibition; token-event source split; 24-hour aggregation; local/CI control matrix | Accepted; no open critical findings | `lfgranja` |
+| 2026-10-27 | Checklist-currency correction | Five requirements-quality checklists covering CHK001–CHK059 (requirements, security, concurrency, reliability, scenario-contract); supersedes the earlier `CHK001–CHK053` currency statement. No requirement text changed | Accepted; currency range corrected; ownership unchanged | `lfgranja` |
 
 Future reviews append a row; rows are never rewritten.
 
@@ -135,6 +139,18 @@ FR-026 and C-SEC-26 separate ownership from infrastructure realization. The foll
 | Token phases | Phase 1 fine-grained PAT (`BUILDDEPS_TOKEN`); Phase 2 GitHub App installation token; Phase 3 OIDC federation when the private repo supports it | `lfgranja` |
 | Durable evidence export | Append-only/WORM storage outside GitHub Actions artifacts; annual restore drill | `lfgranja` |
 
+### Durable Store, Records, and Audit Operations
+
+| Obligation | Realization | Owner | Cadence |
+|------------|-------------|-------|---------|
+| Durable evidence store (append-only/WORM) | Evidence bundles and `audit.jsonl` exported to append-only/WORM storage outside GitHub Actions artifacts (90-day artifacts are not the durable store); write-once retention ≥ 365 days | `lfgranja` | Written on every run; immutability policy and retention configuration re-verified at each quarterly lightweight review |
+| Promotion-trigger record | `specs/010-headless-verification-runner/promotion-triggers.json` — machine-readable mirror of the Deferred Items and Promotion Triggers table; this annex remains normative and the JSON file is the record consumed by the runner/CI | `lfgranja` | Updated in the same PR as any trigger change and at every promotion decision; read at the quarterly lightweight review |
+| Quarterly audit-log spot-check | Sample runner-emitted `audit.jsonl` events and the exported GitHub audit log against the retention and source tables above; record gaps as issues | `lfgranja` | Quarterly |
+| Quarterly deletion drill | Exercise the 365-day expiry/deletion path on a synthetic bundle in the WORM store, including the documented-approval step; confirm deletions are refused without approval | `lfgranja` | Quarterly |
+| Annual restore drill | Restore a sampled bundle from the WORM store and run `scripts/verify-evidence-bundle.sh` against it; confirm the restored bundle still verifies offline | `lfgranja` | Annual |
+
+A failed spot-check, deletion drill, or restore drill opens an issue assigned to the security owner and is recorded in the security review record above; the drill is not "passed" until the issue is closed or an accepted deviation is documented.
+
 ## Deferred Items and Promotion Triggers
 
 This is the single complete list referenced by the spec's Out of Scope section. An item moves into scope only when its trigger is met and the change is recorded here with a date and owner.
@@ -150,6 +166,8 @@ This is the single complete list referenced by the spec's Out of Scope section. 
 | Windows/macOS automated execution | Concrete host demand plus a supported headless display path | `lfgranja` |
 | Multi-mod packaging/distribution | ≥2 mods consume the runner as a packaged artifact | `lfgranja` |
 
+The machine-readable mirror of this table is `specs/010-headless-verification-runner/promotion-triggers.json`; this annex remains normative if the two disagree, and the JSON file is updated in the same PR as any change here.
+
 ## Approval Gates
 
 | Action | Approver | Audit trail |
@@ -164,8 +182,11 @@ This is the single complete list referenced by the spec's Out of Scope section. 
 | Deletion of audit/evidence before 365-day expiry | Maintainer + repo owner | `integrity-failure.json`/audit event + documented reason |
 | Update to `gamepath.lock.json` | Reviewed PR (maintainer approval) | Git history |
 | Change to the never-quarantine set | Reviewed PR (maintainer approval) | Git history + audit event |
-| Promotion to `verified` (R honesty level) | Automatic only on a clean, non-flaky `pass` with three agreeing signals; a human may demote | `test.md` GATE3 block + bundle |
-| Human attestation at honesty level E | Maintainer (human judgment; never auto-assigned) | `claims.json` + `test.md` GATE3 block |
+| Machine `machine-pass` emission | No approval — runner-emitted only, and only for a clean, non-flaky `pass` with three agreeing signals on a host run; never for farmhand / split-screen runs | `claims.json` + the three signal artifacts in the bundle |
+| Promotion to `verified` | Maintainer E attestation over a machine `machine-pass` whose bundle verifies offline; never automatic; a human may demote | `test.md` GATE3 block + bundle + reviewer/date/session |
+| Human attestation at honesty level E | Maintainer (human judgment over the machine bundle; never auto-assigned) | `claims.json` + `test.md` GATE3 block |
+
+**Root-doc GATE3 markers are a promotion precondition.** `ROADMAP.md` and `COMPLETION_SUMMARY.md` MUST each contain exactly one intact `<!-- GATE3:BEGIN -->` … `<!-- GATE3:END -->` block before any promotion, and the markers are maintained by the spec-010 setup task, not created or guessed by the runner at promotion time. A promotion attempt against a missing, duplicated, or inverted marker block is refused before launch (exit `14`), so a bundle can be `machine-pass` while root-doc promotion remains blocked. Only a clean, non-flaky host `pass` writes the block; flaky passes never update root docs.
 
 ## Threat-to-Requirement Mapping
 

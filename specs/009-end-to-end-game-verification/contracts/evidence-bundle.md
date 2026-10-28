@@ -45,7 +45,7 @@ evidence-bundle-<run-id>/
     { "name": "artifacts/smapi-log.txt", "digest": { "sha256": "..." } }
   ],
   "files": [
-    { "path": "artifacts/soil-health-before-after.json", "sha256": "..." }
+    { "name": "artifacts/soil-health-before-after.json", "digest": { "sha256": "..." } }
   ],
   "verdict": "pass",
   "honestyLevel": "R",
@@ -91,7 +91,7 @@ evidence-bundle-<run-id>/
 - **R (runtime evidence collected)**: evidence artifacts present and valid (save delta, log excerpt, observation notes), plus commands, materials, at least one seed, claims, and recomputed digests.
 - **E (human judgment)**: assigned only by the maintainer. Never auto-assigned. Requires W + R as prerequisites.
 
-Assignment rule: W → R → E (sequential). E cannot be assigned without both W and R. Auto-promotion to E is prohibited. `verified` is an R-level machine-evidence status; E is a separate human attestation.
+Assignment rule: W → R → E (sequential). E cannot be assigned without both W and R. Auto-promotion to E is prohibited. A clean non-flaky host `pass` with three agreeing signals and honesty ≥ R is `machine-pass`; `verified` is a human-only E attestation over that machine evidence and is never auto-assigned.
 
 ## Failure handling
 
