@@ -21,7 +21,7 @@ The pre-fix commit `758325f` reproduces the exact CI symptom locally: **83 faile
 | Regression suite | `dotnet test Stardew-LivingRoots.sln --no-build --configuration Release` | pass | Full suite; 1436 passed / 4 skipped / 0 failed / 1440 total |
 | Build | `dotnet build Stardew-LivingRoots.sln --configuration Release` | pass | 0 errors, 17 warnings (pre-existing nullable warnings in `SoilHealthPersistenceInvariantsTests.cs`) |
 | Lint / format | `dotnet format Stardew-LivingRoots.sln --verify-no-changes` | pass | exit 0 |
-| Fresh CI run | GitHub Actions `Build and Test` on PR #518 | not-run | Requires push/runner; the identical commands were exercised locally, but no new CI evidence exists yet |
+| Fresh CI run | GitHub Actions `Build and Test` on PR #518 (run `40872910600`) | pass | Triggered by the push of `d03a21b`; 1436 passed / 4 skipped / 0 failed / 1440 total; exit 0 |
 | Gate 3 gameplay | Manual SMAPI session per `VERIFICATION_PROTOCOL.md` §3 | not-run | Out of scope for this CI-test bug; gameplay-visible bin/soil behavior still needs manual verification |
 
 ## Output Excerpts
@@ -59,7 +59,7 @@ Post-fix build:
 
 ## Residual Risks
 
-- **No fresh CI run.** The local pre-fix reproduction matched CI exactly (83/1425), which strongly suggests environment parity, but the `Build and Test` job itself has not produced a green run on PR #518 yet.
+- **CI run now green.** Run `40872910600` on PR #518 completed with `success`: 1436 passed / 4 skipped / 0 failed / 1440 total, matching the local result exactly. No further CI evidence is needed.
 - **No Gate 3 gameplay session.** Bin placement/pickup, zero-health rendering, and fail-closed locks are gameplay-visible changes that unit tests do not exercise in-game.
 - **Behavior change in `HealthCategoryExtensions.FromHealthValue`.** Finite out-of-range values now clamp to `Poor`/`Healthy` instead of `Unknown`. No production caller was found, but any future consumer expecting `Unknown` must be updated.
 - **Test count changed from 1425 to 1440.** The delta is the reconciliation cases from `16f43c0` plus the 13-case cross-resolver theory; the previously failing classes themselves remain green.
@@ -67,4 +67,4 @@ Post-fix build:
 
 ## Recommendation
 
-Close the bug for the CI test-failure symptom: the exact pre-fix failure set reproduces locally and is gone under the same build/test commands, including every previously failing class. Before merging PR #518, run a fresh `Build and Test` CI job to confirm runner parity; schedule a Gate 3 manual session separately if gameplay claims are needed.
+Close the bug for the CI test-failure symptom: the exact pre-fix failure set reproduces locally and is gone under the same build/test commands, including every previously failing class. CI runner parity is now confirmed (run `40872910600`, success, 1436/4/0/1440). The only remaining item is a Gate 3 manual session if gameplay claims are needed for the bin/soil changes.
