@@ -165,8 +165,10 @@ This is the single complete list referenced by the spec's Out of Scope section. 
 | GitHub App / OIDC token phases | Runner moves to shared/self-hosted CI or a second maintainer is added | `lfgranja` |
 | Windows/macOS automated execution | Concrete host demand plus a supported headless display path | `lfgranja` |
 | Multi-mod packaging/distribution | ≥2 mods consume the runner as a packaged artifact | `lfgranja` |
+| Interactive game-store authentication | A supported storefront exposes a documented headless/CLI authentication path, or interactive login is approved as a recorded run prerequisite | `lfgranja` |
+| Public GitHub-hosted CI execution with game files | A licensed install can be provisioned on a GitHub-hosted runner without redistributing proprietary files, or GitHub-hosted runners gain a compliant private-artifact path | `lfgranja` |
 
-The machine-readable mirror of this table is `specs/010-headless-verification-runner/promotion-triggers.json`; this annex remains normative if the two disagree, and the JSON file is updated in the same PR as any change here.
+The machine-readable mirror of this table is `specs/010-headless-verification-runner/promotion-triggers.json`, using the shape `{schemaVersion, components[], transitions[]}`: `components[]` mirrors these deferred items (`component`, `owner`, `trigger`) and `transitions[]` records each promotion (`component`, `from`, `to`, `runId`, `owner`, `recordedAt`). This annex remains normative if the two disagree, and the JSON file is updated in the same PR as any change here.
 
 ## Approval Gates
 

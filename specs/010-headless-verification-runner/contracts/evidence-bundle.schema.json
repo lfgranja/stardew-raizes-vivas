@@ -22,6 +22,41 @@
     "claimsFile",
     "artifacts"
   ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "honestyLevel": {
+            "enum": [
+              "R",
+              "E"
+            ]
+          }
+        },
+        "required": [
+          "honestyLevel"
+        ]
+      },
+      "then": {
+        "required": [
+          "commands",
+          "materials",
+          "seeds"
+        ],
+        "properties": {
+          "commands": {
+            "minItems": 1
+          },
+          "materials": {
+            "minItems": 1
+          },
+          "seeds": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
   "properties": {
     "schemaVersion": {
       "const": 1,
@@ -176,10 +211,10 @@
         "type": "string",
         "pattern": "^attempts/[1-9][0-9]*/attempt\\.json$"
       },
-      "minItems": 1,
+      "minItems": 0,
       "uniqueItems": true,
       "title": "Attempts",
-      "description": "Append-only list of per-attempt records. Contains ONLY attempts/<n>/attempt.json paths; each per-attempt manifest is listed in subject[] instead, and attempts/warmup/ is never an attempt.",
+      "description": "Append-only list of per-attempt records. Contains ONLY attempts/<n>/attempt.json paths; each per-attempt manifest is listed in subject[] instead, and attempts/warmup/ is never an attempt. Empty (`[]`) is legal for a pre-attempt failure and becomes append-only once the first attempt exists.",
       "examples": [
         [
           "attempts/1/attempt.json"
@@ -457,7 +492,7 @@
             "headless": {
               "type": "boolean"
             },
-            "skipBuild": {
+            "buildSkipped": {
               "type": "boolean"
             }
           }
@@ -475,9 +510,9 @@
       "properties": {
         "key": {
           "type": "string",
-          "pattern": "^environment\\.(gameVersion|smapiVersion|modVersion|saveId|config\\.[A-Za-z0-9_]+)$",
+          "pattern": "^environment\\.(gamePath|milestoneSave|gameVersion|smapiVersion|modVersion|saveId|config\\.[A-Za-z0-9_]+)$",
           "title": "Override key",
-          "description": "Dotted key limited to declared environment values. testMdPath, expectedSignals, thresholds, playerRole, and hostGuard are never overridable."
+          "description": "Dotted key limited to declared environment values plus the gamePath and milestoneSave overrides. testMdPath, expectedSignals, thresholds, playerRole, and hostGuard are never overridable."
         },
         "value": {
           "type": "string",

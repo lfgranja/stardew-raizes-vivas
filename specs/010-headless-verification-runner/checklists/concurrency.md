@@ -1,5 +1,7 @@
 # Concurrency & Save-Preservation Requirements Quality Checklist: Headless Game Verification Runner
 
+> **Review status: requirements-text review only.** A `[x]` mark is a requirements-quality judgment about the specification text, not execution evidence. Implementation attestation is pending T149.
+
 **Purpose**: Validate that concurrency, isolation, and save-preservation requirements (display allocation, save copy isolation, XDG isolation, file locking, process conflict detection, orphan handling, temp cleanup, collision avoidance, backup/restore, atomic operations) are complete, clear, measurable, consistent, and covered.
 **Created**: 2026-10-26
 **Feature**: [spec.md](../spec.md)

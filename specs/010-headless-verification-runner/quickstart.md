@@ -33,7 +33,7 @@ Common flags:
 - `--scenario <path>` — a single scenario JSON **file** or a **directory** (required). A directory discovers `*.scenario.json` (fallback `*.json`) in lexicographic order and aggregates the suite per C-SCN-34; no discovered scenario exits `20`. A file runs exactly that scenario.
 - `--scenario-glob <pattern>` — directory mode only: override the discovery glob (`*.scenario.json` by default, fallback `*.json`). Discovery order and suite aggregation are unchanged. Combining it with a file `--scenario` exits `14`.
 - `--game-path <dir>` — override `STARDEW_GAME_PATH` for this invocation; if neither is present, exit `14` (usage). It does not change the FR-001 three-state rules: a set-but-invalid path is a **cache miss** (acquire when a token is available; otherwise exit `9`), and a valid cache is reused without network. The resolved source is recorded in the bundle.
-- `--skip-build` — skip the rebuild/deploy step and use the assemblies already deployed under the game's `Mods/` folder. Deployment preflight still runs (a missing deployed mod/verification assembly exits `12`; a missing required game assembly exits `9`), and the bundle's environment record retains `skipBuild: true` so the run never implies the tested binary was rebuilt from the current commit.
+- `--skip-build` — skip the rebuild/deploy step and use the assemblies already deployed under the game's `Mods/` folder. Deployment preflight still runs (a missing deployed mod/verification assembly exits `12`; a missing required game assembly exits `9`), and the bundle's environment record retains `buildSkipped: true` so the run never implies the tested binary was rebuilt from the current commit.
 - `--milestone-save <name>` — select the read-only source milestone save folder for this run (overrides the scenario's `milestoneSave` source selection; the scenario's `environment.saveId` must still match the selected milestone manifest). The name must match the manifest's `saveName`; an unknown or mismatched name exits `14`. The source folder must remain byte-identical (FR-018/SC-005).
 - `--override <dotted.key>=<value>` — repeatable; only declared environment keys (`environment.gameVersion`, `environment.smapiVersion`, `environment.modVersion`, `environment.saveId`, `environment.config.*`). Applied after schema validation, re-validated against the version matrix, and recorded in `manifest.json#/environmentOverrides`. Unknown keys, or any attempt to override `testMdPath`, `expectedSignals`, `thresholds`, `playerRole`, or `hostGuard`, exits `14`.
 - `--force-refresh` — bypass the game-file cache and re-acquire.
@@ -70,7 +70,7 @@ The **claim root** is the GATE3 block in the scenario's `testMdPath` (`specs/<NN
 
 ## Validation scenarios
 
-Twelve cases are mandatory: **VS-01 through VS-10, plus VS-09b and VS-09c**. T115 in `tasks.md` must exercise all twelve against the fake host; a run that skips any of them is incomplete. The table is the index; each subsection states the observation.
+Twelve cases are mandatory: **VS-01 through VS-10, plus VS-09b and VS-09c**. T136 in `tasks.md` must exercise all twelve against the fake host — the ten numbered cases VS-01, VS-02, VS-03, VS-04, VS-05, VS-06, VS-07, VS-08, VS-09 and VS-10 plus the two additional cases VS-09b and VS-09c; a run that skips any of them is incomplete. The table is the index; each subsection states the observation.
 
 | ID | Case | Expected exit | Promotion |
 |----|------|---------------|-----------|

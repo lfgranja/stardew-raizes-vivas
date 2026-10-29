@@ -2,19 +2,48 @@
 
 **Feature**: 010-headless-verification-runner
 
-The runner's exit code is the sole machine-readable signal (spec 008 FR-013). Infrastructure failure classes are inherited unchanged from the spec 008 smoke taxonomy (codes 1–17; code 8 is retired; code 11 is inherited as the game-store/Steam prerequisite class but is **never emitted** by this runner because acquisition uses the private repo). The runner's own verdict/failure classes are allocated starting at 18 per the spec 008 allocation rule ("new categories take the next value above the highest published code"; no published code is ever re-assigned). Reserved ranges 64–78, 100–254, 126, 127, ≥128 are never used.
+The runner's exit code is the sole machine-readable signal (spec 008 FR-013). Infrastructure failure classes are inherited unchanged from the spec 008 smoke taxonomy (codes 1–17; code 8 is retired; code 11 is inherited as the game-store/Steam prerequisite class but is **never emitted** by this runner because acquisition uses the private repo). Every code from `0` through `22` is enumerated as its own row below, and no code is ever reused. The runner's own verdict/failure classes are allocated starting at 18 per the spec 008 allocation rule ("new categories take the next value above the highest published code"; no published code is ever re-assigned). Reserved ranges 64–78, 100–254, 126, 127, ≥128 are never used.
 
 ## Table
 
 | Code | Class | Meaning |
 |------|-------|---------|
 | 0 | PASS | All selected tests ran and passed (warnings and `flaky: true` allowed) |
-| 1–17 | (inherited) | Smoke infrastructure codes, unchanged (spec 008 taxonomy); 8 retired; 11 inherited but **never emitted** by this runner |
+| 1 | `EX_GAME_NOT_FOUND` (inherited) | Game installation not found at the expected path |
+| 2 | `EX_SMAPI_NOT_FOUND` (inherited) | SMAPI not installed or not functional: a SMAPI marker file is missing or resolves outside the game directory, the launcher is not executable, the assembly version cannot be parsed, or the apphost died with `131`/`134`/`154` |
+| 3 | `EX_GRAPHICS_UNUSABLE` (inherited) | Graphics environment present but unusable: no `GLX`/`RANDR`, no software renderer, no framebuffer-object support, or a graphics-device failure recorded in the log |
+| 4 | `EX_TIMEOUT` (inherited) | The run sentinel or the mod-resolution header did not appear within the `--timeout` window measured from launch; retryable |
+| 5 | `EX_MOD_LOAD_FAILURE` (inherited) | Mod failed to load: a mod-scoped `ERROR`/`ALERT` record, absence from the loaded-mods block, presence in the skipped-mods section, a crash during the run, or the game process SIGKILLed (status `137`) |
+| 6 | `EX_LOCK_CONTENTION` (inherited) | Another verification instance is running (`flock` failed) |
+| 7 | `EX_PROCESS_CONFLICT` (inherited) | An existing Stardew Valley/SMAPI process was detected |
+| 8 | RETIRED | Retired smoke code. Never reused, never emitted, and never assigned to a new class |
+| 9 | `EX_MISSING_DEPENDENCY` (inherited) | A required host tool, game assembly, or cached dependency is absent |
+| 10 | `EX_DISPLAY_UNAVAILABLE` (inherited) | The virtual display could not be allocated or started (Xvfb failed or reported no display number) |
+| 11 | `EX_STEAM_PREREQ_MISSING` (inherited, **never emitted**) | Inherited game-store/Steam prerequisite class; this runner never emits it because acquisition uses the private repo |
+| 12 | `EX_BUILD_ARTIFACT_FAILURE` (inherited) | The mod failed to build, the deploy target could not be removed, or the deployed assembly is missing, older, or not byte-identical to the fresh build |
+| 13 | `EX_INTERNAL_ERROR` (inherited) | The runner itself broke: unhandled error, failed assertion, unknown verdict from the log gate, or unmapped child status |
+| 14 | `EX_USAGE_ERROR` (inherited) | Usage or CLI-argument error: unknown option/flag, missing required argument, or malformed value |
+| 15 | `EX_NO_LOG_PRODUCED` (inherited) | The game exited (including status `0`) but produced no SMAPI log |
+| 16 | `EX_MOD_MANIFEST_INVALID` (inherited) | The mods path is missing, not a directory, or not writable, or the deployed mod folder/`manifest.json`/its `UniqueID` is missing or invalid |
+| 17 | `EX_MOD_RESOLUTION_ABORTED` (inherited) | SMAPI aborted before mod resolution: the run sentinel was observed but the mod-resolution header never appeared |
 | 18 | FAIL | Threshold violation / assertion failure (verdict `fail`), including a matched `expectedVerdict: fail` |
 | 19 | ERRORED | Crash, capture-path failure, **missing bundle or contract artifact** (`manifest.json`, `claims.json`, `manifest.sha256`, or a per-attempt record named in `attempts[]`), a `partial` verdict from an incomplete or divergent signal set, save-preservation/working-copy breach, save I/O error after retries, version mismatch, or `expectedVerdict` mismatch (verdict `errored`/`partial`) |
 | 20 | NO_TESTS | No scenario discovered, or **every** selected scenario was skipped/quarantined (verdict `skipped`). A mixed suite with at least one non-skipped result does not use 20. |
 | 21 | POLICY | Policy / quality-gate violation: docs drift, minimum-expected-tests, coverage threshold, claim/honesty overreach, or another non-gameplay policy check |
 | 22 | reserved | Reserved for a future flaky-only / partial-success code. Never emitted; no other class may be assigned to it. |
+
+## Helper subcommands
+
+The runner also exposes four helper verbs. None of them launches the game, writes a GATE3 block, updates `testMdStatus`/`gate3Status`, or carries **any verdict authority**: they validate or derive data for a later main run, and only the main verification run produces a verdict.
+
+| Verb | Exit codes | Behaviour |
+|------|------------|-----------|
+| `validate-scenario` | `0`, `14` | `0` when the scenario validates against `contracts/scenario.schema.json` and the path/marker rules; `14` for usage errors and any schema, path, marker, or semantic validation failure. |
+| `evaluate` | `0`, `14`, `19` | `0` when every predicate evaluates as declared; `14` for usage errors or malformed predicate input; `19` when a predicate cannot be evaluated (missing signal/field, divergent or incomplete evidence). |
+| `extract` | `0`, `14`, `19` | `0` when the requested signal is extracted and written; `14` for usage errors or an unknown signal kind; `19` when the source log or artifact is missing or unreadable. |
+| `build-manifest` | `0`, `14`, `19` | `0` when `manifest.json` and the detached `manifest.sha256` are built; `14` for usage errors or missing required inputs; `19` when inputs are incomplete or a digest cannot be computed. |
+
+Every helper writes its result as JSON to **stdout** (diagnostics go to stderr) and nothing else; callers MUST parse stdout, never scrape stderr. Helper exit codes never become a suite verdict, are never accepted by `--ignore-exit-code`, and never promote a status.
 
 ## Rules
 

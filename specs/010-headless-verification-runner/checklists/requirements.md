@@ -1,5 +1,7 @@
 # Specification Quality Checklist: Headless Game Verification Runner
 
+> **Review status: requirements-text review only.** A `[x]` mark is a requirements-quality judgment about the specification text, not execution evidence. Implementation attestation is pending T149.
+
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-26
 **Feature**: specs/010-headless-verification-runner/spec.md

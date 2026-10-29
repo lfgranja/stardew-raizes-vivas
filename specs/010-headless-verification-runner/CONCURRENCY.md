@@ -86,7 +86,7 @@ Owned-display identity is `(display number, Xvfb PID, PID start-time token)`. On
 | Retryability | `EINTR` is retried inline; space/quota errors are not retryable |
 | Recovery | Remove temp; leave target untouched; record the failure in the run log |
 | Test cases | TC-CON-042..045 |
-| Code | `scripts/lib/concurrency.sh` (`atomic_write`) |
+| Code | `scripts/lib/atomic.sh` (`atomic_write`) |
 
 ## 7. Orphan handling
 
@@ -98,7 +98,7 @@ Owned-display identity is `(display number, Xvfb PID, PID start-time token)`. On
 | Retryability | Detect-and-report only; no retry |
 | Recovery | Process-group SIGTERM → SIGKILL escalation for owned children; orphan report in the evidence bundle |
 | Test cases | TC-CON-026..029 |
-| Code | `scripts/verify-scenario.sh` (`cleanup`, `reap_children`) |
+| Code | `scripts/lib/concurrency.sh` (`orphan_registry`); `scripts/verify-scenario.sh` (`cleanup`, `reap_children`) |
 
 **Orphan registry.** `orphaned-displays.json` is an append-only array inside the evidence bundle. Each entry records `display`, `socketPath`, `observedAtUtc`, `ownerPid` (or `null`), `ownerStartTime` (or `null`), `ownerTokenMatch` (boolean), `classification` (`dead-owner` | `token-mismatch` | `unresponsive`), and `action` (`report-only`). The `action` field is always `report-only`: the orphan registry records unknown-ownership displays, which the runner MUST NOT signal or delete. An owned display whose token matches this instance may be force-unlinked during normal cleanup (C-CON-22); that action is recorded in the run log, not in the orphan registry. The registry is never edited in place; a later run appends a new file/entry rather than rewriting history. Entries are informational and never trigger a signal to an unowned process.
 
@@ -106,7 +106,7 @@ Owned-display identity is `(display number, Xvfb PID, PID start-time token)`. On
 
 | Layer | Tooling | What it proves |
 |-------|---------|----------------|
-| Bash orchestration | `bats` (behavioral cases), `shellcheck` (static defects), a stress harness (`xargs -P` / `GNU parallel`) | Display/temp-root isolation, lock backoff, signal/reap behavior, cleanup idempotency, 30-instance stress (C-CON-21) |
+| Bash orchestration | Bash test scripts (`scripts/tests/test-*.sh`), `shellcheck` (static defects), a stress harness (`xargs -P` / `GNU parallel`) | Display/temp-root isolation, lock backoff, signal/reap behavior, cleanup idempotency, 30-instance stress (C-CON-21) |
 | .NET domain/services | xUnit + Moq; Microsoft Coyote for writer-interleaving schedules; FsCheck for property-based invariants | SaveComparator determinism, atomic write ordering, state-machine invariants, interleaving-free verdicts |
 | Cross-layer | Differential golden oracle + 1000-run stress harness | Correct, non-interleaved verdicts across K ≥ 30 concurrent instances |
 
