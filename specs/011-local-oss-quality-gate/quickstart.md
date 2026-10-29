@@ -12,6 +12,7 @@ Validation guide for the quality gate. Run these locally or in CI to confirm the
 - `static`/`sca` need no Stardew Valley install and no `STARDEW_GAME_PATH`.
 - `build-analysis` needs the pinned build-deps release; set `BUILDDEPS_TOKEN` and reuse the `build_and_test.yml` download/preflight commands.
 - Local tools: `dotnet tool restore` (ReportGenerator), `.venv-quality-gate/bin/semgrep`, `npx jscpd@5.4.2`, `trivy`.
+- From the repository root, export `PYTHONPATH=scripts/quality-gate` so every `python -m quality_gate ...` command below resolves the package.
 
 ## 1. Analyzer gate
 
