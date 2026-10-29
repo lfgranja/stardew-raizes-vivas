@@ -143,6 +143,8 @@ jscpd-report/
 QualityGateResults/
 *.sarif
 trivy*.json
+__pycache__/
+*.pyc
 
 # Keep the raw baseline evidence committed despite the coverage*.xml/json rules
 !specs/011-local-oss-quality-gate/baseline/**/*.xml
