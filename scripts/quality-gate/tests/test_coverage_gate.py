@@ -17,12 +17,16 @@ from quality_gate.coverage import (
     load_summary,
     parse_summary,
 )
-from quality_gate.diagnostics import GateConfigurationError
+from quality_gate.diagnostics import Diagnostic, GateConfigurationError
 
 from .conftest import percent, reportgenerator_summary
 
 
-def test_parse_summary_reads_one_decimal_reportgenerator_values():
+def test_epsilon_is_pinned_to_reportgenerator_precision():
+    assert COVERAGE_EPSILON == 0.05
+
+
+def test_parse_summary_reads_the_real_reportgenerator_schema():
     payload = {
         "summary": {"linecoverage": 79.1, "branchcoverage": 70.4},
         "coverage": {
@@ -31,10 +35,14 @@ def test_parse_summary_reads_one_decimal_reportgenerator_values():
                     "classesinassembly": [
                         {
                             "name": "LivingRoots.Weak",
-                            "filename": "LivingRoots/Weak.cs",
-                            "linecoverage": 12.0,
+                            "coverage": 12.0,
                             "branchcoverage": 4.0,
-                        }
+                        },
+                        {
+                            "name": "LivingRoots.NoBranches",
+                            "coverage": 100.0,
+                            "branchcoverage": None,
+                        },
                     ]
                 }
             ]
@@ -44,12 +52,8 @@ def test_parse_summary_reads_one_decimal_reportgenerator_values():
     assert summary.lines == 79.1
     assert summary.branches == 70.4
     assert summary.classes == (
-        ClassCoverage(
-            name="LivingRoots.Weak",
-            filename="LivingRoots/Weak.cs",
-            line_coverage=12.0,
-            branch_coverage=4.0,
-        ),
+        ClassCoverage(name="LivingRoots.Weak", line_coverage=12.0, branch_coverage=4.0),
+        ClassCoverage(name="LivingRoots.NoBranches", line_coverage=100.0, branch_coverage=None),
     )
 
 
@@ -102,9 +106,11 @@ def test_load_summary_missing_file_is_a_configuration_error(tmp_path):
         load_summary(tmp_path / "missing.json")
 
 
-@given(percent(), percent())
-def test_measured_at_or_above_floor_passes(lines, branches):
-    summary = CoverageSummary(lines=lines, branches=branches)
+@given(percent(), percent(), percent(), percent())
+def test_measured_above_the_floor_passes(lines, branches, extra_lines, extra_branches):
+    assume(lines + extra_lines <= 100.0)
+    assume(branches + extra_branches <= 100.0)
+    summary = CoverageSummary(lines=lines + extra_lines, branches=branches + extra_branches)
     baseline = CoverageBaseline(lines=lines, branches=branches)
     result = evaluate_coverage(summary, baseline)
     assert result.exit_code == 0
@@ -117,12 +123,24 @@ def test_equality_passes_exactly():
     assert evaluate_coverage(summary, baseline).exit_code == 0
 
 
+def test_just_inside_the_epsilon_passes():
+    baseline = CoverageBaseline(lines=80.0, branches=70.0)
+    summary = CoverageSummary(lines=79.951, branches=69.951)
+    assert evaluate_coverage(summary, baseline).exit_code == 0
+
+
+def test_just_outside_the_epsilon_fails():
+    baseline = CoverageBaseline(lines=80.0, branches=70.0)
+    summary = CoverageSummary(lines=79.949, branches=69.949)
+    assert evaluate_coverage(summary, baseline).exit_code == 1
+
+
 @given(percent(), percent())
 def test_regression_below_the_epsilon_fails(lines, branches):
     assume(lines >= COVERAGE_EPSILON + 0.01)
     baseline = CoverageBaseline(lines=lines, branches=branches)
     summary = CoverageSummary(
-        lines=max(0.0, lines - COVERAGE_EPSILON - 0.01),
+        lines=lines - COVERAGE_EPSILON - 0.01,
         branches=branches,
     )
     result = evaluate_coverage(summary, baseline)
@@ -131,20 +149,14 @@ def test_regression_below_the_epsilon_fails(lines, branches):
     assert "coverage" in result.diagnostics[0].message.lower()
 
 
-def test_difference_within_epsilon_is_tolerated():
-    baseline = CoverageBaseline(lines=79.1, branches=70.4)
-    summary = CoverageSummary(lines=79.06, branches=70.36)
-    assert evaluate_coverage(summary, baseline).exit_code == 0
-
-
 def test_failure_names_the_lowest_covered_classes():
     summary = CoverageSummary(
         lines=50.0,
         branches=50.0,
         classes=(
-            ClassCoverage("LivingRoots.Good", "LivingRoots/Good.cs", 90.0, 90.0),
-            ClassCoverage("LivingRoots.Worst", "LivingRoots/Worst.cs", 10.0, 5.0),
-            ClassCoverage("LivingRoots.Middle", "LivingRoots/Middle.cs", 50.0, 40.0),
+            ClassCoverage("LivingRoots.Good", 90.0, 90.0),
+            ClassCoverage("LivingRoots.Worst", 10.0, 5.0),
+            ClassCoverage("LivingRoots.Middle", 50.0, 40.0),
         ),
     )
     baseline = CoverageBaseline(lines=79.1, branches=70.4)
@@ -152,7 +164,7 @@ def test_failure_names_the_lowest_covered_classes():
     assert result.exit_code == 1
     text = "\n".join(d.message for d in result.diagnostics)
     assert "LivingRoots.Worst" in text
-    assert "LivingRoots/Middle.cs" in text
+    assert "LivingRoots.Middle" in text
     assert "LivingRoots.Good" not in text
 
 
@@ -161,4 +173,20 @@ def test_missing_classes_still_produces_a_useful_diagnostic():
     baseline = CoverageBaseline(lines=79.1, branches=70.4)
     result = evaluate_coverage(summary, baseline)
     assert result.exit_code == 1
-    assert result.diagnostics[0].to_github().startswith("::error")
+    assert result.diagnostics[0].to_github().startswith("::error title=")
+
+
+def test_annotation_format_for_file_and_title_findings():
+    file_finding = Diagnostic(
+        title="Analyzer finding",
+        message="S1481 unused local",
+        file="LivingRoots/Example.cs",
+        line=42,
+    )
+    assert file_finding.to_github() == (
+        "::error file=LivingRoots/Example.cs,line=42::S1481 unused local"
+    )
+    title_finding = Diagnostic(title="Coverage regression", message="lines 50.0% < 79.1%")
+    assert title_finding.to_github() == (
+        "::error title=Coverage regression::lines 50.0% < 79.1%"
+    )
