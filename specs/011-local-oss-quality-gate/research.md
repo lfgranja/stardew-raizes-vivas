@@ -17,17 +17,17 @@
 - **Alternatives**: Global `NoWarn` (rejected: hides drift).
 
 ### D3 — SAST tooling
-- **Decision**: Semgrep CE per-PR (fast, ~10s); CodeQL scheduled nightly/weekly or on merge to main (deep, 3–5 min, requires build deps token).
-- **Rationale**: CodeQL needs a build (proprietary Stardew assemblies) and takes minutes; Semgrep is seconds. GitHub docs and community consensus support this hybrid.
+- **Decision**: Semgrep CE CLI 1.182.1 per PR (fast, ~10s; 6 `p/csharp` rules); CodeQL scheduled nightly/weekly or on manual dispatch (deep, 3–5 min) with `build-mode: none`, no game assemblies and no `BUILDDEPS_TOKEN`.
+- **Rationale**: CodeQL's C# `build-mode: none` removes the build-dependency that made the original plan complex; Semgrep gives seconds-level PR feedback. The archived `semgrep/semgrep-action` is not used.
 - **Alternatives**: CodeQL per-PR (rejected: slower feedback, build-deps complexity); Semgrep only (rejected: no cross-file taint).
 
 ### D4 — SCA (dependency scanning)
-- **Decision**: OWASP Dependency-Check or Trivy in CI.
-- **Rationale**: Free, OSS, covers .NET; Trivy also covers containers/IaC in one binary.
+- **Decision**: Trivy 0.76.1 in CI, scanning the committed `packages.lock.json` files.
+- **Rationale**: Free, OSS, covers NuGet lock files; one pinned binary, JSON output that the Python gate can annotate.
 
 ### D5 — Coverage & duplication
-- **Decision**: Coverlet + ReportGenerator (coverage); jscpd (duplication); thresholds ratcheted from measured baseline (79.73% lines / 70.78% branches; 2.37% duplication).
-- **Rationale**: .NET standard tooling; ratchet pattern avoids big-bang targets and prevents regression.
+- **Decision**: Coverlet + ReportGenerator 5.5.12 (coverage); jscpd 5.4.2 with `--format csharp` (duplication); thresholds ratcheted from the T043 re-measurement. Current measurements: 79.1% lines / 70.4% branches (one-decimal `Summary.json`) and 0.48% C# duplication (6 clones, 64 lines).
+- **Rationale**: .NET standard tooling; ratchet pattern avoids big-bang targets and prevents regression. The one-decimal coverage precision requires a 0.05 epsilon.
 - **Alternatives**: PMD CPD (rejected for C# in favor of jscpd's native GitHub Action and lower setup).
 
 ### D6 — License/compliance
@@ -35,7 +35,7 @@
 - **Rationale**: LGPL obligations attach to distribution, not invocation; FSF GNU FAQ + Semgrep docs.
 
 ### D7 — SonarCloud removal
-- **Decision**: Keep SonarCloud in parallel for 2–4 weeks of green local runs, then remove. No trend dashboard or inline PR decoration required (build-fail sufficient).
+- **Decision**: Keep SonarCloud in parallel for 2–4 weeks of green `Quality Gate` runs (all blocking jobs success, no skipped blocking job), then remove in a follow-up. No trend dashboard or inline PR decoration required (build-fail sufficient).
 - **Rationale**: Validated by clarifications (2026-10-29); reduces risk while confirming local gate equivalence.
 
 ## Open Items Resolved by Clarification
