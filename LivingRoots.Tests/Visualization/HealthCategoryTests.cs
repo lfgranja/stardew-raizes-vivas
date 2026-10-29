@@ -32,17 +32,19 @@ namespace LivingRoots.Tests.Visualization
         }
 
         [Theory]
-        [InlineData(-1)]
-        [InlineData(101)]
-        [InlineData(-100)]
-        [InlineData(1000)]
-        public void FromHealthValue_OutOfRange_ReturnsUnknown(int healthValue)
+        [InlineData(-1f, HealthCategory.Poor)]
+        [InlineData(-100f, HealthCategory.Poor)]
+        [InlineData(101f, HealthCategory.Healthy)]
+        [InlineData(1000f, HealthCategory.Healthy)]
+        public void FromHealthValue_FiniteOutOfRange_ClampsToBoundaryCategory(float healthValue, HealthCategory expected)
         {
             // Act
             var result = HealthCategoryExtensions.FromHealthValue(healthValue);
 
-            // Assert
-            Assert.Equal(HealthCategory.Unknown, result);
+            // Assert — finite out-of-range values share the
+            // ColorInterpolationService clamping contract (FR-008,
+            // SC-007); only NaN/Infinity resolve to Unknown.
+            Assert.Equal(expected, result);
         }
 
         [Fact]

@@ -235,6 +235,36 @@ namespace LivingRoots.Tests.Visualization
         }
 
         // ──────────────────────────────────────────────
+        // Shared Out-of-Range Contract
+        // ──────────────────────────────────────────────
+
+        [Theory]
+        [InlineData(-100f)]
+        [InlineData(-1f)]
+        [InlineData(0f)]
+        [InlineData(33f)]
+        [InlineData(34f)]
+        [InlineData(66f)]
+        [InlineData(67f)]
+        [InlineData(100f)]
+        [InlineData(101f)]
+        [InlineData(1000f)]
+        [InlineData(float.NaN)]
+        [InlineData(float.PositiveInfinity)]
+        [InlineData(float.NegativeInfinity)]
+        public void GetCategoryForHealth_AgreesWithHealthCategoryExtensions(float healthValue)
+        {
+            // Act
+            var fromService = _service.GetCategoryForHealth(healthValue);
+            var fromExtension = HealthCategoryExtensions.FromHealthValue(healthValue);
+
+            // Assert — both resolvers share one out-of-range contract:
+            // finite values clamp to a boundary category, non-finite
+            // values resolve to Unknown.
+            Assert.Equal(fromExtension, fromService);
+        }
+
+        // ──────────────────────────────────────────────
         // NaN / Infinity Handling
         // ──────────────────────────────────────────────
 

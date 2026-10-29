@@ -8,9 +8,11 @@ namespace LivingRoots.Tests.Invariants
 {
     /// <summary>
     /// T017 — Property-based invariant tests for
-    /// <see cref="HealthCategoryExtensions.FromHealthValue"/> (spec 005).
-    /// Verifies the HealthCategory scale: Poor [0,30], Moderate [31,70],
-    /// Healthy [71,100], with NaN/Infinity/out-of-bounds → Unknown.
+    /// <see cref="HealthCategoryExtensions.FromHealthValue"/> (spec 005,
+    /// governed by spec 009).
+    /// Verifies the HealthCategory scale: Poor [0,34), Moderate [34,67),
+    /// Healthy [67,100], with NaN/Infinity → Unknown and finite
+    /// out-of-range values clamped to the boundary category.
     /// </summary>
     public class SoilHealthCategoryInvariantsTests
     {
@@ -84,14 +86,14 @@ namespace LivingRoots.Tests.Invariants
         }
 
         [Theory]
-        [InlineData(-1f)]
-        [InlineData(-100f)]
-        [InlineData(101f)]
-        [InlineData(1000f)]
-        public void FromHealthValue_OutOfBounds_ReturnsUnknown(float health)
+        [InlineData(-1f, HealthCategory.Poor)]
+        [InlineData(-100f, HealthCategory.Poor)]
+        [InlineData(101f, HealthCategory.Healthy)]
+        [InlineData(1000f, HealthCategory.Healthy)]
+        public void FromHealthValue_OutOfBounds_ClampsToBoundaryCategory(float health, HealthCategory expected)
         {
             var result = HealthCategoryExtensions.FromHealthValue(health);
-            Assert.Equal(HealthCategory.Unknown, result);
+            Assert.Equal(expected, result);
         }
     }
 }
