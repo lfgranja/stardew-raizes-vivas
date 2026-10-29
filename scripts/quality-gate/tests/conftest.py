@@ -40,15 +40,20 @@ def coverage_baseline_dict(draw: st.DrawFn) -> dict[str, float]:
 
 @st.composite
 def reportgenerator_summary(draw: st.DrawFn) -> dict[str, Any]:
+    """A payload shaped like ReportGenerator 5.5.12 JsonSummary.
+
+    Real reports expose class line coverage as ``coverage`` (not
+    ``linecoverage``) and do not include a filename.
+    """
     lines, branches = draw(coverage_pair())
     classes = []
     for index in range(draw(st.integers(min_value=0, max_value=4))):
+        branch = draw(percent())
         classes.append(
             {
                 "name": f"LivingRoots.Class{index}",
-                "filename": f"LivingRoots/Class{index}.cs",
-                "linecoverage": draw(percent()),
-                "branchcoverage": draw(percent()),
+                "coverage": draw(percent()),
+                "branchcoverage": None if index == 0 and draw(st.booleans()) else branch,
             }
         )
     return {
