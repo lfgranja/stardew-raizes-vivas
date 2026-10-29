@@ -47,7 +47,7 @@ A CI job (or set of jobs) enforcing the blocking checks.
 
 | Field | Type | Description |
 |---|---|---|
-| blockingChecks | list {analyzer-build, semgrep, sca, coverage, duplication} | Checks whose failure fails `gate` |
+| blockingChecks | list {build-analysis (analyzers/tests/coverage), semgrep, sca, duplication} | Checks whose failure fails `gate` |
 | scheduledDeepScan | enum {codeql} | Non-blocking, scheduled/dispatch only |
 | result | enum {pass, fail} | Aggregate result |
 | durationSeconds | number | Per-job duration, reported on every run |

@@ -104,11 +104,11 @@ As the maintainer, I want code-coverage and duplication thresholds enforced in C
 ### Measurable Outcomes
 
 - **SC-001**: A new quality-gate CI workflow runs on every pull request and push on a standard runner. The `static` and `sca` jobs require no `STARDEW_GAME_PATH` and complete within 10 minutes. The `build-analysis` job sources the pinned build-deps release via `BUILDDEPS_TOKEN` and completes within 20 minutes. Per-job and total durations are recorded on each run.
-- **SC-002**: `dotnet build` with analyzers enabled and `TreatWarningsAsErrors` passes on the clean codebase (0 reliability defects), and any introduced defect fails the build naming file and line.
+- **SC-002**: `dotnet build` with analyzers enabled and `TreatWarningsAsErrors` passes on the clean codebase (0 analyzer warnings or errors after documented remediation/suppression), and any introduced defect fails the build naming file and line.
 - **SC-003**: Security scans report 0 HIGH/CRITICAL findings across the scanned scope for a clean pull request: Semgrep scans the whole `LivingRoots/` tree, Trivy scans the committed `packages.lock.json` files, and the scheduled CodeQL scan covers the whole C# codebase. New-code-only scoping is not provided; the gap is recorded in the parity evidence.
 - **SC-004**: Coverage does not drop below the ratcheted baseline threshold; a regression fails the check.
 - **SC-005**: Duplication does not exceed the ratcheted baseline threshold; a regression fails the check.
-- **SC-006**: The maintainer can identify the offending file and line from CI output without opening an external dashboard.
+- **SC-006**: The maintainer can identify the offending location from CI output without opening an external dashboard: file and line for code-level findings, package/CVE/target for SCA findings, class for coverage findings, and the clone pair for duplication findings.
 - **SC-007 (DEFERRED)**: After 2–4 weeks of green local runs, SonarCloud can be removed without loss of the quality signal. This feature produces the removal checklist, rollout start date, and green-run criteria; the removal itself is a follow-up and MUST NOT be performed here.
 
 ## Assumptions

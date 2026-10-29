@@ -73,7 +73,7 @@ The committed `.coverage-baseline` / `.jscpd-baseline.json` values are authorita
 | static | none | — |
 | sca | none | — |
 | build-analysis | `BUILDDEPS_TOKEN` | yes; fail closed without it |
-| codeql | none | — (uses the default `GITHUB_TOKEN` for SARIF upload) |
+| codeql | none | — (uses `security-events: write` for SARIF upload) |
 
 Fork PRs: `static` and `sca` run normally. `build-analysis` cannot run without `BUILDDEPS_TOKEN`; the aggregate gate treats that non-success as a failure, and the maintainer must re-run on a same-repo branch before merge. SARIF upload is skipped on fork PRs because the token is read-only.
 
