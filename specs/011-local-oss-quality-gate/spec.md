@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-29
 
-**Status**: Draft
+**Status**: Final — clarified and design-corrected 2026-10-29
 
 **Input**: User description: "Replace the SonarQube/SonarCloud code-quality assessments with a lightweight, local, native, open-source, and free quality gate for the stardew-raizes-vivas .NET 6 mod, so that reliability/security/maintainability/duplication/coverage are enforced deterministically on a standard CI runner without a cloud SaaS or a game install."
 
@@ -68,26 +68,34 @@ As the maintainer, I want code-coverage and duplication thresholds enforced in C
 - What happens when coverage cannot be measured because tests fail to build? (The build/coverage job must fail and report the build error first.)
 - How is a threshold updated when code quality improves? (Ratchet: threshold only moves upward, never downward, without explicit justification.)
 
+## Non-Goals
+
+- A trend dashboard, historical charts, or inline PR comment decoration.
+- Removing SonarCloud in this feature; removal is a separate follow-up after the 2–4 week parallel-run window.
+- Mutation testing (Stryker.NET).
+- New-code-only scoping for Semgrep or Trivy; the gate scans the whole repository scope and records the parity gap.
+- Runtime/gameplay, domain, or persistence changes.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: The system MUST enable reliability and code-quality analyzers (including Sonar's own rules via the Sonar analyzer package and the .NET SDK analyzers) on both the mod project and the test project, so that defects are reported at build time.
 - **FR-002**: The system MUST treat analyzer warnings as build errors (`TreatWarningsAsErrors`), so that a reliability defect fails `dotnet build`.
-- **FR-003**: The system MUST provide a CI workflow that runs on a standard runner without requiring a Stardew Valley or SMAPI installation, so that quality checks are not blocked by the dormant Build and Test workflow.
-- **FR-004**: The system MUST run a fast SAST scan (Semgrep) on every pull request, capable of completing in seconds.
-- **FR-005**: The system MUST run a deeper SAST scan (CodeQL) for C# on a schedule (nightly/weekly) or on merge to main, accepting longer runtime; it MUST NOT be a per-PR blocking gate.
-- **FR-006**: The system MUST run dependency-vulnerability scanning (OWASP Dependency-Check or Trivy) in CI.
-- **FR-007**: The system MUST measure code coverage (Coverlet) and enforce a threshold, with ReportGenerator for reporting.
-- **FR-008**: The system MUST measure code duplication (jscpd or PMD CPD) and enforce a threshold.
-- **FR-009**: Thresholds for coverage and duplication MUST be set from the current measured baseline and only increase (ratchet) unless explicitly justified.
-- **FR-010**: SonarCloud MUST remain in parallel during a validation period (2–4 weeks of green local runs) before removal is considered.
-- **FR-011**: The system MUST produce file-and-line diagnostics for any failure, so the maintainer can act without an external dashboard.
+- **FR-003**: The system MUST provide a CI workflow on a standard runner. The `static` and `sca` jobs MUST require no Stardew Valley, SMAPI, or game assemblies. The `build-analysis` job (analyzers, tests, coverage) MUST materialise the repository's pinned `gamepath.zip` build-deps release via `BUILDDEPS_TOKEN` and MUST fail closed with an explicit message when that token is unavailable; it MUST NOT require a game installation.
+- **FR-004**: The system MUST run a fast SAST scan with the pinned Semgrep CE CLI on every pull request, completing in under two minutes on this repository.
+- **FR-005**: The system MUST run a deeper SAST scan (CodeQL) for C# on a schedule (nightly/weekly) or on manual dispatch, using `build-mode: none` with no game assemblies or token; it MUST NOT be a per-PR blocking gate.
+- **FR-006**: The system MUST run dependency-vulnerability scanning with a pinned Trivy release against the committed NuGet lock files in CI.
+- **FR-007**: The system MUST measure code coverage (Coverlet) and enforce a threshold, with ReportGenerator 5.5.12 for reporting.
+- **FR-008**: The system MUST measure C# code duplication with pinned jscpd and enforce a threshold; non-C# formats are out of scope for the gate.
+- **FR-009**: Thresholds for coverage and duplication MUST be set from the current measured baseline and only ratchet in the improving direction (coverage up, duplication down) unless explicitly justified.
+- **FR-010**: SonarCloud MUST remain in parallel during a validation period of 2–4 weeks of green `Quality Gate` runs. A green run means every blocking job (`static`, `sca`, `build-analysis`, `gate`) concluded `success` on a pull request or on a push to `dev`/`main`, with no skipped blocking job and no accepted-risk exception.
+- **FR-011**: The system MUST produce actionable diagnostics without an external dashboard: code-level findings (analyzers, Semgrep, CodeQL) MUST include file and line; dependency findings MUST include package, installed version, CVE, and target file; coverage findings MUST name the lowest-covered classes; duplication findings MUST include `file:line` for both clone sides; configuration failures MUST include an explicit error message.
 - **FR-012**: The system MUST allow targeted, documented suppression of false positives without blanket-disabling rules.
 
 ### Key Entities
 
-- **Quality Gate Job**: A CI job running on a standard runner, aggregating analyzer build, SAST, dependency scan, coverage, and duplication results into a pass/fail.
+- **Quality Gate Job**: A CI job running on a standard runner, aggregating the blocking analyzer build, Semgrep, dependency scan, coverage, and duplication results into a pass/fail. The scheduled CodeQL deep scan is a separate non-blocking job.
 - **Baseline Measurement**: The recorded current values of coverage and duplication, used to set initial thresholds.
 - **Threshold (Ratchet)**: A value that only moves upward; a regression fails the check.
 
@@ -95,13 +103,13 @@ As the maintainer, I want code-coverage and duplication thresholds enforced in C
 
 ### Measurable Outcomes
 
-- **SC-001**: A new quality-gate CI job runs on every pull request and push on a standard runner without `STARDEW_GAME_PATH` and completes within a bounded time (target: a few minutes for the fast gate).
+- **SC-001**: A new quality-gate CI workflow runs on every pull request and push on a standard runner. The `static` and `sca` jobs require no `STARDEW_GAME_PATH` and complete within 10 minutes. The `build-analysis` job sources the pinned build-deps release via `BUILDDEPS_TOKEN` and completes within 20 minutes. Per-job and total durations are recorded on each run.
 - **SC-002**: `dotnet build` with analyzers enabled and `TreatWarningsAsErrors` passes on the clean codebase (0 reliability defects), and any introduced defect fails the build naming file and line.
-- **SC-003**: Security scans report 0 high/critical findings on new code for a clean pull request.
+- **SC-003**: Security scans report 0 HIGH/CRITICAL findings across the scanned scope for a clean pull request: Semgrep scans the whole `LivingRoots/` tree, Trivy scans the committed `packages.lock.json` files, and the scheduled CodeQL scan covers the whole C# codebase. New-code-only scoping is not provided; the gap is recorded in the parity evidence.
 - **SC-004**: Coverage does not drop below the ratcheted baseline threshold; a regression fails the check.
 - **SC-005**: Duplication does not exceed the ratcheted baseline threshold; a regression fails the check.
 - **SC-006**: The maintainer can identify the offending file and line from CI output without opening an external dashboard.
-- **SC-007**: After 2–4 weeks of green local runs, SonarCloud can be removed without loss of the quality signal.
+- **SC-007 (DEFERRED)**: After 2–4 weeks of green local runs, SonarCloud can be removed without loss of the quality signal. This feature produces the removal checklist, rollout start date, and green-run criteria; the removal itself is a follow-up and MUST NOT be performed here.
 
 ## Assumptions
 
@@ -111,6 +119,6 @@ As the maintainer, I want code-coverage and duplication thresholds enforced in C
 - Baseline coverage and duplication values can be captured from the current codebase before thresholds are set.
 - CodeQL's runtime is acceptable as a deeper/scheduled scan, with Semgrep as the fast per-PR gate.
 - No license conflict (e.g., LGPL-2.1 Semgrep engine) affects the mod's distribution (to be verified).
-- The dormant `Build and Test` workflow remains unchanged; the new quality gate is independent of it.
+- The `Build and Test` workflow remains unchanged. It is gated by `vars.BUILDDEPS_ENABLED` and has recorded green runs; it is not dormant. The new quality gate is a separate workflow and check, and reuses the same build-deps materialisation pattern.
 - No trend dashboard or inline PR decoration is required; build-fail with file/line diagnostics is sufficient.
 - SonarCloud is removed after 2–4 weeks of green local runs; it is not kept in parallel indefinitely.
