@@ -15,12 +15,14 @@ Plain C# DTOs/models for soil health tile rendering — no SMAPI or XNA dependen
 
 ## Health Categories
 
-| Category | Range (ROADMAP.md scale, spec 005 FR-004) |
-|----------|-------------------------------------------|
-| Poor | [0, 30] |
-| Moderate | [31, 70] |
-| Healthy | [71, 100] |
-| Unknown | N/A |
+| Category | Range (governing scale, spec 009; supersedes spec 005 FR-004) |
+|----------|----------------------------------------------------------------|
+| Poor | [0, 34) |
+| Moderate | [34, 67) |
+| Healthy | [67, 100] |
+| Unknown | N/A (NaN/Infinity only) |
+
+Finite out-of-range values clamp to the boundary category (below 0 → Poor, above 100 → Healthy); only NaN/Infinity resolve to Unknown.
 
 ## Colors (from ModConstants)
 

@@ -70,7 +70,7 @@ namespace LivingRoots.Tests
             // Verify that no data from the exceeding location was added to the cache
             for (var i = 0; i < excessTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("Farm", new Vector2(i, 0)));
+                Assert.True(float.IsNaN(service.GetSoilHealth("Farm", new Vector2(i, 0))));
             }
         }
 
@@ -125,11 +125,11 @@ namespace LivingRoots.Tests
             // Verify that no data from the exceeding location was added to the cache
             for (var i = 0; i < excessTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)));
+                Assert.True(float.IsNaN(service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0))));
             }
 
             // The valid location should NOT be processed since the entire load is aborted
-            Assert.Equal(0.0f, service.GetSoilHealth("ValidLocation", new Vector2(100, 100)));
+            Assert.True(float.IsNaN(service.GetSoilHealth("ValidLocation", new Vector2(100, 100))));
         }
 
         [Fact]
@@ -189,13 +189,13 @@ namespace LivingRoots.Tests
             // Verify that the at-limit location was NOT processed since the entire load was aborted
             for (var i = 0; i < atLimitTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("AtLimitLocation", new Vector2(i, 0)));
+                Assert.True(float.IsNaN(service.GetSoilHealth("AtLimitLocation", new Vector2(i, 0))));
             }
 
             // Verify that no data from the exceeding location was added to the cache
             for (var i = 0; i < excessTiles; i++)
             {
-                Assert.Equal(0.0f, service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0)));
+                Assert.True(float.IsNaN(service.GetSoilHealth("ExceedingLocation", new Vector2(i, 0))));
             }
         }
 

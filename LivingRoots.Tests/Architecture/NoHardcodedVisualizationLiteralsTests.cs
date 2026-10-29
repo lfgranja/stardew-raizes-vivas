@@ -7,7 +7,7 @@ namespace LivingRoots.Tests.Architecture
     /// <summary>
     /// T176 (Phase 20 Wave 1, TDD RED): source-architecture assertions that the
     /// visualization literals enumerated below live in <c>ModConstants</c>
-    /// (<c>LivingRoots/ModConstants.cs</c>), not inline at their use sites.
+    /// (<c>LivingRoots/Constants.cs</c>), not inline at their use sites.
     /// Every use-site assertion fails today (red) — each literal is still
     /// hardcoded at the site the task lists. The two tests at the end pin the
     /// allowlist: the ModConstants palette definitions (the palette's legitimate
@@ -136,10 +136,10 @@ namespace LivingRoots.Tests.Architecture
         public void ModConstants_RemainsTheAllowlistedHomeOfTheVisualizationPalette()
         {
             // Allowlist: the ModConstants palette definitions themselves
-            // (ModConstants.cs lines 31-34, 66-67, 72, 92-97). These are the
+            // (Constants.cs). These are the
             // single source of truth the use-site assertions above defer to —
             // a color literal is only a violation outside this file.
-            var source = ReadProductionSource("LivingRoots", "ModConstants.cs");
+            var source = ReadProductionSource("LivingRoots", "Constants.cs");
 
             var allowlistedDeclarations = new[]
             {
@@ -150,12 +150,13 @@ namespace LivingRoots.Tests.Architecture
                 "public static readonly Color PatternWhiteTone",
                 "public static readonly Color PatternBlackTone",
                 "public static readonly Color TooltipPanelColor",
-                "public static readonly Color CompostEmptyColor",
-                "public static readonly Color CompostProcessingColor",
-                "public static readonly Color CompostReadyColor",
-                "public static readonly Color WaterColor",
-                "public static readonly Color SunColor",
-                "public static readonly Color MulchColor",
+                // T238 reconciliation: the compost/environment palette
+                // constants that once appeared here were consumed only by
+                // future-roadmap briefings. The unreferenced-constants
+                // guard forbids speculative declarations, so those entries
+                // were removed with their constants; CompostSpriteColor is
+                // the live compost palette member the +N feedback uses.
+                "public static readonly Color CompostSpriteColor",
             };
 
             foreach (var declaration in allowlistedDeclarations)

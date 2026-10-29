@@ -547,13 +547,12 @@ public class CompostingBinServiceTests
         _timeStub.TotalDays = 3;
         _service.ProcessDayStart("Farm");
 
-        // T121 (FR-005b, FR-008a): the refusal must reach the
-        // player as a red HUD message carrying translated text —
-        // never the raw translation key. Snapshot the HUD before
-        // the refusal so the rendered message is identifiable
-        // afterwards.
-        int hudMessagesBefore = Game1.hudMessages.Count;
-
+        // T121: the refusal must reach the player as a red HUD message
+        // carrying translated text — never the raw translation key. The
+        // game deduplicates identical whatType+message pairs in the
+        // process-global HUD list, so presence (not a count delta) is the
+        // stable observable. The service under test carries no translation
+        // helper, so the fallback text must render instead of the raw key.
         var result = _service.CollectCompost("Farm", new Vector2(10, 10));
 
         Assert.Equal(0, result);
@@ -563,14 +562,12 @@ public class CompostingBinServiceTests
             x => x.Log(It.Is<string>(s => s.Contains("inventory full")), LogLevel.Warn),
             Times.Once);
 
-        // T121: exactly one red HUD message was rendered for the
-        // refusal, and its text is the translated refusal — never
-        // the raw key (FR-008a). The service under test carries no
-        // translation helper, so whatever the refusal path falls
-        // back to must not leak the raw key to the player.
-        Assert.Equal(hudMessagesBefore + 1, Game1.hudMessages.Count);
-        string refusalText = Game1.hudMessages[Game1.hudMessages.Count - 1].message;
-        Assert.NotEqual(ModConstants.TranslationKeyHarvestInventoryFull, refusalText);
+        Assert.True(
+            Game1.hudMessages.Exists(m => m.message == "Your inventory is full!"),
+            "The refusal must render translated fallback text, not the raw key.");
+        Assert.False(
+            Game1.hudMessages.Exists(m => m.message == ModConstants.TranslationKeyHarvestInventoryFull),
+            "The raw translation key must never leak to the player.");
     }
 
     [Fact]
@@ -986,7 +983,10 @@ public class CompostingBinServiceTests
             _mockSaveIdProvider.Object,
             _service,
             new Mock<ISoilDecayService>().Object,
-            hostAtomicLockService: lockService);
+            // T115: the controller now fails closed without the shared
+            // host-lock registry, so interaction tests must carry a real
+            // instance just as the composition root does.
+            hostAtomicLockService: lockService ?? new HostAtomicLockService());
     }
 
     /// <summary>Places the physical bin the world-object gate requires.</summary>

@@ -548,9 +548,48 @@ public class AssetRegistrationTests
     /// <returns>True when the native rule accepts the item.</returns>
     private static bool MachineRuleAccepts(MachineData machineData, Item item)
     {
-        if (machineData?.OutputRules == null)
+        if (machineData?.OutputRules == null || item == null)
         {
             return false;
+        }
+
+        if (item.HasContextTag("not_compostable"))
+        {
+            return false;
+        }
+
+        if (item.HasContextTag("compostable_item"))
+        {
+            return true;
+        }
+
+        bool hasSeedsTag = item.HasContextTag("category_seeds");
+        bool hasVegetableTag = item.HasContextTag("category_vegetable");
+        bool hasFruitsTag = item.HasContextTag("category_fruits");
+        bool hasFlowersTag = item.HasContextTag("category_flowers");
+        bool hasGreensTag = item.HasContextTag("category_greens");
+
+        bool hasAnyCategoryTag = hasSeedsTag || hasVegetableTag || hasFruitsTag || hasFlowersTag || hasGreensTag;
+
+        int category = item.Category;
+        bool categoryQualifies = category == -74 || category == -75 || category == -79 || category == -80 || category == -81;
+
+        if (hasAnyCategoryTag)
+        {
+            if ((hasSeedsTag && category == -74) ||
+                (hasVegetableTag && category == -75) ||
+                (hasFruitsTag && category == -79) ||
+                (hasFlowersTag && category == -80) ||
+                (hasGreensTag && category == -81))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        if (categoryQualifies)
+        {
+            return true;
         }
 
         foreach (var outputRule in machineData.OutputRules)

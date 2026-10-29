@@ -1378,6 +1378,12 @@ namespace LivingRoots.Controllers
                 ToColor(active.UnknownColor));
 
             _visualizationConfigService.SaveConfiguration(saveId);
+
+            // T227 (FR-010): a palette/configuration change must also
+            // discard the overlay list built under the previous
+            // configuration, so the next frame serves the new colors at
+            // an unchanged viewport instead of the cached old palette.
+            _visualizationService?.InvalidateCache();
         }
 
         /// <summary>
@@ -1812,8 +1818,13 @@ namespace LivingRoots.Controllers
 
                         var crop = dirt.crop;
                         // Tier multipliers on cached base phaseDays (multiplicative, vanilla-blessed via Speed-Gro pattern).
-                        // Poor (<34): 1.15x (slower), Moderate [34,67): 1.00x (vanilla), Healthy (>=67): 0.85x (faster).
-                        float multiplier = (health < 34.0f) ? 1.15f : (health >= 67.0f) ? 0.85f : 1.00f;
+                        // Poor (<34): SoilGrowthPoorMultiplier (slower), Moderate [34,67): 1.00x (vanilla),
+                        // Healthy (>=67): SoilGrowthHealthyMultiplier (faster).
+                        float multiplier = (health < ModConstants.PoorModerateBandEdge)
+                            ? ModConstants.SoilGrowthPoorMultiplier
+                            : (health >= ModConstants.ModerateHealthyBandEdge)
+                                ? ModConstants.SoilGrowthHealthyMultiplier
+                                : 1.00f;
                         if (Math.Abs(multiplier - 1.00f) < 0.0001f) continue;
 
                         // Restore base phaseDays from CropData before applying (idempotent reapplication).
@@ -1889,7 +1900,7 @@ namespace LivingRoots.Controllers
                 // does not: the Greenhouse, and the farm
                 // itself, whose location name is "Farm" for
                 // every farm type. Each service keeps its own
-                // exactly-once-per-day, per-location guard
+                // Exactly-once per day, per location guard
                 // (T056 in CompostingBinService, T068 in
                 // SoilDecayService), so a location named twice
                 // on the same day — the occupied farm overlaps
@@ -2012,6 +2023,27 @@ namespace LivingRoots.Controllers
                 {
                     if (removed.Value.ItemId == ModConstants.CompostingBinItemId)
                     {
+                        // T127 (FR-005c): a tool/explosion removal destroys
+                        // neither the bin's contents nor its progress. The
+                        // batch lives in the service record, not on the world
+                        // object, so reconstruct the dislodged item BEFORE
+                        // OnObjectRemoved prunes that record, and carry the
+                        // reconstructed batch modData onto the removed world
+                        // object the game still holds — that is what lets the
+                        // game's own pickup/debris path keep the progress.
+                        var dislodgedItem = _compostingBinService.CreateDislodgedBinItem(e.Location.Name, removed.Key);
+                        if (dislodgedItem?.modData != null && removed.Value.modData != null)
+                        {
+                            if (dislodgedItem.modData.TryGetValue(ModConstants.ModDataInputIdKey, out string inputId))
+                            {
+                                removed.Value.modData[ModConstants.ModDataInputIdKey] = inputId;
+                            }
+                            if (dislodgedItem.modData.TryGetValue(ModConstants.ModDataDaysRemainingKey, out string daysRemaining))
+                            {
+                                removed.Value.modData[ModConstants.ModDataDaysRemainingKey] = daysRemaining;
+                            }
+                        }
+
                         _compostingBinService.OnObjectRemoved(e.Location.Name, removed.Key);
                     }
                 }
@@ -2094,10 +2126,18 @@ namespace LivingRoots.Controllers
                 // it — the yielded item carries its batch
                 // progress, and the world object and the
                 // service record are cleared together (zero
-                // orphaned state).
-                if (heldItem == null && TryDislodgeBin(location, binTile))
+                // orphaned state). The acting farmer receives
+                // the item when inventory space is available.
+                if (heldItem == null)
                 {
-                    return;
+                    var actingFarmer = _playerProvider?.CurrentPlayer;
+                    bool dislodged = actingFarmer != null
+                        ? TryDislodgeBin(location, binTile, actingFarmer)
+                        : TryDislodgeBin(location, binTile);
+                    if (dislodged)
+                    {
+                        return;
+                    }
                 }
 
                 TryInteractWithBin(location, binTile, farmerId, heldItem, null, msg => StardewValley.Game1.showRedMessage(TranslateRefusalMessage(msg)));
@@ -2501,6 +2541,23 @@ namespace LivingRoots.Controllers
                 return false;
             }
 
+            // T116 (FR-002): buildings are invalid terrain.
+            // Building.occupiesTile covers the complete footprint
+            // (origin plus width/height), not just the origin tile,
+            // so a bin cannot be placed on any tile a building
+            // covers. Checking only the origin would leave most of
+            // a multi-tile building placeable.
+            if (location.buildings != null)
+            {
+                foreach (var building in location.buildings)
+                {
+                    if (building != null && building.occupiesTile(tile))
+                    {
+                        return false;
+                    }
+                }
+            }
+
             // T057 (FR-002): water is the only invalid
             // terrain left once the HoeDirt-only
             // restriction is relaxed — the native big
@@ -2629,6 +2686,17 @@ namespace LivingRoots.Controllers
 
             var dislodgedItem = _compostingBinService.CreateDislodgedBinItem(location.Name, tile);
 
+            // T118 (FR-005c): a bin carrying batch progress is a single
+            // unstackable unit. The service's stack cap is enforced on the
+            // production dislodge path, not only at the unit seam, so a
+            // carried stack above one can never reach the inventory or the
+            // debris fallback.
+            int maxStack = _compostingBinService.GetMaxStackSize(dislodgedItem);
+            if (maxStack > 0 && dislodgedItem.Stack > maxStack)
+            {
+                dislodgedItem.Stack = maxStack;
+            }
+
             location.Objects.Remove(tile);
             _compostingBinService.OnObjectRemoved(location.Name, tile);
 
@@ -2667,7 +2735,10 @@ namespace LivingRoots.Controllers
                 throw new ArgumentNullException(nameof(farmer));
             }
 
-            return TryDislodgeBin(location, tile, null, null);
+            // T131 (FR-005c): route the dislodged bin to the farmer
+            // performing the action, not to the composition-root default
+            // (Game1.player).
+            return TryDislodgeBin(location, tile, new Services.FarmerInventoryAdapter(farmer), null);
         }
 
         /// <summary>
@@ -2715,29 +2786,23 @@ namespace LivingRoots.Controllers
                 return false;
             }
 
-            // T081b (Constitution V, FR-019) + T106:
-            // a controller built without a
-            // lock service has no contention
-            // to resolve, so acquisition
-            // trivially succeeds and the
-            // release is a no-op — never a
-            // second, disjoint lock registry.
-            // T106 keeps this permissive site
-            // on purpose: ModControllerTests
-            // constructs 7-arg controllers
-            // (null lock) and pins the
-            // permissive outcome, and this
-            // call only decides conflict
-            // messaging. The state-mutating
-            // compost application path
-            // (TryApplyCompostWithLock) is
-            // the fail-closed one — refusing
-            // there costs a deposit, while
-            // guessing "no contention" during
-            // an actual cross-host write is
-            // the hazard FR-019 exists to
-            // prevent.
-            if (!(_hostAtomicLockService?.TryAcquireLock(location.Name, tile, farmerId) ?? true))
+            // T115 (Constitution V, FR-019): a controller built
+            // without a lock service cannot arbitrate tile
+            // contention, so it fails closed — the interaction is
+            // refused with the conflict key rather than guessed
+            // through. Production never reaches this branch
+            // (ModEntry always injects the shared instance); only
+            // a headless double can carry a null lock, and the
+            // refusal keeps that double from silently mutating
+            // shared state.
+            if (_hostAtomicLockService == null)
+            {
+                _monitor.Log("Bin interaction refused: no host atomic lock service is injected, so tile contention cannot be resolved (FR-019).", LogLevel.Warn);
+                refusalHandler?.Invoke(ModConstants.TranslationKeyCompostActionConflict);
+                return false;
+            }
+
+            if (!_hostAtomicLockService.TryAcquireLock(location.Name, tile, farmerId))
             {
                 // T077 (FR-008a, FR-019): a tile
                 // lock already held by another farmer
@@ -2876,6 +2941,7 @@ namespace LivingRoots.Controllers
             if (_hostAtomicLockService == null)
             {
                 _monitor.Log("Compost application refused: no host atomic lock service is injected, so tile contention cannot be resolved (FR-019).", LogLevel.Warn);
+                refusalHandler?.Invoke(ModConstants.TranslationKeyCompostActionConflict);
                 return false;
             }
 

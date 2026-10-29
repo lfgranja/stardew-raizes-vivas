@@ -209,27 +209,59 @@ namespace LivingRoots.Tests.Visualization
         }
 
         [Fact]
-        public void GetCategoryForHealth_NegativeValue_OutOfRange_ReturnsUnknown()
+        public void GetCategoryForHealth_NegativeValue_ClampsToPoor()
         {
             // Act
             var result = _service.GetCategoryForHealth(-25f);
 
-            // Assert — out-of-range health is invalid data, not "Poor".
-            // Matches HealthCategoryExtensions.FromHealthValue and
-            // HealthCategoryTests.FromHealthValue_OutOfRange_ReturnsUnknown.
-            Assert.Equal(HealthCategory.Unknown, result);
+            // Assert — finite out-of-range producer values clamp to the
+            // valid soil-health range (FR-008, SC-007, T118), so an
+            // under-range value renders in its boundary category (Poor).
+            // Only non-finite values are the Unknown state.
+            Assert.Equal(HealthCategory.Poor, result);
         }
 
         [Fact]
-        public void GetCategoryForHealth_ValueAboveHundred_OutOfRange_ReturnsUnknown()
+        public void GetCategoryForHealth_ValueAboveHundred_ClampsToHealthy()
         {
             // Act
             var result = _service.GetCategoryForHealth(999f);
 
-            // Assert — out-of-range health is invalid data, not "Healthy".
-            // Matches HealthCategoryExtensions.FromHealthValue and
-            // HealthCategoryTests.FromHealthValue_OutOfRange_ReturnsUnknown.
-            Assert.Equal(HealthCategory.Unknown, result);
+            // Assert — finite out-of-range producer values clamp to the
+            // valid soil-health range (FR-008, SC-007, T118), so an
+            // over-range value renders in its boundary category
+            // (Healthy). Only non-finite values are the Unknown state.
+            Assert.Equal(HealthCategory.Healthy, result);
+        }
+
+        // ──────────────────────────────────────────────
+        // Shared Out-of-Range Contract
+        // ──────────────────────────────────────────────
+
+        [Theory]
+        [InlineData(-100f)]
+        [InlineData(-1f)]
+        [InlineData(0f)]
+        [InlineData(33f)]
+        [InlineData(34f)]
+        [InlineData(66f)]
+        [InlineData(67f)]
+        [InlineData(100f)]
+        [InlineData(101f)]
+        [InlineData(1000f)]
+        [InlineData(float.NaN)]
+        [InlineData(float.PositiveInfinity)]
+        [InlineData(float.NegativeInfinity)]
+        public void GetCategoryForHealth_AgreesWithHealthCategoryExtensions(float healthValue)
+        {
+            // Act
+            var fromService = _service.GetCategoryForHealth(healthValue);
+            var fromExtension = HealthCategoryExtensions.FromHealthValue(healthValue);
+
+            // Assert — both resolvers share one out-of-range contract:
+            // finite values clamp to a boundary category, non-finite
+            // values resolve to Unknown.
+            Assert.Equal(fromExtension, fromService);
         }
 
         // ──────────────────────────────────────────────

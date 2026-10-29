@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace LivingRoots.Domain.Models;
 
@@ -30,11 +31,14 @@ public class CompostingBinStateData
     public int? InputTimestamp { get; set; }
 
     /// <summary>Maturation level (1-5).</summary>
+    [JsonIgnore]
     public int MaturationLevel { get; set; } = 1;
 
     /// <summary>Consecutive idle days since last activity (0-14).</summary>
+    [JsonIgnore]
     public int ConsecutiveIdleDays { get; set; } = 0;
 
     /// <summary>Consecutive active days (Processing state) for maturation increment.</summary>
+    [JsonIgnore]
     public int ConsecutiveActiveDays { get; set; } = 0;
 }

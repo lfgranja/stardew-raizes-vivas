@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
@@ -39,6 +40,33 @@ namespace LivingRoots
         /// <summary>The mod entry point, called after the mod is first loaded.</summary>
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
+        {
+            try
+            {
+                WireCompositionRoot(helper);
+            }
+            catch (Exception ex)
+            {
+                // T228 (FR-014, F8): a wiring failure must not prevent the
+                // mod from loading. The generic Error line names the failure
+                // without leaking exception detail; the exception type and
+                // HResult are emitted at Trace level only (FR-015).
+                this.Monitor?.Log(
+                    "Mod entry wiring failed; the mod will continue without its services.",
+                    LogLevel.Error);
+                this.Monitor?.Log(
+                    $"Mod entry wiring exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace);
+            }
+        }
+
+        /// <summary>
+        /// Wires the composition root. Extracted from <see cref="Entry"/> so a
+        /// failure anywhere in the graph is caught and logged in sanitized form
+        /// by the entry point (T228, FR-014).
+        /// </summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
+        private void WireCompositionRoot(IModHelper helper)
         {
             _helper = helper;
 
@@ -398,20 +426,13 @@ namespace LivingRoots
                                 // !not_compostable keeps explicitly excluded items out even when they match a category.
                                 Triggers = new System.Collections.Generic.List<StardewValley.GameData.Machines.MachineOutputTriggerRule>
                                 {
-                                    // (T133 FR-003) Machine triggers use the validator-owned waste set:
-                                    // items carrying "compostable_item" are accepted; "not_compostable" overrides everything.
-                                    // Vanilla category IDs are mirrored as context tags: category_seeds(-74),
-                                    // category_vegetable(-75), category_fruits(-79), category_flowers(-80),
-                                    // category_greens(-81). Any matching trigger starts the rule.
-new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Compost", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "compostable_item" }, RequiredCount = 1 },
-                                    // T133: category-based acceptance mirrors OrganicWasteValidator's hybrid validation
-new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Seeds", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_seeds", "!not_compostable" }, RequiredCount = 1 },
-new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Vegetables", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_vegetable", "!not_compostable" }, RequiredCount = 1 },
-new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Fruits", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_fruits", "!not_compostable" }, RequiredCount = 1 },
-new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Flowers", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_flowers", "!not_compostable" }, RequiredCount = 1 },
-new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Greens", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_greens", "!not_compostable" }, RequiredCount = 1 },
-                                    // T133: items with "not_compostable" are rejected regardless of other tags
-new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Modded", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "compostable_item", "!not_compostable" }, RequiredCount = 1 }
+                                    // T133 (FR-003): derive Data/Machines triggers from the single validator-owned waste set
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "CompostableItem", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "compostable_item", "!not_compostable" }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Seeds", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_seeds", "!not_compostable" }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Vegetables", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_vegetable", "!not_compostable" }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Fruits", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_fruits", "!not_compostable" }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Flowers", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_flowers", "!not_compostable" }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Greens", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_greens", "!not_compostable" }, RequiredCount = 1 }
                                 },
                                 OutputItem = new System.Collections.Generic.List<StardewValley.GameData.Machines.MachineItemOutput>
                                 {

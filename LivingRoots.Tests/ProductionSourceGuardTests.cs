@@ -434,7 +434,7 @@ namespace LivingRoots.Tests
         }
 
         /// <summary>
-        /// T237: ModConstants.cs claims the refusal keys off the
+        /// T237: Constants.cs claims the refusal keys off the
         /// Data/Machines ShakeDuration field; the registration at
         /// ModEntry.cs never sets ShakeDuration (sets DaysUntilReady
         /// only) and the refusal uses worldObject.shakeTimer. Assert the
@@ -445,8 +445,8 @@ namespace LivingRoots.Tests
         {
             // Arrange.
             var productionRoot = Path.Combine(LocateRepoRoot(), "LivingRoots");
-            var constantsPath = Path.Combine(productionRoot, "ModConstants.cs");
-            Assert.True(File.Exists(constantsPath), $"ModConstants.cs not found at {constantsPath}.");
+            var constantsPath = Path.Combine(productionRoot, "Constants.cs");
+            Assert.True(File.Exists(constantsPath), $"Constants.cs not found at {constantsPath}.");
 
             // Act.
             var content = File.ReadAllText(constantsPath);
@@ -458,21 +458,21 @@ namespace LivingRoots.Tests
             // Assert — corrected present, or false removed.
             Assert.True(
                 hasCorrected || !hasFalse,
-                "LivingRoots/ModConstants.cs claims a Data/Machines ShakeDuration the registration at ModEntry.cs never sets (registration sets DaysUntilReady only; refusal uses worldObject.shakeTimer). Expected corrected statement containing '" + corrected + "' (or removal of ShakeDuration) once T264 corrects the comment.");
+                "LivingRoots/Constants.cs claims a Data/Machines ShakeDuration the registration at ModEntry.cs never sets (registration sets DaysUntilReady only; refusal uses worldObject.shakeTimer). Expected corrected statement containing '" + corrected + "' (or removal of ShakeDuration) once T264 corrects the comment.");
         }
 
         /// <summary>
-        /// T238: every constant declared in ModConstants.cs has at least one
+        /// T238: every constant declared in Constants.cs has at least one
         /// production reference. Written as "no unreferenced constant survives"
         /// so it passes whether the dead names are deleted or wired up.
         /// </summary>
         [Fact]
         public void ProductionSources_NoUnreferencedConstantsSurvive()
         {
-            // Arrange — parse declarations from ModConstants.cs.
+            // Arrange — parse declarations from Constants.cs.
             var productionRoot = Path.Combine(LocateRepoRoot(), "LivingRoots");
-            var constantsPath = Path.Combine(productionRoot, "ModConstants.cs");
-            Assert.True(File.Exists(constantsPath), $"ModConstants.cs not found at {constantsPath}.");
+            var constantsPath = Path.Combine(productionRoot, "Constants.cs");
+            Assert.True(File.Exists(constantsPath), $"Constants.cs not found at {constantsPath}.");
             var constantsContent = File.ReadAllText(constantsPath);
             var nameMatches = Regex.Matches(constantsContent, @"public\s+(?:const|static\s+readonly)\s+\w+(?:<[^;]+>)?\s+(\w+)\s*(?:=|;)");
             var declared = new List<string>();
@@ -481,7 +481,7 @@ namespace LivingRoots.Tests
                 declared.Add(match.Groups[1].Value);
             }
 
-            Assert.True(declared.Count > 0, "No constants parsed from LivingRoots/ModConstants.cs — the guard is vacuous.");
+            Assert.True(declared.Count > 0, "No constants parsed from LivingRoots/Constants.cs — the guard is vacuous.");
 
             // Act — gather every other production source text.
             var productionTexts = new List<string>();
@@ -523,7 +523,7 @@ namespace LivingRoots.Tests
             // Assert — zero unreferenced constants survive.
             Assert.True(
                 unreferenced.Count == 0,
-                $"Unreferenced constants survive in LivingRoots/ModConstants.cs (expected zero): {string.Join(", ", unreferenced)}.");
+                $"Unreferenced constants survive in LivingRoots/Constants.cs (expected zero): {string.Join(", ", unreferenced)}.");
         }
 
         /// <summary>

@@ -175,7 +175,7 @@ Each assumption includes a validation mechanism to confirm correctness before an
 - MonoGame/XNA `SpriteBatch` rendering is available for overlay drawing. **Validation**: Confirmed — Stardew Valley uses MonoGame and SpriteBatch is available in all SMAPI mods.
 - The existing `IModHelper.Events` system provides the necessary game loop events (update, cursor change, input). **Validation**: Confirmed via SMAPI documentation and existing ModController event subscriptions.
 - Configuration file lives in the mod's directory alongside existing mod files. **Validation**: Confirmed — IModDataService uses per-save SMAPI data storage in mod directory.
-- Single-player game context only (no multiplayer sync required for visualization state). **Validation**: Confirmed by design — visualization remains local-rendered (a read-only overlay that generates no network traffic of its own), while the underlying farm state it displays is host-authoritative and farm-scoped per Principle VI. Single-player is the degenerate case of multiplayer (a host with no connected clients), so multiplayer is not out of scope.
+- Visualization state is local-rendered and requires no multiplayer sync of its own. **Validation**: Confirmed by design — visualization remains local-rendered (a read-only overlay that generates no network traffic of its own), while the underlying farm state it displays is host-authoritative and farm-scoped per Principle VI. A host with no connected clients is the degenerate case of multiplayer, so multiplayer is not out of scope.
 
 ## Dependencies
 

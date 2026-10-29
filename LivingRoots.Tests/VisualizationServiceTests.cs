@@ -235,9 +235,9 @@ public class VisualizationServiceTests
 
         var colorService = new ColorInterpolationService();
         var category = colorService.GetCategoryForHealth(health);
-        var expected = health <= 30
+        var expected = health <= 33
             ? HealthCategory.Poor
-            : health <= 70
+            : health <= 66
                 ? HealthCategory.Moderate
                 : HealthCategory.Healthy;
         return category == expected;

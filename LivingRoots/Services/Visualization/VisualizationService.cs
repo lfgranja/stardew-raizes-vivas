@@ -1,3 +1,4 @@
+using System.Globalization;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Visualization;
 using Microsoft.Xna.Framework;
@@ -481,14 +482,20 @@ namespace LivingRoots.Services.Visualization
                 ModConstants.TileSize,
                 ModConstants.TileSize);
 
-            // T183 (FR-003/FR-018, DC-5): the demanded draw
-            // observable — the destination the draw consumes is
-            // emitted before the draw, because SpriteBatch.Draw
-            // is non-virtual and needs a GraphicsDevice the
-            // headless unit-test host lacks, so this trace log
-            // is the frame-level observable of where the overlay
-            // drew (the RenderFloatingText seam pattern).
-            _monitor.Log($"Overlay drawn: ({screenPosition.X}, {screenPosition.Y})", LogLevel.Trace);
+            // T126 / T261 (FR-011): the demanded draw observable —
+            // the value the draw consumes is emitted before the
+            // draw, because SpriteBatch.Draw is non-virtual and
+            // needs a GraphicsDevice the headless unit-test host
+            // lacks, so this trace log is the frame-level
+            // observable of the value the overlay reported. The
+            // measured value is logged as-is (never clamped to a
+            // category floor); the non-finite unknown sentinel is
+            // logged as the literal "Unknown" rather than a
+            // fabricated percentage.
+            var drawnHealth = float.IsNaN(overlay.HealthValue) || float.IsInfinity(overlay.HealthValue)
+                ? "Unknown"
+                : overlay.HealthValue.ToString("R", CultureInfo.CurrentCulture);
+            _monitor.Log($"Overlay drawn: {drawnHealth}", LogLevel.Trace);
 
             // T091 / T101 (FR-010): the drawn tint is
             // the unlit tint blended under the game's
@@ -588,6 +595,15 @@ namespace LivingRoots.Services.Visualization
         /// </summary>
         private void DrawPatternOverlay(SpriteBatch spriteBatch, Rectangle destRect, PatternType patternType)
         {
+            // FR-001: the pattern's pinned alpha is the strongest case of the
+            // accessibility floor; keep the two constants tied so a future
+            // change to either cannot silently undercut the floor. Patterns
+            // are suppressed rather than drawn below the floor.
+            if (ModConstants.PatternAlphaPinned < ModConstants.PatternMinOpacity)
+            {
+                return;
+            }
+
             switch (patternType)
             {
                 case PatternType.Stripes:
