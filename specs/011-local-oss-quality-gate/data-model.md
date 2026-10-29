@@ -40,6 +40,8 @@ A gate value derived from a Baseline Measurement that only moves in the improvin
 - A threshold is never weakened without a documented justification.
 - CI compares the measured value with the committed threshold; a regression fails the job.
 - `ratchet-coverage` stores `max(old, measured)`; `ratchet-duplication` stores `min(old, measured)`.
+- Ratchet semantics: an improvement writes the new baseline and exits `0`; an equal measurement is a no-op and exits `0`; a measurement that would weaken the baseline exits `2` and leaves the file byte-for-byte unchanged. A weakening attempt is therefore a configuration error, not a silently ignored run.
+- Atomic writes use a temporary file in the same directory followed by `os.replace`, so an interrupted write never leaves a truncated baseline. The temporary file is removed on failure.
 - Baseline updates are explicit commits and are reviewed; no main-branch job writes the baseline automatically.
 
 ### Quality Gate Job
@@ -86,6 +88,13 @@ GitHub annotations use `::error file=...,line=...::...` for code findings and `:
 - Coverage floor must be ≤ measured baseline at creation time.
 - Duplication ceiling must be ≥ measured baseline at creation time.
 - Coverage comparison uses a 0.05 epsilon because `Summary.json` is one-decimal.
+- Coverage baselines are serialised to one decimal; duplication baselines to two decimals. Round-trip tolerance is therefore `0.05` and `0.005` respectively.
 - No global `NoWarn` without a documented justification.
-- Suppressions (`[SuppressMessage]`, `#pragma`) must include a justification comment.
+- Suppressions (`[SuppressMessage]`, `#pragma`) must include a justification comment. `[SuppressMessage]` requires a non-empty `Justification`; `#pragma warning disable` requires a specific rule id and an adjacent comment naming the rule and reason.
 - A baseline file with missing, NaN, or out-of-range values is a configuration error (exit 2), never a pass.
+
+### Tool pin policy
+
+- Third-party GitHub Actions are pinned to a full 40-hex commit SHA; the human-readable version is recorded in the step `name` and in this document. `aquasecurity/trivy-action` is pinned to the commit for v0.36.0 (commit `ed142fd0673e97e23eac54620cfb913e5ce36c25`).
+- First-party actions (`actions/*`, `github/codeql-action/*`) use a major tag.
+- Local tools are pinned exactly: ReportGenerator 5.5.12 in `dotnet-tools.json`, Coverlet 6.0.0 in the test project, Semgrep 1.182.1 in `requirements-ci.txt`, jscpd 5.4.2 in the workflow command.
