@@ -36,8 +36,7 @@ def write_summary(path: Path, lines: float, branches: float) -> None:
                             "classesinassembly": [
                                 {
                                     "name": "LivingRoots.Worst",
-                                    "filename": "LivingRoots/Worst.cs",
-                                    "linecoverage": 5.0,
+                                    "coverage": 5.0,
                                     "branchcoverage": 2.0,
                                 }
                             ]
@@ -134,7 +133,7 @@ def test_missing_input_file_exits_two_with_a_configuration_error(tmp_path):
         str(tmp_path / "missing-baseline"),
     )
     assert result.returncode == 2
-    assert "::error" in result.stdout + result.stderr
+    assert "::error title=" in result.stdout + result.stderr
 
 
 def test_passing_coverage_exits_zero(tmp_path):
@@ -153,8 +152,9 @@ def test_failing_coverage_exits_one_and_prints_an_annotation(tmp_path):
     write_coverage_baseline(baseline, 79.1, 70.4)
     result = run_cli("coverage", "--summary", str(summary), "--baseline", str(baseline))
     assert result.returncode == 1
-    assert "::error" in result.stdout
+    assert "::error title=Coverage regression::" in result.stdout
     assert "LivingRoots.Worst" in result.stdout
+    assert "79.1" in result.stdout
 
 
 def test_passing_duplication_exits_zero(tmp_path):
@@ -173,8 +173,8 @@ def test_failing_duplication_exits_one_and_names_both_clones(tmp_path):
     write_duplication_baseline(baseline, 0.48)
     result = run_cli("duplication", "--report", str(report), "--baseline", str(baseline))
     assert result.returncode == 1
-    assert "LivingRoots/A.cs:1" in result.stdout
-    assert "LivingRoots/B.cs:2" in result.stdout
+    assert "::error file=LivingRoots/A.cs,line=1::" in result.stdout
+    assert "::error file=LivingRoots/B.cs,line=2::" in result.stdout
 
 
 def test_blocking_vulnerability_exits_one(tmp_path):
@@ -182,6 +182,7 @@ def test_blocking_vulnerability_exits_one(tmp_path):
     write_trivy(report, "HIGH")
     result = run_cli("security", "--report", str(report))
     assert result.returncode == 1
+    assert "::error title=" in result.stdout
     assert "CVE-2026-0001" in result.stdout
     assert "Example.Package" in result.stdout
 
@@ -225,6 +226,23 @@ def test_ratchet_coverage_raises_a_floor(tmp_path):
     assert "lines=90" in baseline.read_text(encoding="utf-8")
 
 
+def test_ratchet_coverage_equal_is_a_noop(tmp_path):
+    summary = tmp_path / "Summary.json"
+    baseline = tmp_path / "baseline"
+    write_summary(summary, 79.1, 70.4)
+    write_coverage_baseline(baseline, 79.1, 70.4)
+    before = baseline.read_text(encoding="utf-8")
+    result = run_cli(
+        "ratchet-coverage",
+        "--summary",
+        str(summary),
+        "--baseline",
+        str(baseline),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert baseline.read_text(encoding="utf-8") == before
+
+
 def test_ratchet_duplication_refuses_to_raise_a_ceiling(tmp_path):
     report = tmp_path / "jscpd.json"
     baseline = tmp_path / "baseline.json"
@@ -255,3 +273,20 @@ def test_ratchet_duplication_lowers_a_ceiling(tmp_path):
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(baseline.read_text(encoding="utf-8"))["percentage"] == 0.1
+
+
+def test_ratchet_duplication_equal_is_a_noop(tmp_path):
+    report = tmp_path / "jscpd.json"
+    baseline = tmp_path / "baseline.json"
+    write_jscpd(report, 0.48)
+    write_duplication_baseline(baseline, 0.48)
+    before = baseline.read_text(encoding="utf-8")
+    result = run_cli(
+        "ratchet-duplication",
+        "--report",
+        str(report),
+        "--baseline",
+        str(baseline),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert baseline.read_text(encoding="utf-8") == before
