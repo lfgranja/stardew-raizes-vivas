@@ -55,7 +55,7 @@
 
 ## Dependencies & Assumptions
 
-- [ ] CHK027 Is the assumption that the baseline (79.73% lines) is representative and stable validated? [Assumptions, Research]
+- [ ] CHK027 Is the assumption that the measured baseline (79.1% lines, one-decimal) is representative and stable validated? [Assumptions, Research]
 - [ ] CHK028 Is the dependency on Coverlet 6.0.0 (already in test project) documented? [Dependencies, LivingRoots.Tests.csproj]
 - [ ] CHK029 Are the research-recommended thresholds (60–70% initial floor) reconciled with the ratchet-from-baseline approach? [Dependencies, Research]
 

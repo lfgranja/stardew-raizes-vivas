@@ -10,7 +10,7 @@
 
 - [ ] CHK001 Are all security scanning tools (Semgrep, CodeQL, SCA) explicitly named with their roles? [Completeness, Spec §FR-004, FR-005, FR-006]
 - [ ] CHK002 Is the distinction between fast per-PR scan (Semgrep) and deep scheduled scan (CodeQL) explicitly required? [Completeness, Spec §FR-005, Clarifications]
-- [ ] CHK003 Are requirements for dependency-vulnerability scanning (OWASP Dependency-Check or Trivy) specified? [Completeness, Spec §FR-006]
+- [ ] CHK003 Are requirements for dependency-vulnerability scanning (Trivy against the committed NuGet lock files) specified? [Completeness, Spec §FR-006]
 - [ ] CHK004 Are requirements for handling secrets scanning (Gitleaks) included or explicitly excluded? [Completeness, Gap]
 - [ ] CHK005 Is the failure threshold for security findings (0 high/critical) quantified? [Completeness, SC-003]
 - [ ] CHK006 Are requirements for IaC/container scanning specified or explicitly excluded? [Completeness, Gap]
@@ -55,7 +55,7 @@
 ## Dependencies & Assumptions
 
 - [ ] CHK026 Is the assumption that Semgrep CE covers C# adequately validated? [Assumptions, Research]
-- [ ] CHK027 Is the dependency on `BUILDDEPS_TOKEN` for CodeQL documented? [Dependencies, Plan §contracts]
+- [ ] CHK027 Is the dependency on `BUILDDEPS_TOKEN` for the build-analysis job (not CodeQL) documented? [Dependencies, Plan §contracts]
 - [ ] CHK028 Is the LGPL license caveat (Semgrep CE) documented as a non-issue? [Dependencies, Research D6]
 
 ## Ambiguities & Conflicts

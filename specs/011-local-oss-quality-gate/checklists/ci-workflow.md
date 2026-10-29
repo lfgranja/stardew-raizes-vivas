@@ -10,17 +10,17 @@
 
 - [ ] CHK001 Are all CI workflow steps (checkout, setup, build, Semgrep, CodeQL, SCA, coverage, duplication) explicitly listed? [Completeness, Spec §FR-003, Plan §contracts]
 - [ ] CHK002 Is the trigger configuration (pull_request, push to dev/main) specified? [Completeness, Plan §contracts]
-- [ ] CHK003 Is the runner type (ubuntu-latest, standard, no game dependency) specified? [Completeness, Spec §FR-003]
+- [ ] CHK003 Is the runner type and per-job game dependency (ubuntu-latest; static/sca game-free, build-analysis uses the pinned build-deps) specified? [Completeness, Spec §FR-003]
 - [ ] CHK004 Are requirements for the SonarCloud parallel-run period (2–4 weeks) specified? [Completeness, Spec §FR-010]
-- [ ] CHK005 Are requirements for removing SonarCloud after validation specified? [Completeness, Spec §FR-010, Clarifications]
-- [ ] CHK006 Are requirements for the workflow's secrets (BUILDDEPS_TOKEN for CodeQL) documented? [Completeness, Plan §contracts]
+- [ ] CHK005 Are requirements for the deferred SonarCloud removal follow-up specified? [Completeness, Spec §FR-010, Clarifications]
+- [ ] CHK006 Are requirements for the workflow's secrets (BUILDDEPS_TOKEN for build-analysis; none for CodeQL) documented? [Completeness, Plan §contracts]
 
 ## Requirement Clarity
 
 - [ ] CHK007 Is the fast-gate vs. deep-scan split (Semgrep per-PR, CodeQL scheduled) clearly defined? [Clarity, Spec §FR-004, FR-005, Clarifications]
 - [ ] CHK008 Is the SonarCloud removal criterion ("2–4 weeks of green runs") quantified? [Clarity, Spec §FR-010]
 - [ ] CHK009 Is the workflow's blocking behavior (which steps fail the job) specified? [Clarity, Plan §contracts]
-- [ ] CHK010 Is the independence from the dormant Build and Test workflow explicitly stated? [Clarity, Spec §Assumptions]
+- [ ] CHK010 Is the relationship to the gated Build and Test workflow explicitly stated (separate check, shared build-deps pattern, not dormant)? [Clarity, Spec §Assumptions]
 
 ## Requirement Consistency
 
