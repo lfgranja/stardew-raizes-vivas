@@ -38,7 +38,7 @@
 ## Scenario Coverage
 
 - [ ] CHK018 Are requirements defined for the scenario where coverage cannot be measured (build fails)? [Coverage, Edge Cases]
-- [ ] CHK019 Are requirements defined for the scenario where duplication is introduced by a new clone vs. legacy clones? [Coverage, Edge Cases]
+- [ ] CHK019 Are requirements defined for how the total duplication ceiling treats newly introduced clones versus legacy clones? [Coverage, Edge Cases]
 - [ ] CHK020 Are requirements defined for the scenario where the baseline is first established (initial run)? [Coverage, Gap]
 - [ ] CHK021 Are requirements defined for the scenario where a threshold is manually overridden? [Coverage, Gap]
 

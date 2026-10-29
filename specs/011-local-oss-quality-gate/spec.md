@@ -13,7 +13,7 @@
 ### Session 2026-10-29
 
 - Q: Is a trend dashboard and inline PR decoration required, or is build-fail with file/line diagnostics sufficient? → A: Build-fail sufficient; no trend dashboard or inline PR decoration required.
-- Q: Should SonarCloud be removed entirely after validation, or kept in parallel indefinitely? → A: Remove SonarCloud after 2–4 weeks of green local runs; do not keep it in parallel indefinitely.
+- Q: Should SonarCloud be removed entirely after validation, or kept in parallel indefinitely? → A: Remove SonarCloud after 2–4 weeks of green local-gate runs; do not keep it in parallel indefinitely.
 - Q: Should CodeQL run per-PR or on a schedule? → A: Semgrep per-PR (fast gate); CodeQL scheduled (nightly/weekly) or on merge to main (deep scan).
 
 ## User Scenarios & Testing *(mandatory)*
@@ -121,4 +121,4 @@ As the maintainer, I want code-coverage and duplication thresholds enforced in C
 - No license conflict (e.g., LGPL-2.1 Semgrep engine) affects the mod's distribution (to be verified).
 - The `Build and Test` workflow remains unchanged. It is gated by `vars.BUILDDEPS_ENABLED` and has recorded green runs; it is not dormant. The new quality gate is a separate workflow and check, and reuses the same build-deps materialisation pattern.
 - No trend dashboard or inline PR decoration is required; build-fail with file/line diagnostics is sufficient.
-- SonarCloud is removed after 2–4 weeks of green local runs; it is not kept in parallel indefinitely.
+- SonarCloud is removed in a follow-up after 2–4 weeks of green `Quality Gate` runs; it is not kept in parallel indefinitely.
