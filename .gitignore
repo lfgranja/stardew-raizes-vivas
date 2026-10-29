@@ -136,6 +136,18 @@ coverage*.json
 coverage*.xml
 coverage*.info
 
+# Quality gate (spec 011) — local environments and generated reports
+.venv-quality-gate/
+coverage-report/
+jscpd-report/
+QualityGateResults/
+*.sarif
+trivy*.json
+
+# Keep the raw baseline evidence committed despite the coverage*.xml/json rules
+!specs/011-local-oss-quality-gate/baseline/**/*.xml
+!specs/011-local-oss-quality-gate/baseline/**/*.json
+
 # Visual Studio code coverage results
 *.coverage
 *.coveragexml
