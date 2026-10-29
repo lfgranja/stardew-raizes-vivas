@@ -49,9 +49,33 @@ def test_parse_report_collects_vulnerabilities_with_targets():
 
 
 @given(trivy_report())
-def test_parse_report_accepts_generated_reports(payload):
-    vulnerabilities = parse_report(payload)
-    assert all(vulnerability.severity in SEVERITY_ORDER for vulnerability in vulnerabilities)
+def test_parse_report_preserves_every_generated_vulnerability(payload):
+    expected = []
+    for result in payload["Results"]:
+        for item in result["Vulnerabilities"]:
+            expected.append(
+                (
+                    item["VulnerabilityID"],
+                    item["PkgName"],
+                    item["InstalledVersion"],
+                    item["FixedVersion"],
+                    item["Severity"],
+                    result["Target"],
+                )
+            )
+    parsed = parse_report(payload)
+    assert len(parsed) == len(expected)
+    assert [
+        (
+            vulnerability.cve,
+            vulnerability.package,
+            vulnerability.installed_version,
+            vulnerability.fixed_version,
+            vulnerability.severity,
+            vulnerability.target,
+        )
+        for vulnerability in parsed
+    ] == expected
 
 
 @pytest.mark.parametrize(
