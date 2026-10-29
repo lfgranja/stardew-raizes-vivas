@@ -1111,7 +1111,8 @@ public class MultiplayerConcurrencyTests
             _mockMonitor.Object,
             decayMultiplier,
             seasonStub,
-            _mockLocationProvider.Object);
+            _mockLocationProvider.Object,
+            new TimeProviderStub());
 
         // Soil health is at 50f initially
         float health = 50f;

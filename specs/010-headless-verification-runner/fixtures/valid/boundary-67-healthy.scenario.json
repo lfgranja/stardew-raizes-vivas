@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 2,
+  "scenarioId": "boundary-67-healthy",
+  "featureSlug": "004-playable-compost-loop",
+  "testMdPath": "specs/004-playable-compost-loop/test.md",
+  "summary": "Boundary case health=67: first Healthy value, accelerated by 0.85x.",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.4.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": false
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {
+      "kind": "macro",
+      "file": "macros/place-bin.txt",
+      "description": "place the composting bin on the target tile"
+    },
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health -10 5 67",
+      "description": "seed poor soil on the target tile"
+    }
+  ],
+  "steps": [
+    {
+      "action": "insertWaste",
+      "target": "-10,5",
+      "inputs": {
+        "itemId": "771",
+        "count": 5
+      }
+    },
+    {
+      "action": "sleep",
+      "target": "farm",
+      "days": 5
+    },
+    {
+      "action": "dumpCropPhase",
+      "target": "farm"
+    },
+    {
+      "action": "observe",
+      "target": "-10,5"
+    }
+  ],
+  "thresholds": [
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "multiplier",
+        "field": "phaseDays",
+        "base": "pre.phaseDays",
+        "factor": 0.85,
+        "tolerance": 0.0001
+      },
+      "description": "health 67 applies the 0.85x multiplier"
+    },
+    {
+      "signal": "soilHealthStateDelta",
+      "predicate": {
+        "op": "between",
+        "field": "soilHealth",
+        "min": 67,
+        "max": 100,
+        "exclusiveMin": false,
+        "exclusiveMax": false,
+        "tolerance": 0.0001
+      },
+      "description": "stored health remains in the expected interval for health 67"
+    }
+  ],
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "cropPhaseDelta",
+    "smapiLog"
+  ],
+  "timeoutSeconds": 300,
+  "inputs": {
+    "season": "spring",
+    "day": 5,
+    "weather": "sunny",
+    "money": 500
+  },
+  "rngSeed": 123456789,
+  "time": "2026-10-27T12:00:00Z",
+  "scenarioKind": "boundary",
+  "expectedVerdict": "pass",
+  "determinism": {
+    "idempotent": true,
+    "declaredSources": []
+  }
+}

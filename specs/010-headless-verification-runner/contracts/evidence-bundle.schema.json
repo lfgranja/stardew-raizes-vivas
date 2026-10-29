@@ -1,0 +1,754 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lfgranja:livingroots:evidence-bundle:v1",
+  "$comment": "Machine-readable contract for a finalized evidence-bundle manifest.json (spec 010, C-BND-01). The detached manifest.sha256 anchor is EXTERNAL: it is written after this manifest is finalized, is not a member of this object, and is the offline verifier's trust root. Every object is strict (additionalProperties: false). 'files' is a deprecated alias retained for one major version and uses the SAME {name, digest:{sha256}} shape as 'subject' — never the legacy {path, sha256} shape documented in spec 009; that contract must be reconciled. Cross-field rules JSON Schema cannot express (verdict/honesty/claim consistency, mandatory signal artifacts for a pass, R/E evidence completeness, E requiring human attestation, manifest.sha256 matching the manifest bytes) are enforced by the runner and the offline verifier and are enumerated in data-model.md.",
+  "title": "Living Roots Evidence Bundle Manifest",
+  "description": "A MIRROR-style evidence-bundle manifest produced by the single ManifestBuilder producer. Draft 2020-12, strict objects, immutable versioned $id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "timestamp",
+    "toolVersions",
+    "gameVersion",
+    "modVersion",
+    "environment",
+    "expectedSignals",
+    "subject",
+    "verdict",
+    "honestyLevel",
+    "attempts",
+    "claimsFile",
+    "artifacts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "title": "Manifest schema version",
+      "description": "Payload version. v1 is the first published manifest schema and is immutable; any breaking change requires a new vN file and a new $id.",
+      "examples": [
+        1
+      ]
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^run-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{4}$",
+      "title": "Run ID",
+      "description": "Run identifier. Must equal the evidence-bundle-<runId>/ directory component (C-BND-02).",
+      "examples": [
+        "run-20261027T120000Z-a1b2"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+      "title": "Timestamp",
+      "description": "ISO 8601 UTC timestamp for this manifest.",
+      "examples": [
+        "2026-10-27T12:04:31Z"
+      ]
+    },
+    "toolVersions": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      },
+      "title": "Tool versions",
+      "description": "Free-form tool-name to version map (for example dotnet, smapi, runner). SLSA Builder.version equivalent.",
+      "examples": [
+        {
+          "dotnet": "6.0",
+          "smapi": "4.4.0",
+          "runner": "0.1.0"
+        }
+      ]
+    },
+    "gameVersion": {
+      "$ref": "#/$defs/semver",
+      "title": "Observed game version",
+      "examples": [
+        "1.6.14"
+      ]
+    },
+    "modVersion": {
+      "$ref": "#/$defs/semver",
+      "title": "Observed mod version",
+      "examples": [
+        "0.4.0"
+      ]
+    },
+    "environment": {
+      "$ref": "#/$defs/environment"
+    },
+    "environmentOverrides": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/overrideEntry"
+      },
+      "uniqueItems": true,
+      "title": "Environment overrides",
+      "description": "Applied --override / --milestone-save entries, recorded for reproducibility (FR-008). Forbidden keys are never recorded because the runner rejects them with exit 14.",
+      "examples": [
+        [
+          {
+            "key": "environment.gameVersion",
+            "value": "1.6.14"
+          }
+        ]
+      ]
+    },
+    "expectedSignals": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/signalName"
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "title": "Expected signals",
+      "description": "Copied from the scenario. Exactly the three unique values soilHealthStateDelta, cropPhaseDelta, smapiLog.",
+      "examples": [
+        [
+          "soilHealthStateDelta",
+          "cropPhaseDelta",
+          "smapiLog"
+        ]
+      ]
+    },
+    "subject": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/fileEntry"
+      },
+      "title": "Subject (canonical file digests)",
+      "description": "Canonical, SLSA-aligned file-digest list. Includes every artifact, claims.json, each per-attempt manifest, and integrity-failure.json when present.",
+      "examples": [
+        [
+          {
+            "name": "artifacts/soil-health-before-after.json",
+            "digest": {
+              "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          }
+        ]
+      ]
+    },
+    "files": {
+      "$ref": "#/$defs/fileEntryList",
+      "title": "Files (deprecated alias)",
+      "description": "Deprecated alias for subject, retained for one major version. Same {name, digest:{sha256}} shape as subject, never {path, sha256}. The verifier prefers subject when both are present.",
+      "deprecated": true
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "errored",
+        "partial",
+        "skipped"
+      ],
+      "title": "Run verdict",
+      "description": "One of the five base verdicts. 'flaky' is derived metadata, never a verdict value.",
+      "examples": [
+        "pass"
+      ]
+    },
+    "honestyLevel": {
+      "type": "string",
+      "enum": [
+        "W",
+        "R",
+        "E"
+      ],
+      "title": "Honesty level",
+      "description": "W (launch/connect), R (runtime evidence collected), E (human judgment; assigned only by the maintainer, never auto-assigned).",
+      "examples": [
+        "R"
+      ]
+    },
+    "attempts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^attempts/[1-9][0-9]*/attempt\\.json$"
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "title": "Attempts",
+      "description": "Append-only list of per-attempt records. Contains ONLY attempts/<n>/attempt.json paths; each per-attempt manifest is listed in subject[] instead, and attempts/warmup/ is never an attempt.",
+      "examples": [
+        [
+          "attempts/1/attempt.json"
+        ]
+      ]
+    },
+    "claimsFile": {
+      "const": "claims.json",
+      "title": "Claims file",
+      "description": "Required bundle member holding claim -> evidence pointers, risk, honesty level, safe wording, and refusal site."
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$"
+      },
+      "uniqueItems": true,
+      "title": "Artifacts",
+      "description": "Repo-relative paths of captured artifacts. The three mandatory signal artifacts are expected for a pass; their absence yields partial (exit 19). Every path MUST also appear in subject[].name. A missing bundle/contract artifact is errored (exit 19).",
+      "examples": [
+        [
+          "artifacts/soil-health-before-after.json",
+          "artifacts/crop-phase-dump.json",
+          "artifacts/smapi-log.txt"
+        ]
+      ]
+    },
+    "compatibility": {
+      "$ref": "#/$defs/compatibility"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/command"
+      },
+      "title": "Commands",
+      "description": "Commands executed for this run (C-SEC-29). Mandatory evidence for honesty level R/E; recorded before products are computed.",
+      "examples": [
+        [
+          {
+            "argv": [
+              "dotnet",
+              "run"
+            ],
+            "workingDir": ".",
+            "exitCode": 0
+          }
+        ]
+      ]
+    },
+    "materials": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/material"
+      },
+      "title": "Materials",
+      "description": "Resource descriptors with digests (C-SEC-29). Mandatory evidence for honesty level R/E.",
+      "examples": [
+        [
+          {
+            "uri": "file:gamepath/Stardew Valley.dll",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+            "name": "Stardew Valley.dll"
+          }
+        ]
+      ]
+    },
+    "seeds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/seed"
+      },
+      "title": "Seeds",
+      "description": "Seed materials. At least one is mandatory for honesty level R/E; each seed is also a material with annotations.role = 'seed'.",
+      "examples": [
+        [
+          {
+            "seedId": "farm-year1-day5",
+            "source": "builddeps",
+            "baseSaveHash": "0000000000000000000000000000000000000000000000000000000000000000"
+          }
+        ]
+      ]
+    },
+    "determinism": {
+      "$ref": "#/$defs/determinism"
+    },
+    "commandsCompleteness": {
+      "type": "boolean",
+      "default": false,
+      "title": "Commands completeness",
+      "description": "True only when the command record is provably complete/hermetic (C-SEC-29)."
+    },
+    "materialsCompleteness": {
+      "type": "boolean",
+      "default": false,
+      "title": "Materials completeness",
+      "description": "True only when the material record is provably complete/hermetic (C-SEC-29)."
+    },
+    "seedsCompleteness": {
+      "type": "boolean",
+      "default": false,
+      "title": "Seeds completeness",
+      "description": "True only when the seed record is provably complete/hermetic (C-SEC-29)."
+    },
+    "suiteRerunCount": {
+      "type": "integer",
+      "minimum": 0,
+      "title": "Suite rerun count",
+      "description": "Reruns consumed against RunnerMaxSuiteReruns = 4.",
+      "examples": [
+        0
+      ]
+    },
+    "suiteRerunCapHit": {
+      "type": "boolean",
+      "default": false,
+      "title": "Suite rerun cap hit",
+      "description": "True when the suite rerun cap was reached."
+    },
+    "cleanup_failed": {
+      "type": "boolean",
+      "default": false,
+      "title": "Cleanup failed",
+      "description": "True when working-copy/save cleanup failed to complete. Forces errored (exit 19) even if the gameplay verdict was pass."
+    },
+    "ignoreExitCodeRefused": {
+      "type": "boolean",
+      "default": false,
+      "title": "Ignore-exit-code refused",
+      "description": "True when --ignore-exit-code was refused for an integrity/security or claim-overreach failure. The process exits with the original code."
+    },
+    "integrityFailureRef": {
+      "const": "integrity-failure.json",
+      "title": "Integrity failure reference",
+      "description": "Present only when an integrity failure occurred; the record is append-only and listed in subject[]."
+    },
+    "junitFile": {
+      "const": "junit.xml",
+      "title": "JUnit report",
+      "description": "Optional CI integration report."
+    },
+    "allureFile": {
+      "const": "allure.json",
+      "title": "Allure report",
+      "description": "Optional rich report."
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-.][0-9A-Za-z.-]+)?$",
+      "title": "Semantic version",
+      "examples": [
+        "1.6.14"
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "SHA-256 digest",
+      "description": "Lowercase hexadecimal SHA-256 digest.",
+      "examples": [
+        "0000000000000000000000000000000000000000000000000000000000000000"
+      ]
+    },
+    "digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256"
+      ],
+      "title": "Digest",
+      "properties": {
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "fileEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "digest"
+      ],
+      "title": "File entry",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "title": "Relative path",
+          "description": "Bundle-relative path. Absolute paths and '..' segments are rejected.",
+          "examples": [
+            "artifacts/smapi-log.txt"
+          ]
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "fileEntryList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/fileEntry"
+      },
+      "title": "File entry list",
+      "description": "Ordered list of file entries; used by both subject (canonical) and files (deprecated alias)."
+    },
+    "signalName": {
+      "type": "string",
+      "enum": [
+        "soilHealthStateDelta",
+        "cropPhaseDelta",
+        "smapiLog"
+      ],
+      "title": "Signal name"
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gameVersion",
+        "smapiVersion",
+        "modVersion",
+        "apiVersion",
+        "saveId"
+      ],
+      "title": "Observed environment",
+      "description": "Observed execution environment. A mismatch against the scenario is a HARD-FAIL version-gate classification (exit 19).",
+      "properties": {
+        "gameVersion": {
+          "$ref": "#/$defs/semver"
+        },
+        "smapiVersion": {
+          "$ref": "#/$defs/semver"
+        },
+        "modVersion": {
+          "$ref": "#/$defs/semver"
+        },
+        "apiVersion": {
+          "$ref": "#/$defs/semver"
+        },
+        "saveId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "title": "Save ID"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "ci",
+            "local"
+          ],
+          "title": "Execution mode",
+          "description": "Local runs that cannot satisfy a CI-only control record the deviation and are not eligible for verified promotion unless reviewed."
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "title": "Runner configuration",
+          "description": "Observed runner configuration. Members are optional; omitted members take their declared defaults.",
+          "properties": {
+            "saveMode": {
+              "type": "string",
+              "enum": [
+                "save",
+                "nosave"
+              ]
+            },
+            "headless": {
+              "type": "boolean"
+            },
+            "skipBuild": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "overrideEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "value"
+      ],
+      "title": "Environment override",
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^environment\\.(gameVersion|smapiVersion|modVersion|saveId|config\\.[A-Za-z0-9_]+)$",
+          "title": "Override key",
+          "description": "Dotted key limited to declared environment values. testMdPath, expectedSignals, thresholds, playerRole, and hostGuard are never overridable."
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Override value"
+        }
+      }
+    },
+    "compatComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observed"
+      ],
+      "title": "Compatibility component",
+      "properties": {
+        "observed": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Observed version"
+        },
+        "minimum": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semver"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Minimum supported version"
+        },
+        "maximum": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semver"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Maximum supported version",
+          "description": "A null maximum records an upper-bound deviation (warn), not INFO."
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "INFO",
+            "WARN",
+            "HARD-FAIL"
+          ],
+          "title": "Classification tier"
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tier"
+      ],
+      "title": "Compatibility block",
+      "description": "Observed/minimum/maximum/tier per component, modSelfCheck, and deviation.",
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": [
+            "INFO",
+            "WARN",
+            "HARD-FAIL"
+          ],
+          "title": "Overall tier"
+        },
+        "deviation": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Recorded deviation",
+          "description": "Deviation text when observed exceeds the matrix maximum; null when there is no deviation. This is the one explicit null in the manifest contract."
+        },
+        "modSelfCheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "title": "Mod self-check",
+          "properties": {
+            "passed": {
+              "type": "boolean"
+            },
+            "detail": {
+              "type": "string"
+            }
+          }
+        },
+        "components": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/compatComponent"
+          },
+          "title": "Per-component compatibility"
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "argv"
+      ],
+      "title": "Command record",
+      "properties": {
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "title": "argv",
+          "description": "Executed argv as an array. Never a shell string; never a secret."
+        },
+        "workingDir": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Working directory"
+        },
+        "startedAt": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+          "title": "Started at"
+        },
+        "endedAt": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+          "title": "Ended at"
+        },
+        "exitCode": {
+          "type": "integer",
+          "title": "Exit code"
+        },
+        "stdoutRef": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "title": "stdout reference"
+        },
+        "stderrRef": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "title": "stderr reference"
+        }
+      }
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256",
+        "name"
+      ],
+      "title": "Material",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "title": "URI"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Name"
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Media type"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "title": "Size in bytes"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": false,
+          "title": "Annotations",
+          "properties": {
+            "role": {
+              "type": "string",
+              "enum": [
+                "game-file",
+                "mod-manifest",
+                "tool",
+                "seed-save",
+                "dataset-instance",
+                "seed"
+              ],
+              "title": "Material role"
+            }
+          }
+        }
+      }
+    },
+    "seed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seedId",
+        "source"
+      ],
+      "title": "Seed",
+      "properties": {
+        "seedId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Seed ID"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Seed source"
+        },
+        "baseCommit": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Base commit"
+        },
+        "baseSaveHash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "determinism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotent",
+        "declaredSources"
+      ],
+      "title": "Determinism declaration",
+      "properties": {
+        "idempotent": {
+          "const": true
+        },
+        "declaredSources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "gameClock",
+              "rng",
+              "externalIO",
+              "network",
+              "locale",
+              "hardware",
+              "other"
+            ]
+          },
+          "uniqueItems": true,
+          "title": "Declared non-deterministic sources"
+        }
+      }
+    }
+  }
+}

@@ -46,6 +46,8 @@ on:
 # executing zero tests. Second, the paths-ignore filter above means this workflow cannot
 # report on a documentation-only pull request, so if it is ever made required, drop the
 # filter first or documentation-only pull requests will block forever.
+permissions:
+    contents: read
 jobs:
     build-test:
         name: Build and Test

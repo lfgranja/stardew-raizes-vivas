@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using LivingRoots;
+using LivingRoots.Domain;
 using LivingRoots.Domain.Visualization;
 using LivingRoots.Services.Visualization;
 using Microsoft.Xna.Framework;
@@ -502,7 +503,8 @@ public sealed class OverlayMeasurementFixture
         var service = new VisualizationService(
             new ColorInterpolationService(),
             configService.Object,
-            monitor.Object);
+            monitor.Object,
+            Mock.Of<IHudNotifier>());
         service.Initialize(StandInWhiteTexture());
         return service;
     }

@@ -1,0 +1,1850 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lfgranja:livingroots:scenario:v2",
+  "$comment": "Cross-field rules that JSON Schema cannot express (between.min <= between.max, multiplier.base suffix == field, and signal-to-field mapping) are enforced by the runner with exit 14 and are enumerated in data-model.md §Validation Rules. The sentinel-to-field map is encoded in the sentinel predicate's if/then branches, and the action-to-required-input map is encoded in $defs/step.allOf. These are machine-evaluable constraints, not unenforced prose. Immutable v2 contract identity. The authored file is contracts/scenario.schema.json; the $id is a logical versioned URN, not a file-path mirror, and MUST NOT be reused for a breaking change. A promoted copy under schemas/scenarios/v2/ keeps this $id byte-for-byte, or a new vN file with a new $id is issued. Migration: v1 was a pre-release draft with condition-only thresholds; v2 is the first published immutable version and introduces structured predicates, required environment.apiVersion, required summary/determinism/scenarioKind, and typed initialization commands. v1 is not supported by the v2 runner.",
+  "title": "Living Roots Verification Scenario",
+  "description": "Canonical machine-readable scenario definition for the headless game verification runner (spec 010). JSON is the canonical format; an optional Markdown companion checklist may accompany it for contributor readability. Draft 2020-12, strict objects, immutable versioned $id. v2 introduces structured predicate thresholds, environment metadata, host-guard fields, typed initialization commands, explicit determinism metadata, and an explicit absence-vs-null policy: null is never a valid value for any field; an omitted optional field takes its declared default, and an omitted required field is invalid.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "scenarioId",
+    "featureSlug",
+    "testMdPath",
+    "summary",
+    "playerRole",
+    "minimumGameVersion",
+    "environment",
+    "milestoneSave",
+    "initCommands",
+    "steps",
+    "thresholds",
+    "expectedSignals",
+    "rngSeed",
+    "time",
+    "determinism",
+    "scenarioKind"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 2,
+      "title": "Schema version",
+      "description": "Payload version. v2 is the first published schema version and is immutable. Any breaking change requires a new vN file and a new $id; a deprecated alias may be retained for at most one major version.",
+      "examples": [
+        2
+      ]
+    },
+    "scenarioId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "title": "Scenario identifier",
+      "description": "Unique kebab-case slug for this scenario. Used as the stable test-case identifier in reports and quarantine entries.",
+      "examples": [
+        "compost-growth-poor-soil"
+      ]
+    },
+    "featureSlug": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[0-9]{3}-[a-z0-9-]+$",
+      "title": "Feature slug",
+      "description": "Spec feature slug this scenario verifies (NNN-slug). Must match the target feature folder under specs/.",
+      "examples": [
+        "004-playable-compost-loop"
+      ]
+    },
+    "testMdPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^specs/[0-9]{3}-[a-z0-9-]+/test\\.md$",
+      "title": "Path to test.md",
+      "description": "Relative path to the feature's Gate 3 test.md. Must exist and contain exactly one GATE3 marker block; validated fail-fast before launch (FR-008/FR-016). Absolute paths, '..' segments, and backslashes are rejected by the pattern.",
+      "examples": [
+        "specs/004-playable-compost-loop/test.md"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 500,
+      "title": "Human-readable summary",
+      "description": "Required plain-language description of what the scenario proves. Advisory only; the thresholds remain the machine oracle.",
+      "examples": [
+        "Poor soil slows crop growth by 15% relative to vanilla."
+      ],
+      "minLength": 1
+    },
+    "playerRole": {
+      "type": "string",
+      "enum": [
+        "host",
+        "farmhand"
+      ],
+      "title": "Expected player role",
+      "description": "Expected player role for host-guard evaluation (FR-011). A farmhand scenario MUST also declare hostGuard.",
+      "examples": [
+        "host"
+      ]
+    },
+    "minimumGameVersion": {
+      "$ref": "#/$defs/semver",
+      "title": "Minimum game version",
+      "description": "Per-scenario game version floor. Must be greater than or equal to the mod manifest's MinimumGameVersion. The runner compares this against the file-based version gate before launch.",
+      "examples": [
+        "1.6.14"
+      ]
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gameVersion",
+        "smapiVersion",
+        "modVersion",
+        "apiVersion",
+        "saveId",
+        "config"
+      ],
+      "title": "Declared environment",
+      "description": "Expected execution environment. The runner records the observed values in the evidence bundle and fails fast on a mismatch (FR-008). Declared values make the scenario reproducible without relying on host-global state.",
+      "examples": [
+        {
+          "gameVersion": "1.6.14",
+          "smapiVersion": "4.4.0",
+          "modVersion": "0.4.0",
+          "apiVersion": "1.0.0",
+          "saveId": "farm-year1-day5",
+          "config": {
+            "saveMode": "save",
+            "headless": true,
+            "skipBuild": false
+          }
+        }
+      ],
+      "properties": {
+        "gameVersion": {
+          "$ref": "#/$defs/semver",
+          "title": "Game version",
+          "description": "Expected Stardew Valley version.",
+          "examples": [
+            "1.6.14"
+          ]
+        },
+        "smapiVersion": {
+          "$ref": "#/$defs/semver",
+          "title": "SMAPI version",
+          "description": "Expected SMAPI version.",
+          "examples": [
+            "4.4.0"
+          ]
+        },
+        "modVersion": {
+          "$ref": "#/$defs/semver",
+          "title": "Mod version",
+          "description": "Expected LivingRoots mod version.",
+          "examples": [
+            "0.4.0"
+          ]
+        },
+        "saveId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "title": "Save ID",
+          "description": "Expected in-game save identifier after load, used to locate sidecars (soil_health_data_{saveId}.json, composting_bins_{saveId}.json). Must match the milestone manifest saveId for the selected milestoneSave; a mismatch is a scenario-contract error (exit 14).",
+          "examples": [
+            "farm-year1-day5"
+          ]
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "title": "Runner configuration",
+          "description": "Expected runner configuration for this scenario. The object MUST be present; omitted members take their declared defaults.",
+          "examples": [
+            {
+              "saveMode": "save",
+              "headless": true,
+              "skipBuild": false
+            }
+          ],
+          "properties": {
+            "saveMode": {
+              "type": "string",
+              "enum": [
+                "save",
+                "nosave"
+              ],
+              "default": "save",
+              "title": "Save mode",
+              "description": "Whether the game may write saves during the scenario. Runner scenarios MUST use save because the evidence bundle depends on the save delta; nosave is reserved for non-Gate-3 smoke use.",
+              "examples": [
+                "save"
+              ]
+            },
+            "headless": {
+              "type": "boolean",
+              "default": true,
+              "title": "Headless",
+              "description": "Whether the game runs under Xvfb without a visible window.",
+              "examples": [
+                true
+              ]
+            },
+            "skipBuild": {
+              "type": "boolean",
+              "default": false,
+              "title": "Skip build",
+              "description": "Whether the runner reuses an already-built mod instead of rebuilding it.",
+              "examples": [
+                false
+              ]
+            }
+          }
+        },
+        "apiVersion": {
+          "$ref": "#/$defs/semver",
+          "title": "Mod API version",
+          "description": "Version of the production mod API contract (ILivingRootsModApi.ApiVersion) this scenario requires. Distinct from modVersion; a mismatch is a HARD-FAIL version-gate classification.",
+          "examples": [
+            "1.0.0"
+          ]
+        }
+      }
+    },
+    "milestoneSave": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9 _-]*$",
+      "title": "Milestone save name",
+      "description": "Source milestone save folder name in the private builddeps repository. Must match the milestone manifest saveName. This is the read-only seed folder; environment.saveId is the expected in-game save ID after load. They may differ in spelling but both must match the same milestone manifest entry.",
+      "examples": [
+        "farm-year1-day5"
+      ]
+    },
+    "background": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/initCommand"
+      },
+      "default": [],
+      "title": "Shared preconditions",
+      "description": "Optional shared setup commands executed before initCommands. Equivalent to a Background/common block; scenario-specific initCommands and steps follow. The runner executes background first, then initCommands.",
+      "examples": [
+        [
+          {
+            "kind": "console",
+            "command": "lr_clear_scenario_state"
+          }
+        ]
+      ]
+    },
+    "initCommands": {
+      "type": "array",
+      "minItems": 0,
+      "title": "Initialization commands",
+      "description": "Ordered initialization commands. Macro commands reference plain-text macro files (one '/' command per line); console commands invoke registered SMAPI mod commands. The runner executes them after background and before the first step. An empty array is valid for a scenario that needs no setup.",
+      "examples": [
+        [
+          {
+            "kind": "macro",
+            "file": "macros/place-bin.txt"
+          },
+          {
+            "kind": "console",
+            "command": "lr_set_soil_health -10 5 10"
+          }
+        ]
+      ],
+      "items": {
+        "$ref": "#/$defs/initCommand"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/step"
+      },
+      "minItems": 1,
+      "maxItems": 5,
+      "title": "Scenario steps",
+      "description": "Ordered step list; array order is the single source of truth (no dependsOn field). Prefer 3-5 steps; decompose longer scenarios into multiple scenarios.",
+      "examples": [
+        [
+          {
+            "action": "sleep",
+            "target": "farm",
+            "days": 5
+          },
+          {
+            "action": "observe",
+            "target": "-10,5"
+          }
+        ]
+      ]
+    },
+    "thresholds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/threshold"
+      },
+      "minItems": 1,
+      "title": "Thresholds (acceptance oracle)",
+      "description": "Machine-evaluable acceptance criteria. Each threshold is a structured predicate; prose descriptions are advisory only.",
+      "examples": [
+        [
+          {
+            "signal": "cropPhaseDelta",
+            "predicate": {
+              "op": "multiplier",
+              "field": "phaseDays",
+              "base": "pre.phaseDays",
+              "factor": 1.15,
+              "tolerance": 0.0001
+            },
+            "modConstant": "PoorSoilGrowthMultiplier",
+            "description": "poor soil slows growth by 1.15x"
+          }
+        ]
+      ]
+    },
+    "expectedSignals": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "soilHealthStateDelta",
+          "cropPhaseDelta",
+          "smapiLog"
+        ]
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "title": "Expected signals",
+      "description": "All three mandatory signals must be captured for host runs (SC-002). Exactly three unique values are required. The explicit declaration is retained (rather than implied) because it is copied into the evidence bundle's expected-signal set and lets a future scenario kind narrow the set without a reader inferring it from the run type. Farmhand host-guard runs additionally assert the absence of Crop-phase mutation, as declared by hostGuard.",
+      "examples": [
+        [
+          "soilHealthStateDelta",
+          "cropPhaseDelta",
+          "smapiLog"
+        ]
+      ]
+    },
+    "timeoutSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 86400,
+      "default": 300,
+      "title": "Timeout (seconds)",
+      "description": "Per-scenario timeout in seconds. Optional; when omitted, the runner uses 300 seconds. A macro timeout is a retryable transient class (FR-011).",
+      "examples": [
+        300
+      ]
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "title": "Scenario-level inputs",
+      "description": "Explicit scenario-level inputs. No hidden global state, clock, or RNG seed is allowed (C-SCN-20). Omitted members take their declared defaults.",
+      "examples": [
+        {
+          "season": "spring",
+          "day": 5,
+          "weather": "sunny",
+          "money": 500
+        }
+      ],
+      "properties": {
+        "season": {
+          "type": "string",
+          "enum": [
+            "spring",
+            "summer",
+            "fall",
+            "winter"
+          ],
+          "default": "spring",
+          "title": "Season",
+          "description": "Starting season for the seeded save.",
+          "examples": [
+            "spring"
+          ]
+        },
+        "day": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 28,
+          "default": 1,
+          "title": "Day of season",
+          "description": "Starting day of the season (1-28).",
+          "examples": [
+            5
+          ]
+        },
+        "weather": {
+          "type": "string",
+          "enum": [
+            "sunny",
+            "rainy",
+            "stormy",
+            "snowy",
+            "windy",
+            "festival"
+          ],
+          "default": "sunny",
+          "title": "Weather",
+          "description": "Starting weather. Festival days are excluded from growth evaluation unless the scenario explicitly opts in.",
+          "examples": [
+            "sunny"
+          ]
+        },
+        "money": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 500,
+          "title": "Money",
+          "description": "Starting money. Capitalized to avoid the game's chat-secret token.",
+          "examples": [
+            500
+          ]
+        }
+      },
+      "required": []
+    },
+    "rngSeed": {
+      "type": "integer",
+      "title": "RNG seed",
+      "description": "Declared RNG seed for reproducibility (C-SCN-20). Required so a run can be replayed deterministically.",
+      "examples": [
+        123456789
+      ]
+    },
+    "time": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+      "title": "Declared time",
+      "description": "Declared UTC time context in ISO 8601 compact form (YYYY-MM-DDTHH:MM:SSZ) for reproducibility (C-SCN-20).",
+      "examples": [
+        "2026-10-27T12:00:00Z"
+      ]
+    },
+    "determinism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idempotent",
+        "declaredSources"
+      ],
+      "title": "Determinism declaration",
+      "description": "Explicit statement that re-running the scenario from the same seed/environment yields the same result. Required. Any non-deterministic source must be declared; an undeclared source is a scenario-contract violation.",
+      "examples": [
+        {
+          "idempotent": true,
+          "declaredSources": [
+            "gameClock"
+          ]
+        }
+      ],
+      "properties": {
+        "idempotent": {
+          "const": true,
+          "title": "Idempotent",
+          "description": "Re-running from the same seed/environment MUST yield the same verdict. A scenario that cannot meet this is invalid.",
+          "examples": [
+            true
+          ]
+        },
+        "declaredSources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "gameClock",
+              "rng",
+              "externalIO",
+              "network",
+              "locale",
+              "hardware",
+              "other"
+            ]
+          },
+          "uniqueItems": true,
+          "title": "Declared non-deterministic sources",
+          "description": "Known sources of non-determinism that the runner must control or record. An empty array asserts full determinism.",
+          "examples": [
+            [
+              "gameClock"
+            ]
+          ]
+        }
+      }
+    },
+    "criticalPath": {
+      "type": "boolean",
+      "default": false,
+      "title": "Critical-path scenario",
+      "description": "Marks a scenario that is never quarantinable (C-REL-23), for example save/load round-trip or core crop-growth threshold evaluation.",
+      "examples": [
+        false
+      ]
+    },
+    "scenarioKind": {
+      "type": "string",
+      "enum": [
+        "positive",
+        "negative",
+        "boundary"
+      ],
+      "title": "Scenario kind",
+      "description": "Required intent declaration. Positive scenarios declare pass; negative scenarios declare a non-pass expectedVerdict; boundary scenarios declare pass or fail.",
+      "examples": [
+        "positive"
+      ]
+    },
+    "expectedVerdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "errored",
+        "partial",
+        "skipped"
+      ],
+      "default": "pass",
+      "title": "Expected verdict",
+      "description": "Expected base run verdict. Positive scenarios require pass; boundary scenarios allow pass or fail; negative scenarios allow any non-pass verdict. The runner asserts actual == expected for every scenario and treats a mismatch as a scenario-contract failure (exit 19). 'flaky' is a derived metadata flag, not an expected base verdict. A matched expectedVerdict=fail still exits 18 (the gameplay assertion failed as designed); use --ignore-exit-code 18 only in an explicitly expected-failure lane.",
+      "examples": [
+        "pass"
+      ]
+    },
+    "hostGuard": {
+      "$ref": "#/$defs/hostGuard",
+      "title": "Host-guard expectations",
+      "description": "Required when playerRole is farmhand. Declares the observable skip line and the forbidden execution evidence used to detect a host-guard breach (FR-011)."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "playerRole": {
+            "const": "farmhand"
+          }
+        },
+        "required": [
+          "playerRole"
+        ]
+      },
+      "then": {
+        "required": [
+          "hostGuard"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "playerRole": {
+            "const": "host"
+          }
+        },
+        "required": [
+          "playerRole"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "hostGuard"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scenarioKind": {
+            "const": "negative"
+          }
+        },
+        "required": [
+          "scenarioKind"
+        ]
+      },
+      "then": {
+        "required": [
+          "expectedVerdict"
+        ],
+        "properties": {
+          "expectedVerdict": {
+            "enum": [
+              "fail",
+              "errored",
+              "partial",
+              "skipped"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scenarioKind": {
+            "const": "boundary"
+          }
+        },
+        "required": [
+          "scenarioKind"
+        ]
+      },
+      "then": {
+        "required": [
+          "expectedVerdict"
+        ],
+        "properties": {
+          "expectedVerdict": {
+            "enum": [
+              "pass",
+              "fail"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scenarioKind": {
+            "const": "positive"
+          }
+        },
+        "required": [
+          "scenarioKind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "expectedVerdict": {
+            "const": "pass"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-.][0-9A-Za-z.-]+)?$",
+      "title": "Semantic version",
+      "description": "Version in numeric semver form. Non-standard channels such as -unofficial.* are accepted but classified by the version gate.",
+      "examples": [
+        "1.6.14"
+      ]
+    },
+    "soilHealthValue": {
+      "oneOf": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "title": "Measured soil health",
+          "description": "A measured health value in the 0-100 range. Zero is a measured floor, not an absence.",
+          "examples": [
+            10
+          ]
+        },
+        {
+          "const": "NaN",
+          "title": "Unmeasured soil health",
+          "description": "The string \"NaN\" means unmeasured (missing key or stored NaN), never 0% health.",
+          "examples": [
+            "NaN"
+          ]
+        }
+      ],
+      "title": "Soil health value",
+      "description": "A measured 0-100 value or the \"NaN\" unmeasured sentinel."
+    },
+    "numericField": {
+      "type": "string",
+      "enum": [
+        "soilHealth",
+        "phaseDays",
+        "currentPhase",
+        "dayOfCurrentPhase",
+        "indexOfHarvest",
+        "elapsedMilliseconds",
+        "locationsProcessed"
+      ],
+      "title": "Numeric signal field",
+      "description": "A signal field with numeric semantics.",
+      "examples": [
+        "phaseDays"
+      ]
+    },
+    "booleanField": {
+      "type": "string",
+      "enum": [
+        "fullyGrown",
+        "dead",
+        "isMainPlayer"
+      ],
+      "title": "Boolean signal field",
+      "description": "A signal field with boolean semantics.",
+      "examples": [
+        "isMainPlayer"
+      ]
+    },
+    "field": {
+      "type": "string",
+      "enum": [
+        "soilHealth",
+        "healthTier",
+        "soilHealthState",
+        "phaseDays",
+        "currentPhase",
+        "dayOfCurrentPhase",
+        "fullyGrown",
+        "dead",
+        "indexOfHarvest",
+        "elapsedMilliseconds",
+        "eventName",
+        "locationsProcessed",
+        "isMainPlayer"
+      ],
+      "title": "Signal field",
+      "description": "Closed vocabulary of fields that thresholds may evaluate. Numeric fields accept numbers; boolean fields accept booleans; string fields accept strings. New fields require a schema version bump.",
+      "examples": [
+        "phaseDays"
+      ]
+    },
+    "sentinel": {
+      "type": "string",
+      "enum": [
+        "SENTINEL_UNTOUCHED_99999",
+        "NAN_HEALTH",
+        "MISSING_KEY",
+        "HEALTH_LE_ZERO",
+        "POOR_POSITIVE_LT_34",
+        "PHASE_MINUS_ONE"
+      ],
+      "title": "Sentinel",
+      "description": "Named sentinel constant (C-SCN-03/C-SCN-27). SENTINEL_UNTOUCHED_99999 = the phaseDays sentinel; NAN_HEALTH = a stored NaN health value (unmeasured, not 0); MISSING_KEY = no SoilHealthState entry (unmeasured, non-participant); HEALTH_LE_ZERO = measured health at or below zero (growth non-participant, healthTier nonParticipant); POOR_POSITIVE_LT_34 = strictly positive health below 34 (healthTier poor); PHASE_MINUS_ONE = currentPhase exactly -1 (the game's excluded sentinel phase).",
+      "examples": [
+        "SENTINEL_UNTOUCHED_99999"
+      ]
+    },
+    "initCommand": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "file"
+          ],
+          "title": "Macro initialization command",
+          "description": "Runs a plain-text macro file via 'debug runmacro <file>'. The file is UTF-8 (BOM tolerated), LF or CRLF, one '/' command per line; blank lines are skipped and non-'/' lines are rejected. The file name MUST include its .txt extension.",
+          "properties": {
+            "kind": {
+              "const": "macro",
+              "title": "Command kind",
+              "description": "Macro file invocation.",
+              "examples": [
+                "macro"
+              ]
+            },
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+\\.txt$",
+              "title": "Macro file",
+              "description": "Relative path to a .txt macro file. Absolute paths and '..' segments are rejected.",
+              "examples": [
+                "macros/place-bin.txt"
+              ]
+            },
+            "description": {
+              "type": "string",
+              "default": "",
+              "title": "Description",
+              "description": "Optional human-readable description.",
+              "examples": [
+                "place the composting bin on the target tile"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "command"
+          ],
+          "title": "Console initialization command",
+          "description": "Invokes a registered SMAPI mod console command. Debug commands (which belong in macros) are rejected: the command MUST NOT start with 'debug '.",
+          "properties": {
+            "kind": {
+              "const": "console",
+              "title": "Command kind",
+              "description": "Registered SMAPI console command.",
+              "examples": [
+                "console"
+              ]
+            },
+            "command": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000,
+              "pattern": "^(?!debug\\s)(?!\\s*$)[^\\r\\n]+$",
+              "title": "Console command",
+              "description": "Single-line registered SMAPI command, without a leading 'debug ' prefix and without newlines.",
+              "examples": [
+                "lr_set_soil_health -10 5 10"
+              ]
+            },
+            "description": {
+              "type": "string",
+              "default": "",
+              "title": "Description",
+              "description": "Optional human-readable description.",
+              "examples": [
+                "seed poor soil on the target tile"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "stepInputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "title": "Step inputs",
+      "description": "Explicit action-specific inputs. Unknown fields are rejected. Every member is optional with explicit absence semantics: when omitted the value is absent (not null and not a default), and the runner MUST reject an action that requires the missing input (exit 14).",
+      "examples": [
+        {
+          "tileX": -10,
+          "tileY": 5,
+          "location": "Farm",
+          "count": 5
+        }
+      ],
+      "properties": {
+        "tileX": {
+          "type": "integer",
+          "minimum": -10000,
+          "maximum": 10000,
+          "title": "Tile X",
+          "description": "Tile X coordinate, bounded to the mod's MaxAbsoluteTileCoordinate.",
+          "examples": [
+            -10
+          ]
+        },
+        "tileY": {
+          "type": "integer",
+          "minimum": -10000,
+          "maximum": 10000,
+          "title": "Tile Y",
+          "description": "Tile Y coordinate, bounded to the mod's MaxAbsoluteTileCoordinate.",
+          "examples": [
+            5
+          ]
+        },
+        "location": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "title": "Location",
+          "description": "Location name (for example Farm or Greenhouse).",
+          "examples": [
+            "Farm"
+          ]
+        },
+        "itemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "title": "Item ID",
+          "description": "Game item identifier used by the action.",
+          "examples": [
+            "771"
+          ]
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 999,
+          "title": "Count",
+          "description": "Number of items to place or consume.",
+          "examples": [
+            5
+          ]
+        },
+        "soilHealth": {
+          "$ref": "#/$defs/soilHealthValue",
+          "title": "Soil health",
+          "description": "Measured soil health value to seed, in the 0-100 range, or \"NaN\" for unmeasured.",
+          "examples": [
+            10
+          ]
+        },
+        "macroFile": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+\\.txt$",
+          "title": "Macro file",
+          "description": "Relative .txt macro file for a runMacro step.",
+          "examples": [
+            "macros/harvest.txt"
+          ]
+        }
+      },
+      "required": []
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action",
+        "target"
+      ],
+      "title": "Step",
+      "description": "A single ordered step in the scenario. Array order is the single source of truth.",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "sleep",
+            "warp",
+            "harvest",
+            "applyCompost",
+            "insertWaste",
+            "setSoilHealth",
+            "observe",
+            "dumpCropPhase",
+            "runMacro"
+          ],
+          "title": "Action",
+          "description": "Primitive action vocabulary owned and versioned by the runner (C-SCN-32). Composite keywords are deferred until at least three features reuse a sequence.",
+          "examples": [
+            "sleep"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "title": "Target",
+          "description": "Target tile, location, or object identifier for the action.",
+          "examples": [
+            "-10,5"
+          ]
+        },
+        "days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 28,
+          "default": 1,
+          "title": "Days",
+          "description": "Number of in-game days the action spans. Only meaningful for sleep and multi-day actions.",
+          "examples": [
+            5
+          ]
+        },
+        "inputs": {
+          "$ref": "#/$defs/stepInputs",
+          "title": "Step inputs",
+          "description": "Action-specific inputs. Optional; omitted means an empty object, but actions with required inputs must supply them."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "insertWaste"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "inputs"
+            ],
+            "properties": {
+              "inputs": {
+                "required": [
+                  "itemId",
+                  "count"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "setSoilHealth"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "inputs"
+            ],
+            "properties": {
+              "inputs": {
+                "required": [
+                  "soilHealth"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "runMacro"
+              }
+            },
+            "required": [
+              "action"
+            ]
+          },
+          "then": {
+            "required": [
+              "inputs"
+            ],
+            "properties": {
+              "inputs": {
+                "required": [
+                  "macroFile"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "predicate": {
+      "title": "Predicate",
+      "description": "Machine-evaluable threshold predicate (C-SCN-29). The discriminated 'op' field selects exactly one variant. Two independent readers MUST compute the same pass/fail result from the predicate plus the captured signal. If the actual value is absent or the string 'NaN', every numeric predicate (cmp, between, multiplier, unchanged) FAILS with reason 'unmeasured-actual'; only the sentinel predicate may assert unmeasured or missing values. A predicate whose field is not allowed for its signal is a scenario-contract error (exit 14).",
+      "examples": [
+        {
+          "op": "multiplier",
+          "field": "phaseDays",
+          "base": "pre.phaseDays",
+          "factor": 1.15,
+          "tolerance": 0.0001
+        },
+        {
+          "op": "between",
+          "field": "soilHealth",
+          "min": 34,
+          "max": 67,
+          "exclusiveMin": false,
+          "exclusiveMax": true,
+          "tolerance": 0.0001
+        },
+        {
+          "op": "sentinel",
+          "field": "phaseDays",
+          "sentinel": "SENTINEL_UNTOUCHED_99999",
+          "mustNotChange": true
+        }
+      ],
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "left",
+            "operator",
+            "right"
+          ],
+          "title": "Comparison predicate",
+          "description": "Compares a signal field (left) to a typed operand (right). The operand type MUST match the field type: numbers for numeric fields, booleans for boolean fields, strings for string fields. The \"NaN\" sentinel is not a valid comparison operand; use the sentinel predicate instead.",
+          "properties": {
+            "op": {
+              "const": "cmp",
+              "title": "Operator",
+              "description": "Comparison predicate.",
+              "examples": [
+                "cmp"
+              ]
+            },
+            "left": {
+              "$ref": "#/$defs/field",
+              "title": "Left operand",
+              "description": "Signal field evaluated on the left side of the comparison."
+            },
+            "operator": {
+              "type": "string",
+              "enum": [
+                "eq",
+                "ne",
+                "lt",
+                "lte",
+                "gt",
+                "gte"
+              ],
+              "title": "Comparison operator",
+              "description": "Comparison operator. Ordering operators (lt/lte/gt/gte) are valid only for numeric fields; eq/ne apply to all types.",
+              "examples": [
+                "gte"
+              ]
+            },
+            "right": {
+              "oneOf": [
+                {
+                  "type": "number",
+                  "title": "Numeric operand",
+                  "description": "Operand for a numeric field.",
+                  "examples": [
+                    34
+                  ]
+                },
+                {
+                  "type": "boolean",
+                  "title": "Boolean operand",
+                  "description": "Operand for a boolean field.",
+                  "examples": [
+                    true
+                  ]
+                },
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "title": "String operand",
+                  "description": "Operand for a string field.",
+                  "examples": [
+                    "DayEnding"
+                  ]
+                }
+              ],
+              "title": "Comparison operand",
+              "description": "Typed operand; the applicable branch is selected by the field type.",
+              "examples": [
+                34,
+                false,
+                "DayEnding"
+              ]
+            },
+            "tolerance": {
+              "type": "number",
+              "minimum": 0,
+              "default": 0.0001,
+              "title": "Tolerance",
+              "description": "Absolute tolerance for numeric equality. The truth table is: eq -> |left - right| <= tolerance; ne -> |left - right| > tolerance. Ordering operators (lt/lte/gt/gte) compare exact numeric values and ignore tolerance. Ignored for boolean and string fields.",
+              "examples": [
+                0.0001
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "left": {
+                    "$ref": "#/$defs/numericField"
+                  }
+                },
+                "required": [
+                  "left"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "right": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "left": {
+                    "$ref": "#/$defs/booleanField"
+                  }
+                },
+                "required": [
+                  "left"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "right": {
+                    "type": "boolean"
+                  },
+                  "operator": {
+                    "enum": [
+                      "eq",
+                      "ne"
+                    ]
+                  },
+                  "tolerance": {
+                    "const": 0
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "left": {
+                    "const": "healthTier"
+                  }
+                },
+                "required": [
+                  "left"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "right": {
+                    "$ref": "#/$defs/healthTier"
+                  },
+                  "operator": {
+                    "enum": [
+                      "eq",
+                      "ne"
+                    ]
+                  },
+                  "tolerance": {
+                    "const": 0
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "left": {
+                    "const": "eventName"
+                  }
+                },
+                "required": [
+                  "left"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "right": {
+                    "type": "string"
+                  },
+                  "operator": {
+                    "enum": [
+                      "eq",
+                      "ne"
+                    ]
+                  },
+                  "tolerance": {
+                    "const": 0
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "left": {
+                    "const": "soilHealthState"
+                  }
+                },
+                "required": [
+                  "left"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "right": {
+                    "enum": [
+                      "measured",
+                      "missing",
+                      "nan"
+                    ]
+                  },
+                  "operator": {
+                    "enum": [
+                      "eq",
+                      "ne"
+                    ]
+                  },
+                  "tolerance": {
+                    "const": 0
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "field",
+            "min",
+            "max",
+            "tolerance"
+          ],
+          "title": "Between predicate",
+          "description": "Asserts that a numeric signal field lies inside an interval. Both bounds are inclusive by default; set exclusiveMin/exclusiveMax to make a bound open. tolerance widens the interval symmetrically: effectiveMin = min - tolerance and effectiveMax = max + tolerance; an inclusive lower bound passes when actual >= effectiveMin, an exclusive lower bound passes when actual > effectiveMin, and the upper bound mirrors this rule. min MUST be less than or equal to max; the runner rejects min > max as a scenario-contract error (exit 14).",
+          "properties": {
+            "op": {
+              "const": "between",
+              "title": "Operator",
+              "description": "Interval predicate.",
+              "examples": [
+                "between"
+              ]
+            },
+            "field": {
+              "$ref": "#/$defs/numericField"
+            },
+            "min": {
+              "type": "number",
+              "title": "Minimum",
+              "description": "Lower bound. Must be less than or equal to max.",
+              "examples": [
+                34
+              ]
+            },
+            "max": {
+              "type": "number",
+              "title": "Maximum",
+              "description": "Upper bound. Must be greater than or equal to min.",
+              "examples": [
+                67
+              ]
+            },
+            "exclusiveMin": {
+              "type": "boolean",
+              "default": false,
+              "title": "Minimum exclusive",
+              "description": "When true, the lower bound is open (actual > min). Default false makes the lower bound inclusive.",
+              "examples": [
+                false
+              ]
+            },
+            "exclusiveMax": {
+              "type": "boolean",
+              "default": false,
+              "title": "Maximum exclusive",
+              "description": "When true, the upper bound is open (actual < max). Default false makes the upper bound inclusive; set true to encode [34, 67).",
+              "examples": [
+                true
+              ]
+            },
+            "tolerance": {
+              "type": "number",
+              "minimum": 0,
+              "default": 0.0001,
+              "title": "Tolerance",
+              "description": "Absolute tolerance applied to both bounds.",
+              "examples": [
+                0.0001
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "field",
+            "base",
+            "factor"
+          ],
+          "title": "Multiplier predicate",
+          "description": "Asserts that a numeric field equals the rounded product of base and factor within tolerance, clamped to the field minimum when clampToFieldMinimum is true. Formula: computed = clamp(rounding(base x factor), fieldMinimum) when clampToFieldMinimum is true, otherwise computed = rounding(base x factor); pass iff |actual - computed| <= tolerance. Field minima: phaseDays 1; soilHealth, currentPhase, dayOfCurrentPhase, indexOfHarvest, elapsedMilliseconds, locationsProcessed 0. base is the pre-run capture of the same field; the runner rejects a base whose suffix does not equal field (exit 14). The 99999 phaseDays sentinel is never multiplied or clamped.",
+          "properties": {
+            "op": {
+              "const": "multiplier",
+              "title": "Operator",
+              "description": "Multiplier predicate.",
+              "examples": [
+                "multiplier"
+              ]
+            },
+            "field": {
+              "$ref": "#/$defs/numericField"
+            },
+            "base": {
+              "type": "string",
+              "pattern": "^pre\\.[A-Za-z][A-Za-z0-9]*$",
+              "title": "Multiplier base",
+              "description": "Pre-run field reference, for example pre.phaseDays. The suffix MUST equal field; the runner validates this cross-field rule and exits 14 on mismatch.",
+              "examples": [
+                "pre.phaseDays"
+              ]
+            },
+            "factor": {
+              "type": "number",
+              "minimum": 0.01,
+              "maximum": 100,
+              "title": "Multiplier factor",
+              "description": "Multiplicative factor (for example 1.15 for poor soil). Bounded to [0.01, 100] to reject zero/negative/absurd factors.",
+              "examples": [
+                1.15
+              ]
+            },
+            "rounding": {
+              "type": "string",
+              "enum": [
+                "round",
+                "floor",
+                "ceil",
+                "none"
+              ],
+              "default": "round",
+              "title": "Rounding rule",
+              "description": "Rounding applied to base x factor before comparison. round uses midpoint-to-even (bankers rounding) as implemented by Math.Round; none compares the unrounded product.",
+              "examples": [
+                "round"
+              ]
+            },
+            "clampToFieldMinimum": {
+              "type": "boolean",
+              "default": true,
+              "title": "Clamp to field minimum",
+              "description": "When true, the computed value is clamped to the field minimum: phaseDays 1; soilHealth, currentPhase, dayOfCurrentPhase, indexOfHarvest, elapsedMilliseconds, locationsProcessed 0. The 99999 phaseDays sentinel is never multiplied or clamped.",
+              "examples": [
+                true
+              ]
+            },
+            "tolerance": {
+              "type": "number",
+              "minimum": 0,
+              "default": 0.0001,
+              "title": "Tolerance",
+              "description": "Absolute tolerance for the comparison.",
+              "examples": [
+                0.0001
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "field",
+            "sentinel"
+          ],
+          "title": "Sentinel predicate",
+          "description": "Asserts that a named sentinel condition holds for a signal field. The sentinel MUST belong to the field semantic class (mapping enforced below): SENTINEL_UNTOUCHED_99999 -> phaseDays; NAN_HEALTH/MISSING_KEY/HEALTH_LE_ZERO/POOR_POSITIVE_LT_34 -> healthTier; PHASE_MINUS_ONE -> currentPhase. Sentinel baselines: SENTINEL_UNTOUCHED_99999 = phaseDays == 99999; NAN_HEALTH = healthTier unknown AND soilHealthState nan; MISSING_KEY = healthTier unknown AND soilHealthState missing; HEALTH_LE_ZERO = healthTier nonParticipant; POOR_POSITIVE_LT_34 = healthTier poor; PHASE_MINUS_ONE = currentPhase == -1 exactly. The soilHealthState field is what makes NaN and missing distinguishable from the captured signal alone. When mustNotChange is true, the same condition MUST also hold in the pre-run capture; when false, only the post-run capture is asserted.",
+          "properties": {
+            "op": {
+              "const": "sentinel",
+              "title": "Operator",
+              "description": "Sentinel predicate.",
+              "examples": [
+                "sentinel"
+              ]
+            },
+            "field": {
+              "$ref": "#/$defs/field"
+            },
+            "sentinel": {
+              "$ref": "#/$defs/sentinel"
+            },
+            "mustNotChange": {
+              "type": "boolean",
+              "default": true,
+              "title": "Must not change",
+              "description": "Whether the sentinel value must remain unchanged relative to its pre-run baseline.",
+              "examples": [
+                true
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "sentinel": {
+                    "const": "SENTINEL_UNTOUCHED_99999"
+                  }
+                },
+                "required": [
+                  "sentinel"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "field": {
+                    "const": "phaseDays"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "sentinel": {
+                    "enum": [
+                      "NAN_HEALTH",
+                      "MISSING_KEY",
+                      "HEALTH_LE_ZERO",
+                      "POOR_POSITIVE_LT_34"
+                    ]
+                  }
+                },
+                "required": [
+                  "sentinel"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "field": {
+                    "const": "healthTier"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "sentinel": {
+                    "const": "PHASE_MINUS_ONE"
+                  }
+                },
+                "required": [
+                  "sentinel"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "field": {
+                    "const": "currentPhase"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "field"
+          ],
+          "title": "Unchanged predicate",
+          "description": "Asserts that the post-run value equals the pre-run value captured by the same signal, within tolerance. This is the expected-absence/no-mutation oracle, for example a farmhand run where the crop phase must not change. Numeric fields only; tolerance defaults to 0.",
+          "properties": {
+            "op": {
+              "const": "unchanged",
+              "title": "Operator",
+              "description": "No-mutation predicate.",
+              "examples": [
+                "unchanged"
+              ]
+            },
+            "field": {
+              "$ref": "#/$defs/numericField",
+              "title": "Field",
+              "description": "Numeric signal field compared between the pre-run and post-run captures."
+            },
+            "tolerance": {
+              "type": "number",
+              "minimum": 0,
+              "default": 0,
+              "title": "Tolerance",
+              "description": "Absolute tolerance for numeric equality: pass iff |post - pre| <= tolerance.",
+              "examples": [
+                0
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "predicates"
+          ],
+          "title": "Composite predicate",
+          "description": "Combines child predicates with logical allOf or anyOf.",
+          "properties": {
+            "op": {
+              "type": "string",
+              "enum": [
+                "allOf",
+                "anyOf"
+              ],
+              "title": "Operator",
+              "description": "Logical combinator.",
+              "examples": [
+                "allOf"
+              ]
+            },
+            "predicates": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/predicate"
+              },
+              "minItems": 1,
+              "title": "Child predicates",
+              "description": "Predicates combined by the operator.",
+              "examples": [
+                [
+                  {
+                    "op": "cmp",
+                    "left": "phaseDays",
+                    "operator": "gte",
+                    "right": 1
+                  },
+                  {
+                    "op": "cmp",
+                    "left": "currentPhase",
+                    "operator": "gte",
+                    "right": 0
+                  }
+                ]
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "op",
+            "predicate"
+          ],
+          "title": "Negation predicate",
+          "description": "Negates a child predicate.",
+          "properties": {
+            "op": {
+              "const": "not",
+              "title": "Operator",
+              "description": "Logical negation.",
+              "examples": [
+                "not"
+              ]
+            },
+            "predicate": {
+              "$ref": "#/$defs/predicate"
+            }
+          }
+        }
+      ]
+    },
+    "threshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal",
+        "predicate"
+      ],
+      "title": "Threshold",
+      "description": "A machine-evaluable acceptance criterion (oracle) for one signal. When the signal is multi-record (cropPhaseDelta or soilHealthStateDelta), `subject` selects the record; if `subject` is omitted, the runner uses the single record named by the scenario step target and fails with exit 14 if zero or more than one record matches (ambiguous-subject). A supplied `subject` that matches zero or multiple records fails with exit 14 (unresolvable-subject). smapiLog is single-record and MUST NOT carry `subject`.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "signal": {
+                "const": "smapiLog"
+              }
+            },
+            "required": [
+              "signal"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "subject"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "subject": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "title": "Threshold subject",
+          "description": "Optional selector for the record a multi-record signal predicate applies to. If supplied, it MUST match exactly one record; zero or multiple matches exit 14 (unresolvable-subject). Omit only when the scenario step target identifies exactly one record. Forbidden for the single-record smapiLog signal.",
+          "properties": {
+            "location": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "title": "Location",
+              "description": "Location name of the selected record.",
+              "examples": [
+                "Farm"
+              ]
+            },
+            "tileX": {
+              "type": "integer",
+              "minimum": -10000,
+              "maximum": 10000,
+              "title": "Tile X",
+              "description": "Tile X coordinate of the selected record.",
+              "examples": [
+                -10
+              ]
+            },
+            "tileY": {
+              "type": "integer",
+              "minimum": -10000,
+              "maximum": 10000,
+              "title": "Tile Y",
+              "description": "Tile Y coordinate of the selected record.",
+              "examples": [
+                5
+              ]
+            }
+          },
+          "examples": [
+            {
+              "location": "Farm",
+              "tileX": -10,
+              "tileY": 5
+            }
+          ]
+        },
+        "signal": {
+          "type": "string",
+          "enum": [
+            "soilHealthStateDelta",
+            "cropPhaseDelta",
+            "smapiLog"
+          ],
+          "title": "Signal",
+          "description": "Which captured signal this threshold evaluates. Allowed predicate fields by signal: soilHealthStateDelta -> soilHealth, healthTier, soilHealthState; cropPhaseDelta -> phaseDays, currentPhase, dayOfCurrentPhase, fullyGrown, dead, indexOfHarvest, healthTier, soilHealthState; smapiLog -> elapsedMilliseconds, eventName, locationsProcessed, isMainPlayer. The sentinel predicate is additionally allowed and uses the sentinel-to-field mapping. A predicate referencing any other field is a scenario-contract error (exit 14).",
+          "examples": [
+            "cropPhaseDelta"
+          ]
+        },
+        "predicate": {
+          "$ref": "#/$defs/predicate"
+        },
+        "modConstant": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+          "title": "ModConstants reference",
+          "description": "Optional name of the ModConstants member whose value the predicate encodes (FR-007). The numeric value in the predicate remains authoritative. If present, the runner MUST cross-check the name against the compiled constant and MUST fail with exit 14 on mismatch; if absent, no cross-check is performed.",
+          "examples": [
+            "PoorSoilGrowthMultiplier"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "default": "",
+          "title": "Human-readable description",
+          "description": "Optional companion prose; never the sole source of pass/fail.",
+          "examples": [
+            "poor soil slows growth 1.15x"
+          ]
+        },
+        "condition": {
+          "type": "string",
+          "default": "",
+          "title": "Deprecated condition",
+          "description": "Migration provenance. Retains the v1 human-readable condition so the offline v1-to-v2 migration tool and its reviewer can compare the original prose with the generated predicate. It is never the pass/fail oracle; new v2 scenarios must use description.",
+          "examples": [
+            "poor soil slows growth 1.15x"
+          ]
+        }
+      }
+    },
+    "hostGuard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skipLine",
+        "forbiddenEvidence"
+      ],
+      "title": "Host-guard expectations",
+      "description": "Observable contract for a farmhand (non-host) scenario. A breach is execution evidence without the skip line.",
+      "examples": [
+        {
+          "skipLine": "Soil growth modifier skipped: not main player.",
+          "forbiddenEvidence": [
+            "elapsedTrace",
+            "phaseDaysMutation"
+          ]
+        }
+      ],
+      "properties": {
+        "skipLine": {
+          "const": "Soil growth modifier skipped: not main player.",
+          "title": "Expected skip line",
+          "description": "The exact SMAPI log line that must be present for a farmhand scenario.",
+          "examples": [
+            "Soil growth modifier skipped: not main player."
+          ]
+        },
+        "forbiddenEvidence": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "elapsedTrace",
+              "phaseDaysMutation"
+            ]
+          },
+          "title": "Forbidden execution evidence",
+          "description": "Evidence that must be absent when the skip line is present. Presence of any item indicates a host-guard breach (verdict fail, exit 18, non-retryable).",
+          "examples": [
+            [
+              "elapsedTrace",
+              "phaseDaysMutation"
+            ]
+          ]
+        }
+      }
+    },
+    "healthTier": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "nonParticipant",
+        "poor",
+        "moderate",
+        "healthy"
+      ],
+      "title": "Health tier",
+      "description": "Derived scenario soil-health tier (C-DMP-01). unknown = missing key or stored NaN (unmeasured); nonParticipant = measured health <= 0 (skipped by the growth modifier, never Poor); poor = measured 0 < health < 34; moderate = [34, 67); healthy = >= 67. This is the scenario tier used by predicates. The game's visualization category may still render a measured zero as Poor (HealthCategory.Poor); non-participation is a growth-evaluation concept, not a visualization color.",
+      "examples": [
+        "poor"
+      ]
+    }
+  }
+}

@@ -10,6 +10,12 @@ namespace LivingRoots
         public const float MinSoilHealth = 0f;
         public const float MaxSoilHealth = 100f;  // Changed from 10 to 100 to align with documentation
 
+        // Soil Health → Crop Growth Constants (spec 005)
+        public const float SoilGrowthPoorMultiplier = 1.15f;
+        public const float SoilGrowthHealthyMultiplier = 0.85f;
+        public const float SoilQualityHealthyBoost = 0.08f;
+        public const float SoilExtraHarvestHealthyBoost = 0.10f;
+
         // Security Constants
         public const int MaxTilesPerLocation = 500; // Maximum number of tiles allowed per location to prevent DoS attacks
         public const int MaxLocationsPerSave = 50; // Maximum number of locations allowed per save to prevent DoS attacks
@@ -203,5 +209,17 @@ namespace LivingRoots
         // drop-in — vanilla audio cancel cue plus machine shake. Applies
         // worldObject.shakeTimer directly so no second shake path exists.
         public const int BinInvalidDropInShakeTimerMs = 750;
+
+        // Advisory lock acquisition (CI/headless runner, CHK018-CHK021).
+        // Non-blocking poll: LOCK_NB / F_OFD_SETLK + bounded exponential
+        // backoff. Neither flock(2) nor OFD locks provide a native timeout
+        // or deadlock detection, so the runner enforces both bounds here.
+        // Global lock order (deadlock prevention): cache -> build -> run.
+        public const int RunnerLockInitialDelayMs = 100;   // first backoff step
+        public const int RunnerLockMaxDelayMs = 2000;      // cap per backoff step
+        public const int RunnerLockBackoffMultiplier = 2;  // exponential factor
+        public const int RunnerLockTotalTimeoutMs = 10000; // hard wall-clock bound
+        public const int RunnerLockMaxRetries = 8;         // attempts before timeout
+        public const int RunnerLockJitterPercent = 25;     // +/- 25% per step
     }
 }

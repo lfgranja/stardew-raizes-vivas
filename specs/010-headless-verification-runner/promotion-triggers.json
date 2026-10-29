@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "component": "test.md",
+      "trigger": "Clean non-flaky host pass with three agreeing signals and honesty level >= R; runner writes machine-pass only.",
+      "owner": "lfgranja",
+      "recordedAt": "2026-10-27T12:00:00Z"
+    },
+    {
+      "component": "ROADMAP.md",
+      "trigger": "Same machine-pass run; marker-only replacement; verified remains a human E attestation.",
+      "owner": "lfgranja",
+      "recordedAt": "2026-10-27T12:00:00Z"
+    },
+    {
+      "component": "COMPLETION_SUMMARY.md",
+      "trigger": "Same machine-pass run; marker-only replacement; verified remains a human E attestation.",
+      "owner": "lfgranja",
+      "recordedAt": "2026-10-27T12:00:00Z"
+    },
+    {
+      "component": "reflector/logger/runner",
+      "trigger": "Promoted only after 2+ features reuse the loop (Rule of Three).",
+      "owner": "lfgranja",
+      "recordedAt": "2026-10-27T12:00:00Z"
+    }
+  ]
+}

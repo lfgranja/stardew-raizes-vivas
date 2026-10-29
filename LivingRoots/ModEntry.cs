@@ -93,7 +93,7 @@ namespace LivingRoots
 
             // Create soil decay service
             var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
-            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider);
+            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider, timeProvider);
 
             // Create visualization services (F4 — DI wiring per Phase 9/10)
             var colorInterpolationService = new ColorInterpolationService();
@@ -124,7 +124,7 @@ namespace LivingRoots
             // lock service (the same instance the bin
             // service holds) are injected here, not left
             // to the constructor's `?? new` fallbacks.
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService);
+            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider);
 
             // Register events through the Controller
             _controller.RegisterEvents();

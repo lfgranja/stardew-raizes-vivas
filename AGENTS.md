@@ -124,3 +124,11 @@ Two workflows under `.github/workflows/`, deliberately separate so a green run n
 `Build and Test` is **dormant** because `Pathoschild.Stardew.ModBuildConfig` hard-fails without a Stardew Valley + SMAPI install, and those assemblies cannot be downloaded on a GitHub-hosted runner. While dormant there is no test check at all — this is intentional; see `.specify/bugs/ci-skipped-job-false-green/`.
 
 **Do NOT add either check to `required_status_checks` until `Build and Test` has produced one genuinely green run.** Promoting `Check Formatting` alone would satisfy branch protection while executing zero tests. If `Build and Test` is ever made required, first remove its `paths-ignore` filter, or documentation-only pull requests will block forever waiting for a check that cannot report.
+
+## Gate 3 — End-to-End Verification (spec 009)
+
+- `verified` = "maintainer-verified with multi-signal evidence": 1 SMAPI session + 3 signals (`SoilHealthState` JSON delta + `Crop.phase`/`phaseDays` delta + SMAPI log). No replication required for `verified`.
+- Manual protocol: `VERIFICATION_PROTOCOL.md` §3 / `specs/009-end-to-end-game-verification/checklists/gate3-verification-contract.md` (SC-009).
+- Save comparator: before/after `modData/soil_health_data_{saveId}.json` diff (float tolerance 0.0001f; NaN ignored; missing keys = 0).
+- Claim discipline: write "verified by manual end-to-end session + multi-signal evidence: observation notes [file], artifact comparison [file], SMAPI log [file], session date [date]." Never "verified by build / N passed."
+- `Build and Test` workflow remains dormant; local preflight: `lefthook` pre-commit (format) + pre-push (tests + smoke).

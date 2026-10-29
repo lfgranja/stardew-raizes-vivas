@@ -234,3 +234,21 @@ Before building any of the above, the roadmap's promises were checked against th
 * `COMPLETION_SUMMARY.md` still claims 26 failing tests; the suite is green.
 * Root `AGENTS.md` points at `ModConstants.cs` (the class lives in `Constants.cs`), an old branch
   name, and a retired CI variable.
+
+## Gate 3 Verification
+
+<!-- GATE3:BEGIN -->
+- **Status**: partial
+- **Verdict**: —
+- **Flaky**: false
+- **Run ID**: —
+- **Commit**: —
+- **Date**: —
+- **Signals**:
+  - SoilHealthState delta: —
+  - Crop-phase delta: —
+  - SMAPI log: —
+- **Bundle**: —
+- **Honesty level**: —
+- **Claim**: Gate 3 evidence pending; no machine-pass or human verified claim yet.
+<!-- GATE3:END -->
