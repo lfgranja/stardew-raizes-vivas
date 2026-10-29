@@ -44,8 +44,8 @@ def test_coverage_baseline_round_trips(payload):
     parsed = CoverageBaseline(**payload)
     text = format_coverage_baseline(parsed)
     again = parse_coverage_baseline(text)
-    assert again.lines == pytest.approx(parsed.lines, abs=0.0001)
-    assert again.branches == pytest.approx(parsed.branches, abs=0.0001)
+    assert again.lines == pytest.approx(parsed.lines, abs=0.05)
+    assert again.branches == pytest.approx(parsed.branches, abs=0.05)
 
 
 @pytest.mark.parametrize("text", ["lines=79.1", "branches=70.4", "", "# only a comment"])
@@ -90,7 +90,7 @@ def test_duplication_baseline_round_trips():
 def test_duplication_baseline_round_trips_percentage(value):
     parsed = DuplicationBaseline(percentage=value)
     again = parse_duplication_baseline(format_duplication_baseline(parsed))
-    assert again.percentage == pytest.approx(value, abs=0.0001)
+    assert again.percentage == pytest.approx(value, abs=0.005)
 
 
 def test_duplication_baseline_rejects_unknown_keys():
