@@ -29,10 +29,11 @@ namespace LivingRoots.Tests.Invariants;
 /// The clamp under audit is <c>SoilHealthService.ClampHealthValue</c>: finite
 /// values are <c>Math.Clamp</c>ed into range, <c>float.PositiveInfinity</c>
 /// maps to <see cref="ModConstants.MaxSoilHealth"/>, <c>float.NegativeInfinity"/>
-/// maps to <see cref="ModConstants.MinSoilHealth"/>, and <c>float.NaN</c> maps
-/// to zero — which the sparse cache then drops, so a NaN-authored tile reads
-/// back as the zero default. Every one of those lands inside the band, which is
-/// exactly what these invariants assert.
+/// maps to <see cref="ModConstants.MinSoilHealth"/>, and <c>float.NaN</c> is
+/// dropped by the sparse cache — so a NaN-authored (or otherwise invalid)
+/// tile reads back as the <c>NaN</c> unknown sentinel, which is the absence of
+/// a reading rather than a fabricated value. Every finite reading lands inside
+/// the band, which is exactly what these invariants assert.
 /// </para>
 /// <para>
 /// Per-case isolation (T280(b) pattern): every property builds a fresh
@@ -98,8 +99,9 @@ public class SoilHealthBoundsInvariantsTests
                 soil.SetSoilHealth("Farm", tile, value);
                 float observed = soil.GetSoilHealth("Farm", tile);
 
-                return observed >= ModConstants.MinSoilHealth
-                    && observed <= ModConstants.MaxSoilHealth;
+                return float.IsNaN(observed)
+                    || (observed >= ModConstants.MinSoilHealth
+                        && observed <= ModConstants.MaxSoilHealth);
             });
     }
 
@@ -124,8 +126,9 @@ public class SoilHealthBoundsInvariantsTests
                 soil.UpdateHealth("Farm", tile, delta);
                 float observed = soil.GetSoilHealth("Farm", tile);
 
-                return observed >= ModConstants.MinSoilHealth
-                    && observed <= ModConstants.MaxSoilHealth;
+                return float.IsNaN(observed)
+                    || (observed >= ModConstants.MinSoilHealth
+                        && observed <= ModConstants.MaxSoilHealth);
             });
     }
 
@@ -176,8 +179,9 @@ public class SoilHealthBoundsInvariantsTests
                 appService.TryApplyCompost(farmFixture.Location, tile);
 
                 float observed = soil.GetSoilHealth(location, tile);
-                return observed >= ModConstants.MinSoilHealth
-                    && observed <= ModConstants.MaxSoilHealth;
+                return float.IsNaN(observed)
+                    || (observed >= ModConstants.MinSoilHealth
+                        && observed <= ModConstants.MaxSoilHealth);
             });
     }
 
@@ -201,6 +205,13 @@ public class SoilHealthBoundsInvariantsTests
 
             soil.SetSoilHealth("Farm", tile, value);
             float observed = soil.GetSoilHealth("Farm", tile);
+
+            // A dropped invalid value is the NaN unknown sentinel (no
+            // reading), not an out-of-band measured value.
+            if (float.IsNaN(observed))
+            {
+                continue;
+            }
 
             Assert.InRange(observed, ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth);
         }

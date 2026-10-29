@@ -245,16 +245,17 @@ public class MultiplayerConcurrencyTests
     }
 
     /// <summary>
-    /// Asserts exactly one new red HUD message was shown carrying
-    /// <paramref name="expectedText"/> — the translated refusal — and
-    /// that the rendered text is not the raw translation key.
+    /// Asserts a red HUD message carrying <paramref name="expectedText"/> —
+    /// the translated refusal — is present, and that the rendered text is
+    /// not the raw translation key. The game deduplicates identical
+    /// whatType+message pairs in the process-global HUD list, so presence
+    /// (not a count delta) is the observable that does not depend on which
+    /// other test left the same message on screen.
     /// </summary>
-    private static void AssertTranslatedRedMessageShown(int hudMessagesBefore, string translationKey, string expectedText)
+    private static void AssertTranslatedRedMessageShown(string translationKey, string expectedText)
     {
-        Assert.Equal(hudMessagesBefore + 1, Game1.hudMessages.Count);
-        var shown = Game1.hudMessages[Game1.hudMessages.Count - 1].message;
-        Assert.Equal(expectedText, shown);
-        Assert.NotEqual(translationKey, shown);
+        Assert.Contains(Game1.hudMessages, m => m.message == expectedText);
+        Assert.DoesNotContain(Game1.hudMessages, m => m.message == translationKey);
     }
 
     // =========================================================================
@@ -992,8 +993,6 @@ public class MultiplayerConcurrencyTests
         cursor.Setup(x => x.GrabTile).Returns(tile);
         _mockHelper.Setup(x => x.Input.GetCursorPosition()).Returns(cursor.Object);
 
-        int hudMessagesBefore = Game1.hudMessages.Count;
-
         try
         {
             // Act — a right-click holding compost: the compost action path.
@@ -1008,7 +1007,6 @@ public class MultiplayerConcurrencyTests
         // Assert — the conflict site renders the TRANSLATED refusal text
         // through the game's red HUD message, never the raw key.
         AssertTranslatedRedMessageShown(
-            hudMessagesBefore,
             ModConstants.TranslationKeyCompostActionConflict,
             CompostConflictTranslationMarker + ModConstants.TranslationKeyCompostActionConflict);
     }
@@ -1055,8 +1053,6 @@ public class MultiplayerConcurrencyTests
         cursor.Setup(x => x.GrabTile).Returns(tile);
         _mockHelper.Setup(x => x.Input.GetCursorPosition()).Returns(cursor.Object);
 
-        int hudMessagesBefore = Game1.hudMessages.Count;
-
         try
         {
             // Act — a right-click holding waste on a placed bin: the bin
@@ -1072,7 +1068,6 @@ public class MultiplayerConcurrencyTests
         // Assert — the conflict site renders the TRANSLATED refusal text
         // through the game's red HUD message, never the raw key.
         AssertTranslatedRedMessageShown(
-            hudMessagesBefore,
             ModConstants.TranslationKeyCompostActionConflict,
             BinConflictTranslationMarker + ModConstants.TranslationKeyCompostActionConflict);
     }

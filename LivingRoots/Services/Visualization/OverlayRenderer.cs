@@ -65,7 +65,7 @@ namespace LivingRoots.Services.Visualization
         private readonly PerScreen<List<TileOverlay>?> _cachedOverlays = new();
         private readonly PerScreen<Rectangle> _cachedViewport = new();
         private readonly PerScreen<Rectangle?> _cachedMapBounds = new();
-        private readonly PerScreen<long> _cachedTileHealthGeneration = new();
+        private readonly PerScreen<List<KeyValuePair<Point, float>>?> _cachedVisibleTiles = new();
         private readonly PerScreen<long> _cachedPaletteGeneration = new();
         private readonly PerScreen<float> _cachedOpacity = new();
         private readonly PerScreen<bool> _cachedShowPatterns = new();
@@ -242,6 +242,7 @@ namespace LivingRoots.Services.Visualization
                 _cachedOverlays.Value = null;
                 _cachedViewport.Value = Rectangle.Empty;
                 _cachedMapBounds.Value = null;
+                _cachedVisibleTiles.Value = null;
             }
         }
 
@@ -363,13 +364,16 @@ namespace LivingRoots.Services.Visualization
             var visibleTiles = CullToViewport(tileHealthData, cullingBounds);
             var visibleCount = visibleTiles.Count;
 
-            // Tile-health generation (T134, FR-010): an order-independent
-            // fingerprint of the visible tile-health data. It is the data
-            // half of the cache key, so a tile-health mutation at an
-            // unchanged viewport produces a different generation,
-            // invalidates the cached list, and the next frame rebuilds
-            // from the mutated data without manual refresh.
-            var tileHealthGeneration = ComputeTileHealthGeneration(visibleTiles);
+            // Tile-health snapshot (T134, FR-010, S1244): the data
+            // half of the cache key is the visible tile-health
+            // content, compared with the shared float tolerance so
+            // sub-epsilon jitter (the same frame's float noise) is a
+            // cache hit while a real mutation (a measurable change,
+            // an added/removed tile, or a finite/non-finite flip)
+            // invalidates the cached list. Exact equality and hash
+            // fingerprints are both forbidden/unreliable here:
+            // approximate comparison needs the epoch values, not a
+            // hash of them.
 
             // Degradation frame boundary (T099 / Q2 / FR-009,
             // T162 / F2, T175): under the per-call frame model
@@ -391,17 +395,17 @@ namespace LivingRoots.Services.Visualization
             BeginDegradationFrame();
 
             // Check cache (FR-010): return the cached result when the
-            // viewport, the map bounds, the tile-health generation,
-            // the palette generation, and the configuration values
-            // the list was built from are all unchanged.
+            // viewport, the map bounds, the tile-health content, the
+            // palette generation, and the configuration values the
+            // list was built from are all unchanged.
             lock (_cacheLock)
             {
                 if (_cachedOverlays.Value is { } cachedOverlays
                     && _cachedViewport.Value == viewport
                     && _cachedMapBounds.Value == mapBounds
-                    && _cachedTileHealthGeneration.Value == tileHealthGeneration
+                    && VisibleTilesEqual(_cachedVisibleTiles.Value, visibleTiles)
                     && _cachedPaletteGeneration.Value == paletteGeneration
-                    && _cachedOpacity.Value == opacity
+                    && ApproximatelyEqual(_cachedOpacity.Value, opacity)
                     && _cachedShowPatterns.Value == configuredShowPatterns
                     && string.Equals(_cachedDegradationMode.Value, degradationMode, StringComparison.Ordinal))
                 {
@@ -532,7 +536,7 @@ namespace LivingRoots.Services.Visualization
                 _cachedOverlays.Value = overlays;
                 _cachedViewport.Value = viewport;
                 _cachedMapBounds.Value = mapBounds;
-                _cachedTileHealthGeneration.Value = tileHealthGeneration;
+                _cachedVisibleTiles.Value = visibleTiles;
                 _cachedPaletteGeneration.Value = paletteGeneration;
                 _cachedOpacity.Value = opacity;
                 _cachedShowPatterns.Value = configuredShowPatterns;
@@ -553,6 +557,7 @@ namespace LivingRoots.Services.Visualization
                 _cachedOverlays.Value = null;
                 _cachedViewport.Value = Rectangle.Empty;
                 _cachedMapBounds.Value = null;
+                _cachedVisibleTiles.Value = null;
             }
             _monitor.Log("Overlay renderer cache invalidated.", LogLevel.Trace);
         }
@@ -621,31 +626,70 @@ namespace LivingRoots.Services.Visualization
         }
 
         /// <summary>
-        /// Computes an order-independent fingerprint of the visible tile-health
-        /// data (T134, FR-010). Two snapshots carrying the same tiles at the
-        /// same health values fingerprint identically regardless of dictionary
-        /// enumeration order, so the overlay-list cache key incorporates the
-        /// data generation: any tile-health mutation produces a different
-        /// fingerprint and invalidates the cached list at an unchanged
-        /// viewport, making health edits visible on the next frame without
-        /// manual refresh.
+        /// Compares the visible tile-health snapshot the cache was built from
+        /// against the one just received (T134, FR-010, S1244). Two frames with
+        /// the same viewport but different tile data are NOT cache hits — the
+        /// second frame would otherwise redraw the first frame's values, which
+        /// is exactly the fabricated/stale report FR-011 forbids. Values are
+        /// compared with <see cref="ModConstants.FloatComparisonEpsilon"/> so
+        /// sub-epsilon float jitter still serves the cache, while the
+        /// non-finite unknown sentinel only matches itself.
         /// </summary>
-        /// <param name="visibleTiles">The culled visible tile-health entries.</param>
-        /// <returns>The tile-health generation fingerprint.</returns>
-        private static long ComputeTileHealthGeneration(List<KeyValuePair<Point, float>> visibleTiles)
+        /// <param name="cached">The visible tiles the cache was built from.</param>
+        /// <param name="incoming">The visible tiles just received.</param>
+        /// <returns>True when both snapshots carry the same tiles and values.</returns>
+        private static bool VisibleTilesEqual(
+            List<KeyValuePair<Point, float>>? cached,
+            List<KeyValuePair<Point, float>> incoming)
         {
-            // The visible tile count leads the fingerprint so added or
-            // removed tiles change the generation even when the surviving
-            // entries are unchanged.
-            var generation = (long)visibleTiles.Count;
-            foreach (var entry in visibleTiles)
+            if (cached == null)
             {
-                // XOR folds the per-entry hashes commutatively, so the
-                // fingerprint is independent of enumeration order.
-                generation ^= HashCode.Combine(entry.Key.X, entry.Key.Y, entry.Value.GetHashCode());
+                return false;
             }
 
-            return generation;
+            if (ReferenceEquals(cached, incoming))
+            {
+                return true;
+            }
+
+            if (cached.Count != incoming.Count)
+            {
+                return false;
+            }
+
+            // Culling preserves the incoming dictionary's order, so a
+            // position-by-position comparison is valid; the count check above
+            // makes the pairing complete.
+            for (var index = 0; index < cached.Count; index++)
+            {
+                if (cached[index].Key != incoming[index].Key
+                    || !ApproximatelyEqual(cached[index].Value, incoming[index].Value))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// S1244: approximate float equality with explicit non-finite handling.
+        /// NaN matches NaN, each infinity matches itself, and finite values match
+        /// within <see cref="ModConstants.FloatComparisonEpsilon"/>.
+        /// </summary>
+        /// <param name="left">First value.</param>
+        /// <param name="right">Second value.</param>
+        /// <returns>True when the values are the same for cache-key purposes.</returns>
+        private static bool ApproximatelyEqual(float left, float right)
+        {
+            if (!float.IsFinite(left) || !float.IsFinite(right))
+            {
+                return float.IsNaN(left) == float.IsNaN(right)
+                    && float.IsPositiveInfinity(left) == float.IsPositiveInfinity(right)
+                    && float.IsNegativeInfinity(left) == float.IsNegativeInfinity(right);
+            }
+
+            return Math.Abs(left - right) <= ModConstants.FloatComparisonEpsilon;
         }
 
         /// <summary>

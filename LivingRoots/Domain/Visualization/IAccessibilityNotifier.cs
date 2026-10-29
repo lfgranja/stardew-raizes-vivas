@@ -1,5 +1,3 @@
-using StardewModdingAPI;
-
 namespace LivingRoots.Domain.Visualization
 {
     /// <summary>

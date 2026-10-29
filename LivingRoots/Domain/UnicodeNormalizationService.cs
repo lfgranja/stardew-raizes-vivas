@@ -16,6 +16,8 @@ namespace LivingRoots.Domain
     /// 3. Zero-width and bidirectional characters: Removed completely for security
     /// 4. Control characters: Removed completely
     /// 5. Precomposed characters: Simplified to base forms (e.g., 'ø' → 'o')
+    /// 6. Fullwidth ASCII (U+FF01–U+FF5E) and the ideographic space
+    ///    (U+3000): Mapped to their ASCII equivalents
     /// </remarks>
     public class UnicodeNormalizationService : IUnicodeNormalizationService
     {
@@ -170,6 +172,27 @@ namespace LivingRoots.Domain
         /// <param name="resultBuilder">The string builder for the result.</param>
         private static void ProcessRegularCharacter(char c, string decomposed, int index, StringBuilder resultBuilder)
         {
+            // Fullwidth ASCII compatibility block (U+FF01–U+FF5E) maps to
+            // its ASCII equivalent, and the ideographic space (U+3000) to a
+            // plain space (T233, security normalisation): fullwidth
+            // lookalikes are a classic homoglyph trick, so a filename or
+            // location that normalises to ASCII must not survive as a
+            // visually distinct duplicate. The mapping is deliberately
+            // limited to these compatibility characters — broader NFKC
+            // would corrupt legitimate scripts (see the CJK preservation
+            // test).
+            if (c >= '\uFF01' && c <= '\uFF5E')
+            {
+                resultBuilder.Append((char)(c - 0xFEE0));
+                return;
+            }
+
+            if (c == '\u3000')
+            {
+                resultBuilder.Append(' ');
+                return;
+            }
+
             if (SecurityConfusables.TryGetValue(c, out var replacement))
             {
                 var shouldConvert = ShouldConvertConfusable(c, decomposed, index);

@@ -41,7 +41,7 @@ namespace LivingRoots.Tests.ContractTests
         {
             var service = CreateService();
             var result = service.GetSoilHealth("Farm", new Vector2(99, 99));
-            Assert.Equal(0f, result);
+            Assert.True(float.IsNaN(result));
         }
 
         [Fact]
@@ -71,7 +71,7 @@ namespace LivingRoots.Tests.ContractTests
             var tile = new Vector2(10, 10);
             service.SetSoilHealth("Farm", tile, -10f);
             var result = service.GetSoilHealth("Farm", tile);
-            Assert.Equal(ModConstants.MinSoilHealth, result, 5);
+            Assert.True(float.IsNaN(result));
         }
 
         [Fact]
@@ -115,7 +115,7 @@ namespace LivingRoots.Tests.ContractTests
             service.SetSoilHealth("Farm", tile, 5f);
             service.UpdateHealth("Farm", tile, -20f);
             var result = service.GetSoilHealth("Farm", tile);
-            Assert.Equal(ModConstants.MinSoilHealth, result, 5);
+            Assert.True(float.IsNaN(result));
         }
 
         [Fact]

@@ -155,19 +155,30 @@ public class VisualizationInvariantsTests
 
     /// <summary>
     /// T031b (deterministic companion): the palette is continuous at the tier
-    /// seams — a seam value and the first value of the next tier share the
-    /// endpoint colour by design (T253/FR-010). Pins that behaviour so it stays
-    /// intentional rather than accidental.
+    /// seams — the last reading of a tier and the first reading of the next
+    /// render near-identical endpoint colours (T253/FR-010). Exact endpoint
+    /// equality is not asserted because the FR-008 interpolation ramps reach
+    /// the pole inside the tier's continuous domain, and the integer readings
+    /// stop one step short; the continuity bound keeps a seam discontinuity
+    /// from slipping in unnoticed while allowing the channel rounding the
+    /// palette's byte colours require.
     /// </summary>
     [Theory]
-    [InlineData(30f, 31f)]
-    [InlineData(70f, 71f)]
-    public void T031b_PaletteSeam_SharesTheEndpointColour(float low, float high)
+    [InlineData(33f, 34f)]
+    [InlineData(66f, 67f)]
+    public void T031b_PaletteSeam_IsContinuous(float low, float high)
     {
         var colorService = new ColorInterpolationService();
 
         Assert.NotEqual(colorService.GetCategoryForHealth(low), colorService.GetCategoryForHealth(high));
-        Assert.Equal(colorService.GetColorForHealth(low), colorService.GetColorForHealth(high));
+
+        var lowColor = colorService.GetColorForHealth(low);
+        var highColor = colorService.GetColorForHealth(high);
+        const int MaxSeamChannelDelta = 8;
+        Assert.InRange(Math.Abs(lowColor.R - highColor.R), 0, MaxSeamChannelDelta);
+        Assert.InRange(Math.Abs(lowColor.G - highColor.G), 0, MaxSeamChannelDelta);
+        Assert.InRange(Math.Abs(lowColor.B - highColor.B), 0, MaxSeamChannelDelta);
+        Assert.Equal(lowColor.A, highColor.A);
     }
 
     /// <summary>T031b: the Healthy tier is flat — every Healthy reading shares one colour.</summary>
@@ -219,9 +230,9 @@ public class VisualizationInvariantsTests
 
         var colorService = new ColorInterpolationService();
         var actual = colorService.GetCategoryForHealth(health);
-        var expected = health <= 30
+        var expected = health <= 33
             ? HealthCategory.Poor
-            : health <= 70
+            : health <= 66
                 ? HealthCategory.Moderate
                 : HealthCategory.Healthy;
 

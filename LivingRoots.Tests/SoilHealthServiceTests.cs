@@ -51,7 +51,7 @@ namespace LivingRoots.Tests
 
             // Assert
             Assert.Equal(100.0f, resultMax); // 105 should be clamped to 100 (MaxSoilHealth)
-            Assert.Equal(0.0f, resultMin); // -5 should be clamped to 0 (MinSoilHealth)
+            Assert.True(float.IsNaN(resultMin)); // -5 is invalid input clamping to 0 and is dropped as unknown (not explicit 0)
         }
 
         [Theory]
@@ -134,8 +134,10 @@ namespace LivingRoots.Tests
             // Act
             service.SetSoilHealth(location, new Vector2(x, y), 50.0f);
 
-            // Assert - Should not have added any entries to the cache
-            Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(0, 0)));
+            // Assert - Should not have added any entries to the cache. A
+            // valid but unmeasured tile reads back as the NaN unknown
+            // sentinel; an invalid tile query stays 0f (caller error).
+            Assert.True(float.IsNaN(service.GetSoilHealth(location, new Vector2(0, 0))));
             Assert.Equal(0.0f, service.GetSoilHealth(location, new Vector2(x, y)));
         }
 
@@ -224,12 +226,12 @@ namespace LivingRoots.Tests
             var resultMax = service.GetSoilHealth(location, tile);
 
             service.SetSoilHealth(location, tile, 50.0f); // Reset
-            service.UpdateHealth(location, tile, -100.0f); // Should result in 50-100=-50 -> clamp to 0 (MinSoilHealth)
+            service.UpdateHealth(location, tile, -100.0f); // Should result in 50-100=-50 -> becomes unknown
             var resultMin = service.GetSoilHealth(location, tile);
 
             // Assert
             Assert.Equal(100.0f, resultMax); // 130 clamped to 100
-            Assert.Equal(0.0f, resultMin); // -50 clamped to 0
+            Assert.True(float.IsNaN(resultMin)); // -50 becomes unknown per new behavior
         }
 
         [Theory]
@@ -248,7 +250,7 @@ namespace LivingRoots.Tests
 
             // Assert - Value should be cleared (not preserved) when invalid saveId is passed
             // This prevents data leakage between different game saves
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", tile)));
         }
 
         [Fact]
@@ -309,8 +311,9 @@ namespace LivingRoots.Tests
             // Act
             service.LoadData("test_save");
 
-            // Assert - Should not throw and should have empty cache
-            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            // Assert - Should not throw and should have empty cache. An
+            // unmeasured tile reads back as the NaN unknown sentinel.
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", new Vector2(10, 10))));
         }
 
         [Fact]
@@ -347,8 +350,9 @@ namespace LivingRoots.Tests
 
             // Assert - Only valid entry should be loaded
             Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
-            // Invalid entries should not exist
-            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(0, 0))); // Default for invalid
+            // Invalid entries should not exist: an unmeasured tile reads
+            // back as the NaN unknown sentinel.
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", new Vector2(0, 0))));
         }
 
         [Fact]
@@ -383,16 +387,16 @@ namespace LivingRoots.Tests
             // Act
             service.LoadData("test_save");
 
-            // Assert - Invalid values should be converted to 0, valid entries should remain
+            // Assert - Invalid values that clamp to 0 are dropped as unknown (not explicit 0); only explicit 0 is stored as measured
             Assert.Equal(50.0f, service.GetSoilHealth("Farm", new Vector2(13, 13)));
-            // NegativeInfinity should be converted to 0 (not skipped)
-            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            // NegativeInfinity/NaN clamp to 0 but are invalid inputs -> dropped as unknown
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", new Vector2(10, 10))));
             // PositiveInfinity should be converted to 100.
             Assert.Equal(100f, service.GetSoilHealth("Farm", new Vector2(11, 11)));
-            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(12, 12)));
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", new Vector2(12, 12))));
 
             // Additional verification: Ensure that no unexpected values were created
-            Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(99, 99))); // Non-existent tile should return default value
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", new Vector2(99, 99)))); // Non-existent tile should return unknown
         }
 
         [Fact]
@@ -450,8 +454,9 @@ namespace LivingRoots.Tests
             // Act & Assert - Should handle exception gracefully and not propagate
             var ex = Record.Exception(() => service.LoadData("test_save"));
             Assert.Null(ex); // Should not throw
-            // Cache should be cleared when exception occurs during loading
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            // Cache should be cleared when exception occurs during loading;
+            // an unmeasured tile reads back as the NaN unknown sentinel.
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", tile)));
         }
 
         [Theory]
@@ -1053,8 +1058,9 @@ namespace LivingRoots.Tests
             // Act
             service.LoadData("invalid_save");
 
-            // Assert - Cache should be cleared when sanitization fails
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            // Assert - Cache should be cleared when sanitization fails; an
+            // unmeasured tile reads back as the NaN unknown sentinel.
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", tile)));
             // Verify that the monitor was called to log the error
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
         }
@@ -1095,8 +1101,10 @@ namespace LivingRoots.Tests
             // Act
             service.LoadData("empty_result");
 
-            // Assert - Cache should be cleared when sanitization results in empty string
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile));
+            // Assert - Cache should be cleared when sanitization results in
+            // empty string; an unmeasured tile reads back as the NaN
+            // unknown sentinel.
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", tile)));
             // Verify that the monitor was called to log the error
             _mockMonitor.Verify(x => x.Log(It.IsAny<string>(), LogLevel.Error), Times.AtLeastOnce);
         }
@@ -1441,9 +1449,9 @@ namespace LivingRoots.Tests
             service.Reset();
 
             // Assert - All cached data should be cleared
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile1));
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", tile2));
-            Assert.Equal(0.0f, service.GetSoilHealth("Town", tile1));
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", tile1)));
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", tile2)));
+            Assert.True(float.IsNaN(service.GetSoilHealth("Town", tile1)));
         }
 
         [Fact]
@@ -1453,14 +1461,14 @@ namespace LivingRoots.Tests
             var service = new SoilHealthService(_mockDataService.Object, _mockMonitor.Object, _mockFileNameSanitizationService.Object);
 
             // Cache is initially empty, verify this
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", new Vector2(10, 10))));
 
             // Act & Assert
             var ex = Record.Exception(() => service.Reset());
             Assert.Null(ex); // Should not throw
 
             // Verify cache is still empty after reset
-            Assert.Equal(0.0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+            Assert.True(float.IsNaN(service.GetSoilHealth("Farm", new Vector2(10, 10))));
         }
 
         [Fact]

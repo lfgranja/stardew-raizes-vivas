@@ -230,8 +230,9 @@ public class SaveReloadConsistencyTests
         // Act: load with different save id
         service.LoadData("different_save_id");
 
-        // Assert: the runtime cache was cleared for the new save
-        Assert.Equal(0f, service.GetSoilHealth("Farm", new Vector2(10, 10)));
+        // Assert: the runtime cache was cleared for the new save, so the
+        // tile reads back as the NaN unknown sentinel.
+        Assert.True(float.IsNaN(service.GetSoilHealth("Farm", new Vector2(10, 10))));
     }
 
     // ------------------------------------------------------------------

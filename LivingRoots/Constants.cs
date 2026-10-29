@@ -13,8 +13,6 @@ namespace LivingRoots
         // Soil Health → Crop Growth Constants (spec 005)
         public const float SoilGrowthPoorMultiplier = 1.15f;
         public const float SoilGrowthHealthyMultiplier = 0.85f;
-        public const float SoilQualityHealthyBoost = 0.08f;
-        public const float SoilExtraHarvestHealthyBoost = 0.10f;
 
         // Security Constants
         public const int MaxTilesPerLocation = 500; // Maximum number of tiles allowed per location to prevent DoS attacks
@@ -28,10 +26,7 @@ namespace LivingRoots
         public const int MaxTilesPerSave = 30000; // Global limit for tile processing across all locations to prevent DoS attacks (slightly above theoretical max of 50 * 500 = 25,000)
 
         // Additional constants for security and performance
-        public const int MaxPathSegmentLength = 100; // Maximum length for individual path segments to prevent DoS attacks
-        public const int MaxPathDepth = 10; // Maximum depth for path traversal to prevent DoS attacks
         public const int MaxFileNameLength = 255; // Standard maximum file name length to prevent OS issues
-        public const int MaxDataValueSizeBytes = 1024 * 1024; // 1MB maximum size for data values to prevent memory exhaustion
 
         // Visualization Constants
         public static readonly Color PoorColor = new Color(185, 28, 28); // #B91C1C
@@ -66,6 +61,10 @@ namespace LivingRoots
         // degradation decision or re-spam the one-time degradation toast.
         public const int DegradationRecoveryThreshold = 980;
         public const float DefaultOpacity = 0.5f;
+        // Tolerance for float equality checks (cache/config comparison).
+        // Exact float equality is unreliable and forbidden by S1244; a
+        // range is used instead.
+        public const float FloatComparisonEpsilon = 0.0001f;
         // Minimum pattern opacity for accessibility (FR-001). Pattern tones
         // are opaque at PatternAlphaPinned = 1.0 regardless of this value.
         public const float PatternMinOpacity = 0.7f;
@@ -134,13 +133,10 @@ namespace LivingRoots
         public const bool TooltipsEnabledDefault = true;
         public const bool HoeFeedbackEnabledDefault = true;
 
-        // Extended palette for composting, environment
-        public static readonly Color CompostEmptyColor = new Color(120, 113, 108);    // #78716C
-        public static readonly Color CompostProcessingColor = new Color(161, 98, 7);  // #A16207
-        public static readonly Color CompostReadyColor = new Color(22, 101, 52);      // #166534
-        public static readonly Color WaterColor = new Color(37, 99, 235);             // #2563EB
-        public static readonly Color SunColor = new Color(250, 204, 21);              // #FACC15
-        public static readonly Color MulchColor = new Color(146, 64, 14);             // #92400E
+        // Extended palette for composting feedback. Only the sprite
+        // color is live today; bin/environment state colors are
+        // introduced with the features that consume them, not
+        // declared speculatively here.
         // FR-012 (T185): the compost-application feedback
         // sprite's green — the "+N" restoration text drawn
         // above the treated tile (a text-only
@@ -167,7 +163,6 @@ namespace LivingRoots
         public const int CompostingBinWoodCost = 50;
         public const int CompostingBinStoneCost = 25;
         public const int CompostingBinFiberCost = 15;
-        public const string CompostCraftingSound = "axe";
         public const int CompostCategoryId = -26;
         public const int CompostStackMax = 999;
         // T078 (FR-005): the compost item icon,
@@ -209,17 +204,5 @@ namespace LivingRoots
         // drop-in — vanilla audio cancel cue plus machine shake. Applies
         // worldObject.shakeTimer directly so no second shake path exists.
         public const int BinInvalidDropInShakeTimerMs = 750;
-
-        // Advisory lock acquisition (CI/headless runner, CHK018-CHK021).
-        // Non-blocking poll: LOCK_NB / F_OFD_SETLK + bounded exponential
-        // backoff. Neither flock(2) nor OFD locks provide a native timeout
-        // or deadlock detection, so the runner enforces both bounds here.
-        // Global lock order (deadlock prevention): cache -> build -> run.
-        public const int RunnerLockInitialDelayMs = 100;   // first backoff step
-        public const int RunnerLockMaxDelayMs = 2000;      // cap per backoff step
-        public const int RunnerLockBackoffMultiplier = 2;  // exponential factor
-        public const int RunnerLockTotalTimeoutMs = 10000; // hard wall-clock bound
-        public const int RunnerLockMaxRetries = 8;         // attempts before timeout
-        public const int RunnerLockJitterPercent = 25;     // +/- 25% per step
     }
 }

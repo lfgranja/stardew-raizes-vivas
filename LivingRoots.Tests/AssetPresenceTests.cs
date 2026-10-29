@@ -144,7 +144,15 @@ namespace LivingRoots.Tests
 
                 if (directive.IncludePattern.Contains('*') || directive.IncludePattern.Contains('?'))
                 {
-                    var pattern = "^" + Regex.Escape(directive.IncludePattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
+                    // MSBuild's '**/' matches zero or more directories, so
+                    // translate it to an optional directory group before the
+                    // generic wildcard translation — otherwise a recursive
+                    // pattern such as Assets/**/*.* would not cover a root
+                    // asset like Assets/compost.png (the T234 report).
+                    var pattern = "^" + Regex.Escape(directive.IncludePattern)
+                        .Replace("\\*\\*/", "(?:.*/)?")
+                        .Replace("\\*", ".*")
+                        .Replace("\\?", ".") + "$";
                     if (Regex.IsMatch(assetPath, pattern, RegexOptions.IgnoreCase))
                     {
                         return true;

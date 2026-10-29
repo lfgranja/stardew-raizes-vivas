@@ -216,6 +216,10 @@ public class BinPickupTests
 
         binService.Setup(x => x.GetBinState("Farm", tile)).Returns(CompostingBinState.Processing);
         binService.Setup(x => x.CreateDislodgedBinItem("Farm", tile)).Returns(processingBin);
+        // The real service returns 1 for a progress-carrying bin; a bare
+        // Moq int returns 0, which is not a valid stack cap and would make
+        // the clamp assertion vacuous instead of exercising the bound.
+        binService.Setup(x => x.GetMaxStackSize(processingBin)).Returns(1);
 
         var inventory = new RecordingPlayerInventory();
 

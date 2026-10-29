@@ -22,7 +22,7 @@ namespace LivingRoots.Domain
         /// </summary>
         /// <param name="locationName">The location containing the bin.</param>
         /// <param name="tile">The tile coordinates of the bin.</param>
-        /// <returns>The number of compost items produced (equal to maturation level).</returns>
+        /// <returns>The number of compost items produced: exactly-one batch yield (1) when the bin is Ready, otherwise 0.</returns>
         int CollectCompost(string locationName, Vector2 tile);
 
         /// <summary>
@@ -35,12 +35,14 @@ namespace LivingRoots.Domain
 
         /// <summary>
         /// Processes day start for all bins in a location. Checks processing completion and maturation resets.
+        /// Exactly-once per day, per location: a repeated call on the same in-game day is a no-op.
         /// </summary>
         /// <param name="locationName">The location containing the bins.</param>
         void ProcessDayStart(string locationName);
 
         /// <summary>
-        /// Called when a composting bin object is removed/broken. Drops items on ground and clears state.
+        /// Called when a composting bin object is removed/broken. Clears the bin state; it does not drop items on the ground.
+        /// The caller reconstructs the dislodged bin through <see cref="CreateDislodgedBinItem"/> before removal.
         /// </summary>
         /// <param name="locationName">The location containing the bin.</param>
         /// <param name="tile">The tile coordinates of the bin.</param>

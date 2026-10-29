@@ -17,10 +17,10 @@ namespace LivingRoots.Tests.Visualization
 
         [Theory]
         [InlineData(0, HealthCategory.Poor)]
-        [InlineData(30, HealthCategory.Poor)]
-        [InlineData(31, HealthCategory.Moderate)]
-        [InlineData(70, HealthCategory.Moderate)]
-        [InlineData(71, HealthCategory.Healthy)]
+        [InlineData(33, HealthCategory.Poor)]
+        [InlineData(34, HealthCategory.Moderate)]
+        [InlineData(66, HealthCategory.Moderate)]
+        [InlineData(67, HealthCategory.Healthy)]
         [InlineData(100, HealthCategory.Healthy)]
         public void FromHealthValue_ReturnsCorrectCategory(int healthValue, HealthCategory expected)
         {

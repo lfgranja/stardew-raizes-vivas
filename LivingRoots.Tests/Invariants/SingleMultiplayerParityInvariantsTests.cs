@@ -385,7 +385,7 @@ public class SingleMultiplayerParityInvariantsTests
                 {
                     if (line.Contains(token, StringComparison.Ordinal))
                     {
-                        divergentHits.Add($"{relative}:{lineIndex + 1}: token '{token}'");
+                        divergentHits.Add($"{relative}:{lineIndex + 1}: {line.Trim()} (token '{token}')");
                     }
                 }
 
@@ -475,17 +475,19 @@ public class SingleMultiplayerParityInvariantsTests
     /// The documented allow-list of host-authority gate sites. Living Roots is
     /// host-authoritative BY CONSTRUCTION (Constitution VI): farm state is
     /// farm-scoped and the host is the single source of truth, so production
-    /// carries NO player-count / host-identity branch at all — every actor reaches
-    /// shared state through the same farmerId-keyed <see cref="HostAtomicLockService"/>
-    /// a single player (a host with no clients) uses. The set is therefore EMPTY
-    /// today. A genuinely required host-authority gate introduced in future MUST be
-    /// added here deliberately; the scan fails on any other divergent occurrence.
+    /// carries no player-count branch — every actor reaches shared state through
+    /// the same farmerId-keyed <see cref="HostAtomicLockService"/> a single
+    /// player (a host with no clients) uses. The one exception is the spec 005
+    /// DayEnding soil-growth gate, which must run on the host only. A genuinely
+    /// required host-authority gate introduced in future MUST be added here
+    /// deliberately; the scan fails on any other divergent occurrence.
     /// </summary>
     private static readonly string[] DocumentedHostAuthorityGates = new[]
     {
-        "LivingRoots/Controllers/ModController.cs:1771",
-        // Spec 005 (FR-001/FR-006): host-authoritative DayStarted soil-growth gate
-        "LivingRoots/Controllers/ModController.cs:1786"
+        // Spec 005 (FR-001/FR-006): host-authoritative DayEnding soil-growth
+        // gate. Matched by the production line itself (not a line number) so
+        // unrelated edits elsewhere in ModController cannot stale this entry.
+        "if (!StardewModdingAPI.Context.IsMainPlayer)"
     };
 
     private static bool IsPermittedHostAuthorityGate(string site)

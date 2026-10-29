@@ -209,27 +209,29 @@ namespace LivingRoots.Tests.Visualization
         }
 
         [Fact]
-        public void GetCategoryForHealth_NegativeValue_OutOfRange_ReturnsUnknown()
+        public void GetCategoryForHealth_NegativeValue_ClampsToPoor()
         {
             // Act
             var result = _service.GetCategoryForHealth(-25f);
 
-            // Assert — out-of-range health is invalid data, not "Poor".
-            // Matches HealthCategoryExtensions.FromHealthValue and
-            // HealthCategoryTests.FromHealthValue_OutOfRange_ReturnsUnknown.
-            Assert.Equal(HealthCategory.Unknown, result);
+            // Assert — finite out-of-range producer values clamp to the
+            // valid soil-health range (FR-008, SC-007, T118), so an
+            // under-range value renders in its boundary category (Poor).
+            // Only non-finite values are the Unknown state.
+            Assert.Equal(HealthCategory.Poor, result);
         }
 
         [Fact]
-        public void GetCategoryForHealth_ValueAboveHundred_OutOfRange_ReturnsUnknown()
+        public void GetCategoryForHealth_ValueAboveHundred_ClampsToHealthy()
         {
             // Act
             var result = _service.GetCategoryForHealth(999f);
 
-            // Assert — out-of-range health is invalid data, not "Healthy".
-            // Matches HealthCategoryExtensions.FromHealthValue and
-            // HealthCategoryTests.FromHealthValue_OutOfRange_ReturnsUnknown.
-            Assert.Equal(HealthCategory.Unknown, result);
+            // Assert — finite out-of-range producer values clamp to the
+            // valid soil-health range (FR-008, SC-007, T118), so an
+            // over-range value renders in its boundary category
+            // (Healthy). Only non-finite values are the Unknown state.
+            Assert.Equal(HealthCategory.Healthy, result);
         }
 
         // ──────────────────────────────────────────────

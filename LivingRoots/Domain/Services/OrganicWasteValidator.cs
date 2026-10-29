@@ -32,17 +32,32 @@ public class OrganicWasteValidator : IOrganicWasteValidator
             return true;
         }
 
-        // Vanilla category-based validation
-        var isValid = item.Category switch
-        {
-            -74 => true,  // Seeds (wild seeds, tree seeds)
-            -75 => true,  // Vegetables (crop produce)
-            -79 => true,  // Fruits (fruit produce)
-            -80 => true,  // Flowers
-            -81 => true,  // Forage/Greens
-            _ => false
-        };
+        // Check if item has any category tag
+        bool hasSeedsTag = item.HasContextTag("category_seeds");
+        bool hasVegetableTag = item.HasContextTag("category_vegetable");
+        bool hasFruitsTag = item.HasContextTag("category_fruits");
+        bool hasFlowersTag = item.HasContextTag("category_flowers");
+        bool hasGreensTag = item.HasContextTag("category_greens");
 
-        return isValid;
+        bool hasAnyCategoryTag = hasSeedsTag || hasVegetableTag || hasFruitsTag || hasFlowersTag || hasGreensTag;
+
+        bool categoryQualifies = item.Category == -74 || item.Category == -75 || item.Category == -79 || item.Category == -80 || item.Category == -81;
+
+        if (hasAnyCategoryTag)
+        {
+            // Accept if any matching tag-category pair exists
+            if ((hasSeedsTag && item.Category == -74) ||
+                (hasVegetableTag && item.Category == -75) ||
+                (hasFruitsTag && item.Category == -79) ||
+                (hasFlowersTag && item.Category == -80) ||
+                (hasGreensTag && item.Category == -81))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        // No category tags - accept if category is in qualifying set
+        return categoryQualifies;
     }
 }
