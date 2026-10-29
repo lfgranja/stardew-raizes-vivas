@@ -72,7 +72,7 @@ These were found while generating the tasks. Resolve them explicitly; do not sil
 - [ ] T003 [P] Create the Python package markers `scripts/quality-gate/quality_gate/__init__.py` and `scripts/quality-gate/tests/__init__.py` with no logic. Files: `scripts/quality-gate/quality_gate/__init__.py`, `scripts/quality-gate/tests/__init__.py`
 - [ ] T004 [P] Create `scripts/quality-gate/requirements-dev.txt` (`pytest==9.2.0`, `hypothesis==6.170.13`, `PyYAML==6.0.3`), `scripts/quality-gate/requirements-ci.txt` (`semgrep==1.182.1`), and `scripts/quality-gate/pyproject.toml` with `[tool.pytest.ini_options]` (`testpaths = ["tests"]`, `pythonpath = ["."]`, `addopts = "-ra"`). Files: `scripts/quality-gate/requirements-dev.txt`, `scripts/quality-gate/requirements-ci.txt`, `scripts/quality-gate/pyproject.toml`
 - [ ] T005 [P] Update `.gitignore` with `.venv-quality-gate/`, `coverage-report/`, `jscpd-report/`, `*.sarif`, `trivy*.json`, and `QualityGateResults/`; keep the committed `.coverage-baseline` and `.jscpd-baseline.json` tracked; add `!specs/011-local-oss-quality-gate/baseline/**/*.xml` and `!specs/011-local-oss-quality-gate/baseline/**/*.json` so the T043 raw evidence is committed despite the global `coverage*.xml` rule. File: `.gitignore`
-- [ ] T006 Create the local virtual environment and install both dependency sets: `python3 -m venv .venv-quality-gate && .venv-quality-gate/bin/pip install -r scripts/quality-gate/requirements-dev.txt -r scripts/quality-gate/requirements-ci.txt`; verify `pytest --version`, `python -c "import hypothesis, yaml"`, and `.venv-quality-gate/bin/semgrep --version`. Environment path: `.venv-quality-gate/` (gitignored).
+- [ ] T006 Create the local virtual environment and install both dependency sets: `python3 -m venv .venv-quality-gate && .venv-quality-gate/bin/pip install -r scripts/quality-gate/requirements-dev.txt -r scripts/quality-gate/requirements-ci.txt`; verify `pytest --version`, `python -c "import hypothesis, yaml"`, and `.venv-quality-gate/bin/semgrep --version`. Files: `.venv-quality-gate/` (gitignored)
 - [ ] T007 Record the local toolchain in `specs/011-local-oss-quality-gate/environment.md`: `dotnet --version`, `python3 --version`, `node --version`, `npx --yes jscpd@5.4.2 --version`, `semgrep --version` (from the venv), `trivy --version` or `not installed`, `git rev-parse HEAD`, OS. File: `specs/011-local-oss-quality-gate/environment.md`
 - [ ] T008 Run the pre-change baseline `dotnet build Stardew-LivingRoots.sln -c Release` (local Steam install is present) and save the log to `specs/011-local-oss-quality-gate/pre-change-build.log`; if it fails, stop and report the environment problem instead of continuing. File: `specs/011-local-oss-quality-gate/pre-change-build.log`
 
@@ -166,7 +166,7 @@ These were found while generating the tasks. Resolve them explicitly; do not sil
 
 **Purpose**: documentation, update automation, and the SonarCloud rollout/removal checklist.
 
-- [ ] T049 [P] Add `docs/quality-gate.md` with: local usage, suppression policy (targeted, justified, never global `NoWarn`), baseline ratchet policy, fork-PR behavior, token requirements, and the SonarCloud 2–4 week parallel-run/removal timeline. File: `docs/quality-gate.md`
+- [ ] T049 [P] Add `docs/quality-gate.md` with: local usage, suppression policy (targeted, justified, never global `NoWarn`), baseline ratchet policy, fork-PR behavior, token requirements, the Trivy database refresh policy (downloaded per run; record the DB timestamp, pinned tool version), and the SonarCloud 2–4 week parallel-run/removal timeline. File: `docs/quality-gate.md`
 - [ ] T050 [P] Update `AGENTS.md`: list all workflows, add the Quality Gate row, document `BUILDDEPS_TOKEN` for the build-analysis job, correct the stale “two workflows” and “Build and Test dormant” statements, and link `docs/quality-gate.md`; also correct the `Build and Test` assumption in `specs/011-local-oss-quality-gate/spec.md`. Files: `AGENTS.md`, `specs/011-local-oss-quality-gate/spec.md`
 - [ ] T051 [P] Update `README.md` with a short “Quality” section linking `docs/quality-gate.md`; state that the gate is local/OSS/free and has no SonarCloud dependency. File: `README.md`
 - [ ] T052 [P] Add `.github/dependabot.yml` for `github-actions`, `nuget`, and `pip` with a weekly schedule, grouped updates, and a bounded open-PR limit; this keeps the pinned analyzers/actions/Semgrep version current. File: `.github/dependabot.yml`
@@ -300,6 +300,8 @@ Agent F (fresh, no implementation context):
 | Agent F — Verification | T056–T071 | Independent from every implementation agent; only this agent may attest success |
 
 Tasks sharing a file are deliberately assigned to one owner. Do not parallelise two agents on `quality-gate.yml`, the csproj files, or `Directory.Build.props`.
+
+**Shared documentation files**: `plan.md` (T026, T036, T047), `data-model.md` (T026, T047), and `contracts/quality-gate-workflow.md` (T036, T047) are edited by more than one story. Serialize those edits in ID order (`T026 → T036 → T047`) even when US1 and US2 run in parallel; do not run two agents on the same document.
 
 ---
 
