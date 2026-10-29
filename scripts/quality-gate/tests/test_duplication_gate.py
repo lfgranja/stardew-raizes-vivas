@@ -6,7 +6,7 @@ import json
 import math
 
 import pytest
-from hypothesis import given
+from hypothesis import assume, given
 
 from quality_gate.baseline import DuplicationBaseline
 from quality_gate.diagnostics import GateConfigurationError
@@ -49,6 +49,7 @@ def test_parse_report_reads_total_and_clone_locations():
 def test_parse_report_accepts_generated_reports(payload):
     report = parse_report(payload)
     assert 0.0 <= report.percentage <= 100.0
+    assert len(report.duplicates) == payload["statistics"]["total"]["duplicates"]
 
 
 @pytest.mark.parametrize(
@@ -86,17 +87,23 @@ def test_load_report_reads_json(tmp_path):
     assert load_report(path).percentage == 0.1
 
 
+@given(percent(), percent())
+def test_measured_below_the_ceiling_passes(ceiling, headroom):
+    assume(ceiling + headroom <= 100.0)
+    report = DuplicationReport(percentage=ceiling + headroom)
+    baseline = DuplicationBaseline(percentage=ceiling)
+    assert evaluate_duplication(report, baseline).exit_code == 0
+
+
 @given(percent())
-def test_measured_below_or_at_the_ceiling_passes(measured):
-    report = DuplicationReport(percentage=measured)
-    baseline = DuplicationBaseline(percentage=measured)
+def test_measured_at_the_ceiling_passes(ceiling):
+    report = DuplicationReport(percentage=ceiling)
+    baseline = DuplicationBaseline(percentage=ceiling)
     assert evaluate_duplication(report, baseline).exit_code == 0
 
 
 @given(percent(), percent())
 def test_measured_above_the_ceiling_fails(measured, ceiling):
-    from hypothesis import assume
-
     assume(measured > ceiling + 0.0001)
     report = DuplicationReport(percentage=measured)
     baseline = DuplicationBaseline(percentage=ceiling)
@@ -132,4 +139,4 @@ def test_failure_without_clone_data_still_produces_a_diagnostic():
     result = evaluate_duplication(report, baseline)
     assert result.exit_code == 1
     assert result.diagnostics
-    assert result.diagnostics[0].to_github().startswith("::error")
+    assert result.diagnostics[0].to_github().startswith("::error title=")
