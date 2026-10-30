@@ -157,6 +157,39 @@ def test_aggregate_gate_requires_build_analysis():
     assert "always()" in str(gate.get("if", ""))
 
 
+def render_gate_script(results: dict[str, str]) -> str:
+    gate = jobs(load_workflow())["gate"]
+    step = next(step for step in steps(gate) if "needs." in step_run(step))
+    script = step_run(step)
+    for job, value in results.items():
+        escaped = re.escape(job)
+        expression = (
+            r"\$\{\{\s*needs(?:\.%s|\[\s*['\"]%s['\"]\s*\])\.result\s*\}\}"
+            % (escaped, escaped)
+        )
+        script = re.sub(expression, value, script)
+    script = re.sub(
+        r"\$\{\{\s*needs(?:\.\w[\w-]*|\[\s*['\"][\w-]+['\"]\s*\])\.result\s*\}\}",
+        "success",
+        script,
+    )
+    assert "${{" not in script, "the gate script must only reference rendered results"
+    return script
+
+
+def test_gate_fails_closed_when_build_analysis_does_not_succeed():
+    for value in ("failure", "skipped", "cancelled"):
+        script = render_gate_script({"build-analysis": value})
+        outcome = subprocess.run(
+            ["bash", "-c", script],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert outcome.returncode == 1, f"build-analysis={value} must fail the gate"
+        assert "::error" in outcome.stdout + outcome.stderr
+
+
 def test_jscpd_is_pinned_csharp_only_and_gated():
     workflow = load_workflow()
     static = jobs(workflow)["static"]
