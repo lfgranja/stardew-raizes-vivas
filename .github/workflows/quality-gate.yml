@@ -51,8 +51,32 @@ jobs:
         with:
           sarif_file: semgrep.sarif
 
+      - name: Install Gitleaks
+        run: |
+          set -euo pipefail
+          version="v8.21.2"
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/${version}/gitleaks_${version#v}_linux_x64.tar.gz" -o /tmp/gitleaks.tgz
+          tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks
+          sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Gitleaks (per-PR diff)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          gitleaks detect --source . --redact --no-banner --exit-code 1 \
+            --baseline-path .gitleaks-baseline.json \
+            --log-opts "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+
+      - name: Gitleaks (full history)
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          gitleaks detect --source . --redact --no-banner --exit-code 1 \
+            --baseline-path .gitleaks-baseline.json
+
       - name: jscpd
-        run: npx --yes jscpd@5.4.2 LivingRoots/ --format csharp --min-lines 5 --min-tokens 50 --reporters json --output jscpd-report --silent
+        run: npx --yes jscpd@5.4.2 LivingRoots/ --format csharp --min-lines 5 --min-tokens 50 --reporters json --output jscpd-report --silent --fail-on-new-clones
 
       - name: Duplication gate
         run: python -m quality_gate duplication --report jscpd-report/jscpd-report.json --baseline .jscpd-baseline.json
