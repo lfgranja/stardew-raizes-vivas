@@ -614,15 +614,7 @@ namespace LivingRoots.Services.Visualization
         private static List<KeyValuePair<Point, float>> CullToViewport(
             Dictionary<Point, float> tileHealthData, Rectangle cullingBounds)
         {
-            var result = new List<KeyValuePair<Point, float>>();
-            foreach (var kvp in tileHealthData)
-            {
-                if (cullingBounds.Contains(kvp.Key))
-                {
-                    result.Add(kvp);
-                }
-            }
-            return result;
+            return tileHealthData.Where(kvp => cullingBounds.Contains(kvp.Key)).ToList();
         }
 
         /// <summary>
