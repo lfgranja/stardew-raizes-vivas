@@ -60,12 +60,18 @@ A CI job (or set of jobs) enforcing the blocking checks.
 | Finding type | Required fields |
 |---|---|
 | Analyzer / Semgrep / CodeQL | file, line, rule, message |
-| Trivy / SCA | package, installedVersion, cve, targetFile, severity |
+| Trivy / SCA | package, installedVersion, cve, targetFile, severity; fixedVersion when available |
 | Coverage | class or file below the floor, measured value, floor |
 | Duplication | clone pair, `file:line` for both sides, duplicated lines |
 | Configuration | explicit error message and the offending path/field |
 
 GitHub annotations use `::error file=...,line=...::...` for code findings and `::error title=...::...` for non-file findings.
+
+### Input Report Schemas
+
+**ReportGenerator 5.5.12 `Summary.json`** — `summary.linecoverage` and `summary.branchcoverage` are required numeric percentages. `coverage.assemblies` is required and must be a non-empty array; each assembly contains `classesinassembly`, and each class entry has `name`, `coverage` (line coverage), and `branchcoverage`. Version 5.5.12 does not emit `filename` or `linecoverage` on class entries, so the gate must not depend on those keys. A missing `coverage.assemblies` array is a configuration error (exit 2), never an empty pass.
+
+**jscpd 5.4.2 JSON** — `statistics.total.percentage`, `statistics.total.duplicates`, and `statistics.total.lines` are required. Each `duplicates[]` entry has `lines`, `firstFile.name`/`firstFile.start`, and `secondFile.name`/`secondFile.start`. The gate reports the total duplicated line count and both clone sides.
 
 ### Analyzer Configuration (csproj properties)
 | Property | Value | Purpose |
