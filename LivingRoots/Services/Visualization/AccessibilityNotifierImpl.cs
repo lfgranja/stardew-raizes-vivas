@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using LivingRoots.Domain.Visualization;
 using StardewModdingAPI;
 using StardewValley;
@@ -11,6 +12,7 @@ namespace LivingRoots.Services.Visualization
     /// of its own (FR-008a), so a notice is a native red message, in the game's
     /// font, without new artwork.
     /// </summary>
+    [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "Impl suffix is the established production-adapter name referenced by tests and documentation.")]
     public sealed class AccessibilityNotifierImpl : IAccessibilityNotifier
     {
         /// <summary>
