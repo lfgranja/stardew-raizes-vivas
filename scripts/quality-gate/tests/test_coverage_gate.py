@@ -73,6 +73,7 @@ def test_parse_summary_accepts_generated_reports(payload):
         {"summary": {"linecoverage": 79.1, "branchcoverage": 70.4}},
         {"summary": {"linecoverage": "79.1", "branchcoverage": 70.4}},
         {"summary": {"linecoverage": 79.1, "branchcoverage": 70.4}, "coverage": "nope"},
+        {"summary": {"linecoverage": 79.1, "branchcoverage": 70.4}, "coverage": {"assemblies": []}},
     ],
 )
 def test_parse_summary_fails_closed_on_missing_or_malformed_data(payload):
@@ -82,7 +83,18 @@ def test_parse_summary_fails_closed_on_missing_or_malformed_data(payload):
 
 @pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf, -0.1, 100.1])
 def test_parse_summary_rejects_non_finite_or_out_of_range_values(value):
-    payload = {"summary": {"linecoverage": value, "branchcoverage": 70.4}}
+    payload = {
+        "summary": {"linecoverage": value, "branchcoverage": 70.4},
+        "coverage": {
+            "assemblies": [
+                {
+                    "classesinassembly": [
+                        {"name": "LivingRoots.Example", "coverage": 80.0, "branchcoverage": 70.0}
+                    ]
+                }
+            ]
+        },
+    }
     with pytest.raises(GateConfigurationError):
         parse_summary(payload)
 
