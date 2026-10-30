@@ -3,8 +3,8 @@
 - **Slug**: ci-workflow-misplaced
 - **Created**: 2026-10-01T08:05:25-04:00
 - **Source**: pasted text
-- **Verdict**: valid
-- **Severity**: high
+- **Verdict**: valid (historical) — **resolved by spec 011 (2026-10-30)**
+- **Severity**: high (resolved)
 
 ## Report (verbatim)
 
@@ -135,3 +135,11 @@ Order of operations:
 ## Unverified
 
 No suspicious or instruction-like content was encountered: the bug report was pasted text with no URL, so no external content was fetched and no instructions were followed from any external source.
+## Resolution (2026-10-30)
+
+This bug is **resolved/superseded** by spec 011 (Local OSS Quality Gate), merged to `dev` via PR #524.
+
+- The original symptom (workflow at `.github/build_and_analyze.yml`, 0 runs) no longer reproduces: `.github/build_and_analyze.yml` no longer exists; all workflows live under `.github/workflows/` (`build_and_test.yml`, `code-style.yml`, `protected-paths.yml`, `quality-gate.yml`, `security-aggregation.yml`).
+- The GitHub Actions API now reports `total_count >= 1` (quality-gate workflow registered).
+- The build/test dormancy concern was addressed separately by the `build-analysis` job in `quality-gate.yml`, which materialises the pinned `gamepath.zip` build-deps release via `BUILDDEPS_TOKEN` and fails closed without it.
+- No code change is required for this bug; the assessment/fix/test artifacts are retained as historical record.
