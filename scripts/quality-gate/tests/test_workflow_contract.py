@@ -142,6 +142,7 @@ def evaluate_sarif_guard(condition: str, event_name: str, head_repo: str) -> boo
     )
     expression = expression.replace("github.repository", repr("owner/repo"))
     expression = expression.replace("||", " or ").replace("&&", " and ")
+    expression = re.sub(r"(?<![=!<>])!(?!=)", " not ", expression)
     assert not re.search(r"github\.", expression), expression
     return bool(eval(expression, {"__builtins__": {}}, {}))
 
@@ -294,8 +295,8 @@ def render_gate_script(run: str, results: dict[str, str]) -> str:
             % (escaped, escaped)
         )
         script = re.sub(expression, value, script)
-    # Jobs outside this story's matrix (for example build-analysis after US3)
-    # are rendered as success; their behavior is asserted in the US3 test file.
+    # Jobs outside this story's matrix (for example the US3 job) are rendered
+    # as success; their behavior is asserted in the US3 test file.
     script = re.sub(
         r"\$\{\{\s*needs(?:\.\w[\w-]*|\[\s*['\"][\w-]+['\"]\s*\])\.result\s*\}\}",
         "success",
