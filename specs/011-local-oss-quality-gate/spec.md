@@ -119,6 +119,6 @@ As the maintainer, I want code-coverage and duplication thresholds enforced in C
 - Baseline coverage and duplication values can be captured from the current codebase before thresholds are set.
 - CodeQL's runtime is acceptable as a deeper/scheduled scan, with Semgrep as the fast per-PR gate.
 - No license conflict (e.g., LGPL-2.1 Semgrep engine) affects the mod's distribution (to be verified).
-- The `Build and Test` workflow remains unchanged. It is gated by `vars.BUILDDEPS_ENABLED` and has recorded green runs; it is not dormant. The new quality gate is a separate workflow and check, and reuses the same build-deps materialisation pattern.
+- The `Build and Test` workflow remains unchanged. It is gated by `vars.BUILDDEPS_ENABLED` and is currently dormant pending a recorded green run (see `.specify/bugs/ci-skipped-job-false-green/`); it is not required by this feature and must not be added to `required_status_checks` until it has one genuinely green run. The new quality gate is a separate workflow and check, and reuses the same build-deps materialisation pattern.
 - No trend dashboard or inline PR decoration is required; build-fail with file/line diagnostics is sufficient.
 - SonarCloud is removed in a follow-up after 2–4 weeks of green `Quality Gate` runs; it is not kept in parallel indefinitely.
