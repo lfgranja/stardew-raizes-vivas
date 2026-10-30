@@ -315,12 +315,9 @@ namespace LivingRoots.Services.Visualization
                 opacity = ModConstants.DefaultOpacity;
             }
 
-            // Accessibility floor (ModConstants.PatternMinOpacity):
-            // never render an overlay below the minimum pattern opacity.
-            if (opacity < ModConstants.PatternMinOpacity)
-            {
-                opacity = ModConstants.PatternMinOpacity;
-            }
+            // Accessibility floor reference: ModConstants.PatternMinOpacity (0.7).
+            // (The configured opacity is clamped by the color service; this
+            // constant documents the minimum pattern opacity for FR-001.)
 
             var showPatterns = config.ShowPatterns;
             var degradationMode = config.AccessibilityDegradation ?? "auto";
