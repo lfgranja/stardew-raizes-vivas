@@ -31,7 +31,7 @@ namespace LivingRoots
         private EventHandler<AssetRequestedEventArgs>? _onAssetRequestedHandler;
         private Action<string, Vector2, float>? _onTileHealthChangedHandler;
 
-        private bool _disposed = false;  // Thread-safe visibility of disposed state - all access is protected by _disposeLock
+        private bool _disposed;  // Thread-safe visibility of disposed state - all access is protected by _disposeLock
         private readonly object _disposeLock = new();
 
         /*********
