@@ -22,7 +22,7 @@ dotnet build Stardew-LivingRoots.sln -c Release
 
 Pre-remediation (right after T019) this build is expected to FAIL with ~155 analyzer diagnostics (129 tests, 26 LivingRoots). That is the measurement, not a regression. After T021–T024 it must report 0 warnings and 0 errors.
 
-Validation: `bash scripts/quality-gate/analyzer-probe.sh` introduces a temporary violation, asserts a non-zero exit naming `__AnalyzerGateProbe.cs:<line>` and a rule ID, and removes the probe.
+Validation: `bash scripts/quality-gate/analyzer-probe.sh` introduces a temporary violation, asserts each internal `dotnet build` exits non-zero naming `__AnalyzerGateProbe.cs(<line>,<column>)` and a rule ID, then exits 0 and prints `PASS`; it removes the probe on every path.
 
 ## 2. Semgrep (fast SAST)
 
