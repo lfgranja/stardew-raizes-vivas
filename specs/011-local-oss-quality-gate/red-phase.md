@@ -14,11 +14,11 @@ Every user story test was authored before any gate implementation. The Python pa
 | `scripts/quality-gate/tests/test_coverage_gate.py` | US3 | 15 |
 | `scripts/quality-gate/tests/test_duplication_gate.py` | US3 | 11 |
 | `scripts/quality-gate/tests/test_security_gate.py` | US2 | 10 |
-| `scripts/quality-gate/tests/test_analyzer_config.py` | US1 | 20 |
+| `scripts/quality-gate/tests/test_analyzer_config.py` | US1 | 23 |
 | `scripts/quality-gate/tests/test_workflow_contract.py` | US2 | 15 |
-| `scripts/quality-gate/tests/test_workflow_build_analysis.py` | US3 | 9 |
+| `scripts/quality-gate/tests/test_workflow_build_analysis.py` | US3 | 10 |
 | `scripts/quality-gate/tests/test_cli.py` | shared | 15 |
-| **Total** | | **113** |
+| **Total** | | **117** |
 
 Property-based tests use Hypothesis with `max_examples=100` and `deadline=None`.
 
@@ -29,7 +29,7 @@ PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m pytest \
   scripts/quality-gate/tests -q --continue-on-collection-errors
 ```
 
-Result: **42 failed, 24 passed, 4 collection errors**, exit code 1. `--continue-on-collection-errors` is required so the workflow and CLI tests also run; without it pytest stops at the first four import errors. The four uncollectable modules contain 54 test functions (18 + 15 + 11 + 10) that are not counted among the 66 executed cases.
+Result: **42 failed, 28 passed, 4 collection errors**, exit code 1. `--continue-on-collection-errors` is required so the workflow and CLI tests also run; without it pytest stops at the first four import errors. The four uncollectable modules contain 54 test functions (18 + 15 + 11 + 10) that are not counted among the 70 executed cases.
 
 ### Failure classification
 
@@ -37,11 +37,11 @@ Result: **42 failed, 24 passed, 4 collection errors**, exit code 1. `--continue-
 |---|---|---|---|
 | 4 modules (54 functions) | `test_baseline.py`, `test_coverage_gate.py`, `test_duplication_gate.py`, `test_security_gate.py` | `ModuleNotFoundError: No module named quality_gate.baseline / coverage / duplication / security / diagnostics` | Yes — implementation not written yet |
 | 15 | `test_cli.py` | `No module named quality_gate.__main__; 'quality_gate' is a package and cannot be directly executed` | Yes — CLI not written yet |
-| 15 | `test_workflow_contract.py` | `AssertionError: .../.github/workflows/quality-gate.yml must exist` | Yes — workflow not written yet |
-| 8 | `test_workflow_build_analysis.py` | `AssertionError: .../.github/workflows/quality-gate.yml must exist` (1 lock-file assertion) | Yes — workflow and lock files not written yet |
+| 14 | `test_workflow_contract.py` | `AssertionError: .../.github/workflows/quality-gate.yml must exist` | Yes — workflow not written yet |
+| 9 | `test_workflow_build_analysis.py` | `AssertionError: .../.github/workflows/quality-gate.yml must exist` (1 lock-file assertion) | Yes — workflow and lock files not written yet |
 | 4 | `test_analyzer_config.py` | Empty `Directory.Build.props`, no analyzer package references, 4 unjustified suppressions | Yes — US1 not implemented yet |
 
-The 24 passing cases are policy checks that do not require the gate: project files exist, no global `NoWarn` is present, the probe names both projects, the suppression/editorconfig/scanner-policy fixtures behave correctly, and the ReportGenerator pin is already committed. They are not evidence that the gate works.
+The 28 passing cases are policy checks that do not require the gate: project files exist, no global `NoWarn` is present, the probe names both projects, the suppression/editorconfig/scanner-policy fixtures behave correctly, the ReportGenerator pin is already committed, and the SARIF fork-guard evaluator has its own truth table. They are not evidence that the gate works.
 
 No failure is caused by a syntax error: `python -m compileall -q scripts/quality-gate` exits 0.
 
@@ -174,6 +174,20 @@ The second fresh-context review found 18 gaps. Each is resolved as follows.
 | 17 | FR-009 baseline chain was implicit | T043 reports are compared in T045 and T063; no hand-typed estimates |
 | 18 | T071 audit scope was vague | Implementation commits only (`f307b1f..HEAD`, excluding `specs/**` and `.specify/**`) |
 
+## T018 third review resolution
+
+The third fresh-context review found 7 blocking gaps. Each is resolved as follows.
+
+| # | Gap | Resolution |
+|---|---|---|
+| 1 | Unary `!` broke the SARIF guard evaluator and was misrecorded as a syntax error | `evaluate_sarif_guard` rewrites unary `!` (but not `!=`) to `not`; the evaluator truth table passes and the failure classification no longer claims a syntax error |
+| 2 | `test_workflow_contract.py` still contained the literal `build-analysis` | The comment now says "the US3 job"; grep for `build-analysis` returns nothing |
+| 3 | Ratchet-weaken tests did not assert a byte-identical baseline | Both tests capture `read_bytes()` and the directory listing, then assert equality after exit 2 |
+| 4 | No empty-`assemblies` negative and invalid-value test could pass for the wrong reason | `{"assemblies": []}` is a malformed case; the invalid-value payload includes a valid assembly/class |
+| 5 | jscpd invalid-percentage test could pass because required totals were missing | The payload supplies `duplicates`/`lines`; new malformed cases omit only `duplicates` or only `lines`, and a clone missing `firstFile.start` |
+| 6 | Pragma regex skipped trailing-comment suppressions | The regex accepts an optional trailing `//` or `/*...*/`; same-line justification is now reachable, with positive and empty-comment negatives |
+| 7 | Gate was not tested to fail closed on `build-analysis` | `test_gate_fails_closed_when_build_analysis_does_not_succeed` executes the rendered script for `failure`, `skipped`, and `cancelled` |
+
 ## Reviewer verdict (T018)
 
-_Pending re-review after the second gap remediation._
+_Pending re-review after the third gap remediation._
