@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
+import re
+import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
@@ -36,6 +39,30 @@ def run_text(job: dict[str, Any]) -> str:
     return "\n".join(str(step.get("run", "")) for step in steps(job))
 
 
+def step_run(step: dict[str, Any]) -> str:
+    return str(step.get("run", ""))
+
+
+def find_step(job: dict[str, Any], needle: str) -> dict[str, Any]:
+    for step in steps(job):
+        if needle in step_run(step):
+            return step
+    raise AssertionError(f"no build-analysis step runs {needle!r}")
+
+
+def render_expressions(text: str, workspace: Path) -> str:
+    replacements = {
+        "${{ secrets.BUILDDEPS_TOKEN }}": "",
+        "${{ github.workspace }}": str(workspace),
+        "${{ runner.temp }}": str(workspace / "runner-temp"),
+    }
+    for expression, value in replacements.items():
+        text = text.replace(expression, value)
+    text = re.sub(r"\$\{\{\s*vars\.BUILDDEPS_[A-Z_]+\s*\}\}", "", text)
+    text = re.sub(r"\$\{\{\s*[^}]+\s*\}\}", "", text)
+    return text
+
+
 def test_build_analysis_job_exists_on_a_standard_runner():
     job = jobs(load_workflow()).get("build-analysis")
     assert job is not None, "build-analysis job is required"
@@ -49,12 +76,50 @@ def test_build_analysis_materialises_the_pinned_build_deps_and_fails_closed():
     dumped = yaml.safe_dump(job)
     assert "BUILDDEPS_TOKEN" in dumped
     assert "GH_TOKEN" in dumped
+    assert "lfgranja/stardew-raizes-vivas-builddeps" in dumped
     assert "gamepath-v1" in dumped
     assert "gamepath.zip" in dumped
     assert "gh release download" in dumped
     assert "GamePath" in dumped
-    assert "BUILDDEPS_TOKEN is required" in dumped or "Missing build dependencies token" in dumped
-    assert "exit 1" in dumped, "missing token must fail closed"
+    step = find_step(job, "gh release download")
+    step_env = step.get("env", {})
+    assert "BUILDDEPS_TOKEN" in str(step_env), "GH_TOKEN must come from the BUILDDEPS_TOKEN secret"
+
+
+def test_build_deps_preflight_exits_one_without_a_token(tmp_path):
+    job = jobs(load_workflow())["build-analysis"]
+    step = find_step(job, "gh release download")
+    script = render_expressions(step_run(step), tmp_path)
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    gh = bin_dir / "gh"
+    gh.write_text("#!/usr/bin/env bash\necho 'gh must not run without a token' >&2\nexit 99\n", encoding="utf-8")
+    gh.chmod(0o755)
+
+    env = dict(os.environ)
+    env.update(
+        {
+            "PATH": f"{bin_dir}{os.pathsep}{env['PATH']}",
+            "GH_TOKEN": "",
+            "BUILDDEPS_REPO": "lfgranja/stardew-raizes-vivas-builddeps",
+            "BUILDDEPS_TAG": "gamepath-v1",
+            "BUILDDEPS_ASSET": "gamepath.zip",
+            "GamePath": str(tmp_path / "gamepath"),
+        }
+    )
+    result = subprocess.run(
+        ["bash", "-e", "-c", script],
+        cwd=tmp_path,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    output = result.stdout + result.stderr
+    assert "BUILDDEPS_TOKEN" in output
+    assert "::error" in output
 
 
 def test_build_analysis_restores_locked_and_builds_without_restore():
@@ -71,6 +136,7 @@ def test_build_analysis_collects_coverage_and_runs_the_gate():
     assert "dotnet tool restore" in text
     assert "dotnet reportgenerator" in text
     assert "-reporttypes:'JsonSummary;TextSummary'" in text or '"-reporttypes:JsonSummary;TextSummary"' in text
+    assert "-reports:'**/coverage.cobertura.xml'" in text or '"-reports:**/coverage.cobertura.xml"' in text
     assert "python -m quality_gate coverage" in text
     assert ".coverage-baseline" in text
     assert "PYTHONPATH" in str(job.get("env", {})) or "PYTHONPATH" in text
