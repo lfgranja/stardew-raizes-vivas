@@ -21,24 +21,26 @@
 | 1 | static | Checkout | actions/checkout | yes | |
 | 2 | static | Setup Python | actions/setup-python | yes | 3.12 |
 | 3 | static | Install CI deps | pip | yes | `scripts/quality-gate/requirements-ci.txt` pins `semgrep==1.182.1` |
-| 4 | static | Semgrep | Semgrep CLI | yes | `semgrep scan --config p/csharp --error --severity ERROR --metrics off --sarif --output semgrep.sarif LivingRoots/`; ~10s |
+| 4 | static | Semgrep SARIF | Semgrep CLI | yes | `semgrep scan --config p/csharp --error --severity ERROR --metrics off --sarif --output semgrep.sarif LivingRoots/`; ~10s |
+| 4a | static | Semgrep findings | Semgrep CLI | yes | `if: always()`; `semgrep scan --config p/csharp --error --severity ERROR --metrics off LivingRoots/` with no `--sarif`/`--output`, so `file:line` reaches the log |
 | 5 | static | Upload SARIF | codeql-action/upload-sarif | no | Only when the PR head is in this repository, or on push/schedule; fork PRs have a read-only `GITHUB_TOKEN` |
-| 6 | static | jscpd | `npx --yes jscpd@5.4.2` | yes | `LivingRoots/ --format csharp --min-lines 5 --min-tokens 50 --reporters json --output jscpd-report`; C# only |
+| 6 | static | jscpd | `npx --yes jscpd@5.4.2` | yes | `LivingRoots/ --format csharp --min-lines 5 --min-tokens 50 --reporters json --output jscpd-report --silent`; C# only |
 | 7 | static | Duplication gate | `python -m quality_gate duplication` | yes | `--report jscpd-report/jscpd-report.json --baseline .jscpd-baseline.json`; fails if total C# duplication > ceiling; diagnostics include both clone sides |
 | 8 | sca | Checkout | actions/checkout | yes | |
 | 9 | sca | Setup Python | actions/setup-python | yes | 3.12 |
 | 10 | sca | Install CI deps | pip | yes | Uses the same pinned requirements |
-| 11 | sca | Trivy v0.36.0 | `aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25` | yes | Commit-SHA pin for v0.36.0; `scan-type: fs`, `scan-ref: .`, `scanners: vuln`, `severity: HIGH,CRITICAL`, `exit-code: 0`, `format: json`, `output: trivy.json`, `skip-dirs: **/bin/**,**/obj/**,**/.git/**`; the Python gate owns the exit code |
+| 11 | sca | Trivy v0.36.0 | `aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25` | yes | Commit-SHA pin for v0.36.0; `version: v0.76.1`, `scan-type: fs`, `scan-ref: .`, `scanners: vuln`, `severity: HIGH,CRITICAL`, `exit-code: 0`, `format: json`, `output: trivy.json`, `skip-dirs: **/bin/**,**/obj/**,**/.git/**`; the Python gate owns the exit code |
 | 12 | sca | Security gate | `python -m quality_gate security` | yes | Fails on HIGH/CRITICAL with package/CVE/target diagnostics |
-| 13 | build-analysis | Fetch build deps | `gh release download` | yes | `BUILDDEPS_TOKEN`; same preflight as `build_and_test.yml` |
+| 13 | build-analysis | Fetch build deps | `gh release download` | yes | Step env `GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}`; begins `set -euo pipefail` and `if [ -z "${GH_TOKEN:-}" ]; then echo "::error::BUILDDEPS_TOKEN is not set; cannot download the private build-deps release."; exit 1; fi` before any `gh` call |
 | 14 | build-analysis | Restore | `dotnet restore --locked-mode` | yes | Lock files committed |
 | 15 | build-analysis | Build | `dotnet build --no-restore -c Release` | yes | Analyzers run; warnings-as-errors |
 | 16 | build-analysis | Test + coverage | `dotnet test --no-build -c Release --collect:"XPlat Code Coverage"` | yes | Coverlet |
 | 17 | build-analysis | ReportGenerator | `dotnet reportgenerator` | yes | `-reporttypes:'JsonSummary;TextSummary'`; quoted glob `'**/coverage.cobertura.xml'` |
 | 18 | build-analysis | Coverage gate | `python -m quality_gate coverage` | yes | `Summary.json` at `summary.linecoverage` / `summary.branchcoverage`; 0.05 epsilon |
 | 19 | codeql | Init | `github/codeql-action/init@v4` | scheduled only | `languages: csharp`, `build-mode: none` |
-| 20 | codeql | Analyze | `github/codeql-action/analyze@v4` | scheduled only | SARIF to Security tab; no token/game assemblies |
-| 21 | gate | Aggregate | shell | yes | `needs: [static, sca, build-analysis]`, `if: always()`, fails closed if any needed job is not `success`; CodeQL is not in `needs` |
+| 20 | codeql | Analyze | `github/codeql-action/analyze@v4` | scheduled only | `output: codeql-results.sarif`; SARIF to Security tab; no token/game assemblies |
+| 20a | codeql | Annotations | shell | scheduled only | Read `codeql-results.sarif` and emit `::error file=<uri>,line=<startLine>::<message>` so FR-011/SC-006 hold without a dashboard |
+| 21 | gate | Aggregate | shell | yes | `needs: [static, sca, build-analysis]`, `if: always()` on the job and on the failing step; fails closed if any needed job is not `success`; CodeQL is not in `needs` |
 
 ## Thresholds (initial, from the measured baseline)
 
