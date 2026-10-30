@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -91,11 +93,42 @@ def test_both_projects_reference_the_pinned_analyzers(path):
         assert "all" in private_assets.split(";"), f"{name} must not leak to consumers"
 
 
-def test_the_probe_builds_both_projects():
+def test_the_probe_builds_both_projects(tmp_path):
     assert PROBE.exists(), "the analyzer probe is required"
-    text = PROBE.read_text(encoding="utf-8")
-    assert "LivingRoots/LivingRoots.csproj" in text
-    assert "LivingRoots.Tests/LivingRoots.Tests.csproj" in text
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    log = tmp_path / "dotnet.log"
+    dotnet = bin_dir / "dotnet"
+    dotnet.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf '%s\\n' \"$*\" >> \"${DOTNET_LOG}\"\n"
+        "echo '__AnalyzerGateProbe.cs(8,17): error S1481: probe' >&2\n"
+        "exit 1\n",
+        encoding="utf-8",
+    )
+    dotnet.chmod(0o755)
+
+    env = dict(os.environ)
+    env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
+    env["DOTNET_LOG"] = str(log)
+    result = subprocess.run(
+        ["bash", str(PROBE)],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "PASS" in result.stdout
+    invocations = log.read_text(encoding="utf-8").splitlines()
+    assert len(invocations) == 2, "the probe must build both projects exactly once"
+    assert any("LivingRoots/LivingRoots.csproj" in line for line in invocations)
+    assert any("LivingRoots.Tests/LivingRoots.Tests.csproj" in line for line in invocations)
+    for line in invocations:
+        assert "build" in line and "--no-restore" in line and "-c Release" in line
+    assert not (ROOT / "LivingRoots" / "__AnalyzerGateProbe.cs").exists()
+    assert not (ROOT / "LivingRoots.Tests" / "__AnalyzerGateProbe.cs").exists()
 
 
 SUPPRESS_MESSAGE = re.compile(
