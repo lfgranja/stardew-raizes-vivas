@@ -64,11 +64,28 @@ def parse_report(payload: object) -> DuplicationReport:
     total = statistics.get("total")
     if not isinstance(total, dict):
         raise GateConfigurationError("statistics.total must be an object")
-    if "percentage" not in total or "duplicates" not in total or "lines" not in total:
-        raise GateConfigurationError("statistics.total requires percentage, duplicates, and lines")
+    total = statistics.get("total")
+    if not isinstance(total, dict):
+        raise GateConfigurationError("statistics.total must be an object")
+    if "percentage" not in total:
+        raise GateConfigurationError("statistics.total requires percentage")
+    # jscpd reports clone counts as "clones"/"duplicatedLines"; the
+    # contract/tests use "duplicates"/"lines". Accept either spelling.
+    if "duplicates" in total:
+        duplicates_key = "duplicates"
+    elif "clones" in total:
+        duplicates_key = "clones"
+    else:
+        raise GateConfigurationError("statistics.total requires duplicates (or clones)")
+    if "lines" in total:
+        lines_key = "lines"
+    elif "duplicatedLines" in total:
+        lines_key = "duplicatedLines"
+    else:
+        raise GateConfigurationError("statistics.total requires lines (or duplicatedLines)")
     percentage = _as_number(total["percentage"], "percentage")
-    duplicates_count = _as_int(total["duplicates"], "duplicates")
-    total_lines = _as_int(total["lines"], "lines")
+    duplicates_count = _as_int(total[duplicates_key], duplicates_key)
+    total_lines = _as_int(total[lines_key], lines_key)
 
     duplicates_raw = payload.get("duplicates", [])
     if not isinstance(duplicates_raw, list):
