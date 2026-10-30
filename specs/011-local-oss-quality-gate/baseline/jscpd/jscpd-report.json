@@ -1,0 +1,223 @@
+{
+  "duplicates": [
+    {
+      "firstFile": {
+        "end": 1924,
+        "endLoc": {
+          "column": 46,
+          "line": 1924,
+          "position": 100329
+        },
+        "name": "Controllers/ModController.cs",
+        "start": 1916,
+        "startLoc": {
+          "column": 16,
+          "line": 1916,
+          "position": 99933
+        }
+      },
+      "format": "csharp",
+      "fragment": "                var farmLocationNames = new HashSet<string>();\n                var currentLocationName = StardewValley.Game1.currentLocation?.Name;\n                if (!string.IsNullOrEmpty(currentLocationName))\n                {\n                    farmLocationNames.Add(currentLocationName);\n                }\n\n                farmLocationNames.Add(\"Greenhouse\");\n                farmLocationNames.Add(\"Farm\");",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 9,
+      "secondFile": {
+        "end": 1959,
+        "endLoc": {
+          "column": 46,
+          "line": 1959,
+          "position": 101717
+        },
+        "name": "Controllers/ModController.cs",
+        "start": 1952,
+        "startLoc": {
+          "column": 16,
+          "line": 1952,
+          "position": 101322
+        }
+      },
+      "tokens": 56
+    },
+    {
+      "firstFile": {
+        "end": 198,
+        "endLoc": {
+          "column": 22,
+          "line": 198,
+          "position": 9692
+        },
+        "name": "Domain/ReservedNameHandler.cs",
+        "start": 185,
+        "startLoc": {
+          "column": 12,
+          "line": 185,
+          "position": 9280
+        }
+      },
+      "format": "csharp",
+      "fragment": "            var lastSeparatorIndex = -1;\n            for (var i = path.Length - 1; i >= 0; i--)\n            {\n                if (path[i] == separator)\n                {\n                    lastSeparatorIndex = i;\n                    break;\n                }\n            }\n\n            if (lastSeparatorIndex == -1)\n            {\n                // No separator found, the entire path is the component\n                return path;",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 14,
+      "secondFile": {
+        "end": 250,
+        "endLoc": {
+          "column": 22,
+          "line": 250,
+          "position": 11911
+        },
+        "name": "Domain/ReservedNameHandler.cs",
+        "start": 237,
+        "startLoc": {
+          "column": 12,
+          "line": 237,
+          "position": 11499
+        }
+      },
+      "tokens": 57
+    },
+    {
+      "firstFile": {
+        "end": 548,
+        "endLoc": {
+          "column": 9,
+          "line": 548,
+          "position": 24451
+        },
+        "name": "Domain/UnicodeNormalizationService.cs",
+        "start": 537,
+        "startLoc": {
+          "column": 52,
+          "line": 537,
+          "position": 24046
+        }
+      },
+      "format": "csharp",
+      "fragment": "            for (var i = startIndex - 1; i >= 0; i--)\n            {\n                var category = CharUnicodeInfo.GetUnicodeCategory(text[i]);\n                if (category != UnicodeCategory.NonSpacingMark &&\n                    category != UnicodeCategory.SpacingCombiningMark &&\n                    category != UnicodeCategory.EnclosingMark)\n                {\n                    return i;\n                }\n            }\n            return -1;\n        }",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 12,
+      "secondFile": {
+        "end": 569,
+        "endLoc": {
+          "column": 9,
+          "line": 569,
+          "position": 25363
+        },
+        "name": "Domain/UnicodeNormalizationService.cs",
+        "start": 558,
+        "startLoc": {
+          "column": 61,
+          "line": 558,
+          "position": 24958
+        }
+      },
+      "tokens": 51
+    },
+    {
+      "firstFile": {
+        "end": 74,
+        "endLoc": {
+          "column": 16,
+          "line": 74,
+          "position": 3471
+        },
+        "name": "Services/CompostingBinService.cs",
+        "start": 62,
+        "startLoc": {
+          "column": 8,
+          "line": 62,
+          "position": 3041
+        }
+      },
+      "format": "csharp",
+      "fragment": "        lock (_lock)\n        {\n            if (!_runtimeCache.ContainsKey(locationName))\n                _runtimeCache[locationName] = new Dictionary<string, CompostingBinStateModel>();\n\n            var bins = _runtimeCache[locationName];\n            if (!bins.TryGetValue(key, out var bin))\n            {\n                bin = _factory.CreateBin((int)tile.X, (int)tile.Y);\n                bins[key] = bin;\n            }\n\n            if (bin.State != CompostingBinState.Empty) return;",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 13,
+      "secondFile": {
+        "end": 323,
+        "endLoc": {
+          "column": 16,
+          "line": 323,
+          "position": 12755
+        },
+        "name": "Services/CompostingBinService.cs",
+        "start": 311,
+        "startLoc": {
+          "column": 8,
+          "line": 311,
+          "position": 12325
+        }
+      },
+      "tokens": 84
+    },
+    {
+      "firstFile": {
+        "end": 48,
+        "endLoc": {
+          "column": 70,
+          "line": 48,
+          "position": 2576
+        },
+        "name": "Services/Visualization/OverlayRenderer.cs",
+        "start": 43,
+        "startLoc": {
+          "column": 4,
+          "line": 43,
+          "position": 2108
+        }
+      },
+      "format": "csharp",
+      "fragment": "    {\n        private readonly IColorInterpolationService _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));\n        private readonly IVisualizationConfigurationService _configService = configService ?? throw new ArgumentNullException(nameof(configService));\n        private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));\n\n        // Player-facing HUD toast sink (FR-009). Required since T084:",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 6,
+      "secondFile": {
+        "end": 27,
+        "endLoc": {
+          "column": 68,
+          "line": 27,
+          "position": 1295
+        },
+        "name": "Services/Visualization/VisualizationService.cs",
+        "start": 22,
+        "startLoc": {
+          "column": 4,
+          "line": 22,
+          "position": 829
+        }
+      },
+      "tokens": 55
+    }
+  ],
+  "statistics": {
+    "detectionDate": "2026-10-30T05:39:37.380Z",
+    "formats": {
+      "csharp": {
+        "clones": 5,
+        "duplicatedLines": 54,
+        "duplicatedTokens": 303,
+        "lines": 13157,
+        "newClones": 0,
+        "newDuplicatedLines": 0,
+        "percentage": 0.4104279090978187,
+        "percentageTokens": 0.6094249683219695,
+        "sources": 51,
+        "tokens": 49719
+      }
+    },
+    "total": {
+      "clones": 5,
+      "duplicatedLines": 54,
+      "duplicatedTokens": 303,
+      "lines": 13157,
+      "newClones": 0,
+      "newDuplicatedLines": 0,
+      "percentage": 0.4104279090978187,
+      "percentageTokens": 0.6094249683219695,
+      "sources": 51,
+      "tokens": 49719
+    }
+  }
+}
