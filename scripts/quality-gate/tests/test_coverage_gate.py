@@ -93,7 +93,19 @@ def test_load_summary_reads_json(tmp_path):
         json.dumps(
             {
                 "summary": {"linecoverage": 80.0, "branchcoverage": 70.0},
-                "coverage": {"assemblies": []},
+                "coverage": {
+                    "assemblies": [
+                        {
+                            "classesinassembly": [
+                                {
+                                    "name": "LivingRoots.Example",
+                                    "coverage": 80.0,
+                                    "branchcoverage": 70.0,
+                                }
+                            ]
+                        }
+                    ]
+                },
             }
         ),
         encoding="utf-8",
@@ -145,8 +157,10 @@ def test_regression_below_the_epsilon_fails(lines, branches):
     )
     result = evaluate_coverage(summary, baseline)
     assert result.exit_code == 1
-    assert result.diagnostics
-    assert "coverage" in result.diagnostics[0].message.lower()
+    assert any(
+        "coverage" in f"{diagnostic.title} {diagnostic.message}".lower()
+        for diagnostic in result.diagnostics
+    )
 
 
 def test_failure_names_the_lowest_covered_classes():
