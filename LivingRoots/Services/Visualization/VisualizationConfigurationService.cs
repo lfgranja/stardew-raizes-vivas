@@ -250,15 +250,7 @@ namespace LivingRoots.Services.Visualization
                 return false;
             }
 
-            foreach (var valid in ValidDegradationModes)
-            {
-                if (string.Equals(mode, valid, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return ValidDegradationModes.Any(valid => string.Equals(mode, valid, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
