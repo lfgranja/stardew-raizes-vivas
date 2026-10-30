@@ -130,6 +130,24 @@ def test_semgrep_uses_the_pinned_cli_not_the_archived_action():
     assert any("requirements-ci.txt" in step_run(step) for step in steps(static))
 
 
+def test_semgrep_prints_findings_with_file_and_line():
+    static = jobs(load_workflow())["static"]
+    semgrep_steps = [step for step in steps(static) if "semgrep scan" in step_run(step)]
+    sarif_steps = [step for step in semgrep_steps if "--sarif" in step_run(step)]
+    text_steps = [step for step in semgrep_steps if "--sarif" not in step_run(step)]
+    assert len(sarif_steps) == 1, "exactly one Semgrep step writes SARIF"
+    assert len(text_steps) == 1, "exactly one Semgrep step prints file:line findings"
+    text = text_steps[0]
+    assert "always()" in str(text.get("if", "")), (
+        "the text step must run even when the SARIF step fails"
+    )
+    command = step_run(text)
+    assert "--output" not in command, "the text step must not write a report file"
+    assert "--severity ERROR" in command
+    assert "--error" in command
+    assert "LivingRoots/" in command
+
+
 def evaluate_sarif_guard(condition: str, event_name: str, head_repo: str) -> bool:
     """Evaluate the fork guard for a concrete event without GitHub Actions."""
     expression = re.sub(r"\$\{\{\s*|\s*\}\}", "", condition).strip()
