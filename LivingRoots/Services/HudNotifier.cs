@@ -8,7 +8,7 @@ namespace LivingRoots.Services;
 /// Wraps the game's HUD toast (<c>Game1.addHUDMessage</c>) so services
 /// can surface a transient, player-facing notification (FR-009).
 /// </summary>
-public class HudNotifierImpl : IHudNotifier
+public class HudNotifier : IHudNotifier
 {
     /// <summary>Shows a transient, auto-dismissible HUD toast to the player.</summary>
     /// <param name="message">The message text to display to the player.</param>
