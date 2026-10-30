@@ -82,7 +82,18 @@ def test_load_report_missing_file_is_a_configuration_error(tmp_path):
 def test_load_report_reads_json(tmp_path):
     path = tmp_path / "jscpd-report.json"
     path.write_text(
-        json.dumps({"statistics": {"total": {"percentage": 0.1}}}),
+        json.dumps(
+            {
+                "statistics": {"total": {"percentage": 0.1, "duplicates": 1, "lines": 12}},
+                "duplicates": [
+                    {
+                        "lines": 12,
+                        "firstFile": {"name": "LivingRoots/A.cs", "start": 1},
+                        "secondFile": {"name": "LivingRoots/B.cs", "start": 2},
+                    }
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     assert load_report(path).percentage == 0.1
