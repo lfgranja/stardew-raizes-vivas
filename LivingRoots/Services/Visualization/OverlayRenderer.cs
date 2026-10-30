@@ -315,6 +315,13 @@ namespace LivingRoots.Services.Visualization
                 opacity = ModConstants.DefaultOpacity;
             }
 
+            // Accessibility floor (ModConstants.PatternMinOpacity):
+            // never render an overlay below the minimum pattern opacity.
+            if (opacity < ModConstants.PatternMinOpacity)
+            {
+                opacity = ModConstants.PatternMinOpacity;
+            }
+
             var showPatterns = config.ShowPatterns;
             var degradationMode = config.AccessibilityDegradation ?? "auto";
 
