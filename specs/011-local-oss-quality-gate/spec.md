@@ -111,8 +111,38 @@ As the maintainer, I want code-coverage and duplication thresholds enforced in C
 - **SC-006**: The maintainer can identify the offending location from CI output without opening an external dashboard: file and line for code-level findings, package/CVE/target for SCA findings, class for coverage findings, and the clone pair for duplication findings.
 - **SC-007 (DEFERRED)**: After 2–4 weeks of green local runs, SonarCloud can be removed without loss of the quality signal. This feature produces the removal checklist, rollout start date, and green-run criteria; the removal itself is a follow-up and MUST NOT be performed here.
 
-## Assumptions
+## Resolved Decisions (2026-10-30, from checklist review)
 
+The following decisions were resolved from the 34 open checklist items and are now binding for implementation:
+
+| Q | Decision |
+|---|----------|
+| Q1 | Include Gitleaks (per-PR diff scan + weekly full-history) in the `static` job; explicitly exclude IaC/container scanning (no such artifacts). |
+| Q2 | CodeQL cadence: weekly Sunday 02:17 UTC + push to `main` + `workflow_dispatch`. |
+| Q3 | Security false positives: targeted, documented suppression with justification/owner/expiry + quarterly audit. |
+| Q4 | Gate on fixable HIGH/CRITICAL only; track unfixable in a no-fix register with SLA; weekly scan + Dependabot. |
+| Q5 | Fail closed on unavailable scans with explicit error + retry + watchdog alert. |
+| Q6 | Canonical 4-tier severity (Critical/High/Medium/Low) with per-tool mapping; blocking = High+. |
+| Q7 | Document concrete offline fallback (cached DB, vendored rules); fail closed if unavailable. |
+| Q8 | Reliability defect = any analyzer/compiler diagnostic ≥ Warning promoted by TWAE with file:line; enumerate rule families. |
+| Q9 | Pin `AnalysisLevel=6.0-recommended`; upgrades only via reviewed PR. |
+| Q10 | Fail on analyzer `ADxxxx` (crash/skip) under TWAE. |
+| Q11 | `dotnet format` owns style, analyzers own reliability; CI runs format before build. |
+| Q12 | NFR: analyzer overhead ≤ 20% of clean build. |
+| Q13 | ModBuildConfig analyzer documented as coexisting source; capture new warnings in Phase 1. |
+| Q14 | No automatic retry; classify + human rerun + watchdog alert. |
+| Q15 | Dependabot weekly with tiered review (patch auto-merge, minor after changelog, major manual). |
+| Q16 | Merge-blocking contract: required check `Quality Gate / gate` after first green run, strict on `main`. |
+| Q17 | Document Coverlet exclusion filter set (defaults + `**/*.g.cs`, `**/*.designer.cs`, `**/obj/**`); freeze after baseline. |
+| Q18 | Keep ratchet manual; trigger = strict improvement on merged PR + reviewed commit. |
+| Q19 | Written weakening procedure (justification, approval, expiry, audit log). |
+| Q20 | Add `--fail-on-new-clones` (0 allowed) alongside aggregate percentage ceiling. |
+| Q21 | Time-boxed, scoped, expiring override (prohibited on `main`). |
+| Q22 | Fail closed on tool failure (missing report → exit 2). |
+| Q23 | Baseline stability protocol (≥3 runs within ±0.5pp) before freezing. |
+| Q24 | Initial floor = measured baseline; research floor (60%) = hard lower bound. |
+
+These decisions supersede any conflicting wording in the Assumptions section.
 - The number of warnings surfaced by enabling the analyzers is manageable (to be measured in Phase 1); if not, Phase 1 becomes a remediation task.
 - `SonarAnalyzer.CSharp` and the .NET SDK analyzers do not produce excessive false positives on this codebase (to be validated by the Phase 1 build).
 - The maintainer accepts a temporary period where both SonarCloud and the local gate run in parallel (no cost, both free).
