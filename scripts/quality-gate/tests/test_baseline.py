@@ -136,7 +136,7 @@ def test_save_coverage_baseline_is_atomic_on_replace_failure(tmp_path, monkeypat
         save_coverage_baseline(target, CoverageBaseline(lines=50.0, branches=60.0))
 
     assert target.read_text(encoding="utf-8") == "lines=10\nbranches=20\n"
-    assert list(tmp_path.glob("*.tmp")) == []
+    assert [path.name for path in tmp_path.iterdir() if path.name != target.name] == []
 
 
 def test_save_duplication_baseline_is_atomic_on_replace_failure(tmp_path, monkeypatch):
@@ -153,7 +153,7 @@ def test_save_duplication_baseline_is_atomic_on_replace_failure(tmp_path, monkey
         save_duplication_baseline(target, DuplicationBaseline(percentage=0.1))
 
     assert target.read_text(encoding="utf-8") == original
-    assert list(tmp_path.glob("*.tmp")) == []
+    assert [path.name for path in tmp_path.iterdir() if path.name != target.name] == []
 
 
 @given(coverage_baseline_dict(), coverage_baseline_dict())
