@@ -69,6 +69,9 @@ def test_build_analysis_job_exists_on_a_standard_runner():
     assert job.get("runs-on") == "ubuntu-latest"
     assert job.get("timeout-minutes"), "build-analysis must declare a timeout"
     assert int(job["timeout-minutes"]) <= 20
+    uses = [str(step.get("uses", "")) for step in steps(job)]
+    assert any("actions/checkout@" in use for use in uses), "build-analysis must check out the repo"
+    assert any("actions/setup-dotnet@" in use for use in uses), "build-analysis must set up .NET"
 
 
 def test_build_analysis_materialises_the_pinned_build_deps_and_fails_closed():
@@ -83,7 +86,9 @@ def test_build_analysis_materialises_the_pinned_build_deps_and_fails_closed():
     assert "GamePath" in dumped
     step = find_step(job, "gh release download")
     step_env = step.get("env", {})
-    assert "BUILDDEPS_TOKEN" in str(step_env), "GH_TOKEN must come from the BUILDDEPS_TOKEN secret"
+    assert step_env.get("GH_TOKEN") == "${{ secrets.BUILDDEPS_TOKEN }}", (
+        "GH_TOKEN must come from the BUILDDEPS_TOKEN secret"
+    )
 
 
 def test_build_deps_preflight_exits_one_without_a_token(tmp_path):
@@ -138,7 +143,8 @@ def test_build_analysis_collects_coverage_and_runs_the_gate():
     assert "-reporttypes:'JsonSummary;TextSummary'" in text or '"-reporttypes:JsonSummary;TextSummary"' in text
     assert "-reports:'**/coverage.cobertura.xml'" in text or '"-reports:**/coverage.cobertura.xml"' in text
     assert "python -m quality_gate coverage" in text
-    assert ".coverage-baseline" in text
+    assert "--summary coverage-report/Summary.json" in text
+    assert "--baseline .coverage-baseline" in text
     assert "PYTHONPATH" in str(job.get("env", {})) or "PYTHONPATH" in text
 
 
