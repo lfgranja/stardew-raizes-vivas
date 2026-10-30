@@ -200,6 +200,8 @@ def test_ratchet_coverage_refuses_to_lower_a_floor(tmp_path):
     baseline = tmp_path / "baseline"
     write_summary(summary, 10.0, 10.0)
     write_coverage_baseline(baseline, 79.1, 70.4)
+    before = baseline.read_bytes()
+    before_entries = sorted(path.name for path in tmp_path.iterdir())
     result = run_cli(
         "ratchet-coverage",
         "--summary",
@@ -208,7 +210,10 @@ def test_ratchet_coverage_refuses_to_lower_a_floor(tmp_path):
         str(baseline),
     )
     assert result.returncode == 2
-    assert baseline.read_text(encoding="utf-8").startswith("lines=79.1")
+    assert baseline.read_bytes() == before, "a weakening measurement must leave the baseline byte-identical"
+    assert sorted(path.name for path in tmp_path.iterdir()) == before_entries, (
+        "a refused ratchet must not leave a temporary file behind"
+    )
 
 
 def test_ratchet_coverage_raises_a_floor(tmp_path):
@@ -249,6 +254,8 @@ def test_ratchet_duplication_refuses_to_raise_a_ceiling(tmp_path):
     baseline = tmp_path / "baseline.json"
     write_jscpd(report, 5.0)
     write_duplication_baseline(baseline, 0.48)
+    before = baseline.read_bytes()
+    before_entries = sorted(path.name for path in tmp_path.iterdir())
     result = run_cli(
         "ratchet-duplication",
         "--report",
@@ -257,7 +264,10 @@ def test_ratchet_duplication_refuses_to_raise_a_ceiling(tmp_path):
         str(baseline),
     )
     assert result.returncode == 2
-    assert json.loads(baseline.read_text(encoding="utf-8"))["percentage"] == 0.48
+    assert baseline.read_bytes() == before, "a weakening measurement must leave the baseline byte-identical"
+    assert sorted(path.name for path in tmp_path.iterdir()) == before_entries, (
+        "a refused ratchet must not leave a temporary file behind"
+    )
 
 
 def test_ratchet_duplication_lowers_a_ceiling(tmp_path):
