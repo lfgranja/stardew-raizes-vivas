@@ -102,9 +102,6 @@ def test_permissions_are_least_privilege():
     sca_permissions = parsed["sca"].get("permissions", {})
     assert "security-events" not in sca_permissions
     assert sca_permissions.get("contents", "read") == "read"
-    build_permissions = parsed["build-analysis"].get("permissions", {})
-    assert "security-events" not in build_permissions
-    assert build_permissions.get("contents", "read") == "read"
     gate_permissions = parsed["gate"].get("permissions", {})
     assert "security-events" not in gate_permissions
     assert gate_permissions.get("contents", "read") == "read"
@@ -190,6 +187,23 @@ def test_codeql_is_scheduled_only_and_buildless():
     analyze_steps = [step for step in steps(codeql) if "codeql-action/analyze@" in str(step.get("uses", ""))]
     assert analyze_steps, "CodeQL analyze step is required"
     assert str(analyze_steps[0]["uses"]).endswith("@v4")
+    analyze_with = analyze_steps[0].get("with", {})
+    assert analyze_with.get("output") == "codeql-results.sarif", (
+        "the analyze step must write a named SARIF file for the annotation step"
+    )
+    uploads = [step for step in steps(codeql) if "upload-sarif" in str(step.get("uses", ""))]
+    assert uploads, "CodeQL SARIF must be uploaded"
+    assert uploads[0].get("with", {}).get("sarif_file") == "codeql-results.sarif"
+    annotation_steps = [
+        step
+        for step in steps(codeql)
+        if "codeql-results.sarif" in step_run(step) and "::error" in step_run(step)
+    ]
+    assert annotation_steps, "CodeQL results must be surfaced as file:line annotations"
+    annotation = step_run(annotation_steps[0])
+    assert "file=" in annotation and "line=" in annotation, (
+        "the annotation step must emit ::error file=<uri>,line=<startLine>::<message>"
+    )
     dumped = yaml.safe_dump(codeql)
     assert "BUILDDEPS_TOKEN" not in dumped
     assert "STARDEW_GAME_PATH" not in dumped
@@ -262,10 +276,10 @@ def test_aggregate_gate_fails_closed_on_skipped_or_failed_jobs():
     gate = jobs(load_workflow())["gate"]
     assert "always()" in str(gate.get("if", ""))
     needs = gate.get("needs", [])
-    for required in ("static", "sca", "build-analysis"):
+    for required in ("static", "sca"):
         assert required in needs
     run = "\n".join(step_run(step) for step in steps(gate))
-    for required in ("static", "sca", "build-analysis"):
+    for required in ("static", "sca"):
         assert f"needs.{required}.result" in run
     assert "always()" in str([step for step in steps(gate) if "needs." in step_run(step)][0].get("if", ""))
 
@@ -280,6 +294,13 @@ def render_gate_script(run: str, results: dict[str, str]) -> str:
             % (escaped, escaped)
         )
         script = re.sub(expression, value, script)
+    # Jobs outside this story's matrix (for example build-analysis after US3)
+    # are rendered as success; their behavior is asserted in the US3 test file.
+    script = re.sub(
+        r"\$\{\{\s*needs(?:\.\w[\w-]*|\[\s*['\"][\w-]+['\"]\s*\])\.result\s*\}\}",
+        "success",
+        script,
+    )
     assert "${{" not in script, "the gate script must only reference rendered results"
     return script
 
@@ -297,7 +318,7 @@ def run_gate(results: dict[str, str]) -> subprocess.CompletedProcess[str]:
 
 
 def test_aggregate_gate_behavior_for_every_job_result():
-    success = {"static": "success", "sca": "success", "build-analysis": "success"}
+    success = {"static": "success", "sca": "success"}
     assert run_gate(success).returncode == 0
     for job in success:
         for value in ("failure", "cancelled", "skipped"):
