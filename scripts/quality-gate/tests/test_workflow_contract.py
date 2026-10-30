@@ -61,6 +61,7 @@ def test_workflow_is_triggered_on_pr_push_schedule_and_dispatch():
     assert "push" in config
     assert "schedule" in config
     assert "workflow_dispatch" in config
+    assert any(entry.get("cron") for entry in config["schedule"]), "a weekly cron is required"
 
 
 def test_pull_requests_and_pushes_are_not_path_filtered():
@@ -124,6 +125,8 @@ def test_semgrep_uses_the_pinned_cli_not_the_archived_action():
     command = step_run(semgrep_step)
     assert "--config p/csharp" in command
     assert "--error" in command
+    assert "--severity ERROR" in command
+    assert "--metrics off" in command
     assert "--sarif" in command
     assert "--output semgrep.sarif" in command
     assert "LivingRoots/" in command
@@ -137,9 +140,11 @@ def evaluate_sarif_guard(condition: str, event_name: str, head_repo: str) -> boo
     expression = expression.replace(
         "github.event.pull_request.head.repo.full_name", repr(head_repo)
     )
+    expression = expression.replace(
+        "github.event.pull_request.head.repo.fork", repr(head_repo != "owner/repo")
+    )
     expression = expression.replace("github.repository", repr("owner/repo"))
     expression = expression.replace("||", " or ").replace("&&", " and ")
-    expression = expression.replace("!=", "!=").replace("==", "==")
     assert not re.search(r"github\.", expression), expression
     return bool(eval(expression, {"__builtins__": {}}, {}))
 
@@ -158,6 +163,13 @@ def test_sarif_upload_is_skipped_for_fork_pull_requests():
     assert upload.get("with", {}).get("sarif_file") == "semgrep.sarif"
 
 
+def test_sarif_guard_evaluator_accepts_the_fork_boolean():
+    guard = "${{ github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork }}"
+    assert evaluate_sarif_guard(guard, "pull_request", "someone/fork") is False
+    assert evaluate_sarif_guard(guard, "pull_request", "owner/repo") is True
+    assert evaluate_sarif_guard(guard, "push", "") is True
+
+
 def test_codeql_is_scheduled_only_and_buildless():
     workflow = load_workflow()
     codeql = jobs(workflow)["codeql"]
@@ -167,12 +179,17 @@ def test_codeql_is_scheduled_only_and_buildless():
     assert "push" not in condition
     assert "pull_request" not in condition
     assert codeql["runs-on"] == "ubuntu-latest"
+    assert any("actions/checkout@" in str(step.get("uses", "")) for step in steps(codeql))
     init_steps = [step for step in steps(codeql) if "codeql-action/init@" in str(step.get("uses", ""))]
     assert init_steps, "CodeQL init step is required"
+    init_uses = str(init_steps[0]["uses"])
+    assert init_uses.endswith("@v4"), "first-party actions use a major tag"
     init_with = init_steps[0].get("with", {})
     assert init_with.get("languages") == "csharp"
     assert init_with.get("build-mode") == "none"
-    assert any("codeql-action/analyze@" in str(step.get("uses", "")) for step in steps(codeql))
+    analyze_steps = [step for step in steps(codeql) if "codeql-action/analyze@" in str(step.get("uses", ""))]
+    assert analyze_steps, "CodeQL analyze step is required"
+    assert str(analyze_steps[0]["uses"]).endswith("@v4")
     dumped = yaml.safe_dump(codeql)
     assert "BUILDDEPS_TOKEN" not in dumped
     assert "STARDEW_GAME_PATH" not in dumped
@@ -187,9 +204,10 @@ def test_trivy_is_pinned_and_lets_the_python_gate_own_the_exit_code():
     trivy = trivy_steps[0]
     uses = str(trivy["uses"])
     pin = uses.split("@", 1)[1]
-    assert re.fullmatch(r"[0-9a-f]{40}", pin), "third-party actions must be pinned to a commit SHA"
-    assert "0.36.0" in str(trivy.get("name", "")), "the pinned version must be named in the step"
+    assert pin == "ed142fd0673e97e23eac54620cfb913e5ce36c25", "the v0.36.0 action must be SHA-pinned"
+    assert "0.36.0" in str(trivy.get("name", "")), "the pinned action version must be named in the step"
     with_config = trivy.get("with", {})
+    assert str(with_config.get("version")) == "v0.76.1", "the Trivy CLI binary must be pinned"
     assert str(with_config.get("scan-type")) == "fs"
     assert str(with_config.get("scan-ref")) == "."
     assert str(with_config.get("severity")) == "HIGH,CRITICAL"
@@ -198,7 +216,7 @@ def test_trivy_is_pinned_and_lets_the_python_gate_own_the_exit_code():
     assert str(with_config.get("format")) == "json"
     assert str(with_config.get("output")) == "trivy.json"
     skip_dirs = str(with_config.get("skip-dirs", ""))
-    assert "bin" in skip_dirs and "obj" in skip_dirs
+    assert "bin" in skip_dirs and "obj" in skip_dirs and ".git" in skip_dirs
 
     ordered = steps(sca)
     trivy_index = ordered.index(trivy)
@@ -255,7 +273,13 @@ def test_aggregate_gate_fails_closed_on_skipped_or_failed_jobs():
 def render_gate_script(run: str, results: dict[str, str]) -> str:
     script = run
     for job, value in results.items():
-        script = script.replace(f"${{{{ needs.{job}.result }}}}", value)
+        escaped = re.escape(job)
+        # Accept both the dot form and the bracket form GitHub Actions allows.
+        expression = (
+            r"\$\{\{\s*needs(?:\.%s|\[\s*['\"]%s['\"]\s*\])\.result\s*\}\}"
+            % (escaped, escaped)
+        )
+        script = re.sub(expression, value, script)
     assert "${{" not in script, "the gate script must only reference rendered results"
     return script
 
