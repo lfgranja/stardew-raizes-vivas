@@ -104,7 +104,7 @@ def evaluate_security(vulnerabilities: tuple[Vulnerability, ...]) -> GateResult:
     diagnostics: list[Diagnostic] = []
     blocking_found = False
     for vuln in vulnerabilities:
-        if vuln.severity not in SEVERITY_ORDER:
+        if vuln.severity not in ("LOW", "MEDIUM", "HIGH", "CRITICAL"):
             diagnostics.append(
                 Diagnostic(
                     title="Security configuration error",
