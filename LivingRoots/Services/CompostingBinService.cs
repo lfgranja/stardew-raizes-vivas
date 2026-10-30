@@ -1,4 +1,4 @@
-#pragma warning disable CS9113 // Parameter is unread: saveIdProvider/hostAtomicLockService retained for API/test compatibility
+#pragma warning disable CS9113 // CS9113: parameter is unread; retained for API/test compatibility
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -633,7 +633,7 @@ public class CompostingBinService(
                 }
 
                 var binsToRemove = new List<string>();
-#pragma warning disable S3267 // Loop contains try/catch and conditional pruning logic
+#pragma warning disable S3267 // S3267: loop contains try/catch and conditional pruning logic
                 foreach (var binEntry in locEntry.Value)
                 {
                     try
