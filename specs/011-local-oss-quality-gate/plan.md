@@ -104,8 +104,20 @@ LivingRoots.Tests/LivingRoots.Tests.csproj # MODIFIED: analyzers + lock file
 
 **Structure Decision**: CI/tooling change only. No new game source directories. The gate logic lives in a small Python package so thresholds and report parsing are unit-testable without a game install; the workflow is a single file with one owner. Baseline files are committed at repo root to enable ratcheting.
 
-## Complexity Tracking
+## Resolved Decisions (2026-10-30)
 
+See `spec.md` § "Resolved Decisions (2026-10-30, from checklist review)" for the full Q1–Q24 table. Key implementation impacts:
+
+- `static` job adds Gitleaks (per-PR diff scan + weekly full-history) and the IaC exclusion is documented as a non-goal.
+- CodeQL schedule is weekly Sunday 02:17 UTC + push to `main` + `workflow_dispatch`.
+- Dependabot weekly + tiered review; SHA pinning enforced at repo level.
+- `build-analysis` uses `--fail-on-new-clones` alongside the aggregate duplication ceiling.
+- Coverlet exclusion filter set documented and frozen after baseline; baseline stability protocol (≥3 runs) before freezing.
+- Initial coverage floor = measured baseline; research floor (60%) is a hard lower bound.
+- Analyzer `AnalysisLevel` pinned to `6.0-recommended`; ModBuildConfig analyzer documented as coexisting.
+- Severity expressed as canonical 4-tier scale with per-tool mapping; blocking = High+.
+- Fail-closed on missing reports; time-boxed override prohibited on `main`.
+- Merge-blocking contract: required check `Quality Gate / gate` after first green run.
 No violations — table intentionally empty.
 
 ---
@@ -114,7 +126,7 @@ No violations — table intentionally empty.
 
 See `research.md` in this directory (consolidated from assessment research + agent findings). Summary of decisions:
 
-- **D1 — Analyzers**: `SonarAnalyzer.CSharp` 10.35.0.4138 + `Microsoft.CodeAnalysis.NetAnalyzers` 10.0.403; `AnalysisLevel=latest`, `AnalysisMode=Recommended`, `TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true`. Measured pre-change: 155 warnings would become errors (129 tests, 26 LivingRoots); NetAnalyzers contributes 0 CA diagnostics beyond the SDK defaults. `EnforceCodeStyleInBuild=true` may add diagnostics, so T020 stops and re-plans if the count changes materially.
+- **D1 — Analyzers**: `SonarAnalyzer.CSharp` 10.35.0.4138 + `Microsoft.CodeAnalysis.NetAnalyzers` 10.0.403; `AnalysisLevel=6.0-recommended` (pinned per Q9), `AnalysisMode=Recommended`, `TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true`. Measured pre-change: 155 warnings would become errors (129 tests, 26 LivingRoots); NetAnalyzers contributes 0 CA diagnostics beyond the SDK defaults. `EnforceCodeStyleInBuild=true` may add diagnostics, so T020 stops and re-plans if the count changes materially.
 - **D2 — False positives**: targeted `.editorconfig` per-folder overrides + `[SuppressMessage]` with justification; never global `NoWarn`; avoid "monster GlobalSuppressions".
 - **D3 — SAST**: Semgrep CE CLI 1.182.1 per PR (~10s; 6 `p/csharp` rules; 0 findings on 78 files today). CodeQL Action v4 scheduled with `build-mode: none`, no `BUILDDEPS_TOKEN`, 3–5 minutes; it is not a per-PR blocking gate. The archived `semgrep/semgrep-action` is not used.
 - **D4 — Coverage/duplication**: initial floors/ceilings come from the T043 re-measurement, not from estimates. Current measurements: ReportGenerator 5.5.12 `summary.linecoverage` 79.1% / `summary.branchcoverage` 70.4% (one-decimal); jscpd 5.4.2 C#-only 0.48% (6 clones, 64 lines). The all-format jscpd figure (1.47%, 38 clones, 510 lines) is not the gate metric.
