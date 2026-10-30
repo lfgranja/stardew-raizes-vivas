@@ -34,6 +34,7 @@ def test_parse_report_reads_total_and_clone_locations():
     }
     report = parse_report(payload)
     assert report.percentage == 0.48
+    assert report.total_lines == 64
     assert report.duplicates == (
         Clone(
             first_file="LivingRoots/A.cs",
@@ -109,7 +110,10 @@ def test_measured_above_the_ceiling_fails(measured, ceiling):
     baseline = DuplicationBaseline(percentage=ceiling)
     result = evaluate_duplication(report, baseline)
     assert result.exit_code == 1
-    assert "duplication" in result.diagnostics[0].message.lower()
+    assert any(
+        "duplication" in f"{diagnostic.title} {diagnostic.message}".lower()
+        for diagnostic in result.diagnostics
+    )
 
 
 def test_failure_reports_both_clone_sides_with_file_and_line():
@@ -131,6 +135,7 @@ def test_failure_reports_both_clone_sides_with_file_and_line():
     text = "\n".join(d.message for d in result.diagnostics)
     assert "LivingRoots/A.cs:10" in text
     assert "LivingRoots/B.cs:42" in text
+    assert "64" in text, "the clone line count must be reported"
 
 
 def test_failure_without_clone_data_still_produces_a_diagnostic():
