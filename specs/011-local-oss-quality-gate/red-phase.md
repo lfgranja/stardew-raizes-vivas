@@ -2,7 +2,7 @@
 
 **Feature**: 011-local-oss-quality-gate
 **Date**: 2026-10-29
-**Commit at capture**: `4e660c5` (refreshed evidence after the fifth-review remediation; the original capture was `38e7fa7`)
+**Commit at capture**: `1fd835b` (refreshed evidence after the sixth-review remediation; the original capture was `38e7fa7`)
 
 ## Scope
 
@@ -228,6 +228,23 @@ The fifth fresh-context review reproduced the suite and found 6 blocking gaps. E
 | 5 | T041 was not self-contained and omitted prerequisites | T041 names checkout, setup-dotnet, the build-deps env/commands, all six required assemblies, and requires T028, T029–T031, T040, T042, and T044; contract rows 12a/12b/13a and the workflow test assert checkout/setup-dotnet |
 | 6 | The coverage workflow invocation was under-asserted | The test requires both `--summary coverage-report/Summary.json` and `--baseline .coverage-baseline` |
 
+## T018 sixth review resolution
+
+The sixth fresh-context review reproduced the suite and found 10 gaps. Each is resolved as follows.
+
+| # | Gap | Resolution |
+|---|---|---|
+| 1 | The six-assembly preflight was untested | `test_build_analysis_materialises_the_pinned_build_deps_and_fails_closed` asserts `unzip -o`, `mv -f`, `smapi-internal`, all six assembly names, and the `::error`/`exit 1` preflight |
+| 2 | Gate/CodeQL steps could use `continue-on-error` | The blocking markers now include `needs.` and `codeql-action`, and the job-level `continue-on-error` is rejected for `static`/`sca`/`codeql`/`gate` |
+| 3 | `pull_request` was not enforced as all branches/types | The trigger test rejects `branches`, `branches-ignore`, and `types` on `pull_request` |
+| 4 | T059 used `__AnalyzerGateProbe.cs:<line>` | T059 now requires `__AnalyzerGateProbe.cs(<line>,<column>)` |
+| 5 | The quickstart inverted the probe exit semantics | It now states that each internal build fails while the script exits 0 and prints `PASS` |
+| 6 | T042 lacked its prerequisites | T042 is explicitly after T029, T040, and T044 |
+| 7 | Action and SDK pins were not exact | The test requires `actions/checkout@v4`, `actions/setup-dotnet@v4`, and `dotnet-version: 10.0.x` |
+| 8 | Step order was unasserted | Tests assert requirements install before Semgrep, CodeQL init before analyze before annotations, ReportGenerator before the coverage gate, and jscpd before the duplication gate |
+| 9 | The probe test was presence-only | `test_the_probe_builds_both_projects` runs the real script against a stub `dotnet`, proving two build invocations with both project paths and cleanup |
+| 10 | The capture commit lagged HEAD | The capture commit is `1fd835b`; the test/probe tree is identical to the reviewed run |
+
 ## Reviewer verdict (T018)
 
-_Pending re-review after the fifth gap remediation._
+_Pending re-review after the sixth gap remediation._
