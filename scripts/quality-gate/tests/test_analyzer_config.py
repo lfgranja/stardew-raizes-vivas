@@ -69,7 +69,7 @@ def test_no_global_nowarn_is_used(path):
 
 def test_build_props_enables_the_required_analyzer_settings():
     props = properties(parse_project(BUILD_PROPS))
-    assert props.get("analysislevel") == "latest"
+    assert props.get("analysislevel") == "6.0-recommended"
     assert props.get("analysismode") == "Recommended"
     assert props.get("treatwarningsaserrors") == "true"
     assert props.get("enforcecodestyleinbuild") == "true"
