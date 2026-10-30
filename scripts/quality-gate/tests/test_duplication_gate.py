@@ -118,8 +118,8 @@ def test_load_report_reads_json(tmp_path):
 
 @given(percent(), percent())
 def test_measured_below_the_ceiling_passes(ceiling, headroom):
-    assume(ceiling + headroom <= 100.0)
-    report = DuplicationReport(percentage=ceiling + headroom)
+    assume(headroom <= ceiling)
+    report = DuplicationReport(percentage=ceiling - headroom)
     baseline = DuplicationBaseline(percentage=ceiling)
     assert evaluate_duplication(report, baseline).exit_code == 0
 
