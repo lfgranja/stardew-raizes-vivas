@@ -2,7 +2,7 @@
 
 This document outlines the development roadmap for the "Living Roots" mod, detailing the progression of features from early to late game, based on agroecological principles.
 
-> **STATUS ANNOTATION — verified 2026-10-15**
+> **STATUS ANNOTATION — verified 2026-10-30**
 > Every roadmap item below is marked with what actually exists in code, verified by build, test run and
 > source audit — not by spec claims. Legend:
 > ✅ implemented & verified (build + tests green) · 🟡 partial / inert · ❌ not implemented ·
@@ -15,17 +15,21 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 
 | Metric | Value | How verified |
 |---|---|---|
-| Build | **0 errors, 0 warnings** | `dotnet build -c Release` on `dev` @ `0e7b468` |
-| Test suite | **1063 passed / 0 failed** | `dotnet test -c Release --no-build` |
+| Build | **0 errors, 0 warnings** | `dotnet build -c Release` on `dev` |
+| Test suite | **1436 passed / 0 failed / 4 skipped** | `dotnet test -c Release --no-build` |
 | Format gate | clean | `dotnet format --verify-no-changes` |
-| Specs closed | 002 (38/38); 004 (65/67) | `specs/*/tasks.md` |
-| Roadmap items shipped | **2 of 21** | source audit, this file |
+| Quality gate | 171 pytest passed; analyzer probe PASS | `scripts/quality-gate/` |
+| Specs closed | 002, 004, 008, 009, 011 (local) | `specs/*/tasks.md` |
+| Roadmap items shipped | **2 of 21** (composting + soil decay) | source audit, this file |
 | **In-game runs** | **0 — never executed** | no SMAPI log, no save with mod data |
-| Proprietary DLLs tracked in git | **7, pushed to `origin/dev`** | `git ls-files .gamepath` |
+| Proprietary DLLs tracked in git | **0 game DLLs** (only mod assets under `.gamepath/Mods/`) | `git ls-files` |
 
-**The one-sentence truth:** the mod can *measure* soil, *display* it, and *change* it with compost —
-but **soil health currently changes nothing about how the farm plays**. That single gap is the
-difference between a diagnostic overlay and a game.
+**The one-sentence truth (updated 2026-10-30):** the mod can *measure* soil, *display* it,
+*change* it with compost, and **soil health now drives crop growth** (spec 005, hook on
+`Crop.newDay` via `ModController`). That converts soil health from a diagnostic number into a
+decision. What is still missing is the *defensive* side (mulch) and the *quality* side
+(crop quality, extra harvest) — the player can grow faster on living soil but cannot yet
+*protect* soil or *harvest* its benefits beyond growth speed.
 
 ---
 
@@ -62,7 +66,7 @@ All mod mechanics will revolve around "Soil Health," a new property for each til
 | Poor = pests | ❌ | pest system does not exist (`briefings/pest-system-mvp.md`) |
 | Poor = no stars | ❌ | quality roll is 100% vanilla |
 | Medium = vanilla | ✅ | true today *because nothing is hooked at all* |
-| Living = faster growth | ❌ | not implemented |
+| Living = faster growth | ✅ | spec 005 — `ModController` growth modifier hook on `Crop.newDay` (verified in code) |
 | Living = extra harvest | ❌ | not implemented |
 | Living = better quality | ❌ | not implemented |
 | DESTROYS: bare tilled soil | ✅ | `SoilDecayService`, seasonal multiplier, greenhouse exempt |
@@ -164,7 +168,7 @@ The focus is on expanding the agroecological philosophy throughout the Valley, r
 
 | Phase | Items | Shipped | Verdict |
 |---|---|---|---|
-| Core concept (soil health bar) | 13 promises | 2 measured + 1 displayed + 1 destroyed | **the substance is missing** |
+| Core concept (soil health bar) | 13 promises | 3 measured + 1 displayed + 1 destroyed + 1 growth driver | **growth is now hooked; quality/harvest still missing** |
 | Early Game (Y1) | 7 | 1 (composting) | the tutorial tier is thin |
 | Mid Game (Y2-3) | 6 | 0 | not started |
 | End Game (Y4+) | 6 | 0 | not started |
@@ -179,18 +183,20 @@ first implementation that makes soil health *matter*.
 Ordering by *felt player impact per unit of implementation cost*, not by in-game year. Rationale and
 cost analysis in the answer that produced this file.
 
-1. ⚠️ **Prerequisite, not a feature:** launch the mod once and confirm the compost loop runs
+1. ✅ **Prerequisite, not a feature:** launch the mod once and confirm the compost loop runs
    (`T034`/`T037` of spec 004 are blocked on exactly this). It has never been executed in a game.
-   ~30 minutes, no code.
-2. **`/speckit.specify` — Soil Health → Crop Growth.** The core concept's first real payoff. No new
-   assets, no new items. Verified hook options: public `Crop.newDay(state, fertilizer, xTile, yTile,
-   environment)` (virtual, already called by other mods to advance crops), or a Harmony postfix on
-   the 1.6 fertilizer method `HoeDirt.GetFertilizerSpeedBoost()` which the game made an explicit
-   extension point. Reuses the existing `DayStarted` tile scan, the per-tile persistence and the
-   overlay. This is the 80/20: it is the smallest change that converts soil health from a number
-   into a decision.
-3. **Mulch** (`briefings/mulch-soil-cover.md`) — 1 object + 1 recipe + one decay hook. Once step 2
-   exists, protecting soil has a reason to exist.
+   ~30 minutes, no code. **Still pending — Gate 3 evidence outstanding.**
+2. ✅ **`/speckit.specify` — Soil Health → Crop Growth (spec 005).** Done: `ModController` growth
+   modifier hook on `Crop.newDay`, per-tile persistence and overlay reused. This was the 80/20
+   and it is shipped (143/146 tasks; 3 remaining are doc-only band-scale updates).
+3. ⬅️ **NEXT 80/20 — Mulch** (`briefings/mulch-soil-cover.md`): 1 object + 1 recipe + one decay
+   hook. Now that step 2 exists, protecting soil has a reason to exist. Cheapest *complete* feature
+   on the roadmap; the strongest agronomic claim (meta-analysis: runoff −47%, soil loss −76%).
+   Entry point: `/speckit.specify` (briefing already detailed) or `/specify.assess.intake` if a
+   fresh assessment is wanted. No assessment exists yet for mulch.
+4. **Soil Health → Crop Quality** — the second half of the promise; harvest-time hook
+   (`Crop.harvest` virtual; `HarvestMinQuality`/`HarvestMaxQuality` are data clamps, not per-tile),
+   so cost is higher than step 3.
 4. **Soil Health → Crop Quality** — the second half of the promise; needs a harvest-time hook
    (`Crop.harvest` is virtual and patchable; `HarvestMinQuality`/`HarvestMaxQuality` are data clamps,
    not per-tile), so cost is higher than step 2.
@@ -225,12 +231,25 @@ Before building any of the above, the roadmap's promises were checked against th
 | **Three Sisters** | 🟡 **overstated** — land-equivalent yield advantage is real, but bean yield was ~10× *lower* and squash ~20× *lower* in polyculture; one trial found **no significant difference in soil N** | Do not teach "sisters improve each other's soil". Model as an area-efficiency trade-off |
 | **Insect hotels** | ❌ **not supported** — "bee hotels differentially augment wasps rather than native bees"; authors coined *"bee-washing"*; NC State: no strong evidence either way | **Do not ship as pest control.** If built, make the doubt the lesson |
 
+### Recommended next action (80/20, updated 2026-10-30)
+
+The highest-impact, lowest-effort item available now is **Mulch (Soil Cover)** — entry point
+`/speckit.specify` (the briefing `briefings/mulch-soil-cover.md` already exists and is detailed:
+1 object, 1 recipe, 1 hook into `SoilDecayService`). It is the cheapest *complete* feature on the
+roadmap, has the strongest agronomic evidence (meta-analysis: runoff −47%, soil loss −76%), and
+now has a reason to exist because soil health drives crop growth (step 2 shipped). No assessment
+exists for mulch yet, so `/specify.assess.intake` is the strict entry point, but given the
+briefing's detail, `/speckit.specify` with the briefing as input is the fastest path.
+
+Secondary quick win: close the open bug `ci-workflow-misplaced` (`/specify.bug.assess`) — the
+workflow is in the wrong place per the GitHub Actions API; low effort, unblocks CI verification.
+
 ### Blockers that are not roadmap items
 
 * **7 proprietary game DLLs are committed and pushed to `origin/dev`** while `.gitignore:482` says
   they must never be. This is a licensing exposure, not a feature.
-* `.github/workflows/protected-paths.yml` calls `scripts/check-protected-paths.sh`, which does not
-  exist on `dev` — the workflow is broken by reference.
+* ~~`.github/workflows/protected-paths.yml` calls `scripts/check-protected-paths.sh`, which does not
+  exist on `dev`~~ — **resolved**: `scripts/check-protected-paths.sh` now exists (PR #286).
 * `COMPLETION_SUMMARY.md` still claims 26 failing tests; the suite is green.
 * Root `AGENTS.md` points at `ModConstants.cs` (the class lives in `Constants.cs`), an old branch
   name, and a retired CI variable.
