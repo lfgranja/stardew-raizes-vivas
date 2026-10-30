@@ -185,6 +185,7 @@ def test_blocking_vulnerability_exits_one(tmp_path):
     assert "::error title=" in result.stdout
     assert "CVE-2026-0001" in result.stdout
     assert "Example.Package" in result.stdout
+    assert "LivingRoots/packages.lock.json" in result.stdout
 
 
 def test_non_blocking_severity_exits_zero(tmp_path):
