@@ -1,3 +1,4 @@
+#pragma warning disable CS9113 // Parameter is unread: saveIdProvider/hostAtomicLockService retained for API/test compatibility
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -24,25 +25,12 @@ public class CompostingBinService(
     ITranslationHelper? translationHelper = null) : ICompostingBinService
 {
     private readonly IModDataService _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
-    private readonly ISaveIdProvider _saveIdProvider = saveIdProvider ?? throw new ArgumentNullException(nameof(saveIdProvider));
     private readonly IOrganicWasteValidator _organicWasteValidator = organicWasteValidator ?? throw new ArgumentNullException(nameof(organicWasteValidator));
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
     private readonly ITimeProvider _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly CompostingBinFactory _factory = factory ?? throw new ArgumentNullException(nameof(factory));
     private readonly IPlayerInventory _playerInventory = playerInventory ?? throw new ArgumentNullException(nameof(playerInventory));
     private readonly ILocationProvider? _locationProvider = locationProvider;
-
-    // T055 (U3, FR-019): the composition root passes the
-    // SAME HostAtomicLockService instance the controller
-    // holds, so host-authoritative tile locks are one
-    // registry across the mod. No `?? new` fallback: a
-    // headless double that constructs the service without
-    // one gets a null reference, which is inert here —
-    // this service guards its own critical sections with
-    // _lock and never acquires host tile locks — rather
-    // than silently materialising a second, disjoint lock
-    // registry the controller's locks could never see.
-    private readonly IHostAtomicLockService? _hostAtomicLockService = hostAtomicLockService;
 
     // T054 (FR-008a): SMAPI translation helper for the
     // inventory-full refusal on harvest. Optional so headless
@@ -106,7 +94,8 @@ public class CompostingBinService(
             // like vanilla machines do on invalid item drop-in.
             var location = _locationProvider?.GetLocationByName(locationName);
             if (location != null &&
-                location.Objects.TryGetValue(tile, out var machine))
+                location.Objects.TryGetValue(tile, out var machine) &&
+                machine != null)
             {
                 machine.shakeTimer = ModConstants.BinInvalidDropInShakeTimerMs;
             }
@@ -119,7 +108,7 @@ public class CompostingBinService(
 
         if (accepted)
         {
-            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Empty → Processing, item: {item.QualifiedItemId}",
+            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Empty → Processing, item: {item!.QualifiedItemId}",
                 LogLevel.Trace);
         }
     }
@@ -326,30 +315,28 @@ public class CompostingBinService(
 
             if (binItem.modData != null &&
                 binItem.modData.TryGetValue(ModConstants.ModDataInputIdKey, out string inputId) &&
-                binItem.modData.TryGetValue(ModConstants.ModDataDaysRemainingKey, out string daysRemainingStr))
+                binItem.modData.TryGetValue(ModConstants.ModDataDaysRemainingKey, out string daysRemainingStr) &&
+                int.TryParse(daysRemainingStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int daysRemaining))
             {
-                if (int.TryParse(daysRemainingStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out int daysRemaining))
-                {
-                    // T056 (FR-005c, SC-004): the
-                    // carried batch restores the
-                    // state it had. Zero remaining
-                    // days is a finished batch —
-                    // the same DaysUntilReady = 0
-                    // semantics the domain
-                    // CompostingBinStateModel.
-                    // PopulateFromModData applies —
-                    // so a bin picked up while
-                    // holding finished compost
-                    // restores as Ready instead of
-                    // silently restarting the
-                    // batch.
-                    bin.State = daysRemaining <= 0
-                        ? CompostingBinState.Ready
-                        : CompostingBinState.Processing;
-                    bin.InputItemId = inputId;
-                    bin.InputTimestamp = _timeProvider.TotalDays - ModConstants.MaturationDays + daysRemaining;
-                    restoredLog = $"Bin placed at ({tile.X}, {tile.Y}) restored state: {bin.State} {inputId}, {daysRemaining} days remaining";
-                }
+                // T056 (FR-005c, SC-004): the
+                // carried batch restores the
+                // state it had. Zero remaining
+                // days is a finished batch —
+                // the same DaysUntilReady = 0
+                // semantics the domain
+                // CompostingBinStateModel.
+                // PopulateFromModData applies —
+                // so a bin picked up while
+                // holding finished compost
+                // restores as Ready instead of
+                // silently restarting the
+                // batch.
+                bin.State = daysRemaining <= 0
+                    ? CompostingBinState.Ready
+                    : CompostingBinState.Processing;
+                bin.InputItemId = inputId;
+                bin.InputTimestamp = _timeProvider.TotalDays - ModConstants.MaturationDays + daysRemaining;
+                restoredLog = $"Bin placed at ({tile.X}, {tile.Y}) restored state: {bin.State} {inputId}, {daysRemaining} days remaining";
             }
         }
 
@@ -376,21 +363,19 @@ public class CompostingBinService(
         lock (_lock)
         {
             if (_runtimeCache.ContainsKey(locationName) &&
-                _runtimeCache[locationName].TryGetValue(key, out var bin))
+                _runtimeCache[locationName].TryGetValue(key, out var bin) &&
+                (bin.State == CompostingBinState.Processing || bin.State == CompostingBinState.Ready) &&
+                bin.InputItemId != null && bin.InputTimestamp.HasValue)
             {
                 // T056 (FR-005c, SC-004): a bin picked
                 // up while its compost is ready retains
                 // the batch — the finished state travels
                 // in the same modData as a running
                 // batch, with zero days remaining.
-                if ((bin.State == CompostingBinState.Processing || bin.State == CompostingBinState.Ready) &&
-                    bin.InputItemId != null && bin.InputTimestamp.HasValue)
-                {
-                    item.modData[ModConstants.ModDataInputIdKey] = bin.InputItemId;
-                    var elapsed = _timeProvider.TotalDays - bin.InputTimestamp.Value;
-                    var remaining = Math.Max(0, ModConstants.MaturationDays - elapsed);
-                    item.modData[ModConstants.ModDataDaysRemainingKey] = remaining.ToString(CultureInfo.InvariantCulture);
-                }
+                item.modData[ModConstants.ModDataInputIdKey] = bin.InputItemId;
+                var elapsed = _timeProvider.TotalDays - bin.InputTimestamp.Value;
+                var remaining = Math.Max(0, ModConstants.MaturationDays - elapsed);
+                item.modData[ModConstants.ModDataDaysRemainingKey] = remaining.ToString(CultureInfo.InvariantCulture);
             }
         }
         return item;
@@ -648,6 +633,7 @@ public class CompostingBinService(
                 }
 
                 var binsToRemove = new List<string>();
+#pragma warning disable S3267 // Loop contains try/catch and conditional pruning logic
                 foreach (var binEntry in locEntry.Value)
                 {
                     try
@@ -665,6 +651,7 @@ public class CompostingBinService(
                         logs.Add($"Pruned malformed bin key {locEntry.Key}:{binEntry.Key}: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})");
                     }
                 }
+#pragma warning restore S3267
 
                 foreach (var binKey in binsToRemove)
                 {
@@ -713,12 +700,10 @@ public class CompostingBinService(
 
         var translated = _translationHelper.Get(messageKey);
         // If translation returns the key itself (untranslated), use fallback
-        if (string.Equals(translated, messageKey, StringComparison.Ordinal))
+        if (string.Equals(translated, messageKey, StringComparison.Ordinal) &&
+            messageKey == ModConstants.TranslationKeyHarvestInventoryFull)
         {
-            if (messageKey == ModConstants.TranslationKeyHarvestInventoryFull)
-            {
-                return "Your inventory is full!";
-            }
+            return "Your inventory is full!";
         }
         return translated;
     }
