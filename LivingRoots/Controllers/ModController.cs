@@ -35,11 +35,11 @@ namespace LivingRoots.Controllers
         internal const int OnDayStartedExecutingFlag = 1 << 7;
         internal const int UnregisteringFlag = 1 << 5;
         internal const int RegisteringFlag = 1 << 6;
-        internal int _state = 0; // Combine flags in single volatile field
+        internal int _state; // Combine flags in single volatile field
 
         // Warning flag for preventing repeated log spam - using Interlocked operations for thread safety
-        internal int _saveIdUnavailableWarningShownOnSaveLoaded = 0; // 0 = false, 1 = true
-        internal int _saveIdUnavailableWarningShownOnSaving = 0; // 0 = false, 1 = true
+        internal int _saveIdUnavailableWarningShownOnSaveLoaded; // 0 = false, 1 = true
+        internal int _saveIdUnavailableWarningShownOnSaving; // 0 = false, 1 = true
 
         // Dependencies
         private readonly IModHelper _helper = helper ?? throw new ArgumentNullException(nameof(helper));
@@ -1820,11 +1820,19 @@ namespace LivingRoots.Controllers
                         // Tier multipliers on cached base phaseDays (multiplicative, vanilla-blessed via Speed-Gro pattern).
                         // Poor (<34): SoilGrowthPoorMultiplier (slower), Moderate [34,67): 1.00x (vanilla),
                         // Healthy (>=67): SoilGrowthHealthyMultiplier (faster).
-                        float multiplier = (health < ModConstants.PoorModerateBandEdge)
-                            ? ModConstants.SoilGrowthPoorMultiplier
-                            : (health >= ModConstants.ModerateHealthyBandEdge)
-                                ? ModConstants.SoilGrowthHealthyMultiplier
-                                : 1.00f;
+                        float multiplier;
+                        if (health < ModConstants.PoorModerateBandEdge)
+                        {
+                            multiplier = ModConstants.SoilGrowthPoorMultiplier;
+                        }
+                        else if (health >= ModConstants.ModerateHealthyBandEdge)
+                        {
+                            multiplier = ModConstants.SoilGrowthHealthyMultiplier;
+                        }
+                        else
+                        {
+                            multiplier = 1.00f;
+                        }
                         if (Math.Abs(multiplier - 1.00f) < 0.0001f) continue;
 
                         // Restore base phaseDays from CropData before applying (idempotent reapplication).
@@ -2094,12 +2102,10 @@ namespace LivingRoots.Controllers
                 if (heldItem != null &&
                     (heldItem.QualifiedItemId == ModConstants.CompostItemId ||
                      heldItem.QualifiedItemId == ModConstants.QualifiedCompostItemId ||
-                     heldItem.ItemId == ModConstants.CompostItemId))
+                     heldItem.ItemId == ModConstants.CompostItemId) &&
+                    TryApplyCompostWithLock(location, binTile, farmerId, msg => StardewValley.Game1.showRedMessage(TranslateRefusalMessage(msg))))
                 {
-                    if (TryApplyCompostWithLock(location, binTile, farmerId, msg => StardewValley.Game1.showRedMessage(TranslateRefusalMessage(msg))))
-                    {
-                        return;
-                    }
+                    return;
                 }
 
                 // T073 (FR-002, FR-005c): a right-click
@@ -2113,12 +2119,10 @@ namespace LivingRoots.Controllers
                 // cleared. A refused placement (water, an
                 // occupied tile, a non-farm map) falls
                 // through to the interaction path below.
-                if (heldItem != null && heldItem.ItemId == ModConstants.CompostingBinItemId)
+                if (heldItem != null && heldItem.ItemId == ModConstants.CompostingBinItemId &&
+                    TryPlaceBin(location, binTile, heldItem, _playerProvider?.CurrentPlayer?.Items))
                 {
-                    if (TryPlaceBin(location, binTile, heldItem, _playerProvider?.CurrentPlayer?.Items))
-                    {
-                        return;
-                    }
+                    return;
                 }
 
                 // T073 (FR-002, FR-005c): a right-click
@@ -2131,10 +2135,9 @@ namespace LivingRoots.Controllers
                 if (heldItem == null)
                 {
                     var actingFarmer = _playerProvider?.CurrentPlayer;
-                    bool dislodged = actingFarmer != null
+                    if (actingFarmer != null
                         ? TryDislodgeBin(location, binTile, actingFarmer)
-                        : TryDislodgeBin(location, binTile);
-                    if (dislodged)
+                        : TryDislodgeBin(location, binTile))
                     {
                         return;
                     }
@@ -2547,15 +2550,9 @@ namespace LivingRoots.Controllers
             // so a bin cannot be placed on any tile a building
             // covers. Checking only the origin would leave most of
             // a multi-tile building placeable.
-            if (location.buildings != null)
+            if (location.buildings != null && location.buildings.Any(building => building != null && building.occupiesTile(tile)))
             {
-                foreach (var building in location.buildings)
-                {
-                    if (building != null && building.occupiesTile(tile))
-                    {
-                        return false;
-                    }
-                }
+                return false;
             }
 
             // T057 (FR-002): water is the only invalid
