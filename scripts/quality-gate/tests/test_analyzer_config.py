@@ -103,7 +103,10 @@ SUPPRESS_MESSAGE = re.compile(
     re.DOTALL,
 )
 JUSTIFICATION = re.compile(r'Justification\s*=\s*"(?P<text>[^"]*)"', re.DOTALL)
-PRAGMA_DISABLE = re.compile(r"^(\s*)#pragma\s+warning\s+disable\s+(?P<rules>[A-Za-z0-9_,\s]+)$")
+PRAGMA_DISABLE = re.compile(
+    r"^(\s*)#pragma\s+warning\s+disable\s+(?P<rules>[A-Za-z0-9_,\s]+?)"
+    r"(?:\s*(?P<comment>//.*|/\*.*?\*/))?\s*$"
+)
 SEVERITY_NONE = re.compile(
     r"^\s*dotnet_diagnostic\.(?P<rule>[A-Za-z0-9_]+)\.severity\s*=\s*none\s*$"
 )
@@ -130,8 +133,9 @@ def scan_suppressions(path: Path, text: str) -> list[str]:
             violations.append(f"{path}:{index + 1}: #pragma warning disable without a specific rule id")
             continue
         # A justification may be the same-line trailing comment or the line above.
-        same_line = line.split("#pragma", 1)[1]
-        same_line_comment = "#" in same_line
+        comment = (match.group("comment") or "").strip()
+        reason = re.sub(r"^//|^/\*|\*/$", "", comment).strip()
+        same_line_comment = bool(reason)
         previous = lines[index - 1].strip() if index > 0 else ""
         above_comment = (previous.startswith("//") or previous.startswith("/*")) and len(previous) > 3
         if not same_line_comment and not above_comment:
@@ -240,6 +244,37 @@ def test_an_unjustified_pragma_fails_the_policy(tmp_path):
     violations = scan_suppressions(source, source.read_text(encoding="utf-8"))
     assert len(violations) == 1
     assert "no justification" in violations[0]
+
+
+def test_a_pragma_with_a_trailing_justification_passes_the_policy(tmp_path):
+    source = tmp_path / "Justified.cs"
+    source.write_text(
+        "#pragma warning disable S1481 // the local exists only to pin the overload under test.\n"
+        "int unused = 1;\n",
+        encoding="utf-8",
+    )
+    assert scan_suppressions(source, source.read_text(encoding="utf-8")) == []
+
+
+def test_a_pragma_with_an_empty_trailing_comment_fails_the_policy(tmp_path):
+    source = tmp_path / "Unjustified.cs"
+    source.write_text(
+        "#pragma warning disable S1481 //\nint unused = 1;\n",
+        encoding="utf-8",
+    )
+    violations = scan_suppressions(source, source.read_text(encoding="utf-8"))
+    assert len(violations) == 1
+    assert "no justification" in violations[0]
+
+
+def test_a_pragma_with_an_inline_block_justification_passes_the_policy(tmp_path):
+    source = tmp_path / "Justified.cs"
+    source.write_text(
+        "#pragma warning disable S1481 /* pins the overload under test */\n"
+        "int unused = 1;\n",
+        encoding="utf-8",
+    )
+    assert scan_suppressions(source, source.read_text(encoding="utf-8")) == []
 
 
 def test_a_suppress_message_without_justification_fails_the_policy(tmp_path):
