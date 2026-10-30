@@ -86,7 +86,7 @@ namespace LivingRoots.Domain
                     // If the last directory component is reserved, modify the directory path
                     var modifiedDirPath = ModifyLastPathComponent(uncDirectoryPath, lastDirComponent, GetUncPathSeparator(uncDirectoryPath));
                     // Return the modified path with the separator still at the end
-                    return modifiedDirPath + normalizedInput.Substring(uncDirectoryPath.Length);
+                    return modifiedDirPath + normalizedInput[uncDirectoryPath.Length..];
                 }
             }
             // If no reserved name is found in the last directory component, return original
@@ -143,7 +143,7 @@ namespace LivingRoots.Domain
                     // If the last directory component is reserved, modify the directory path
                     var modifiedDirPath = ModifyLastPathComponent(regDirectoryPath, lastDirComponent, Path.DirectorySeparatorChar);
                     // Return the modified path with the separator still at the end
-                    return modifiedDirPath + normalizedInput.Substring(regDirectoryPath.Length);
+                    return modifiedDirPath + normalizedInput[regDirectoryPath.Length..];
                 }
             }
             // If no reserved name is found in the last directory component, return original
