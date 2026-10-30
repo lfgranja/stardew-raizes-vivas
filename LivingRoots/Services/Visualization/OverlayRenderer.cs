@@ -70,6 +70,12 @@ namespace LivingRoots.Services.Visualization
         private readonly PerScreen<float> _cachedOpacity = new();
         private readonly PerScreen<bool> _cachedShowPatterns = new();
         private readonly PerScreen<string?> _cachedDegradationMode = new();
+        // T072 (FR-010): the configured unknown-tile color is
+        // part of the cache key — a colors-only change of the
+        // unknown color must invalidate the cached overlay list
+        // so the next frame serves the new color without a
+        // camera move or manual refresh.
+        private readonly PerScreen<ColorDTO> _cachedUnknownColor = new();
 
         // Guards the compound cache check/store above. Held only around
         // the in-memory PerScreen reads and writes — never across I/O.
@@ -411,7 +417,8 @@ namespace LivingRoots.Services.Visualization
                     && _cachedPaletteGeneration.Value == paletteGeneration
                     && ApproximatelyEqual(_cachedOpacity.Value, opacity)
                     && _cachedShowPatterns.Value == configuredShowPatterns
-                    && string.Equals(_cachedDegradationMode.Value, degradationMode, StringComparison.Ordinal))
+                    && string.Equals(_cachedDegradationMode.Value, degradationMode, StringComparison.Ordinal)
+                    && _cachedUnknownColor.Value == unknownColor)
                 {
                     return cachedOverlays;
                 }
@@ -545,6 +552,7 @@ namespace LivingRoots.Services.Visualization
                 _cachedOpacity.Value = opacity;
                 _cachedShowPatterns.Value = configuredShowPatterns;
                 _cachedDegradationMode.Value = degradationMode;
+                _cachedUnknownColor.Value = unknownColor;
             }
 
             return overlays;
@@ -562,6 +570,7 @@ namespace LivingRoots.Services.Visualization
                 _cachedViewport.Value = Rectangle.Empty;
                 _cachedMapBounds.Value = null;
                 _cachedVisibleTiles.Value = null;
+                _cachedUnknownColor.Value = default;
             }
             _monitor.Log("Overlay renderer cache invalidated.", LogLevel.Trace);
         }
