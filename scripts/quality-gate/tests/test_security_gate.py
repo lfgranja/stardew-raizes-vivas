@@ -110,6 +110,39 @@ def test_parse_report_fails_closed_on_malformed_data(payload):
         parse_report(payload)
 
 
+def test_fixed_version_is_optional_for_unfixed_vulnerabilities():
+    payload = {
+        "Results": [
+            {
+                "Target": "LivingRoots/packages.lock.json",
+                "Vulnerabilities": [
+                    {
+                        "VulnerabilityID": "CVE-2026-9999",
+                        "PkgName": "Example.Package",
+                        "InstalledVersion": "1.0.0",
+                        "Severity": "CRITICAL",
+                    }
+                ],
+            }
+        ]
+    }
+    vulnerabilities = parse_report(payload)
+    assert vulnerabilities == (
+        Vulnerability(
+            cve="CVE-2026-9999",
+            package="Example.Package",
+            installed_version="1.0.0",
+            fixed_version="",
+            severity="CRITICAL",
+            target="LivingRoots/packages.lock.json",
+        ),
+    )
+    result = evaluate_security(vulnerabilities)
+    assert result.exit_code == 1
+    assert "CRITICAL" in result.diagnostics[0].message
+    assert "CVE-2026-9999" in result.diagnostics[0].message
+
+
 @pytest.mark.parametrize("severity", ["HIGH", "CRITICAL"])
 def test_high_and_critical_are_blocking(severity):
     vulnerability = Vulnerability(
@@ -126,6 +159,8 @@ def test_high_and_critical_are_blocking(severity):
     assert "CVE-2026-0001" in message
     assert "Example.Package" in message
     assert "1.0.0" in message
+    assert "1.0.1" in message
+    assert severity in message
     assert "LivingRoots/packages.lock.json" in message
 
 
