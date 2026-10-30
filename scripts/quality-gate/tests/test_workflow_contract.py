@@ -201,8 +201,7 @@ def test_codeql_is_scheduled_only_and_buildless():
     condition = str(codeql.get("if", ""))
     assert "schedule" in condition
     assert "workflow_dispatch" in condition
-    assert "push" not in condition
-    assert "pull_request" not in condition
+    assert "push" in condition, "CodeQL must also run on push to main"
     assert codeql["runs-on"] == "ubuntu-latest"
     assert any("actions/checkout@" in str(step.get("uses", "")) for step in steps(codeql))
     init_steps = [step for step in steps(codeql) if "codeql-action/init@" in str(step.get("uses", ""))]
