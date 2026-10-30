@@ -95,11 +95,21 @@ Stardew Valley agroecological mod (.NET 6 / C# latest) implementing soil health,
 # Build
 dotnet build Stardew-LivingRoots.sln --configuration Release
 
-# Test
+# Test (full .NET suite)
 dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal
 
 # Format check (CI gate)
 dotnet format Stardew-LivingRoots.sln --verify-no-changes
+
+# Quality gate (Python package; venv at .venv-quality-gate)
+PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m pytest scripts/quality-gate/tests -q
+PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate coverage --summary <path>/Summary.json --baseline .coverage-baseline
+PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate duplication --report <path>/jscpd-report.json --baseline .jscpd-baseline.json
+PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate security --report trivy.json
+.venv-quality-gate/bin/semgrep scan --config p/csharp --error --severity ERROR --metrics off LivingRoots/
+
+# Analyzer probe (must print PASS)
+bash scripts/quality-gate/analyzer-probe.sh
 
 # Local dev with game
 # Set GamePath in LivingRoots.csproj, press F5
@@ -114,17 +124,21 @@ dotnet format Stardew-LivingRoots.sln --verify-no-changes
 
 ## CI
 
-Two workflows under `.github/workflows/`, deliberately separate so a green run never overstates what it checked:
+Five workflows under `.github/workflows/`:
 
 | Workflow | Runs | Checks |
 |----------|------|--------|
 | `Code Style (format only)` | every change | formatting only |
-| `Build and Test` | only once `STARDEW_GAME_PATH` is set | build + tests + coverage |
-| `Quality Gate` | every PR/push | static (Semgrep/Trivy/jscpd) + sca + build-analysis + gate + scheduled CodeQL |
+| `Build and Test` | only once `STARDEW_GAME_PATH` is set | build + tests + coverage (dormant) |
+| `Quality Gate` | every PR/push | static (Semgrep/Trivy/jscpd/Gitleaks) + sca + build-analysis + gate + scheduled CodeQL |
+| `protected-paths` | every change | guards spec/protected paths |
+| `security-aggregation` | per its own triggers | security findings aggregation |
 
-`Build and Test` is **dormant** because `Pathoschild.Stardew.ModBuildConfig` hard-fails without a Stardew Valley + SMAPI install, and those assemblies cannot be downloaded on a GitHub-hosted runner. While dormant there is no test check at all — this is intentional; see `.specify/bugs/ci-skipped-job-false-green/`.
+`Build and Test` is **dormant** because `Pathoschild.Stardew.ModBuildConfig` hard-fails without a Stardew Valley + SMAPI install; those assemblies cannot be downloaded on a GitHub-hosted runner. While dormant there is no test check at all — this is intentional; see `.specify/bugs/ci-skipped-job-false-green/`.
 
-**Do NOT add either check to `required_status_checks` until `Build and Test` has produced one genuinely green run.** Promoting `Check Formatting` alone would satisfy branch protection while executing zero tests. If `Build and Test` is ever made required, first remove its `paths-ignore` filter, or documentation-only pull requests will block forever waiting for a check that cannot report.
+**Do NOT add `Check Formatting` alone to `required_status_checks`** until `Build and Test` has produced one genuinely green run — promoting it alone would satisfy branch protection while executing zero tests. If `Build and Test` is ever made required, first remove its `paths-ignore` filter, or documentation-only pull requests will block forever waiting for a check that cannot report.
+
+`Quality Gate` is the merge-blocking check after its first green run: required check name is `Quality Gate / gate` (see spec 011 Q16). `static`/`sca` require no game assemblies; `build-analysis` materialises the pinned `gamepath.zip` build-deps release via `BUILDDEPS_TOKEN` and fails closed without it.
 
 ## Gate 3 — End-to-End Verification (spec 009)
 
