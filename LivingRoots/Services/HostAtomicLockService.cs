@@ -41,12 +41,9 @@ namespace LivingRoots.Services
 
             lock (_lockObject)
             {
-                if (_locks.TryGetValue(key, out long existingHolder))
+                if (_locks.TryGetValue(key, out long existingHolder) && existingHolder == farmerId)
                 {
-                    if (existingHolder == farmerId)
-                    {
-                        _locks.Remove(key);
-                    }
+                    _locks.Remove(key);
                 }
             }
         }
