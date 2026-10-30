@@ -53,3 +53,9 @@ See `.specify/assessments/replace-sonarqube-lightweight-local-oss/research.md` a
 - Coverlet: https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-code-coverage
 - FSF GNU FAQ (LGPL): https://www.gnu.org/licenses/gpl-faq.en.html
 - Semgrep legal/terms: https://semgrep.dev/legal/terms
+## Analyzer Configuration (T026)
+
+- AnalysisLevel pinned to `6.0-recommended` (Q9).
+- SonarAnalyzer.CSharp 10.35.0.4138 and Microsoft.CodeAnalysis.NetAnalyzers 10.0.403 with `PrivateAssets=all`.
+- Pre-change baseline: 98 diagnostics (mod project only; test project clean after scoped suppression).
+- ModBuildConfig analyzer coexists; CA1707 suppressed in tests via scoped `.editorconfig`.
