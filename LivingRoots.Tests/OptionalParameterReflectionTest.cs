@@ -19,7 +19,7 @@ namespace LivingRoots.Tests
             public double DoubleParam { get; }
             public bool BoolParam { get; }
 
-#pragma warning disable S1144
+#pragma warning disable S1144 // S1144: unused private member retained for reflection test
             // Constructor is used via reflection in tests
             public TypeWithOptionalParametersAndDefaults(
                 string stringParam = "default_string",
