@@ -104,12 +104,27 @@ SUPPRESS_MESSAGE = re.compile(
 )
 JUSTIFICATION = re.compile(r'Justification\s*=\s*"(?P<text>[^"]*)"', re.DOTALL)
 PRAGMA_DISABLE = re.compile(
-    r"^(\s*)#pragma\s+warning\s+disable\s+(?P<rules>[A-Za-z0-9_,\s]+?)"
+    r"^(\s*)#pragma\s+warning\s+disable\b\s*(?P<rules>[A-Za-z0-9_,\s]*?)"
     r"(?:\s*(?P<comment>//.*|/\*.*?\*/))?\s*$"
 )
 SEVERITY_NONE = re.compile(
     r"^\s*dotnet_diagnostic\.(?P<rule>[A-Za-z0-9_]+)\.severity\s*=\s*none\s*$"
 )
+
+
+def comment_justifies(comment: str, rules: list[str]) -> bool:
+    """A justification names every disabled rule and adds a non-empty reason."""
+    body = comment.strip()
+    if not body:
+        return False
+    body = re.sub(r"^\s*(?://|#|/\*)", "", body).strip()
+    body = re.sub(r"\*/\s*$", "", body).strip()
+    if not all(rule in body for rule in rules):
+        return False
+    for rule in rules:
+        body = body.replace(rule, "")
+    body = body.strip(" :,-")
+    return len(body) >= 3
 
 
 def scan_suppressions(path: Path, text: str) -> list[str]:
@@ -132,15 +147,13 @@ def scan_suppressions(path: Path, text: str) -> list[str]:
         if not rule_ids or not all(re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", rule) for rule in rule_ids):
             violations.append(f"{path}:{index + 1}: #pragma warning disable without a specific rule id")
             continue
-        # A justification may be the same-line trailing comment or the line above.
-        comment = (match.group("comment") or "").strip()
-        reason = re.sub(r"^//|^/\*|\*/$", "", comment).strip()
-        same_line_comment = bool(reason)
+        # A justification may be the same-line trailing comment or the line above,
+        # and it must name every disabled rule plus a reason.
+        comment = match.group("comment") or ""
         previous = lines[index - 1].strip() if index > 0 else ""
-        above_comment = (previous.startswith("//") or previous.startswith("/*")) and len(previous) > 3
-        if not same_line_comment and not above_comment:
+        if not comment_justifies(comment, rule_ids) and not comment_justifies(previous, rule_ids):
             violations.append(
-                f"{path}:{index + 1}: #pragma warning disable {rules} has no justification comment"
+                f"{path}:{index + 1}: #pragma warning disable {rules} has no justified reason naming the rule"
             )
 
     return violations
@@ -171,7 +184,7 @@ def scan_editorconfig(path: Path, text: str, root: bool = False) -> list[str]:
             continue
         previous = lines[index - 1].strip() if index > 0 else ""
         trailing = line.split("#", 1)[1] if "#" in line else ""
-        justified = (previous.startswith("#") and rule in previous) or rule in trailing
+        justified = comment_justifies(previous, [rule]) or comment_justifies(trailing, [rule])
         if not justified:
             violations.append(
                 f"{path}:{index + 1}: {rule} is disabled without a comment naming the rule and reason"
@@ -243,13 +256,13 @@ def test_an_unjustified_pragma_fails_the_policy(tmp_path):
     )
     violations = scan_suppressions(source, source.read_text(encoding="utf-8"))
     assert len(violations) == 1
-    assert "no justification" in violations[0]
+    assert "no justified reason" in violations[0]
 
 
 def test_a_pragma_with_a_trailing_justification_passes_the_policy(tmp_path):
     source = tmp_path / "Justified.cs"
     source.write_text(
-        "#pragma warning disable S1481 // the local exists only to pin the overload under test.\n"
+        "#pragma warning disable S1481 // S1481: the local exists only to pin the overload under test.\n"
         "int unused = 1;\n",
         encoding="utf-8",
     )
@@ -264,13 +277,37 @@ def test_a_pragma_with_an_empty_trailing_comment_fails_the_policy(tmp_path):
     )
     violations = scan_suppressions(source, source.read_text(encoding="utf-8"))
     assert len(violations) == 1
-    assert "no justification" in violations[0]
+    assert "no justified reason" in violations[0]
+
+
+def test_a_pragma_with_an_unrelated_above_comment_fails_the_policy(tmp_path):
+    source = tmp_path / "Unjustified.cs"
+    source.write_text(
+        "// This comment is about something else entirely.\n"
+        "#pragma warning disable S1481\n"
+        "int unused = 1;\n",
+        encoding="utf-8",
+    )
+    violations = scan_suppressions(source, source.read_text(encoding="utf-8"))
+    assert len(violations) == 1
+    assert "no justified reason" in violations[0]
+
+
+def test_a_bare_pragma_fails_the_policy(tmp_path):
+    source = tmp_path / "Bare.cs"
+    source.write_text(
+        "#pragma warning disable\nint unused = 1;\n",
+        encoding="utf-8",
+    )
+    violations = scan_suppressions(source, source.read_text(encoding="utf-8"))
+    assert len(violations) == 1
+    assert "without a specific rule id" in violations[0]
 
 
 def test_a_pragma_with_an_inline_block_justification_passes_the_policy(tmp_path):
     source = tmp_path / "Justified.cs"
     source.write_text(
-        "#pragma warning disable S1481 /* pins the overload under test */\n"
+        "#pragma warning disable S1481 /* S1481: pins the overload under test */\n"
         "int unused = 1;\n",
         encoding="utf-8",
     )
@@ -334,6 +371,19 @@ def test_an_editorconfig_override_without_a_reason_fails(tmp_path):
     violations = scan_editorconfig(config, config.read_text(encoding="utf-8"))
     assert len(violations) == 1
     assert "S1481" in violations[0]
+
+
+def test_an_editorconfig_comment_without_a_reason_fails(tmp_path):
+    config = tmp_path / ".editorconfig"
+    config.write_text(
+        "[*.g.cs]\n"
+        "# S1481\n"
+        "dotnet_diagnostic.S1481.severity = none\n",
+        encoding="utf-8",
+    )
+    violations = scan_editorconfig(config, config.read_text(encoding="utf-8"))
+    assert len(violations) == 1
+    assert "without a comment naming the rule and reason" in violations[0]
 
 
 def test_a_root_blanket_editorconfig_disable_fails_even_with_a_comment(tmp_path):
