@@ -13,15 +13,15 @@
 - [x] CHK003 Are requirements for how the baseline is measured and recorded specified? [Completeness, Spec §FR-009, Gap]
 - [x] CHK004 Are requirements for the ratchet mechanism (threshold only increases) specified? [Completeness, Spec §FR-009]
 - [x] CHK005 Is the scope of measurement (production assembly only vs. including tests) defined? [Completeness, Gap]
-- [ ] CHK006 Are requirements for excluding generated/boilerplate code from coverage specified? [Completeness, Gap]
+- [x] CHK006 Are requirements for excluding generated/boilerplate code from coverage specified? [Completeness, Gap]
 - [x] CHK007 Are requirements for the initial threshold values or the process to derive them specified? [Completeness, Spec §FR-009]
 
 ## Requirement Clarity
 
 - [x] CHK008 Is "coverage" defined with a specific metric (line vs. branch vs. method)? [Clarity, Spec §SC-004]
 - [x] CHK009 Is "duplication" defined with a specific metric (lines vs. tokens vs. clones)? [Clarity, Spec §SC-005]
-- [ ] CHK010 Is the ratchet rule ("only increases") quantified with a clear trigger (main-branch improvement)? [Clarity, Spec §FR-009]
-- [ ] CHK011 Is the process for lowering a threshold (justification required) explicitly defined? [Clarity, Spec §FR-009]
+- [x] CHK010 Is the ratchet rule ("only increases") quantified with a clear trigger (main-branch improvement)? [Clarity, Spec §FR-009]
+- [x] CHK011 Is the process for lowering a threshold (justification required) explicitly defined? [Clarity, Spec §FR-009]
 
 ## Requirement Consistency
 
@@ -38,15 +38,15 @@
 ## Scenario Coverage
 
 - [x] CHK018 Are requirements defined for the scenario where coverage cannot be measured (build fails)? [Coverage, Edge Cases]
-- [ ] CHK019 Are requirements defined for how the total duplication ceiling treats newly introduced clones versus legacy clones? [Coverage, Edge Cases]
+- [x] CHK019 Are requirements defined for how the total duplication ceiling treats newly introduced clones versus legacy clones? [Coverage, Edge Cases]
 - [x] CHK020 Are requirements defined for the scenario where the baseline is first established (initial run)? [Coverage, Gap]
-- [ ] CHK021 Are requirements defined for the scenario where a threshold is manually overridden? [Coverage, Gap]
+- [x] CHK021 Are requirements defined for the scenario where a threshold is manually overridden? [Coverage, Gap]
 
 ## Edge Case Coverage
 
-- [ ] CHK022 Is the fallback behavior specified when the coverage tool fails to produce output? [Edge Cases, Gap]
-- [ ] CHK023 Is the behavior specified when the duplication tool encounters unsupported file types? [Edge Cases, Gap]
-- [ ] CHK024 Are requirements defined for handling partial/incremental coverage data? [Edge Cases, Gap]
+- [x] CHK022 Is the fallback behavior specified when the coverage tool fails to produce output? [Edge Cases, Gap]
+- [x] CHK023 Is the behavior specified when the duplication tool encounters unsupported file types? [Edge Cases, Gap]
+- [x] CHK024 Are requirements defined for handling partial/incremental coverage data? [Edge Cases, Gap]
 
 ## Non-Functional Requirements
 
@@ -55,9 +55,9 @@
 
 ## Dependencies & Assumptions
 
-- [ ] CHK027 Is the assumption that the measured baseline (79.1% lines, one-decimal) is representative and stable validated? [Assumptions, Research]
+- [x] CHK027 Is the assumption that the measured baseline (79.1% lines, one-decimal) is representative and stable validated? [Assumptions, Research]
 - [x] CHK028 Is the dependency on Coverlet 6.0.0 (already in test project) documented? [Dependencies, LivingRoots.Tests.csproj]
-- [ ] CHK029 Are the research-recommended thresholds (60–70% initial floor) reconciled with the ratchet-from-baseline approach? [Dependencies, Research]
+- [x] CHK029 Are the research-recommended thresholds (60–70% initial floor) reconciled with the ratchet-from-baseline approach? [Dependencies, Research]
 
 ## Ambiguities & Conflicts
 
