@@ -70,8 +70,10 @@ def test_build_analysis_job_exists_on_a_standard_runner():
     assert job.get("timeout-minutes"), "build-analysis must declare a timeout"
     assert int(job["timeout-minutes"]) <= 20
     uses = [str(step.get("uses", "")) for step in steps(job)]
-    assert any("actions/checkout@" in use for use in uses), "build-analysis must check out the repo"
-    assert any("actions/setup-dotnet@" in use for use in uses), "build-analysis must set up .NET"
+    assert "actions/checkout@v4" in uses, "build-analysis must check out the repo with a major-tag pin"
+    assert "actions/setup-dotnet@v4" in uses, "build-analysis must set up .NET with a major-tag pin"
+    setup = next(step for step in steps(job) if str(step.get("uses", "")) == "actions/setup-dotnet@v4")
+    assert str(setup.get("with", {}).get("dotnet-version")) == "10.0.x"
 
 
 def test_build_analysis_materialises_the_pinned_build_deps_and_fails_closed():
@@ -88,6 +90,24 @@ def test_build_analysis_materialises_the_pinned_build_deps_and_fails_closed():
     step_env = step.get("env", {})
     assert step_env.get("GH_TOKEN") == "${{ secrets.BUILDDEPS_TOKEN }}", (
         "GH_TOKEN must come from the BUILDDEPS_TOKEN secret"
+    )
+    assert "unzip -o" in dumped, "the build-deps asset must be unpacked"
+    assert "smapi-internal" in dumped, "SMAPI.Toolkit.CoreInterfaces.dll must move into smapi-internal"
+    assert "mv -f" in dumped
+
+    preflight = find_step(job, "Stardew Valley.dll")
+    preflight_text = step_run(preflight)
+    for assembly in (
+        "Stardew Valley.dll",
+        "StardewModdingAPI.dll",
+        "StardewValley.GameData.dll",
+        "MonoGame.Framework.dll",
+        "xTile.dll",
+        "smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll",
+    ):
+        assert assembly in preflight_text, f"preflight must require {assembly}"
+    assert "::error" in preflight_text and "exit 1" in preflight_text, (
+        "the assembly preflight must fail closed with an annotation"
     )
 
 
@@ -146,6 +166,16 @@ def test_build_analysis_collects_coverage_and_runs_the_gate():
     assert "--summary coverage-report/Summary.json" in text
     assert "--baseline .coverage-baseline" in text
     assert "PYTHONPATH" in str(job.get("env", {})) or "PYTHONPATH" in text
+    ordered = steps(job)
+    report_index = next(
+        index for index, step in enumerate(ordered) if "dotnet reportgenerator" in step_run(step)
+    )
+    gate_index = next(
+        index
+        for index, step in enumerate(ordered)
+        if "python -m quality_gate coverage" in step_run(step)
+    )
+    assert report_index < gate_index, "ReportGenerator must run before the coverage gate"
 
 
 def test_coverage_artifacts_are_uploaded():
@@ -216,6 +246,10 @@ def test_jscpd_is_pinned_csharp_only_and_gated():
 
     uploads = [step for step in steps(static) if "upload-artifact" in str(step.get("uses", ""))]
     assert any("jscpd" in str(step.get("with", {})).lower() for step in uploads)
+    ordered = steps(static)
+    jscpd_index = ordered.index(jscpd_steps[0])
+    duplicate_gate_index = ordered.index(gate_steps[0])
+    assert jscpd_index < duplicate_gate_index, "jscpd must run before the duplication gate"
 
 
 def test_reportgenerator_and_coverlet_are_pinned():
