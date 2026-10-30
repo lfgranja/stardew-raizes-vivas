@@ -82,13 +82,15 @@ scripts/quality-gate/
 │   ├── security.py             # Trivy report gate
 │   ├── diagnostics.py          # GitHub annotations + ordering
 │   └── cli.py                  # subcommands + exit codes
+├── analyzer-probe.sh           # US1 proof: a deliberate defect fails both builds
 └── tests/
     ├── conftest.py
     ├── test_baseline.py
     ├── test_coverage_gate.py
     ├── test_duplication_gate.py
     ├── test_security_gate.py
-    ├── test_workflow_contract.py          # US2 workflow assertions
+    ├── test_analyzer_config.py             # US1 analyzer/suppression assertions
+    ├── test_workflow_contract.py          # US2 workflow assertions (no build-analysis)
     ├── test_workflow_build_analysis.py    # US3 workflow assertions
     └── test_cli.py
 
@@ -119,7 +121,7 @@ See `research.md` in this directory (consolidated from assessment research + age
 - **D5 — License**: no compliance impact; pin Semgrep, Trivy, jscpd, and action versions for audit. Semgrep CE is LGPL-2.1 and is used as a CI tool, not distributed with the mod.
 - **D6 — Thresholds**: initial floors = measured baseline; ratchet upward for coverage and downward for duplication. Ratchets are manual (`ratchet-*` commands) and reviewed; CI only enforces.
 - **D7 — Coverage precision**: ReportGenerator `Summary.json` rounds to one decimal, so the gate compares with a 0.05 epsilon and the tests assert that precision explicitly.
-- **D8 — Workflow contract tests**: split by story into `test_workflow_contract.py` (US2: static/sca/CodeQL) and `test_workflow_build_analysis.py` (US3: build-analysis/gate), so US2 can be green before the US3 job exists.
+- **D8 — Workflow contract tests**: split by story into `test_workflow_contract.py` (US2: static/sca/CodeQL/gate, and it MUST NOT reference `build-analysis`) and `test_workflow_build_analysis.py` (US3: build-analysis and the extended gate), so US2 can be green before the US3 job exists.
 
 ## Phase 1: Design & Contracts
 
