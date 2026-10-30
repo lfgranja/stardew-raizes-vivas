@@ -14,6 +14,8 @@
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Collections.Immutable" Version="8.0.0" />
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.403" PrivateAssets="all" />
   </ItemGroup>
   <!-- Include mod files in build output -->
   <ItemGroup>
