@@ -350,7 +350,7 @@ namespace LivingRoots.Domain
         private static void EnsureSecurityRequirements(string filename)
         {
             // Ensure that filename doesn't end with invalid characters except for extensions
-            if (filename.EndsWith("..") && !filename.EndsWith("...")) // Allow triple dots to become single dots
+            if (filename.EndsWith("..", StringComparison.Ordinal) && !filename.EndsWith("...", StringComparison.Ordinal)) // Allow triple dots to become single dots
             {
                 throw new ArgumentException($"Filename contains invalid pattern: '{filename}'", nameof(filename));
             }
