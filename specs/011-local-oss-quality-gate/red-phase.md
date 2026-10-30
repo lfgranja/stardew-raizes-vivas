@@ -2,7 +2,7 @@
 
 **Feature**: 011-local-oss-quality-gate
 **Date**: 2026-10-29
-**Commit at capture**: pending (working tree after the T018 gap remediation)
+**Commit at capture**: `38e7fa7` (working tree after the second T018 gap remediation)
 
 ## Scope
 
@@ -13,12 +13,12 @@ Every user story test was authored before any gate implementation. The Python pa
 | `scripts/quality-gate/tests/test_baseline.py` | shared | 18 |
 | `scripts/quality-gate/tests/test_coverage_gate.py` | US3 | 15 |
 | `scripts/quality-gate/tests/test_duplication_gate.py` | US3 | 11 |
-| `scripts/quality-gate/tests/test_security_gate.py` | US2 | 9 |
-| `scripts/quality-gate/tests/test_analyzer_config.py` | US1 | 10 |
-| `scripts/quality-gate/tests/test_workflow_contract.py` | US2 | 14 |
-| `scripts/quality-gate/tests/test_workflow_build_analysis.py` | US3 | 8 |
+| `scripts/quality-gate/tests/test_security_gate.py` | US2 | 10 |
+| `scripts/quality-gate/tests/test_analyzer_config.py` | US1 | 20 |
+| `scripts/quality-gate/tests/test_workflow_contract.py` | US2 | 15 |
+| `scripts/quality-gate/tests/test_workflow_build_analysis.py` | US3 | 9 |
 | `scripts/quality-gate/tests/test_cli.py` | shared | 15 |
-| **Total** | | **100** |
+| **Total** | | **113** |
 
 Property-based tests use Hypothesis with `max_examples=100` and `deadline=None`.
 
@@ -29,19 +29,19 @@ PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m pytest \
   scripts/quality-gate/tests -q --continue-on-collection-errors
 ```
 
-Result: **41 failed, 11 passed, 4 errors**, exit code 1. `--continue-on-collection-errors` is required so the workflow and CLI tests also run; without it pytest stops at the first four import errors.
+Result: **42 failed, 24 passed, 4 collection errors**, exit code 1. `--continue-on-collection-errors` is required so the workflow and CLI tests also run; without it pytest stops at the first four import errors. The four uncollectable modules contain 54 test functions (18 + 15 + 11 + 10) that are not counted among the 66 executed cases.
 
 ### Failure classification
 
 | Count | Tests | RED reason | Intended? |
 |---|---|---|---|
-| 4 | `test_baseline.py`, `test_coverage_gate.py`, `test_duplication_gate.py`, `test_security_gate.py` | `ModuleNotFoundError: No module named quality_gate.baseline / coverage / duplication / security / diagnostics` | Yes — implementation not written yet |
+| 4 modules (54 functions) | `test_baseline.py`, `test_coverage_gate.py`, `test_duplication_gate.py`, `test_security_gate.py` | `ModuleNotFoundError: No module named quality_gate.baseline / coverage / duplication / security / diagnostics` | Yes — implementation not written yet |
 | 15 | `test_cli.py` | `No module named quality_gate.__main__; 'quality_gate' is a package and cannot be directly executed` | Yes — CLI not written yet |
-| 14 | `test_workflow_contract.py` | `AssertionError: .../.github/workflows/quality-gate.yml must exist` | Yes — workflow not written yet |
-| 7 | `test_workflow_build_analysis.py` | `AssertionError: .../.github/workflows/quality-gate.yml must exist` (1 lock-file assertion) | Yes — workflow and lock files not written yet |
-| 5 | `test_analyzer_config.py` | Empty `Directory.Build.props`, no analyzer package references, 4 unjustified suppressions | Yes — US1 not implemented yet |
+| 15 | `test_workflow_contract.py` | `AssertionError: .../.github/workflows/quality-gate.yml must exist` | Yes — workflow not written yet |
+| 8 | `test_workflow_build_analysis.py` | `AssertionError: .../.github/workflows/quality-gate.yml must exist` (1 lock-file assertion) | Yes — workflow and lock files not written yet |
+| 4 | `test_analyzer_config.py` | Empty `Directory.Build.props`, no analyzer package references, 4 unjustified suppressions | Yes — US1 not implemented yet |
 
-The 11 passing tests are policy checks that do not require the gate: project files exist, no `NoWarn` is present, the probe names both projects, and the four synthetic suppression fixtures prove the policy scanner accepts justified suppressions and rejects unjustified ones. They are not evidence that the gate works.
+The 24 passing cases are policy checks that do not require the gate: project files exist, no global `NoWarn` is present, the probe names both projects, the suppression/editorconfig/scanner-policy fixtures behave correctly, and the ReportGenerator pin is already committed. They are not evidence that the gate works.
 
 No failure is caused by a syntax error: `python -m compileall -q scripts/quality-gate` exits 0.
 
@@ -74,14 +74,18 @@ E  AssertionError: /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests
 bash scripts/quality-gate/analyzer-probe.sh
 ```
 
-Result: exit code 1. Both builds succeed because analyzers and `TreatWarningsAsErrors` are not enabled yet, which is exactly the pre-US1 state:
+Result: exit code 1. Both builds succeed because analyzers, `TreatWarningsAsErrors`, and lock files are not enabled yet, which is exactly the pre-US1 state. The probe's `CS0219` fires in both projects, alongside the pre-existing warnings that US1 must remediate:
 
 ```text
 --- probing LivingRoots/LivingRoots.csproj ---
+LivingRoots/__AnalyzerGateProbe.cs(8,17): warning CS0219: A variável "unused" é atribuída, mas seu valor nunca é usado
 FAIL: the analyzer gate did not fail on the probe in LivingRoots/LivingRoots.csproj (build succeeded).
 --- probing LivingRoots.Tests/LivingRoots.Tests.csproj ---
+LivingRoots.Tests/__AnalyzerGateProbe.cs(8,17): warning CS0219: A variável "unused" é atribuída, mas seu valor nunca é usado
 FAIL: the analyzer gate did not fail on the probe in LivingRoots.Tests/LivingRoots.Tests.csproj (build succeeded).
 ```
+
+The pre-existing warnings are 3 in production (`CS0162`, `CS8602` ×2 locations) and 16 `CS8602` in `SoilHealthPersistenceInvariantsTests.cs`; they are the US1 triage input, not gate evidence.
 
 The probe files `LivingRoots/__AnalyzerGateProbe.cs` and `LivingRoots.Tests/__AnalyzerGateProbe.cs` are removed by the `trap` on every exit path; `git status --porcelain` shows no probe file after the run.
 
@@ -104,7 +108,7 @@ build_and_test.yml  code-style.yml  protected-paths.yml  security-aggregation.ym
 | FR-001 analyzer reliability gate | `test_analyzer_config.py` (both projects, package pins), `test_workflow_build_analysis.py`, `analyzer-probe.sh` | Probe builds both projects |
 | FR-002 warnings-as-errors | `test_analyzer_config.py::test_build_props_enables_the_required_analyzer_settings`, probe script + clean build (Phase 3) | |
 | FR-003 per-job game dependency | `test_static_and_sca_do_not_require_the_game`, `test_build_analysis_materialises_the_pinned_build_deps_and_fails_closed` | |
-| FR-004 Semgrep per PR | `test_semgrep_uses_the_pinned_cli_not_the_archived_action`, `test_pull_requests_and_pushes_are_not_path_filtered` | Semgrep's own `--error` output carries `file:line: rule`; T061 asserts it |
+| FR-004 Semgrep per PR | `test_semgrep_uses_the_pinned_cli_not_the_archived_action`, `test_pull_requests_and_pushes_are_not_path_filtered` | Semgrep's own `--error` output carries `file:line: rule`; T061 asserts a clean scan under 120 seconds and T066 records the step duration |
 | FR-005 CodeQL scheduled | `test_codeql_is_scheduled_only_and_buildless` | |
 | FR-006 Trivy SCA | `test_trivy_is_pinned_and_lets_the_python_gate_own_the_exit_code`, `test_trivy_targets_the_committed_lock_files`, `test_security_gate.py` | |
 | FR-007 coverage | `test_coverage_gate.py`, `test_build_analysis_collects_coverage_and_runs_the_gate`, `test_reportgenerator_and_coverlet_are_pinned` | |
@@ -145,6 +149,31 @@ The first fresh-context review returned **FAIL** with 17 gaps. Each is resolved 
 | 16 | Ratchet exit-code contradiction | Documented policy: improvement `0`, equal no-op `0`, weakening `2` with the file unchanged; CLI tests cover all three |
 | 17 | Precision, `os.replace`, permissions, CodeQL | Coverage precision `0.1`/tolerance `0.05`; duplication `0.01`/`0.005`; `os.replace` mandated; exact per-job permissions; CodeQL asserts no `push` and no `pull_request` |
 
+## T018 second review resolution
+
+The second fresh-context review found 18 gaps. Each is resolved as follows.
+
+| # | Gap | Resolution |
+|---|---|---|
+| 1 | Phase 2 left open | T017 uses the required `--continue-on-collection-errors` flag and records the actual counts (42 failed / 24 passed / 4 errors); T018 must append `Reviewer verdict: PASS — <date>` before T019 |
+| 2 | US2 test reaches into `build-analysis` | `test_workflow_contract.py` asserts only `static`/`sca`/`codeql`/`gate` and never names `build-analysis`; `test_workflow_build_analysis.py` owns it |
+| 3 | T033 could not pass before US3 | US2 now closes with only its own jobs; the extended gate is asserted by US3 |
+| 4 | T041/T042 ran before their inputs | Chain is T043 → T044 → T042 → T041 → T045 → T046 |
+| 5 | Lock files built before analyzers | T028 depends on T019 and T024 |
+| 6 | Trivy fixture version | Action SHA `ed142fd0…` (v0.36.0) with CLI `v0.76.1`, asserted separately |
+| 7 | Semgrep findings did not reach the log | A second `if: always()` text step runs without `--sarif`/`--output` |
+| 8 | CodeQL produced no annotations | `output: codeql-results.sarif` plus a SARIF-to-`::error file,line` step, both asserted |
+| 9 | Token preflight was grepped, not executed | `test_build_deps_preflight_exits_one_without_a_token` runs the step with `GH_TOKEN=""` and a poisoned `gh` |
+| 10 | Coverage fixture accepted empty assemblies | `coverage.assemblies` must be non-empty; the load fixture now contains an assembly and class |
+| 11 | jscpd totals were optional in the fixture | `statistics.total.duplicates`/`.lines` and both clone `start` fields are asserted |
+| 12 | Root `.editorconfig` could disable rules with a comment | Root blanket disables are rejected even with a comment; only folder/file-scoped overrides are allowed |
+| 13 | Scanner suppressions were untested | `nosemgrep`, `.semgrepignore`, and `.trivyignore` fixtures must fail the policy |
+| 14 | Ratchet semantics were ambiguous | Improve = write/exit 0; equal = no-op/exit 0; weaken = exit 2 with a byte-identical file |
+| 15 | Atomic-write evidence was narrow | Failure leaves the target byte-identical and the directory with no extra file |
+| 16 | FR-004 had no owner | The `< 120s` Semgrep assertion is explicitly deferred to T061/T066 |
+| 17 | FR-009 baseline chain was implicit | T043 reports are compared in T045 and T063; no hand-typed estimates |
+| 18 | T071 audit scope was vague | Implementation commits only (`f307b1f..HEAD`, excluding `specs/**` and `.specify/**`) |
+
 ## Reviewer verdict (T018)
 
-_Pending re-review after the gap remediation._
+_Pending re-review after the second gap remediation._
