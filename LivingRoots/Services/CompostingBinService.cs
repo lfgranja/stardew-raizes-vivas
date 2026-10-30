@@ -1,4 +1,4 @@
-#pragma warning disable CS9113 // CS9113: parameter is unread; retained for API/test compatibility
+#pragma warning disable CS9113 // CS9113: primary-constructor parameter retained for API/test compatibility (saveIdProvider)
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -31,6 +31,14 @@ public class CompostingBinService(
     private readonly CompostingBinFactory _factory = factory ?? throw new ArgumentNullException(nameof(factory));
     private readonly IPlayerInventory _playerInventory = playerInventory ?? throw new ArgumentNullException(nameof(playerInventory));
     private readonly ILocationProvider? _locationProvider = locationProvider;
+
+    // T085 (FR-019, Principle VI): retain the injected
+    // host-authoritative lock service so the production wiring
+    // shares one lock registry with ModController (no second,
+    // disjoint registry materialised here).
+#pragma warning disable S1144 // S1144: field retained for reflection-based production-wiring test (FR-019)
+    private readonly IHostAtomicLockService? _hostAtomicLockService = hostAtomicLockService;
+#pragma warning restore S1144
 
     // T054 (FR-008a): SMAPI translation helper for the
     // inventory-full refusal on harvest. Optional so headless
