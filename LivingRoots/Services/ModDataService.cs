@@ -530,12 +530,12 @@ namespace LivingRoots.Services
 
             // Check if the segment starts or ends with ".." followed/preceded by a separator
             // This would indicate traversal attempts like ".." at the start or end of a path component
-            if (segment.StartsWith("..") && segment.Length >= 3 && (segment[2] == '/' || segment[2] == '\\'))
+            if (segment.StartsWith("..", StringComparison.Ordinal) && segment.Length >= 3 && (segment[2] == '/' || segment[2] == '\\'))
             {
                 return true;
             }
 
-            if (segment.EndsWith("..") && segment.Length >= 3 && (segment[segment.Length - 3] == '/' || segment[segment.Length - 3] == '\\'))
+            if (segment.EndsWith("..", StringComparison.Ordinal) && segment.Length >= 3 && (segment[segment.Length - 3] == '/' || segment[segment.Length - 3] == '\\'))
             {
                 return true;
             }

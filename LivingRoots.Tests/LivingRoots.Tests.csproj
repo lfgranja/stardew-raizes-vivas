@@ -10,6 +10,7 @@
     <EnableModDeploy>false</EnableModDeploy>
     <EnableModZip>false</EnableModZip>
     <BundleExtraAssemblies>All</BundleExtraAssemblies>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <SuppressTfmSupportBuildErrors>true</SuppressTfmSupportBuildErrors>
     <RollForward>Major</RollForward>
@@ -50,6 +51,8 @@
     <PackageReference Include="FsCheck" Version="2.16.6" />
     <PackageReference Include="FsCheck.Xunit" Version="2.16.6" />
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.403" PrivateAssets="all" />
 
 
   </ItemGroup>

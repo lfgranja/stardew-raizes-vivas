@@ -14,7 +14,8 @@ namespace LivingRoots.Domain
         // Regex patterns for detecting absolute paths and URIs
         private static readonly Regex AbsolutePathPattern = new(
             @"^[a-zA-Z]:[/\\]|^[/\\]|[a-zA-Z][a-zA-Z0-9+.-]*://",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase
+            RegexOptions.Compiled | RegexOptions.IgnoreCase,
+            TimeSpan.FromSeconds(1)
         );
 
 
@@ -23,7 +24,8 @@ namespace LivingRoots.Domain
         // Improved to reduce false positives by being more specific about dangerous patterns
         private static readonly Regex EncodedTraversalPattern = new(
             @"(?:%2e%2e%2[fF]|%2e%2e[/\\]|%2e%2e%0|%%32[eE]%%32[fF]|%25%32%65%25%32%65%25%32%66|%252[eE]%252[eE][/\\%3F%5C%2F]|%c0%ae%c0%ae|%e0%80%ae%e0%80%ae|%f0%80%80%ae%f0%80%80%ae|%c0%2e%c0%2e|%c0%2[fF]|%c0%5[cC]|%c0%af|%e2%80%a5%e2%80%a5%e2%80%a5|%ef%bc%8[fF]%ef%bc%8[eE]%ef%bc%8[eE]%ef%bc%8[fF]|%ef%bc%9[cC]%ef%bc%9[eE]%ef%bc%9[cC]%ef%bc%9[eE]|\.%252[eE]|%252[eE]\.|%252[eE]%252[eE]|\.%00\.|%00\.\.|%u02e%u02e%u002[fF]|%u02e%u002e%u005[cC]|%uff0[eE]%uff0[eE]|%u2024%u2024|%u2025%u2025|%u2026%u2026|%u302e%u3002|%uff0[fF]|%uff3[cC]|%u221[56])",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase
+            RegexOptions.Compiled | RegexOptions.IgnoreCase,
+            TimeSpan.FromSeconds(1)
         );
 
         public PathValidationService(
@@ -155,7 +157,7 @@ namespace LivingRoots.Domain
             // This check looks for patterns that could escape the root directory
 
             // Check if the path starts with parent directory navigation patterns - removing redundant checks
-            if (path.StartsWith("../") || path.StartsWith("..\\"))
+            if (path.StartsWith("../", StringComparison.Ordinal) || path.StartsWith("..\\", StringComparison.Ordinal))
             {
                 throw new ArgumentException("Path cannot start with parent directory navigation", nameof(path));
             }

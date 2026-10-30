@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Newtonsoft.Json;
 
 namespace LivingRoots.Domain.Visualization
@@ -6,6 +7,7 @@ namespace LivingRoots.Domain.Visualization
     /// Serializable color representation for JSON persistence.
     /// Stores RGBA channels as bytes for efficient serialization.
     /// </summary>
+    [SuppressMessage("Naming", "S101:Types should be named in PascalCase", Justification = "ColorDTO is the established serialized contract name referenced by tests.")]
     public struct ColorDTO : IEquatable<ColorDTO>
     {
         [JsonProperty("r")]

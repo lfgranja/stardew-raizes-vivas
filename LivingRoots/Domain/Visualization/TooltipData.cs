@@ -34,12 +34,8 @@ public class TooltipData
     }
 
     /// <summary>
-    /// Formats unknown-state tooltip text per FR-014.
+    /// Constant unknown-state tooltip text per FR-014.
     /// Emits no percentage so no specific health value is implied.
     /// </summary>
-    /// <returns>Constant unknown-state tooltip text.</returns>
-    public static string FormatUnknown()
-    {
-        return "Soil Health: Unknown";
-    }
+    public const string UnknownText = "Soil Health: Unknown";
 }

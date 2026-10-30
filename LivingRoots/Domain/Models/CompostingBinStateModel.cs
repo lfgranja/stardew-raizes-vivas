@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace LivingRoots.Domain.Models;
 
@@ -28,20 +29,20 @@ public class CompostingBinStateModel
     public int MaturationLevel { get; set; } = 1;
 
     /// <summary>Consecutive days without activity, used for maturation reset.</summary>
-    public int ConsecutiveIdleDays { get; set; } = 0;
+    public int ConsecutiveIdleDays { get; set; }
 
     /// <summary>Days of continuous operation, used for maturation increment.</summary>
-    public int ConsecutiveActiveDays { get; set; } = 0;
+    public int ConsecutiveActiveDays { get; set; }
 
     /// <summary>
     /// Whether compost has been paid for this batch (prevents dual-payout with interception).
     /// </summary>
-    public bool HasPaidThisBatch { get; set; } = false;
+    public bool HasPaidThisBatch { get; set; }
 
     /// <summary>
     /// Remaining days until maturation (0 when ready or empty).
     /// </summary>
-    public int DaysRemaining { get; set; } = 0;
+    public int DaysRemaining { get; set; }
 
     /// <summary>
     /// Populates progress retention data from an item's modData dictionary.
@@ -88,7 +89,7 @@ public class CompostingBinStateModel
     /// Whether compost has been paid for this batch (prevents dual-payout with interception).
     /// Reads from modData to restore state when a carried bin is placed.
     /// </summary>
-    public bool GetHasPaidThisBatch(IDictionary<string, string> modData)
+    public static bool GetHasPaidThisBatch(IDictionary<string, string> modData)
     {
         if (modData.TryGetValue(ModConstants.ModDataDaysRemainingKey, out var daysStr) &&
             int.TryParse(daysStr, out var days) &&
@@ -114,7 +115,7 @@ public class CompostingBinStateModel
         if (!string.IsNullOrWhiteSpace(InputItemId))
         {
             modData[ModConstants.ModDataInputIdKey] = InputItemId;
-            modData[ModConstants.ModDataDaysRemainingKey] = DaysRemaining.ToString();
+            modData[ModConstants.ModDataDaysRemainingKey] = DaysRemaining.ToString(CultureInfo.InvariantCulture);
         }
         else
         {

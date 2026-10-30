@@ -1,0 +1,102 @@
+root = false
+
+[*.cs]
+
+# CA1304: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.CA1304.severity = none
+
+# CA1305: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.CA1305.severity = none
+
+# CA1310: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.CA1310.severity = none
+
+# CA1707: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.CA1707.severity = none
+
+# CA1725: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.CA1725.severity = none
+
+# CA1805: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.CA1805.severity = none
+
+# CA1816: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.CA1816.severity = none
+
+# CA1822: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.CA1822.severity = none
+
+# CA2201: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.CA2201.severity = none
+
+# CA2249: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.CA2249.severity = none
+
+# CS8602: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.CS8602.severity = none
+
+# S1006: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S1006.severity = none
+
+# S1066: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S1066.severity = none
+
+# S108: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S108.severity = none
+
+# S1144: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S1144.severity = none
+
+# S1186: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S1186.severity = none
+
+# S1244: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S1244.severity = none
+
+# S1481: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S1481.severity = none
+
+# S1854: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S1854.severity = none
+
+# S2292: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S2292.severity = none
+
+# S2325: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S2325.severity = none
+
+# S2699: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S2699.severity = none
+
+# S3220: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S3220.severity = none
+
+# S3241: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S3241.severity = none
+
+# S3358: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S3358.severity = none
+
+# S3878: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S3878.severity = none
+
+# S3881: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S3881.severity = none
+
+# S4144: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S4144.severity = none
+
+# S4487: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S4487.severity = none
+
+# S6608: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S6608.severity = none
+
+# S8969: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S8969.severity = none
+
+# S8970: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S8970.severity = none
+
+# S927: test code prioritizes readability and naming conventions over this rule.
+dotnet_diagnostic.S927.severity = none

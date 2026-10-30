@@ -218,7 +218,7 @@ namespace LivingRoots.Services.Visualization
             // Render each overlay with configured opacity and patterns
             foreach (var overlay in overlays)
             {
-                DrawOverlay(spriteBatch, overlay, config, viewport);
+                DrawOverlay(spriteBatch, overlay, config);
             }
         }
 
@@ -469,7 +469,7 @@ namespace LivingRoots.Services.Visualization
         /// enters the derivation through <c>Game1.viewport</c>,
         /// which the localization reads.
         /// </summary>
-        private void DrawOverlay(SpriteBatch spriteBatch, TileOverlay overlay, VisualizationConfiguration config, Rectangle viewport)
+        private void DrawOverlay(SpriteBatch spriteBatch, TileOverlay overlay, VisualizationConfiguration config)
         {
             var worldPosition = new Vector2(
                 overlay.TilePosition.X * ModConstants.TileSize,
@@ -599,11 +599,6 @@ namespace LivingRoots.Services.Visualization
             // accessibility floor; keep the two constants tied so a future
             // change to either cannot silently undercut the floor. Patterns
             // are suppressed rather than drawn below the floor.
-            if (ModConstants.PatternAlphaPinned < ModConstants.PatternMinOpacity)
-            {
-                return;
-            }
-
             switch (patternType)
             {
                 case PatternType.Stripes:
@@ -753,25 +748,6 @@ namespace LivingRoots.Services.Visualization
             // duration has elapsed.
             _hoeFeedbackRenderer.RenderFlash(spriteBatch, feedback, gameTime);
             _hoeFeedbackRenderer.RenderFloatingText(spriteBatch, feedback, gameTime);
-        }
-
-        /// <summary>
-        /// Formats tooltip text per spec: "Soil Health: {percentage}% ({category})".
-        /// Finite out-of-range health clamps to the [0, 100] soil-health
-        /// domain before formatting (data-model.md ColorMapping validation
-        /// rules); unknown, NaN and Infinity health emit the constant
-        /// "Soil Health: Unknown" with no percentage and no category
-        /// (FR-002, FR-014).
-        /// </summary>
-        private static string FormatTooltipText(float healthValue, HealthCategory category)
-        {
-            if (category == HealthCategory.Unknown || float.IsNaN(healthValue) || float.IsInfinity(healthValue))
-            {
-                return "Soil Health: Unknown";
-            }
-
-            var clampedHealth = Math.Clamp(healthValue, ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth);
-            return $"Soil Health: {clampedHealth:F0}% ({category})";
         }
 
         /// <summary>

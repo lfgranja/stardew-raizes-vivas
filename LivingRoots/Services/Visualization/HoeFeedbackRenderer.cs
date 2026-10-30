@@ -15,7 +15,6 @@ namespace LivingRoots.Services.Visualization
     /// </summary>
     public class HoeFeedbackRenderer
     {
-        private readonly IVisualizationConfigurationService _configService;
         private readonly IMonitor _monitor;
         private readonly IColorInterpolationService _colorInterpolationService;
         private Texture2D? _whiteTexture;
@@ -31,7 +30,7 @@ namespace LivingRoots.Services.Visualization
             IMonitor monitor,
             IColorInterpolationService colorInterpolationService)
         {
-            _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+            _ = configService ?? throw new ArgumentNullException(nameof(configService));
             _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
             _colorInterpolationService = colorInterpolationService ?? throw new ArgumentNullException(nameof(colorInterpolationService));
         }
@@ -185,6 +184,8 @@ namespace LivingRoots.Services.Visualization
         /// <param name="feedback">Feedback state to check.</param>
         /// <param name="gameTime">Current game time.</param>
         /// <returns>True if the feedback should be rendered; otherwise, false.</returns>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance API retained for test and DI compatibility.")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarAnalyzer.CSharp", "S2325:Make method static", Justification = "Instance API retained for test and DI compatibility.")]
         public bool IsFeedbackActive(HoeFeedback feedback, GameTime gameTime)
         {
             if (feedback == null)

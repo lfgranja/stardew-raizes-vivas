@@ -31,7 +31,7 @@ namespace LivingRoots
         private EventHandler<AssetRequestedEventArgs>? _onAssetRequestedHandler;
         private Action<string, Vector2, float>? _onTileHealthChangedHandler;
 
-        private bool _disposed = false;  // Thread-safe visibility of disposed state - all access is protected by _disposeLock
+        private bool _disposed;  // Thread-safe visibility of disposed state - all access is protected by _disposeLock
         private readonly object _disposeLock = new();
 
         /*********
@@ -126,7 +126,7 @@ namespace LivingRoots
             // Create visualization services (F4 — DI wiring per Phase 9/10)
             var colorInterpolationService = new ColorInterpolationService();
             var visualizationConfigService = new VisualizationConfigurationService(modDataService, this.Monitor, fileNameSanitizationService);
-            var hudNotifier = new HudNotifierImpl();
+            var hudNotifier = new HudNotifier();
             var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor, hudNotifier);
 
             // Wire reactive cache invalidation upon soil health change (T036, FR-010).

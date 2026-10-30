@@ -239,7 +239,7 @@ public class BinPlacementTests
         int tilesHigh)
     {
         var building = new StardewValley.Buildings.Building();
-#pragma warning disable AvoidNetField
+#pragma warning disable AvoidNetField // AvoidNetField: direct net field access required for bin placement test
         // Building's tile/footprint members are public NetInt fields with no
         // public property setters, so the backing values are the only way to
         // populate the footprint from a test.
@@ -757,7 +757,7 @@ public class BinPlacementTests
 
         var placedObject = fixture.Location.Objects[tile];
         Assert.Equal(ModConstants.CompostingBinItemId, placedObject.ItemId);
-#pragma warning disable AvoidNetField
+#pragma warning disable AvoidNetField // AvoidNetField: direct net field access required for bin placement test
         Assert.True(
             placedObject.bigCraftable.Value,
             "FR-001: the placed bin world object must set the big-craftable flag, so it is the native machine the recipe yields and not an (O) object.");

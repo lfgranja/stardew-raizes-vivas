@@ -40,7 +40,7 @@ public class GameLocationFixture
         GameStateFixture.Install();
 
         Location = new GameLocation();
-#pragma warning disable AvoidNetField
+#pragma warning disable AvoidNetField // AvoidNetField: accessing .net field directly is required for this fixture
         // GameLocation.Name and GameLocation.IsFarm expose no public setter in 1.6, so these
         // public NetField backing values are the only way to populate them from a test.
         Location.name.Value = name;
