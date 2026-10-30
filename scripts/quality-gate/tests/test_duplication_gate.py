@@ -61,6 +61,18 @@ def test_parse_report_accepts_generated_reports(payload):
         {"statistics": {"total": {}}},
         {"statistics": {"total": {"percentage": "0.48"}}},
         {"statistics": {"total": {"percentage": 0.48}}, "duplicates": "nope"},
+        {"statistics": {"total": {"percentage": 0.48, "duplicates": 0}}},
+        {"statistics": {"total": {"percentage": 0.48, "lines": 0}}},
+        {
+            "statistics": {"total": {"percentage": 0.48, "duplicates": 0, "lines": 0}},
+            "duplicates": [
+                {
+                    "lines": 5,
+                    "firstFile": {"name": "LivingRoots/A.cs"},
+                    "secondFile": {"name": "LivingRoots/B.cs", "start": 2},
+                }
+            ],
+        },
     ],
 )
 def test_parse_report_fails_closed_on_malformed_data(payload):
@@ -71,7 +83,12 @@ def test_parse_report_fails_closed_on_malformed_data(payload):
 @pytest.mark.parametrize("value", [math.nan, math.inf, -0.1, 100.1])
 def test_parse_report_rejects_invalid_percentages(value):
     with pytest.raises(GateConfigurationError):
-        parse_report({"statistics": {"total": {"percentage": value}}})
+        parse_report(
+            {
+                "statistics": {"total": {"percentage": value, "duplicates": 0, "lines": 0}},
+                "duplicates": [],
+            }
+        )
 
 
 def test_load_report_missing_file_is_a_configuration_error(tmp_path):
