@@ -15,6 +15,8 @@ public class SeasonalDecayMultiplier
     /// Seasonal multiplier: Spring = 0.5x, Summer = 1.5x, Fall = 0.5x, Winter = 0.0x.
     /// Defaults to 0.5x for unrecognized seasons.
     /// </returns>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Instance API retained for test and DI compatibility.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarAnalyzer.CSharp", "S2325:Make method static", Justification = "Instance API retained for test and DI compatibility.")]
     public float GetMultiplier(string season)
     {
         return season.ToLowerInvariant() switch
