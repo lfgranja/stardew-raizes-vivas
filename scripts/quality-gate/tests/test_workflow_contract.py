@@ -70,6 +70,10 @@ def test_pull_requests_and_pushes_are_not_path_filtered():
         event_config = config[event] or {}
         assert "paths" not in event_config, f"{event} must not filter paths"
         assert "paths-ignore" not in event_config, f"{event} must not ignore paths"
+    pull_request = config["pull_request"] or {}
+    assert "branches" not in pull_request, "pull_request must target every base branch"
+    assert "branches-ignore" not in pull_request
+    assert "types" not in pull_request, "pull_request must run for every activity type"
     push = config["push"] or {}
     assert "main" in push.get("branches", [])
     assert "dev" in push.get("branches", [])
@@ -127,7 +131,12 @@ def test_semgrep_uses_the_pinned_cli_not_the_archived_action():
     assert "--sarif" in command
     assert "--output semgrep.sarif" in command
     assert "LivingRoots/" in command
-    assert any("requirements-ci.txt" in step_run(step) for step in steps(static))
+    ordered = steps(static)
+    install_index = next(
+        index for index, step in enumerate(ordered) if "requirements-ci.txt" in step_run(step)
+    )
+    semgrep_index = ordered.index(semgrep_step)
+    assert install_index < semgrep_index, "the pinned Semgrep CLI must be installed before it runs"
 
 
 def test_semgrep_prints_findings_with_file_and_line():
@@ -223,6 +232,13 @@ def test_codeql_is_scheduled_only_and_buildless():
     assert "file=" in annotation and "line=" in annotation, (
         "the annotation step must emit ::error file=<uri>,line=<startLine>::<message>"
     )
+    ordered = steps(codeql)
+    assert ordered.index(init_steps[0]) < ordered.index(analyze_steps[0]), (
+        "CodeQL init must run before analyze"
+    )
+    assert ordered.index(analyze_steps[0]) < ordered.index(annotation_steps[0]), (
+        "CodeQL must analyze before rendering annotations"
+    )
     dumped = yaml.safe_dump(codeql)
     assert "BUILDDEPS_TOKEN" not in dumped
     assert "STARDEW_GAME_PATH" not in dumped
@@ -282,6 +298,8 @@ def test_no_blocking_step_is_allowed_to_continue_on_error():
         "dotnet build",
         "dotnet test",
         "reportgenerator",
+        "needs.",
+        "codeql-action",
     )
     for step in all_steps(load_workflow()):
         run = step_run(step)
@@ -289,6 +307,9 @@ def test_no_blocking_step_is_allowed_to_continue_on_error():
         if any(marker in run or marker in uses for marker in blocking_markers):
             value = step.get("continue-on-error")
             assert value not in (True, "true"), f"continue-on-error is forbidden on blocking steps: {step}"
+    for name in ("static", "sca", "codeql", "gate"):
+        value = jobs(load_workflow())[name].get("continue-on-error")
+        assert value not in (True, "true"), f"continue-on-error is forbidden on the {name} job"
 
 
 def test_aggregate_gate_fails_closed_on_skipped_or_failed_jobs():
