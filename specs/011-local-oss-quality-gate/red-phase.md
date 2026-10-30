@@ -2,7 +2,7 @@
 
 **Feature**: 011-local-oss-quality-gate
 **Date**: 2026-10-29
-**Commit at capture**: `1fd835b` (refreshed evidence after the sixth-review remediation; the original capture was `38e7fa7`)
+**Commit at capture**: `4111bb0` (refreshed evidence after the sixth-review remediation; the original capture was `38e7fa7`)
 
 ## Scope
 
@@ -243,7 +243,7 @@ The sixth fresh-context review reproduced the suite and found 10 gaps. Each is r
 | 7 | Action and SDK pins were not exact | The test requires `actions/checkout@v4`, `actions/setup-dotnet@v4`, and `dotnet-version: 10.0.x` |
 | 8 | Step order was unasserted | Tests assert requirements install before Semgrep, CodeQL init before analyze before annotations, ReportGenerator before the coverage gate, and jscpd before the duplication gate |
 | 9 | The probe test was presence-only | `test_the_probe_builds_both_projects` runs the real script against a stub `dotnet`, proving two build invocations with both project paths and cleanup |
-| 10 | The capture commit lagged HEAD | The capture commit is `1fd835b`; the test/probe tree is identical to the reviewed run |
+| 10 | The capture commit lagged HEAD | The capture commit is `4111bb0`; the test/probe tree is identical to the reviewed run |
 
 ## Reviewer verdict (T018)
 
