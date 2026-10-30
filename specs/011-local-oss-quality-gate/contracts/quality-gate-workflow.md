@@ -31,7 +31,10 @@
 | 10 | sca | Install CI deps | pip | yes | Uses the same pinned requirements |
 | 11 | sca | Trivy v0.36.0 | `aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25` | yes | Commit-SHA pin for v0.36.0; `version: v0.76.1`, `scan-type: fs`, `scan-ref: .`, `scanners: vuln`, `severity: HIGH,CRITICAL`, `exit-code: 0`, `format: json`, `output: trivy.json`, `skip-dirs: **/bin/**,**/obj/**,**/.git/**`; the Python gate owns the exit code |
 | 12 | sca | Security gate | `python -m quality_gate security` | yes | Fails on HIGH/CRITICAL with package/CVE/target diagnostics |
+| 12a | build-analysis | Checkout | `actions/checkout@v4` | yes | Repository source |
+| 12b | build-analysis | Setup .NET | `actions/setup-dotnet@v4` | yes | `dotnet-version: 10.0.x` |
 | 13 | build-analysis | Fetch build deps | `gh release download` | yes | Step env `GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}`; begins `set -euo pipefail` and `if [ -z "${GH_TOKEN:-}" ]; then echo "::error::BUILDDEPS_TOKEN is not set; cannot download the private build-deps release."; exit 1; fi` before any `gh` call |
+| 13a | build-analysis | Preflight assemblies | shell | yes | Fails closed unless `Stardew Valley.dll`, `StardewModdingAPI.dll`, `StardewValley.GameData.dll`, `MonoGame.Framework.dll`, `xTile.dll`, and `smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll` exist under `GamePath` |
 | 14 | build-analysis | Restore | `dotnet restore --locked-mode` | yes | Lock files committed |
 | 15 | build-analysis | Build | `dotnet build --no-restore -c Release` | yes | Analyzers run; warnings-as-errors |
 | 16 | build-analysis | Test + coverage | `dotnet test --no-build -c Release --collect:"XPlat Code Coverage"` | yes | Coverlet |
