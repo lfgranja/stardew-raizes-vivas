@@ -1,0 +1,25 @@
+--- probing LivingRoots/LivingRoots.csproj ---
+/home/luis/development/stardew-raizes-vivas/LivingRoots/__AnalyzerGateProbe.cs(8,17): error CS0219: A variável "unused" é atribuída, mas seu valor nunca é usado [/home/luis/development/stardew-raizes-vivas/LivingRoots/LivingRoots.csproj]
+/home/luis/development/stardew-raizes-vivas/LivingRoots/__AnalyzerGateProbe.cs(8,17): error S1481: Remove the unused local variable 'unused'. [/home/luis/development/stardew-raizes-vivas/LivingRoots/LivingRoots.csproj]
+
+FALHA da compilação.
+
+/home/luis/development/stardew-raizes-vivas/LivingRoots/__AnalyzerGateProbe.cs(8,17): error CS0219: A variável "unused" é atribuída, mas seu valor nunca é usado [/home/luis/development/stardew-raizes-vivas/LivingRoots/LivingRoots.csproj]
+/home/luis/development/stardew-raizes-vivas/LivingRoots/__AnalyzerGateProbe.cs(8,17): error S1481: Remove the unused local variable 'unused'. [/home/luis/development/stardew-raizes-vivas/LivingRoots/LivingRoots.csproj]
+    0 Aviso(s)
+    2 Erro(s)
+
+Tempo Decorrido 00:00:05.93
+--- probing LivingRoots.Tests/LivingRoots.Tests.csproj ---
+/home/luis/development/stardew-raizes-vivas/LivingRoots/__AnalyzerGateProbe.cs(8,17): error CS0219: A variável "unused" é atribuída, mas seu valor nunca é usado [/home/luis/development/stardew-raizes-vivas/LivingRoots/LivingRoots.csproj]
+/home/luis/development/stardew-raizes-vivas/LivingRoots/__AnalyzerGateProbe.cs(8,17): error S1481: Remove the unused local variable 'unused'. [/home/luis/development/stardew-raizes-vivas/LivingRoots/LivingRoots.csproj]
+
+FALHA da compilação.
+
+/home/luis/development/stardew-raizes-vivas/LivingRoots/__AnalyzerGateProbe.cs(8,17): error CS0219: A variável "unused" é atribuída, mas seu valor nunca é usado [/home/luis/development/stardew-raizes-vivas/LivingRoots/LivingRoots.csproj]
+/home/luis/development/stardew-raizes-vivas/LivingRoots/__AnalyzerGateProbe.cs(8,17): error S1481: Remove the unused local variable 'unused'. [/home/luis/development/stardew-raizes-vivas/LivingRoots/LivingRoots.csproj]
+    0 Aviso(s)
+    2 Erro(s)
+
+Tempo Decorrido 00:00:05.98
+PASS: the analyzer gate failed on both probes with file, line, and rule.
