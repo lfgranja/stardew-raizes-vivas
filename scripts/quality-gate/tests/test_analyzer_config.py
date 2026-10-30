@@ -29,8 +29,19 @@ def properties(root: ET.Element) -> dict[str, str]:
             continue
         for element in group:
             if element.text is not None:
-                found[element.tag.split("}")[-1]] = element.text.strip()
+                found[element.tag.split("}")[-1].lower()] = element.text.strip()
     return found
+
+
+def element_value(element: ET.Element, name: str) -> str | None:
+    """Read an MSBuild attribute or child element (both are legal)."""
+    value = element.get(name)
+    if value is not None:
+        return value
+    for child in element:
+        if child.tag.split("}")[-1].lower() == name.lower():
+            return (child.text or "").strip()
+    return None
 
 
 def package_references(root: ET.Element) -> dict[str, ET.Element]:
@@ -51,16 +62,16 @@ def test_project_files_exist(path):
 @pytest.mark.parametrize("path", [BUILD_PROPS, MOD_PROJECT, TEST_PROJECT])
 def test_no_global_nowarn_is_used(path):
     props = properties(parse_project(path))
-    assert "NoWarn" not in props, f"{path} must not suppress warnings globally"
+    assert "nowarn" not in props, f"{path} must not suppress warnings globally"
 
 
 def test_build_props_enables_the_required_analyzer_settings():
     props = properties(parse_project(BUILD_PROPS))
-    assert props.get("AnalysisLevel") == "latest"
-    assert props.get("AnalysisMode") == "Recommended"
-    assert props.get("TreatWarningsAsErrors") == "true"
-    assert props.get("EnforceCodeStyleInBuild") == "true"
-    assert props.get("EnableNETAnalyzers") == "true"
+    assert props.get("analysislevel") == "latest"
+    assert props.get("analysismode") == "Recommended"
+    assert props.get("treatwarningsaserrors") == "true"
+    assert props.get("enforcecodestyleinbuild") == "true"
+    assert props.get("enablenetanalyzers") == "true"
 
 
 @pytest.mark.parametrize("path", [MOD_PROJECT, TEST_PROJECT])
@@ -70,10 +81,13 @@ def test_both_projects_reference_the_pinned_analyzers(path):
     assert "Microsoft.CodeAnalysis.NetAnalyzers" in references, (
         f"{path} must reference Microsoft.CodeAnalysis.NetAnalyzers"
     )
-    assert references["SonarAnalyzer.CSharp"].get("Version") == SONAR_VERSION
-    assert references["Microsoft.CodeAnalysis.NetAnalyzers"].get("Version") == NETANALYZERS_VERSION
+    assert element_value(references["SonarAnalyzer.CSharp"], "Version") == SONAR_VERSION
+    assert (
+        element_value(references["Microsoft.CodeAnalysis.NetAnalyzers"], "Version")
+        == NETANALYZERS_VERSION
+    )
     for name in ("SonarAnalyzer.CSharp", "Microsoft.CodeAnalysis.NetAnalyzers"):
-        private_assets = references[name].get("PrivateAssets", "")
+        private_assets = element_value(references[name], "PrivateAssets") or ""
         assert "all" in private_assets.split(";"), f"{name} must not leak to consumers"
 
 
@@ -85,11 +99,14 @@ def test_the_probe_builds_both_projects():
 
 
 SUPPRESS_MESSAGE = re.compile(
-    r"\[SuppressMessage\((?P<body>.*?)\)\]",
+    r"\[\s*(?:[A-Za-z_][\w.]*\.)?SuppressMessage\s*\((?P<body>.*?)\)\s*\]",
     re.DOTALL,
 )
 JUSTIFICATION = re.compile(r'Justification\s*=\s*"(?P<text>[^"]*)"', re.DOTALL)
 PRAGMA_DISABLE = re.compile(r"^(\s*)#pragma\s+warning\s+disable\s+(?P<rules>[A-Za-z0-9_,\s]+)$")
+SEVERITY_NONE = re.compile(
+    r"^\s*dotnet_diagnostic\.(?P<rule>[A-Za-z0-9_]+)\.severity\s*=\s*none\s*$"
+)
 
 
 def scan_suppressions(path: Path, text: str) -> list[str]:
@@ -133,10 +150,72 @@ def repository_sources() -> list[Path]:
     return sources
 
 
+def scan_editorconfig(path: Path, text: str, root: bool = False) -> list[str]:
+    """Reject repository-wide or unjustified rule disabling in .editorconfig."""
+    violations: list[str] = []
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        match = SEVERITY_NONE.match(line)
+        if not match:
+            continue
+        rule = match.group("rule")
+        if root:
+            violations.append(
+                f"{path}:{index + 1}: the root .editorconfig must not disable {rule}; "
+                "scope the override to a folder or file pattern"
+            )
+            continue
+        previous = lines[index - 1].strip() if index > 0 else ""
+        trailing = line.split("#", 1)[1] if "#" in line else ""
+        justified = (previous.startswith("#") and rule in previous) or rule in trailing
+        if not justified:
+            violations.append(
+                f"{path}:{index + 1}: {rule} is disabled without a comment naming the rule and reason"
+            )
+    return violations
+
+
+FORBIDDEN_SUPPRESSION_ARTIFACTS = (".semgrepignore", ".trivyignore")
+
+
+def scan_forbidden_suppressions(path: Path, text: str) -> list[str]:
+    """Reject blanket scanner suppressions: findings must be fixed, not hidden."""
+    violations: list[str] = []
+    if path.name in FORBIDDEN_SUPPRESSION_ARTIFACTS:
+        violations.append(
+            f"{path}: {path.name} is forbidden; fix the finding instead of ignoring it"
+        )
+    for index, line in enumerate(text.splitlines(), 1):
+        if "nosemgrep" in line:
+            violations.append(
+                f"{path}:{index}: nosemgrep is forbidden; fix the finding instead of ignoring it"
+            )
+    return violations
+
+
 def test_every_repository_suppression_is_documented():
     violations: list[str] = []
     for path in repository_sources():
         violations.extend(scan_suppressions(path, path.read_text(encoding="utf-8")))
+    assert violations == [], "\n".join(violations)
+
+
+def test_every_repository_editorconfig_override_is_documented():
+    configs = [
+        path
+        for path in ROOT.rglob(".editorconfig")
+        if ".git" not in path.parts and ".venv-quality-gate" not in path.parts
+    ]
+    assert configs, "the scan must not be vacuous"
+    violations: list[str] = []
+    for path in configs:
+        violations.extend(
+            scan_editorconfig(
+                path,
+                path.read_text(encoding="utf-8"),
+                root=path.resolve() == (ROOT / ".editorconfig").resolve(),
+            )
+        )
     assert violations == [], "\n".join(violations)
 
 
@@ -186,3 +265,94 @@ def test_a_suppress_message_with_a_reason_passes_the_policy(tmp_path):
         encoding="utf-8",
     )
     assert scan_suppressions(source, source.read_text(encoding="utf-8")) == []
+
+
+def test_an_unqualified_suppress_message_is_recognised(tmp_path):
+    source = tmp_path / "Suppressed.cs"
+    source.write_text(
+        '[SuppressMessage("csharpsquid", "S3966")]\n'
+        "public void Dispose() { }\n",
+        encoding="utf-8",
+    )
+    violations = scan_suppressions(source, source.read_text(encoding="utf-8"))
+    assert len(violations) == 1
+    assert "Justification" in violations[0]
+
+
+def test_an_editorconfig_override_with_a_reason_passes(tmp_path):
+    config = tmp_path / ".editorconfig"
+    config.write_text(
+        "[*.g.cs]\n"
+        "# S1481: generated code is not editable.\n"
+        "dotnet_diagnostic.S1481.severity = none\n",
+        encoding="utf-8",
+    )
+    assert scan_editorconfig(config, config.read_text(encoding="utf-8")) == []
+
+
+def test_an_editorconfig_override_without_a_reason_fails(tmp_path):
+    config = tmp_path / ".editorconfig"
+    config.write_text(
+        "[*.cs]\ndotnet_diagnostic.S1481.severity = none\n",
+        encoding="utf-8",
+    )
+    violations = scan_editorconfig(config, config.read_text(encoding="utf-8"))
+    assert len(violations) == 1
+    assert "S1481" in violations[0]
+
+
+def test_a_root_blanket_editorconfig_disable_fails_even_with_a_comment(tmp_path):
+    config = tmp_path / ".editorconfig"
+    config.write_text(
+        "[*.cs]\n"
+        "# S1481: generated code is not editable.\n"
+        "dotnet_diagnostic.S1481.severity = none\n",
+        encoding="utf-8",
+    )
+    violations = scan_editorconfig(config, config.read_text(encoding="utf-8"), root=True)
+    assert len(violations) == 1
+    assert "root .editorconfig must not disable S1481" in violations[0]
+
+
+def test_a_scoped_editorconfig_disable_in_a_subdirectory_still_passes(tmp_path):
+    config = tmp_path / ".editorconfig"
+    text = (
+        "[*.g.cs]\n"
+        "# S1481: generated code is not editable.\n"
+        "dotnet_diagnostic.S1481.severity = none\n"
+    )
+    assert scan_editorconfig(config, text, root=False) == []
+
+
+@pytest.mark.parametrize("comment", ["//", "#", "/*"])
+def test_nosemgrep_directives_are_forbidden(tmp_path, comment):
+    source = tmp_path / "Example.cs"
+    text = f"{comment} nosemgrep: this finding is inconvenient\nint unused = 1;\n"
+    violations = scan_forbidden_suppressions(source, text)
+    assert len(violations) == 1
+    assert "nosemgrep is forbidden" in violations[0]
+
+
+def test_semgrepignore_is_forbidden(tmp_path):
+    artifact = tmp_path / ".semgrepignore"
+    violations = scan_forbidden_suppressions(artifact, "LivingRoots/\n")
+    assert len(violations) == 1
+    assert ".semgrepignore is forbidden" in violations[0]
+
+
+def test_trivyignore_is_forbidden(tmp_path):
+    artifact = tmp_path / ".trivyignore"
+    violations = scan_forbidden_suppressions(artifact, "CVE-2026-0001\n")
+    assert len(violations) == 1
+    assert ".trivyignore is forbidden" in violations[0]
+
+
+def test_the_repository_has_no_blanket_scanner_suppressions():
+    violations: list[str] = []
+    for name in FORBIDDEN_SUPPRESSION_ARTIFACTS:
+        artifact = ROOT / name
+        if artifact.exists():
+            violations.append(f"{artifact}: {name} is forbidden; fix the finding instead of ignoring it")
+    for path in repository_sources():
+        violations.extend(scan_forbidden_suppressions(path, path.read_text(encoding="utf-8")))
+    assert violations == [], "\n".join(violations)
