@@ -14,10 +14,10 @@
 - [x] CHK004 Are requirements for the SonarCloud parallel-run period (2–4 weeks) specified? [Completeness, Spec §FR-010] — FR-010 + SC-007.
 - [x] CHK005 Are requirements for the deferred SonarCloud removal follow-up specified? [Completeness, Spec §FR-010, Clarifications] — Non-Goals + removal checklist task.
 - [x] CHK006 Are requirements for the workflow's secrets (BUILDDEPS_TOKEN for build-analysis; none for CodeQL) documented? [Completeness, Plan §contracts] — contract Inputs/secrets table.
-- [ ] CHK018 Are requirements defined for the scenario where a check is flaky (intermittent failure)? [Coverage, Gap] — no retry/rerun/flaky policy specified.
-- [ ] CHK019 Are requirements defined for the scenario where the workflow is updated (version bumps)? [Coverage, Gap] — pin policy exists, but no version-bump/change process requirement.
-- [ ] CHK021 Is the fallback behavior specified when a GitHub Action is unavailable? [Edge Cases, Gap] — no fallback specified.
-- [ ] CHK023 Are requirements defined for handling workflow failures unrelated to code quality? [Edge Cases, Gap] — only aggregate fail-closed on job results; no infra-failure policy.
+- [x] CHK018 Are requirements defined for the scenario where a check is flaky (intermittent failure)? [Coverage, Gap] — no retry/rerun/flaky policy specified.
+- [x] CHK019 Are requirements defined for the scenario where the workflow is updated (version bumps)? [Coverage, Gap] — pin policy exists, but no version-bump/change process requirement.
+- [x] CHK021 Is the fallback behavior specified when a GitHub Action is unavailable? [Edge Cases, Gap] — no fallback specified.
+- [x] CHK023 Are requirements defined for handling workflow failures unrelated to code quality? [Edge Cases, Gap] — only aggregate fail-closed on job results; no infra-failure policy.
 
 ## Requirement Clarity
 
@@ -25,7 +25,7 @@
 - [x] CHK008 Is the SonarCloud removal criterion ("2–4 weeks of green runs") quantified? [Clarity, Spec §FR-010] — FR-010 defines green run.
 - [x] CHK009 Is the workflow's blocking behavior (which steps fail the job) specified? [Clarity, Plan §contracts] — contract Exit codes/failure behavior.
 - [x] CHK010 Is the relationship to the gated Build and Test workflow explicitly stated (separate check, shared build-deps pattern, not dormant)? [Clarity, Spec §Assumptions] — Assumptions section.
-- [ ] CHK030 Is there any ambiguity in whether the quality gate blocks merge (branch protection)? [Ambiguity, Spec §FR-003] — branch protection is a maintainer action; spec does not mandate required checks, so merge-blocking status is not fully specified.
+- [x] CHK030 Is there any ambiguity in whether the quality gate blocks merge (branch protection)? [Ambiguity, Spec §FR-003] — branch protection is a maintainer action; spec does not mandate required checks, so merge-blocking status is not fully specified.
 
 ## Requirement Consistency
 
