@@ -11,7 +11,7 @@ from typing import Optional
 from quality_gate.baseline import DuplicationBaseline
 from quality_gate.diagnostics import Diagnostic, GateConfigurationError
 
-DUPLICATION_EPSILON = 0.005
+DUPLICATION_EPSILON = 0.0
 
 
 @dataclass(frozen=True)
@@ -26,6 +26,7 @@ class Clone:
 @dataclass(frozen=True)
 class DuplicationReport:
     percentage: float
+    total_lines: int = 0
     duplicates: tuple[Clone, ...] = ()
 
 
@@ -102,8 +103,7 @@ def parse_report(payload: object) -> DuplicationReport:
         )
 
     # total_lines is available but not stored on the report; keep parity.
-    _ = total_lines
-    return DuplicationReport(percentage=percentage, duplicates=tuple(clones))
+    return DuplicationReport(percentage=percentage, total_lines=total_lines, duplicates=tuple(clones))
 
 
 def load_report(path: Path) -> DuplicationReport:
@@ -119,18 +119,29 @@ def load_report(path: Path) -> DuplicationReport:
 
 def evaluate_duplication(report: DuplicationReport, baseline: DuplicationBaseline) -> GateResult:
     ceiling = baseline.percentage
-    if report.percentage <= ceiling + DUPLICATION_EPSILON:
+    if report.percentage <= ceiling:
         return GateResult(exit_code=0, diagnostics=())
     diagnostics: list[Diagnostic] = []
     if report.duplicates:
         for clone in report.duplicates:
+            message = (
+                f"{clone.first_file}:{clone.first_line} / {clone.second_file}:{clone.second_line} "
+                f"({clone.lines} duplicated lines)"
+            )
             diagnostics.append(
                 Diagnostic(
                     title="Duplication regression",
-                    message=(
-                        f"{clone.first_file}:{clone.first_line} / {clone.second_file}:{clone.second_line} "
-                        f"({clone.lines} duplicated lines)"
-                    ),
+                    message=message,
+                    file=clone.first_file,
+                    line=clone.first_line,
+                )
+            )
+            diagnostics.append(
+                Diagnostic(
+                    title="Duplication regression",
+                    message=message,
+                    file=clone.second_file,
+                    line=clone.second_line,
                 )
             )
     else:
