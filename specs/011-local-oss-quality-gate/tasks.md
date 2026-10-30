@@ -101,7 +101,7 @@ These were found while generating the tasks. Resolve them explicitly; do not sil
 
 ## Phase 3: User Story 1 — Deterministic Reliability Gate (Priority: P1) 🎯 MVP
 
-**Goal**: enable Roslyn analyzers with warnings-as-errors on both projects, remediate/suppress the pre-existing diagnostics, and prove that a deliberate defect fails the build with file and line.
+**Goal**: enable Roslyn analyzers with warnings-as-errors on both projects, remediate/suppress the pre-existing diagnostics, and prove that a deliberate defect fails the build with file and line. No runnable game code changes are made in this feature, so Gate 3 (E2E) is N/A; any task that touches runnable code must trigger Gate 3.
 
 **Independent Test**: `dotnet build Stardew-LivingRoots.sln -c Release` passes clean; `scripts/quality-gate/analyzer-probe.sh` exits 0 and prints `PASS` after both probe builds fail with `__AnalyzerGateProbe.cs(<line>,<column>)` and a rule ID; no global `NoWarn`.
 
@@ -167,7 +167,7 @@ These were found while generating the tasks. Resolve them explicitly; do not sil
 **Purpose**: documentation, update automation, and the SonarCloud rollout/removal checklist.
 
 - [ ] T049 [P] Add `docs/quality-gate.md` with: local usage, the action pin policy (third-party actions by full commit SHA, first-party actions by major tag), per-job timeouts, suppression policy (targeted, justified, never global `NoWarn`), baseline ratchet policy, fork-PR behavior, token requirements, the Trivy database refresh policy (downloaded per run; the DB timestamp is recorded in T062's `trivy-clean.log`; CLI version `v0.76.1`), and the SonarCloud 2–4 week parallel-run/removal timeline. File: `docs/quality-gate.md`
-- [ ] T050 [P] Update `AGENTS.md`: list all workflows, add the Quality Gate row, document `BUILDDEPS_TOKEN` for the build-analysis job, correct the stale “two workflows” and “Build and Test dormant” statements, and link `docs/quality-gate.md`; also correct the `Build and Test` assumption in `specs/011-local-oss-quality-gate/spec.md`. Files: `AGENTS.md`, `specs/011-local-oss-quality-gate/spec.md`
+- [ ] T050 [P] Update `AGENTS.md`: list all workflows, add the Quality Gate row, document `BUILDDEPS_TOKEN` for the build-analysis job, correct the stale “two workflows” and “Build and Test dormant” statements, and link `docs/quality-gate.md`. The `Build and Test` dormancy correction in `spec.md` was already applied during `/speckit.analyze`; do not edit `spec.md` here. Files: `AGENTS.md`
 - [ ] T051 [P] Update `README.md` with a short “Quality” section linking `docs/quality-gate.md`; state that the gate is local/OSS/free and has no SonarCloud dependency. File: `README.md`
 - [ ] T052 [P] Add `.github/dependabot.yml` for `github-actions`, `nuget`, and `pip` with a weekly schedule, grouped updates, and `open-pull-requests-limit: 5`. Use `directory: /` for `github-actions` and `nuget`, `directory: /scripts/quality-gate` for `pip`, and one `groups` entry per ecosystem with `patterns: ["*"]`. File: `.github/dependabot.yml`
 - [ ] T053 [P] Create `specs/011-local-oss-quality-gate/sonarcloud-removal-checklist.md`: rollout start date, the required 2–4 weeks of green `Quality Gate` runs, the green-run criteria from FR-010, the parity checklist for reliability/security/maintainability/duplication/coverage, and the removal steps (disable the SonarCloud GitHub app/check, remove `.vscode` SonarLint connected mode, update docs). Record the accepted parity gap explicitly: Semgrep CE `p/csharp` currently runs 6 rules and is the fast per-PR gate; CodeQL `build-mode: none` is the scheduled deep scan; neither provides SonarCloud’s new-code hotspots or maintainability rating; Semgrep/Trivy scan the whole scope rather than new code. Explicitly state that SonarCloud is NOT removed by this feature. File: `specs/011-local-oss-quality-gate/sonarcloud-removal-checklist.md`
@@ -206,7 +206,7 @@ These were found while generating the tasks. Resolve them explicitly; do not sil
 ### Phase Dependencies
 
 - **Phase 1 (T001–T008)** — no dependencies; T001/T002 scaffold .NET files, T003–T007 prepare Python tooling, T008 records the pre-change build.
-- **Phase 2 (T009–T018)** — depends on Phase 1. T009 first (it creates `.conftest`); T010–T013 in parallel after T009; T014–T015 in parallel; T016 independent; T017 after all; T018 is the blocking fresh-context review.
+- **Phase 2 (T009–T018)** — depends on Phase 1. T009 first (it creates `conftest.py`); T010–T013 in parallel after T009; T014–T015 in parallel; T016 independent; T017 after all; T018 is the blocking fresh-context review.
 - **Phase 3 / US1 (T019–T026)** — depends on T018. T019 → T020 → (T021 ∥ T022) → T023 → T024 → T025 → T026.
 - **Phase 4 / US2 (T027–T036)** — depends on T018. T027 and T029 are parallel after T018; T028 depends on T019 and T024; T030/T031 depend on T029; T032 depends on T029–T031; T033–T036 close the story.
 - **Phase 5 / US3 (T037–T048)** — depends on T018. T037 first; T038/T039 after T027 and T037; T040 depends on all three; then T043 → T044 → T042 → T041 → T045 → T046; T041 also requires T028 (lock files), T029–T031 (workflow skeleton), and T040 (CLI); T047/T048 close the story.
