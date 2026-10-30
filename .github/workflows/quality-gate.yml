@@ -28,10 +28,10 @@ jobs:
     env:
       PYTHONPATH: scripts/quality-gate
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -82,7 +82,7 @@ jobs:
         run: python -m quality_gate duplication --report jscpd-report/jscpd-report.json --baseline .jscpd-baseline.json
 
       - name: Upload jscpd report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jscpd-report
           path: jscpd-report
@@ -96,10 +96,10 @@ jobs:
     env:
       PYTHONPATH: scripts/quality-gate
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -131,7 +131,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: CodeQL init
         uses: github/codeql-action/init@v4
@@ -180,10 +180,10 @@ jobs:
       BUILDDEPS_ASSET: gamepath.zip
       PYTHONPATH: scripts/quality-gate
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
 
@@ -245,7 +245,7 @@ jobs:
         run: python -m quality_gate coverage --summary coverage-report/Summary.json --baseline .coverage-baseline
 
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage-report

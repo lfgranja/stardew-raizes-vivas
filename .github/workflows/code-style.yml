@@ -24,10 +24,10 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
 
             - name: Setup .NET
-              uses: actions/setup-dotnet@v4
+              uses: actions/setup-dotnet@v6
               with:
                   # Pinned to the SDK used for local development. Keeping CI on the same major
                   # as the local toolchain keeps `dotnet format` verdicts identical in both places.
