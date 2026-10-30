@@ -2,7 +2,7 @@
 
 **Feature**: 011-local-oss-quality-gate
 **Date**: 2026-10-29
-**Commit at capture**: `cf1b768` (refreshed evidence after the third-review remediation; the original capture was `38e7fa7`)
+**Commit at capture**: `fae12c0` (refreshed evidence after the fourth-review remediation; the original capture was `38e7fa7`)
 
 ## Scope
 
