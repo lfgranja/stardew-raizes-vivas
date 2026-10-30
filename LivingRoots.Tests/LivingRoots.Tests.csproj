@@ -10,6 +10,7 @@
     <EnableModDeploy>false</EnableModDeploy>
     <EnableModZip>false</EnableModZip>
     <BundleExtraAssemblies>All</BundleExtraAssemblies>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <SuppressTfmSupportBuildErrors>true</SuppressTfmSupportBuildErrors>
     <RollForward>Major</RollForward>
