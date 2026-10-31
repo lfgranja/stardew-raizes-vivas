@@ -288,7 +288,8 @@ namespace LivingRoots
                         Category = ModConstants.CompostCategoryId,
                         Price = 5,
                         Texture = "Mods/lfgranja.LivingRoots/Mulch",
-                        SpriteIndex = 0
+                        SpriteIndex = 0,
+                        ContextTags = new List<string> { ModConstants.MulchTag, "compostable_item" }
                     };
                 });
             }

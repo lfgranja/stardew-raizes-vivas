@@ -109,11 +109,11 @@ public class SoilDecayService(
                 {
                     var tile = kvp.Key;
 
-                    // T007 (spec 013): mulched tiles are protected — skip decay.
+                    // T007 (spec 013): mulched tiles are protected — decay *= MulchDecayMultiplier (0f).
+                    float tileDecayAmount = decayAmount;
                     if (_mulchService != null && _mulchService.IsMulched(locationName, tile))
                     {
-                        tilesProcessed++;
-                        continue;
+                        tileDecayAmount = ModConstants.DailyDecayRate * ModConstants.MulchDecayMultiplier * multiplier;
                     }
 
                     var currentHealth = _soilHealthService.GetSoilHealth(locationName, tile);
@@ -121,7 +121,7 @@ public class SoilDecayService(
                     {
                         currentHealth = 0f;
                     }
-                    var newHealth = Math.Max(currentHealth - decayAmount, 0f);
+                    var newHealth = Math.Max(currentHealth - tileDecayAmount, 0f);
                     var actualDecay = currentHealth - newHealth;
                     if (actualDecay > 0f)
                     {
