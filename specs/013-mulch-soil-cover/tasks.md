@@ -153,9 +153,9 @@
 - [x] T041 Run `dotnet test Stardew-LivingRoots.sln -c Release --no-build` → 0 failures, baseline 1436+ tests pass. Save to `specs/013-mulch-soil-cover/verification/test.log`. File: `specs/013-mulch-soil-cover/verification/test.log`
 - [x] T042 Run `dotnet format Stardew-LivingRoots.sln --verify-no-changes` → clean. Save to `specs/013-mulch-soil-cover/verification/format.log`. File: `specs/013-mulch-soil-cover/verification/format.log`
 - [x] T043 Run `bash scripts/quality-gate/analyzer-probe.sh` → PASS. Save to `specs/013-mulch-soil-cover/verification/analyzer-probe.log`. File: `specs/013-mulch-soil-cover/verification/analyzer-probe.log`
-- [ ] T044 Verify all FR-001..FR-020 and SC-001..SC-011 are satisfied (manual checklist review). File: `specs/013-mulch-soil-cover/verification.md`
-- [ ] T045 Verify quickstart.md scenarios 1-10 pass (manual or automated). File: `specs/013-mulch-soil-cover/verification/quickstart.log`
-- [ ] T046 Run atomic-commit audit: `git log --oneline --no-merges` for implementation commits; verify format. File: `specs/013-mulch-soil-cover/verification/commit-audit.log`
+- [x] T044 Verify all FR-001..FR-020 and SC-001..SC-011 are satisfied (manual checklist review). File: `specs/013-mulch-soil-cover/verification.md`
+- [x] T045 Verify quickstart.md scenarios 1-10 pass (manual or automated). File: `specs/013-mulch-soil-cover/verification/quickstart.log`
+- [x] T046 Run atomic-commit audit: `git log --oneline --no-merges` for implementation commits; verify format. File: `specs/013-mulch-soil-cover/verification/commit-audit.log`
 
 ---
 

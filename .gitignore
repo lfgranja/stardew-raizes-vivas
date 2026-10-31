@@ -149,6 +149,7 @@ __pycache__/
 # Keep the raw baseline evidence committed despite the coverage*.xml/json rules
 !specs/011-local-oss-quality-gate/baseline/**/*.xml
 !specs/011-local-oss-quality-gate/baseline/**/*.json
+!specs/013-mulch-soil-cover/verification/**/*.log
 
 # Visual Studio code coverage results
 *.coverage
