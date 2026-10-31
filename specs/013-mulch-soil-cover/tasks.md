@@ -94,14 +94,14 @@
 
 ### Tests for User Story 2 (RED — write first, must FAIL before implementation)
 
-- [ ] T022 [P] [US2] Test: `Data/Objects` contains `LivingRoots_Mulch` with Category −26 and ContextTags `{"mulch_item", "compostable_item"}`. File: `LivingRoots.Tests/MulchDataTests.cs`
-- [ ] T023 [P] [US2] Test: crafting recipe `LivingRoots_MulchRecipe` is parseable in legacy format and produces 1 mulch from 10 fiber. File: `LivingRoots.Tests/MulchDataTests.cs`
-- [ ] T024 [P] [US2] Test: recipe is available on day 1 (no Elena dependency for craftable path). File: `LivingRoots.Tests/MulchDataTests.cs`
+- [x] T022 [P] [US2] Test: `Data/Objects` contains `LivingRoots_Mulch` with Category −26 and ContextTags `{"mulch_item", "compostable_item"}`. File: `LivingRoots.Tests/MulchDataTests.cs`
+- [x] T023 [P] [US2] Test: crafting recipe `LivingRoots_MulchRecipe` is parseable in legacy format and produces 1 mulch from 10 fiber. File: `LivingRoots.Tests/MulchDataTests.cs`
+- [x] T024 [P] [US2] Test: recipe is available on day 1 (no Elena dependency for craftable path). File: `LivingRoots.Tests/MulchDataTests.cs`
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Verify `Data/Objects` and `Data/CraftingRecipes` registration via `ModEntry.OnAssetRequested` (done in T004). Confirm `mulch.png` sprite loads. File: `LivingRoots/ModEntry.cs`
-- [ ] T026 [US2] Verify i18n keys resolve in both `en.json` and `default.json`. File: `LivingRoots/i18n/en.json`, `LivingRoots/i18n/default.json`
+- [x] T025 [US2] Verify `Data/Objects` and `Data/CraftingRecipes` registration via `ModEntry.OnAssetRequested` (done in T004). Confirm `mulch.png` sprite loads. File: `LivingRoots/ModEntry.cs`
+- [x] T026 [US2] Verify i18n keys resolve in both `en.json` and `default.json`. File: `LivingRoots/i18n/en.json`, `LivingRoots/i18n/default.json`
 
 **Checkpoint**: User Story 2 complete. Mulch craftable day 1 with fiber.
 
