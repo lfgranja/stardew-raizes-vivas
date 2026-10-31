@@ -12,6 +12,12 @@
 
 ### Session 2026-10-30
 
+- Q: Does mulch's decay protection interact with the seasonal multiplier (Spring 0.5×, Summer 1.5×)? → A: Mulch fully overrides season — `decay = DailyDecayRate × MulchDecayMultiplier(0f) × SeasonalMultiplier` = 0 regardless of season. Implementation must decrement mulch days outside the Winter early-return guard in `SoilDecayService` (which skips the tile loop when multiplier is 0) to ensure expiry is day-based, not season-based.
+- Q: Can mulch be applied to a tile with a growing crop? → A: Yes. A planted tile's terrain is still `HoeDirt`, so it passes the tilled check (mirroring `CompostApplicationService`). Mulch wraps the crop (dotted border overlay). No crop-presence guard.
+- Q: Can compost and mulch coexist on the same tile? → A: Yes. They are complementary (compost = restore health, mulch = prevent decay). No mutual exclusion. Overlay: health color base + mulch tint/pattern layered on top.
+- Q: Can the player remove mulch manually (beyond re-tilling)? → A: No manual removal in Y1. Auto-expiry (7 days) is the primary path; re-tilling (pickaxe ×2, vanilla precedent) removes mulch on bare tiles. Scythe-based removal deferred to a later pass.
+- Q: Does mulch provide a soil health boost, or only prevent decay? → A: Pure protection only (`decay *= 0`). No health boost. Compost remains the sole health-recovery path (build → protect → harvest separation). Decomposition bonus deferred to a later pass.
+
 - Q: MulchDecayMultiplier value (0f vs 0.25f)? → A: 0f for Y1 (full protection), subject to playtesting; partial protection (0.25f) deferred to a balance pass.
 - Q: Elena dependency (shop sale)? → A: Shop sale criterion deferred; craftable recipe (fiber ×10) is the primary path. Elena shop sale is a non-blocking acceptance criterion.
 - Q: Asset creation? → A: `mulch.png` 16×16 must be created; placeholder viable with specified colors (#92400E/#A16207/#78716C) until artist is available.
@@ -67,7 +73,9 @@ As a farmer, I want to see which tiles are mulched, so that I can manage my soil
 
 ### Edge Cases
 
-- What happens when mulch is applied to a tile with an existing plant? → Mulch applies to tilled soil; if a plant is present, mulch surrounds it (dotted border indicator).
+- What happens when mulch is applied to a tile with an existing plant? → Mulch applies to tilled soil; if a plant is present, mulch surrounds it (dotted border indicator). A planted tile's terrain is still `HoeDirt`, so it passes the tilled check (mirroring compost top-dressing).
+- What happens when mulch and compost are applied to the same tile? → Both coexist. Compost restores health (+15), mulch prevents decay (×0). No mutual exclusion. Overlay: health color base + mulch tint/pattern layered on top.
+- What happens when mulch is applied during Summer (1.5× seasonal decay)? → Mulch fully protects regardless of season (0 × 1.5 = 0). Expiry countdown is day-based, not season-based (must run outside the Winter early-return guard in `SoilDecayService`).
 - What happens when the player re-applies mulch before expiry? → `message.mulch.already` shown; no consumption, no reset.
 - What happens when mulch expires during a season transition? → Mulch persists across seasons (rain doesn't remove); expiry is day-based, not season-based.
 - What happens when the tile is tilled again while mulched? → Mulch is removed (re-tilling clears the tile state).
@@ -126,9 +134,14 @@ As a farmer, I want to see which tiles are mulched, so that I can manage my soil
 - Target users are Stardew Valley players using Living Roots who leave tiles fallow between crops.
 - Mobile support is not in scope (Stardew Valley is PC-focused).
 - The existing authentication/permission system (SMAPI multiplayer) will be reused for host-authority guards.
-- `MulchDecayMultiplier = 0f` for Y1; partial protection (0.25f) is deferred to a balance pass if playtesting shows 0f is overpowered.
+- `MulchDecayMultiplier = 0f` for Y1 (full protection); partial protection (0.25f) deferred to balance pass if playtesting shows 0f is overpowered. Seasonal multiplier does not modulate mulch protection (0 × seasonal = 0).
 - Elena NPC is not implemented; the shop sale criterion is deferred. The craftable recipe (fiber ×10) is the primary acquisition path.
-- The `mulch.png` sprite will be created with the specified colors; a placeholder is acceptable for development.
+- The `mulch.png` sprite (16×16) will be created with specified colors (#92400E/#A16207/#78716C); a placeholder is acceptable for development.
 - Existing soil health system (spec 001, 002, 005) is fully functional and will be reused.
-- `ModDataService` sparse cache pattern (zeros omitted) will be reused for mulch state persistence.
+- `ModDataService` sparse cache pattern (zeros omitted) will be reused for mulch state persistence (`HasMulch` + `DaysRemaining`).
 - `GamePath` is set for local dev; CI `build-analysis` job materialises build-deps via `BUILDDEPS_TOKEN`.
+- Mulch does NOT provide a soil health boost — pure protection only. Compost remains the sole health-recovery path.
+- Mulch can be applied to planted tiles (terrain is still `HoeDirt`); no crop-presence guard.
+- Mulch and compost coexist on the same tile (complementary: restore + protect).
+- Mulch removal in Y1: auto-expiry (7 days) + re-tilling (pickaxe ×2, vanilla precedent). No manual removal tool.
+- Overlay: health color base + mulch tint/pattern layered on top, with dotted border for mulch+plant.
