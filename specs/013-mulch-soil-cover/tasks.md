@@ -48,11 +48,11 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 [P] Create `IMulchApplicationService` interface in `LivingRoots/Domain/Interfaces/IMulchApplicationService.cs` with method `bool TryApplyMulch(Farmer who, HoeDirt hoeDirt, GameLocation location, out string messageKey)`. Follow DDD: interface in Domain. File: `LivingRoots/Domain/Interfaces/IMulchApplicationService.cs`
-- [ ] T006 [P] Create `MulchTileState` (HasMulch bool + DaysRemaining int) as a separate model in `LivingRoots/Domain/Models/MulchTileState.cs` (per data-model.md, NOT overloading `SoilHealthState`). Persisted via `ModDataService` with `mulch_state_` key prefix (sparse cache — omit defaults). State must be stored for ALL tilled tiles including planted ones (mulch+plant dotted border). File: `LivingRoots/Domain/Models/MulchTileState.cs`
-- [ ] T007 Modify `SoilDecayService.ProcessDayStart` to check `tile.HasMulch` → `decay *= ModConstants.MulchDecayMultiplier (0f)`. **CRITICAL**: mulch day-countdown must run **outside** the Winter early-return guard (`if (multiplier == 0f) return;`) so expiry is day-based, not season-based. Decrement `DaysRemaining` each day; when 0, set `HasMulch = false`. File: `LivingRoots/Services/SoilDecayService.cs`
+- [x] T005 [P] Create `IMulchApplicationService` interface in `LivingRoots/Domain/Interfaces/IMulchApplicationService.cs` with method `bool TryApplyMulch(Farmer who, HoeDirt hoeDirt, GameLocation location, out string messageKey)`. Follow DDD: interface in Domain. File: `LivingRoots/Domain/Interfaces/IMulchApplicationService.cs`
+- [x] T006 [P] Create `MulchTileState` (HasMulch bool + DaysRemaining int) as a separate model in `LivingRoots/Domain/Models/MulchTileState.cs` (per data-model.md, NOT overloading `SoilHealthState`). Persisted via `ModDataService` with `mulch_state_` key prefix (sparse cache — omit defaults). State must be stored for ALL tilled tiles including planted ones (mulch+plant dotted border). File: `LivingRoots/Domain/Models/MulchTileState.cs`
+- [x] T007 Modify `SoilDecayService.ProcessDayStart` to check `tile.HasMulch` → `decay *= ModConstants.MulchDecayMultiplier (0f)`. **CRITICAL**: mulch day-countdown must run **outside** the Winter early-return guard (`if (multiplier == 0f) return;`) so expiry is day-based, not season-based. Decrement `DaysRemaining` each day; when 0, set `HasMulch = false`. File: `LivingRoots/Services/SoilDecayService.cs`
 - [ ] T008 Add `MulchColor` and `MulchTag` consumption in `VisualizationService` / `OverlayRenderer` — render mulched tiles with brown tint (MulchColor) at 0.5 opacity (DefaultOpacity) + `Dots` pattern. Composite render order: health color base → mulch tint/pattern → dotted border for mulch+plant. File: `LivingRoots/Services/Visualization/OverlayRenderer.cs`
-- [ ] T009 [P] Declare `IMulchApplicationService` dependency in `ModEntry.cs` (interface only, no instantiation — instantiation deferred to T019 after impl exists). File: `LivingRoots/ModEntry.cs`
+- [x] T009 [P] Declare `IMulchApplicationService` dependency in `ModEntry.cs` (interface only, no instantiation — instantiation deferred to T019 after impl exists). File: `LivingRoots/ModEntry.cs`
 
 **Checkpoint**: Foundation ready — user story implementation can now begin.
 
@@ -78,9 +78,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T019 [US1] Implement `MulchApplicationService` in `LivingRoots/Services/MulchApplicationService.cs`: validate `HoeDirt` terrain (no crop check), check `HasMulch` (already → `message.mulch.already`), check non-tilled (→ `message.mulch.invalid-tile`), set `HasMulch = true` + `DaysRemaining = MulchDurationDays`, consume 1 mulch from inventory, host-authoritative guard (`Context.IsMainPlayer`), `ExecuteWithConcurrencyGuard`. Wire vanilla sound `hoeHit` or `sandyStep` on successful apply. Follow `CompostApplicationService` pattern. File: `LivingRoots/Services/MulchApplicationService.cs`
-- [ ] T020 [US1] Hook mulch application in `ModController.OnButtonPressed` (right-click with mulch item), following compost pattern at `ModController.cs:845`. Guard with `ExecuteWithConcurrencyGuard`. Wire `IMulchApplicationService` instantiation in `ModEntry.cs` (move from T009 now that impl exists). File: `LivingRoots/Controllers/ModController.cs`, `LivingRoots/ModEntry.cs`
-- [ ] T021 [US1] Ensure `SoilDecayService` decrements `DaysRemaining` outside Winter early-return guard. File: `LivingRoots/Services/SoilDecayService.cs`
+- [x] T019 [US1] Implement `MulchApplicationService` in `LivingRoots/Services/MulchApplicationService.cs`: validate `HoeDirt` terrain (no crop check), check `HasMulch` (already → `message.mulch.already`), check non-tilled (→ `message.mulch.invalid-tile`), set `HasMulch = true` + `DaysRemaining = MulchDurationDays`, consume 1 mulch from inventory, host-authoritative guard (`Context.IsMainPlayer`), `ExecuteWithConcurrencyGuard`. Wire vanilla sound `hoeHit` or `sandyStep` on successful apply. Follow `CompostApplicationService` pattern. File: `LivingRoots/Services/MulchApplicationService.cs`
+- [x] T020 [US1] Hook mulch application in `ModController.OnButtonPressed` (right-click with mulch item), following compost pattern at `ModController.cs:845`. Guard with `ExecuteWithConcurrencyGuard`. Wire `IMulchApplicationService` instantiation in `ModEntry.cs` (move from T009 now that impl exists). File: `LivingRoots/Controllers/ModController.cs`, `LivingRoots/ModEntry.cs`
+- [x] T021 [US1] Ensure `SoilDecayService` decrements `DaysRemaining` outside Winter early-return guard. File: `LivingRoots/Services/SoilDecayService.cs`
 
 **Checkpoint**: User Story 1 fully functional and testable independently. Mulch protects soil for 7 days.
 
