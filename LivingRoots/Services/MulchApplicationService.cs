@@ -24,6 +24,7 @@ public class MulchApplicationService(
     private readonly Dictionary<string, Dictionary<Point, MulchTileEntry>> _runtimeCache = new();
     private readonly object _lock = new();
     private volatile bool _loadAbortedForLimits;
+    private int _mulchVersion;
 
     public void LoadData(string saveId)
     {
@@ -134,11 +135,17 @@ public class MulchApplicationService(
         }
     }
 
+    public int MulchVersion
+    {
+        get { lock (_lock) { return _mulchVersion; } }
+    }
+
     public void Reset()
     {
         lock (_lock)
         {
             _runtimeCache.Clear();
+            _mulchVersion = 0;
         }
         _loadAbortedForLimits = false;
     }
@@ -169,6 +176,7 @@ public class MulchApplicationService(
                 if (tileDict.TryGetValue(point, out var state) && state.HasMulch)
                 {
                     state.DaysRemaining--;
+                    _mulchVersion++;
                     if (state.DaysRemaining <= 0)
                     {
                         state.HasMulch = false;
@@ -236,6 +244,7 @@ public class MulchApplicationService(
                 HasMulch = true,
                 DaysRemaining = ModConstants.MulchDurationDays
             };
+            _mulchVersion++;
         }
 
         heldItem.Stack--;

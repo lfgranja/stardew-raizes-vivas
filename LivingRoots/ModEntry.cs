@@ -128,7 +128,7 @@ namespace LivingRoots
             var colorInterpolationService = new ColorInterpolationService();
             var visualizationConfigService = new VisualizationConfigurationService(modDataService, this.Monitor, fileNameSanitizationService);
             var hudNotifier = new HudNotifier();
-            var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor, hudNotifier);
+            var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor, hudNotifier, mulchService: mulchApplicationService);
 
             // Wire reactive cache invalidation upon soil health change (T036, FR-010).
             // T137 (FR-012): a stored named handler rather than an anonymous

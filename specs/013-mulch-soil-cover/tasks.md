@@ -51,7 +51,7 @@
 - [x] T005 [P] Create `IMulchApplicationService` interface in `LivingRoots/Domain/Interfaces/IMulchApplicationService.cs` with method `bool TryApplyMulch(Farmer who, HoeDirt hoeDirt, GameLocation location, out string messageKey)`. Follow DDD: interface in Domain. File: `LivingRoots/Domain/Interfaces/IMulchApplicationService.cs`
 - [x] T006 [P] Create `MulchTileState` (HasMulch bool + DaysRemaining int) as a separate model in `LivingRoots/Domain/Models/MulchTileState.cs` (per data-model.md, NOT overloading `SoilHealthState`). Persisted via `ModDataService` with `mulch_state_` key prefix (sparse cache — omit defaults). State must be stored for ALL tilled tiles including planted ones (mulch+plant dotted border). File: `LivingRoots/Domain/Models/MulchTileState.cs`
 - [x] T007 Modify `SoilDecayService.ProcessDayStart` to check `tile.HasMulch` → `decay *= ModConstants.MulchDecayMultiplier (0f)`. **CRITICAL**: mulch day-countdown must run **outside** the Winter early-return guard (`if (multiplier == 0f) return;`) so expiry is day-based, not season-based. Decrement `DaysRemaining` each day; when 0, set `HasMulch = false`. File: `LivingRoots/Services/SoilDecayService.cs`
-- [ ] T008 Add `MulchColor` and `MulchTag` consumption in `VisualizationService` / `OverlayRenderer` — render mulched tiles with brown tint (MulchColor) at 0.5 opacity (DefaultOpacity) + `Dots` pattern. Composite render order: health color base → mulch tint/pattern → dotted border for mulch+plant. File: `LivingRoots/Services/Visualization/OverlayRenderer.cs`
+- [x] T008 Add `MulchColor` and `MulchTag` consumption in `VisualizationService` / `OverlayRenderer` — render mulched tiles with brown tint (MulchColor) at 0.5 opacity (DefaultOpacity) + `Dots` pattern. Composite render order: health color base → mulch tint/pattern → dotted border for mulch+plant. File: `LivingRoots/Services/Visualization/OverlayRenderer.cs`
 - [x] T009 [P] Declare `IMulchApplicationService` dependency in `ModEntry.cs` (interface only, no instantiation — instantiation deferred to T019 after impl exists). File: `LivingRoots/ModEntry.cs`
 
 **Checkpoint**: Foundation ready — user story implementation can now begin.
@@ -122,7 +122,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T031 [US3] Implement mulch overlay in `OverlayRenderer`: apply `MulchColor` tint at `DefaultOpacity` (0.5) + `Dots` pattern when `tile.HasMulch`. Composite with health color base and crop indicator (dotted border). **Depends on T008** (foundational overlay capability must exist first — sequential, not parallel). File: `LivingRoots/Services/Visualization/OverlayRenderer.cs`
+- [x] T031 [US3] Implement mulch overlay in `OverlayRenderer`: apply `MulchColor` tint at `DefaultOpacity` (0.5) + `Dots` pattern when `tile.HasMulch`. Composite with health color base and crop indicator (dotted border). **Depends on T008** (foundational overlay capability must exist first — sequential, not parallel). File: `LivingRoots/Services/Visualization/OverlayRenderer.cs`
 - [ ] T032 [US3] Verify overlay z-order does not conflict with spec 001 health overlays (manual visual check). File: `LivingRoots/Services/Visualization/OverlayRenderer.cs`
 
 **Checkpoint**: User Story 3 complete. Mulched tiles visually distinct.

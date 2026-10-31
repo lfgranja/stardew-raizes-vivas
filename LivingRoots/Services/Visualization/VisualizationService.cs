@@ -1,5 +1,6 @@
 using System.Globalization;
 using LivingRoots.Domain;
+using LivingRoots.Domain.Interfaces;
 using LivingRoots.Domain.Visualization;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -18,7 +19,8 @@ namespace LivingRoots.Services.Visualization
         IColorInterpolationService colorService,
         IVisualizationConfigurationService configService,
         IMonitor monitor,
-        IHudNotifier hudNotifier) : IVisualizationService
+        IHudNotifier hudNotifier,
+        IMulchApplicationService? mulchService = null) : IVisualizationService
     {
         private readonly IColorInterpolationService _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
         private readonly IVisualizationConfigurationService _configService = configService ?? throw new ArgumentNullException(nameof(configService));
@@ -76,7 +78,7 @@ namespace LivingRoots.Services.Visualization
         private readonly PerScreen<TooltipRenderer> _tooltipRenderer = new(() => new TooltipRenderer(configService, monitor, colorService));
 
         // Overlay renderer for computing visible tile overlays
-        private readonly OverlayRenderer _overlayRenderer = new(colorService, configService, monitor, hudNotifier);
+        private readonly OverlayRenderer _overlayRenderer = new(colorService, configService, monitor, hudNotifier, mulchService);
 
         // Hoe feedback renderer for the flash and floating-text
         // effects (T129): the live path draws both effects through
@@ -208,7 +210,8 @@ namespace LivingRoots.Services.Visualization
 
             // Get overlays with viewport culling and caching (FR-009, FR-010),
             // clamped to the map bounds when the caller supplies them (FR-018)
-            var overlays = _overlayRenderer.GetOverlays(viewport, dataSnapshot, mapBounds);
+            var locationName = StardewValley.Game1.currentLocation?.Name;
+            var overlays = _overlayRenderer.GetOverlays(viewport, dataSnapshot, mapBounds, locationName);
 
             if (overlays.Count == 0)
             {

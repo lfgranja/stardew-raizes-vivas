@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using LivingRoots;
 using LivingRoots.Domain;
+using LivingRoots.Domain.Interfaces;
 using LivingRoots.Domain.Visualization;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
@@ -39,11 +41,13 @@ namespace LivingRoots.Services.Visualization
         IColorInterpolationService colorService,
         IVisualizationConfigurationService configService,
         IMonitor monitor,
-        IHudNotifier hudNotifier)
+        IHudNotifier hudNotifier,
+        IMulchApplicationService? mulchService = null)
     {
         private readonly IColorInterpolationService _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));
         private readonly IVisualizationConfigurationService _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+        private readonly IMulchApplicationService? _mulchService = mulchService;
 
         // Player-facing HUD toast sink (FR-009). Required since T084:
         // a missing notifier is a compile-time error, so the FR-009
@@ -76,6 +80,9 @@ namespace LivingRoots.Services.Visualization
         // so the next frame serves the new color without a
         // camera move or manual refresh.
         private readonly PerScreen<ColorDTO> _cachedUnknownColor = new();
+        // Spec 013: mulch overlay cache key components.
+        private readonly PerScreen<string?> _cachedLocationName = new();
+        private readonly PerScreen<int> _cachedMulchVersion = new();
 
         // Guards the compound cache check/store above. Held only around
         // the in-memory PerScreen reads and writes — never across I/O.
@@ -289,7 +296,8 @@ namespace LivingRoots.Services.Visualization
         public List<TileOverlay> GetOverlays(
             Rectangle viewport,
             Dictionary<Point, float> tileHealthData,
-            Rectangle? mapBounds = null)
+            Rectangle? mapBounds = null,
+            string? locationName = null)
         {
             // FR-021: zero tiles = no-op with minimal resource usage, no cache allocation
             if (tileHealthData == null || tileHealthData.Count == 0)
@@ -418,7 +426,9 @@ namespace LivingRoots.Services.Visualization
                     && ApproximatelyEqual(_cachedOpacity.Value, opacity)
                     && _cachedShowPatterns.Value == configuredShowPatterns
                     && string.Equals(_cachedDegradationMode.Value, degradationMode, StringComparison.Ordinal)
-                    && _cachedUnknownColor.Value == unknownColor)
+                    && _cachedUnknownColor.Value == unknownColor
+                    && string.Equals(_cachedLocationName.Value, locationName, StringComparison.Ordinal)
+                    && _cachedMulchVersion.Value == (_mulchService?.MulchVersion ?? 0))
                 {
                     return cachedOverlays;
                 }
@@ -539,7 +549,7 @@ namespace LivingRoots.Services.Visualization
             }
 
             // Build overlay list from visible tiles
-            var overlays = BuildOverlays(visibleTiles, opacity, showPatterns, unknownColor);
+            var overlays = BuildOverlays(visibleTiles, opacity, showPatterns, unknownColor, locationName);
 
             // Update cache (FR-010)
             lock (_cacheLock)
@@ -553,6 +563,8 @@ namespace LivingRoots.Services.Visualization
                 _cachedShowPatterns.Value = configuredShowPatterns;
                 _cachedDegradationMode.Value = degradationMode;
                 _cachedUnknownColor.Value = unknownColor;
+                _cachedLocationName.Value = locationName;
+                _cachedMulchVersion.Value = _mulchService?.MulchVersion ?? 0;
             }
 
             return overlays;
@@ -571,6 +583,8 @@ namespace LivingRoots.Services.Visualization
                 _cachedMapBounds.Value = null;
                 _cachedVisibleTiles.Value = null;
                 _cachedUnknownColor.Value = default;
+                _cachedLocationName.Value = null;
+                _cachedMulchVersion.Value = 0;
             }
             _monitor.Log("Overlay renderer cache invalidated.", LogLevel.Trace);
         }
@@ -703,7 +717,7 @@ namespace LivingRoots.Services.Visualization
         /// configuration.
         /// </summary>
         private List<TileOverlay> BuildOverlays(
-            List<KeyValuePair<Point, float>> visibleTiles, float opacity, bool showPatterns, ColorDTO unknownColor)
+            List<KeyValuePair<Point, float>> visibleTiles, float opacity, bool showPatterns, ColorDTO unknownColor, string? locationName)
         {
             var overlays = new List<TileOverlay>(visibleTiles.Count);
 
@@ -711,6 +725,22 @@ namespace LivingRoots.Services.Visualization
             {
                 var tilePos = kvp.Key;
                 var healthValue = kvp.Value;
+
+                // Spec 013: mulched tiles render a brown MulchColor tint
+                // with the Dots pattern (accessibility), regardless of
+                // health value. Checked before the health-0 skip so
+                // mulch shows on bare (health 0) tiles too.
+                if (_mulchService != null && !string.IsNullOrEmpty(locationName) &&
+                    _mulchService.IsMulched(locationName, new Vector2(tilePos.X, tilePos.Y)))
+                {
+                    var mulchColor = new Color(
+                        ModConstants.MulchColor.R,
+                        ModConstants.MulchColor.G,
+                        ModConstants.MulchColor.B,
+                        (byte)(opacity * 255f));
+                    overlays.Add(new TileOverlay(tilePos, mulchColor, PatternType.Dots, healthValue, HealthCategory.Unknown));
+                    continue;
+                }
 
                 // FR-014: render Unknown color when health data is unavailable
                 // (the producer supplies the non-finite sentinel for absent /
