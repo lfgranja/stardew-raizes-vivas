@@ -3,5 +3,9 @@
   "message.compost.max-health": "This soil is already at maximum health.",
   "message.compost.action-conflict": "Another player is already interacting with this tile.",
   "message.harvest.inventory-full": "Your inventory is full!",
-  "message.accessibility.patterns-hidden": "Accessibility patterns hidden: too many tiles are visible at once."
+  "message.accessibility.patterns-hidden": "Accessibility patterns hidden: too many tiles are visible at once.",
+  "mulch.name": "Mulch",
+  "mulch.description": "Dry cover that keeps tilled soil alive. Blocks decay and weeds.",
+  "message.mulch.invalid-tile": "Mulch can only be applied to tilled soil.",
+  "message.mulch.already": "This tile is already mulched."
 }
