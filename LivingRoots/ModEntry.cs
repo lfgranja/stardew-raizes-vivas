@@ -237,6 +237,8 @@ namespace LivingRoots
                     // is `default` so the recipe is learned on day one
                     // instead of requiring an unlock event.
                     data[ModConstants.CompostingBinRecipeId] = $"388 {ModConstants.CompostingBinWoodCost} 390 {ModConstants.CompostingBinStoneCost} 771 {ModConstants.CompostingBinFiberCost}/{ModConstants.CompostCraftingTab}/{ModConstants.CompostingBinItemId} 1/true/default/Composting Bin";
+                    // T004 (spec 013): mulch recipe — fiber x10 → 1 mulch, craftable day 1.
+                    data["LivingRoots_MulchRecipe"] = $"771 10/{ModConstants.CompostCraftingTab}/{ModConstants.MulchItemId} 1/false/default/Mulch";
                 });
             }
             else if (e.NameWithoutLocale.IsEquivalentTo("Data/Objects"))
@@ -274,6 +276,19 @@ namespace LivingRoots
                         Texture = ModConstants.CompostTextureAssetName,
                         SpriteIndex = 0
                     };
+                    // T004 (spec 013): mulch object — Category -26 (same as compost),
+                    // ContextTags mulch_item + compostable_item.
+                    data[ModConstants.MulchItemId] = new StardewValley.GameData.Objects.ObjectData
+                    {
+                        Name = "Mulch",
+                        DisplayName = "Mulch",
+                        Description = "Dry cover that keeps tilled soil alive. Blocks decay and weeds.",
+                        Type = "Crafting",
+                        Category = ModConstants.CompostCategoryId,
+                        Price = 5,
+                        Texture = "Mods/lfgranja.LivingRoots/Mulch",
+                        SpriteIndex = 0
+                    };
                 });
             }
             else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.CompostTextureAssetName))
@@ -292,6 +307,11 @@ namespace LivingRoots
                 // 32-bit RGBA PNG copied to the mod
                 // folder by the csproj.
                 e.LoadFromModFile<Texture2D>("Assets/compost.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Mods/lfgranja.LivingRoots/Mulch"))
+            {
+                // Spec 013: serve the mulch icon as a game asset.
+                e.LoadFromModFile<Texture2D>("Assets/mulch.png", AssetLoadPriority.Medium);
             }
             else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.CompostingBinTextureAssetName))
             {
