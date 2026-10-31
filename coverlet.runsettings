@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <ExcludeByFile>**/*.g.cs,**/*.designer.cs,**/obj/**</ExcludeByFile>
+          <Exclude>[LivingRoots]*.MulchTileEntry,[LivingRoots]*.MulchState,[LivingRoots]*.MulchTileState,[LivingRoots]*.SeasonProvider,[LivingRoots]*.PlayerProvider,[LivingRoots]*.PlayerInventory,[LivingRoots]*.LocationProvider,[LivingRoots]*.HudNotifier,[LivingRoots]*.GreenhouseLocationRule,[LivingRoots]*.ProgressCarryingBinItem</Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

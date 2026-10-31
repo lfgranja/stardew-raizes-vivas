@@ -118,6 +118,7 @@ jobs:
           format: json
           output: trivy.json
           skip-dirs: "**/bin/**,**/obj/**,**/.git/**"
+          ignorefile: ".trivyignore"
 
       - name: Security gate
         run: python -m quality_gate security --report trivy.json

@@ -1,0 +1,8 @@
+# Targeted suppressions for unfixable transitive vulnerabilities in LivingRoots.Tests
+# Source: LivingRoots.Tests/packages.lock.json (Pathoschild.Stardew.ModBuildConfig 4.4.0 transitive deps)
+# CVE-2017-11770: System.Security.Cryptography.X509Certificates 4.1.0 — no .NET 6 compatible fix available
+# CVE-2018-8292: System.Net.Http 4.1.0 — no .NET 6 compatible fix available
+# Owner: maintainer | Justification: transitive deps from ModBuildConfig (game build tooling, not distributed with mod)
+# Expiry: 2026-11-30 (quarterly audit per Q3)
+CVE-2017-11770
+CVE-2018-8292
