@@ -14,7 +14,7 @@ Stardew Valley agroecological mod (.NET 6 / C# latest) implementing soil health,
 .
 ├── LivingRoots/               # Mod entry point + composition root
 │   ├── ModEntry.cs            # Entry point, wires all dependencies
-│   ├── ModConstants.cs        # All magic numbers live here
+│   ├── Constants.cs           # All magic numbers live here (class ModConstants)
 │   ├── Controllers/           # SMAPI event handlers, thread-safe state machine
 │   ├── Domain/                # Business logic, interfaces, models
 │   │   ├── Interfaces/        # Service contracts (ICompostApplicationService, etc.)
@@ -36,7 +36,7 @@ Stardew Valley agroecological mod (.NET 6 / C# latest) implementing soil health,
 |------|----------|-------|
 | Add new game event handler | `LivingRoots/Controllers/ModController.cs` | Must use `ExecuteWithConcurrencyGuard` for re-entrancy |
 | Add new domain concept | `LivingRoots/Domain/` (interface) + `LivingRoots/Services/` (impl) | DDD pattern: interface in Domain, impl in Services |
-| Change soil health limits | `LivingRoots/ModConstants.cs` | No hardcoded values anywhere else |
+| Change soil health limits | `LivingRoots/Constants.cs` (`ModConstants` class) | No hardcoded values anywhere else |
 | Add console command | `ModController.RegisterConsoleCommand()` | Follow existing lock + flag pattern |
 | Add new rendering effect | `LivingRoots/Services/Visualization/` | Implement via `IVisualizationService` |
 | Thread-safe state | `ModController.cs` | Atomic flags + `Interlocked` operations |
@@ -53,7 +53,7 @@ Stardew Valley agroecological mod (.NET 6 / C# latest) implementing soil health,
 | `ModDataService` | Class | `LivingRoots/Services/ModDataService.cs` | SoilHealthService | SMAPI data persistence layer with sanitization |
 | `VisualizationService` | Class | `LivingRoots/Services/Visualization/VisualizationService.cs` | ModController | XNA render orchestrator: overlays, tooltips, hoe feedback |
 | `CompostingBinService` | Class | `LivingRoots/Services/CompostingBinService.cs` | ModController | Machine state machine: Empty→Processing→Ready |
-| `ModConstants` | Static | `LivingRoots/ModConstants.cs` | Everywhere | Single source of truth for all constants |
+| `ModConstants` | Static | `LivingRoots/Constants.cs` | Everywhere | Single source of truth for all constants |
 
 ## CONVENTIONS
 

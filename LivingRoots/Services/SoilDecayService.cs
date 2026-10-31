@@ -1,4 +1,5 @@
 using LivingRoots.Domain;
+using LivingRoots.Domain.Interfaces;
 using LivingRoots.Domain.Services;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
@@ -17,7 +18,8 @@ public class SoilDecayService(
     SeasonalDecayMultiplier seasonalDecayMultiplier,
     ISeasonProvider seasonProvider,
     ILocationProvider locationProvider,
-    ITimeProvider timeProvider) : ISoilDecayService
+    ITimeProvider timeProvider,
+    IMulchApplicationService? mulchService = null) : ISoilDecayService
 {
     private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
@@ -25,6 +27,7 @@ public class SoilDecayService(
     private readonly ISeasonProvider _seasonProvider = seasonProvider ?? throw new ArgumentNullException(nameof(seasonProvider));
     private readonly ILocationProvider _locationProvider = locationProvider ?? throw new ArgumentNullException(nameof(locationProvider));
     private readonly ITimeProvider _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    private readonly IMulchApplicationService? _mulchService = mulchService;
 
     // T068 (FR-013): the exactly-once-per-day guard
     // is keyed by (day, location) — the duplicate
@@ -60,20 +63,11 @@ public class SoilDecayService(
         var season = _seasonProvider.CurrentSeason.ToLowerInvariant();
         var multiplier = _seasonalDecayMultiplier.GetMultiplier(season);
 
-        if (multiplier == 0f)
-        {
-            _monitor.Log($"SoilDecay: Winter - no decay for {locationName}.", LogLevel.Trace);
-            return;
-        }
-
-        // T068 (FR-013): this location's day tick
-        // already ran today — a duplicate delivery,
-        // not a new day — so the decay walk (and
-        // its health updates) is skipped without
-        // recording a second pass. Recorded only
-        // when decay work is about to run, so a
-        // location that appears later on the same
-        // day is still processed.
+        // T007 (spec 013): mulch day-countdown must run every day
+        // (including Winter, where multiplier == 0 and the decay
+        // loop is skipped) so expiry is day-based, not season-based.
+        // Tick mulch for ALL hoeDirt tiles first, then apply decay
+        // only to bare, non-mulched tiles.
         var currentDay = _timeProvider.TotalDays;
         lock (_lock)
         {
@@ -85,6 +79,21 @@ public class SoilDecayService(
             }
 
             _lastProcessedDayByLocation[locationName] = currentDay;
+        }
+
+        // Tick mulch for all tilled tiles (including planted ones).
+        if (_mulchService != null)
+        {
+            foreach (var kvp in location.terrainFeatures.Pairs.Where(p => p.Value is HoeDirt))
+            {
+                _mulchService.TickMulch(locationName, kvp.Key);
+            }
+        }
+
+        if (multiplier == 0f)
+        {
+            _monitor.Log($"SoilDecay: Winter - no decay for {locationName}.", LogLevel.Trace);
+            return;
         }
 
         var decayAmount = ModConstants.DailyDecayRate * multiplier;
@@ -99,18 +108,20 @@ public class SoilDecayService(
                 if (isBare)
                 {
                     var tile = kvp.Key;
+
+                    // T007 (spec 013): mulched tiles are protected — decay *= MulchDecayMultiplier (0f).
+                    float tileDecayAmount = decayAmount;
+                    if (_mulchService != null && _mulchService.IsMulched(locationName, tile))
+                    {
+                        tileDecayAmount = ModConstants.DailyDecayRate * ModConstants.MulchDecayMultiplier * multiplier;
+                    }
+
                     var currentHealth = _soilHealthService.GetSoilHealth(locationName, tile);
-                    // FR-014: an absent record is the unknown sentinel (float.NaN) — "no
-                    // data", not a 0% reading. Resolve it to the same 0 baseline the
-                    // producer's UpdateHealth applies to an absent record, so the sentinel
-                    // never reaches the arithmetic: a NaN currentHealth would otherwise flow
-                    // into actualDecay and poison the health-lost accumulator — and the
-                    // day-start summary that reports it.
                     if (float.IsNaN(currentHealth))
                     {
                         currentHealth = 0f;
                     }
-                    var newHealth = Math.Max(currentHealth - decayAmount, 0f);
+                    var newHealth = Math.Max(currentHealth - tileDecayAmount, 0f);
                     var actualDecay = currentHealth - newHealth;
                     if (actualDecay > 0f)
                     {

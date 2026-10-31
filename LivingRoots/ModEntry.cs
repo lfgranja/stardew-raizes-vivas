@@ -118,16 +118,17 @@ namespace LivingRoots
             var locationProvider = new LocationProvider();
             var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, hostAtomicLockService: hostAtomicLockService, translationHelper: translationHelper);
             var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
+            var mulchApplicationService = new MulchApplicationService(modDataService, playerProvider, this.Monitor);
 
             // Create soil decay service
             var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
-            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider, timeProvider);
+            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider, timeProvider, mulchService: mulchApplicationService);
 
             // Create visualization services (F4 — DI wiring per Phase 9/10)
             var colorInterpolationService = new ColorInterpolationService();
             var visualizationConfigService = new VisualizationConfigurationService(modDataService, this.Monitor, fileNameSanitizationService);
             var hudNotifier = new HudNotifier();
-            var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor, hudNotifier);
+            var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor, hudNotifier, mulchService: mulchApplicationService);
 
             // Wire reactive cache invalidation upon soil health change (T036, FR-010).
             // T137 (FR-012): a stored named handler rather than an anonymous
@@ -152,7 +153,7 @@ namespace LivingRoots
             // lock service (the same instance the bin
             // service holds) are injected here, not left
             // to the constructor's `?? new` fallbacks.
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider);
+            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider);
 
             // Register events through the Controller
             _controller.RegisterEvents();
@@ -237,6 +238,8 @@ namespace LivingRoots
                     // is `default` so the recipe is learned on day one
                     // instead of requiring an unlock event.
                     data[ModConstants.CompostingBinRecipeId] = $"388 {ModConstants.CompostingBinWoodCost} 390 {ModConstants.CompostingBinStoneCost} 771 {ModConstants.CompostingBinFiberCost}/{ModConstants.CompostCraftingTab}/{ModConstants.CompostingBinItemId} 1/true/default/Composting Bin";
+                    // T004 (spec 013): mulch recipe — fiber x10 → 1 mulch, craftable day 1.
+                    data["LivingRoots_MulchRecipe"] = $"771 10/{ModConstants.CompostCraftingTab}/{ModConstants.MulchItemId} 1/false/default/Mulch";
                 });
             }
             else if (e.NameWithoutLocale.IsEquivalentTo("Data/Objects"))
@@ -274,6 +277,20 @@ namespace LivingRoots
                         Texture = ModConstants.CompostTextureAssetName,
                         SpriteIndex = 0
                     };
+                    // T004 (spec 013): mulch object — Category -26 (same as compost),
+                    // ContextTags mulch_item + compostable_item.
+                    data[ModConstants.MulchItemId] = new StardewValley.GameData.Objects.ObjectData
+                    {
+                        Name = "Mulch",
+                        DisplayName = "Mulch",
+                        Description = "Dry cover that keeps tilled soil alive. Blocks decay and weeds.",
+                        Type = "Crafting",
+                        Category = ModConstants.CompostCategoryId,
+                        Price = 5,
+                        Texture = "Mods/lfgranja.LivingRoots/Mulch",
+                        SpriteIndex = 0,
+                        ContextTags = new List<string> { ModConstants.MulchTag, "compostable_item" }
+                    };
                 });
             }
             else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.CompostTextureAssetName))
@@ -292,6 +309,11 @@ namespace LivingRoots
                 // 32-bit RGBA PNG copied to the mod
                 // folder by the csproj.
                 e.LoadFromModFile<Texture2D>("Assets/compost.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Mods/lfgranja.LivingRoots/Mulch"))
+            {
+                // Spec 013: serve the mulch icon as a game asset.
+                e.LoadFromModFile<Texture2D>("Assets/mulch.png", AssetLoadPriority.Medium);
             }
             else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.CompostingBinTextureAssetName))
             {
