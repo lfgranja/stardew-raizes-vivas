@@ -64,9 +64,16 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           set -euo pipefail
-          gitleaks detect --source . --redact --no-banner --exit-code 1 \
-            --baseline-path .gitleaks-baseline.json \
-            --log-opts "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          if [ -n "$base_sha" ] && [ -n "$head_sha" ] && git rev-parse --verify --quiet "$base_sha" >/dev/null && git rev-parse --verify --quiet "$head_sha" >/dev/null && git merge-base --is-ancestor "$base_sha" "$head_sha" 2>/dev/null; then
+            gitleaks detect --source . --redact --no-banner --exit-code 1 \
+              --baseline-path .gitleaks-baseline.json \
+              --log-opts "$base_sha..$head_sha"
+          else
+            gitleaks detect --source . --redact --no-banner --exit-code 1 \
+              --baseline-path .gitleaks-baseline.json
+          fi
 
       - name: Gitleaks (full history)
         if: github.event_name != 'pull_request'
