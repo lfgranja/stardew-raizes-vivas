@@ -144,11 +144,7 @@ jobs:
         uses: github/codeql-action/analyze@v4
         with:
           output: codeql-results.sarif
-
-      - name: Upload CodeQL SARIF
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: codeql-results.sarif
+          category: "csharp"
 
       - name: CodeQL annotations
         run: |
@@ -237,7 +233,7 @@ jobs:
         run: dotnet build --no-restore -c Release
 
       - name: Test and coverage
-        run: dotnet test --no-build -c Release --collect:"XPlat Code Coverage" --results-directory ./coverage
+        run: dotnet test --no-build -c Release --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory ./coverage
 
       - name: ReportGenerator
         run: dotnet tool restore && dotnet reportgenerator -reports:'**/coverage.cobertura.xml' -targetdir:coverage-report -reporttypes:'JsonSummary;TextSummary'
