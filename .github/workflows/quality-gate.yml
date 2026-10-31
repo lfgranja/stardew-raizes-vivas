@@ -28,10 +28,10 @@ jobs:
     env:
       PYTHONPATH: scripts/quality-gate
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -82,7 +82,7 @@ jobs:
         run: python -m quality_gate duplication --report jscpd-report/jscpd-report.json --baseline .jscpd-baseline.json
 
       - name: Upload jscpd report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jscpd-report
           path: jscpd-report
@@ -96,10 +96,10 @@ jobs:
     env:
       PYTHONPATH: scripts/quality-gate
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -118,6 +118,7 @@ jobs:
           format: json
           output: trivy.json
           skip-dirs: "**/bin/**,**/obj/**,**/.git/**"
+          ignorefile: ".trivyignore"
 
       - name: Security gate
         run: python -m quality_gate security --report trivy.json
@@ -131,7 +132,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: CodeQL init
         uses: github/codeql-action/init@v4
@@ -143,11 +144,7 @@ jobs:
         uses: github/codeql-action/analyze@v4
         with:
           output: codeql-results.sarif
-
-      - name: Upload CodeQL SARIF
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: codeql-results.sarif
+          category: "csharp"
 
       - name: CodeQL annotations
         run: |
@@ -180,10 +177,10 @@ jobs:
       BUILDDEPS_ASSET: gamepath.zip
       PYTHONPATH: scripts/quality-gate
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.x"
 
@@ -236,7 +233,7 @@ jobs:
         run: dotnet build --no-restore -c Release
 
       - name: Test and coverage
-        run: dotnet test --no-build -c Release --collect:"XPlat Code Coverage" --results-directory ./coverage
+        run: dotnet test --no-build -c Release --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory ./coverage
 
       - name: ReportGenerator
         run: dotnet tool restore && dotnet reportgenerator -reports:'**/coverage.cobertura.xml' -targetdir:coverage-report -reporttypes:'JsonSummary;TextSummary'
@@ -245,7 +242,7 @@ jobs:
         run: python -m quality_gate coverage --summary coverage-report/Summary.json --baseline .coverage-baseline
 
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage-report

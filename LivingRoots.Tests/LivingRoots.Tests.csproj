@@ -35,7 +35,7 @@
   </Target>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <!-- Provides the "XPlat Code Coverage" data collector used to emit coverage.opencover.xml -->
@@ -44,13 +44,16 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Moq" Version="4.20.72" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- T001 (spec 004 Phase 1): property-based invariant testing over arbitrary
          inputs (bin lifecycle, soil health bounds, concurrency) — required by the
          strict TDD blocker for Fases 10-15. -->
     <PackageReference Include="FsCheck" Version="3.6.0" />
     <PackageReference Include="FsCheck.Xunit" Version="3.6.0" />
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
+    <!-- Override vulnerable transitive deps (CVE-2017-11770, CVE-2018-8292) -->
+    <PackageReference Include="System.Net.Http" Version="4.3.4" PrivateAssets="all" />
+    <PackageReference Include="System.Security.Cryptography.X509Certificates" Version="4.3.2" PrivateAssets="all" />
     <PackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.403" PrivateAssets="all" />
 
