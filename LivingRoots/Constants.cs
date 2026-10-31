@@ -165,6 +165,13 @@ namespace LivingRoots
         public const int CompostingBinFiberCost = 15;
         public const int CompostCategoryId = -26;
         public const int CompostStackMax = 999;
+        // Mulch / Soil Cover (spec 013)
+        public const string MulchItemId = "LivingRoots.Mulch";
+        public const string QualifiedMulchItemId = "(O)LivingRoots.Mulch";
+        public const int MulchDurationDays = 7;
+        public const float MulchDecayMultiplier = 0f;
+        public const string MulchTag = "mulch_item";
+        public static readonly Color MulchColor = new(146, 64, 14); // #92400E
         // T078 (FR-005): the compost item icon,
         // served as a named game asset so
         // ObjectData.Texture can point at it.
