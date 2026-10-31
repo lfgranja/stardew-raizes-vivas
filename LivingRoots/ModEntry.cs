@@ -118,10 +118,11 @@ namespace LivingRoots
             var locationProvider = new LocationProvider();
             var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, hostAtomicLockService: hostAtomicLockService, translationHelper: translationHelper);
             var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
+            var mulchApplicationService = new MulchApplicationService(modDataService, playerProvider, this.Monitor);
 
             // Create soil decay service
             var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
-            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider, timeProvider);
+            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider, timeProvider, mulchService: mulchApplicationService);
 
             // Create visualization services (F4 — DI wiring per Phase 9/10)
             var colorInterpolationService = new ColorInterpolationService();
@@ -152,7 +153,7 @@ namespace LivingRoots
             // lock service (the same instance the bin
             // service holds) are injected here, not left
             // to the constructor's `?? new` fallbacks.
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider);
+            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider);
 
             // Register events through the Controller
             _controller.RegisterEvents();

@@ -24,7 +24,8 @@ namespace LivingRoots.Controllers
         IPlayerProvider? playerProvider = null,
         IColorInterpolationService? colorInterpolationService = null,
         ILocationProvider? locationProvider = null,
-        ISeasonProvider? seasonProvider = null) : IDisposable
+        ISeasonProvider? seasonProvider = null,
+        IMulchApplicationService? mulchApplicationService = null) : IDisposable
     {
         // State flags for thread safety using atomic operations
         internal const int EventsRegisteredFlag = 1 << 0;
@@ -50,6 +51,7 @@ namespace LivingRoots.Controllers
         private readonly ICompostingBinService _compostingBinService = compostingBinService ?? throw new ArgumentNullException(nameof(compostingBinService));
         private readonly ISoilDecayService _soilDecayService = soilDecayService ?? throw new ArgumentNullException(nameof(soilDecayService));
         private readonly ICompostApplicationService? _compostApplicationService = compostApplicationService;
+        private readonly IMulchApplicationService? _mulchApplicationService = mulchApplicationService;
         private readonly IVisualizationService? _visualizationService = visualizationService;
         private readonly IVisualizationConfigurationService? _visualizationConfigService = visualizationConfigService;
 
@@ -2105,6 +2107,26 @@ namespace LivingRoots.Controllers
                      heldItem.ItemId == ModConstants.CompostItemId) &&
                     TryApplyCompostWithLock(location, binTile, farmerId, msg => StardewValley.Game1.showRedMessage(TranslateRefusalMessage(msg))))
                 {
+                    return;
+                }
+
+                // Spec 013: mulch application (right-click with mulch item).
+                if (heldItem != null &&
+                    (heldItem.QualifiedItemId == ModConstants.MulchItemId ||
+                     heldItem.QualifiedItemId == ModConstants.QualifiedMulchItemId ||
+                     heldItem.ItemId == ModConstants.MulchItemId) &&
+                    _mulchApplicationService != null &&
+                    location.terrainFeatures.TryGetValue(binTile, out var mulchTerrain) &&
+                    mulchTerrain is StardewValley.TerrainFeatures.HoeDirt)
+                {
+                    if (_mulchApplicationService.TryApplyMulch(StardewValley.Game1.player, location, binTile, out var msgKey))
+                    {
+                        return;
+                    }
+                    if (!string.IsNullOrEmpty(msgKey))
+                    {
+                        StardewValley.Game1.showRedMessage(TranslateRefusalMessage(msgKey));
+                    }
                     return;
                 }
 
