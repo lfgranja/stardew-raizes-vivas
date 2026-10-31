@@ -136,7 +136,7 @@
 - [ ] T033 [P] Add unit tests for `MulchApplicationService` edge cases (null farmer, null hoeDirt, null location). File: `LivingRoots.Tests/MulchApplicationServiceTests.cs`
 - [ ] T034 [P] Add property-based test: for any tile with mulch, decay = 0 regardless of season (FsCheck). File: `LivingRoots.Tests/MulchDecayTests.cs`
 - [ ] T035 [P] Add property-based test: mulch expiry is exactly 7 days (for any start day). File: `LivingRoots.Tests/MulchDecayTests.cs`
-- [ ] T036 [P] Verify `dotnet format --verify-no-changes` passes clean. File: `LivingRoots/`
+- [x] T036 [P] Verify `dotnet format --verify-no-changes` passes clean. File: `LivingRoots/`
 - [ ] T037 [P] Verify no global `NoWarn` added; all suppressions scoped and justified. File: `LivingRoots/`
 - [ ] T038 [P] Add multiplayer stub test: farmhand applies mulch → host-mediated, lock acquired per tile. File: `LivingRoots.Tests/MulchMultiplayerTests.cs`
 - [ ] T039 Verify `CheckForOverflowUnderflow=true` respected (no overflow suppression). File: `LivingRoots/`
@@ -149,10 +149,10 @@
 
 **Purpose**: Independently verify the implementation. Only these tasks attest to success.
 
-- [ ] T040 Run `dotnet build Stardew-LivingRoots.sln -c Release` → 0 warnings, 0 errors. Save to `specs/013-mulch-soil-cover/verification/build.log`. File: `specs/013-mulch-soil-cover/verification/build.log`
-- [ ] T041 Run `dotnet test Stardew-LivingRoots.sln -c Release --no-build` → 0 failures, baseline 1436+ tests pass. Save to `specs/013-mulch-soil-cover/verification/test.log`. File: `specs/013-mulch-soil-cover/verification/test.log`
-- [ ] T042 Run `dotnet format Stardew-LivingRoots.sln --verify-no-changes` → clean. Save to `specs/013-mulch-soil-cover/verification/format.log`. File: `specs/013-mulch-soil-cover/verification/format.log`
-- [ ] T043 Run `bash scripts/quality-gate/analyzer-probe.sh` → PASS. Save to `specs/013-mulch-soil-cover/verification/analyzer-probe.log`. File: `specs/013-mulch-soil-cover/verification/analyzer-probe.log`
+- [x] T040 Run `dotnet build Stardew-LivingRoots.sln -c Release` → 0 warnings, 0 errors. Save to `specs/013-mulch-soil-cover/verification/build.log`. File: `specs/013-mulch-soil-cover/verification/build.log`
+- [x] T041 Run `dotnet test Stardew-LivingRoots.sln -c Release --no-build` → 0 failures, baseline 1436+ tests pass. Save to `specs/013-mulch-soil-cover/verification/test.log`. File: `specs/013-mulch-soil-cover/verification/test.log`
+- [x] T042 Run `dotnet format Stardew-LivingRoots.sln --verify-no-changes` → clean. Save to `specs/013-mulch-soil-cover/verification/format.log`. File: `specs/013-mulch-soil-cover/verification/format.log`
+- [x] T043 Run `bash scripts/quality-gate/analyzer-probe.sh` → PASS. Save to `specs/013-mulch-soil-cover/verification/analyzer-probe.log`. File: `specs/013-mulch-soil-cover/verification/analyzer-probe.log`
 - [ ] T044 Verify all FR-001..FR-020 and SC-001..SC-011 are satisfied (manual checklist review). File: `specs/013-mulch-soil-cover/verification.md`
 - [ ] T045 Verify quickstart.md scenarios 1-10 pass (manual or automated). File: `specs/013-mulch-soil-cover/verification/quickstart.log`
 - [ ] T046 Run atomic-commit audit: `git log --oneline --no-merges` for implementation commits; verify format. File: `specs/013-mulch-soil-cover/verification/commit-audit.log`
