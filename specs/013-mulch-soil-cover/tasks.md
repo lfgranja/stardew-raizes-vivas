@@ -33,10 +33,10 @@
 
 **Purpose**: Constants, asset placeholder, i18n keys — scaffold before any logic.
 
-- [ ] T001 [P] Add mulch constants to `LivingRoots/Constants.cs` (`ModConstants`): `MulchItemId = "LivingRoots.Mulch"`, `QualifiedMulchItemId = "(O)LivingRoots.Mulch"`, `MulchDurationDays = 7`, `MulchDecayMultiplier = 0f`, `MulchTag = "mulch_item"`, `MulchColor = new Color(146, 64, 14)` (#92400E). File: `LivingRoots/Constants.cs`
-- [ ] T002 [P] Create placeholder sprite `LivingRoots/Assets/mulch.png` (16×16, base #92400E with highlights #A16207/#78716C). File: `LivingRoots/Assets/mulch.png`
-- [ ] T003 [P] Add i18n keys to `LivingRoots/i18n/en.json` and `LivingRoots/i18n/default.json`: `mulch.name`, `mulch.description`, `message.mulch.invalid-tile`, `message.mulch.already`. Files: `LivingRoots/i18n/en.json`, `LivingRoots/i18n/default.json`
-- [ ] T004 [P] Register `LivingRoots_Mulch` object and `LivingRoots_MulchRecipe` in `ModEntry.OnAssetRequested` (following compost pattern at `ModEntry.cs:116-151`). Object: Category −26, ContextTags `{"mulch_item", "compostable_item"}`, Price 5, Texture `Mods/LivingRoots/Mulch`, SpriteIndex 0. Recipe: `"771 10/Home/LivingRoots.Mulch 1/false/null/Mulch"`. Files: `LivingRoots/ModEntry.cs`
+- [x] T001 [P] Add mulch constants to `LivingRoots/Constants.cs` (`ModConstants`): `MulchItemId = "LivingRoots.Mulch"`, `QualifiedMulchItemId = "(O)LivingRoots.Mulch"`, `MulchDurationDays = 7`, `MulchDecayMultiplier = 0f`, `MulchTag = "mulch_item"`, `MulchColor = new Color(146, 64, 14)` (#92400E). File: `LivingRoots/Constants.cs`
+- [x] T002 [P] Create placeholder sprite `LivingRoots/Assets/mulch.png` (16×16, base #92400E with highlights #A16207/#78716C). File: `LivingRoots/Assets/mulch.png`
+- [x] T003 [P] Add i18n keys to `LivingRoots/i18n/en.json` and `LivingRoots/i18n/default.json`: `mulch.name`, `mulch.description`, `message.mulch.invalid-tile`, `message.mulch.already`. Files: `LivingRoots/i18n/en.json`, `LivingRoots/i18n/default.json`
+- [x] T004 [P] Register `LivingRoots_Mulch` object and `LivingRoots_MulchRecipe` in `ModEntry.OnAssetRequested` (following compost pattern at `ModEntry.cs:116-151`). Object: Category −26, ContextTags `{"mulch_item", "compostable_item"}`, Price 5, Texture `Mods/LivingRoots/Mulch`, SpriteIndex 0. Recipe: `"771 10/Home/LivingRoots.Mulch 1/false/null/Mulch"`. Files: `LivingRoots/ModEntry.cs`
 
 **Checkpoint**: Constants, asset, i18n, and Data registration in place. No logic yet.
 
