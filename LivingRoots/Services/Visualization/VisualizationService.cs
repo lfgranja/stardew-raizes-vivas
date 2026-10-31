@@ -210,7 +210,9 @@ namespace LivingRoots.Services.Visualization
 
             // Get overlays with viewport culling and caching (FR-009, FR-010),
             // clamped to the map bounds when the caller supplies them (FR-018)
-            var locationName = StardewValley.Game1.currentLocation?.Name;
+            string? locationName = null;
+            try { locationName = StardewValley.Game1.currentLocation?.Name; }
+            catch { locationName = null; }
             var overlays = _overlayRenderer.GetOverlays(viewport, dataSnapshot, mapBounds, locationName);
 
             if (overlays.Count == 0)
