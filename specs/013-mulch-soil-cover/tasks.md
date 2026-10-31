@@ -66,15 +66,15 @@
 
 ### Tests for User Story 1 (RED — write first, must FAIL before implementation)
 
-- [ ] T010 [P] [US1] Test: `TryApplyMulch` on non-tilled tile returns false and message key `message.mulch.invalid-tile`. File: `LivingRoots.Tests/MulchApplicationServiceTests.cs`
-- [ ] T011 [P] [US1] Test: `TryApplyMulch` on already-mulched tile returns false and message key `message.mulch.already`. File: `LivingRoots.Tests/MulchApplicationServiceTests.cs`
-- [ ] T012 [P] [US1] Test: `TryApplyMulch` on tilled tile (bare) sets `HasMulch = true`, `DaysRemaining = 7`, consumes 1 mulch from inventory, returns true. File: `LivingRoots.Tests/MulchApplicationServiceTests.cs`
-- [ ] T013 [P] [US1] Test: `TryApplyMulch` on tilled tile with growing crop sets `HasMulch = true` (no crop-presence guard). File: `LivingRoots.Tests/MulchApplicationServiceTests.cs`
-- [ ] T014 [P] [US1] Test: `SoilDecayService.ProcessDayStart` with mulched tile → decay = 0 (0 × seasonal). Property-based: for any season, mulched tile health unchanged. File: `LivingRoots.Tests/MulchDecayTests.cs`
-- [ ] T015 [P] [US1] Test: mulch expires after 7 days → decay resumes at normal rate (respecting seasonal multiplier). File: `LivingRoots.Tests/MulchDecayTests.cs`
-- [ ] T016 [P] [US1] Test: rain does not remove mulch (decay stays 0). File: `LivingRoots.Tests/MulchDecayTests.cs`
-- [ ] T017 [P] [US1] Test: mulch state persists via `ModDataService` (sparse cache — zeros omitted). File: `LivingRoots.Tests/MulchPersistenceTests.cs`
-- [ ] T018 [P] [US1] Test: mulch + compost coexistence on same tile (both states independent). File: `LivingRoots.Tests/MulchPersistenceTests.cs`
+- [x] T01- [ ] T010  [P] [US1] Test: `TryApplyMulch` on non-tilled tile returns false and message key `message.mulch.invalid-tile`. File: `LivingRoots.Tests/MulchApplicationServiceTests.cs`
+- [x] T01- [ ] T011  [P] [US1] Test: `TryApplyMulch` on already-mulched tile returns false and message key `message.mulch.already`. File: `LivingRoots.Tests/MulchApplicationServiceTests.cs`
+- [x] T01- [ ] T012  [P] [US1] Test: `TryApplyMulch` on tilled tile (bare) sets `HasMulch = true`, `DaysRemaining = 7`, consumes 1 mulch from inventory, returns true. File: `LivingRoots.Tests/MulchApplicationServiceTests.cs`
+- [x] T01- [ ] T013  [P] [US1] Test: `TryApplyMulch` on tilled tile with growing crop sets `HasMulch = true` (no crop-presence guard). File: `LivingRoots.Tests/MulchApplicationServiceTests.cs`
+- [x] T01- [ ] T014  [P] [US1] Test: `SoilDecayService.ProcessDayStart` with mulched tile → decay = 0 (0 × seasonal). Property-based: for any season, mulched tile health unchanged. File: `LivingRoots.Tests/MulchDecayTests.cs`
+- [x] T01- [ ] T015  [P] [US1] Test: mulch expires after 7 days → decay resumes at normal rate (respecting seasonal multiplier). File: `LivingRoots.Tests/MulchDecayTests.cs`
+- [x] T01- [ ] T016  [P] [US1] Test: rain does not remove mulch (decay stays 0). File: `LivingRoots.Tests/MulchDecayTests.cs`
+- [x] T01- [ ] T017  [P] [US1] Test: mulch state persists via `ModDataService` (sparse cache — zeros omitted). File: `LivingRoots.Tests/MulchPersistenceTests.cs`
+- [x] T01- [ ] T018  [P] [US1] Test: mulch + compost coexistence on same tile (both states independent). File: `LivingRoots.Tests/MulchPersistenceTests.cs`
 
 ### Implementation for User Story 1
 
@@ -115,10 +115,10 @@
 
 ### Tests for User Story 3 (RED — write first, must FAIL before implementation)
 
-- [ ] T027 [P] [US3] Test: mulched tile overlay uses `MulchColor` (#92400E) at 0.5 opacity with `Dots` pattern. File: `LivingRoots.Tests/MulchOverlayTests.cs`
-- [ ] T028 [P] [US3] Test: mulched tile with plant shows dotted border (mulch + plant indicator). File: `LivingRoots.Tests/MulchOverlayTests.cs`
-- [ ] T029 [P] [US3] Test: overlay color is applied via `IVisualizationService` (never hardcoded in controller). File: `LivingRoots.Tests/MulchOverlayTests.cs`
-- [ ] T030 [P] [US3] Test: overlay composite render order — health color base → mulch tint → Dots pattern → dotted border for crop. File: `LivingRoots.Tests/MulchOverlayTests.cs`
+- [x] T027 [P] [US3] Test: mulched tile overlay uses `MulchColor` (#92400E) at 0.5 opacity with `Dots` pattern. File: `LivingRoots.Tests/MulchOverlayTests.cs`
+- [x] T028 [P] [US3] Test: mulched tile with plant shows dotted border (mulch + plant indicator). File: `LivingRoots.Tests/MulchOverlayTests.cs`
+- [x] T029 [P] [US3] Test: overlay color is applied via `IVisualizationService` (never hardcoded in controller). File: `LivingRoots.Tests/MulchOverlayTests.cs`
+- [x] T030 [P] [US3] Test: overlay composite render order — health color base → mulch tint → Dots pattern → dotted border for crop. File: `LivingRoots.Tests/MulchOverlayTests.cs`
 
 ### Implementation for User Story 3
 
@@ -133,13 +133,13 @@
 
 **Purpose**: Improvements affecting multiple user stories.
 
-- [ ] T033 [P] Add unit tests for `MulchApplicationService` edge cases (null farmer, null hoeDirt, null location). File: `LivingRoots.Tests/MulchApplicationServiceTests.cs`
-- [ ] T034 [P] Add property-based test: for any tile with mulch, decay = 0 regardless of season (FsCheck). File: `LivingRoots.Tests/MulchDecayTests.cs`
-- [ ] T035 [P] Add property-based test: mulch expiry is exactly 7 days (for any start day). File: `LivingRoots.Tests/MulchDecayTests.cs`
+- [x] T033 [P] Add unit tests for `MulchApplicationService` edge cases (null farmer, null hoeDirt, null location). File: `LivingRoots.Tests/MulchApplicationServiceTests.cs`
+- [x] T034 [P] Add property-based test: for any tile with mulch, decay = 0 regardless of season (FsCheck). File: `LivingRoots.Tests/MulchDecayTests.cs`
+- [x] T035 [P] Add property-based test: mulch expiry is exactly 7 days (for any start day). File: `LivingRoots.Tests/MulchDecayTests.cs`
 - [x] T036 [P] Verify `dotnet format --verify-no-changes` passes clean. File: `LivingRoots/`
-- [ ] T037 [P] Verify no global `NoWarn` added; all suppressions scoped and justified. File: `LivingRoots/`
-- [ ] T038 [P] Add multiplayer stub test: farmhand applies mulch → host-mediated, lock acquired per tile. File: `LivingRoots.Tests/MulchMultiplayerTests.cs`
-- [ ] T039 Verify `CheckForOverflowUnderflow=true` respected (no overflow suppression). File: `LivingRoots/`
+- [x] T037 [P] Verify no global `NoWarn` added; all suppressions scoped and justified. File: `LivingRoots/`
+- [x] T038 [P] Add multiplayer stub test: farmhand applies mulch → host-mediated, lock acquired per tile. File: `LivingRoots.Tests/MulchMultiplayerTests.cs`
+- [x] T039 Verify `CheckForOverflowUnderflow=true` respected (no overflow suppression). File: `LivingRoots/`
 
 **Checkpoint**: Polish complete. All tests green, format clean.
 
