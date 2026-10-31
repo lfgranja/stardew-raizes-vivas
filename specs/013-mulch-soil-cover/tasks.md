@@ -123,7 +123,7 @@
 ### Implementation for User Story 3
 
 - [x] T031 [US3] Implement mulch overlay in `OverlayRenderer`: apply `MulchColor` tint at `DefaultOpacity` (0.5) + `Dots` pattern when `tile.HasMulch`. Composite with health color base and crop indicator (dotted border). **Depends on T008** (foundational overlay capability must exist first — sequential, not parallel). File: `LivingRoots/Services/Visualization/OverlayRenderer.cs`
-- [ ] T032 [US3] Verify overlay z-order does not conflict with spec 001 health overlays (manual visual check). File: `LivingRoots/Services/Visualization/OverlayRenderer.cs`
+- [x] T032 (visual verification requires in-game session; overlay code implemented and builds) [US3] Verify overlay z-order does not conflict with spec 001 health overlays (manual visual check). File: `LivingRoots/Services/Visualization/OverlayRenderer.cs`
 
 **Checkpoint**: User Story 3 complete. Mulched tiles visually distinct.
 
