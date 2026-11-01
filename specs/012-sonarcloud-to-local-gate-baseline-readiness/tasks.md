@@ -17,4 +17,4 @@
 - [x] T010 Report readiness status
 
 ## Phase 3: Convergence
-- [ ] T011 Document Phase 2 TDD RED test state verification per FR-004/SC-002 - reference red-phase.md and specs/011-local-oss-quality-gate artifacts since branch 011-local-oss-quality-gate not present in repo (partial)
+- [x] T011 Document Phase 2 TDD RED test state verification per FR-004/SC-002 - reference red-phase.md and specs/011-local-oss-quality-gate artifacts since branch 011-local-oss-quality-gate not present in repo (see phase3-verification.md)
