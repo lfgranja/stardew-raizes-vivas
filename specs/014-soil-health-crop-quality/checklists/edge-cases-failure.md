@@ -11,77 +11,77 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 - Are all six identified edge cases (inventory full, NaN/unknown, regrowing crops, persistence failure, multiplayer divergence, debris drops) specified with a defined behavior? [Completeness, Spec Edge Cases, chk-edgecases §2]
-- [ ] CHK002 - Is the inventory-full behavior specified as a single atomic contract (main item vanilla-blocked; extra item debris; no duplication; no retryable state)? [Completeness, Spec Edge Cases, contracts §5, research-c1]
-- [ ] CHK003 - Is the NaN/Infinity (Unknown) harvest behavior specified distinctly from measured 0? [Completeness, Spec Edge Cases, internal-c3, data-model]
-- [ ] CHK004 - Is the measured-0 (sparse cache) behavior specified (Poor → force 0, intentional)? [Completeness, Spec Edge Cases]
-- [ ] CHK005 - Is the finite out-of-range behavior specified (clamp to boundary category)? [Completeness, Spec Edge Cases, internal-c3]
-- [ ] CHK006 - Are regrowing-crop behaviors specified (quality re-rolls on each harvest; tier applies independently)? [Completeness, Spec Edge Cases]
-- [ ] CHK007 - Are Garden Pot and Greenhouse behaviors specified (soil health applies if tile tracked)? [Completeness, Spec Edge Cases]
-- [ ] CHK008 - Are multiplayer behaviors specified (host rolls once; farmhand sees same result; no client-side roll)? [Completeness, Spec Edge Cases, §FR-009]
-- [ ] CHK009 - Are persistence-failure behaviors specified (save/load round-trip; sparse cache; no zero values stored)? [Completeness, Gap, chk-edgecases §2.4]
-- [ ] CHK010 - Are debris-drop behaviors specified (extra item dropped via `createItemDebris`; auto-pickup; persistence)? [Completeness, contracts §5, research-c1, chk-edgecases §2.6]
+- [x] CHK001 - Are all six identified edge cases (inventory full, NaN/unknown, regrowing crops, persistence failure, multiplayer divergence, debris drops) specified with a defined behavior? [Completeness, Spec Edge Cases, chk-edgecases §2]
+- [x] CHK002 - Is the inventory-full behavior specified as a single atomic contract (main item vanilla-blocked; extra item debris; no duplication; no retryable state)? [Completeness, Spec Edge Cases, contracts §5, research-c1]
+- [x] CHK003 - Is the NaN/Infinity (Unknown) harvest behavior specified distinctly from measured 0? [Completeness, Spec Edge Cases, internal-c3, data-model]
+- [x] CHK004 - Is the measured-0 (sparse cache) behavior specified (Poor → force 0, intentional)? [Completeness, Spec Edge Cases]
+- [x] CHK005 - Is the finite out-of-range behavior specified (clamp to boundary category)? [Completeness, Spec Edge Cases, internal-c3]
+- [x] CHK006 - Are regrowing-crop behaviors specified (quality re-rolls on each harvest; tier applies independently)? [Completeness, Spec Edge Cases]
+- [x] CHK007 - Are Garden Pot and Greenhouse behaviors specified (soil health applies if tile tracked)? [Completeness, Spec Edge Cases]
+- [x] CHK008 - Are multiplayer behaviors specified (host rolls once; farmhand sees same result; no client-side roll)? [Completeness, Spec Edge Cases, §FR-009]
+- [x] CHK009 - Are persistence-failure behaviors specified (save/load round-trip; sparse cache; no zero values stored)? [Completeness, Gap, chk-edgecases §2.4]
+- [x] CHK010 - Are debris-drop behaviors specified (extra item dropped via `createItemDebris`; auto-pickup; persistence)? [Completeness, contracts §5, research-c1, chk-edgecases §2.6]
 
 ## Requirement Clarity
 
-- [ ] CHK011 - Is "force 0" vs. "no modification (Unknown)" distinction unambiguous? [Clarity, Spec Edge Cases, internal-c3]
-- [ ] CHK012 - Is the inventory-full outcome stated as a single contract (not an "or" leaving implementation open)? [Clarity, Spec Edge Cases, research-c1]
-- [ ] CHK013 - Is the debris auto-pickup behavior specified (item stays on ground until `addItemToInventoryBool` succeeds at pickup)? [Clarity, research-c1, chk-edgecases §2.6]
-- [ ] CHK014 - Is the NaN sentinel ("no record → NaN → Unknown") distinguished from a measured 0 reading? [Clarity, Spec Edge Cases, data-model, SoilHealthService T135]
-- [ ] CHK015 - Is the "crop stays in ground" behavior on full inventory specified (no partial harvest)? [Clarity, research-c1, chk-edgecases §2.1]
+- [x] CHK011 - Is "force 0" vs. "no modification (Unknown)" distinction unambiguous? [Clarity, Spec Edge Cases, internal-c3]
+- [x] CHK012 - Is the inventory-full outcome stated as a single contract (not an "or" leaving implementation open)? [Clarity, Spec Edge Cases, research-c1]
+- [x] CHK013 - Is the debris auto-pickup behavior specified (item stays on ground until `addItemToInventoryBool` succeeds at pickup)? [Clarity, research-c1, chk-edgecases §2.6]
+- [x] CHK014 - Is the NaN sentinel ("no record → NaN → Unknown") distinguished from a measured 0 reading? [Clarity, Spec Edge Cases, data-model, SoilHealthService T135]
+- [x] CHK015 - Is the "crop stays in ground" behavior on full inventory specified (no partial harvest)? [Clarity, research-c1, chk-edgecases §2.1]
 
 ## Requirement Consistency
 
-- [ ] CHK016 - Do the edge-case behaviors align with the tier rules (FR-001/FR-002)? [Consistency, Spec §FR-001, §FR-002, Edge Cases]
-- [ ] CHK017 - Do the inventory-full rules align with the CollectCompost fix (retain-state vs. debris) distinction? [Consistency, Spec §Q4, §Edge Cases, research-c1]
-- [ ] CHK018 - Do the NaN/Unknown rules align with the growth modifier's skip-non-finite behavior? [Consistency, Spec Edge Cases, internal-c3, ModController 1808-1812]
-- [ ] CHK019 - Do the regrowth rules align with the "tier applies independently per harvest" rule? [Consistency, Spec Edge Cases, §FR-001]
+- [x] CHK016 - Do the edge-case behaviors align with the tier rules (FR-001/FR-002)? [Consistency, Spec §FR-001, §FR-002, Edge Cases]
+- [x] CHK017 - Do the inventory-full rules align with the CollectCompost fix (retain-state vs. debris) distinction? [Consistency, Spec §Q4, §Edge Cases, research-c1]
+- [x] CHK018 - Do the NaN/Unknown rules align with the growth modifier's skip-non-finite behavior? [Consistency, Spec Edge Cases, internal-c3, ModController 1808-1812]
+- [x] CHK019 - Do the regrowth rules align with the "tier applies independently per harvest" rule? [Consistency, Spec Edge Cases, §FR-001]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK020 - Is the inventory-full scenario testable (main item blocked; extra item debris; no duplication)? [Measurability, Spec §SC-001, Edge Cases, contracts §5]
-- [ ] CHK021 - Is the NaN/Unknown scenario testable (vanilla roll; no forced 0; no +0.08; no feedback)? [Measurability, Spec Edge Cases, internal-c3]
-- [ ] CHK022 - Is the regrowth scenario testable (quality re-rolls; tier applies each harvest)? [Measurability, Spec Edge Cases]
-- [ ] CHK023 - Is the debris scenario testable (extra item dropped; auto-pickup; no loss)? [Measurability, research-c1, chk-edgecases §2.6]
+- [x] CHK020 - Is the inventory-full scenario testable (main item blocked; extra item debris; no duplication)? [Measurability, Spec §SC-001, Edge Cases, contracts §5]
+- [x] CHK021 - Is the NaN/Unknown scenario testable (vanilla roll; no forced 0; no +0.08; no feedback)? [Measurability, Spec Edge Cases, internal-c3]
+- [x] CHK022 - Is the regrowth scenario testable (quality re-rolls; tier applies each harvest)? [Measurability, Spec Edge Cases]
+- [x] CHK023 - Is the debris scenario testable (extra item dropped; auto-pickup; no loss)? [Measurability, research-c1, chk-edgecases §2.6]
 
 ## Scenario Coverage
 
-- [ ] CHK024 - Are primary failure scenarios covered (inventory full, NaN/unknown, regrowth, persistence, multiplayer, debris)? [Coverage, Spec Edge Cases, chk-edgecases §2]
-- [ ] CHK025 - Are concurrent-mutation scenarios addressed or explicitly deferred (D1)? [Coverage, Spec Out of Scope, Principle VI]
-- [ ] CHK026 - Are Junimo-harvester and scythe-harvest paths addressed or explicitly deferred? [Coverage, Gap, research-c2 §1, chk-edgecases §2.6]
-- [ ] CHK027 - Are host-disconnected / farmhand-inventory-full scenarios addressed or deferred? [Coverage, Gap, chk-edgecases §2.1/§2.5]
+- [x] CHK024 - Are primary failure scenarios covered (inventory full, NaN/unknown, regrowth, persistence, multiplayer, debris)? [Coverage, Spec Edge Cases, chk-edgecases §2]
+- [x] CHK025 - Are concurrent-mutation scenarios addressed or explicitly deferred (D1)? [Coverage, Spec Out of Scope, Principle VI]
+- [x] CHK026 - Are Junimo-harvester and scythe-harvest paths addressed or explicitly deferred? [Coverage, Gap, research-c2 §1, chk-edgecases §2.6]
+- [x] CHK027 - Are host-disconnected / farmhand-inventory-full scenarios addressed or deferred? [Coverage, Gap, chk-edgecases §2.1/§2.5]
 
 ## Edge Case Coverage
 
-- [ ] CHK028 - Is the "health = 0 sparse cache" edge case specified (intentional, may need tuning)? [Edge Case, Spec Edge Cases]
-- [ ] CHK029 - Is the "NaN/Infinity" edge case specified distinctly from measured 0? [Edge Case, Spec Edge Cases, internal-c3]
-- [ ] CHK030 - Is the "inventory full" edge case specified as a single atomic contract? [Edge Case, Spec Edge Cases, contracts §5]
-- [ ] CHK031 - Is the "regrowing crops" edge case specified? [Edge Case, Spec Edge Cases]
-- [ ] CHK032 - Is the "Garden Pots / Greenhouse" edge case specified? [Edge Case, Spec Edge Cases]
-- [ ] CHK033 - Is the "multiplayer" edge case specified? [Edge Case, Spec Edge Cases, §FR-009]
-- [ ] CHK034 - Are persistence-failure edge cases (corrupt save, partial write) specified or deferred? [Edge Case, Gap, chk-edgecases §2.4]
+- [x] CHK028 - Is the "health = 0 sparse cache" edge case specified (intentional, may need tuning)? [Edge Case, Spec Edge Cases]
+- [x] CHK029 - Is the "NaN/Infinity" edge case specified distinctly from measured 0? [Edge Case, Spec Edge Cases, internal-c3]
+- [x] CHK030 - Is the "inventory full" edge case specified as a single atomic contract? [Edge Case, Spec Edge Cases, contracts §5]
+- [x] CHK031 - Is the "regrowing crops" edge case specified? [Edge Case, Spec Edge Cases]
+- [x] CHK032 - Is the "Garden Pots / Greenhouse" edge case specified? [Edge Case, Spec Edge Cases]
+- [x] CHK033 - Is the "multiplayer" edge case specified? [Edge Case, Spec Edge Cases, §FR-009]
+- [x] CHK034 - Are persistence-failure edge cases (corrupt save, partial write) specified or deferred? [Edge Case, Gap, chk-edgecases §2.4]
 
 ## Non-Functional Requirements
 
-- [ ] CHK035 - Are the inventory-full failure modes specified without silent destruction (no item lost)? [NFR, Spec Edge Cases, research-c1, GDD "Nada se perde"]
-- [ ] CHK036 - Are the debris-drop behaviors specified without introducing a new sync burden? [NFR, contracts §5, research-c1]
-- [ ] CHK037 - Are the NaN/unknown behaviors specified to avoid penalizing unmeasured tiles? [NFR, Spec Edge Cases, internal-c3]
+- [x] CHK035 - Are the inventory-full failure modes specified without silent destruction (no item lost)? [NFR, Spec Edge Cases, research-c1, GDD "Nada se perde"]
+- [x] CHK036 - Are the debris-drop behaviors specified without introducing a new sync burden? [NFR, contracts §5, research-c1]
+- [x] CHK037 - Are the NaN/unknown behaviors specified to avoid penalizing unmeasured tiles? [NFR, Spec Edge Cases, internal-c3]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK038 - Is the dependency on vanilla `Crop.harvest` inventory-gating behavior documented? [Dependencies, research-c1, contracts §5]
-- [ ] CHK039 - Is the dependency on `Game1.createItemDebris` (vanilla debris sync) documented? [Dependencies, contracts §5, research-c1]
-- [ ] CHK040 - Is the deferred scope (Junimo, scythe, host-disconnect) documented as out of scope or TBD? [Dependencies, Spec Out of Scope, chk-edgecases §2.5/§2.6]
+- [x] CHK038 - Is the dependency on vanilla `Crop.harvest` inventory-gating behavior documented? [Dependencies, research-c1, contracts §5]
+- [x] CHK039 - Is the dependency on `Game1.createItemDebris` (vanilla debris sync) documented? [Dependencies, contracts §5, research-c1]
+- [x] CHK040 - Is the deferred scope (Junimo, scythe, host-disconnect) documented as out of scope or TBD? [Dependencies, Spec Out of Scope, chk-edgecases §2.5/§2.6]
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK041 - Was the "or" in the inventory-full edge case resolved to a single contract? [Conflict Resolved, Spec Edge Cases, research-c1]
-- [ ] CHK042 - Was the NaN "clamped to boundary category" conflict resolved to "Unknown → no modification"? [Conflict Resolved, Spec Edge Cases, internal-c3]
-- [ ] CHK043 - Is there any remaining ambiguous phrasing in edge cases ("if tile is tracked", "may need tuning")? [Ambiguity, Spec Edge Cases]
+- [x] CHK041 - Was the "or" in the inventory-full edge case resolved to a single contract? [Conflict Resolved, Spec Edge Cases, research-c1]
+- [x] CHK042 - Was the NaN "clamped to boundary category" conflict resolved to "Unknown → no modification"? [Conflict Resolved, Spec Edge Cases, internal-c3]
+- [x] CHK043 - Is there any remaining ambiguous phrasing in edge cases ("if tile is tracked", "may need tuning")? [Ambiguity, Spec Edge Cases]
 
 ## Traceability
 
-- [ ] CHK044 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK043 each carry `[Spec …]`/`[research-…]`/`[Gap]`/`[Conflict Resolved]` tags.
+- [x] CHK044 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK043 each carry `[Spec …]`/`[research-…]`/`[Gap]`/`[Conflict Resolved]` tags.
 
 ---
 

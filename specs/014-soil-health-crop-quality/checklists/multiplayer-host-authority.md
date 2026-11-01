@@ -11,64 +11,64 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 - Are host-authority rules specified for every shared-state mutation (soil health, growth modifier, harvest roll, extra-harvest roll)? [Completeness, Spec §FR-009, Principle VI, plan §Constraints]
-- [ ] CHK002 - Is the "single source of truth" principle stated (host's save = the save; no external DB/network service)? [Completeness, Constitution Principle VI, Spec §FR-009]
-- [ ] CHK003 - Is the client sync mechanism specified (re-sync on next `DayStarted`; no new transport message for rolls)? [Completeness, Spec §FR-009, contracts §2]
-- [ ] CHK004 - Is the divergence rule (host state wins) documented? [Completeness, Spec §FR-009]
-- [ ] CHK005 - Are first-wins semantics for concurrent mutations specified (second action re-evaluated; refused with message if no longer valid; inventory intact)? [Completeness, Spec Assumptions (A5), plan §Summary item 7]
-- [ ] CHK006 - Are the transient-feedback multiplayer rules specified (visual/local only; does not sync; host rolls once)? [Completeness, Spec §FR-009, contracts §6]
-- [ ] CHK007 - Is the `ReGen Valley` interaction addressed (documentation-only, first-wins host-authoritative)? [Completeness, Spec Assumptions, plan §Summary]
-- [ ] CHK008 - Is the "single-player is the degenerate case of multiplayer" rule stated (no separate single-player mode)? [Completeness, Constitution Principle VI, plan §Constraints]
+- [x] CHK001 - Are host-authority rules specified for every shared-state mutation (soil health, growth modifier, harvest roll, extra-harvest roll)? [Completeness, Spec §FR-009, Principle VI, plan §Constraints]
+- [x] CHK002 - Is the "single source of truth" principle stated (host's save = the save; no external DB/network service)? [Completeness, Constitution Principle VI, Spec §FR-009]
+- [x] CHK003 - Is the client sync mechanism specified (re-sync on next `DayStarted`; no new transport message for rolls)? [Completeness, Spec §FR-009, contracts §2]
+- [x] CHK004 - Is the divergence rule (host state wins) documented? [Completeness, Spec §FR-009]
+- [x] CHK005 - Are first-wins semantics for concurrent mutations specified (second action re-evaluated; refused with message if no longer valid; inventory intact)? [Completeness, Spec Assumptions (A5), plan §Summary item 7]
+- [x] CHK006 - Are the transient-feedback multiplayer rules specified (visual/local only; does not sync; host rolls once)? [Completeness, Spec §FR-009, contracts §6]
+- [x] CHK007 - Is the `ReGen Valley` interaction addressed (documentation-only, first-wins host-authoritative)? [Completeness, Spec Assumptions, plan §Summary]
+- [x] CHK008 - Is the "single-player is the degenerate case of multiplayer" rule stated (no separate single-player mode)? [Completeness, Constitution Principle VI, plan §Constraints]
 
 ## Requirement Clarity
 
-- [ ] CHK009 - Is "host-authoritative" quantified with the concrete guard (`Context.IsMainPlayer`/`IsMasterGame`), not left as a vague aspiration? [Clarity, Spec §FR-009, plan §Technical Context]
-- [ ] CHK010 - Is the per-tile atomic lock requirement specified with the concrete mechanism (`HostAtomicLockService`, first-wins)? [Clarity, Spec Assumptions (A5), plan §Technical Context]
-- [ ] CHK011 - Is the client roll prohibition stated explicitly ("client never rolls")? [Clarity, Spec §FR-009]
-- [ ] CHK012 - Is the feedback broadcast mechanism specified (`Game1.multiplayer.broadcastSprites` as the MP-safe path)? [Clarity, contracts §6, internal-c2 §2.4]
-- [ ] CHK013 - Is the "no new transport message" claim for rolls justified (rolls computed locally from shared `SoilHealthService` tile health)? [Clarity, plan §Summary item 3]
+- [x] CHK009 - Is "host-authoritative" quantified with the concrete guard (`Context.IsMainPlayer`/`IsMasterGame`), not left as a vague aspiration? [Clarity, Spec §FR-009, plan §Technical Context]
+- [x] CHK010 - Is the per-tile atomic lock requirement specified with the concrete mechanism (`HostAtomicLockService`, first-wins)? [Clarity, Spec Assumptions (A5), plan §Technical Context]
+- [x] CHK011 - Is the client roll prohibition stated explicitly ("client never rolls")? [Clarity, Spec §FR-009]
+- [x] CHK012 - Is the feedback broadcast mechanism specified (`Game1.multiplayer.broadcastSprites` as the MP-safe path)? [Clarity, contracts §6, internal-c2 §2.4]
+- [x] CHK013 - Is the "no new transport message" claim for rolls justified (rolls computed locally from shared `SoilHealthService` tile health)? [Clarity, plan §Summary item 3]
 
 ## Requirement Consistency
 
-- [ ] CHK014 - Do the host-authority requirements (FR-009) align with the transient feedback being visual/local only (contracts §6)? [Consistency, Spec §FR-009, contracts §6]
-- [ ] CHK015 - Are the multiplayer requirements consistent with Principle VI (farm state host-authoritative and farm-scoped; no second source of truth)? [Consistency, Constitution Principle VI, Spec §FR-009, §FR-010]
-- [ ] CHK016 - Do the first-wins semantics (A5) align with the "inventory intact on refusal" rule (research-c1)? [Consistency, Spec Assumptions, research-c1]
-- [ ] CHK017 - Are the host-authority requirements consistent with the CollectCompost fix prerequisite (two-phase commit, idempotency)? [Consistency, Spec §Q4, §FR-009]
+- [x] CHK014 - Do the host-authority requirements (FR-009) align with the transient feedback being visual/local only (contracts §6)? [Consistency, Spec §FR-009, contracts §6]
+- [x] CHK015 - Are the multiplayer requirements consistent with Principle VI (farm state host-authoritative and farm-scoped; no second source of truth)? [Consistency, Constitution Principle VI, Spec §FR-009, §FR-010]
+- [x] CHK016 - Do the first-wins semantics (A5) align with the "inventory intact on refusal" rule (research-c1)? [Consistency, Spec Assumptions, research-c1]
+- [x] CHK017 - Are the host-authority requirements consistent with the CollectCompost fix prerequisite (two-phase commit, idempotency)? [Consistency, Spec §Q4, §FR-009]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK018 - Is there a measurable acceptance criterion for host-authoritative rolls (simulated second player; no client-side roll)? [Measurability, Spec §SC-004]
-- [ ] CHK019 - Is the live 2-player verification (D1) explicitly scoped as deferred (not hidden), with the debt documented? [Measurability, Spec Out of Scope, Constitution Principle VI, plan §Gate Result]
-- [ ] CHK020 - Is the "client re-syncs on next `DayStarted`" criterion testable (observable divergence then convergence)? [Measurability, Spec §FR-009]
+- [x] CHK018 - Is there a measurable acceptance criterion for host-authoritative rolls (simulated second player; no client-side roll)? [Measurability, Spec §SC-004]
+- [x] CHK019 - Is the live 2-player verification (D1) explicitly scoped as deferred (not hidden), with the debt documented? [Measurability, Spec Out of Scope, Constitution Principle VI, plan §Gate Result]
+- [x] CHK020 - Is the "client re-syncs on next `DayStarted`" criterion testable (observable divergence then convergence)? [Measurability, Spec §FR-009]
 
 ## Scenario Coverage
 
-- [ ] CHK021 - Are primary multiplayer flows covered (host harvests, farmhand harvests, both see same result)? [Coverage, Spec §US1–US4, Edge Cases]
-- [ ] CHK022 - Are concurrent-mutation scenarios addressed or explicitly deferred (D1)? [Coverage, Spec Out of Scope, Principle VI]
-- [ ] CHK023 - Are farmhand feedback visibility scenarios specified (who sees transient text when farmhand harvests)? [Coverage, Gap, contracts §6]
-- [ ] CHK024 - Are disconnection/reconnection scenarios addressed (or explicitly deferred)? [Coverage, Gap]
+- [x] CHK021 - Are primary multiplayer flows covered (host harvests, farmhand harvests, both see same result)? [Coverage, Spec §US1–US4, Edge Cases]
+- [x] CHK022 - Are concurrent-mutation scenarios addressed or explicitly deferred (D1)? [Coverage, Spec Out of Scope, Principle VI]
+- [x] CHK023 - Are farmhand feedback visibility scenarios specified (who sees transient text when farmhand harvests)? [Coverage, Gap, contracts §6]
+- [x] CHK024 - Are disconnection/reconnection scenarios addressed (or explicitly deferred)? [Coverage, Gap]
 
 ## Edge Case Coverage
 
-- [ ] CHK025 - Is the host-disconnected case addressed (who becomes authority, or is it out of scope)? [Edge Case, Gap]
-- [ ] CHK026 - Is the "crop harvested by one player while another is mid-harvest" case addressed? [Edge Case, Gap, research-c1]
-- [ ] CHK027 - Is the debris-sync behavior for extra-harvest items specified (vanilla debris syncs via location; mod adds nothing)? [Edge Case, contracts §5, research-c1]
-- [ ] CHK028 - Is the "farmhand inventory full" case addressed (whose inventory, whose red message)? [Edge Case, Gap, research-c1]
+- [x] CHK025 - Is the host-disconnected case addressed (who becomes authority, or is it out of scope)? [Edge Case, Gap]
+- [x] CHK026 - Is the "crop harvested by one player while another is mid-harvest" case addressed? [Edge Case, Gap, research-c1]
+- [x] CHK027 - Is the debris-sync behavior for extra-harvest items specified (vanilla debris syncs via location; mod adds nothing)? [Edge Case, contracts §5, research-c1]
+- [x] CHK028 - Is the "farmhand inventory full" case addressed (whose inventory, whose red message)? [Edge Case, Gap, research-c1]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK029 - Is the dependency on `HostAtomicLockService` (existing, spec-004) documented? [Dependencies, plan §Project Structure]
-- [ ] CHK030 - Is the dependency on Stardew's location sync (no new transport message) documented and justified? [Dependencies, plan §Summary item 3]
-- [ ] CHK031 - Is the D1 debt (live 2-player verification) documented as a roadmap obligation, not a silent skip? [Dependencies, Constitution Principle VI, plan §Gate Result]
+- [x] CHK029 - Is the dependency on `HostAtomicLockService` (existing, spec-004) documented? [Dependencies, plan §Project Structure]
+- [x] CHK030 - Is the dependency on Stardew's location sync (no new transport message) documented and justified? [Dependencies, plan §Summary item 3]
+- [x] CHK031 - Is the D1 debt (live 2-player verification) documented as a roadmap obligation, not a silent skip? [Dependencies, Constitution Principle VI, plan §Gate Result]
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK032 - Is "host rolls once" reconciled with the visual feedback being per-client (no contradiction about who "sees" the roll)? [Conflict, Spec §FR-009, contracts §6]
-- [ ] CHK033 - Is there any conflict between "client never rolls" and the extra-harvest probability being per-tile (client reads shared tile health but does not roll)? [Conflict, Spec §FR-002, §FR-009]
+- [x] CHK032 - Is "host rolls once" reconciled with the visual feedback being per-client (no contradiction about who "sees" the roll)? [Conflict, Spec §FR-009, contracts §6]
+- [x] CHK033 - Is there any conflict between "client never rolls" and the extra-harvest probability being per-tile (client reads shared tile health but does not roll)? [Conflict, Spec §FR-002, §FR-009]
 
 ## Traceability
 
-- [ ] CHK034 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK033 each carry `[Spec …]`/`[Constitution …]`/`[Gap]` tags.
+- [x] CHK034 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK033 each carry `[Spec …]`/`[Constitution …]`/`[Gap]` tags.
 
 ---
 

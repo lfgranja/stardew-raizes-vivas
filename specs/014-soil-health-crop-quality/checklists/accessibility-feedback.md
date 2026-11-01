@@ -11,70 +11,70 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 - Are non-chromatic cues specified for all tier feedback (sprite shape + floating text + SFX), so color alone never conveys essential info (GAG 1.4.1 / XAG 103)? [Completeness, Spec §FR-007]
-- [ ] CHK002 - Is the default palette change prohibited (no new color scheme), with `cvdSafe` deferred to a follow-up? [Completeness, Spec §FR-007, §Out of Scope]
-- [ ] CHK003 - Are the transient feedback triggers specified for every tier (Poor always; Living only on enhanced outcome or extra; Moderate never)? [Completeness, Spec §FR-006, §US4]
-- [ ] CHK004 - Are the feedback sprites specified (16×16 procedural `marker-poor` / `sparkle-living`, no PNG assets)? [Completeness, Spec §FR-005, §FR-006]
-- [ ] CHK005 - Are the floating-text strings specified verbatim ("Soil too poor for quality crops" / "Living Soil" / "Extra harvest!")? [Completeness, Spec §FR-006]
-- [ ] CHK006 - Are the SFX specified per tier (`cancel` for Poor; reward SFX for Living)? [Completeness, Spec §FR-006]
-- [ ] CHK007 - Is the feedback duration specified (~1s fade) with concrete render parameters (alphaFade, motion)? [Completeness, Spec §US4, §SC-005]
-- [ ] CHK008 - Is the "no persistent per-tile tier marker" rule specified (FR-011) with rationale (1000-tile degradation + 16.67 ms/frame)? [Completeness, Spec §FR-011, §Q9]
-- [ ] CHK009 - Is the event-driven render path specified (TemporarySprites + Display.Rendered) with immunity rationale? [Completeness, Spec §FR-008, §SC-005]
-- [ ] CHK010 - Are the localization rules specified (literal text for feedback; existing i18n keys for refusal messages)? [Completeness, Spec Assumptions (A4), contracts §6]
+- [x] CHK001 - Are non-chromatic cues specified for all tier feedback (sprite shape + floating text + SFX), so color alone never conveys essential info (GAG 1.4.1 / XAG 103)? [Completeness, Spec §FR-007]
+- [x] CHK002 - Is the default palette change prohibited (no new color scheme), with `cvdSafe` deferred to a follow-up? [Completeness, Spec §FR-007, §Out of Scope]
+- [x] CHK003 - Are the transient feedback triggers specified for every tier (Poor always; Living only on enhanced outcome or extra; Moderate never)? [Completeness, Spec §FR-006, §US4]
+- [x] CHK004 - Are the feedback sprites specified (16×16 procedural `marker-poor` / `sparkle-living`, no PNG assets)? [Completeness, Spec §FR-005, §FR-006]
+- [x] CHK005 - Are the floating-text strings specified verbatim ("Soil too poor for quality crops" / "Living Soil" / "Extra harvest!")? [Completeness, Spec §FR-006]
+- [x] CHK006 - Are the SFX specified per tier (`cancel` for Poor; reward SFX for Living)? [Completeness, Spec §FR-006]
+- [x] CHK007 - Is the feedback duration specified (~1s fade) with concrete render parameters (alphaFade, motion)? [Completeness, Spec §US4, §SC-005]
+- [x] CHK008 - Is the "no persistent per-tile tier marker" rule specified (FR-011) with rationale (1000-tile degradation + 16.67 ms/frame)? [Completeness, Spec §FR-011, §Q9]
+- [x] CHK009 - Is the event-driven render path specified (TemporarySprites + Display.Rendered) with immunity rationale? [Completeness, Spec §FR-008, §SC-005]
+- [x] CHK010 - Are the localization rules specified (literal text for feedback; existing i18n keys for refusal messages)? [Completeness, Spec Assumptions (A4), contracts §6]
 
 ## Requirement Clarity
 
-- [ ] CHK011 - Is "non-chromatic" defined with concrete cues (shape + text + SFX), not just asserted? [Clarity, Spec §FR-007]
-- [ ] CHK012 - Is the feedback conditionality defined precisely (Living shows "Living Soil" only on enhanced quality; "Extra harvest!" only on extra; both as two sprites when both hold; silence otherwise)? [Clarity, Spec §FR-006, §US1, §US4, B1/B2]
-- [ ] CHK013 - Is the transient duration quantified ("within ~1 second") with a testable bound? [Clarity, Spec §SC-005, §US4]
-- [ ] CHK014 - Is the degradation immunity specified with concrete thresholds (1000 tiles, 16.67 ms/frame)? [Clarity, Spec §FR-008, §SC-005]
-- [ ] CHK015 - Is the reward SFX identified by name (not just "reward SFX"), or is the specific asset explicitly deferred? [Clarity, Gap, Spec §FR-006]
+- [x] CHK011 - Is "non-chromatic" defined with concrete cues (shape + text + SFX), not just asserted? [Clarity, Spec §FR-007]
+- [x] CHK012 - Is the feedback conditionality defined precisely (Living shows "Living Soil" only on enhanced quality; "Extra harvest!" only on extra; both as two sprites when both hold; silence otherwise)? [Clarity, Spec §FR-006, §US1, §US4, B1/B2]
+- [x] CHK013 - Is the transient duration quantified ("within ~1 second") with a testable bound? [Clarity, Spec §SC-005, §US4]
+- [x] CHK014 - Is the degradation immunity specified with concrete thresholds (1000 tiles, 16.67 ms/frame)? [Clarity, Spec §FR-008, §SC-005]
+- [x] CHK015 - Is the reward SFX identified by name (not just "reward SFX"), or is the specific asset explicitly deferred? [Clarity, Gap, Spec §FR-006]
 
 ## Requirement Consistency
 
-- [ ] CHK016 - Do the feedback rules align with the "silence = vanilla" contract used for Medium (US3 scenario 3)? [Consistency, Spec §FR-006, §US3, §US4]
-- [ ] CHK017 - Are the accessibility requirements consistent with the existing visualization system (overlay, tooltip, hoe feedback) standards (GAG 1.4.1 / XAG 103)? [Consistency, Spec §FR-007, §Q5]
-- [ ] CHK018 - Do the "no new assets" (FR-005) and "no new i18n keys" (A4) constraints align with the feedback using procedural sprites and literal text? [Consistency, Spec §FR-005, §FR-007, Assumptions (A4)]
+- [x] CHK016 - Do the feedback rules align with the "silence = vanilla" contract used for Medium (US3 scenario 3)? [Consistency, Spec §FR-006, §US3, §US4]
+- [x] CHK017 - Are the accessibility requirements consistent with the existing visualization system (overlay, tooltip, hoe feedback) standards (GAG 1.4.1 / XAG 103)? [Consistency, Spec §FR-007, §Q5]
+- [x] CHK018 - Do the "no new assets" (FR-005) and "no new i18n keys" (A4) constraints align with the feedback using procedural sprites and literal text? [Consistency, Spec §FR-005, §FR-007, Assumptions (A4)]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK019 - Is the feedback visibility testable (appears on Poor and Living, fades within ~1s, no 1000-tile degradation, ≤16.67 ms/frame)? [Measurability, Spec §SC-005]
-- [ ] CHK020 - Is the non-chromatic requirement testable (essential info conveyed by shape+text+SFX, not color alone)? [Measurability, Spec §FR-007, §SC-005]
-- [ ] CHK021 - Are the feedback conditionality/co-occurrence cases specified with test names (`LivingTier_EnhancedQuality_ShowsLivingSoilText`, `…_ExtraHarvest_…`, `…_Both_ShowsBothTexts`, `…_NormalQualityNoExtra_NoFeedback`)? [Measurability, internal-c2 §6]
+- [x] CHK019 - Is the feedback visibility testable (appears on Poor and Living, fades within ~1s, no 1000-tile degradation, ≤16.67 ms/frame)? [Measurability, Spec §SC-005]
+- [x] CHK020 - Is the non-chromatic requirement testable (essential info conveyed by shape+text+SFX, not color alone)? [Measurability, Spec §FR-007, §SC-005]
+- [x] CHK021 - Are the feedback conditionality/co-occurrence cases specified with test names (`LivingTier_EnhancedQuality_ShowsLivingSoilText`, `…_ExtraHarvest_…`, `…_Both_ShowsBothTexts`, `…_NormalQualityNoExtra_NoFeedback`)? [Measurability, internal-c2 §6]
 
 ## Scenario Coverage
 
-- [ ] CHK022 - Are feedback scenarios specified for all tiers (Poor/Living/Moderate) with distinct observable outcomes? [Coverage, Spec §US4]
-- [ ] CHK023 - Are the "both conditions hold" and "neither condition holds" Living scenarios specified? [Coverage, Spec §FR-006, §US4]
-- [ ] CHK024 - Are the high-tile-count scenarios specified (feedback immune to degradation)? [Coverage, Spec §FR-008, §SC-005, §US4 scenario 4]
+- [x] CHK022 - Are feedback scenarios specified for all tiers (Poor/Living/Moderate) with distinct observable outcomes? [Coverage, Spec §US4]
+- [x] CHK023 - Are the "both conditions hold" and "neither condition holds" Living scenarios specified? [Coverage, Spec §FR-006, §US4]
+- [x] CHK024 - Are the high-tile-count scenarios specified (feedback immune to degradation)? [Coverage, Spec §FR-008, §SC-005, §US4 scenario 4]
 
 ## Edge Case Coverage
 
-- [ ] CHK025 - Is the photosensitivity/flicker risk addressed (no strobing, safe flash durations)? [Edge Case, Gap, chk-accessibility §1]
-- [ ] CHK026 - Is the high-contrast / color-blind safety addressed (complementary tones, pattern opacity ≥0.7)? [Edge Case, Gap, chk-accessibility §1, existing Visualization domain]
-- [ ] CHK027 - Is the text scaling / font readability addressed (Game1.smallFont, minimum sizes)? [Edge Case, Gap, chk-accessibility §1]
-- [ ] CHK028 - Is the feedback placement specified (screen-space above HUD, `Display.Rendered`) for readability? [Edge Case, Spec §FR-008, research-rendering-events]
+- [x] CHK025 - Is the photosensitivity/flicker risk addressed (no strobing, safe flash durations)? [Edge Case, Gap, chk-accessibility §1]
+- [x] CHK026 - Is the high-contrast / color-blind safety addressed (complementary tones, pattern opacity ≥0.7)? [Edge Case, Gap, chk-accessibility §1, existing Visualization domain]
+- [x] CHK027 - Is the text scaling / font readability addressed (Game1.smallFont, minimum sizes)? [Edge Case, Gap, chk-accessibility §1]
+- [x] CHK028 - Is the feedback placement specified (screen-space above HUD, `Display.Rendered`) for readability? [Edge Case, Spec §FR-008, research-rendering-events]
 
 ## Non-Functional Requirements
 
-- [ ] CHK029 - Are performance requirements quantified for the feedback path (no new per-frame pass; ≤16.67 ms/frame; no 1000-tile degradation)? [NFR, Spec §FR-008, §FR-011, §SC-005]
-- [ ] CHK030 - Are accessibility requirements (GAG/XAG/WCAG) referenced or explicitly scoped as deferred (cvdSafe palette follow-up)? [NFR, Spec §FR-007, §Out of Scope, chk-accessibility §1]
-- [ ] CHK031 - Are the timing-adjustable requirements addressed (can feedback duration be adjusted, or is it fixed)? [NFR, Gap, chk-accessibility §1 (WCAG 2.2.1)]
+- [x] CHK029 - Are performance requirements quantified for the feedback path (no new per-frame pass; ≤16.67 ms/frame; no 1000-tile degradation)? [NFR, Spec §FR-008, §FR-011, §SC-005]
+- [x] CHK030 - Are accessibility requirements (GAG/XAG/WCAG) referenced or explicitly scoped as deferred (cvdSafe palette follow-up)? [NFR, Spec §FR-007, §Out of Scope, chk-accessibility §1]
+- [x] CHK031 - Are the timing-adjustable requirements addressed (can feedback duration be adjusted, or is it fixed)? [NFR, Gap, chk-accessibility §1 (WCAG 2.2.1)]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK032 - Is the dependency on the existing `VisualizationService` floating-text pattern documented (reuse, no new abstract base)? [Dependencies, Spec §FR-006, plan §Structure Decision]
-- [ ] CHK033 - Is the `cvdSafe` palette follow-up documented as requiring a new briefing first (`color-schemes-cvd.md`)? [Dependencies, Spec §Out of Scope]
-- [ ] CHK034 - Is the procedural sprite singleton pattern (`VisualizationTextures`) documented as the asset strategy? [Dependencies, Spec §FR-005]
+- [x] CHK032 - Is the dependency on the existing `VisualizationService` floating-text pattern documented (reuse, no new abstract base)? [Dependencies, Spec §FR-006, plan §Structure Decision]
+- [x] CHK033 - Is the `cvdSafe` palette follow-up documented as requiring a new briefing first (`color-schemes-cvd.md`)? [Dependencies, Spec §Out of Scope]
+- [x] CHK034 - Is the procedural sprite singleton pattern (`VisualizationTextures`) documented as the asset strategy? [Dependencies, Spec §FR-005]
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK035 - Was the prior ambiguity (feedback text conditionality) resolved and reflected in FR-006/US1/US4? [Conflict Resolved, Spec §FR-006]
-- [ ] CHK036 - Is there any conflict between "reward SFX" (unspecified name) and the non-chromatic requirement (SFX must convey essential info, not just color)? [Ambiguity, Gap, Spec §FR-006, §FR-007]
+- [x] CHK035 - Was the prior ambiguity (feedback text conditionality) resolved and reflected in FR-006/US1/US4? [Conflict Resolved, Spec §FR-006]
+- [x] CHK036 - Is there any conflict between "reward SFX" (unspecified name) and the non-chromatic requirement (SFX must convey essential info, not just color)? [Ambiguity, Gap, Spec §FR-006, §FR-007]
 
 ## Traceability
 
-- [ ] CHK037 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK036 each carry `[Spec …]`/`[Gap]`/`[research …]` tags.
+- [x] CHK037 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK036 each carry `[Spec …]`/`[Gap]`/`[research …]` tags.
 
 ---
 
