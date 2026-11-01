@@ -115,9 +115,8 @@ public class CompostingBinService(
 
     private static void ShakeBinIfPresent(GameLocation? location, Vector2 tile)
     {
-        if (location != null &&
-            location.Objects.TryGetValue(tile, out var machine) &&
-            machine != null)
+        if (location == null) return;
+        if (location.Objects.TryGetValue(tile, out var machine))
         {
             machine.shakeTimer = ModConstants.BinInvalidDropInShakeTimerMs;
         }
