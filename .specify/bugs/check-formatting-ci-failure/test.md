@@ -20,7 +20,7 @@ The 10 SonarAnalyzer findings no longer reproduce: `dotnet format --verify-no-ch
 | Regression suite (tests) | `dotnet test LivingRoots.Tests/LivingRoots.Tests.csproj -c Release --no-build` | pass | 1443 passed, 0 failed, 4 skipped |
 | Lint / type-check | `dotnet format ... --verify-no-changes` | pass | exit 0 |
 | Quality-gate suite | `pytest scripts/quality-gate/tests` | pass with pre-existing failures | 169 passed, 4 failed (same set as origin/dev) |
-| CI job reproduction | GitHub Actions run `41263990758` | not-run | not re-triggered; environmental CS0246 cascade not exercised |
+| CI job reproduction | GitHub Actions (not triggered) | not-run | workflow now provisions game assemblies (fetch + preflight); pending CI confirmation |
 
 ## Output Excerpts
 
@@ -38,10 +38,10 @@ Aprovado! – Com falha: 0, Aprovado: 1443, Ignorado: 4, Total: 1447
 
 ## Residual Risks
 
-- The "Code Style (format only)" job on GitHub-hosted runners still fails with `CS0246` because the Stardew Valley assemblies are not provisioned; the code-level fix does not address that half.
+- The "Code Style (format only)" job now provisions game assemblies like `build-analysis`; CI confirmation is still pending because the workflow was not triggered from this environment.
 - The S-rules are suppressed via justified pragmas rather than refactored; future findings could accumulate.
 - `test_analyzer_config.py` suppression scan passed for the modified files (no new violations).
 
 ## Recommendation
 
-Hold — the SonarAnalyzer findings are verified gone locally, but the CI job's environmental `CS0246` cascade was not exercised or fixed. Either provision game assemblies in `code-style.yml` (mirroring `build-analysis`) or re-scope the job to a game-assembly-free check, then re-run `/speckit.bug.test`. Do not promote this check to required until the environmental half is resolved.
+Provisioning is now in place; the remaining step is to trigger the workflow on GitHub and confirm green. Once CI confirms, mark this bug verified and consider promoting the check to required.

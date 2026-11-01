@@ -3,7 +3,7 @@
 - **Slug**: check-formatting-ci-failure
 - **Fixed**: 2026-11-01T02:40:00Z
 - **Assessment**: ./assessment.md
-- **Status**: partial
+- **Status**: applied
 
 ## Summary
 
@@ -20,6 +20,7 @@ Resolved the 10 SonarAnalyzer.CSharp findings (S2325, S1172, S8969, S3400) that 
 | `LivingRoots/Services/PlayerInventory.cs` | modified | `TryAddItem` (S2325) suppressed with justified pragma (interface member) |
 | `LivingRoots/Services/PlayerProvider.cs` | modified | `CurrentPlayer`/`CurrentItem` (S2325) suppressed with justified pragma (interface members) |
 | `LivingRoots/Services/ProgressCarryingBinItem.cs` | modified | `maximumStackSize` (S3400) suppressed with justified pragma (overrides a virtual method) |
+| `.github/workflows/code-style.yml` | modified | provisions game assemblies (fetch + preflight) like build-analysis, so `dotnet format` can compile the solution |
 
 ## Diff Highlights
 
@@ -51,7 +52,6 @@ public bool TryPlaceBin(...)
 
 ## Deviations from Assessment
 
-1. The assessment's preferred remediation listed provisioning game assemblies in `code-style.yml`. That was not done: it requires `BUILDDEPS_TOKEN` and materially changes the "cheap, always-running" nature of the workflow. The `CS0246` cascade therefore remains on the GitHub-hosted runner. Local verification confirms the code-level findings are gone.
 2. `OnAssetRequested` was kept as an instance method (the assessment suggested making it static) because ~20 call sites in the test suite invoke it on an instance. A justified `#pragma warning disable S2325` was used instead.
 3. `CompostingBinService` retained the `item!` null-forgiving operator; removing it produced CS8602. The S8969 finding is suppressed with a justified pragma explaining the nullable-analysis requirement.
 
