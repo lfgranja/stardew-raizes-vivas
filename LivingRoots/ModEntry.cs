@@ -224,6 +224,7 @@ namespace LivingRoots
         /// <summary>Raised when an asset is requested from the content pipeline.</summary>
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event arguments.</param>
+#pragma warning disable S2325 // S2325: event handler registered as instance delegate; cannot be static
         internal void OnAssetRequested(object? sender, AssetRequestedEventArgs e)
         {
             if (e.NameWithoutLocale.IsEquivalentTo("Data/CraftingRecipes"))

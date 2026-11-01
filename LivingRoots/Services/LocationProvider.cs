@@ -9,6 +9,7 @@ namespace LivingRoots.Services;
 public class LocationProvider : ILocationProvider
 {
     /// <inheritdoc />
+#pragma warning disable S2325 // S2325: implements ILocationProvider; cannot be static
     public GameLocation? GetLocationByName(string locationName)
     {
         foreach (var location in Game1.locations)
@@ -21,4 +22,5 @@ public class LocationProvider : ILocationProvider
 
         return null;
     }
+#pragma warning restore S2325
 }
