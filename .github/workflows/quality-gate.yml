@@ -157,19 +157,27 @@ jobs:
       - name: CodeQL annotations
         run: |
           python - <<'PY'
-          import json, os
+          import glob, json, os
           path = "codeql-results.sarif"
           if not os.path.exists(path):
               raise SystemExit(0)
-          with open(path, encoding="utf-8") as handle:
-              data = json.load(handle)
-          for run in data.get("runs", []):
-              for result in run.get("results", []):
-                  message = result.get("message", {}).get("text", "CodeQL finding")
-                  for location in result.get("locations", []):
-                      uri = location.get("physicalLocation", {}).get("artifactLocation", {}).get("uri", "")
-                      line = location.get("physicalLocation", {}).get("region", {}).get("startLine", 1)
-                      print(f"::error file={uri},line={line}::{message}")
+          sarif_files = []
+          if os.path.isdir(path):
+              sarif_files = sorted(glob.glob(os.path.join(path, "*.sarif")))
+          else:
+              sarif_files = [path]
+          if not sarif_files:
+              raise SystemExit(0)
+          for sarif_file in sarif_files:
+              with open(sarif_file, encoding="utf-8") as handle:
+                  data = json.load(handle)
+              for run in data.get("runs", []):
+                  for result in run.get("results", []):
+                      message = result.get("message", {}).get("text", "CodeQL finding")
+                      for location in result.get("locations", []):
+                          uri = location.get("physicalLocation", {}).get("artifactLocation", {}).get("uri", "")
+                          line = location.get("physicalLocation", {}).get("region", {}).get("startLine", 1)
+                          print(f"::error file={uri},line={line}::{message}")
           PY
 
   build-analysis:
