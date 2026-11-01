@@ -3,6 +3,8 @@
 - **Slug**: curl-https-enforcement
 - **Created**: 2026-11-01T04:12:22Z
 - **Source**: https://sonarcloud.io/project/issues?id=lfgranja_stardew-raizes-vivas&s=IMPACT_RANK&severities=BLOCKER%2CCRITICAL%2CMAJOR%2CMINOR&sinceLeakPeriod=true&issueStatuses=OPEN%2CCONFIRMED&types=VULNERABILITY&open=AaGOebPpQ4iSPc4Vg4Rw&tab=code
+- **Source host**: sonarcloud.io
+- **URL fetch policy**: confirmed-by-user (host not on allowlist; user approved fetch) — page is a JS-rendered SPA; issue details retrieved via the SonarCloud public issues API (`/api/issues/search?issues=AaGOebPpQ4iSPc4Vg4Rw`).
 - **Verdict**: valid
 - **Severity**: medium
 
