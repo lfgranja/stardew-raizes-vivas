@@ -239,6 +239,18 @@ def test_jscpd_is_pinned_csharp_only_and_gated():
     assert "--reporters json" in command
     assert "--output jscpd-report" in command
 
+    # jscpd validates its arguments before scanning: --fail-on-new-clones with no
+    # comparison source aborts the step (exit 1) instead of producing a report. Keep
+    # the invariant local so the flag can only come back together with a baseline.
+    if "--fail-on-new-clones" in command:
+        comparison_sources = ("--baseline", "--baseline-from-ref", "--changed")
+        assert any(source in command for source in comparison_sources), (
+            "--fail-on-new-clones requires --baseline, --baseline-from-ref or --changed"
+        )
+    # .jscpd-baseline.json is the Python gate's aggregate baseline; jscpd needs a
+    # fingerprint baseline and rejects this format ("missing field `version`").
+    assert "--baseline .jscpd-baseline.json" not in command
+
     gate_steps = [step for step in steps(static) if "quality_gate duplication" in str(step.get("run", ""))]
     assert gate_steps, "the jscpd report must be gated"
     assert "--report jscpd-report/jscpd-report.json" in str(gate_steps[0]["run"])
