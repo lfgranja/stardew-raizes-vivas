@@ -4,7 +4,7 @@
 - **Tested**: 2026-11-01T02:50:00Z
 - **Assessment**: ./assessment.md
 - **Fix**: ./fix.md
-- **Result**: partial
+- **Result**: verified
 
 ## Summary
 
