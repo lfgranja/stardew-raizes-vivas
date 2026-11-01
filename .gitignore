@@ -503,3 +503,8 @@ graphify-out/
 Thumbs.db
 *.swp
 .idea/
+
+# OpenCode runtime
+.opencode/
+/tmp/opencode/
+
