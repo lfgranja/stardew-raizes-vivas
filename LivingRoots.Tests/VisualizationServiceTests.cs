@@ -222,8 +222,8 @@ public class VisualizationServiceTests
     // ── Property: 3-tier interpolation ────────────────────────
 
     /// <summary>
-    /// Three-tier interpolation: health 1-33 maps to Poor, 34-66 to
-    /// Moderate, 67-100 to Healthy, verified through ColorInterpolationService.
+    /// Three-tier interpolation: health 1-30 maps to Poor, 31-70 to
+    /// Moderate, 71-100 to Healthy, verified through ColorInterpolationService.
     /// </summary>
     [Property(MaxTest = 100)]
     public bool ThreeTierInterpolation_CategoryByHealthRange(int health)
@@ -235,9 +235,9 @@ public class VisualizationServiceTests
 
         var colorService = new ColorInterpolationService();
         var category = colorService.GetCategoryForHealth(health);
-        var expected = health <= 33
+        var expected = health <= 30
             ? HealthCategory.Poor
-            : health <= 66
+            : health <= 70
                 ? HealthCategory.Moderate
                 : HealthCategory.Healthy;
         return category == expected;

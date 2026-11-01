@@ -50,13 +50,13 @@ namespace LivingRoots.Tests.Visualization
         {
             // Arrange
             // Earth-tone palette (spec clarification 127): Moderate #D97706 (217,119,6),
-            // Healthy #15803D (21,128,61). health=50 falls in Moderate range [34, 67).
-            // t = (50 - 34) / 33 = 16/33
-            // r = Lerp(217, 21, 16/33)  = 217 + (21 - 217) * 16/33 = 217 - 95.03 = 121.97 -> 121
-            // g = Lerp(119, 128, 16/33) = 119 + (128 - 119) * 16/33 = 119 + 4.36  = 123.36 -> 123
-            // b = Lerp(6, 61, 16/33)    = 6 + (61 - 6) * 16/33    = 6 + 26.67   = 32.67  -> 32
+            // Healthy #15803D (21,128,61). health=50 falls in Moderate range [31, 71).
+            // t = (50 - 31) / 40 = 19/40
+            // r = Lerp(217, 21, 19/40)  = 217 + (21 - 217) * 19/40 = 217 - 93.1 = 123.9 -> 123
+            // g = Lerp(119, 128, 19/40) = 119 + (128 - 119) * 19/40 = 119 + 4.275 = 123.275 -> 123
+            // b = Lerp(6, 61, 19/40)    = 6 + (61 - 6) * 19/40    = 6 + 26.125  = 32.125 -> 32
             // a = opacity 1.0 * 255 = 255
-            var expected = new Color(121, 123, 32, 255);
+            var expected = new Color(123, 123, 32, 255);
 
             // Act
             var result = _service.GetColorForHealth(50f);
@@ -96,7 +96,7 @@ namespace LivingRoots.Tests.Visualization
         public void GetCategoryForHealth_HealthThirtyFour_ReturnsModerate()
         {
             // Act
-            var result = _service.GetCategoryForHealth(34f);
+            var result = _service.GetCategoryForHealth(31f);
 
             // Assert
             Assert.Equal(HealthCategory.Moderate, result);
@@ -242,10 +242,10 @@ namespace LivingRoots.Tests.Visualization
         [InlineData(-100f)]
         [InlineData(-1f)]
         [InlineData(0f)]
-        [InlineData(33f)]
-        [InlineData(34f)]
-        [InlineData(66f)]
-        [InlineData(67f)]
+        [InlineData(30f)]
+        [InlineData(31f)]
+        [InlineData(70f)]
+        [InlineData(71f)]
         [InlineData(100f)]
         [InlineData(101f)]
         [InlineData(1000f)]
