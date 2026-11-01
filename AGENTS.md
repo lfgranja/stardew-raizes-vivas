@@ -49,7 +49,7 @@ Stardew Valley agroecological mod (.NET 6 / C# latest) implementing soil health,
 | `ModEntry` | Class | `LivingRoots/ModEntry.cs` | SMAPI | Composition root, wires all dependencies |
 | `ModController` | Class | `LivingRoots/Controllers/ModController.cs` | ModEntry | Event handler orchestrator with atomic state machine |
 | `SoilHealthService` | Class | `LivingRoots/Services/SoilHealthService.cs` | ModController | Core game logic: load/save/query soil health per tile |
-| `SoilHealthState` | Class | `LiveRoots/Domain/SoilHealthState.cs` | SoilHealthState | Persistence DTO: `Dictionary<LocationName, Dictionary<TileKey, HealthValue>>` |
+| `SoilHealthState` | Class | `LivingRoots/Domain/Models/SoilHealthState.cs` | SoilHealthState | Persistence DTO: `Dictionary<LocationName, Dictionary<TileKey, HealthValue>>` |
 | `ModDataService` | Class | `LivingRoots/Services/ModDataService.cs` | SoilHealthService | SMAPI data persistence layer with sanitization |
 | `VisualizationService` | Class | `LivingRoots/Services/Visualization/VisualizationService.cs` | ModController | XNA render orchestrator: overlays, tooltips, hoe feedback |
 | `CompostingBinService` | Class | `LivingRoots/Services/CompostingBinService.cs` | ModController | Machine state machine: Empty→Processing→Ready |
@@ -96,10 +96,19 @@ Stardew Valley agroecological mod (.NET 6 / C# latest) implementing soil health,
 dotnet build Stardew-LivingRoots.sln --configuration Release
 
 # Test (full .NET suite)
-dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal
+dotnet test Stardew-LivingRoots.sln --configuration Release
+
+# Run a single test by name/filter
+dotnet test Stardew-LivingRoots.sln --configuration Release --filter "FullyQualifiedName~SoilHealthServiceTests"
+
+# Run tests for just the test project
+dotnet test LivingRoots.Tests/LivingRoots.Tests.csproj --configuration Release
 
 # Format check (CI gate)
 dotnet format Stardew-LivingRoots.sln --verify-no-changes
+
+# Format in place
+dotnet format Stardew-LivingRoots.sln
 
 # Quality gate (Python package; venv at .venv-quality-gate)
 PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m pytest scripts/quality-gate/tests -q
@@ -110,9 +119,6 @@ PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate se
 
 # Analyzer probe (must print PASS)
 bash scripts/quality-gate/analyzer-probe.sh
-
-# Local dev with game
-# Set GamePath in LivingRoots.csproj, press F5
 ```
 
 ## NOTES
