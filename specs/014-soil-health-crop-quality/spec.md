@@ -33,9 +33,10 @@
 - **A4 Harvest feedback text localization**: Resolved as **literal text** (reusing the existing `TemporaryAnimatedSprite.text` floating-text pattern, no new i18n keys), consistent with compost/mulch (`CompostApplicationService`, `MulchApplicationService`) and spec 005 A4 (zero new i18n keys). Refusal messages (red HUD) keep using existing i18n keys (`message.harvest.inventory-full`). No change to spec text required beyond this note.
 - **A5 Pest clamp integration**: Resolved as an **optional, null-safe read**: the quality system reads pest state through an optional `IPestStateProvider` resolved in `ModEntry` composition; when the pest system is not installed the provider is null and no clamp applies. The interface contract is finalized in the pest spec when it ships; this spec requires only that the hook call site tolerates absence (no hard dependency, no new constant beyond `PestQualityPenalty`).
 
-**Deferred to user decision (batch questions below):** feedback-text conditionality and co-occurrence (see batch).
+### Session 2026-11-01 (clarify — batch questions resolved)
 
----
+- **B1 Feedback-text conditionality**: "Living Soil" shows only when the tier changes the observable outcome (enhanced quality silver/gold/iridium and/or extra harvest); a Living harvest yielding normal quality with no extra item produces no feedback (silence = vanilla), preserving the "silence = vanilla" contract. (Option A accepted.)
+- **B2 Feedback-text co-occurrence**: when both enhanced quality and an extra harvest occur on the same Living harvest, both "Living Soil" and "Extra harvest!" show as two separate sprites broadcast together via `Game1.multiplayer.broadcastSprites(location, sprite1, sprite2)`; each with standard alphaFade/motion. (Option A accepted.)
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -50,7 +51,7 @@ As a farmer with Living Soil (71–100%), I want my harvests to be visibly bette
 **Acceptance Scenarios**:
 
 1. **Given** a tile with soil health ≥ 71 (Living), **When** the player harvests a crop, **Then** the harvested item's quality is rolled with an additive +0.08 boost to the vanilla quality probability, and there is an additional +0.10 chance of an extra harvest item.
-2. **Given** a tile with soil health ≥ 71, **When** harvest quality is rolled, **Then** the result may be silver, gold, or iridium (per the boosted roll), and the player sees a transient floating-text feedback ("Living Soil") with a reward SFX.
+2. **Given** a tile with soil health ≥ 71, **When** harvest quality is rolled and yields an enhanced quality (silver/gold/iridium) or an extra harvest, **Then** the result may be silver, gold, or iridium (per the boosted roll), and the player sees the corresponding transient floating-text feedback ("Living Soil" for enhanced quality, "Extra harvest!" for an extra item) with a reward SFX. A Living harvest yielding normal quality with no extra item shows no feedback.
 3. **Given** a tile with soil health ≥ 71, **When** an extra harvest roll succeeds, **Then** one additional item is produced and a transient "Extra harvest!" floating text is shown.
 4. **Given** a tile with soil health ≥ 71 and a pest infestation (when pest system ships), **When** harvest occurs, **Then** quality is clamped by `PestQualityPenalty` (pest system reads soil state; quality system reads pest state — one-directional).
 
@@ -93,7 +94,7 @@ As a player, I want to see a brief, non-intrusive visual feedback when a tier af
 **Acceptance Scenarios**:
 
 1. **Given** a harvest on a Poor tile, **When** quality is forced to 0, **Then** a transient `TemporaryAnimatedSprite` (16×16 procedural `marker-poor`) + floating text ("Soil too poor for quality crops") + `cancel` SFX appears and fades within ~1 second.
-2. **Given** a harvest on a Living tile, **When** quality is boosted or extra harvest occurs, **Then** a transient `sparkle-living` sprite + floating text ("Living Soil" / "Extra harvest!") + reward SFX appears and fades.
+2. **Given** a harvest on a Living tile, **When** quality is boosted (silver/gold/iridium) and/or an extra harvest occurs, **Then** a transient `sparkle-living` sprite + floating text ("Living Soil" for enhanced quality, "Extra harvest!" for an extra item) + reward SFX appears and fades; when both conditions hold, both messages show as two separate sprites broadcast together. When neither condition holds (normal quality, no extra), no feedback is shown.
 3. **Given** a harvest on a Moderate tile, **When** no modifier applies, **Then** no transient feedback is shown (silence = vanilla).
 4. **Given** the feedback is event-driven, **When** > 1000 tiles are visible, **Then** the feedback still appears (immune to degradation threshold).
 
@@ -119,7 +120,7 @@ As a player, I want to see a brief, non-intrusive visual feedback when a tier af
 - **FR-003**: System MUST compose with (not replace) vanilla quality modifiers: Farming level, fertilizer (`quality_fertilizer_item` → num2 1/2/3), `IsPaddyCrop`, `RegrowDays`, `HarvestMaxIncreasePerFarmingLevel`. Medium tier must be byte-identical to vanilla.
 - **FR-004**: System MUST NOT use data-entry edits (`Data/Crops`, `Data/Objects`) to implement tier outcomes — all effects are runtime (Harmony or public-field manipulation), because `DaysInPhase`, `ExtraHarvestChance`, and `HarvestMin/MaxQuality` are global per seed/crop.
 - **FR-005**: System MUST NOT create new PNG assets — feedback sprites are procedural (`new Texture2D(device, 16, 16)` + `SetData`, singleton pattern per `VisualizationTextures`).
-- **FR-006**: System MUST show transient feedback at harvest: Poor → `marker-poor` sprite + "Soil too poor for quality crops" text + `cancel` SFX; Living → `sparkle-living` sprite + "Living Soil"/"Extra harvest!" text + reward SFX; Moderate → no feedback (silence = vanilla).
+- **FR-006**: System MUST show transient feedback at harvest, **only when the tier changes the observable outcome**: Poor → `marker-poor` sprite + "Soil too poor for quality crops" text + `cancel` SFX (quality forced to 0); Living → `sparkle-living` sprite + "Living Soil" text (when the roll yields an enhanced quality: silver/gold/iridium) and/or "Extra harvest!" text (when an extra item is produced) + reward SFX, shown as two separate sprites broadcast together when both conditions hold; Moderate → no feedback (silence = vanilla). A Living harvest yielding normal quality with no extra item produces no feedback.
 - **FR-007**: System MUST use non-chromatic cues (sprite shape + floating text + SFX) for tier feedback — color alone must not convey essential information (GAG 1.4.1 / XAG 103). Default palette must not change.
 - **FR-008**: System MUST be event-driven (transient sprites on `TemporarySprites` + floating text on `Display.Rendered`) — immune to the 1000-tile degradation threshold and the 16.67 ms/frame budget.
 - **FR-009**: System MUST be host-authoritative for chance rolls (extra harvest, future pests): roll executes once on the host (`Context.IsMainPlayer`); result persists via SV save (host's save = the save); client never rolls. Divergence rule: host state wins; client re-syncs on next `DayStarted`.
@@ -161,7 +162,7 @@ As a player, I want to see a brief, non-intrusive visual feedback when a tier af
 - Pest system (Q7) and "new interactions" (Q8) are out of scope — separate specs.
 - Pest clamp is read through an optional `IPestStateProvider` (null when pest system not installed → no clamp); interface contract finalized in the pest spec.
 - Harvest feedback text is literal (reuses the existing `TemporaryAnimatedSprite.text` floating-text pattern; no new i18n keys), consistent with compost/mulch and spec 005 A4; refusal messages keep using existing i18n keys (`message.harvest.inventory-full`).
-- Feedback-text conditionality and co-occurrence (whether "Living Soil" shows only on an enhanced outcome and whether both messages show together) remain open — see batch questions.
+- Feedback-text conditionality and co-occurrence resolved (clarify 2026-11-01): "Living Soil" shows only when the roll yields an enhanced quality (silver/gold/iridium) and/or an extra harvest occurs; when both hold, both messages show as two separate sprites broadcast together; a Living harvest yielding normal quality with no extra item produces no feedback (silence = vanilla).
 - No persistent tier marker (Q9) — transient feedback only.
 - Gate 3 in-game run (Q10) is executed during implementation, not before spec.
 
