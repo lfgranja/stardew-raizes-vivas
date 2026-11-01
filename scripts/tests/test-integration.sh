@@ -393,21 +393,19 @@ if [[ -n "${SMOKE_STUB_ENV_DUMP:-}" ]]; then
     } > "${SMOKE_STUB_ENV_DUMP}" 2>/dev/null || true
 fi
 
-if [[ -n "${SMOKE_STUB_LOG:-}" && -n "${SMOKE_STUB_LOG_SRC:-}" ]]; then
-    if [[ -f "${SMOKE_STUB_LOG_SRC}" ]]; then
-        cp -- "${SMOKE_STUB_LOG_SRC}" "${SMOKE_STUB_LOG}" 2>/dev/null || true
-        # The run sentinel must be stamped AT LAUNCH: the script rejects a
-        # sentinel older than the launch timestamp (FR-002's freshness rule),
-        # and the template was written before the run started.
-        if [[ -f "${SMOKE_STUB_LOG}" ]]; then
-            now="$(date -u +%Y-%m-%dT%H:%M:%S)"
-            tmp="${SMOKE_STUB_LOG}.tmp.$$"
-            if sed "s/Log started at [^ ]* UTC/Log started at ${now} UTC/" \
-                -- "${SMOKE_STUB_LOG}" > "$tmp" 2>/dev/null; then
-                mv -f -- "$tmp" "${SMOKE_STUB_LOG}" 2>/dev/null || true
-            fi
-            rm -f -- "$tmp" 2>/dev/null || true
+if [[ -n "${SMOKE_STUB_LOG:-}" && -n "${SMOKE_STUB_LOG_SRC:-}" ]] && [[ -f "${SMOKE_STUB_LOG_SRC}" ]]; then
+    cp -- "${SMOKE_STUB_LOG_SRC}" "${SMOKE_STUB_LOG}" 2>/dev/null || true
+    # The run sentinel must be stamped AT LAUNCH: the script rejects a
+    # sentinel older than the launch timestamp (FR-002's freshness rule),
+    # and the template was written before the run started.
+    if [[ -f "${SMOKE_STUB_LOG}" ]]; then
+        now="$(date -u +%Y-%m-%dT%H:%M:%S)"
+        tmp="${SMOKE_STUB_LOG}.tmp.$$"
+        if sed "s/Log started at [^ ]* UTC/Log started at ${now} UTC/" \
+            -- "${SMOKE_STUB_LOG}" > "$tmp" 2>/dev/null; then
+            mv -f -- "$tmp" "${SMOKE_STUB_LOG}" 2>/dev/null || true
         fi
+        rm -f -- "$tmp" 2>/dev/null || true
     fi
 fi
 
@@ -456,20 +454,18 @@ if [[ -n "${SMOKE_STUB_MARKER:-}" ]]; then
     printf '%s\n' "$$" > "${SMOKE_STUB_MARKER}" 2>/dev/null || true
 fi
 
-if [[ -n "${SMOKE_STUB_LOG:-}" && -n "${SMOKE_STUB_LOG_SRC:-}" ]]; then
-    if [[ -f "${SMOKE_STUB_LOG_SRC}" ]]; then
-        cp -- "${SMOKE_STUB_LOG_SRC}" "${SMOKE_STUB_LOG}" 2>/dev/null || true
-        # The run sentinel must be stamped AT LAUNCH: the script rejects a
-        # sentinel older than the launch timestamp (FR-002's freshness rule).
-        if [[ -f "${SMOKE_STUB_LOG}" ]]; then
-            now="$(date -u +%Y-%m-%dT%H:%M:%S)"
-            tmp="${SMOKE_STUB_LOG}.tmp.$$"
-            if sed "s/Log started at [^ ]* UTC/Log started at ${now} UTC/" \
-                -- "${SMOKE_STUB_LOG}" > "$tmp" 2>/dev/null; then
-                mv -f -- "$tmp" "${SMOKE_STUB_LOG}" 2>/dev/null || true
-            fi
-            rm -f -- "$tmp" 2>/dev/null || true
+if [[ -n "${SMOKE_STUB_LOG:-}" && -n "${SMOKE_STUB_LOG_SRC:-}" ]] && [[ -f "${SMOKE_STUB_LOG_SRC}" ]]; then
+    cp -- "${SMOKE_STUB_LOG_SRC}" "${SMOKE_STUB_LOG}" 2>/dev/null || true
+    # The run sentinel must be stamped AT LAUNCH: the script rejects a
+    # sentinel older than the launch timestamp (FR-002's freshness rule).
+    if [[ -f "${SMOKE_STUB_LOG}" ]]; then
+        now="$(date -u +%Y-%m-%dT%H:%M:%S)"
+        tmp="${SMOKE_STUB_LOG}.tmp.$$"
+        if sed "s/Log started at [^ ]* UTC/Log started at ${now} UTC/" \
+            -- "${SMOKE_STUB_LOG}" > "$tmp" 2>/dev/null; then
+            mv -f -- "$tmp" "${SMOKE_STUB_LOG}" 2>/dev/null || true
         fi
+        rm -f -- "$tmp" 2>/dev/null || true
     fi
 fi
 
@@ -2503,6 +2499,7 @@ else
         case "$tc17_signal" in
             TERM) tc17_expected_signal=143 ;;
             HUP)  tc17_expected_signal=129 ;;
+            *)    tc17_expected_signal=143 ;;
         esac
 
         assert_eq "1" "$(probe_field "$tc17_probe_output" SIGNALED)" \

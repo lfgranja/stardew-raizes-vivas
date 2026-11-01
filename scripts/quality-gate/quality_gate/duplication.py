@@ -12,6 +12,7 @@ from quality_gate.baseline import DuplicationBaseline
 from quality_gate.diagnostics import Diagnostic, GateConfigurationError
 
 DUPLICATION_EPSILON = 0.0
+DUPLICATION_REGRESSION_TITLE = "Duplication regression"
 
 
 @dataclass(frozen=True)
@@ -55,34 +56,67 @@ def _as_int(value: object, name: str) -> int:
     return value
 
 
+def _get_total_object(statistics: dict) -> dict:
+    total = statistics.get("total")
+    if not isinstance(total, dict):
+        raise GateConfigurationError("statistics.total must be an object")
+    return total
+
+
+def _get_duplicates_key(total: dict) -> str:
+    if "duplicates" in total:
+        return "duplicates"
+    if "clones" in total:
+        return "clones"
+    raise GateConfigurationError("statistics.total requires duplicates (or clones)")
+
+
+def _get_lines_key(total: dict) -> str:
+    if "lines" in total:
+        return "lines"
+    if "duplicatedLines" in total:
+        return "duplicatedLines"
+    raise GateConfigurationError("statistics.total requires lines (or duplicatedLines)")
+
+
+def _parse_clone_entry(entry: object) -> Clone:
+    if not isinstance(entry, dict):
+        raise GateConfigurationError("clone entry must be an object")
+    if "lines" not in entry:
+        raise GateConfigurationError("clone requires lines")
+    clone_lines = _as_int(entry["lines"], "lines")
+    first = entry.get("firstFile")
+    second = entry.get("secondFile")
+    if not isinstance(first, dict) or not isinstance(second, dict):
+        raise GateConfigurationError("clone requires firstFile and secondFile")
+    if "name" not in first or "start" not in first or "name" not in second or "start" not in second:
+        raise GateConfigurationError("clone files require name and start")
+    if not isinstance(first["name"], str) or not isinstance(second["name"], str):
+        raise GateConfigurationError("file names must be strings")
+    first_line = _as_int(first["start"], "start")
+    second_line = _as_int(second["start"], "start")
+    return Clone(
+        first_file=first["name"],
+        first_line=first_line,
+        second_file=second["name"],
+        second_line=second_line,
+        lines=clone_lines,
+    )
+
+
 def parse_report(payload: object) -> DuplicationReport:
     if not isinstance(payload, dict):
         raise GateConfigurationError("report payload must be a JSON object")
     statistics = payload.get("statistics")
     if not isinstance(statistics, dict):
         raise GateConfigurationError("statistics must be an object")
-    total = statistics.get("total")
-    if not isinstance(total, dict):
-        raise GateConfigurationError("statistics.total must be an object")
-    total = statistics.get("total")
-    if not isinstance(total, dict):
-        raise GateConfigurationError("statistics.total must be an object")
+    total = _get_total_object(statistics)
     if "percentage" not in total:
         raise GateConfigurationError("statistics.total requires percentage")
     # jscpd reports clone counts as "clones"/"duplicatedLines"; the
     # contract/tests use "duplicates"/"lines". Accept either spelling.
-    if "duplicates" in total:
-        duplicates_key = "duplicates"
-    elif "clones" in total:
-        duplicates_key = "clones"
-    else:
-        raise GateConfigurationError("statistics.total requires duplicates (or clones)")
-    if "lines" in total:
-        lines_key = "lines"
-    elif "duplicatedLines" in total:
-        lines_key = "duplicatedLines"
-    else:
-        raise GateConfigurationError("statistics.total requires lines (or duplicatedLines)")
+    duplicates_key = _get_duplicates_key(total)
+    lines_key = _get_lines_key(total)
     percentage = _as_number(total["percentage"], "percentage")
     duplicates_count = _as_int(total[duplicates_key], duplicates_key)
     total_lines = _as_int(total[lines_key], lines_key)
@@ -94,30 +128,7 @@ def parse_report(payload: object) -> DuplicationReport:
         raise GateConfigurationError("duplicates count mismatch")
     clones: list[Clone] = []
     for entry in duplicates_raw:
-        if not isinstance(entry, dict):
-            raise GateConfigurationError("clone entry must be an object")
-        if "lines" not in entry:
-            raise GateConfigurationError("clone requires lines")
-        clone_lines = _as_int(entry["lines"], "lines")
-        first = entry.get("firstFile")
-        second = entry.get("secondFile")
-        if not isinstance(first, dict) or not isinstance(second, dict):
-            raise GateConfigurationError("clone requires firstFile and secondFile")
-        if "name" not in first or "start" not in first or "name" not in second or "start" not in second:
-            raise GateConfigurationError("clone files require name and start")
-        if not isinstance(first["name"], str) or not isinstance(second["name"], str):
-            raise GateConfigurationError("file names must be strings")
-        first_line = _as_int(first["start"], "start")
-        second_line = _as_int(second["start"], "start")
-        clones.append(
-            Clone(
-                first_file=first["name"],
-                first_line=first_line,
-                second_file=second["name"],
-                second_line=second_line,
-                lines=clone_lines,
-            )
-        )
+        clones.append(_parse_clone_entry(entry))
 
     # total_lines is available but not stored on the report; keep parity.
     return DuplicationReport(percentage=percentage, total_lines=total_lines, duplicates=tuple(clones))
@@ -147,7 +158,7 @@ def evaluate_duplication(report: DuplicationReport, baseline: DuplicationBaselin
             )
             diagnostics.append(
                 Diagnostic(
-                    title="Duplication regression",
+                    title=DUPLICATION_REGRESSION_TITLE,
                     message=message,
                     file=clone.first_file,
                     line=clone.first_line,
@@ -155,7 +166,7 @@ def evaluate_duplication(report: DuplicationReport, baseline: DuplicationBaselin
             )
             diagnostics.append(
                 Diagnostic(
-                    title="Duplication regression",
+                    title=DUPLICATION_REGRESSION_TITLE,
                     message=message,
                     file=clone.second_file,
                     line=clone.second_line,
@@ -164,7 +175,7 @@ def evaluate_duplication(report: DuplicationReport, baseline: DuplicationBaselin
     else:
         diagnostics.append(
             Diagnostic(
-                title="Duplication regression",
+                title=DUPLICATION_REGRESSION_TITLE,
                 message=f"duplication {report.percentage}% > {ceiling}%",
             )
         )

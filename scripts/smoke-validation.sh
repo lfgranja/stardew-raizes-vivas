@@ -380,7 +380,9 @@ log_phase_timings() {
 # A CLI-argument error: unknown option, missing required argument or a
 # malformed value. Always exit 14 (FR-007).
 usage_error() {
-    die "$EX_USAGE_ERROR" "$1" "command line" "$2"
+    local what="$1"
+    local fix="$2"
+    die "$EX_USAGE_ERROR" "$what" "command line" "$fix"
 }
 
 # on_error <status> <line> <function>
@@ -463,10 +465,13 @@ expand_tilde() {
 #
 # Fails with a usage error when the option's required argument is missing.
 require_arg() {
-    if (($1 < 2)); then
+    local remaining="$1"
+    local option="$2"
+    local placeholder="$3"
+    if ((remaining < 2)); then
         usage_error \
-            "missing required argument for '$2' (expected: $2 $3)" \
-            "pass the argument as '$2 $3' or '$2=<value>' — see '${SCRIPT_NAME} --help'"
+            "missing required argument for '${option}' (expected: ${option} ${placeholder})" \
+            "pass the argument as '${option} ${placeholder}' or '${option}=<value>' — see '${SCRIPT_NAME} --help'"
     fi
 }
 
@@ -474,10 +479,13 @@ require_arg() {
 #
 # Fails with a usage error when a path option is given an empty value.
 require_path_value() {
-    if [[ -z "$1" ]]; then
+    local value="$1"
+    local option="$2"
+    local placeholder="$3"
+    if [[ -z "$value" ]]; then
         usage_error \
-            "empty value for '$2' (expected: $2 $3)" \
-            "pass a non-empty path as '$2 $3' or '$2=<path>' — see '${SCRIPT_NAME} --help'"
+            "empty value for '${option}' (expected: ${option} ${placeholder})" \
+            "pass a non-empty path as '${option} ${placeholder}' or '${option}=<path>' — see '${SCRIPT_NAME} --help'"
     fi
 }
 
@@ -490,13 +498,11 @@ require_seconds() {
 
     # The value must be a non-empty run of digits (at most 15 — far beyond any
     # sane timeout, and small enough for the shell's arithmetic to hold
-    # exactly) and must not be zero. The zero test is a pattern rather than an
-    # arithmetic comparison: a leading zero is an octal prefix in the shell's
-    # arithmetic, so "08" would be read as an invalid octal number.
+    # without a 64-bit big integer).
     if [[ ! "$value" =~ ^[0-9]{1,15}$ ]] || [[ "$value" =~ ^0+$ ]]; then
         usage_error \
-            "invalid value '${value}' for '${opt}' (expected a positive integer number of SECONDS)" \
-            "pass a positive integer, e.g. '${opt}=120' — see '${SCRIPT_NAME} --help'"
+            "invalid value for '${opt}' (expected a positive integer, got '${value}')" \
+            "pass a positive integer as '${opt} <seconds>' or '${opt}=<seconds>' — see '${SCRIPT_NAME} --help'"
     fi
 }
 
@@ -545,7 +551,7 @@ join_words() {
 # full option the caller probably meant, but the abbreviation is NOT accepted.
 unknown_option() {
     local token="$1"
-    local name="$1"
+    local name="$token"
     local -a candidates=()
     local known=""
     local list=""
@@ -1634,7 +1640,7 @@ on_exit() {
     cleanup
     # FR-010: a failed PGID assertion in the cleanup path is a hard failure
     # — the group was left unsignalled, so the run cannot claim success.
-    if ((cleanup_pgid_assertion_failed == 1)); then
+    if ((cleanup_pgid_assertion_failed == 1)) && ((failure_report_emitted == 0)); then
         # The reason is already in the run log. It is repeated on stderr when
         # the run has NOT reported a failure of its own: a run that died from
         # a signal has no report of its own, and its cleanup failure must
@@ -1642,7 +1648,6 @@ on_exit() {
         # all (T118). A run that already reported a failure keeps its own
         # report as the last thing on stderr, so exactly ONE report is
         # emitted.
-        if ((failure_report_emitted == 0)); then
             stamp="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || printf 'unknown') [ERROR] [${run_id:-no-run-id}]"
 
             # FR-014: EVERY line of the report carries the stamp — the run
@@ -1912,9 +1917,8 @@ smapi_assembly_version() {
         [[ -n "$version" ]] || continue
         case "$version" in
             4.0.30319 | 1.0.0.0 | 1.0.0 | 0.0.0.0) continue ;;
+            *) printf '%s' "$version"; return 0 ;;
         esac
-        printf '%s' "$version"
-        return 0
     done < <(grep -aoE '[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' -- "$dll" 2>/dev/null | sort -u)
 
     return 1
@@ -3903,14 +3907,12 @@ wait_for_sentinel() {
         # timeout (4).
         check_log_inode_freshness
 
-        if [[ -f "$smapi_log" ]] && log_has_sentinel; then
-            if sentinel_is_fresh "$launch_t0"; then
-                log_event INFO "run sentinel observed in the SMAPI log"
-                # FR-002: the log the run reads MUST be a log this run
-                # produced — the inode check is the third freshness control.
-                verify_log_freshness
-                return 0
-            fi
+        if [[ -f "$smapi_log" ]] && log_has_sentinel && sentinel_is_fresh "$launch_t0"; then
+            log_event INFO "run sentinel observed in the SMAPI log"
+            # FR-002: the log the run reads MUST be a log this run
+            # produced — the inode check is the third freshness control.
+            verify_log_freshness
+            return 0
         fi
 
         if ! kill -0 "$game_pid" 2>/dev/null; then

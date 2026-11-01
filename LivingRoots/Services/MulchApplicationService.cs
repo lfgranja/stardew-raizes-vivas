@@ -30,10 +30,7 @@ public class MulchApplicationService(
     public void LoadData(string saveId)
     {
         _loadAbortedForLimits = false;
-        lock (_lock)
-        {
-            _runtimeCache.Clear();
-        }
+        ClearRuntimeCache();
 
         if (string.IsNullOrWhiteSpace(saveId))
         {
@@ -42,48 +39,91 @@ public class MulchApplicationService(
             return;
         }
 
-        var dataKey = $"mulch_state_{saveId}";
-        MulchState? savedData;
-        try
-        {
-            savedData = _modDataService.LoadData<MulchState>(dataKey);
-        }
-        catch (Exception ex)
-        {
-            _monitor.Log($"LoadData exception: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-            savedData = null;
-        }
-
+        var savedData = TryLoadMulchState(saveId);
         if (savedData == null)
         {
             return;
         }
 
+        PopulateRuntimeCache(savedData);
+    }
+
+    private void ClearRuntimeCache()
+    {
+        lock (_lock)
+        {
+            _runtimeCache.Clear();
+        }
+    }
+
+    private MulchState? TryLoadMulchState(string saveId)
+    {
+        var dataKey = $"mulch_state_{saveId}";
+        try
+        {
+            return _modDataService.LoadData<MulchState>(dataKey);
+        }
+        catch (Exception ex)
+        {
+            _monitor.Log($"LoadData exception: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            return null;
+        }
+    }
+
+    private void PopulateRuntimeCache(MulchState savedData)
+    {
         lock (_lock)
         {
             foreach (var locEntry in savedData.LocationMulchData)
             {
-                var tileDict = new Dictionary<Point, MulchTileEntry>();
-                foreach (var tileEntry in locEntry.Value)
-                {
-                    var parts = tileEntry.Key.Split(',');
-                    if (parts.Length == 2 &&
-                        int.TryParse(parts[0], out var x) &&
-                        int.TryParse(parts[1], out var y))
-                    {
-                        var state = tileEntry.Value;
-                        if (state.HasMulch) // sparse: only store non-default
-                        {
-                            tileDict[new Point(x, y)] = state;
-                        }
-                    }
-                }
+                var tileDict = BuildTileDict(locEntry.Value);
                 if (tileDict.Count > 0)
                 {
                     _runtimeCache[locEntry.Key] = tileDict;
                 }
             }
         }
+    }
+
+    private static bool TryParseTileKey(string key, out Point point)
+    {
+        point = default;
+        var parts = key.Split(',');
+        if (parts.Length != 2)
+        {
+            return false;
+        }
+
+        if (!int.TryParse(parts[0], out var x))
+        {
+            return false;
+        }
+
+        if (!int.TryParse(parts[1], out var y))
+        {
+            return false;
+        }
+
+        point = new Point(x, y);
+        return true;
+    }
+
+    private static Dictionary<Point, MulchTileEntry> BuildTileDict(Dictionary<string, MulchTileEntry> savedTileDict)
+    {
+        var tileDict = new Dictionary<Point, MulchTileEntry>();
+        foreach (var tileEntry in savedTileDict)
+        {
+            if (!TryParseTileKey(tileEntry.Key, out var point))
+            {
+                continue;
+            }
+
+            if (tileEntry.Value.HasMulch)
+            {
+                tileDict[point] = tileEntry.Value;
+            }
+        }
+        return tileDict;
     }
 
     public void SaveData(string saveId)

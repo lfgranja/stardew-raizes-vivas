@@ -767,7 +767,8 @@ for row in "${LOG_GATE_TABLE[@]}"; do
             assert_contains "$RUN_STDOUT" "$HARNESS_MOD_SUCCESS_MARKER" \
                 "log gate [$kind] stdout carries the mod's success marker"
             ;;
-        mod_absent)
+        *) ;;
+    esac
             # FR-007: "When no record matched, the context MUST be the
             # trailing RECORDS of the normalised stream, capped at 30
             # records." No record matched here — the mod is simply absent from
@@ -1427,6 +1428,10 @@ for row in "${INODE_GUARD_TABLE[@]}"; do
         # log did.
         assert_not_contains "$output" "$SKIP_REASON_TEXT" \
             "inode guard [$label] the stale log did not decide the verdict"
+        ;;
+    *)
+        ;;
+    esac
 
         if [[ -n "$recreated_inode" ]]; then
             pass "inode guard [$label] the run log records the recreated inode"
