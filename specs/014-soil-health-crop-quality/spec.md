@@ -25,6 +25,16 @@
 - **Q9 Persistent marker**: Transient feedback only. No persistent per-tile tier marker (would inherit 1000-tile degradation and 16.67 ms/frame budget; redundant with existing overlay).
 - **Q10 Gate 3 run**: Run the in-game SMAPI session (~30 min, rebuild stale dll) to capture the 3 signals and validate runtime hooks against the real binary.
 
+### Session 2026-11-01 (clarify — autonomous resolutions from codebase + research)
+
+- **A1 Inventory full at harvest**: Resolved to **debris fallback** for the extra-harvest item (vanilla behavior): the main harvested item follows vanilla (blocked with red message when inventory is full, crop stays in ground); any extra-harvest item produced by `ExtraHarvestChance` is dropped as ground debris via `Game1.createItemDebris` (vanilla pattern), never silently destroyed, never duplicated. No retryable state. Rationale: vanilla `Crop.harvest` blocks the main item on full inventory but always spawns extras as debris; mod's "Nada se perde" principle (GDD) + dislodgement/cooking-waste debris pattern. Compost collection's retain-state contract is a different (collection, not harvest) path and is unaffected.
+- **A2 Extra-harvest item quality**: Resolved to **normal quality (0)**, inheriting vanilla behavior. Decompiled `Crop.harvest` (1.6.15) creates extra items as fresh `Object` instances with default `Quality = 0`; they do not inherit the main item's rolled quality and there is no per-extra re-roll. The mod's `+0.08` boost applies to the main item's roll only (FR-003 compose, don't replace; FR-004 no data edits). Keeps SC-001 (quality) and SC-005 (extra count) orthogonal and avoids partial-delivery invasiveness.
+- **A3 NaN/Infinity (Unknown) harvest behavior**: Resolved to **no modification (vanilla roll, no forced 0, no +0.08, no feedback)**, matching the growth modifier's skip-non-finite behavior (`ModController` `continue` on NaN/Infinity) and the overlay's Unknown (gray) treatment. Finite out-of-range values still clamp to the boundary category (below 0 → Poor → force 0; above 100 → Healthy → +0.08). Measured `0` (sparse-cache floor) remains Poor → force 0. Rationale: NaN is the absence-of-measurement sentinel, distinct from a real 0% reading; penalizing/boosting unmeasured tiles would make outcomes depend on sampling history.
+- **A4 Harvest feedback text localization**: Resolved as **literal text** (reusing the existing `TemporaryAnimatedSprite.text` floating-text pattern, no new i18n keys), consistent with compost/mulch (`CompostApplicationService`, `MulchApplicationService`) and spec 005 A4 (zero new i18n keys). Refusal messages (red HUD) keep using existing i18n keys (`message.harvest.inventory-full`). No change to spec text required beyond this note.
+- **A5 Pest clamp integration**: Resolved as an **optional, null-safe read**: the quality system reads pest state through an optional `IPestStateProvider` resolved in `ModEntry` composition; when the pest system is not installed the provider is null and no clamp applies. The interface contract is finalized in the pest spec when it ships; this spec requires only that the hook call site tolerates absence (no hard dependency, no new constant beyond `PestQualityPenalty`).
+
+**Deferred to user decision (batch questions below):** feedback-text conditionality and co-occurrence (see batch).
+
 ---
 
 ## User Scenarios & Testing *(mandatory)*
@@ -90,12 +100,12 @@ As a player, I want to see a brief, non-intrusive visual feedback when a tier af
 ### Edge Cases
 
 - **Health = 0 (sparse cache)**: treated as unrendered neutral (vanilla) for overlay, but for harvest quality, health 0 is Poor → force `Quality = 0`. (Note: this means a never-touched tile yields no-star harvests. This is intentional per the promise, but may need tuning.)
-- **NaN/Infinity health**: clamped to boundary category (FR-008); harvest quality follows the clamped category.
+- **NaN/Infinity health**: resolves to `HealthCategory.Unknown` (not a tier); harvest quality applies **no modification** (vanilla roll, no forced `Quality = 0`, no `+0.08`, no feedback), matching the growth modifier's skip-non-finite behavior and the overlay's Unknown treatment. Finite out-of-range values clamp to the nearest boundary category (below 0 → Poor → force 0; above 100 → Healthy → +0.08) per FR-008/SC-007.
 - **Regrowing crops**: quality re-rolls on each harvest; soil tier applies on each harvest independently.
 - **Garden Pots**: soil health applies (if tile is tracked); same rules.
 - **Greenhouse**: soil health applies; same rules.
 - **Multiplayer**: host rolls once; farm hand sees the same result. No client-side roll.
-- **Inventory full at harvest**: extra harvest item is not produced (or dropped as debris); no duplication.
+- **Inventory full at harvest**: the main harvested item follows vanilla (blocked with a red message when inventory is full; crop stays in ground). Any extra-harvest item produced via `ExtraHarvestChance` is dropped as ground debris via `Game1.createItemDebris` (vanilla behavior); never silently destroyed, never duplicated, no retryable state. No persistent marker or debris-sync beyond vanilla.
 - **Pest infestation (future)**: quality clamped by `PestQualityPenalty`; if pest system not installed, no clamp.
 
 ---
@@ -105,7 +115,7 @@ As a player, I want to see a brief, non-intrusive visual feedback when a tier af
 ### Functional Requirements
 
 - **FR-001**: System MUST apply a harvest-quality effect based on the tile's soil health tier: Poor `[0,31)` → force `Quality = 0`; Moderate `[31,71)` → no change (vanilla); Healthy `[71,100]` → additive +0.08 to the vanilla quality probability roll.
-- **FR-002**: System MUST apply an extra-harvest effect based on tier: Healthy `[71,100]` → additive +0.10 to `Data/Crops.ExtraHarvestChance`; Poor and Moderate → no change.
+- **FR-002**: System MUST apply an extra-harvest effect based on tier: Healthy `[71,100]` → additive +0.10 to `Data/Crops.ExtraHarvestChance`; Poor and Moderate → no change. Extra-harvest items are normal quality (0) (vanilla behavior); only the primary item receives the boosted quality roll (FR-001).
 - **FR-003**: System MUST compose with (not replace) vanilla quality modifiers: Farming level, fertilizer (`quality_fertilizer_item` → num2 1/2/3), `IsPaddyCrop`, `RegrowDays`, `HarvestMaxIncreasePerFarmingLevel`. Medium tier must be byte-identical to vanilla.
 - **FR-004**: System MUST NOT use data-entry edits (`Data/Crops`, `Data/Objects`) to implement tier outcomes — all effects are runtime (Harmony or public-field manipulation), because `DaysInPhase`, `ExtraHarvestChance`, and `HarvestMin/MaxQuality` are global per seed/crop.
 - **FR-005**: System MUST NOT create new PNG assets — feedback sprites are procedural (`new Texture2D(device, 16, 16)` + `SetData`, singleton pattern per `VisualizationTextures`).
@@ -125,7 +135,7 @@ As a player, I want to see a brief, non-intrusive visual feedback when a tier af
 
 - **SoilHealth (existing)**: 0–100 per tile, farm-keyed, sparse (0 omitted), persisted in `soil_health_data_{saveId}.json`. Governing tier bands (post-migration): Poor `[0,31)`, Moderate `[31,71)`, Healthy `[71,100]`.
 - **HealthCategory (existing)**: enum `Poor | Moderate | Healthy | Unknown`, derived from soil health via `FromHealthValue`.
-- **Harvest outcome (new)**: quality (0–3: none/silver/gold/iridium) and extra-harvest count, determined at harvest time by tier modifier + vanilla roll. Not persisted — derived from soil health at harvest.
+- **Harvest outcome (new)**: quality (0–3: none/silver/gold/iridium) and extra-harvest count, determined at harvest time by tier modifier + vanilla roll. Extra-harvest items are **normal quality (0)**, inheriting vanilla behavior (decompiled `Crop.harvest` creates extras as fresh `Object` instances with default `Quality = 0`); only the primary item receives the boosted quality roll. Not persisted — derived from soil health at harvest.
 - **Tier feedback (new, transient)**: `TemporaryAnimatedSprite` (16×16 procedural) + floating text + SFX, event-driven, not persisted.
 
 ### Success Criteria *(mandatory)*
@@ -149,6 +159,9 @@ As a player, I want to see a brief, non-intrusive visual feedback when a tier af
 - The `cvdSafe` palette (Q5) is deferred to a follow-up; only the non-chromatic channel (shape + text + SFX) ships now.
 - Numerical balance (Q6) uses first-pass values; final tuning happens after Gate 3 playtest.
 - Pest system (Q7) and "new interactions" (Q8) are out of scope — separate specs.
+- Pest clamp is read through an optional `IPestStateProvider` (null when pest system not installed → no clamp); interface contract finalized in the pest spec.
+- Harvest feedback text is literal (reuses the existing `TemporaryAnimatedSprite.text` floating-text pattern; no new i18n keys), consistent with compost/mulch and spec 005 A4; refusal messages keep using existing i18n keys (`message.harvest.inventory-full`).
+- Feedback-text conditionality and co-occurrence (whether "Living Soil" shows only on an enhanced outcome and whether both messages show together) remain open — see batch questions.
 - No persistent tier marker (Q9) — transient feedback only.
 - Gate 3 in-game run (Q10) is executed during implementation, not before spec.
 
