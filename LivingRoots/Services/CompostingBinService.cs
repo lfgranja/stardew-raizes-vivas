@@ -126,7 +126,6 @@ public class CompostingBinService(
     public int CollectCompost(string locationName, Vector2 tile)
     {
         var key = GetTileKey(tile);
-        bool harvested = false;
         bool inventoryRefused = false;
 
         lock (_lock)
@@ -164,7 +163,6 @@ public class CompostingBinService(
                     bin.MaturationLevel++;
                 }
 
-                harvested = true;
             }
         }
 
@@ -176,14 +174,9 @@ public class CompostingBinService(
             return 0; // No items harvested.
         }
 
-        if (harvested)
-        {
-            Game1.playSound("Ship");
-            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced 1 compost", LogLevel.Trace);
-            return 1;
-        }
-
-        return 0;
+        Game1.playSound("Ship");
+        _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced 1 compost", LogLevel.Trace);
+        return 1;
     }
 
     public CompostingBinState GetBinState(string locationName, Vector2 tile)
