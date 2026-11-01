@@ -2,18 +2,18 @@
   "duplicates": [
     {
       "firstFile": {
-        "end": 1924,
+        "end": 1927,
         "endLoc": {
           "column": 46,
-          "line": 1924,
-          "position": 100329
+          "line": 1927,
+          "position": 100361
         },
         "name": "Controllers/ModController.cs",
-        "start": 1916,
+        "start": 1919,
         "startLoc": {
           "column": 16,
-          "line": 1916,
-          "position": 99933
+          "line": 1919,
+          "position": 99965
         }
       },
       "format": "csharp",
@@ -22,18 +22,18 @@
       "kind": "exact",
       "lines": 9,
       "secondFile": {
-        "end": 1959,
+        "end": 1962,
         "endLoc": {
           "column": 46,
-          "line": 1959,
-          "position": 101717
+          "line": 1962,
+          "position": 101749
         },
         "name": "Controllers/ModController.cs",
-        "start": 1952,
+        "start": 1955,
         "startLoc": {
           "column": 16,
-          "line": 1952,
-          "position": 101322
+          "line": 1955,
+          "position": 101354
         }
       },
       "tokens": 56
@@ -116,108 +116,146 @@
     },
     {
       "firstFile": {
-        "end": 74,
+        "end": 92,
         "endLoc": {
-          "column": 16,
-          "line": 74,
-          "position": 3471
+          "column": 21,
+          "line": 92,
+          "position": 4198
         },
-        "name": "Services/CompostingBinService.cs",
-        "start": 62,
+        "name": "Services/CompostApplicationService.cs",
+        "start": 82,
         "startLoc": {
           "column": 8,
-          "line": 62,
-          "position": 3041
+          "line": 82,
+          "position": 3848
         }
       },
       "format": "csharp",
-      "fragment": "        lock (_lock)\n        {\n            if (!_runtimeCache.ContainsKey(locationName))\n                _runtimeCache[locationName] = new Dictionary<string, CompostingBinStateModel>();\n\n            var bins = _runtimeCache[locationName];\n            if (!bins.TryGetValue(key, out var bin))\n            {\n                bin = _factory.CreateBin((int)tile.X, (int)tile.Y);\n                bins[key] = bin;\n            }\n\n            if (bin.State != CompostingBinState.Empty) return;",
+      "fragment": "        var worldPosition = new Vector2(tile.X * (float)ModConstants.TileSize + 32f, tile.Y * (float)ModConstants.TileSize);\n        var sprite = new TemporaryAnimatedSprite(\n            null,\n            Rectangle.Empty,\n            1000f,\n            1,\n            1,\n            worldPosition,\n            false,\n            false);\n        sprite.text = $\"+{ModConstants.RestorationAmount:F0}\";",
+      "isNew": false,
+      "kind": "exact",
+      "lines": 11,
+      "secondFile": {
+        "end": 304,
+        "endLoc": {
+          "column": 21,
+          "line": 304,
+          "position": 9202
+        },
+        "name": "Services/MulchApplicationService.cs",
+        "start": 294,
+        "startLoc": {
+          "column": 8,
+          "line": 294,
+          "position": 8852
+        }
+      },
+      "tokens": 62
+    },
+    {
+      "firstFile": {
+        "end": 77,
+        "endLoc": {
+          "column": 12,
+          "line": 77,
+          "position": 3470
+        },
+        "name": "Services/CompostingBinService.cs",
+        "start": 65,
+        "startLoc": {
+          "column": 103,
+          "line": 65,
+          "position": 3091
+        }
+      },
+      "format": "csharp",
+      "fragment": "    private AddWasteResult TryAddWasteInternal(string locationName, string key, Vector2 tile, Item item)\n    {\n        if (!_runtimeCache.ContainsKey(locationName))\n            _runtimeCache[locationName] = new Dictionary<string, CompostingBinStateModel>();\n\n        var bins = _runtimeCache[locationName];\n        if (!bins.TryGetValue(key, out var bin))\n        {\n            bin = _factory.CreateBin((int)tile.X, (int)tile.Y);\n            bins[key] = bin;\n        }\n\n        if (bin.State != CompostingBinState.Empty)",
       "isNew": false,
       "kind": "exact",
       "lines": 13,
       "secondFile": {
-        "end": 323,
+        "end": 339,
         "endLoc": {
           "column": 16,
-          "line": 323,
-          "position": 12755
+          "line": 339,
+          "position": 12908
         },
         "name": "Services/CompostingBinService.cs",
-        "start": 311,
+        "start": 327,
         "startLoc": {
-          "column": 8,
-          "line": 311,
-          "position": 12325
+          "column": 19,
+          "line": 327,
+          "position": 12489
         }
       },
-      "tokens": 84
+      "tokens": 81
     },
     {
       "firstFile": {
-        "end": 48,
+        "end": 201,
         "endLoc": {
-          "column": 70,
-          "line": 48,
-          "position": 2576
+          "column": 62,
+          "line": 201,
+          "position": 5748
         },
-        "name": "Services/Visualization/OverlayRenderer.cs",
-        "start": 43,
+        "name": "Services/MulchApplicationService.cs",
+        "start": 194,
         "startLoc": {
-          "column": 4,
-          "line": 43,
-          "position": 2108
+          "column": 25,
+          "line": 194,
+          "position": 5459
         }
       },
       "format": "csharp",
-      "fragment": "    {\n        private readonly IColorInterpolationService _colorService = colorService ?? throw new ArgumentNullException(nameof(colorService));\n        private readonly IVisualizationConfigurationService _configService = configService ?? throw new ArgumentNullException(nameof(configService));\n        private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));\n\n        // Player-facing HUD toast sink (FR-009). Required since T084:",
+      "fragment": "    public bool IsMulched(string locationName, Vector2 tile)\n    {\n        lock (_lock)\n        {\n            if (_runtimeCache.TryGetValue(locationName, out var tileDict))\n            {\n                var point = new Point((int)tile.X, (int)tile.Y);\n                if (tileDict.TryGetValue(point, out var state))",
       "isNew": false,
       "kind": "exact",
-      "lines": 6,
+      "lines": 8,
       "secondFile": {
-        "end": 27,
+        "end": 217,
         "endLoc": {
-          "column": 68,
-          "line": 27,
-          "position": 1295
+          "column": 62,
+          "line": 217,
+          "position": 6200
         },
-        "name": "Services/Visualization/VisualizationService.cs",
-        "start": 22,
+        "name": "Services/MulchApplicationService.cs",
+        "start": 210,
         "startLoc": {
-          "column": 4,
-          "line": 22,
-          "position": 829
+          "column": 25,
+          "line": 210,
+          "position": 5911
         }
       },
-      "tokens": 55
+      "tokens": 60
     }
   ],
   "statistics": {
-    "detectionDate": "2026-10-30T05:39:37.380Z",
+    "detectionDate": "2026-11-01T17:06:20.491Z",
     "formats": {
       "csharp": {
-        "clones": 5,
-        "duplicatedLines": 54,
-        "duplicatedTokens": 303,
-        "lines": 13157,
+        "clones": 6,
+        "duplicatedLines": 67,
+        "duplicatedTokens": 367,
+        "lines": 13702,
         "newClones": 0,
         "newDuplicatedLines": 0,
-        "percentage": 0.4104279090978187,
-        "percentageTokens": 0.6094249683219695,
-        "sources": 51,
-        "tokens": 49719
+        "percentage": 0.48897971099109616,
+        "percentageTokens": 0.6971089921361546,
+        "sources": 56,
+        "tokens": 52646
       }
     },
     "total": {
-      "clones": 5,
-      "duplicatedLines": 54,
-      "duplicatedTokens": 303,
-      "lines": 13157,
+      "clones": 6,
+      "duplicatedLines": 67,
+      "duplicatedTokens": 367,
+      "lines": 13702,
       "newClones": 0,
       "newDuplicatedLines": 0,
-      "percentage": 0.4104279090978187,
-      "percentageTokens": 0.6094249683219695,
-      "sources": 51,
-      "tokens": 49719
+      "percentage": 0.48897971099109616,
+      "percentageTokens": 0.6971089921361546,
+      "sources": 56,
+      "tokens": 52646
     }
   }
 }
