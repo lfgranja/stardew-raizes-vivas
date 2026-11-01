@@ -77,6 +77,7 @@ assert "--baseline .jscpd-baseline.json" not in command
 
 ## Follow-ups
 
+- Tracked in issue #545.
 - Record the ratchet under Q19's written weakening procedure (justification: baseline predates the mulch feature; approval: maintainer on merge; audit note: this report) if the repository treats a baseline ceiling increase as a weakening.
 - Optional Q20 follow-up: commit a jscpd fingerprint baseline at a distinct path (e.g. `.jscpd-clones-baseline.json`, generated with `--update-baseline`) and re-enable `--fail-on-new-clones`; see the assessment's "Preferred if Q20 must be honored".
 - The `build-analysis` coverage gate is still red on `dev` (`TimeProvider 0.0%`, `MulchApplicationService 6.7%`, … `< 79.5%`); that is a separate front carried by PR #543.
