@@ -2373,7 +2373,7 @@ namespace LivingRoots.Controllers
                         return;
                     }
 
-                    _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", PrintVersion);
+                    _helper.ConsoleCommands.Add("lr_version", "Shows the Living Roots version.", (_, args) => PrintVersion(args));
                     _monitor.Log("Console command 'lr_version' registered successfully.", LogLevel.Trace);
 
                     // Set the command registered flag atomically only on successful registration
@@ -2391,7 +2391,7 @@ namespace LivingRoots.Controllers
             }
         }
 
-        private void PrintVersion(string command, string[] args)
+        private void PrintVersion(string[] args)
         {
             // Skip if controller has been disposed
             if (IsDisposed())
@@ -2640,6 +2640,7 @@ namespace LivingRoots.Controllers
         /// <param name="farmer">The farmer placing the bin.</param>
         /// <param name="binItem">The bin item to place.</param>
         /// <returns>True if placement succeeded; false if refused.</returns>
+#pragma warning disable S2325 // S2325: validates farmer then delegates to instance overload; cannot be static
         public bool TryPlaceBin(StardewValley.GameLocation location, Microsoft.Xna.Framework.Vector2 tile, StardewValley.Farmer farmer, StardewValley.Item binItem)
         {
             if (farmer == null)
@@ -2649,6 +2650,7 @@ namespace LivingRoots.Controllers
 
             return TryPlaceBin(location, tile, binItem, farmer.Items);
         }
+#pragma warning restore S2325
 
         /// <summary>
         /// Determines whether a location is

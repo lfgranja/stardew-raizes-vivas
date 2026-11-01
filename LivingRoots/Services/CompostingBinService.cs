@@ -114,11 +114,13 @@ public class CompostingBinService(
             return;
         }
 
+#pragma warning disable S8969 // S8969: C# nullable analysis requires the null-forgiving operator here
         if (accepted)
         {
             _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Empty → Processing, item: {item!.QualifiedItemId}",
                 LogLevel.Trace);
         }
+#pragma warning restore S8969
     }
 
     public int CollectCompost(string locationName, Vector2 tile)

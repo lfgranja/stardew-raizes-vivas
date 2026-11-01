@@ -11,9 +11,11 @@ namespace LivingRoots.Services
     public class PlayerInventory : IPlayerInventory
     {
         /// <inheritdoc />
+#pragma warning disable S2325 // S2325: implements IPlayerInventory; cannot be static
         public bool TryAddItem(Item item)
         {
             return Game1.player.addItemToInventoryBool(item);
         }
+#pragma warning restore S2325
     }
 }

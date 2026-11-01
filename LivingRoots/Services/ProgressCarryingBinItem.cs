@@ -32,9 +32,11 @@ namespace LivingRoots.Services
         /// T194 (FR-005c): one batch per bin — the stack can never grow past one.
         /// </summary>
         /// <returns>Always 1.</returns>
+#pragma warning disable S3400 // S3400: overrides StardewValley.Object.maximumStackSize; cannot be removed
         public override int maximumStackSize()
         {
             return 1;
         }
+#pragma warning restore S3400
     }
 }
