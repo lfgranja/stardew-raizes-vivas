@@ -24,6 +24,7 @@
 - `Healthy [71,100]`: additive `+0.08` on vanilla quality probability roll `p` for the **primary** item only; additive `+0.10` on `Data/Crops.ExtraHarvestChance`.
 - `Unknown` (NaN/Inf): no modification (vanilla).
 - Compose with (not replace) vanilla modifiers: Farming level, fertilizer (`quality_fertilizer_item` → num2 1/2/3), `IsPaddyCrop`, `RegrowDays`, `HarvestMaxIncreasePerFarmingLevel`.
+- **Crop scope (A6)**: fires only inside `Crop.harvest` (invoked by `HoeDirt.performUseAction`, `HoeDirt.performToolAction`, `JunimoHarvester.update`). Fruit trees, giant crops, tea bushes, ground-picked forage are out of scope (separate terrain features). Forage crops (`crop.forageCrop == true`) are excluded — quality rolls from Foraging skill (not Farming) and forcing 0 would override Botanist iridium. Fibre seeds and Qi Fruit are always normal quality and skipped. Flowers, multi-harvest, paddy, and regrowing crops are in scope. Guard: return early when `crop.forageCrop` is true.
 - Medium tier must be byte-identical to vanilla (SC-003).
 
 ## 4. Extra-Harvest Items (research-c2)
