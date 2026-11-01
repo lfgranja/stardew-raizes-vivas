@@ -76,7 +76,7 @@ jobs:
             --baseline-path .gitleaks-baseline.json
 
       - name: jscpd
-        run: npx --yes jscpd@5.4.2 LivingRoots/ --format csharp --min-lines 5 --min-tokens 50 --reporters json --output jscpd-report --silent --fail-on-new-clones
+        run: npx --yes jscpd@5.4.2 LivingRoots/ --format csharp --min-lines 5 --min-tokens 50 --reporters json --output jscpd-report --silent
 
       - name: Duplication gate
         run: python -m quality_gate duplication --report jscpd-report/jscpd-report.json --baseline .jscpd-baseline.json
