@@ -168,7 +168,7 @@ public class CompostingBinService(
         return 1;
     }
 
-    private void ApplyHarvestSuccess(CompostingBinStateModel bin)
+    private static void ApplyHarvestSuccess(CompostingBinStateModel bin)
     {
         bin.State = CompostingBinState.Empty;
         bin.InputItemId = null;
