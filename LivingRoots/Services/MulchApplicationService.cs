@@ -16,6 +16,7 @@ public class MulchApplicationService(
     IPlayerProvider playerProvider,
     IMonitor monitor) : IMulchApplicationService
 {
+    private const string CancelSound = "cancel";
     private readonly IModDataService _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
     private readonly IPlayerProvider _playerProvider = playerProvider ?? throw new ArgumentNullException(nameof(playerProvider));
     private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
@@ -196,7 +197,7 @@ public class MulchApplicationService(
         if (!location.IsFarm && locationName != "Greenhouse")
         {
             _monitor.Log($"Mulch rejected: {locationName} is not farm or Greenhouse.", LogLevel.Trace);
-            Game1.playSound("cancel");
+            Game1.playSound(CancelSound);
             messageKey = "message.mulch.invalid-tile";
             return false;
         }
@@ -205,7 +206,7 @@ public class MulchApplicationService(
             || terrainFeature is not HoeDirt)
         {
             _monitor.Log("Mulch rejected: target tile is not tilled soil.", LogLevel.Trace);
-            Game1.playSound("cancel");
+            Game1.playSound(CancelSound);
             messageKey = "message.mulch.invalid-tile";
             return false;
         }
@@ -214,7 +215,7 @@ public class MulchApplicationService(
         if (IsMulched(locationName, tile))
         {
             _monitor.Log("Mulch rejected: tile already mulched.", LogLevel.Trace);
-            Game1.playSound("cancel");
+            Game1.playSound(CancelSound);
             messageKey = "message.mulch.already";
             return false;
         }
@@ -227,7 +228,7 @@ public class MulchApplicationService(
              heldItem.ItemId != ModConstants.MulchItemId))
         {
             _monitor.Log("Mulch rejected: player not holding mulch.", LogLevel.Trace);
-            Game1.playSound("cancel");
+            Game1.playSound(CancelSound);
             return false;
         }
 
