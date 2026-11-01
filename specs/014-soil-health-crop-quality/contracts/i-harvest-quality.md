@@ -49,6 +49,7 @@
   - Living harvest yielding normal quality with no extra → no feedback (silence = vanilla).
   - Moderate → no feedback (silence = vanilla).
 - **Co-occurrence**: when both enhanced quality and extra harvest occur, show both "Living Soil" and "Extra harvest!" as two separate sprites broadcast together via `Game1.multiplayer.broadcastSprites(location, sprite1, sprite2)`.
+- **Visibility (hybrid)**: broadcast transient feedback when it represents a shared farm-state outcome (harvest quality boost, extra harvest, compost "+15", machine ready, lock collision) via `broadcastSprites` + `location.playSound`; keep local-only when it is the triggering player's own input (hoe flash/text) via `SpriteBatch`; state-derived rendering (overlay/tooltip) is not a sprite. Single-player is the degenerate case. Host is the only caller of `broadcastSprites` (host-scoped guard).
 - Text is literal (no new i18n keys); refusal messages keep existing i18n keys.
 - Duration ~1s; `alphaFade` 0.02; upward drift (reuse compost/mulch pattern).
 
