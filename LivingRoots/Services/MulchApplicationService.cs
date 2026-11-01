@@ -63,27 +63,54 @@ public class MulchApplicationService(
         {
             foreach (var locEntry in savedData.LocationMulchData)
             {
-                var tileDict = new Dictionary<Point, MulchTileEntry>();
-                foreach (var tileEntry in locEntry.Value)
-                {
-                    var parts = tileEntry.Key.Split(',');
-                    if (parts.Length == 2 &&
-                        int.TryParse(parts[0], out var x) &&
-                        int.TryParse(parts[1], out var y))
-                    {
-                        var state = tileEntry.Value;
-                        if (state.HasMulch) // sparse: only store non-default
-                        {
-                            tileDict[new Point(x, y)] = state;
-                        }
-                    }
-                }
+                var tileDict = BuildTileDict(locEntry.Value);
                 if (tileDict.Count > 0)
                 {
                     _runtimeCache[locEntry.Key] = tileDict;
                 }
             }
         }
+    }
+
+    private static bool TryParseTileKey(string key, out Point point)
+    {
+        point = default;
+        var parts = key.Split(',');
+        if (parts.Length != 2)
+        {
+            return false;
+        }
+
+        if (!int.TryParse(parts[0], out var x))
+        {
+            return false;
+        }
+
+        if (!int.TryParse(parts[1], out var y))
+        {
+            return false;
+        }
+
+        point = new Point(x, y);
+        return true;
+    }
+
+    private static Dictionary<Point, MulchTileEntry> BuildTileDict(Dictionary<string, MulchTileEntry> savedTileDict)
+    {
+        var tileDict = new Dictionary<Point, MulchTileEntry>();
+        foreach (var tileEntry in savedTileDict)
+        {
+            if (!TryParseTileKey(tileEntry.Key, out var point))
+            {
+                continue;
+            }
+
+            if (tileEntry.Value.HasMulch)
+            {
+                tileDict[point] = tileEntry.Value;
+            }
+        }
+        return tileDict;
     }
 
     public void SaveData(string saveId)
