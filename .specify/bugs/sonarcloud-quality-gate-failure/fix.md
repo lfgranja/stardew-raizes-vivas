@@ -3,7 +3,7 @@
 - **Slug**: sonarcloud-quality-gate-failure
 - **Fixed**: 2026-11-01T04:00:00Z
 - **Assessment**: ./assessment.md
-- **Status**: not-applied
+- **Status**: partial
 
 ## Summary
 
