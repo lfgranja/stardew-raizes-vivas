@@ -16,3 +16,13 @@ updates:
     directory: "/LivingRoots.Tests"
     schedule:
       interval: "weekly"
+    # The property-based suite is written against the FsCheck 2.x C# API.
+    # FsCheck 3 removed Arb/Prop/Gen.Two and changed arbitrary registration;
+    # keep the major version pinned until the suite is migrated.
+    ignore:
+      - dependency-name: "FsCheck"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "FsCheck.Xunit"
+        update-types:
+          - "version-update:semver-major"
