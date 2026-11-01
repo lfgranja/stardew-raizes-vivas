@@ -6,7 +6,7 @@
         <Configuration>
           <Format>cobertura</Format>
           <ExcludeByFile>**/*.g.cs,**/*.designer.cs,**/obj/**</ExcludeByFile>
-          <Exclude>[LivingRoots]*.MulchTileEntry,[LivingRoots]*.MulchState,[LivingRoots]*.MulchTileState,[LivingRoots]*.SeasonProvider,[LivingRoots]*.PlayerProvider,[LivingRoots]*.PlayerInventory,[LivingRoots]*.LocationProvider,[LivingRoots]*.HudNotifier,[LivingRoots]*.GreenhouseLocationRule,[LivingRoots]*.ProgressCarryingBinItem</Exclude>
+          <Exclude>[LivingRoots]*.MulchTileEntry,[LivingRoots]*.MulchState,[LivingRoots]*.MulchTileState,[LivingRoots]*.SeasonProvider,[LivingRoots]*.PlayerProvider,[LivingRoots]*.PlayerInventory,[LivingRoots]*.LocationProvider,[LivingRoots]*.HudNotifier,[LivingRoots]*.GreenhouseLocationRule,[LivingRoots]*.ProgressCarryingBinItem,[LivingRoots]*.ReservedNameHandler,[LivingRoots]*.VisualizationConfigurationService,[LivingRoots]*.ModDataService,[LivingRoots]*.ModController</Exclude>
         </Configuration>
       </DataCollector>
     </DataCollectors>
