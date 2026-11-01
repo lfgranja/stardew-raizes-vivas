@@ -164,6 +164,7 @@ namespace LivingRoots.Tests.ContractTests
             // Should not throw when no subscriber is registered
             service.SetSoilHealth("Farm", tile, 50f);
             service.UpdateHealth("Farm", tile, 10f);
+            Assert.Equal(60f, service.GetSoilHealth("Farm", tile), 5);
         }
 
         [Fact]
