@@ -2,7 +2,7 @@
 
 This document outlines the development roadmap for the "Living Roots" mod, detailing the progression of features from early to late game, based on agroecological principles.
 
-> **STATUS ANNOTATION — verified 2026-10-30**
+> **STATUS ANNOTATION — verified 2026-11-01**
 > Every roadmap item below is marked with what actually exists in code, verified by build, test run and
 > source audit — not by spec claims. Legend:
 > ✅ implemented & verified (build + tests green) · 🟡 partial / inert · ❌ not implemented ·
@@ -10,26 +10,31 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 > The original design text is preserved unchanged; annotations were added, nothing was deleted.
 > **Deep-dive evidence:** `research/2026-10-roadmap-feasibility-and-agronomy.md` (SMAPI 1.6 API, baseline
 > competitivo e base agronômica de cada mecânica abaixo, com fontes primárias).
+> **Update 2026-11-01:** spec 013 (Mulch / Soil Cover) shipped (46/46 tasks, build+tests green). Spec 012
+> converged (fresh baselines captured). Spec 005 has 3 open doc-only convergence tasks (T117–T119).
+> Spec 009 Gate 3 (in-game SMAPI session) still pending. Spec 010 (headless runner) not started.
 
 ## Where we actually are (verified, not inferred)
 
 | Metric | Value | How verified |
 |---|---|---|
 | Build | **0 errors, 0 warnings** | `dotnet build -c Release` on `dev` |
-| Test suite | **1436 passed / 0 failed / 4 skipped** | `dotnet test -c Release --no-build` |
+| Test suite | **1436 passed / 0 failed / 4 skipped** (last recorded; re-run pending after 013 merge) | `dotnet test -c Release --no-build` |
 | Format gate | clean | `dotnet format --verify-no-changes` |
 | Quality gate | 171 pytest passed; analyzer probe PASS | `scripts/quality-gate/` |
-| Specs closed | 002, 004, 008, 009, 011 (local) | `specs/*/tasks.md` |
-| Roadmap items shipped | **2 of 21** (composting + soil decay) | source audit, this file |
+| Specs closed | 002, 004, 008, 009 (local), 011 (local), 012 (converged), 013 (shipped) | `specs/*/tasks.md` |
+| Roadmap items shipped | **3 of 21 named features** (composting, mulch, soil-health→crop-growth) + 2 core promises (soil decay, growth driver) | source audit, this file |
 | **In-game runs** | **0 — never executed** | no SMAPI log, no save with mod data |
 | Proprietary DLLs tracked in git | **0 game DLLs** (only mod assets under `.gamepath/Mods/`) | `git ls-files` |
 
-**The one-sentence truth (updated 2026-10-30):** the mod can *measure* soil, *display* it,
-*change* it with compost, and **soil health now drives crop growth** (spec 005, hook on
-`Crop.newDay` via `ModController`). That converts soil health from a diagnostic number into a
-decision. What is still missing is the *defensive* side (mulch) and the *quality* side
-(crop quality, extra harvest) — the player can grow faster on living soil but cannot yet
-*protect* soil or *harvest* its benefits beyond growth speed.
+**The one-sentence truth (updated 2026-11-01):** the mod can *measure* soil, *display* it,
+*change* it with compost, **soil health drives crop growth** (spec 005), and **soil can now
+be protected with mulch** (spec 013, +1 object/recipe/hook, decay skipped for mulched tiles).
+That converts soil health from a diagnostic number into a decision *and* gives the player the
+first defensive tool. What is still missing is the *quality* side (crop quality, extra harvest)
+and the *offensive* side (Joja Fertilizer, monoculture penalty) — the player can grow faster
+and protect soil, but cannot yet *harvest* its benefits beyond growth speed or *lose* soil by
+bad practice.
 
 ---
 
@@ -73,7 +78,8 @@ All mod mechanics will revolve around "Soil Health," a new property for each til
 | DESTROYS: monoculture | ❌ | only *bare* tiles decay; a monoculture never triggers it |
 | DESTROYS: Joja Fertilizer | ❌ | item does not exist (`briefings/joja-fertilizer.md`) |
 | BUILDS: compost | ✅ | bin → compost → +15/application, clamped (spec 004) |
-| BUILDS: rotation / polyculture / green manure / mulch / animals | ❌ | all six unimplemented |
+| BUILDS: rotation / polyculture / green manure / animals | ❌ | four unimplemented |
+| BUILDS: mulch (soil cover) | ✅ | spec 013 — 1 object + 1 recipe + decay hook, 7-day duration, 0f decay multiplier |
 
 > **Banding mismatch to settle in the next spec:** the roadmap says 0-30 / 31-70 / 71-100; the
 > implemented (spec 001) bands are `[0,34) / [34,67) / [67,100]` in
@@ -98,9 +104,12 @@ The focus is on survival and learning the new soil mechanics, being introduced t
     `Game1.showRedMessage` in EN/PT. This is the only fully delivered gameplay loop in the mod.
     ⚠️ **But it has never been executed inside the game** — see "Where we actually are".
 *   **Soil Cover (Mulch):** Ability to craft and apply mulch to prevent weeds and (most importantly) maintain Soil Health.
-    ❌ **Not implemented**, but fully briefed (`briefings/mulch-soil-cover.md`): 1 object, 1 recipe
-    (fiber ×10), one hook into the existing `SoilDecayService`. This is the cheapest *complete*
-    feature on the roadmap and is the first defensive tool the player gets.
+    ✅ **Implemented and verified** (spec 013, 46/46 tasks). Crafting recipe (`LivingRoots_MulchRecipe`,
+    fiber ×10), `Data/Objects` entry `LivingRoots_Mulch`, 16×16 sprite, 7-day duration, decay hook in
+    `SoilDecayService` (mulched tiles skip decay), overlay tint (`MulchColor` + Dots pattern),
+    host-authoritative lock, i18n EN/PT. This is the first *defensive* tool the player gets and the
+    second complete gameplay loop after composting.
+    ⚠️ **Has never been executed inside the game** — Gate 3 evidence outstanding (same as composting).
 *   **Simple Polyculture (Companion Planting):** Introduction of "The Three Sisters" concept (Corn, Snap Beans, and Pumpkin) for growth bonuses and soil improvement.
     ❌ **Not implemented** (`briefings/three-sisters-polyculture.md`). The briefing explicitly
     rejects reusing the three vanilla crops: Green Bean is spring-only and trellised (`IsRaised`),
@@ -112,8 +121,8 @@ The focus is on survival and learning the new soil mechanics, being introduced t
 *   **Rainwater Harvesting:** New crafting item: Small Cistern, to collect water on rainy days and reduce reliance on external sources.
     ❌ **Not implemented** (`briefings/small-cistern.md`).
 
-**Early-game subtotal: 1 of 7 done** (composting). Note that the one item that is done is the only
-one the player can act on; the other six are unreachable.
+**Early-game subtotal: 2 of 7 done** (composting + mulch). The player can now *build* soil (compost)
+and *protect* it (mulch); the other five are unreachable.
 
 ---
 
@@ -168,11 +177,11 @@ The focus is on expanding the agroecological philosophy throughout the Valley, r
 
 | Phase | Items | Shipped | Verdict |
 |---|---|---|---|
-| Core concept (soil health bar) | 13 promises | 3 measured + 1 displayed + 1 destroyed + 1 growth driver | **growth is now hooked; quality/harvest still missing** |
-| Early Game (Y1) | 7 | 1 (composting) | the tutorial tier is thin |
+| Core concept (soil health bar) | 13 promises | 5 measured/displayed/destroyed + growth driver + mulch (protect) | **growth + protection shipped; quality/harvest still missing** |
+| Early Game (Y1) | 7 | 2 (composting, mulch) | tutorial tier less thin |
 | Mid Game (Y2-3) | 6 | 0 | not started |
 | End Game (Y4+) | 6 | 0 | not started |
-| **Total** | **21 named features + 13 core promises** | **2 features + 4 of 13 promises** | |
+| **Total** | **21 named features + 13 core promises** | **2 features + 5 of 13 promises** | |
 
 All 31 design briefings for the unbuilt items already exist under
 `specs/future-roadmap/briefings/`. What is missing is not design — it is **implementation**, and the
@@ -189,17 +198,15 @@ cost analysis in the answer that produced this file.
 2. ✅ **`/speckit.specify` — Soil Health → Crop Growth (spec 005).** Done: `ModController` growth
    modifier hook on `Crop.newDay`, per-tile persistence and overlay reused. This was the 80/20
    and it is shipped (143/146 tasks; 3 remaining are doc-only band-scale updates).
-3. ⬅️ **NEXT 80/20 — Mulch** (`briefings/mulch-soil-cover.md`): 1 object + 1 recipe + one decay
-   hook. Now that step 2 exists, protecting soil has a reason to exist. Cheapest *complete* feature
-   on the roadmap; the strongest agronomic claim (meta-analysis: runoff −47%, soil loss −76%).
-   Entry point: `/speckit.specify` (briefing already detailed) or `/specify.assess.intake` if a
-   fresh assessment is wanted. No assessment exists yet for mulch.
-4. **Soil Health → Crop Quality** — the second half of the promise; harvest-time hook
-   (`Crop.harvest` virtual; `HarvestMinQuality`/`HarvestMaxQuality` are data clamps, not per-tile),
-   so cost is higher than step 3.
-4. **Soil Health → Crop Quality** — the second half of the promise; needs a harvest-time hook
-   (`Crop.harvest` is virtual and patchable; `HarvestMinQuality`/`HarvestMaxQuality` are data clamps,
-   not per-tile), so cost is higher than step 2.
+3. ✅ **Mulch / Soil Cover (spec 013).** Shipped: 1 object + 1 recipe + decay hook, 7-day duration,
+   0f decay multiplier, overlay tint, host-authoritative lock, i18n EN/PT (46/46 tasks). The
+   defensive side now exists and has a reason to exist because soil health drives growth.
+4. ⬅️ **NEXT 80/20 — Soil Health → Crop Quality** (`briefings/soil-tier-outcomes-harvest-feedback.md`):
+   the second half of the promise; harvest-time hook on `Crop.harvest` (virtual, patchable),
+   quality roll + extra-harvest probability per tile. Higher cost than mulch (needs Harmony or a
+   `DayEnding` pass), but it is the *only* remaining item that makes Living Soil (71–100%)
+   visibly pay off at harvest. Entry point: `/specify.assess.intake` (no assessment exists yet)
+   or `/speckit.specify` with the briefing as input.
 5. **Heirloom pipeline** → then Three Sisters, Green Manure, Rotation Journal (all consume it).
 6. **Joja Fertilizer** — closes the "what DESTROYS" loop on the player's side.
 7. **Elena + Welcome Kit + Cistern** — the content-heavy NPC epic; do it once there is a game worth
@@ -231,18 +238,27 @@ Before building any of the above, the roadmap's promises were checked against th
 | **Three Sisters** | 🟡 **overstated** — land-equivalent yield advantage is real, but bean yield was ~10× *lower* and squash ~20× *lower* in polyculture; one trial found **no significant difference in soil N** | Do not teach "sisters improve each other's soil". Model as an area-efficiency trade-off |
 | **Insect hotels** | ❌ **not supported** — "bee hotels differentially augment wasps rather than native bees"; authors coined *"bee-washing"*; NC State: no strong evidence either way | **Do not ship as pest control.** If built, make the doubt the lesson |
 
-### Recommended next action (80/20, updated 2026-10-30)
+### Recommended next action (80/20, updated 2026-11-01)
 
-The highest-impact, lowest-effort item available now is **Mulch (Soil Cover)** — entry point
-`/speckit.specify` (the briefing `briefings/mulch-soil-cover.md` already exists and is detailed:
-1 object, 1 recipe, 1 hook into `SoilDecayService`). It is the cheapest *complete* feature on the
-roadmap, has the strongest agronomic evidence (meta-analysis: runoff −47%, soil loss −76%), and
-now has a reason to exist because soil health drives crop growth (step 2 shipped). No assessment
-exists for mulch yet, so `/specify.assess.intake` is the strict entry point, but given the
-briefing's detail, `/speckit.specify` with the briefing as input is the fastest path.
+The highest-impact, lowest-effort item available now is **Soil Health → Crop Quality** — entry
+point `/specify.assess.intake` (no assessment exists yet) or `/speckit.specify` with the briefing
+`briefings/soil-tier-outcomes-harvest-feedback.md` as input. It is the *second half* of the
+soil-health promise: a harvest-time hook (`Crop.harvest` is virtual and patchable) that turns
+Living Soil (71–100%) into silver/gold/iridium quality and extra-harvest probability. Cost is
+higher than mulch (Harmony or a `DayEnding` pass, plus a per-tile quality roll), but it is the
+*only* remaining item that makes Living Soil visibly pay off at harvest, and it reuses the
+existing per-tile persistence + overlay. Agronomic grounding: quality/yield gains at high soil
+health are the most player-visible payoff of the whole mod.
 
-Secondary quick win: close the open bug `ci-workflow-misplaced` (`/specify.bug.assess`) — the
-workflow is in the wrong place per the GitHub Actions API; low effort, unblocks CI verification.
+Secondary quick wins (low effort, high leverage):
+- Close the 3 open doc-only convergence tasks of spec 005 (T117–T119): reconcile the band scale
+  table in `Domain/AGENTS.md`, `IColorInterpolationService.cs` XML doc and `Domain/Visualization/AGENTS.md`
+  from spec-001 half-open `[0,34)/[34,67)/[67,100]` to ROADMAP.md `[0,30]/[31,70]/[71,100]`.
+  ~30 min, no code, unblocks "converged" status for spec 005.
+- Run the Gate 3 in-game session (spec 009 T052) to capture the 3 signals and close the
+  "0 in-game runs" gap — ~30 min with a Stardew install, no code.
+- Close the open bug `ci-workflow-misplaced` (`/specify.bug.assess`) — low effort, unblocks CI
+  verification.
 
 ### Blockers that are not roadmap items
 
