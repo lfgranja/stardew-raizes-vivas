@@ -136,7 +136,7 @@ The following decisions were resolved from the 34 open checklist items and are n
 | Q17 | Document Coverlet exclusion filter set (defaults + `**/*.g.cs`, `**/*.designer.cs`, `**/obj/**`); freeze after baseline. |
 | Q18 | Keep ratchet manual; trigger = strict improvement on merged PR + reviewed commit. |
 | Q19 | Written weakening procedure (justification, approval, expiry, audit log). |
-| Q20 | Add `--fail-on-new-clones` (0 allowed) alongside aggregate percentage ceiling. |
+| Q20 | The Python duplication gate owns the aggregate percentage ceiling. jscpd's `--fail-on-new-clones` is **deferred**: the flag requires `--baseline`, `--baseline-from-ref` or `--changed`, and `.jscpd-baseline.json` is the Python gate's format (jscpd rejects it for missing `version`). Re-enable only with a committed fingerprint baseline at a distinct path. |
 | Q21 | Time-boxed, scoped, expiring override (prohibited on `main`). |
 | Q22 | Fail closed on tool failure (missing report → exit 2). |
 | Q23 | Baseline stability protocol (≥3 runs within ±0.5pp) before freezing. |
