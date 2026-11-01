@@ -59,7 +59,7 @@ public class CompostingBinService(
             result = TryAddWasteInternal(locationName, key, tile, item);
         }
 
-        ApplyAddWasteResult(locationName, tile, item, result);
+        ApplyAddWasteResult(locationName, tile, result);
     }
 
     private AddWasteResult TryAddWasteInternal(string locationName, string key, Vector2 tile, Item item)
@@ -89,29 +89,44 @@ public class CompostingBinService(
         return AddWasteResult.Accept(item.QualifiedItemId);
     }
 
-    private void ApplyAddWasteResult(string locationName, Vector2 tile, Item item, AddWasteResult result)
+    private void ApplyAddWasteResult(string locationName, Vector2 tile, AddWasteResult result)
     {
         if (result.Rejected)
         {
-            Game1.playSound("cancel");
-            var location = _locationProvider?.GetLocationByName(locationName);
-            if (location != null &&
-                location.Objects.TryGetValue(tile, out var machine) &&
-                machine != null)
-            {
-                machine.shakeTimer = ModConstants.BinInvalidDropInShakeTimerMs;
-            }
-            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): item {result.RejectedItemId} rejected invalid drop-in as organic waste; bin remains Empty.", LogLevel.Trace);
+            ApplyRejectedAddWaste(locationName, tile, result);
             return;
         }
 
 #pragma warning disable S8969
         if (result.Accepted)
         {
-            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Empty → Processing, item: {result.AcceptedItemId}",
-                LogLevel.Trace);
+            ApplyAcceptedAddWaste(tile, result);
         }
 #pragma warning restore S8969
+    }
+
+    private void ApplyRejectedAddWaste(string locationName, Vector2 tile, AddWasteResult result)
+    {
+        Game1.playSound("cancel");
+        var location = _locationProvider?.GetLocationByName(locationName);
+        ShakeBinIfPresent(location, tile);
+        _monitor.Log($"Bin at ({tile.X}, {tile.Y}): item {result.RejectedItemId} rejected invalid drop-in as organic waste; bin remains Empty.", LogLevel.Trace);
+    }
+
+    private static void ShakeBinIfPresent(GameLocation? location, Vector2 tile)
+    {
+        if (location != null &&
+            location.Objects.TryGetValue(tile, out var machine) &&
+            machine != null)
+        {
+            machine.shakeTimer = ModConstants.BinInvalidDropInShakeTimerMs;
+        }
+    }
+
+    private void ApplyAcceptedAddWaste(Vector2 tile, AddWasteResult result)
+    {
+        _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Empty → Processing, item: {result.AcceptedItemId}",
+            LogLevel.Trace);
     }
 
     private sealed class AddWasteResult
