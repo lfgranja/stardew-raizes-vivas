@@ -127,6 +127,7 @@ public class CompostingBinService(
     {
         var key = GetTileKey(tile);
         bool inventoryRefused = false;
+        CompostingBinStateModel? binToHarvest = null;
 
         lock (_lock)
         {
@@ -136,9 +137,9 @@ public class CompostingBinService(
 
             if (bin.State != CompostingBinState.Ready) return 0;
 
-            // The bin now yields exactly one compost item regardless of maturation level.
-            int outputCount = 1;
+            binToHarvest = bin;
 
+            int outputCount = 1;
             for (int i = 0; i < outputCount; i++)
             {
                 var compost = new StardewValley.Object(ModConstants.CompostItemId, 1);
@@ -149,34 +150,36 @@ public class CompostingBinService(
                 }
             }
 
-            if (!inventoryRefused)
+            if (!inventoryRefused && binToHarvest != null)
             {
-                // Successful harvest – reset the bin.
-                bin.State = CompostingBinState.Empty;
-                bin.InputItemId = null;
-                bin.InputTimestamp = null;
-                bin.ConsecutiveIdleDays = 0;
-                bin.HasPaidThisBatch = true;
-
-                if (bin.MaturationLevel < ModConstants.MaturationMaxLevel)
-                {
-                    bin.MaturationLevel++;
-                }
-
+                ApplyHarvestSuccess(binToHarvest);
             }
         }
 
         if (inventoryRefused)
         {
-            // Inventory is full – keep the bin in Ready state and inform the player.
             Game1.showRedMessage(TranslateRefusalMessage(ModConstants.TranslationKeyHarvestInventoryFull));
             _monitor.Log($"CompostingBin: inventory full when harvesting at ({tile.X}, {tile.Y}); bin remains Ready.", LogLevel.Warn);
-            return 0; // No items harvested.
+            return 0;
         }
 
         Game1.playSound("Ship");
         _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced 1 compost", LogLevel.Trace);
         return 1;
+    }
+
+    private void ApplyHarvestSuccess(CompostingBinStateModel bin)
+    {
+        bin.State = CompostingBinState.Empty;
+        bin.InputItemId = null;
+        bin.InputTimestamp = null;
+        bin.ConsecutiveIdleDays = 0;
+        bin.HasPaidThisBatch = true;
+
+        if (bin.MaturationLevel < ModConstants.MaturationMaxLevel)
+        {
+            bin.MaturationLevel++;
+        }
     }
 
     public CompostingBinState GetBinState(string locationName, Vector2 tile)
