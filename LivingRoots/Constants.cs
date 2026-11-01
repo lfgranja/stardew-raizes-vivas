@@ -42,9 +42,9 @@ namespace LivingRoots
         // ColorInterpolationService's category resolution
         // and both interpolation ramps; the edges pair
         // with the category palette above.
-        public const float PoorModerateBandEdge = 34f;
-        public const float ModerateHealthyBandEdge = 67f;
-        public const float ModerateBandWidth = 33f;
+        public const float PoorModerateBandEdge = 31f;
+        public const float ModerateHealthyBandEdge = 71f;
+        public const float ModerateBandWidth = 40f;
         public const int TileSize = 64;
         public const int ViewportMarginTiles = 1; // FR-018: tiles rendered beyond each viewport edge to prevent pop-in
         public const int DegradationTileThreshold = 1000;
