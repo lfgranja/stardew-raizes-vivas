@@ -111,7 +111,7 @@ See `spec.md` § "Resolved Decisions (2026-10-30, from checklist review)" for th
 - `static` job adds Gitleaks (per-PR diff scan + weekly full-history) and the IaC exclusion is documented as a non-goal.
 - CodeQL schedule is weekly Sunday 02:17 UTC + push to `main` + `workflow_dispatch`.
 - Dependabot weekly + tiered review; SHA pinning enforced at repo level.
-- `build-analysis` uses `--fail-on-new-clones` alongside the aggregate duplication ceiling.
+- `static` uses the Python duplication gate for the aggregate ceiling; jscpd's `--fail-on-new-clones` is deferred until a committed fingerprint baseline exists (it requires `--baseline`/`--baseline-from-ref`/`--changed`).
 - Coverlet exclusion filter set documented and frozen after baseline; baseline stability protocol (≥3 runs) before freezing.
 - Initial coverage floor = measured baseline; research floor (60%) is a hard lower bound.
 - Analyzer `AnalysisLevel` pinned to `6.0-recommended`; ModBuildConfig analyzer documented as coexisting.
