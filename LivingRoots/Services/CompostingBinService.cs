@@ -425,85 +425,7 @@ public class CompostingBinService(
                     continue;
                 }
 
-                var binDict = new Dictionary<string, CompostingBinStateModel>();
-                foreach (var bin in loc.Value)
-                {
-                    try
-                    {
-                        var coords = ParseTileKey(bin.Key);
-                        var tileVec = new Vector2(coords.X, coords.Y);
-                        var recordState = Enum.Parse<CompostingBinState>(bin.Value.State);
-
-                        // T060 (FR-006, FR-012, FR-015):
-                        // a Ready record with no input
-                        // provenance is forged. The state
-                        // machine only reaches Ready from
-                        // Processing, and AddWaste always
-                        // records the input item when it
-                        // enters Processing, so no
-                        // legitimate save can hold a Ready
-                        // record without an InputItemId —
-                        // such a record can only come from
-                        // a hand-edited save. Quarantine
-                        // it: skip it from runtime
-                        // registration with a sanitized
-                        // diagnostic (the tile key and the
-                        // rule it violated, never raw save
-                        // content), so an injected
-                        // "finished batch" yields no
-                        // compost (FR-006) while the load
-                        // of valid bins continues
-                        // (FR-012, FR-014).
-                        if (recordState == CompostingBinState.Ready &&
-                            string.IsNullOrWhiteSpace(bin.Value.InputItemId))
-                        {
-                            _monitor.Log($"Quarantined composting bin record at {loc.Key}:{bin.Key}: Ready record without input provenance.", LogLevel.Trace);
-                            continue;
-                        }
-
-                        // T079 (FR-012): a location the provider
-                        // omits — a Greenhouse only lazily
-                        // loaded at load time — still holds
-                        // real bins. A null provider result
-                        // is an omission, not evidence of
-                        // absence: retain those entries.
-                        // Prune only entries positively
-                        // contradicted by world state — the
-                        // location is loaded and its tile
-                        // holds something other than a
-                        // composting bin.
-                        bool worldStateContradictsRecord = _locationProvider != null &&
-                            location != null &&
-                            (!location.Objects.TryGetValue(tileVec, out var worldObj) ||
-                             worldObj.ItemId != ModConstants.CompostingBinItemId);
-
-                        if (!worldStateContradictsRecord)
-                        {
-                            var state = new CompostingBinStateModel
-                            {
-                                TileX = coords.X,
-                                TileY = coords.Y,
-                                State = recordState,
-                                InputItemId = bin.Value.InputItemId,
-                                InputTimestamp = bin.Value.InputTimestamp,
-                                MaturationLevel = Math.Clamp(bin.Value.MaturationLevel, 1, ModConstants.MaturationMaxLevel),
-                                ConsecutiveIdleDays = Math.Clamp(bin.Value.ConsecutiveIdleDays, 0, ModConstants.MaturationIdleResetDays),
-                                ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays
-                            };
-                            binDict[bin.Key] = state;
-                        }
-                        else
-                        {
-                            // Orphan record – no matching world object.
-                            _monitor.Log($"Pruned orphan bin record at {loc.Key}:{bin.Key} (no matching world object).", LogLevel.Trace);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log and skip malformed record.
-                        _monitor.Log($"Failed to load composting bin record {loc.Key}:{bin.Key}: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                    }
-                }
+                var binDict = LoadBinsForLocation(loc.Key, loc.Value, location);
                 if (binDict.Count > 0)
                 {
                     loaded[loc.Key] = binDict;
@@ -583,6 +505,76 @@ public class CompostingBinService(
             }
             return data;
         }
+    }
+
+    private Dictionary<string, CompostingBinStateModel> LoadBinsForLocation(string locationKey, Dictionary<string, CompostingBinStateData> binsData, GameLocation? location)
+    {
+        var binDict = new Dictionary<string, CompostingBinStateModel>();
+        foreach (var bin in binsData)
+        {
+            try
+            {
+                var model = TryLoadBinRecord(locationKey, bin.Key, bin.Value, location);
+                if (model != null)
+                {
+                    binDict[bin.Key] = model;
+                }
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Failed to load composting bin record {locationKey}:{bin.Key}: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+        }
+        return binDict;
+    }
+
+    private CompostingBinStateModel? TryLoadBinRecord(string locationKey, string binKey, CompostingBinStateData binData, GameLocation? location)
+    {
+        var coords = ParseTileKey(binKey);
+        var tileVec = new Vector2(coords.X, coords.Y);
+        var recordState = Enum.Parse<CompostingBinState>(binData.State);
+
+        // T060: Ready record without input provenance is forged -> quarantine
+        if (recordState == CompostingBinState.Ready &&
+            string.IsNullOrWhiteSpace(binData.InputItemId))
+        {
+            _monitor.Log($"Quarantined composting bin record at {locationKey}:{binKey}: Ready record without input provenance.", LogLevel.Trace);
+            return null;
+        }
+
+        // T079: omit location is not absence -> only prune if positively contradicted
+        if (IsWorldStateContradicting(location, tileVec))
+        {
+            _monitor.Log($"Pruned orphan bin record at {locationKey}:{binKey} (no matching world object).", LogLevel.Trace);
+            return null;
+        }
+
+        return new CompostingBinStateModel
+        {
+            TileX = coords.X,
+            TileY = coords.Y,
+            State = recordState,
+            InputItemId = binData.InputItemId,
+            InputTimestamp = binData.InputTimestamp,
+            MaturationLevel = Math.Clamp(binData.MaturationLevel, 1, ModConstants.MaturationMaxLevel),
+            ConsecutiveIdleDays = Math.Clamp(binData.ConsecutiveIdleDays, 0, ModConstants.MaturationIdleResetDays),
+            ConsecutiveActiveDays = binData.ConsecutiveActiveDays
+        };
+    }
+
+    private bool IsWorldStateContradicting(GameLocation? location, Vector2 tileVec)
+    {
+        if (_locationProvider == null || location == null)
+        {
+            return false;
+        }
+
+        if (!location.Objects.TryGetValue(tileVec, out var worldObj))
+        {
+            return true;
+        }
+
+        return worldObj.ItemId != ModConstants.CompostingBinItemId;
     }
 
     private static string GetTileKey(Vector2 tile)
