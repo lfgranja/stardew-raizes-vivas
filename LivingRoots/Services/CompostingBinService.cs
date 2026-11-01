@@ -52,54 +52,48 @@ public class CompostingBinService(
     public void AddWaste(string locationName, Vector2 tile, Item item)
     {
         var key = GetTileKey(tile);
-        bool accepted = false;
-        bool rejected = false;
-        string rejectedItemId = "null";
+        AddWasteResult result;
 
-        // Constitution III: the accepted/rejected outcome is
-        // decided under the lock, but the log write, the audio
-        // cue and the machine shake happen after it — a lock
-        // never spans game or monitor I/O.
         lock (_lock)
         {
-            if (!_runtimeCache.ContainsKey(locationName))
-                _runtimeCache[locationName] = new Dictionary<string, CompostingBinStateModel>();
-
-            var bins = _runtimeCache[locationName];
-            if (!bins.TryGetValue(key, out var bin))
-            {
-                bin = _factory.CreateBin((int)tile.X, (int)tile.Y);
-                bins[key] = bin;
-            }
-
-            if (bin.State != CompostingBinState.Empty) return;
-            if (!_organicWasteValidator.IsValidOrganicWaste(item))
-            {
-                rejected = true;
-                rejectedItemId = item == null ? "null" : item.QualifiedItemId;
-            }
-            else
-            {
-                bin.State = CompostingBinState.Processing;
-                bin.InputItemId = item.QualifiedItemId;
-                bin.InputTimestamp = _timeProvider.TotalDays;
-                bin.ConsecutiveIdleDays = 0;
-                accepted = true;
-            }
+            result = TryAddWasteInternal(locationName, key, tile, item);
         }
 
-        if (rejected)
+        ApplyAddWasteResult(locationName, tile, item, result);
+    }
+
+    private AddWasteResult TryAddWasteInternal(string locationName, string key, Vector2 tile, Item item)
+    {
+        if (!_runtimeCache.ContainsKey(locationName))
+            _runtimeCache[locationName] = new Dictionary<string, CompostingBinStateModel>();
+
+        var bins = _runtimeCache[locationName];
+        if (!bins.TryGetValue(key, out var bin))
         {
-            // T060 (FR-003, FR-008a clarification
-            // 2026-10-04, T059): a non-qualifying
-            // item is refused the way a native
-            // machine refuses — the game's own
-            // audio cancel cue and machine shake.
-            // FR-008a: vanilla audio cancel cue + machine shake,
-            // no HUD text.
+            bin = _factory.CreateBin((int)tile.X, (int)tile.Y);
+            bins[key] = bin;
+        }
+
+        if (bin.State != CompostingBinState.Empty)
+            return AddWasteResult.Noop();
+
+        if (!_organicWasteValidator.IsValidOrganicWaste(item))
+        {
+            return AddWasteResult.Reject(item == null ? "null" : item.QualifiedItemId);
+        }
+
+        bin.State = CompostingBinState.Processing;
+        bin.InputItemId = item.QualifiedItemId;
+        bin.InputTimestamp = _timeProvider.TotalDays;
+        bin.ConsecutiveIdleDays = 0;
+        return AddWasteResult.Accept(item.QualifiedItemId);
+    }
+
+    private void ApplyAddWasteResult(string locationName, Vector2 tile, Item item, AddWasteResult result)
+    {
+        if (result.Rejected)
+        {
             Game1.playSound("cancel");
-            // Machine shake (FR-008a): shake the composting bin
-            // like vanilla machines do on invalid item drop-in.
             var location = _locationProvider?.GetLocationByName(locationName);
             if (location != null &&
                 location.Objects.TryGetValue(tile, out var machine) &&
@@ -107,20 +101,29 @@ public class CompostingBinService(
             {
                 machine.shakeTimer = ModConstants.BinInvalidDropInShakeTimerMs;
             }
-            // T181 (domain purity): OrganicWasteValidator is a pure rule with
-            // no SMAPI dependency, so the rejection trace moved here — the
-            // application layer that owns IMonitor.
-            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): item {rejectedItemId} rejected invalid drop-in as organic waste; bin remains Empty.", LogLevel.Trace);
+            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): item {result.RejectedItemId} rejected invalid drop-in as organic waste; bin remains Empty.", LogLevel.Trace);
             return;
         }
 
-#pragma warning disable S8969 // S8969: C# nullable analysis requires the null-forgiving operator here
-        if (accepted)
+#pragma warning disable S8969
+        if (result.Accepted)
         {
-            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Empty → Processing, item: {item!.QualifiedItemId}",
+            _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Empty → Processing, item: {result.AcceptedItemId}",
                 LogLevel.Trace);
         }
 #pragma warning restore S8969
+    }
+
+    private sealed class AddWasteResult
+    {
+        public bool Accepted { get; private set; }
+        public bool Rejected { get; private set; }
+        public string? AcceptedItemId { get; private set; }
+        public string? RejectedItemId { get; private set; }
+
+        public static AddWasteResult Noop() => new();
+        public static AddWasteResult Accept(string itemId) => new() { Accepted = true, AcceptedItemId = itemId };
+        public static AddWasteResult Reject(string itemId) => new() { Rejected = true, RejectedItemId = itemId };
     }
 
     public int CollectCompost(string locationName, Vector2 tile)
