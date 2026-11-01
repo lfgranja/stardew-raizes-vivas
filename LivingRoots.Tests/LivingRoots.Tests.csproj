@@ -43,7 +43,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Moq" Version="4.21.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- T001 (spec 004 Phase 1): property-based invariant testing over arbitrary
          inputs (bin lifecycle, soil health bounds, concurrency) — required by the
