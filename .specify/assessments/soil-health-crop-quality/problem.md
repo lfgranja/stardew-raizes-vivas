@@ -49,15 +49,19 @@ The mod promises that Living Soil (71–100%) yields "faster growth, chance of e
 
 If this is never built, the mod's headline promise ("Living Soil = faster growth, chance of extra harvests, higher quality") remains one-third delivered: soil health drives growth speed only, and the player's only reason to compost is speed, not quality. The loop build → protect (mulch) → harvest stays open, and the competitor ReGen Valley keeps the "quality at high soil health" differentiator. The mod risks being perceived as a diagnostic overlay with a compost buff rather than an agroecological system, and the 31 design briefings for unbuilt features lose their anchor (soil health as the currency of progression). Additionally, the band-scale ambiguity and the CVD-unsafe palette remain unaddressed, and the harvest hook's prior over-claim history (spec 005 T110/T113/T115) erodes trust in completion claims.
 
-## Open Questions
+## Open Questions (resolved 2026-11-01 — see decision.md)
 
-- [NEEDS CLARIFICATION: band scale reconciliation — ROADMAP 0-30/31-70/71-100 vs spec 001 half-open [0,34)/[34,67)/[67,100] — must be settled before or with this feature.]
-- [NEEDS CLARIFICATION: numerical balance (growth multiplier, extra-harvest probability, quality odds per tier) — not specified anywhere.]
-- [NEEDS CLARIFICATION: Harmony vs. public-field `DayStarted` pass for growth/quality hooks — verify method names (`Crop.dayUpdate`, `HoeDirt.dayUpdate`, `Crop.harvest`, `Object.Quality`) against the 1.6.3/1.6.14 binary with GamePath.]
-- [NEEDS CLARIFICATION: composition rule for "no stars" on Poor with vanilla quality roll (Farming level, fertilizer) without breaking "Medium = vanilla".]
-- [NEEDS CLARIFICATION: pest system scope — separate feature or bundled?]
-- [NEEDS CLARIFICATION: definition of "new interactions" unlocked by Living soil.]
-- [NEEDS CLARIFICATION: persistent per-tile tier marker vs. transient feedback only (1000-tile degradation threshold).]
-- [NEEDS CLARIFICATION: whether `CollectCompost` partial-success bug is fixed before this feature ships.]
-- [NEEDS CLARIFICATION: non-chromatic feedback channel (sprite shape / floating text) — required for CVD compliance.]
-- [NEEDS CLARIFICATION: no `/speckit.specify` has run; briefing explicitly says "do not promote to specs/ without /speckit.specify".]
+All 10 blocking questions resolved and accepted by the maintainer. Resolution summary:
+
+- **Q1 Band scale**: Switch to ROADMAP 0-30/31-70/71-100 (Cornell 2009), half-open edges at 31/71. Migration required (constants + interpolation + ModController + tests + Gate 3 thresholds).
+- **Q2 Hook names**: Verify with GamePath build; prefer public-field pass, Harmony as fallback.
+- **Q3 Poor "no stars"**: Force `Object.Quality = 0` on Poor only; Medium untouched (guaranteed vanilla by omission).
+- **Q4 CollectCompost bug**: Fix before any output increase (two-phase commit + idempotency flag) — prerequisite, separate.
+- **Q5 CVD channel**: Transient sprite shape + floating text + SFX (event-driven, immune to degradation).
+- **Q6 Numerical balance**: Keep spec 005 first-pass values (1.15/0.85, +0.08, +0.10) as tunable constants.
+- **Q7 Pests scope**: Separate spec, shipped after crop quality.
+- **Q8 "New interactions"**: Defer to own spec; soften ROADMAP/GDD wording (docs-only).
+- **Q9 Persistent marker**: Transient only; no persistent per-tile tier marker.
+- **Q10 Gate 3 run**: Run now (~30 min, rebuild stale dll).
+
+Remaining implementation-level validations (not blocking spec): verify hook names against 1.6.3/1.6.14 binary; fix CollectCompost bug; create missing `color-schemes-cvd.md` briefing; fix stale docs (design system §8.3, tier-outcomes briefing §2.4); run Gate 3 session; reconcile band scale in code.

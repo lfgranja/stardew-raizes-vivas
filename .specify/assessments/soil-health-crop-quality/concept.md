@@ -41,11 +41,13 @@ The phased approach also lets the Gate 3 in-game session (spec 009 T052) and the
 - `CollectCompost` partial-success bug fix — prerequisite, tracked separately.
 - Mid/End-game systems, Heirloom pipeline, Joja Fertilizer, Elena, CSA/feira/cozinha — out of scope per GDD §6.2.
 
-## Assumptions to Validate
+## Assumptions (resolved 2026-11-01 — see decision.md)
 
-- `Crop.harvest`, `Crop.dayUpdate`/`HoeDirt.dayUpdate`, and `Object.Quality` member names and signatures match the decompiled 1.6.3/1.6.14 source (verify with a build using `GamePath`).
-- Harmony (or public-field manipulation) can alter per-tile growth speed and quality without breaking "Medium = vanilla" and without double-dipping with `IsPaddyCrop`/`RegrowDays`/fertilizer.
-- Transient `TemporaryAnimatedSprite` feedback is sufficient for player attribution without a persistent marker.
-- Host-authoritative chance rolls can be implemented with `Context.IsMainPlayer` + the existing `TryApplyCompostWithLock` pattern, with an explicit divergence rule.
-- The latent `CollectCompost` partial-success bug is fixed (or not triggered) before slice 2 ships.
-- Band scale is reconciled (or the spec commits to one scale) before slice 2's tests are written.
+All assumptions resolved and accepted by the maintainer:
+
+- **A1** `Crop.harvest`/`Crop.dayUpdate`/`HoeDirt.dayUpdate`/`Object.Quality` names → to be verified with a GamePath build (Q2); public-field manipulation already proven for growth (spec 005).
+- **A2** Harmony vs public-field → prefer public-field pass (proven), Harmony as fallback only (Q2).
+- **A3** Transient `TemporaryAnimatedSprite` feedback sufficient → yes, recommended and accepted (Q5, Q9); immune to 1000-tile degradation.
+- **A4** Host-authoritative rolls via `Context.IsMainPlayer` + `TryApplyCompostWithLock` → yes, accepted (Q3 composition rule + Q7 pest separation).
+- **A5** `CollectCompost` bug fixed before slice 2 → accepted as prerequisite (Q4).
+- **A6** Band scale reconciled → accepted: ROADMAP 0-30/31-70/71-100 (Cornell 2009), half-open edges 31/71 (Q1). Migration required before slice 2 tests.
