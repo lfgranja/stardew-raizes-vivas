@@ -63,32 +63,12 @@ public class SoilDecayService(
         var season = _seasonProvider.CurrentSeason.ToLowerInvariant();
         var multiplier = _seasonalDecayMultiplier.GetMultiplier(season);
 
-        // T007 (spec 013): mulch day-countdown must run every day
-        // (including Winter, where multiplier == 0 and the decay
-        // loop is skipped) so expiry is day-based, not season-based.
-        // Tick mulch for ALL hoeDirt tiles first, then apply decay
-        // only to bare, non-mulched tiles.
-        var currentDay = _timeProvider.TotalDays;
-        lock (_lock)
+        if (!TryMarkAsProcessed(locationName))
         {
-            if (_lastProcessedDayByLocation.TryGetValue(locationName, out var lastProcessedDay) &&
-                lastProcessedDay == currentDay)
-            {
-                _monitor.Log($"SoilDecay: {locationName} already processed for day {currentDay}, skipping duplicate.", LogLevel.Trace);
-                return;
-            }
-
-            _lastProcessedDayByLocation[locationName] = currentDay;
+            return;
         }
 
-        // Tick mulch for all tilled tiles (including planted ones).
-        if (_mulchService != null)
-        {
-            foreach (var kvp in location.terrainFeatures.Pairs.Where(p => p.Value is HoeDirt))
-            {
-                _mulchService.TickMulch(locationName, kvp.Key);
-            }
-        }
+        TickMulchForAllHoeDirt(location, locationName);
 
         if (multiplier == 0f)
         {
@@ -96,37 +76,53 @@ public class SoilDecayService(
             return;
         }
 
+        ApplyDecayToBareTiles(location, locationName, season, multiplier);
+    }
+
+    private bool TryMarkAsProcessed(string locationName)
+    {
+        var currentDay = _timeProvider.TotalDays;
+        lock (_lock)
+        {
+            if (_lastProcessedDayByLocation.TryGetValue(locationName, out var lastProcessedDay) &&
+                lastProcessedDay == currentDay)
+            {
+                _monitor.Log($"SoilDecay: {locationName} already processed for day {currentDay}, skipping duplicate.", LogLevel.Trace);
+                return false;
+            }
+
+            _lastProcessedDayByLocation[locationName] = currentDay;
+            return true;
+        }
+    }
+
+    private void TickMulchForAllHoeDirt(GameLocation location, string locationName)
+    {
+        if (_mulchService == null)
+        {
+            return;
+        }
+
+        foreach (var kvp in location.terrainFeatures.Pairs.Where(p => p.Value is HoeDirt))
+        {
+            _mulchService.TickMulch(locationName, kvp.Key);
+        }
+    }
+
+    private void ApplyDecayToBareTiles(GameLocation location, string locationName, string season, float multiplier)
+    {
         var decayAmount = ModConstants.DailyDecayRate * multiplier;
         int tilesProcessed = 0;
         float totalHealthLost = 0f;
 
         foreach (var kvp in location.terrainFeatures.Pairs)
         {
-            if (kvp.Value is HoeDirt hoeDirt)
+            if (kvp.Value is HoeDirt hoeDirt && hoeDirt.crop == null)
             {
-                bool isBare = hoeDirt.crop == null;
-                if (isBare)
+                var tileDecayAmount = GetTileDecayAmount(locationName, kvp.Key, decayAmount, multiplier);
+                var actualDecay = ApplyDecayToTile(locationName, kvp.Key, tileDecayAmount);
+                if (actualDecay > 0f)
                 {
-                    var tile = kvp.Key;
-
-                    // T007 (spec 013): mulched tiles are protected — decay *= MulchDecayMultiplier (0f).
-                    float tileDecayAmount = decayAmount;
-                    if (_mulchService != null && _mulchService.IsMulched(locationName, tile))
-                    {
-                        tileDecayAmount = ModConstants.DailyDecayRate * ModConstants.MulchDecayMultiplier * multiplier;
-                    }
-
-                    var currentHealth = _soilHealthService.GetSoilHealth(locationName, tile);
-                    if (float.IsNaN(currentHealth))
-                    {
-                        currentHealth = 0f;
-                    }
-                    var newHealth = Math.Max(currentHealth - tileDecayAmount, 0f);
-                    var actualDecay = currentHealth - newHealth;
-                    if (actualDecay > 0f)
-                    {
-                        _soilHealthService.UpdateHealth(locationName, tile, -actualDecay);
-                    }
                     totalHealthLost += actualDecay;
                     tilesProcessed++;
                 }
@@ -137,5 +133,33 @@ public class SoilDecayService(
                      $"total health lost: {totalHealthLost:F1}, season: {season}, " +
                      $"multiplier: {multiplier}, decayAmount: {decayAmount:F1}",
                      LogLevel.Trace);
+    }
+
+    private float GetTileDecayAmount(string locationName, Vector2 tile, float decayAmount, float multiplier)
+    {
+        if (_mulchService != null && _mulchService.IsMulched(locationName, tile))
+        {
+            return ModConstants.DailyDecayRate * ModConstants.MulchDecayMultiplier * multiplier;
+        }
+
+        return decayAmount;
+    }
+
+    private float ApplyDecayToTile(string locationName, Vector2 tile, float tileDecayAmount)
+    {
+        var currentHealth = _soilHealthService.GetSoilHealth(locationName, tile);
+        if (float.IsNaN(currentHealth))
+        {
+            currentHealth = 0f;
+        }
+
+        var newHealth = Math.Max(currentHealth - tileDecayAmount, 0f);
+        var actualDecay = currentHealth - newHealth;
+        if (actualDecay > 0f)
+        {
+            _soilHealthService.UpdateHealth(locationName, tile, -actualDecay);
+        }
+
+        return actualDecay;
     }
 }

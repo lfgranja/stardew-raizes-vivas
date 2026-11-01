@@ -819,6 +819,7 @@ case "${1-}" in
         printf 'Xvfb version 21.1.24\n'
         exit 0
         ;;
+    *) ;;
 esac
 
 while true; do
@@ -1064,6 +1065,7 @@ for cli_stub_arg in "\$@"; do
             printf 'date stub: refusing the ISO stamp format\n' >&2
             exit 1
             ;;
+        *) ;;
     esac
 done
 exec "${CLI_REAL_DATE}" "\$@"
@@ -1200,6 +1202,7 @@ case "${1-}" in
         printf 'Xvfb version 21.1.24\n'
         exit 0
         ;;
+    *) ;;
 esac
 
 printf '99\n' >&3 2>/dev/null || true

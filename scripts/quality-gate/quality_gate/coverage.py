@@ -45,6 +45,35 @@ def _as_number(value: object, name: str) -> float:
     return result
 
 
+def _parse_class_entry(entry: object) -> ClassCoverage:
+    if not isinstance(entry, dict):
+        raise GateConfigurationError("class entry must be an object")
+    if "name" not in entry or "coverage" not in entry or "branchcoverage" not in entry:
+        raise GateConfigurationError("class entry requires name, coverage, and branchcoverage")
+    name = entry["name"]
+    if not isinstance(name, str):
+        raise GateConfigurationError("class name must be a string")
+    line_cov = _as_number(entry["coverage"], "coverage")
+    branch_raw = entry["branchcoverage"]
+    if branch_raw is None:
+        branch_cov = None
+    else:
+        branch_cov = _as_number(branch_raw, "branchcoverage")
+    return ClassCoverage(name=name, line_coverage=line_cov, branch_coverage=branch_cov)
+
+
+def _parse_assembly(assembly: object) -> list[ClassCoverage]:
+    if not isinstance(assembly, dict):
+        raise GateConfigurationError("assembly must be an object")
+    class_list = assembly.get("classesinassembly")
+    if not isinstance(class_list, list):
+        raise GateConfigurationError("classesinassembly must be an array")
+    classes: list[ClassCoverage] = []
+    for entry in class_list:
+        classes.append(_parse_class_entry(entry))
+    return classes
+
+
 def parse_summary(payload: object) -> CoverageSummary:
     if not isinstance(payload, dict):
         raise GateConfigurationError("summary payload must be a JSON object")
@@ -65,26 +94,7 @@ def parse_summary(payload: object) -> CoverageSummary:
 
     classes: list[ClassCoverage] = []
     for assembly in assemblies:
-        if not isinstance(assembly, dict):
-            raise GateConfigurationError("assembly must be an object")
-        class_list = assembly.get("classesinassembly")
-        if not isinstance(class_list, list):
-            raise GateConfigurationError("classesinassembly must be an array")
-        for entry in class_list:
-            if not isinstance(entry, dict):
-                raise GateConfigurationError("class entry must be an object")
-            if "name" not in entry or "coverage" not in entry or "branchcoverage" not in entry:
-                raise GateConfigurationError("class entry requires name, coverage, and branchcoverage")
-            name = entry["name"]
-            if not isinstance(name, str):
-                raise GateConfigurationError("class name must be a string")
-            line_cov = _as_number(entry["coverage"], "coverage")
-            branch_raw = entry["branchcoverage"]
-            if branch_raw is None:
-                branch_cov = None
-            else:
-                branch_cov = _as_number(branch_raw, "branchcoverage")
-            classes.append(ClassCoverage(name=name, line_coverage=line_cov, branch_coverage=branch_cov))
+        classes.extend(_parse_assembly(assembly))
 
     return CoverageSummary(lines=lines, branches=branches, classes=tuple(classes))
 
@@ -100,6 +110,13 @@ def load_summary(path: Path) -> CoverageSummary:
     return parse_summary(payload)
 
 
+def _get_low_classes(summary: CoverageSummary, baseline: CoverageBaseline) -> list[ClassCoverage]:
+    return sorted(
+        (cls for cls in summary.classes if cls.line_coverage + COVERAGE_EPSILON < baseline.lines),
+        key=lambda cls: cls.line_coverage,
+    )
+
+
 def evaluate_coverage(summary: CoverageSummary, baseline: CoverageBaseline) -> GateResult:
     lines_ok = summary.lines + COVERAGE_EPSILON >= baseline.lines
     branches_ok = summary.branches + COVERAGE_EPSILON >= baseline.branches
@@ -107,10 +124,7 @@ def evaluate_coverage(summary: CoverageSummary, baseline: CoverageBaseline) -> G
         return GateResult(exit_code=0, diagnostics=())
 
     diagnostics: list[Diagnostic] = []
-    low_classes = sorted(
-        (cls for cls in summary.classes if cls.line_coverage + COVERAGE_EPSILON < baseline.lines),
-        key=lambda cls: cls.line_coverage,
-    )
+    low_classes = _get_low_classes(summary, baseline)
     if low_classes:
         for cls in low_classes:
             diagnostics.append(
@@ -123,7 +137,7 @@ def evaluate_coverage(summary: CoverageSummary, baseline: CoverageBaseline) -> G
         diagnostics.append(
             Diagnostic(
                 title="Coverage regression",
-                message=f"lines {summary.lines}% < {baseline.lines}%",
+                    message=f"lines {summary.lines}% < {baseline.lines}%",
             )
         )
     return GateResult(exit_code=1, diagnostics=tuple(diagnostics))

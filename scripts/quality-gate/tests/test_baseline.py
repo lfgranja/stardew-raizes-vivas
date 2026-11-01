@@ -50,18 +50,18 @@ def test_coverage_baseline_round_trips(payload):
 
 @pytest.mark.parametrize("text", ["lines=79.1", "branches=70.4", "", "# only a comment"])
 def test_coverage_baseline_requires_both_keys(text):
-    with pytest.raises(BaselineError):
+    with pytest.raises(BaselineError, match="lines"):
         parse_coverage_baseline(text)
 
 
 def test_coverage_baseline_rejects_unknown_keys():
-    with pytest.raises(BaselineError):
+    with pytest.raises(BaselineError, match="unknown"):
         parse_coverage_baseline("lines=79.1\nbranches=70.4\ntokens=10")
 
 
 @pytest.mark.parametrize("value", ["-0.1", "100.1", "nan", "inf", "-inf", "abc", ""])
 def test_coverage_baseline_rejects_invalid_percentages(value):
-    with pytest.raises(BaselineError):
+    with pytest.raises(BaselineError, match="between"):
         parse_coverage_baseline(f"lines={value}\nbranches=70.4")
 
 
@@ -94,7 +94,7 @@ def test_duplication_baseline_round_trips_percentage(value):
 
 
 def test_duplication_baseline_rejects_unknown_keys():
-    with pytest.raises(BaselineError):
+    with pytest.raises(BaselineError, match="unknown"):
         parse_duplication_baseline('{"percentage": 0.48, "unexpected": 1}')
 
 
@@ -106,7 +106,6 @@ def test_duplication_baseline_rejects_unknown_keys():
         '{"percentage": 101}',
         '{"percentage": "0.5"}',
         '{"percentage": 0.5, "duplicates": -1}',
-        '{"percentage": 0.5, "duplicates": true}',
         '{"percentage": 0.5, "lines": -3}',
         "not json",
     ],
@@ -116,10 +115,15 @@ def test_duplication_baseline_rejects_invalid_payloads(payload):
         parse_duplication_baseline(payload)
 
 
+def test_duplication_baseline_rejects_duplicates_not_integer():
+    with pytest.raises(BaselineError, match="integer"):
+        parse_duplication_baseline('{"percentage": 0.5, "duplicates": true}')
+
+
 def test_load_missing_baseline_is_a_configuration_error(tmp_path):
-    with pytest.raises(BaselineError):
+    with pytest.raises(BaselineError, match="not found"):
         load_coverage_baseline(tmp_path / "missing")
-    with pytest.raises(BaselineError):
+    with pytest.raises(BaselineError, match="not found"):
         load_duplication_baseline(tmp_path / "missing.json")
 
 
@@ -132,7 +136,7 @@ def test_save_coverage_baseline_is_atomic_on_replace_failure(tmp_path, monkeypat
 
     monkeypatch.setattr(baseline_module.os, "replace", boom)
 
-    with pytest.raises(BaselineError):
+    with pytest.raises(BaselineError, match="disk full"):
         save_coverage_baseline(target, CoverageBaseline(lines=50.0, branches=60.0))
 
     assert target.read_text(encoding="utf-8") == "lines=10\nbranches=20\n"
@@ -149,7 +153,7 @@ def test_save_duplication_baseline_is_atomic_on_replace_failure(tmp_path, monkey
 
     monkeypatch.setattr(baseline_module.os, "replace", boom)
 
-    with pytest.raises(BaselineError):
+    with pytest.raises(BaselineError, match="disk full"):
         save_duplication_baseline(target, DuplicationBaseline(percentage=0.1))
 
     assert target.read_text(encoding="utf-8") == original
@@ -195,7 +199,7 @@ def test_duplication_ratchet_is_idempotent(old, measured):
 @given(percent())
 def test_ratchet_rejects_non_finite_measurements(value):
     old_baseline = CoverageBaseline(lines=10.0, branches=20.0)
-    with pytest.raises(BaselineError):
+    with pytest.raises(BaselineError, match="finite"):
         ratchet_coverage(
             old_baseline,
             CoverageBaseline(lines=math.nan, branches=value),

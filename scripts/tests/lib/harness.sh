@@ -896,7 +896,11 @@ stage_log_for_launch() {
 # is padded to five characters; a longer level (CRITICAL) is NOT truncated, which
 # is exactly how SMAPI renders it and what shifts the source column.
 _log_line() {
-    printf '[%s %-5s %s] %s\n' "$1" "$2" "$3" "$4"
+    local ts="$1"
+    local level="$2"
+    local source="$3"
+    local message="$4"
+    printf '[%s %-5s %s] %s\n' "$ts" "$level" "$source" "$message"
 }
 
 # _write_log_mod_loaded <dest>

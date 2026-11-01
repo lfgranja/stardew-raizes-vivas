@@ -106,7 +106,8 @@ def test_build_analysis_materialises_the_pinned_build_deps_and_fails_closed():
         "smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll",
     ):
         assert assembly in preflight_text, f"preflight must require {assembly}"
-    assert "::error" in preflight_text and "exit 1" in preflight_text, (
+    assert "::error" in preflight_text
+    assert "exit 1" in preflight_text, (
         "the assembly preflight must fail closed with an annotation"
     )
 

@@ -126,7 +126,9 @@ def test_the_probe_builds_both_projects(tmp_path):
     assert any("LivingRoots/LivingRoots.csproj" in line for line in invocations)
     assert any("LivingRoots.Tests/LivingRoots.Tests.csproj" in line for line in invocations)
     for line in invocations:
-        assert "build" in line and "--no-restore" in line and "-c Release" in line
+        assert "build" in line
+        assert "--no-restore" in line
+        assert "-c Release" in line
     assert not (ROOT / "LivingRoots" / "__AnalyzerGateProbe.cs").exists()
     assert not (ROOT / "LivingRoots.Tests" / "__AnalyzerGateProbe.cs").exists()
 
@@ -416,7 +418,9 @@ def test_an_editorconfig_comment_without_a_reason_fails(tmp_path):
     )
     violations = scan_editorconfig(config, config.read_text(encoding="utf-8"))
     assert len(violations) == 1
-    assert "without a comment naming the rule and reason" in violations[0]
+    violation = violations[0]
+    assert "without a comment naming the rule" in violation
+    assert "reason" in violation
 
 
 def test_a_root_blanket_editorconfig_disable_fails_even_with_a_comment(tmp_path):

@@ -30,10 +30,7 @@ public class MulchApplicationService(
     public void LoadData(string saveId)
     {
         _loadAbortedForLimits = false;
-        lock (_lock)
-        {
-            _runtimeCache.Clear();
-        }
+        ClearRuntimeCache();
 
         if (string.IsNullOrWhiteSpace(saveId))
         {
@@ -42,23 +39,39 @@ public class MulchApplicationService(
             return;
         }
 
-        var dataKey = $"mulch_state_{saveId}";
-        MulchState? savedData;
-        try
-        {
-            savedData = _modDataService.LoadData<MulchState>(dataKey);
-        }
-        catch (Exception ex)
-        {
-            _monitor.Log($"LoadData exception: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-            savedData = null;
-        }
-
+        var savedData = TryLoadMulchState(saveId);
         if (savedData == null)
         {
             return;
         }
 
+        PopulateRuntimeCache(savedData);
+    }
+
+    private void ClearRuntimeCache()
+    {
+        lock (_lock)
+        {
+            _runtimeCache.Clear();
+        }
+    }
+
+    private MulchState? TryLoadMulchState(string saveId)
+    {
+        var dataKey = $"mulch_state_{saveId}";
+        try
+        {
+            return _modDataService.LoadData<MulchState>(dataKey);
+        }
+        catch (Exception ex)
+        {
+            _monitor.Log($"LoadData exception: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            return null;
+        }
+    }
+
+    private void PopulateRuntimeCache(MulchState savedData)
+    {
         lock (_lock)
         {
             foreach (var locEntry in savedData.LocationMulchData)

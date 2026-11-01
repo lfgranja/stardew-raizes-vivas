@@ -40,6 +40,51 @@ def is_blocking(severity: str) -> bool:
     return SEVERITY_ORDER[severity] >= SEVERITY_ORDER["HIGH"]
 
 
+def _parse_vulnerability_item(item: object, target: str) -> Vulnerability:
+    if not isinstance(item, dict):
+        raise GateConfigurationError("vulnerability must be an object")
+    cve = item.get("VulnerabilityID")
+    package = item.get("PkgName")
+    installed = item.get("InstalledVersion")
+    severity = item.get("Severity")
+    if not isinstance(cve, str):
+        raise GateConfigurationError("VulnerabilityID must be a string")
+    if not isinstance(package, str):
+        raise GateConfigurationError("PkgName must be a string")
+    if not isinstance(installed, str):
+        raise GateConfigurationError("InstalledVersion must be a string")
+    if severity not in SEVERITY_ORDER:
+        raise GateConfigurationError(f"unknown severity: {severity}")
+    fixed = item.get("FixedVersion", "")
+    if fixed is None:
+        fixed = ""
+    if not isinstance(fixed, str):
+        raise GateConfigurationError("FixedVersion must be a string")
+    return Vulnerability(
+        cve=cve,
+        package=package,
+        installed_version=installed,
+        fixed_version=fixed,
+        severity=severity,
+        target=target,
+    )
+
+
+def _parse_result(result: object) -> list[Vulnerability]:
+    if not isinstance(result, dict):
+        raise GateConfigurationError("result must be an object")
+    target = result.get("Target")
+    if not isinstance(target, str):
+        raise GateConfigurationError("Target must be a string")
+    items = result.get("Vulnerabilities", [])
+    if not isinstance(items, list):
+        raise GateConfigurationError("Vulnerabilities must be an array")
+    vulnerabilities: list[Vulnerability] = []
+    for item in items:
+        vulnerabilities.append(_parse_vulnerability_item(item, target))
+    return vulnerabilities
+
+
 def parse_report(payload: object) -> tuple[Vulnerability, ...]:
     if not isinstance(payload, dict):
         raise GateConfigurationError("report payload must be a JSON object")
@@ -48,44 +93,7 @@ def parse_report(payload: object) -> tuple[Vulnerability, ...]:
         raise GateConfigurationError("Results must be an array")
     vulnerabilities: list[Vulnerability] = []
     for result in results:
-        if not isinstance(result, dict):
-            raise GateConfigurationError("result must be an object")
-        target = result.get("Target")
-        if not isinstance(target, str):
-            raise GateConfigurationError("Target must be a string")
-        items = result.get("Vulnerabilities", [])
-        if not isinstance(items, list):
-            raise GateConfigurationError("Vulnerabilities must be an array")
-        for item in items:
-            if not isinstance(item, dict):
-                raise GateConfigurationError("vulnerability must be an object")
-            cve = item.get("VulnerabilityID")
-            package = item.get("PkgName")
-            installed = item.get("InstalledVersion")
-            severity = item.get("Severity")
-            if not isinstance(cve, str):
-                raise GateConfigurationError("VulnerabilityID must be a string")
-            if not isinstance(package, str):
-                raise GateConfigurationError("PkgName must be a string")
-            if not isinstance(installed, str):
-                raise GateConfigurationError("InstalledVersion must be a string")
-            if severity not in SEVERITY_ORDER:
-                raise GateConfigurationError(f"unknown severity: {severity}")
-            fixed = item.get("FixedVersion", "")
-            if fixed is None:
-                fixed = ""
-            if not isinstance(fixed, str):
-                raise GateConfigurationError("FixedVersion must be a string")
-            vulnerabilities.append(
-                Vulnerability(
-                    cve=cve,
-                    package=package,
-                    installed_version=installed,
-                    fixed_version=fixed,
-                    severity=severity,
-                    target=target,
-                )
-            )
+        vulnerabilities.extend(_parse_result(result))
     return tuple(vulnerabilities)
 
 
@@ -100,31 +108,39 @@ def load_report(path: Path) -> tuple[Vulnerability, ...]:
     return parse_report(payload)
 
 
+def _add_unknown_severity_diagnostic(diagnostics: list[Diagnostic], vuln: Vulnerability) -> bool:
+    diagnostics.append(
+        Diagnostic(
+            title="Security configuration error",
+            message=f"unknown severity {vuln.severity} for {vuln.cve}",
+        )
+    )
+    return True
+
+
+def _add_blocking_vulnerability_diagnostic(diagnostics: list[Diagnostic], vuln: Vulnerability) -> None:
+    fixed_part = vuln.fixed_version if vuln.fixed_version else "none"
+    diagnostics.append(
+        Diagnostic(
+            title="Security vulnerability",
+            message=(
+                f"{vuln.cve} {vuln.package} {vuln.installed_version} -> {fixed_part} "
+                f"{vuln.severity} {vuln.target}"
+            ),
+        )
+    )
+
+
 def evaluate_security(vulnerabilities: tuple[Vulnerability, ...]) -> GateResult:
     diagnostics: list[Diagnostic] = []
     blocking_found = False
     for vuln in vulnerabilities:
         if vuln.severity not in ("LOW", "MEDIUM", "HIGH", "CRITICAL"):
-            diagnostics.append(
-                Diagnostic(
-                    title="Security configuration error",
-                    message=f"unknown severity {vuln.severity} for {vuln.cve}",
-                )
-            )
-            blocking_found = True
+            blocking_found = _add_unknown_severity_diagnostic(diagnostics, vuln)
             continue
         if is_blocking(vuln.severity):
             blocking_found = True
-            fixed_part = vuln.fixed_version if vuln.fixed_version else "none"
-            diagnostics.append(
-                Diagnostic(
-                    title="Security vulnerability",
-                    message=(
-                        f"{vuln.cve} {vuln.package} {vuln.installed_version} -> {fixed_part} "
-                        f"{vuln.severity} {vuln.target}"
-                    ),
-                )
-            )
+            _add_blocking_vulnerability_diagnostic(diagnostics, vuln)
     if blocking_found:
         return GateResult(exit_code=1, diagnostics=tuple(diagnostics))
     return GateResult(exit_code=0, diagnostics=())

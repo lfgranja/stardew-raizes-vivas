@@ -228,7 +228,8 @@ def test_codeql_is_scheduled_only_and_buildless():
     ]
     assert annotation_steps, "CodeQL results must be surfaced as file:line annotations"
     annotation = step_run(annotation_steps[0])
-    assert "file=" in annotation and "line=" in annotation, (
+    assert "file=" in annotation
+    assert "line=" in annotation, (
         "the annotation step must emit ::error file=<uri>,line=<startLine>::<message>"
     )
     ordered = steps(codeql)
@@ -264,7 +265,9 @@ def test_trivy_is_pinned_and_lets_the_python_gate_own_the_exit_code():
     assert str(with_config.get("format")) == "json"
     assert str(with_config.get("output")) == "trivy.json"
     skip_dirs = str(with_config.get("skip-dirs", ""))
-    assert "bin" in skip_dirs and "obj" in skip_dirs and ".git" in skip_dirs
+    assert "bin" in skip_dirs
+    assert "obj" in skip_dirs
+    assert ".git" in skip_dirs
 
     ordered = steps(sca)
     trivy_index = ordered.index(trivy)

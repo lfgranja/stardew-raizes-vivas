@@ -275,7 +275,7 @@ namespace LivingRoots.Controllers
                 // subscription is guarded — the
                 // placement and dislodge paths above
                 // do not depend on it.
-                var worldEvents = helperSnapshot?.Events?.World;
+                var worldEvents = _helper?.Events?.World;
                 if (worldEvents != null)
                 {
                     localObjectListChangedHandler = _onObjectListChangedHandler ??= OnObjectListChanged;
@@ -285,26 +285,27 @@ namespace LivingRoots.Controllers
                 // Subscribe to visualization events if services are available
                 if (_visualizationService != null)
                 {
-                    localRenderedWorldHandler = _onRenderedWorldHandler ??= OnRenderedWorld;
-                    localButtonReleasedHandler = _onButtonReleasedHandler ??= OnButtonReleased;
-                    _helper.Events.Display.RenderedWorld += localRenderedWorldHandler;
-                    _helper.Events.Input.ButtonReleased += localButtonReleasedHandler;
+                    var eventsDisplay = _helper?.Events?.Display;
+                    var eventsInput = _helper?.Events?.Input;
+                    if (eventsDisplay != null) eventsDisplay.RenderedWorld += localRenderedWorldHandler;
+                    if (eventsInput != null) eventsInput.ButtonReleased += localButtonReleasedHandler;
 
                     _onUpdateTickedHandler = OnUpdateTicked;
                     gameLoop.UpdateTicked += _onUpdateTickedHandler;
 
-                    // T126 (FR-025, DC-4): pause/resume rendering
-                    // around in-game menus. MenuChanged rides the
-                    // display event source alongside RenderedWorld.
-                    localMenuChangedHandler = _onMenuChangedHandler ??= OnMenuChanged;
-                    _helper.Events.Display.MenuChanged += localMenuChangedHandler;
+                    var eventsDisplayMenu = _helper?.Events?.Display;
+                    if (eventsDisplayMenu != null)
+                    {
+                        localMenuChangedHandler = _onMenuChangedHandler ??= OnMenuChanged;
+                        eventsDisplayMenu.MenuChanged += localMenuChangedHandler;
+                    }
 
-                    // T132 (FR-024, DC-3): the screen-space half
-                    // of the render frame (tooltip, hoe floating
-                    // text) renders on Display.Rendered, after the
-                    // world-space frame above.
-                    localRenderedHandler = _onRenderedHandler ??= OnRendered;
-                    _helper.Events.Display.Rendered += localRenderedHandler;
+                    var eventsDisplayRendered = _helper?.Events?.Display;
+                    if (eventsDisplayRendered != null)
+                    {
+                        localRenderedHandler = _onRenderedHandler ??= OnRendered;
+                        eventsDisplayRendered.Rendered += localRenderedHandler;
+                    }
 
                     // T138 (FR-017): the save window runs from
                     // Saving to Saved. OnSaving pauses the frame

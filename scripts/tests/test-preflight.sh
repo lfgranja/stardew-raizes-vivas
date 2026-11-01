@@ -224,9 +224,11 @@ case "${1-}" in
         printf '8.0.100\n'
         exit 0
         ;;
+    *)
+        printf 'dotnet stub: the build is disabled in the smoke-validation test suite\n' >&2
+        exit 1
+        ;;
 esac
-printf 'dotnet stub: the build is disabled in the smoke-validation test suite\n' >&2
-exit 1
 STUB
     chmod 0755 -- "${BLOCK_BIN_DIR}/dotnet"
 }
@@ -639,6 +641,7 @@ case "${1-}" in
         printf 'Xvfb version 21.1.24\n'
         exit 0
         ;;
+    *) ;;
 esac
 
 printf '99\n' >&3 2>/dev/null || true
