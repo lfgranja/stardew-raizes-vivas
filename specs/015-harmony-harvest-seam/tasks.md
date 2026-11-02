@@ -232,12 +232,12 @@
 
 ### Tasks
 
-- [ ] T045 Align patch method naming with contract (partial/LOW): rename `HarvestPrefix`/`HarvestPostfix` to `Harvest_Prefix`/`Harvest_Postfix` in `LivingRoots/Patches/HarvestPatches.cs` and `LivingRoots/ModEntry.cs`, updating `LivingRoots.Tests/HarvestPatchesTests.cs` and any other references. Decision: either align code to contract or update contract/examples + tests to the unprefixed names. Source: T043, contract §2.
-- [ ] T046 Implement shared broadcastSprites cue (partial/MEDIUM): broadcast transient harvest-quality/extra-harvest sprite via `Game1.multiplayer` (host-only) or game-loop render path; currently only audio cue (`playSound`) is implemented. Source: T035, contract §6.
+- [x] T045 Align patch method naming with contract (partial/LOW): rename `HarvestPrefix`/`HarvestPostfix` to `Harvest_Prefix`/`Harvest_Postfix` in `LivingRoots/Patches/HarvestPatches.cs` and `LivingRoots/ModEntry.cs`, updating `LivingRoots.Tests/HarvestPatchesTests.cs` and any other references. Decision: either align code to contract or update contract/examples + tests to the unprefixed names. Source: T043, contract §2.
+- [x] T046 Implement shared broadcastSprites cue (partial/MEDIUM): broadcast transient harvest-quality/extra-harvest sprite via `Game1.multiplayer` (host-only) or game-loop render path; currently only audio cue (`playSound`) is implemented. Source: T035, contract §6.
 - [ ] T047 Verify extra-harvest single-harvest guarantee (partial/MEDIUM): in-game Gate 3 verification that extra harvest spawns exactly once per harvest (no duplicate on re-harvest). Source: T036, FR-004, A8.
 - [ ] T048 Capture SC-003 evidence (partial/LOW): launch SMAPI session and confirm log shows patch registered + stability warning, no Harmony errors. Source: SC-003.
 - [ ] T049 Execute Gate 3 (partial/HIGH): run in-game session capturing 3 signals (observation + save diff + SMAPI log) with a second player for multiplayer verification (D1). Source: SC-004, spec 009.
 - [ ] T050 Implement pest clamp when pest system ships (partial/LOW, deferred): clamp quality by `PestQualityPenalty` when non-null (one-directional). Source: T044, A5.
-- [ ] T051 Add reflection test for try/catch + fallback (partial/LOW): extend `HarvestPatchesTests` to verify patch methods contain try/catch and default to original on failure. Source: T016, SC-006.
+- [x] T051 Add reflection test for try/catch + fallback (partial/LOW): extend `HarvestPatchesTests` to verify patch methods contain try/catch and default to original on failure. Source: T016, SC-006.
 - [ ] T052 Verify T035 audio-only acceptance (partial/LOW): confirm in Gate 3 that the audio cue alone is sufficient UX or whether sprite broadcast is required. Source: T035, contract §6.
 

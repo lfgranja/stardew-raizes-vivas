@@ -4,3 +4,6 @@ root = false
 
 # CA1707: Harmony patch parameters require double-underscore names (__state, __result).
 dotnet_diagnostic.CA1707.severity = none
+
+# S3011: reflection accessibility bypass is intentional for Game1.multiplayer (protected).
+dotnet_diagnostic.S3011.severity = none

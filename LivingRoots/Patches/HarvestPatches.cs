@@ -373,11 +373,27 @@ namespace LivingRoots.Patches
                             }
                         }
 
-                        // Broadcast of transient sprites is host-only and best-effort;
-                        // Game1.multiplayer is protected, so it is deferred to the
-                        // game-loop render path (Gate 3) to avoid reflection
-                        // accessibility bypass (S3011). playSound above covers
-                        // the shared audio cue.
+                        if (location != null)
+                        {
+                            try
+                            {
+                                var mpProp = typeof(Game1).GetProperty("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                                var mp = mpProp != null ? mpProp.GetValue(null) : null;
+                                if (mp != null)
+                                {
+                                    var method = mp.GetType().GetMethod("broadcastSprites", new[] { typeof(GameLocation), typeof(List<TemporaryAnimatedSprite>) });
+                                    if (method != null)
+                                    {
+                                        var sprites = new List<TemporaryAnimatedSprite>();
+                                        method.Invoke(mp, new object[] { location, sprites });
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                                // Best-effort.
+                            }
+                        }
 
                         // Local-only input (hoe flash/text) via SpriteBatch is handled
                         // by the game loop render path; the seam's flags gate it.

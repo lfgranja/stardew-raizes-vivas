@@ -17,8 +17,8 @@
   var harmony = new Harmony(this.ModManifest.UniqueID);
   harmony.Patch(
       original: AccessTools.Method(typeof(StardewValley.Crop), nameof(StardewValley.Crop.harvest)),
-      prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.Harvest_Prefix)),
-      postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.Harvest_Postfix)));
+      prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPrefix)),
+      postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPostfix)));
   ```
 - Patch methods MUST be `static`.
 - Wrap patch logic in `try/catch`; log errors via `IMonitor`; default to original game logic on failure (prefix returns `true`; postfix skips modification).
