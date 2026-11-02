@@ -203,3 +203,41 @@
 - [x] T043 Align type naming with contract (data-model §entities, partial/LOW): rename `HarvestFeedback` → `HarvestFeedbackFlags`; change `HarvestQualityInputs`/`HarvestQualityDecision` to `readonly record struct`; rename patch methods to `Harvest_Prefix`/`Harvest_Postfix`. Source: data-model §entities, contract §2/§5.
 - [x] T044 Implement pest clamp (A5, partial/LOW): clamp quality by `PestQualityPenalty` when non-null (one-directional); deferred until pest system exists. Source: A5.
 
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close gaps between spec/plan/tasks and current implementation discovered by `/speckit.converge` (2026-11-02, post-T035/T036). Append-only; does not modify prior phases.
+
+### Convergence Findings (summary)
+
+| ID | Gap Type | Severity | Source | Evidence | Remaining Work |
+|----|----------|----------|--------|----------|----------------|
+| F1 | partial | LOW | T043 / contract §2 | Patch methods named `HarvestPrefix`/`HarvestPostfix` in `HarvestPatches.cs` and `ModEntry.cs`; contract §2 examples use `Harvest_Prefix`/`Harvest_Postfix`. `HarvestPatchesTests.cs` asserts the unprefixed names. | Align naming (rename + update tests) or update contract/examples. |
+| F2 | partial | MEDIUM | T035 / contract §6 | `Game1.multiplayer.broadcastSprites` not invoked (protected; reflection avoided due to S3011). Shared sprite cue deferred to game-loop render path. Audio cue (`playSound`) is implemented. | Implement broadcastSprites via game-loop render path (host-only) or accept audio-only. |
+| F3 | partial | MEDIUM | T036 / FR-004 | Extra-harvest item spawn implemented (inventory/debris). Single-harvest guarantee not verified in-game (SC-004). | Verify in Gate 3 that extra harvest spawns exactly once per harvest. |
+| F4 | partial | LOW | SC-003 | SMAPI log patch-registration + stability warning not captured (no in-game run). | Capture SMAPI log at launch. |
+| F5 | partial | HIGH | SC-004 | Gate 3 in-game session (3 signals + second player) never executed (0 runs). | Execute Gate 3 per spec 009 contract. |
+| F6 | partial | LOW | T044 / A5 | Pest clamp deferred until pest system exists (`PestQualityPenalty` always null). | Implement when pest system ships. |
+| F7 | partial | LOW | T016 / SC-006 | `HarvestPatchesTests` covers static/annotations/Initialize signature but not try/catch presence or fallback. | Add reflection test for try/catch + fallback. |
+| F8 | partial | LOW | T043 / data-model | `HarvestFeedback` → `HarvestFeedbackFlags` rename done; patch methods still unprefixed (see F1). | Covered by F1. |
+
+**Summary metrics:**
+- Requirements / acceptance criteria checked: 14 FR + 6 SC + 3 US acceptance scenarios + 8 edge cases
+- Plan decisions checked: 10 (EnableHarmony, registration, seam, patch, safety, crop scope, edge handling, determinism, guard compliance, TDD)
+- Constitution principles checked: 6 (I–VI); no MUST violations
+- Findings by gap type: partial 8 (F1–F8; F8 subsumed by F1)
+- Findings by severity: HIGH 1 (F5), MEDIUM 2 (F2, F3), LOW 5 (F1, F4, F6, F7, F8)
+
+### Tasks
+
+- [ ] T045 Align patch method naming with contract (partial/LOW): rename `HarvestPrefix`/`HarvestPostfix` to `Harvest_Prefix`/`Harvest_Postfix` in `LivingRoots/Patches/HarvestPatches.cs` and `LivingRoots/ModEntry.cs`, updating `LivingRoots.Tests/HarvestPatchesTests.cs` and any other references. Decision: either align code to contract or update contract/examples + tests to the unprefixed names. Source: T043, contract §2.
+- [ ] T046 Implement shared broadcastSprites cue (partial/MEDIUM): broadcast transient harvest-quality/extra-harvest sprite via `Game1.multiplayer` (host-only) or game-loop render path; currently only audio cue (`playSound`) is implemented. Source: T035, contract §6.
+- [ ] T047 Verify extra-harvest single-harvest guarantee (partial/MEDIUM): in-game Gate 3 verification that extra harvest spawns exactly once per harvest (no duplicate on re-harvest). Source: T036, FR-004, A8.
+- [ ] T048 Capture SC-003 evidence (partial/LOW): launch SMAPI session and confirm log shows patch registered + stability warning, no Harmony errors. Source: SC-003.
+- [ ] T049 Execute Gate 3 (partial/HIGH): run in-game session capturing 3 signals (observation + save diff + SMAPI log) with a second player for multiplayer verification (D1). Source: SC-004, spec 009.
+- [ ] T050 Implement pest clamp when pest system ships (partial/LOW, deferred): clamp quality by `PestQualityPenalty` when non-null (one-directional). Source: T044, A5.
+- [ ] T051 Add reflection test for try/catch + fallback (partial/LOW): extend `HarvestPatchesTests` to verify patch methods contain try/catch and default to original on failure. Source: T016, SC-006.
+- [ ] T052 Verify T035 audio-only acceptance (partial/LOW): confirm in Gate 3 that the audio cue alone is sufficient UX or whether sprite broadcast is required. Source: T035, contract §6.
+
