@@ -11,87 +11,87 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 - Is the `EnableHarmony` requirement specified with the exact `.csproj` location (first `<PropertyGroup>`) and the SMAPI-bundled version (no separate pin)? [Completeness, Spec §FR-001, contracts §1]
-- [ ] CHK002 - Is the patch registration requirement specified with the code API (not annotations/`PatchAll`) and the exact `harmony.Patch(...)` call shape? [Completeness, Spec §FR-002, contracts §2]
-- [ ] CHK003 - Are the patch-method constraints specified (static, try/catch, log errors, default to original)? [Completeness, Spec §FR-005, contracts §2, §7]
-- [ ] CHK004 - Is the postfix-preferred / transpiler-avoidance rule specified with rationale? [Completeness, Spec §FR-006, contracts §2, §3]
-- [ ] CHK005 - Is the two-phase patch style (non-suppressing Prefix + Postfix) specified with the crop-scope guard and state capture? [Completeness, Spec §FR-004, contracts §3]
-- [ ] CHK006 - Is the suppressing-prefix prohibition stated as a hard requirement with rationale (violates compose, don't replace)? [Completeness, Spec §FR-004, contracts §3]
-- [ ] CHK007 - Is the transpiler fallback documented as "last resort" with the conditions for its use? [Completeness, Spec §FR-006, contracts §3]
-- [ ] CHK008 - Are the crop-scope rules specified for all excluded types (forage, fibre, Qi Fruit, fruit trees, giant crops, tea bushes, ground forage)? [Completeness, Spec §FR-007, §Edge Cases, contracts §4]
-- [ ] CHK009 - Are the inventory-full handling rules specified (main item vanilla-blocked; extra item debris)? [Completeness, Spec §FR-008, contracts §3, §5]
-- [ ] CHK010 - Are the NaN/Infinity and measured-0 handling rules specified? [Completeness, Spec §FR-009, §FR-010, contracts §3]
-- [ ] CHK011 - Is the seam purity/determinism requirement specified (replicated deterministic roll, A8)? [Completeness, Spec §FR-011, contracts §9]
-- [ ] CHK012 - Is the guard-compliance requirement specified (ProductionSourceGuard, FeatureStatusTests README strings)? [Completeness, Spec §FR-012, §FR-013]
+- [x] CHK001 - Is the `EnableHarmony` requirement specified with the exact `.csproj` location (first `<PropertyGroup>`) and the SMAPI-bundled version (no separate pin)? [Completeness, Spec §FR-001, contracts §1]
+- [x] CHK002 - Is the patch registration requirement specified with the code API (not annotations/`PatchAll`) and the exact `harmony.Patch(...)` call shape? [Completeness, Spec §FR-002, contracts §2]
+- [x] CHK003 - Are the patch-method constraints specified (static, try/catch, log errors, default to original)? [Completeness, Spec §FR-005, contracts §2, §7]
+- [x] CHK004 - Is the postfix-preferred / transpiler-avoidance rule specified with rationale? [Completeness, Spec §FR-006, contracts §2, §3]
+- [x] CHK005 - Is the two-phase patch style (non-suppressing Prefix + Postfix) specified with the crop-scope guard and state capture? [Completeness, Spec §FR-004, contracts §3]
+- [x] CHK006 - Is the suppressing-prefix prohibition stated as a hard requirement with rationale (violates compose, don't replace)? [Completeness, Spec §FR-004, contracts §3]
+- [x] CHK007 - Is the transpiler fallback documented as "last resort" with the conditions for its use? [Completeness, Spec §FR-006, contracts §3]
+- [x] CHK008 - Are the crop-scope rules specified for all excluded types (forage, fibre, Qi Fruit, fruit trees, giant crops, tea bushes, ground forage)? [Completeness, Spec §FR-007, §Edge Cases, contracts §4]
+- [x] CHK009 - Are the inventory-full handling rules specified (main item vanilla-blocked; extra item debris)? [Completeness, Spec §FR-008, contracts §3, §5]
+- [x] CHK010 - Are the NaN/Infinity and measured-0 handling rules specified? [Completeness, Spec §FR-009, §FR-010, contracts §3]
+- [x] CHK011 - Is the seam purity/determinism requirement specified (replicated deterministic roll, A8)? [Completeness, Spec §FR-011, contracts §9]
+- [x] CHK012 - Is the guard-compliance requirement specified (ProductionSourceGuard, FeatureStatusTests README strings)? [Completeness, Spec §FR-012, §FR-013]
 
 ## Requirement Clarity
 
-- [ ] CHK013 - Is "code API (not annotations/PatchAll)" defined with the exact registration call shape? [Clarity, Spec §FR-002, contracts §2]
-- [ ] CHK014 - Is "prefer postfix over prefix" quantified with the specific SMAPI rationale (rewritability, compatibility)? [Clarity, Spec §FR-006, contracts §2]
-- [ ] CHK015 - Is "try/catch with fallback to original" defined with the concrete return values (prefix returns true; postfix skips modification)? [Clarity, Spec §FR-005, contracts §2, §7]
-- [ ] CHK016 - Is the two-phase patch style defined precisely enough that an implementer can distinguish "state capture" (Prefix) from "mutation" (Postfix)? [Clarity, Spec §FR-004, contracts §3]
-- [ ] CHK017 - Is the crop-scope guard defined with the exact early-return condition (`crop.forageCrop == true`, fibre seeds, Qi Fruit)? [Clarity, Spec §FR-007, contracts §4]
-- [ ] CHK018 - Is "no annotations or PatchAll" stated as a hard requirement with rationale (SMAPI rewriting)? [Clarity, Spec §FR-002, §SC-006, contracts §2]
+- [x] CHK013 - Is "code API (not annotations/PatchAll)" defined with the exact registration call shape? [Clarity, Spec §FR-002, contracts §2]
+- [x] CHK014 - Is "prefer postfix over prefix" quantified with the specific SMAPI rationale (rewritability, compatibility)? [Clarity, Spec §FR-006, contracts §2]
+- [x] CHK015 - Is "try/catch with fallback to original" defined with the concrete return values (prefix returns true; postfix skips modification)? [Clarity, Spec §FR-005, contracts §2, §7]
+- [x] CHK016 - Is the two-phase patch style defined precisely enough that an implementer can distinguish "state capture" (Prefix) from "mutation" (Postfix)? [Clarity, Spec §FR-004, contracts §3]
+- [x] CHK017 - Is the crop-scope guard defined with the exact early-return condition (`crop.forageCrop == true`, fibre seeds, Qi Fruit)? [Clarity, Spec §FR-007, contracts §4]
+- [x] CHK018 - Is "no annotations or PatchAll" stated as a hard requirement with rationale (SMAPI rewriting)? [Clarity, Spec §FR-002, §SC-006, contracts §2]
 
 ## Requirement Consistency
 
-- [ ] CHK019 - Do the patch requirements (FR-004–FR-006) align with the SMAPI guidance (code API, postfix preferred, try/catch, no transpilers)? [Consistency, Spec §FR-004–FR-006, contracts §2–§3]
-- [ ] CHK020 - Do the patch requirements align with the Constitution (Principle I DDD, II Security, III Async, IV TDD, V YAGNI, VI Multiplayer)? [Consistency, Spec §Constitution Check, plan.md]
-- [ ] CHK021 - Do the crop-scope rules (FR-007) align with spec 014's A6 clarification (forage exclusion, Botanist protection)? [Consistency, Spec §FR-007, §Edge Cases, spec 014 Edge Cases]
-- [ ] CHK022 - Do the inventory-full rules (FR-008) align with spec 014's A1 clarification (debris fallback, vanilla semantics)? [Consistency, Spec §FR-008, contracts §5, spec 014 Edge Cases]
-- [ ] CHK023 - Do the seam requirements (FR-003, FR-011) align with the host-authority contract (A8 replicated deterministic roll)? [Consistency, Spec §FR-003, §FR-011, contracts §9]
+- [x] CHK019 - Do the patch requirements (FR-004–FR-006) align with the SMAPI guidance (code API, postfix preferred, try/catch, no transpilers)? [Consistency, Spec §FR-004–FR-006, contracts §2–§3]
+- [x] CHK020 - Do the patch requirements align with the Constitution (Principle I DDD, II Security, III Async, IV TDD, V YAGNI, VI Multiplayer)? [Consistency, Spec §Constitution Check, plan.md]
+- [x] CHK021 - Do the crop-scope rules (FR-007) align with spec 014's A6 clarification (forage exclusion, Botanist protection)? [Consistency, Spec §FR-007, §Edge Cases, spec 014 Edge Cases]
+- [x] CHK022 - Do the inventory-full rules (FR-008) align with spec 014's A1 clarification (debris fallback, vanilla semantics)? [Consistency, Spec §FR-008, contracts §5, spec 014 Edge Cases]
+- [x] CHK023 - Do the seam requirements (FR-003, FR-011) align with the host-authority contract (A8 replicated deterministic roll)? [Consistency, Spec §FR-003, §FR-011, contracts §9]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK024 - Is SC-001 measurable (HarvestQualityService unit tests pass with 0 failures, all without a game runtime)? [Measurability, Spec §SC-001]
-- [ ] CHK025 - Is SC-002 measurable (`dotnet build -c Release` succeeds with `EnableHarmony=true`, 0 errors)? [Measurability, Spec §SC-002]
-- [ ] CHK026 - Is SC-003 measurable (SMAPI log shows patch registered + stability warning; no Harmony errors during harvest)? [Measurability, Spec §SC-003]
-- [ ] CHK027 - Is SC-004 measurable (Gate 3 in-game session captures 3 signals with second player)? [Measurability, Spec §SC-004]
-- [ ] CHK028 - Is SC-006 measurable (no annotations/PatchAll; all patch methods static; try/catch with fallback)? [Measurability, Spec §SC-006]
+- [x] CHK024 - Is SC-001 measurable (HarvestQualityService unit tests pass with 0 failures, all without a game runtime)? [Measurability, Spec §SC-001]
+- [x] CHK025 - Is SC-002 measurable (`dotnet build -c Release` succeeds with `EnableHarmony=true`, 0 errors)? [Measurability, Spec §SC-002]
+- [x] CHK026 - Is SC-003 measurable (SMAPI log shows patch registered + stability warning; no Harmony errors during harvest)? [Measurability, Spec §SC-003]
+- [x] CHK027 - Is SC-004 measurable (Gate 3 in-game session captures 3 signals with second player)? [Measurability, Spec §SC-004]
+- [x] CHK028 - Is SC-006 measurable (no annotations/PatchAll; all patch methods static; try/catch with fallback)? [Measurability, Spec §SC-006]
 
 ## Scenario Coverage
 
-- [ ] CHK029 - Are primary flows covered (patch registration, Poor/Living/Moderate harvest, patch failure fallback)? [Coverage, Spec §US1, §US3, §Edge Cases]
-- [ ] CHK030 - Are the EnableHarmony build scenarios covered (build succeeds, uses SMAPI-bundled Harmony)? [Coverage, Spec §US3, §SC-002]
-- [ ] CHK031 - Are the seam-testability scenarios covered (tier mapping, probability boost, inventory-full, NaN/Unknown, crop scope, feedback conditionality)? [Coverage, Spec §US2, §SC-001]
-- [ ] CHK032 - Are the multiplayer scenarios covered (replicated deterministic roll, host-authoritative soil health, feedback visibility hybrid)? [Coverage, Spec §Edge Cases, contracts §6, §9]
+- [x] CHK029 - Are primary flows covered (patch registration, Poor/Living/Moderate harvest, patch failure fallback)? [Coverage, Spec §US1, §US3, §Edge Cases]
+- [x] CHK030 - Are the EnableHarmony build scenarios covered (build succeeds, uses SMAPI-bundled Harmony)? [Coverage, Spec §US3, §SC-002]
+- [x] CHK031 - Are the seam-testability scenarios covered (tier mapping, probability boost, inventory-full, NaN/Unknown, crop scope, feedback conditionality)? [Coverage, Spec §US2, §SC-001]
+- [x] CHK032 - Are the multiplayer scenarios covered (replicated deterministic roll, host-authoritative soil health, feedback visibility hybrid)? [Coverage, Spec §Edge Cases, contracts §6, §9]
 
 ## Edge Case Coverage
 
-- [ ] CHK033 - Is the patch-failure edge case specified (log error, fall back to original, no crash)? [Edge Case, Spec §Edge Cases, §FR-005]
-- [ ] CHK034 - Is the inlining risk specified (verify via Gate 3)? [Edge Case, Spec §Edge Cases]
-- [ ] CHK035 - Is the Android/cross-platform risk specified (warn, accept untested, best-effort fallback)? [Edge Case, Spec §Edge Cases, contracts §8]
-- [ ] CHK036 - Is the crop-scope edge case specified (forage, fibre, Qi Fruit early return)? [Edge Case, Spec §Edge Cases, §FR-007, contracts §4]
-- [ ] CHK037 - Is the NaN/Infinity edge case specified (Unknown → no modification)? [Edge Case, Spec §Edge Cases, §FR-009]
-- [ ] CHK038 - Is the measured-0 edge case specified (Poor → force 0)? [Edge Case, Spec §Edge Cases, §FR-010]
-- [ ] CHK039 - Is the inventory-full edge case specified (main blocked, extra debris)? [Edge Case, Spec §Edge Cases, §FR-008, contracts §5]
-- [ ] CHK040 - Is the feedback conditionality edge case specified (Poor always; Living only on enhanced/extra; Moderate/Unknown none; both as two sprites)? [Edge Case, Spec §Edge Cases, contracts §6]
+- [x] CHK033 - Is the patch-failure edge case specified (log error, fall back to original, no crash)? [Edge Case, Spec §Edge Cases, §FR-005]
+- [x] CHK034 - Is the inlining risk specified (verify via Gate 3)? [Edge Case, Spec §Edge Cases]
+- [x] CHK035 - Is the Android/cross-platform risk specified (warn, accept untested, best-effort fallback)? [Edge Case, Spec §Edge Cases, contracts §8]
+- [x] CHK036 - Is the crop-scope edge case specified (forage, fibre, Qi Fruit early return)? [Edge Case, Spec §Edge Cases, §FR-007, contracts §4]
+- [x] CHK037 - Is the NaN/Infinity edge case specified (Unknown → no modification)? [Edge Case, Spec §Edge Cases, §FR-009]
+- [x] CHK038 - Is the measured-0 edge case specified (Poor → force 0)? [Edge Case, Spec §Edge Cases, §FR-010]
+- [x] CHK039 - Is the inventory-full edge case specified (main blocked, extra debris)? [Edge Case, Spec §Edge Cases, §FR-008, contracts §5]
+- [x] CHK040 - Is the feedback conditionality edge case specified (Poor always; Living only on enhanced/extra; Moderate/Unknown none; both as two sprites)? [Edge Case, Spec §Edge Cases, contracts §6]
 
 ## Non-Functional Requirements
 
-- [ ] CHK041 - Are performance requirements specified (no new per-frame pass; Harmony patch adds one virtual-method interception per harvest)? [NFR, Spec §Technical Context, plan.md]
-- [ ] CHK042 - Are security requirements specified (try/catch, no raw exception messages, bounds-checked)? [NFR, Spec §FR-005, plan.md §Constraints]
-- [ ] CHK043 - Are cross-platform requirements specified (Android untested, SMAPI rewriting, best-effort fallback)? [NFR, Spec §Edge Cases, contracts §8, research-android.md]
-- [ ] CHK044 - Are the Android/cross-platform risks documented as assumptions (not verified guarantees)? [NFR, Spec §Assumptions, contracts §8]
+- [x] CHK041 - Are performance requirements specified (no new per-frame pass; Harmony patch adds one virtual-method interception per harvest)? [NFR, Spec §Technical Context, plan.md]
+- [x] CHK042 - Are security requirements specified (try/catch, no raw exception messages, bounds-checked)? [NFR, Spec §FR-005, plan.md §Constraints]
+- [x] CHK043 - Are cross-platform requirements specified (Android untested, SMAPI rewriting, best-effort fallback)? [NFR, Spec §Edge Cases, contracts §8, research-android.md]
+- [x] CHK044 - Are the Android/cross-platform risks documented as assumptions (not verified guarantees)? [NFR, Spec §Assumptions, contracts §8]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK045 - Is the dependency on `Lib.Harmony` (SMAPI-bundled 2.2.x) documented with the `EnableHarmony` mechanism? [Dependencies, Spec §FR-001, contracts §1]
-- [ ] CHK046 - Is the dependency on spec 014 (band migration, CollectCompost fix, FR-001–FR-016) documented? [Dependencies, Spec §Assumptions, §Out of Scope]
-- [ ] CHK047 - Is the dependency on the T007 spike (member names confirmed) documented? [Dependencies, Spec §Assumptions, spike-t007-gamepath.md]
-- [ ] CHK048 - Is the dependency on SC-008 rollback verification documented as a blocker for yield activation? [Dependencies, Spec §Assumptions]
-- [ ] CHK049 - Is the dependency on Gate 3 in-game session documented as the only attestation of "verified" status? [Dependencies, Spec §SC-004, §Assumptions]
-- [ ] CHK050 - Is the ADR creation documented as recommended but not blocking? [Dependencies, Spec §Assumptions, §Out of Scope]
+- [x] CHK045 - Is the dependency on `Lib.Harmony` (SMAPI-bundled 2.2.x) documented with the `EnableHarmony` mechanism? [Dependencies, Spec §FR-001, contracts §1]
+- [x] CHK046 - Is the dependency on spec 014 (band migration, CollectCompost fix, FR-001–FR-016) documented? [Dependencies, Spec §Assumptions, §Out of Scope]
+- [x] CHK047 - Is the dependency on the T007 spike (member names confirmed) documented? [Dependencies, Spec §Assumptions, spike-t007-gamepath.md]
+- [x] CHK048 - Is the dependency on SC-008 rollback verification documented as a blocker for yield activation? [Dependencies, Spec §Assumptions]
+- [x] CHK049 - Is the dependency on Gate 3 in-game session documented as the only attestation of "verified" status? [Dependencies, Spec §SC-004, §Assumptions]
+- [x] CHK050 - Is the ADR creation documented as recommended but not blocking? [Dependencies, Spec §Assumptions, §Out of Scope]
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK051 - Is there any conflict between "prefer postfix" (SMAPI guidance) and "force Quality = 0" (which may need a postfix that overwrites after the roll)? [Conflict, Spec §FR-006, contracts §3]
-- [ ] CHK052 - Is the Prefix vs. Postfix style resolved (non-suppressing two-phase patch) with rationale? [Conflict Resolved, Spec §FR-004, contracts §3, research-patchstyle.md]
-- [ ] CHK053 - Is there any remaining ambiguous term ("reward SFX", "testable seam") lacking quantification? [Ambiguity, Spec §FR-003, §FR-004]
+- [x] CHK051 - Is there any conflict between "prefer postfix" (SMAPI guidance) and "force Quality = 0" (which may need a postfix that overwrites after the roll)? [Conflict, Spec §FR-006, contracts §3]
+- [x] CHK052 - Is the Prefix vs. Postfix style resolved (non-suppressing two-phase patch) with rationale? [Conflict Resolved, Spec §FR-004, contracts §3, research-patchstyle.md]
+- [x] CHK053 - Is there any remaining ambiguous term ("reward SFX", "testable seam") lacking quantification? [Ambiguity, Spec §FR-003, §FR-004]
 
 ## Traceability
 
-- [ ] CHK054 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK053 each carry `[Spec §…]`/`[Gap]`/`[Conflict Resolved]` tags.
+- [x] CHK054 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK053 each carry `[Spec §…]`/`[Gap]`/`[Conflict Resolved]` tags.
 
 ---
 

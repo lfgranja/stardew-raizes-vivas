@@ -11,82 +11,82 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 - Is the patch-failure handling specified (try/catch, log error, default to original game logic)? [Completeness, Spec §FR-005, §US1 scenario 5, contracts §2, §7]
-- [ ] CHK002 - Is the try/catch contract specified with concrete return values (prefix returns true; postfix skips modification)? [Completeness, Spec §FR-005, contracts §2, §7]
-- [ ] CHK003 - Is the error-logging contract specified (via `IMonitor`, no raw exception messages to logs)? [Completeness, Spec §FR-005, contracts §7, Principle II]
-- [ ] CHK004 - Is the inlining risk specified (verify via Gate 3; `Crop.harvest` large enough not to be inlined)? [Completeness, Spec §Edge Cases, contracts §7]
-- [ ] CHK005 - Is the crop-scope guard specified (early return for forage/fibre/Qi; fruit trees/giant/tea/ground forage out of scope)? [Completeness, Spec §FR-007, §Edge Cases, contracts §4]
-- [ ] CHK006 - Is the inventory-full handling specified (main item vanilla-blocked; extra item debris)? [Completeness, Spec §FR-008, contracts §3, §5]
-- [ ] CHK007 - Is the NaN/Infinity handling specified (Unknown → no modification, vanilla)? [Completeness, Spec §FR-009, contracts §3]
-- [ ] CHK008 - Is the measured-0 handling specified (Poor → force 0)? [Completeness, Spec §FR-010, contracts §3]
-- [ ] CHK009 - Is the feedback conditionality/fallback specified (Moderate/Unknown → no feedback; patch failure → no feedback corruption)? [Completeness, Spec §Edge Cases, contracts §6]
+- [x] CHK001 - Is the patch-failure handling specified (try/catch, log error, default to original game logic)? [Completeness, Spec §FR-005, §US1 scenario 5, contracts §2, §7]
+- [x] CHK002 - Is the try/catch contract specified with concrete return values (prefix returns true; postfix skips modification)? [Completeness, Spec §FR-005, contracts §2, §7]
+- [x] CHK003 - Is the error-logging contract specified (via `IMonitor`, no raw exception messages to logs)? [Completeness, Spec §FR-005, contracts §7, Principle II]
+- [x] CHK004 - Is the inlining risk specified (verify via Gate 3; `Crop.harvest` large enough not to be inlined)? [Completeness, Spec §Edge Cases, contracts §7]
+- [x] CHK005 - Is the crop-scope guard specified (early return for forage/fibre/Qi; fruit trees/giant/tea/ground forage out of scope)? [Completeness, Spec §FR-007, §Edge Cases, contracts §4]
+- [x] CHK006 - Is the inventory-full handling specified (main item vanilla-blocked; extra item debris)? [Completeness, Spec §FR-008, contracts §3, §5]
+- [x] CHK007 - Is the NaN/Infinity handling specified (Unknown → no modification, vanilla)? [Completeness, Spec §FR-009, contracts §3]
+- [x] CHK008 - Is the measured-0 handling specified (Poor → force 0)? [Completeness, Spec §FR-010, contracts §3]
+- [x] CHK009 - Is the feedback conditionality/fallback specified (Moderate/Unknown → no feedback; patch failure → no feedback corruption)? [Completeness, Spec §Edge Cases, contracts §6]
 
 ## Requirement Clarity
 
-- [ ] CHK010 - Is "default to original game logic" defined with concrete behavior (no crash, no data corruption, harvest proceeds normally)? [Clarity, Spec §FR-005, §US1 scenario 5, contracts §7]
-- [ ] CHK011 - Is the try/catch contract defined with the specific log level and message format? [Clarity, Spec §FR-005, contracts §7]
-- [ ] CHK012 - Is the inlining risk defined with the specific mitigation (verify via Gate 3; `harvest` is large enough)? [Clarity, Spec §Edge Cases, contracts §7]
-- [ ] CHK013 - Is the crop-scope guard defined with the exact early-return condition (`crop.forageCrop == true`, fibre seeds, Qi Fruit)? [Clarity, Spec §FR-007, contracts §4]
-- [ ] CHK014 - Is the inventory-full handling defined with the exact vanilla behavior (red message, crop stays, debris for extras)? [Clarity, Spec §FR-008, contracts §3, §5]
-- [ ] CHK015 - Is the suppressing-prefix prohibition defined with rationale (violates compose, don't replace; breaks other mods' patches)? [Clarity, Spec §FR-004, contracts §3]
+- [x] CHK010 - Is "default to original game logic" defined with concrete behavior (no crash, no data corruption, harvest proceeds normally)? [Clarity, Spec §FR-005, §US1 scenario 5, contracts §7]
+- [x] CHK011 - Is the try/catch contract defined with the specific log level and message format? [Clarity, Spec §FR-005, contracts §7] (generic `LogLevel.Error` message; sanitized `LogLevel.Trace` with `ex.GetType().FullName` and `HResult`; no raw exception messages/stack traces, per Principle II and `ExceptionSanitizationTests`)
+- [x] CHK012 - Is the inlining risk defined with the specific mitigation (verify via Gate 3; `harvest` is large enough)? [Clarity, Spec §Edge Cases, contracts §7]
+- [x] CHK013 - Is the crop-scope guard defined with the exact early-return condition (`crop.forageCrop == true`, fibre seeds, Qi Fruit)? [Clarity, Spec §FR-007, contracts §4]
+- [x] CHK014 - Is the inventory-full handling defined with the exact vanilla behavior (red message, crop stays, debris for extras)? [Clarity, Spec §FR-008, contracts §3, §5]
+- [x] CHK015 - Is the suppressing-prefix prohibition defined with rationale (violates compose, don't replace; breaks other mods' patches)? [Clarity, Spec §FR-004, contracts §3]
 
 ## Requirement Consistency
 
-- [ ] CHK016 - Do the safety requirements align with the SMAPI Harmony guidance (try/catch, fallback to original, log errors)? [Consistency, Spec §FR-005, contracts §2, §7, SMAPI guide]
-- [ ] CHK017 - Do the safety requirements align with the Constitution (Principle II Security, III Async, V YAGNI)? [Consistency, Spec §Constitution Check, plan.md]
-- [ ] CHK018 - Do the crop-scope rules align with spec 014's A6 clarification? [Consistency, Spec §FR-007, §Edge Cases, spec 014 Edge Cases]
-- [ ] CHK019 - Do the inventory-full rules align with spec 014's A1 clarification? [Consistency, Spec §FR-008, contracts §5, spec 014 Edge Cases]
-- [ ] CHK020 - Do the NaN/Unknown rules align with spec 014's A3 clarification? [Consistency, Spec §FR-009, spec 014 Edge Cases]
+- [x] CHK016 - Do the safety requirements align with the SMAPI Harmony guidance (try/catch, fallback to original, log errors)? [Consistency, Spec §FR-005, contracts §2, §7, SMAPI guide]
+- [x] CHK017 - Do the safety requirements align with the Constitution (Principle II Security, III Async, V YAGNI)? [Consistency, Spec §Constitution Check, plan.md]
+- [x] CHK018 - Do the crop-scope rules align with spec 014's A6 clarification? [Consistency, Spec §FR-007, §Edge Cases, spec 014 Edge Cases]
+- [x] CHK019 - Do the inventory-full rules align with spec 014's A1 clarification? [Consistency, Spec §FR-008, contracts §5, spec 014 Edge Cases]
+- [x] CHK020 - Do the NaN/Unknown rules align with spec 014's A3 clarification? [Consistency, Spec §FR-009, spec 014 Edge Cases]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK021 - Is the patch-failure fallback testable (patch throws → original logic runs, no crash)? [Measurability, Spec §US1 scenario 5, §SC-003]
-- [ ] CHK022 - Is the inlining risk testable (verify via Gate 3)? [Measurability, Spec §Edge Cases, §SC-004]
-- [ ] CHK023 - Is the crop-scope guard testable (forage exclusion, Botanist protection)? [Measurability, Spec §SC-001, §FR-007]
-- [ ] CHK024 - Is the try/catch contract testable (log error, default to original)? [Measurability, Spec §US1 scenario 5, §SC-003]
+- [x] CHK021 - Is the patch-failure fallback testable (patch throws → original logic runs, no crash)? [Measurability, Spec §US1 scenario 5, §SC-003]
+- [x] CHK022 - Is the inlining risk testable (verify via Gate 3)? [Measurability, Spec §Edge Cases, §SC-004]
+- [x] CHK023 - Is the crop-scope guard testable (forage exclusion, Botanist protection)? [Measurability, Spec §SC-001, §FR-007]
+- [x] CHK024 - Is the try/catch contract testable (log error, default to original)? [Measurability, Spec §US1 scenario 5, §SC-003]
 
 ## Scenario Coverage
 
-- [ ] CHK025 - Are the patch-failure scenarios covered (try/catch, log error, fallback to original)? [Coverage, Spec §US1 scenario 5, §Edge Cases]
-- [ ] CHK026 - Are the inlining scenarios covered (verify via Gate 3)? [Coverage, Spec §Edge Cases]
-- [ ] CHK027 - Are the crop-scope scenarios covered (forage exclusion, Botanist protection, fibre/Qi skip)? [Coverage, Spec §Edge Cases, §FR-007]
-- [ ] CHK028 - Are the inventory-full scenarios covered (main blocked, extra debris)? [Coverage, Spec §Edge Cases, §FR-008]
+- [x] CHK025 - Are the patch-failure scenarios covered (try/catch, log error, fallback to original)? [Coverage, Spec §US1 scenario 5, §Edge Cases]
+- [x] CHK026 - Are the inlining scenarios covered (verify via Gate 3)? [Coverage, Spec §Edge Cases]
+- [x] CHK027 - Are the crop-scope scenarios covered (forage exclusion, Botanist protection, fibre/Qi skip)? [Coverage, Spec §Edge Cases, §FR-007]
+- [x] CHK028 - Are the inventory-full scenarios covered (main blocked, extra debris)? [Coverage, Spec §Edge Cases, §FR-008]
 
 ## Edge Case Coverage
 
-- [ ] CHK029 - Is the patch-failure edge case specified (no crash, no data corruption, harvest proceeds normally)? [Edge Case, Spec §Edge Cases, §FR-005]
-- [ ] CHK030 - Is the inlining edge case specified (verify via Gate 3; `harvest` large enough)? [Edge Case, Spec §Edge Cases]
-- [ ] CHK031 - Is the Android/cross-platform edge case specified (warn, accept untested, best-effort fallback)? [Edge Case, Spec §Edge Cases, contracts §8]
-- [ ] CHK032 - Is the crop-scope edge case specified (forage, fibre, Qi, fruit trees, giant, tea, ground forage)? [Edge Case, Spec §Edge Cases, §FR-007, contracts §4]
-- [ ] CHK033 - Is the NaN/Infinity edge case specified (Unknown → no modification)? [Edge Case, Spec §Edge Cases, §FR-009]
-- [ ] CHK034 - Is the measured-0 edge case specified (Poor → force 0)? [Edge Case, Spec §Edge Cases, §FR-010]
-- [ ] CHK035 - Is the inventory-full edge case specified (main blocked, extra debris)? [Edge Case, Spec §Edge Cases, §FR-008, contracts §5]
-- [ ] CHK036 - Is the feedback conditionality edge case specified (Poor always; Living only on enhanced/extra; Moderate/Unknown none; both as two sprites)? [Edge Case, Spec §Edge Cases, contracts §6]
+- [x] CHK029 - Is the patch-failure edge case specified (no crash, no data corruption, harvest proceeds normally)? [Edge Case, Spec §Edge Cases, §FR-005]
+- [x] CHK030 - Is the inlining edge case specified (verify via Gate 3; `harvest` large enough)? [Edge Case, Spec §Edge Cases]
+- [x] CHK031 - Is the Android/cross-platform edge case specified (warn, accept untested, best-effort fallback)? [Edge Case, Spec §Edge Cases, contracts §8]
+- [x] CHK032 - Is the crop-scope edge case specified (forage, fibre, Qi, fruit trees, giant, tea, ground forage)? [Edge Case, Spec §Edge Cases, §FR-007, contracts §4]
+- [x] CHK033 - Is the NaN/Infinity edge case specified (Unknown → no modification)? [Edge Case, Spec §Edge Cases, §FR-009]
+- [x] CHK034 - Is the measured-0 edge case specified (Poor → force 0)? [Edge Case, Spec §Edge Cases, §FR-010]
+- [x] CHK035 - Is the inventory-full edge case specified (main blocked, extra debris)? [Edge Case, Spec §Edge Cases, §FR-008, contracts §5]
+- [x] CHK036 - Is the feedback conditionality edge case specified (Poor always; Living only on enhanced/extra; Moderate/Unknown none; both as two sprites)? [Edge Case, Spec §Edge Cases, contracts §6]
 
 ## Non-Functional Requirements
 
-- [ ] CHK037 - Are safety NFRs specified (try/catch, no raw exception messages, bounds-checked, `CheckForOverflowUnderflow`)? [NFR, Spec §FR-005, plan.md §Constraints, Principle II]
-- [ ] CHK038 - Are reliability NFRs specified (patch failure → original logic, no crash, no data corruption)? [NFR, Spec §US1 scenario 5, §FR-005, contracts §7]
-- [ ] CHK039 - Are the Android/cross-platform NFRs specified (warn, accept untested, best-effort fallback)? [NFR, Spec §Edge Cases, §Assumptions, contracts §8]
+- [x] CHK037 - Are safety NFRs specified (try/catch, no raw exception messages, bounds-checked, `CheckForOverflowUnderflow`)? [NFR, Spec §FR-005, plan.md §Constraints, Principle II]
+- [x] CHK038 - Are reliability NFRs specified (patch failure → original logic, no crash, no data corruption)? [NFR, Spec §US1 scenario 5, §FR-005, contracts §7]
+- [x] CHK039 - Are the Android/cross-platform NFRs specified (warn, accept untested, best-effort fallback)? [NFR, Spec §Edge Cases, §Assumptions, contracts §8]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK040 - Is the dependency on `Lib.Harmony` (SMAPI-bundled 2.2.x, `EnableHarmony=true`) documented? [Dependencies, Spec §FR-001, contracts §1]
-- [ ] CHK041 - Is the dependency on spec 014 (tier rules, bands, A6/A7/A8/B1/B2) documented? [Dependencies, Spec §Assumptions]
-- [ ] CHK042 - Is the dependency on T007 spike (member names confirmed) documented? [Dependencies, Spec §Assumptions]
-- [ ] CHK043 - Is the dependency on SC-008 rollback verification documented as a blocker for yield activation? [Dependencies, Spec §Assumptions]
-- [ ] CHK044 - Is the dependency on Gate 3 in-game session documented as the only attestation of "verified" status? [Dependencies, Spec §SC-004, §Assumptions]
-- [ ] CHK045 - Is the ADR creation documented as recommended but not blocking? [Dependencies, Spec §Assumptions, §Out of Scope]
+- [x] CHK040 - Is the dependency on `Lib.Harmony` (SMAPI-bundled 2.2.x, `EnableHarmony=true`) documented? [Dependencies, Spec §FR-001, contracts §1]
+- [x] CHK041 - Is the dependency on spec 014 (tier rules, bands, A6/A7/A8/B1/B2) documented? [Dependencies, Spec §Assumptions]
+- [x] CHK042 - Is the dependency on T007 spike (member names confirmed) documented? [Dependencies, Spec §Assumptions]
+- [x] CHK043 - Is the dependency on SC-008 rollback verification documented as a blocker for yield activation? [Dependencies, Spec §Assumptions]
+- [x] CHK044 - Is the dependency on Gate 3 in-game session documented as the only attestation of "verified" status? [Dependencies, Spec §SC-004, §Assumptions]
+- [x] CHK045 - Is the ADR creation documented as recommended but not blocking? [Dependencies, Spec §Assumptions, §Out of Scope]
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK046 - Is there any conflict between "prefer postfix" and the need to force `Quality = 0` (which may require a postfix that overwrites after the roll)? [Conflict, Spec §FR-006, contracts §3]
-- [ ] CHK047 - Is the Prefix vs. Postfix style resolved (non-suppressing two-phase patch) with rationale? [Conflict Resolved, Spec §FR-004, contracts §3, research-patchstyle.md]
-- [ ] CHK048 - Is there any remaining ambiguous term ("reward SFX", "testable seam") lacking quantification? [Ambiguity, Spec §FR-003, §FR-004]
+- [x] CHK046 - Is there any conflict between "prefer postfix" and the need to force `Quality = 0` (which may require a postfix that overwrites after the roll)? [Conflict, Spec §FR-006, contracts §3]
+- [x] CHK047 - Is the Prefix vs. Postfix style resolved (non-suppressing two-phase patch) with rationale? [Conflict Resolved, Spec §FR-004, contracts §3, research-patchstyle.md]
+- [x] CHK048 - Is there any remaining ambiguous term ("reward SFX", "testable seam") lacking quantification? [Ambiguity, Spec §FR-003, §FR-004] (reward SFX deferred to implementation as tunable `ModConstants.HarvestRewardSound` defaulting to `Ship`/`dwoop` per research; seam contract clear)
 
 ## Traceability
 
-- [ ] CHK049 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK048 each carry `[Spec §…]`/`[Gap]`/`[Conflict Resolved]` tags.
+- [x] CHK049 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK048 each carry `[Spec §…]`/`[Gap]`/`[Conflict Resolved]` tags.
 
 ---
 

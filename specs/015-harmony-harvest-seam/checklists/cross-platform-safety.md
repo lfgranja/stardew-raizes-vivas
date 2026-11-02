@@ -11,65 +11,65 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 - Is the Android/cross-platform posture specified (warn + accept untested, consistent with existing desktop-only policy)? [Completeness, Spec §Edge Cases, §Assumptions, contracts §8]
-- [ ] CHK002 - Is the "untested on Android" documentation requirement specified (README, Nexus page: do not tick "Android Compatible")? [Completeness, Spec §Assumptions, contracts §8, research-android.md]
-- [ ] CHK003 - Is the best-effort fallback requirement specified (on patch failure, fall back to vanilla harvest logic, no crash, no data corruption)? [Completeness, Spec §Edge Cases, contracts §7, §8]
-- [ ] CHK004 - Is the SMAPI rewriting limitation documented (annotations/`PatchAll` not rewriteable; code API + static + try/catch required)? [Completeness, Spec §FR-002, §FR-005, contracts §2, §7]
-- [ ] CHK005 - Is the `EnableHarmony` mechanism specified (SMAPI-bundled 2.2.x, no separate version pin)? [Completeness, Spec §FR-001, contracts §1]
-- [ ] CHK006 - Is the optional runtime guard specified (log warning on Android, accept untested)? [Completeness, Spec §Assumptions, contracts §8]
-- [ ] CHK007 - Is the inlining risk specified (verify via Gate 3; `Crop.harvest` large enough not to be inlined)? [Completeness, Spec §Edge Cases, contracts §7]
+- [x] CHK001 - Is the Android/cross-platform posture specified (warn + accept untested, consistent with existing desktop-only policy)? [Completeness, Spec §Edge Cases, §Assumptions, contracts §8]
+- [x] CHK002 - Is the "untested on Android" documentation requirement specified (README, Nexus page: do not tick "Android Compatible")? [Completeness, Spec §Assumptions, contracts §8, research-android.md]
+- [x] CHK003 - Is the best-effort fallback requirement specified (on patch failure, fall back to vanilla harvest logic, no crash, no data corruption)? [Completeness, Spec §Edge Cases, contracts §7, §8]
+- [x] CHK004 - Is the SMAPI rewriting limitation documented (annotations/`PatchAll` not rewriteable; code API + static + try/catch required)? [Completeness, Spec §FR-002, §FR-005, contracts §2, §7]
+- [x] CHK005 - Is the `EnableHarmony` mechanism specified (SMAPI-bundled 2.2.x, no separate version pin)? [Completeness, Spec §FR-001, contracts §1]
+- [x] CHK006 - Is the optional runtime guard specified (log warning on Android, accept untested)? [Completeness, Spec §Assumptions, contracts §8] (log warning once + skip Harmony patch registration on Android; best-effort fallback remains)
+- [x] CHK007 - Is the inlining risk specified (verify via Gate 3; `Crop.harvest` large enough not to be inlined)? [Completeness, Spec §Edge Cases, contracts §7]
 
 ## Requirement Clarity
 
-- [ ] CHK008 - Is "untested on Android" defined as an explicit scope decision (not a verified guarantee)? [Clarity, Spec §Assumptions, contracts §8]
-- [ ] CHK009 - Is the best-effort fallback defined with concrete behavior (patch fails → logs → vanilla harvest logic runs → no crash, no data corruption)? [Clarity, Spec §Edge Cases, §FR-005, contracts §7]
-- [ ] CHK010 - Is the SMAPI rewriting limitation defined with the specific unrewriteable constructs (annotations, `PatchAll`)? [Clarity, Spec §FR-002, §FR-006, contracts §2]
-- [ ] CHK011 - Is the Android SMAPI version gap documented (4.3.2 vs 4.5.2)? [Clarity, contracts §8, research-android.md]
+- [x] CHK008 - Is "untested on Android" defined as an explicit scope decision (not a verified guarantee)? [Clarity, Spec §Assumptions, contracts §8]
+- [x] CHK009 - Is the best-effort fallback defined with concrete behavior (patch fails → logs → vanilla harvest logic runs → no crash, no data corruption)? [Clarity, Spec §Edge Cases, §FR-005, contracts §7]
+- [x] CHK010 - Is the SMAPI rewriting limitation defined with the specific unrewriteable constructs (annotations, `PatchAll`)? [Clarity, Spec §FR-002, §FR-006, contracts §2]
+- [x] CHK011 - Is the Android SMAPI version gap documented (4.3.2 vs 4.5.2)? [Clarity, contracts §8, research-android.md]
 
 ## Requirement Consistency
 
-- [ ] CHK012 - Do the cross-platform requirements align with the existing desktop-only policy (GDD: "Sem console/mobile no v1")? [Consistency, Spec §Assumptions, contracts §8, internal-android.md]
-- [ ] CHK013 - Do the cross-platform requirements align with the "no platform checks in code" posture (delegate to SMAPI/MonoGame)? [Consistency, Spec §Constraints, internal-android.md]
-- [ ] CHK014 - Do the Harmony requirements (code API, static, try/catch, `EnableHarmony`) align with the SMAPI rewriting requirements? [Consistency, Spec §FR-001–FR-006, contracts §1–§3, §7–§8]
+- [x] CHK012 - Do the cross-platform requirements align with the existing desktop-only policy (GDD: "Sem console/mobile no v1")? [Consistency, Spec §Assumptions, contracts §8, internal-android.md]
+- [x] CHK013 - Do the cross-platform requirements align with the "no platform checks in code" posture (delegate to SMAPI/MonoGame)? [Consistency, Spec §Constraints, internal-android.md]
+- [x] CHK014 - Do the Harmony requirements (code API, static, try/catch, `EnableHarmony`) align with the SMAPI rewriting requirements? [Consistency, Spec §FR-001–FR-006, contracts §1–§3, §7–§8]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK015 - Is the Android/cross-platform acceptance criterion measurable (documented as "untested", not claimed as supported)? [Measurability, Spec §SC (none dedicated), §Assumptions, contracts §8]
-- [ ] CHK016 - Is the best-effort fallback testable (patch throws → original logic runs, no crash)? [Measurability, Spec §US1 scenario 5, §SC-003]
-- [ ] CHK017 - Is the build-with-EnableHarmony criterion measurable (0 errors, SMAPI-bundled Harmony)? [Measurability, Spec §SC-002]
+- [x] CHK015 - Is the Android/cross-platform acceptance criterion measurable (documented as "untested", not claimed as supported)? [Measurability, Spec §SC (none dedicated), §Assumptions, contracts §8] (document in README/Nexus as untested; do not tick Android Compatible)
+- [x] CHK016 - Is the best-effort fallback testable (patch throws → original logic runs, no crash)? [Measurability, Spec §US1 scenario 5, §SC-003]
+- [x] CHK017 - Is the build-with-EnableHarmony criterion measurable (0 errors, SMAPI-bundled Harmony)? [Measurability, Spec §SC-002]
 
 ## Scenario Coverage
 
-- [ ] CHK018 - Are the Android/cross-platform scenarios covered (patch fails → fallback; document status; no Android tag)? [Coverage, Spec §Edge Cases, §Assumptions, contracts §8]
-- [ ] CHK019 - Are the patch-failure scenarios covered (try/catch, log error, default to original)? [Coverage, Spec §US1 scenario 5, §Edge Cases]
-- [ ] CHK020 - Are the inlining scenarios covered (verify via Gate 3)? [Coverage, Spec §Edge Cases]
+- [x] CHK018 - Are the Android/cross-platform scenarios covered (patch fails → fallback; document status; no Android tag)? [Coverage, Spec §Edge Cases, §Assumptions, contracts §8]
+- [x] CHK019 - Are the patch-failure scenarios covered (try/catch, log error, default to original)? [Coverage, Spec §US1 scenario 5, §Edge Cases]
+- [x] CHK020 - Are the inlining scenarios covered (verify via Gate 3)? [Coverage, Spec §Edge Cases]
 
 ## Edge Case Coverage
 
-- [ ] CHK021 - Is the Android-specific risk documented (Harmony patching is the biggest risk for Android compatibility)? [Edge Case, contracts §8, research-android.md]
-- [ ] CHK022 - Is the MonoMod.RuntimeDetour backend difference documented (ARM vs. PC)? [Edge Case, contracts §8, research-android.md]
-- [ ] CHK023 - Is the SMAPI version gap documented (Android 4.3.2 vs official 4.5.2)? [Edge Case, contracts §8, research-android.md]
-- [ ] CHK024 - Is the Cinderbox ecosystem difference documented (separate launcher, separate SMAPI fork)? [Edge Case, research-android.md]
+- [x] CHK021 - Is the Android-specific risk documented (Harmony patching is the biggest risk for Android compatibility)? [Edge Case, contracts §8, research-android.md]
+- [x] CHK022 - Is the MonoMod.RuntimeDetour backend difference documented (ARM vs. PC)? [Edge Case, contracts §8, research-android.md]
+- [x] CHK023 - Is the SMAPI version gap documented (Android 4.3.2 vs official 4.5.2)? [Edge Case, contracts §8, research-android.md]
+- [x] CHK024 - Is the Cinderbox ecosystem difference documented (separate launcher, separate SMAPI fork)? [Edge Case, research-android.md]
 
 ## Non-Functional Requirements
 
-- [ ] CHK025 - Are cross-platform NFRs specified (warn and accept untested, best-effort fallback)? [NFR, Spec §Assumptions, §Edge Cases, contracts §8]
-- [ ] CHK026 - Are the Android/cross-platform risks documented as assumptions (not verified guarantees)? [NFR, Spec §Assumptions, contracts §8]
+- [x] CHK025 - Are cross-platform NFRs specified (warn and accept untested, best-effort fallback)? [NFR, Spec §Assumptions, §Edge Cases, contracts §8]
+- [x] CHK026 - Are the Android/cross-platform risks documented as assumptions (not verified guarantees)? [NFR, Spec §Assumptions, contracts §8]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK027 - Is the dependency on SMAPI-bundled Harmony 2.2.x documented? [Dependencies, Spec §FR-001, contracts §1]
-- [ ] CHK028 - Is the dependency on the existing desktop-only policy documented? [Dependencies, Spec §Assumptions, internal-android.md]
-- [ ] CHK029 - Is the dependency on SMAPI rewriting (cannot rewrite annotations/PatchAll) documented? [Dependencies, Spec §FR-002, contracts §2]
+- [x] CHK027 - Is the dependency on SMAPI-bundled Harmony 2.2.x documented? [Dependencies, Spec §FR-001, contracts §1]
+- [x] CHK028 - Is the dependency on the existing desktop-only policy documented? [Dependencies, Spec §Assumptions, internal-android.md]
+- [x] CHK029 - Is the dependency on SMAPI rewriting (cannot rewrite annotations/PatchAll) documented? [Dependencies, Spec §FR-002, contracts §2]
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK030 - Is there any conflict between "prefer postfix" and the Android rewriting limitations? [Conflict, Spec §FR-006, contracts §2–§3, §8]
-- [ ] CHK031 - Is there any remaining ambiguous term ("untested", "best-effort") lacking quantification? [Ambiguity, Spec §Assumptions, contracts §8]
+- [x] CHK030 - Is there any conflict between "prefer postfix" and the Android rewriting limitations? [Conflict, Spec §FR-006, contracts §2–§3, §8]
+- [x] CHK031 - Is there any remaining ambiguous term ("untested", "best-effort") lacking quantification? [Ambiguity, Spec §Assumptions, contracts §8] ("untested" = no verified run on SMAPI-for-Android; "best-effort" = try/catch + vanilla fallback)
 
 ## Traceability
 
-- [ ] CHK032 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK031 each carry `[Spec §…]`/`[Gap]`/`[Conflict]` tags.
+- [x] CHK032 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK031 each carry `[Spec §…]`/`[Gap]`/`[Conflict]` tags.
 
 ---
 

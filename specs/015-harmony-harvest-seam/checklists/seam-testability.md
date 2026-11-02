@@ -11,76 +11,76 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 - Are all four seam methods specified (`Decide`, `ResolveFeedback`, `BoostQualityProbability`, `BoostExtraHarvestChance`) with their purpose? [Completeness, Spec §FR-003, contracts §5]
-- [ ] CHK002 - Are the seam types specified (`HarvestTier`, `HarvestFeedbackFlags`, `HarvestQualityInputs`, `HarvestQualityDecision`) with their fields and constraints? [Completeness, Spec §FR-003, data-model §HarvestQualityService]
-- [ ] CHK003 - Are the seam inputs specified as primitives (health, Farming level, fertilizer tier, `IsPaddyCrop`, `RegrowDays`, `HarvestMaxIncreasePerFarmingLevel`, pest state, inventory-full)? [Completeness, Spec §FR-003, contracts §5]
-- [ ] CHK004 - Are the seam outputs specified (primary quality action, extra-harvest action, feedback flags)? [Completeness, Spec §FR-003, data-model]
-- [ ] CHK005 - Is the purity/determinism requirement specified (no SMAPI/game deps, no I/O, no RNG, no inventory mutation)? [Completeness, Spec §FR-003, §FR-011, contracts §5]
-- [ ] CHK006 - Is the crop-scope handling specified in the seam (forage/fibre/Qi → `OutOfScope` → no modification)? [Completeness, Spec §FR-007, contracts §4]
-- [ ] CHK007 - Is the NaN/Infinity handling specified (Unknown → no modification)? [Completeness, Spec §FR-009, contracts §3]
-- [ ] CHK008 - Is the measured-0 handling specified (Poor → force 0)? [Completeness, Spec §FR-010, contracts §3]
-- [ ] CHK009 - Is the inventory-full delivery policy specified (`MainItemBlocked`, `ExtraItemDroppedAsDebris`)? [Completeness, Spec §FR-008, contracts §5]
-- [ ] CHK010 - Is the pest clamp specified as null-safe (int? echoed, null → no clamp)? [Completeness, Spec §FR-003, contracts §5, §7 (spec 014)]
-- [ ] CHK011 - Is the feedback conditionality specified (`ResolveFeedback` takes rolled outcomes, B1/B2)? [Completeness, Spec §US2, contracts §6 (spec 014), data-model]
-- [ ] CHK012 - Is the `BoostQualityProbability` / `BoostExtraHarvestChance` composition specified (returns vanilla unchanged unless Healthy)? [Completeness, Spec §FR-003, contracts §5]
+- [x] CHK001 - Are all four seam methods specified (`Decide`, `ResolveFeedback`, `BoostQualityProbability`, `BoostExtraHarvestChance`) with their purpose? [Completeness, Spec §FR-003, contracts §5]
+- [x] CHK002 - Are the seam types specified (`HarvestTier`, `HarvestFeedbackFlags`, `HarvestQualityInputs`, `HarvestQualityDecision`) with their fields and constraints? [Completeness, Spec §FR-003, data-model §HarvestQualityService]
+- [x] CHK003 - Are the seam inputs specified as primitives (health, Farming level, fertilizer tier, `IsPaddyCrop`, `RegrowDays`, `HarvestMaxIncreasePerFarmingLevel`, pest state, inventory-full)? [Completeness, Spec §FR-003, contracts §5]
+- [x] CHK004 - Are the seam outputs specified (primary quality action, extra-harvest action, feedback flags)? [Completeness, Spec §FR-003, data-model]
+- [x] CHK005 - Is the purity/determinism requirement specified (no SMAPI/game deps, no I/O, no RNG, no inventory mutation)? [Completeness, Spec §FR-003, §FR-011, contracts §5]
+- [x] CHK006 - Is the crop-scope handling specified in the seam (forage/fibre/Qi → `OutOfScope` → no modification)? [Completeness, Spec §FR-007, contracts §4]
+- [x] CHK007 - Is the NaN/Infinity handling specified (Unknown → no modification)? [Completeness, Spec §FR-009, contracts §3]
+- [x] CHK008 - Is the measured-0 handling specified (Poor → force 0)? [Completeness, Spec §FR-010, contracts §3]
+- [x] CHK009 - Is the inventory-full delivery policy specified (`MainItemBlocked`, `ExtraItemDroppedAsDebris`)? [Completeness, Spec §FR-008, contracts §5]
+- [x] CHK010 - Is the pest clamp specified as null-safe (int? echoed, null → no clamp)? [Completeness, Spec §FR-003, contracts §5, §7 (spec 014)]
+- [x] CHK011 - Is the feedback conditionality specified (`ResolveFeedback` takes rolled outcomes, B1/B2)? [Completeness, Spec §US2, contracts §6 (spec 014), data-model]
+- [x] CHK012 - Is the `BoostQualityProbability` / `BoostExtraHarvestChance` composition specified (returns vanilla unchanged unless Healthy)? [Completeness, Spec §FR-003, contracts §5]
 
 ## Requirement Clarity
 
-- [ ] CHK013 - Is the seam location specified (interface in `Domain/`, impl in `Domain.Services`, types in `Domain`)? [Clarity, Spec §FR-003, plan.md §Project Structure, contracts §5]
-- [ ] CHK014 - Is the seam wired in `ModEntry` as `new HarvestQualityService()` (constructor injection)? [Clarity, Spec §Key Entities, contracts §5]
-- [ ] CHK015 - Is the purity contract defined ("no SMAPI/game dependencies, no I/O, no RNG, no inventory mutation")? [Clarity, Spec §FR-003, §FR-011]
-- [ ] CHK016 - Is the determinism contract defined (pure/deterministic given inputs, replicated deterministic roll A8)? [Clarity, Spec §FR-011, contracts §9]
-- [ ] CHK017 - Is the `ProductionSourceGuardTests` reference requirement specified (seam references `SoilQualityHealthyBoost`/`SoilExtraHarvestHealthyBoost`)? [Clarity, Spec §FR-012, data-model]
+- [x] CHK013 - Is the seam location specified (interface in `Domain/`, impl in `Domain.Services`, types in `Domain`)? [Clarity, Spec §FR-003, plan.md §Project Structure, contracts §5]
+- [x] CHK014 - Is the seam wired in `ModEntry` as `new HarvestQualityService()` (constructor injection)? [Clarity, Spec §Key Entities, contracts §5]
+- [x] CHK015 - Is the purity contract defined ("no SMAPI/game dependencies, no I/O, no RNG, no inventory mutation")? [Clarity, Spec §FR-003, §FR-011]
+- [x] CHK016 - Is the determinism contract defined (pure/deterministic given inputs, replicated deterministic roll A8)? [Clarity, Spec §FR-011, contracts §9]
+- [x] CHK017 - Is the `ProductionSourceGuardTests` reference requirement specified (seam references `SoilQualityHealthyBoost`/`SoilExtraHarvestHealthyBoost`)? [Clarity, Spec §FR-012, data-model]
 
 ## Requirement Consistency
 
-- [ ] CHK018 - Do the seam requirements align with spec 014's tier rules (Poor/Moderate/Healthy/Unknown) and bands (31/71)? [Consistency, Spec §FR-003, spec 014 FR-001–FR-003]
-- [ ] CHK019 - Do the seam requirements align with the feedback conditionality/co-occurrence (B1/B2) from spec 014? [Consistency, Spec §US2, spec 014 FR-006]
-- [ ] CHK020 - Do the seam requirements align with the crop-scope rules (A6) from spec 014? [Consistency, Spec §FR-007, spec 014 Edge Cases]
-- [ ] CHK021 - Do the seam requirements align with the inventory-full rules (A1) from spec 014? [Consistency, Spec §FR-008, spec 014 Edge Cases]
-- [ ] CHK022 - Do the seam requirements align with the NaN/Unknown (A3) and measured-0 (A7) rules from spec 014? [Consistency, Spec §FR-009, §FR-010, spec 014 Edge Cases]
+- [x] CHK018 - Do the seam requirements align with spec 014's tier rules (Poor/Moderate/Healthy/Unknown) and bands (31/71)? [Consistency, Spec §FR-003, spec 014 FR-001–FR-003]
+- [x] CHK019 - Do the seam requirements align with the feedback conditionality/co-occurrence (B1/B2) from spec 014? [Consistency, Spec §US2, spec 014 FR-006]
+- [x] CHK020 - Do the seam requirements align with the crop-scope rules (A6) from spec 014? [Consistency, Spec §FR-007, spec 014 Edge Cases]
+- [x] CHK021 - Do the seam requirements align with the inventory-full rules (A1) from spec 014? [Consistency, Spec §FR-008, spec 014 Edge Cases]
+- [x] CHK022 - Do the seam requirements align with the NaN/Unknown (A3) and measured-0 (A7) rules from spec 014? [Consistency, Spec §FR-009, §FR-010, spec 014 Edge Cases]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK023 - Is SC-001 measurable (`HarvestQualityService` unit tests pass with 0 failures, all without a game runtime)? [Measurability, Spec §SC-001]
-- [ ] CHK024 - Are the test subjects enumerated (tier mapping, probability boost, inventory-full, NaN/Unknown, crop scope, feedback conditionality/co-occurrence)? [Measurability, Spec §SC-001, §US2]
-- [ ] CHK025 - Is the TDD requirement specified (RED-phase tests written and failing before implementation; one test file per subject)? [Measurability, Spec §FR-014]
+- [x] CHK023 - Is SC-001 measurable (`HarvestQualityService` unit tests pass with 0 failures, all without a game runtime)? [Measurability, Spec §SC-001]
+- [x] CHK024 - Are the test subjects enumerated (tier mapping, probability boost, inventory-full, NaN/Unknown, crop scope, feedback conditionality/co-occurrence)? [Measurability, Spec §SC-001, §US2]
+- [x] CHK025 - Is the TDD requirement specified (RED-phase tests written and failing before implementation; one test file per subject)? [Measurability, Spec §FR-014]
 
 ## Scenario Coverage
 
-- [ ] CHK026 - Are primary flows covered (Poor → force 0 + feedback; Moderate → no change + no feedback; Healthy → boost + extra + feedback; Unknown → no change)? [Coverage, Spec §US1, §US2]
-- [ ] CHK027 - Are the feedback conditionality/co-occurrence cases covered (LivingTier_EnhancedQuality, _ExtraHarvest, _Both, _NormalQualityNoExtra)? [Coverage, Spec §US2, internal-c2 §6]
-- [ ] CHK028 - Are the edge-case flows covered (NaN/Unknown, measured 0, forage exclusion, inventory-full, pest clamp null)? [Coverage, Spec §US2, §Edge Cases]
+- [x] CHK026 - Are primary flows covered (Poor → force 0 + feedback; Moderate → no change + no feedback; Healthy → boost + extra + feedback; Unknown → no change)? [Coverage, Spec §US1, §US2]
+- [x] CHK027 - Are the feedback conditionality/co-occurrence cases covered (LivingTier_EnhancedQuality, _ExtraHarvest, _Both, _NormalQualityNoExtra)? [Coverage, Spec §US2, internal-c2 §6]
+- [x] CHK028 - Are the edge-case flows covered (NaN/Unknown, measured 0, forage exclusion, inventory-full, pest clamp null)? [Coverage, Spec §US2, §Edge Cases]
 
 ## Edge Case Coverage
 
-- [ ] CHK029 - Is the NaN/Infinity edge case specified in the seam (Unknown → no modification)? [Edge Case, Spec §FR-009, §Edge Cases]
-- [ ] CHK030 - Is the measured-0 edge case specified (Poor → force 0)? [Edge Case, Spec §FR-010, §Edge Cases]
-- [ ] CHK031 - Is the forage/fibre/Qi early-return edge case specified? [Edge Case, Spec §FR-007, §Edge Cases]
-- [ ] CHK032 - Is the inventory-full edge case specified in the seam (`MainItemBlocked`, `ExtraItemDroppedAsDebris`)? [Edge Case, Spec §FR-008, §Edge Cases, contracts §5]
-- [ ] CHK033 - Is the pest-null edge case specified (no clamp when provider absent)? [Edge Case, Spec §FR-003, contracts §5, §7]
+- [x] CHK029 - Is the NaN/Infinity edge case specified in the seam (Unknown → no modification)? [Edge Case, Spec §FR-009, §Edge Cases]
+- [x] CHK030 - Is the measured-0 edge case specified (Poor → force 0)? [Edge Case, Spec §FR-010, §Edge Cases]
+- [x] CHK031 - Is the forage/fibre/Qi early-return edge case specified? [Edge Case, Spec §FR-007, §Edge Cases]
+- [x] CHK032 - Is the inventory-full edge case specified in the seam (`MainItemBlocked`, `ExtraItemDroppedAsDebris`)? [Edge Case, Spec §FR-008, §Edge Cases, contracts §5]
+- [x] CHK033 - Is the pest-null edge case specified (no clamp when provider absent)? [Edge Case, Spec §FR-003, contracts §5, §7]
 
 ## Non-Functional Requirements
 
-- [ ] CHK034 - Are testability requirements specified (pure functions, xUnit/FsCheck, no game runtime)? [NFR, Spec §FR-003, §US2, §SC-001]
-- [ ] CHK035 - Are determinism requirements specified (replicated deterministic roll, A8)? [NFR, Spec §FR-011, contracts §9]
-- [ ] CHK036 - Are the production-guard requirements specified (every new constant has ≥1 reference)? [NFR, Spec §FR-012]
+- [x] CHK034 - Are testability requirements specified (pure functions, xUnit/FsCheck, no game runtime)? [NFR, Spec §FR-003, §US2, §SC-001]
+- [x] CHK035 - Are determinism requirements specified (replicated deterministic roll, A8)? [NFR, Spec §FR-011, contracts §9]
+- [x] CHK036 - Are the production-guard requirements specified (every new constant has ≥1 reference)? [NFR, Spec §FR-012]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK037 - Is the dependency on spec 014 (tier rules, bands, A6/A7/A8/B1/B2) documented? [Dependencies, Spec §Assumptions]
-- [ ] CHK038 - Is the dependency on T007 spike (member names confirmed) documented? [Dependencies, Spec §Assumptions]
-- [ ] CHK039 - Is the dependency on SC-008 rollback verification documented as a blocker for yield activation? [Dependencies, Spec §Assumptions]
-- [ ] CHK040 - Is the ADR creation documented as recommended but not blocking? [Dependencies, Spec §Assumptions, §Out of Scope]
+- [x] CHK037 - Is the dependency on spec 014 (tier rules, bands, A6/A7/A8/B1/B2) documented? [Dependencies, Spec §Assumptions]
+- [x] CHK038 - Is the dependency on T007 spike (member names confirmed) documented? [Dependencies, Spec §Assumptions]
+- [x] CHK039 - Is the dependency on SC-008 rollback verification documented as a blocker for yield activation? [Dependencies, Spec §Assumptions]
+- [x] CHK040 - Is the ADR creation documented as recommended but not blocking? [Dependencies, Spec §Assumptions, §Out of Scope]
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK041 - Is there any conflict between the seam's pure/deterministic contract and the patch's need to read live game state (soil health, inventory)? [Conflict, Spec §FR-003, §FR-004, contracts §5, §9]
-- [ ] CHK042 - Is there any remaining ambiguous term ("testable seam", "pure function") lacking quantification? [Ambiguity, Spec §FR-003, §FR-014]
+- [x] CHK041 - Is there any conflict between the seam's pure/deterministic contract and the patch's need to read live game state (soil health, inventory)? [Conflict, Spec §FR-003, §FR-004, contracts §5, §9]
+- [x] CHK042 - Is there any remaining ambiguous term ("testable seam", "pure function") lacking quantification? [Ambiguity, Spec §FR-003, §FR-014]
 
 ## Traceability
 
-- [ ] CHK043 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK042 each carry `[Spec §…]`/`[Gap]`/`[Conflict Resolved]` tags.
+- [x] CHK043 - Does ≥80% of the items above include at least one traceability reference? [Traceability] — self-check: CHK001–CHK042 each carry `[Spec §…]`/`[Gap]`/`[Conflict Resolved]` tags.
 
 ---
 
