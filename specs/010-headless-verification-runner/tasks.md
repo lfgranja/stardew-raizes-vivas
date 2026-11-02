@@ -465,3 +465,9 @@ These are quoted from `data-model.md` and `contracts/scenario.schema.json`; T060
 - Negative/security suites are authored in the owning phase (T028, T034b, T034c, T065, T067, T068, T077, T082, T106) and only executed in Phase 6; Phase 6 must not add new `test-*.sh` files.
 - If a real-host prerequisite is missing at T137, record `BLOCKED` with the exact missing item; never present a launch-free run as real gameplay evidence.
 - Commit after every task; keep verification evidence and Gate 3 records in the same commit as the run that produced them. T150 is the final commit and must not amend earlier commits.
+
+
+## Phase 7: Convergence (appended)
+
+- [ ] T151 Add a `Dispose(bool)` stub to `LivingRoots.Verification/ModEntry.cs` per T003 (partial): the scaffold currently omits it; provide an override (with a documented analyzer suppression if empty) until T102 replaces it with the real lock pattern.
+- [ ] T152 Review `EnableHarmony=true` in `LivingRoots.Verification/LivingRoots.Verification.csproj` (unrequested, low): the dev-only capture mod declares no Harmony patches (C-SEC-32); justify or remove the inherited property.
