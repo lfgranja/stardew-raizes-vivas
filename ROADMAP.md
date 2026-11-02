@@ -23,8 +23,8 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 
 | Metric | Value | How verified |
 |---|---|---|
-| Build | **FALHA — 3 erros CA1707** (HarvestPatches.cs, `__state`/`__result`) | `dotnet build -c Release` rodado agora |
-| Test suite | **1464 passed / 5 failed / 4 skipped** (1473 total) — 5 regressões pós-merge 014/015 | `dotnet test -c Release` rodado agora (analyzers off) |
+| Build | **0 erros, 0 warnings** | `dotnet build -c Release` rodado agora (pós-fix regressões) |
+| Test suite | **1471 passed / 0 failed / 4 skipped** (1475 total) — 5 regressões resolvidas (commit 06b4bb1) | `dotnet test -c Release` rodado agora |
 | Format gate | clean | `dotnet format --verify-no-changes` |
 | Quality gate | 171 pytest passed; analyzer probe PASS | `scripts/quality-gate/` |
 | Specs closed | 002, 012 | `specs/*/tasks.md` |
@@ -59,11 +59,9 @@ activation gated on SC-008) are the next work.
 - ✅ Smoke validation (spec 008) implementado e verificado: real-game run exit 0 com success marker.
 
 **What still doesn't work / isn't verified:**
-- ❌ **Build quebrada** (3 erros CA1707 em HarvestPatches.cs) — bloqueia gate padrão.
+- ✅ **Build verde** (0 erros, 0 warnings) — CA1707 corrigido via `.editorconfig`.
+- ✅ **Testes verdes** (1471 pass / 0 fail / 4 skip) — 5 regressões resolvidas (commit 06b4bb1).
 - ❌ **No live SMAPI session ever run** (Gate 3). Every "works" claim above is code/tests, not in-game.
-- ⚠️ 5 test regressions post-merge (`ModEntryResilienceTests.T228`, `ModEntryTests.Entry_SubscribesToAssetRequestedEvent`,
-  `MultiplayerConcurrencyTests.ProductionWiring_*`, `SoilHealthVisualizationTests.OnTileHealthChanged_*`,
-  `VisualizationInvariantsTests.T031b`).
 - ⚠️ Harvest-quality patch not executed in game; integration (feedback sprites/SFX, extra-harvest
   activation) incomplete; SC-008 rollback verification still pending.
 - ⚠️ Band scale mismatch (roadmap 0-30/31-70/71-100 vs. code 34/67) not reconciled (3 doc tasks).
