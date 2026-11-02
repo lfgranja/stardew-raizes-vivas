@@ -10,31 +10,74 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 > The original design text is preserved unchanged; annotations were added, nothing was deleted.
 > **Deep-dive evidence:** `research/2026-10-roadmap-feasibility-and-agronomy.md` (SMAPI 1.6 API, baseline
 > competitivo e base agronômica de cada mecânica abaixo, com fontes primárias).
-> **Update 2026-11-01:** spec 013 (Mulch / Soil Cover) shipped (46/46 tasks, build+tests green). Spec 012
-> converged (fresh baselines captured). Spec 005 has 3 open doc-only convergence tasks (T117–T119).
-> Spec 009 Gate 3 (in-game SMAPI session) still pending. Spec 010 (headless runner) not started.
+> **Update 2026-11-02:** specs **014 (Soil Health → Crop Quality)** and **015 (Harmony Harvest Seam)** were
+> merged into `dev` (PRs #655/#656/#657): the pure `HarvestQualityService` seam, the non-suppressing
+> two-phase Harmony patch for `Crop.harvest`, the defensive `ModEntry` wiring (skipped in test envs),
+> and the full spec/plan/tasks/checklist artifacts. The seam is unit-tested (17 tests) but the patch
+> has **not** been executed in a live SMAPI session yet. Test suite currently reports 1460 passed /
+> 5 failed / 4 skipped (1469 total) — 5 regressions appeared after the merge and are being triaged.
+> Spec 005 still has 3 doc-only convergence tasks (T117–T119). Gate 3 (in-game SMAPI session) is
+> still pending. Spec 010 (headless runner) not started.
 
 ## Where we actually are (verified, not inferred)
 
 | Metric | Value | How verified |
 |---|---|---|
-| Build | **0 errors, 0 warnings** | `dotnet build -c Release` on `dev` |
-| Test suite | **1436 passed / 0 failed / 4 skipped** (last recorded; re-run pending after 013 merge) | `dotnet test -c Release --no-build` |
+| Build | **0 errors, 0 warnings** | `dotnet build -c Release` on `dev` (post-merge 2026-11-02) |
+| Test suite | **1460 passed / 5 failed / 4 skipped** (1469 total) — 5 regressions post-014/015 merge | `dotnet test -c Release` on `dev` |
 | Format gate | clean | `dotnet format --verify-no-changes` |
 | Quality gate | 171 pytest passed; analyzer probe PASS | `scripts/quality-gate/` |
 | Specs closed | 002, 004, 008, 009 (local), 011 (local), 012 (converged), 013 (shipped) | `specs/*/tasks.md` |
-| Roadmap items shipped | **3 of 21 named features** (composting, mulch, soil-health→crop-growth) + 2 core promises (soil decay, growth driver) | source audit, this file |
+| Specs in progress | 005 (143/146 — 3 doc-only), 011 (42/88), 014 (1/93 — seam+patches merged), 015 (0/33 — seam merged) | `specs/*/tasks.md` |
+| Roadmap items shipped | **3 of 21 named features** (composting, mulch, soil-health→crop-growth) + 2 core promises (soil decay, growth driver) + **harvest-quality seam (infra only)** | source audit, this file |
 | **In-game runs** | **0 — never executed** | no SMAPI log, no save with mod data |
 | Proprietary DLLs tracked in git | **0 game DLLs** (only mod assets under `.gamepath/Mods/`) | `git ls-files` |
 
-**The one-sentence truth (updated 2026-11-01):** the mod can *measure* soil, *display* it,
+**The one-sentence truth (updated 2026-11-02):** the mod can *measure* soil, *display* it,
 *change* it with compost, **soil health drives crop growth** (spec 005), and **soil can now
-be protected with mulch** (spec 013, +1 object/recipe/hook, decay skipped for mulched tiles).
-That converts soil health from a diagnostic number into a decision *and* gives the player the
-first defensive tool. What is still missing is the *quality* side (crop quality, extra harvest)
-and the *offensive* side (Joja Fertilizer, monoculture penalty) — the player can grow faster
-and protect soil, but cannot yet *harvest* its benefits beyond growth speed or *lose* soil by
-bad practice.
+be protected with mulch** (spec 013). The *quality* side has just gained its pure, testable
+seam (`HarvestQualityService`) and a non-suppressing Harmony patch for `Crop.harvest` (specs
+014/015), but that patch has **not** been executed in a live SMAPI session yet, so the player
+still cannot *harvest* the benefits of Living Soil beyond growth speed, nor *lose* soil by bad
+practice (monoculture, Joja Fertilizer). The infrastructure for the second half of the promise
+is merged; the verification and the remaining integration (feedback sprites/SFX, extra-harvest
+activation gated on SC-008) are the next work.
+
+### Progress snapshot — 2026-11-02 (post-014/015 merge)
+
+**How far we've come (verified):**
+- ✅ Soil health per-tile, persisted, displayed (overlay/tooltip/hoe), decay (seasonal, greenhouse-exempt).
+- ✅ Composting loop end-to-end in code (bin → 2 days → compost → +15 health, clamped).
+- ✅ Mulch (7-day cover, decay skip, overlay tint, host-authoritative).
+- ✅ Growth modifier (health → growth speed).
+- ✅ Pure, testable `HarvestQualityService` seam (17 tests) + Harmony patch for `Crop.harvest`
+  (non-suppressing two-phase, try/catch fallback) + defensive `ModEntry` wiring.
+- ✅ DDD architecture, security sanitization, async-only, multiplayer-aware patterns, quality gate
+  (Semgrep/Trivy/jscpd), 1460+ tests.
+
+**What still doesn't work / isn't verified:**
+- ❌ **No live SMAPI session ever run** (Gate 3). Every "works" claim above is code/tests, not in-game.
+- ⚠️ 5 test regressions post-merge (`ModEntryResilienceTests.T228`, `VisualizationInvariantsTests.T031b`,
+  `MultiplayerConcurrencyTests.ProductionWiring_*`, `SoilHealthVisualizationTests.OnTileHealthChanged_*`).
+- ⚠️ Harvest-quality patch not executed in game; integration (feedback sprites/SFX, extra-harvest
+  activation) incomplete; SC-008 rollback verification still pending.
+- ⚠️ Band scale mismatch (roadmap 0-30/31-70/71-100 vs. code 34/67) not reconciled (3 doc tasks).
+- ❌ Multiplayer live verification (D1) not proven.
+
+**What's still not implemented (roadmap):**
+- 19 of 21 named features (Elena NPC, heirloom pipeline, Three Sisters, green manure, rotation
+  journal, Joja Fertilizer, monoculture penalty, integrated animals, insect hotels, living
+  pharmacy, bio-construction, ICLF, greywater, weekly fair, CSA, collective kitchen, food
+  sovereignty, cistern, rainwater harvesting).
+- Mid-game (6) and end-game (6) features: 0 of 12 started.
+- Specs 008 (smoke), 009 (Gate 3), 010 (headless runner): not started.
+
+**Competitive context (research, 2026):** ReGen Valley (Nexus, Nov 2025) already ships soil health →
+growth + farm-wide quality/yield at 75+/90+ avg, plus grazing/cover crops. Living Roots'
+differentiator remains **agroecological coherence, the composting loop, educational framing, and
+multiplayer correctness from day 1** — not the soil-health mechanic itself. SMAPI 4.5.2 (Mar 2026)
+is the current target; Pathoschild's ModBuildWorkflow can build without a game install via reference
+assemblies (relevant for CI).
 
 ---
 
@@ -72,8 +115,8 @@ All mod mechanics will revolve around "Soil Health," a new property for each til
 | Poor = no stars | ❌ | quality roll is 100% vanilla |
 | Medium = vanilla | ✅ | true today *because nothing is hooked at all* |
 | Living = faster growth | ✅ | spec 005 — `ModController` growth modifier hook on `Crop.newDay` (verified in code) |
-| Living = extra harvest | ❌ | not implemented (part of crop-quality feature, accepted 2026-11-01) |
-| Living = better quality | ❌ | not implemented (part of crop-quality feature, accepted 2026-11-01) |
+| Living = extra harvest | 🟡 | seam merged (`HarvestQualityService` + Harmony patch); integration + Gate 3 pending (SC-008 gates activation) |
+| Living = better quality | 🟡 | seam merged (`HarvestQualityService` + Harmony patch); integration + Gate 3 pending |
 | Living = new interactions | ❌ | deferred to separate spec (accepted 2026-11-01) |
 | DESTROYS: bare tilled soil | ✅ | `SoilDecayService`, seasonal multiplier, greenhouse exempt |
 | DESTROYS: monoculture | ❌ | only *bare* tiles decay; a monoculture never triggers it |
@@ -178,11 +221,11 @@ The focus is on expanding the agroecological philosophy throughout the Valley, r
 
 | Phase | Items | Shipped | Verdict |
 |---|---|---|---|
-| Core concept (soil health bar) | 13 promises | 5 measured/displayed/destroyed + growth driver + mulch (protect) | **growth + protection shipped; quality/harvest still missing** |
+| Core concept (soil health bar) | 13 promises | 6 (measured/displayed/destroyed + growth driver + mulch + harvest seam infra) | **growth + protection + harvest seam (infra) shipped; quality/harvest *verified* still missing** |
 | Early Game (Y1) | 7 | 2 (composting, mulch) | tutorial tier less thin |
 | Mid Game (Y2-3) | 6 | 0 | not started |
 | End Game (Y4+) | 6 | 0 | not started |
-| **Total** | **21 named features + 13 core promises** | **2 features + 5 of 13 promises** | |
+| **Total** | **21 named features + 13 core promises** | **2 features + 6 of 13 promises (1 infra-only)** | |
 
 All 31 design briefings for the unbuilt items already exist under
 `specs/future-roadmap/briefings/`. What is missing is not design — it is **implementation**, and the
@@ -193,21 +236,35 @@ first implementation that makes soil health *matter*.
 Ordering by *felt player impact per unit of implementation cost*, not by in-game year. Rationale and
 cost analysis in the answer that produced this file.
 
-1. ✅ **Prerequisite, not a feature:** launch the mod once and confirm the compost loop runs
+1. ⚠️ **Prerequisite, not a feature:** launch the mod once and confirm the compost loop runs
    (`T034`/`T037` of spec 004 are blocked on exactly this). It has never been executed in a game.
-   ~30 minutes, no code. **Still pending — Gate 3 evidence outstanding.**
+   ~30 minutes, no code. **Still pending — Gate 3 evidence outstanding.** This is now the single
+   biggest unverified assumption in the project and blocks "verified" status for every shipped
+   feature, including the new harvest-quality seam.
 2. ✅ **`/speckit.specify` — Soil Health → Crop Growth (spec 005).** Done: `ModController` growth
    modifier hook on `Crop.newDay`, per-tile persistence and overlay reused. This was the 80/20
    and it is shipped (143/146 tasks; 3 remaining are doc-only band-scale updates).
 3. ✅ **Mulch / Soil Cover (spec 013).** Shipped: 1 object + 1 recipe + decay hook, 7-day duration,
    0f decay multiplier, overlay tint, host-authoritative lock, i18n EN/PT (46/46 tasks). The
    defensive side now exists and has a reason to exist because soil health drives growth.
-4. ⬅️ **NEXT 80/20 — Soil Health → Crop Quality** (`briefings/soil-tier-outcomes-harvest-feedback.md`):
-   the second half of the promise; harvest-time hook on `Crop.harvest` (virtual, patchable),
-   quality roll + extra-harvest probability per tile. Higher cost than mulch (needs Harmony or a
-   `DayEnding` pass), but it is the *only* remaining item that makes Living Soil (71–100%)
-   visibly pay off at harvest. Entry point: `/specify.assess.intake` (no assessment exists yet)
-   or `/speckit.specify` with the briefing as input.
+4. ⬅️ **CURRENT 80/20 — Close the harvest-quality loop (specs 014/015).** The seam
+   (`HarvestQualityService`) and the Harmony patch are merged and the seam is unit-tested (17
+   tests), but three things remain to make Living Soil *pay off* at harvest:
+   - **(a) Complete the integration** — wire the seam's tier/boost/feedback decisions into the
+     patch's prefix/postfix so Poor → 0 stars, Living → +0.08 quality boost + extra-harvest
+     probability + transient feedback (sprite + text + SFX), Moderate → byte-identical vanilla.
+   - **(b) Fix the 5 post-merge test regressions** (`ModEntryResilienceTests.T228`,
+     `VisualizationInvariantsTests.T031b`, `MultiplayerConcurrencyTests.ProductionWiring_*`,
+     `SoilHealthVisualizationTests.OnTileHealthChanged_*`) so Gate 1 is green again.
+   - **(c) Run Gate 3** — at least one live SMAPI session capturing the 3 signals
+     (`SoilHealthState` JSON delta + `Crop.phase`/`phaseDays` delta + SMAPI log) per
+     `VERIFICATION_PROTOCOL.md` §3 / `specs/009-.../checklists/gate3-verification-contract.md`.
+   The *activation* of extra harvest is additionally gated on SC-008 (rollback verification).
+   Entry point: continue `/speckit.implement` on specs 014/015, then `/speckit.converge`.
+
+   **Why this is still the 80/20:** it is the *only* remaining item that makes Living Soil
+   (71–100%) visibly pay off at harvest, and the expensive infrastructure (Harmony, seam,
+   tests) is already merged. The marginal cost is integration + verification, not invention.
 5. **Heirloom pipeline** → then Three Sisters, Green Manure, Rotation Journal (all consume it).
 6. **Joja Fertilizer** — closes the "what DESTROYS" loop on the player's side.
 7. **Elena + Welcome Kit + Cistern** — the content-heavy NPC epic; do it once there is a game worth
