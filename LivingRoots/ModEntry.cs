@@ -1,14 +1,17 @@
 using System;
 using System.Threading;
+using HarmonyLib;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Services;
+using LivingRoots.Patches;
 using LivingRoots.Services;
 using LivingRoots.Services.Visualization;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
+using StardewValley;
 
 namespace LivingRoots
 {
@@ -153,6 +156,27 @@ namespace LivingRoots
             // lock service (the same instance the bin
             // service holds) are injected here, not left
             // to the constructor's `?? new` fallbacks.
+            // Initialize Harmony patches for harvest quality (spec 015)
+            try
+            {
+                var harvestQualityService = new HarvestQualityService();
+                HarvestPatches.Initialize(this.Monitor, harvestQualityService);
+                var harmony = new Harmony(this.ModManifest.UniqueID);
+                var harvestMethod = AccessTools.Method(typeof(Crop), nameof(Crop.harvest));
+                if (harvestMethod != null)
+                {
+                    harmony.Patch(
+                        harvestMethod,
+                        prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPrefix)),
+                        postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPostfix)));
+                    this.Monitor.Log("Living Roots: Harvest Harmony patch registered.", LogLevel.Trace);
+                }
+            }
+            catch (Exception ex)
+            {
+                this.Monitor.Log($"Living Roots: Failed to register harvest Harmony patch; falling back to vanilla. Type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+
             _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider);
 
             // Register events through the Controller
