@@ -44,7 +44,7 @@ All mod mechanics will revolve around "Soil Health," a new property for each til
 
 *   **Poor Soil (0-30%):** Slow growth, high chance of pests, lower quality produce (no stars).
 *   **Medium Soil (31-70%):** Similar to the base game.
-*   **Living Soil (71-100%):** Faster growth, chance of extra harvests, higher quality (silver/gold/iridium), and unlocks new interactions.
+*   **Living Soil (71-100%):** Faster growth, chance of extra harvests, higher quality (silver/gold/iridium), and enables additional agroecological practices (see separate spec — "new interactions" deferred).
 
 **What DESTROYS Soil Health:**
 
@@ -72,8 +72,9 @@ All mod mechanics will revolve around "Soil Health," a new property for each til
 | Poor = no stars | ❌ | quality roll is 100% vanilla |
 | Medium = vanilla | ✅ | true today *because nothing is hooked at all* |
 | Living = faster growth | ✅ | spec 005 — `ModController` growth modifier hook on `Crop.newDay` (verified in code) |
-| Living = extra harvest | ❌ | not implemented |
-| Living = better quality | ❌ | not implemented |
+| Living = extra harvest | ❌ | not implemented (part of crop-quality feature, accepted 2026-11-01) |
+| Living = better quality | ❌ | not implemented (part of crop-quality feature, accepted 2026-11-01) |
+| Living = new interactions | ❌ | deferred to separate spec (accepted 2026-11-01) |
 | DESTROYS: bare tilled soil | ✅ | `SoilDecayService`, seasonal multiplier, greenhouse exempt |
 | DESTROYS: monoculture | ❌ | only *bare* tiles decay; a monoculture never triggers it |
 | DESTROYS: Joja Fertilizer | ❌ | item does not exist (`briefings/joja-fertilizer.md`) |
