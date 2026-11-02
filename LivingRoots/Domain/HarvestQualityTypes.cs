@@ -12,7 +12,7 @@ namespace LivingRoots.Domain
     }
 
     [Flags]
-    public enum HarvestFeedbackFlag
+    public enum HarvestFeedback
     {
         None = 0,
         Poor = 1 << 0,
