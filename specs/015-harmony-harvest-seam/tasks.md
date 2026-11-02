@@ -184,3 +184,22 @@
 - Commit after each file edit per project convention (atomic conventional commits)
 - Patch verified only by Gate 3 in-game (SC-004) - not unit testable
 - Use LSP code actions/templates where possible before hand-writing
+
+## Phase 7: Convergence
+
+**Purpose**: Close gaps between spec/plan/tasks and current implementation discovered by `/speckit.converge` (2026-11-02). Append-only; does not modify prior phases.
+
+- [ ] T032 Implement inventory-full handling (FR-008, partial/HIGH): seam sets `MainItemBlocked`/`ExtraItemDroppedAsDebris` based on `IsInventoryFull`; patch detects full inventory and sets `IsInventoryFull=true`; patch handles main-item-blocked (vanilla red message, crop stays) and extra-item-debris (`Game1.createItemDebris`). Source: FR-008.
+- [ ] T033 Implement fibre-seed and Qi-Fruit crop scope (FR-007, partial/HIGH): patch detects fibre seeds and Qi Fruit and sets `IsFibreSeed`/`IsQiFruit=true` so seam returns `OutOfScope`. Source: FR-007.
+- [ ] T034 Replace non-deterministic RNG with deterministic roll (FR-011, contradicts/MEDIUM): remove `Random.Shared` from `HarvestPatches.cs`; use deterministic hash of `DaysPlayed` + tile + seed so both clients agree. Source: FR-011, contract §9.
+- [ ] T035 Wire feedback broadcast (contract §6, partial/MEDIUM): inject `IVisualizationService` into `HarvestPatches.Initialize`; broadcast shared outcomes (harvest quality, extra harvest) via `Game1.multiplayer.broadcastSprites` + `location.playSound`; local-only input via `SpriteBatch`. Source: contract §6, FR-004.
+- [ ] T036 Implement extra-harvest spawning (FR-004, partial/MEDIUM): apply `BoostExtraHarvestChance` and spawn extra item when roll succeeds (host-authoritative, single-harvest guarantee). Source: FR-004.
+- [ ] T037 Fix feedback conditionality (FR-004/B1/B2, partial/MEDIUM): track whether quality was enhanced and whether extra harvest occurred; pass correct booleans to `ResolveFeedback`. Source: FR-004, spec edge cases.
+- [ ] T038 Refactor to typed patch signature (contract §2, partial/MEDIUM): change `HarvestPrefix`/`HarvestPostfix` from `object instance, object[] args` to typed `Crop.harvest(int, int, HoeDirt, JunimoHarvester, bool)` for compile-time safety and direct access. Source: contract §2, spec FR-004.
+- [ ] T039 Wire `IVisualizationService` into `Initialize` (data-model relationships, partial/MEDIUM): add optional `IVisualizationService` param and wire in `ModEntry`. Source: data-model relationships.
+- [ ] T040 Read remaining inputs from crop/farmer (FR-003 inputs, partial/LOW): replace hardcoded `FertilizerTier=0`, `IsPaddyCrop=false`, `RegrowDays=0`, `HarvestMaxIncreasePerFarmingLevel=0` with values read from crop/farmer where available. Source: FR-003 inputs.
+- [ ] T041 Add patch registration tests (tasks T016, missing/LOW): reflection-based tests verifying patch methods are static, no annotations/`PatchAll`, try/catch present. Source: tasks T016.
+- [ ] T042 Create ADR (tasks T030, missing/LOW): `docs/adr/001-harmony-for-harvest-interception.md` documenting the Harmony decision. Source: tasks T030, spec assumptions.
+- [ ] T043 Align type naming with contract (data-model §entities, partial/LOW): rename `HarvestFeedback` → `HarvestFeedbackFlags`; change `HarvestQualityInputs`/`HarvestQualityDecision` to `readonly record struct`; rename patch methods to `Harvest_Prefix`/`Harvest_Postfix`. Source: data-model §entities, contract §2/§5.
+- [ ] T044 Implement pest clamp (A5, partial/LOW): clamp quality by `PestQualityPenalty` when non-null (one-directional); deferred until pest system exists. Source: A5.
+
