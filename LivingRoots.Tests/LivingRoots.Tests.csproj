@@ -62,7 +62,9 @@
 
   <ItemGroup>
      <ProjectReference Include="..\LivingRoots\LivingRoots.csproj" />
-
+     <ProjectReference Include="..\LivingRoots.Verification\LivingRoots.Verification.csproj" />
+     <ProjectReference Include="..\LivingRoots.Verification.Runner\LivingRoots.Verification.Runner.csproj" />
+ 
   </ItemGroup>
 
 </Project>
