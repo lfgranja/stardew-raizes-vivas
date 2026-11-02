@@ -25,7 +25,7 @@
 
 **Purpose**: Prepare project for Harmony integration
 
-- [ ] T001 Add `<EnableHarmony>true</EnableHarmony>` to the first `<PropertyGroup>` in `LivingRoots/LivingRoots.csproj` (FR-001)
+- [x] T001 Add `<EnableHarmony>true</EnableHarmony>` to the first `<PropertyGroup>` in `LivingRoots/LivingRoots.csproj` (FR-001)
 - [ ] T002 [P] Create directory structure `LivingRoots/Domain/HarvestQuality/` if needed (align with data-model.md) and ensure `LivingRoots/Domain/Services/` and `LivingRoots/Patches/` exist
 
 ---
@@ -36,8 +36,8 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 [P] Create `LivingRoots/Domain/HarvestQualityTypes.cs` with `HarvestTier` enum (Unknown/Poor/Moderate/Healthy/OutOfScope), `HarvestFeedbackFlags` flags enum (None/Poor/LivingQuality/ExtraHarvest), `HarvestQualityInputs` record/class per data-model.md, `HarvestQualityDecision` record/class per data-model.md (FR-003)
-- [ ] T004 [P] Create `LivingRoots/Domain/IHarvestQualityService.cs` interface with `Decide`, `ResolveFeedback`, `BoostQualityProbability`, `BoostExtraHarvestChance` methods per contracts/i-harvest-quality-seam.md (FR-003)
+- [x] T003 [P] Create `LivingRoots/Domain/HarvestQualityTypes.cs` with `HarvestTier` enum (Unknown/Poor/Moderate/Healthy/OutOfScope), `HarvestFeedbackFlags` flags enum (None/Poor/LivingQuality/ExtraHarvest), `HarvestQualityInputs` record/class per data-model.md, `HarvestQualityDecision` record/class per data-model.md (FR-003)
+- [x] T004 [P] Create `LivingRoots/Domain/IHarvestQualityService.cs` interface with `Decide`, `ResolveFeedback`, `BoostQualityProbability`, `BoostExtraHarvestChance` methods per contracts/i-harvest-quality-seam.md (FR-003)
 - [ ] T005 Commit foundational types and interface
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
@@ -63,10 +63,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Create `LivingRoots/Domain/Services/HarvestQualityService.cs` implementing `IHarvestQualityService` with pure functions (no SMAPI/game deps). Use `ModConstants` for boost values. Handle tier mapping (31/71 bands from Constants), Unknown/NaN/Infinity, crop scope, pest null, inventory-full policy (FR-003)
-- [ ] T013 [US2] Implement `Decide`, `ResolveFeedback`, `BoostQualityProbability`, `BoostExtraHarvestChance` per contract. Ensure references to `ModConstants.SoilQualityHealthyBoost` and `ModConstants.SoilExtraHarvestHealthyBoost` exist (FR-012)
-- [ ] T014 [US2] Run `dotnet test` for HarvestQualityServiceTests - confirm GREEN (SC-001)
-- [ ] T015 [US2] Commit US2 seam + tests
+- [x] T012 [US2] Create `LivingRoots/Domain/Services/HarvestQualityService.cs` implementing `IHarvestQualityService` with pure functions (no SMAPI/game deps). Use `ModConstants` for boost values. Handle tier mapping (31/71 bands from Constants), Unknown/NaN/Infinity, crop scope, pest null, inventory-full policy (FR-003)
+- [x] T013 [US2] Implement `Decide`, `ResolveFeedback`, `BoostQualityProbability`, `BoostExtraHarvestChance` per contract. Ensure references to `ModConstants.SoilQualityHealthyBoost` and `ModConstants.SoilExtraHarvestHealthyBoost` exist (FR-012)
+- [x] T014 [US2] Run `dotnet test` for HarvestQualityServiceTests - confirm GREEN (SC-001)
+- [x] T015 [US2] Commit US2 seam + tests
 
 **Checkpoint**: HarvestQualityService fully tested and passing
 
@@ -85,11 +85,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T018 [P] [US1] Create `LivingRoots/Patches/HarvestPatches.cs` with static patch class. Implement non-suppressing two-phase patch: `Prefix` returns `true`, applies crop-scope guard early, captures inputs/state; `Postfix` forces `Quality = 0` for Poor, applies Healthy boost as conditional upgrade, drives `VisualizationService` feedback, handles inventory-full (main blocked, extra debris). Wrap all in try/catch with sanitized logging via `IMonitor`, fallback to original (FR-004, FR-005, FR-007-FR-010)
-- [ ] T019 [US1] Register patch in `LivingRoots/ModEntry.cs` in `Entry(IModHelper helper)` via `new Harmony(ModManifest.UniqueID).Patch(...)` using code API, after dependencies wired. Pass `HarvestQualityService` instance. Add try/catch around registration with logging (FR-002, FR-005)
-- [ ] T020 [US1] Wire `IHarvestQualityService` in `ModEntry` DI (constructor `new HarvestQualityService()`) and pass to patches/consumers as needed (FR-003)
-- [ ] T021 [US1] Build `dotnet build -c Release` - confirm SC-002 passes (0 errors)
-- [ ] T022 [US1] Commit US1 patch + registration
+- [x] T018 [P] [US1] Create `LivingRoots/Patches/HarvestPatches.cs` with static patch class. Implement non-suppressing two-phase patch: `Prefix` returns `true`, applies crop-scope guard early, captures inputs/state; `Postfix` forces `Quality = 0` for Poor, applies Healthy boost as conditional upgrade, drives `VisualizationService` feedback, handles inventory-full (main blocked, extra debris). Wrap all in try/catch with sanitized logging via `IMonitor`, fallback to original (FR-004, FR-005, FR-007-FR-010)
+- [x] T019 [US1] Register patch in `LivingRoots/ModEntry.cs` in `Entry(IModHelper helper)` via `new Harmony(ModManifest.UniqueID).Patch(...)` using code API, after dependencies wired. Pass `HarvestQualityService` instance. Add try/catch around registration with logging (FR-002, FR-005)
+- [x] T020 [US1] Wire `IHarvestQualityService` in `ModEntry` DI (constructor `new HarvestQualityService()`) and pass to patches/consumers as needed (FR-003)
+- [x] T021 [US1] Build `dotnet build -c Release` - confirm SC-002 passes (0 errors)
+- [x] T022 [US1] Commit US1 patch + registration
 
 **Checkpoint**: Patch integrated and builds successfully
 
@@ -101,9 +101,9 @@
 
 **Independent Test**: Build succeeds, SMAPI log shows patch registered, no annotations/PatchAll
 
-- [ ] T023 [US3] Verify `<EnableHarmony>true</EnableHarmony>` present in `LivingRoots/LivingRoots.csproj` (T001 done) - confirm no separate Harmony package added
-- [ ] T024 [US3] Verify patch uses code API only, all static, try/catch, fallback - code review/grep (SC-006)
-- [ ] T025 [US3] Commit US3 verification/finalization
+- [x] T023 [US3] Verify `<EnableHarmony>true</EnableHarmony>` present in `LivingRoots/LivingRoots.csproj` (T001 done) - confirm no separate Harmony package added
+- [x] T024 [US3] Verify patch uses code API only, all static, try/catch, fallback - code review/grep (SC-006)
+- [x] T025 [US3] Commit US3 verification/finalization
 
 **Checkpoint**: All user stories integrated
 
@@ -113,8 +113,8 @@
 
 **Purpose**: Verification, formatting, guard compliance
 
-- [ ] T026 [P] Run `dotnet format --verify-no-changes` (SC-005)
-- [ ] T027 [P] Run all tests `dotnet test -c Release` to ensure no regressions (1440+ tests should still pass)
+- [x] T026 [P] Run `dotnet format --verify-no-changes` (SC-005)
+- [x] T027 [P] Run all tests `dotnet test -c Release` to ensure no regressions (1440+ tests should still pass)
 - [ ] T028 Verify `ProductionSourceGuardTests.NoUnreferencedConstantsSurvive` passes (FR-012)
 - [ ] T029 Verify `FeatureStatusTests` not broken (FR-013)
 - [ ] T030 Create/update ADR `docs/adr/001-harmony-for-harvest-interception.md` documenting decision (recommended per assumptions) - optional but good practice
