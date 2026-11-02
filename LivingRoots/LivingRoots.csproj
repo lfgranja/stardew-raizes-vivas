@@ -10,6 +10,7 @@
     <OutputPath>bin/</OutputPath>
     <RollForward>Major</RollForward>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <EnableHarmony>true</EnableHarmony>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
