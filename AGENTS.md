@@ -13,18 +13,21 @@ Stardew Valley agroecological mod (.NET 6 / C# latest) implementing soil health,
 ```
 .
 ├── LivingRoots/               # Mod entry point + composition root
-│   ├── ModEntry.cs            # Entry point, wires all dependencies
+│   ├── ModEntry.cs            # Entry point, wires all dependencies (+ Harmony init)
 │   ├── Constants.cs           # All magic numbers live here (class ModConstants)
+│   ├── Patches/               # Harmony patches (code API, static, try/catch fallback)
 │   ├── Controllers/           # SMAPI event handlers, thread-safe state machine
 │   ├── Domain/                # Business logic, interfaces, models
 │   │   ├── Interfaces/        # Service contracts (ICompostApplicationService, etc.)
 │   │   ├── Models/            # Persistence DTOs (SoilHealthState, CompostingBinData)
-│   │   ├── Services/          # Domain services (OrganicWasteValidator, SeasonalDecayMultiplier)
+│   │   ├── Services/          # Domain services (OrganicWasteValidator, SeasonalDecayMultiplier, HarvestQualityService)
+│   │   ├── HarvestQualityTypes.cs
+│   │   ├── IHarvestQualityService.cs
 │   │   └── Visualization/     # Color/health DTOs, categories, overlay types
 │   └── Services/              # Application services, SMAPI integration
 │       ├── Visualization/     # XNA rendering: overlays, tooltips, hoe feedback
 │       └── *.cs               # CompostingBinService, SoilHealthService, etc.
-├── LivingRoots.Tests/         # xUnit + Moq, one-file-per-subject
+├── LivingRoots.Tests/         # xUnit + Moq + FsCheck, one-file-per-subject
 ├── .specify/                  # Spec-kit SDD workflows
 ├── .github/workflows/         # CI: code-style (always runs) + build-and-test (dormant)
 └── .editorconfig              # .NET formatting rules (space indent, expression-bodied OFF)
@@ -123,10 +126,11 @@ bash scripts/quality-gate/analyzer-probe.sh
 
 ## NOTES
 
-- `LivingRoots.csproj` has `AppendTargetFrameworkToOutputPath=false` → output goes to `bin/` not `bin/net6.0/`
+- `LivingRoots.csproj` has `AppendTargetFrameworkToOutputPath=false` → output goes to `bin/` not `bin/net6.0/`; `EnableHarmony=true` (SMAPI-bundled Harmony 2.2.x)
 - Test project references ModBuildConfig with `EnableModDeploy=false` — SMAPI assemblies copied via custom MSBUILD target
 - `InternalsVisibleTo("LivingRoots.Tests")` allows testing internal members
 - lefthook pre-commit: `dotnet format --verify-no-changes`; pre-push: `dotnet test`
+- Harmony patches use code API only (no annotations/PatchAll), static methods, try/catch with fallback; patch logic must live in pure `HarvestQualityService` seam (patch verified in-game)
 
 ## CI
 
