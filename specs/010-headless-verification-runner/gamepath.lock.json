@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "releaseId": "PLACEHOLDER-UNAVAILABLE",
+  "assetId": 0,
+  "assetName": "PLACEHOLDER-UNAVAILABLE",
+  "archiveSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "files": {},
+  "failClosed": true,
+  "note": "Private builddeps values unavailable; runner must exit 19 instead of executing an unverified tree."
+}
