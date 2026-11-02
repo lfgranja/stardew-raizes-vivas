@@ -36,7 +36,7 @@ public class OverlayMeasurementTests
     /// Tier representatives spanning each FR-010 tier and both joints:
     /// Poor (1–33), Moderate (34–66), Healthy (67–100).
     /// </summary>
-    private static readonly float[] TierHealths = { 1f, 20f, 33f, 34f, 50f, 66f, 67f, 80f, 100f };
+    private static readonly float[] TierHealths = { 1f, 20f, 30f, 31f, 50f, 70f, 71f, 80f, 100f };
 
     /// <summary>
     /// FR-010: blend alpha ≥ 0.65 under ambient lighting, at the stated

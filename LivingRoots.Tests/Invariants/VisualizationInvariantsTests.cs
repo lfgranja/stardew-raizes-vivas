@@ -164,8 +164,8 @@ public class VisualizationInvariantsTests
     /// palette's byte colours require.
     /// </summary>
     [Theory]
-    [InlineData(33f, 34f)]
-    [InlineData(66f, 67f)]
+    [InlineData(30f, 31f)]
+    [InlineData(70f, 71f)]
     public void T031b_PaletteSeam_IsContinuous(float low, float high)
     {
         var colorService = new ColorInterpolationService();

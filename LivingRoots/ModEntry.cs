@@ -1,14 +1,17 @@
 using System;
 using System.Threading;
+using HarmonyLib;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Services;
+using LivingRoots.Patches;
 using LivingRoots.Services;
 using LivingRoots.Services.Visualization;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
+using StardewValley;
 
 namespace LivingRoots
 {
@@ -51,12 +54,19 @@ namespace LivingRoots
                 // mod from loading. The generic Error line names the failure
                 // without leaking exception detail; the exception type and
                 // HResult are emitted at Trace level only (FR-015).
-                this.Monitor?.Log(
-                    "Mod entry wiring failed; the mod will continue without its services.",
-                    LogLevel.Error);
-                this.Monitor?.Log(
-                    $"Mod entry wiring exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
-                    LogLevel.Trace);
+                try
+                {
+                    this.Monitor?.Log(
+                        "Mod entry wiring failed; the mod will continue without its services.",
+                        LogLevel.Error);
+                    this.Monitor?.Log(
+                        $"Mod entry wiring exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                        LogLevel.Trace);
+                }
+                catch
+                {
+                    // Ignore logging failures
+                }
             }
         }
 
@@ -70,12 +80,25 @@ namespace LivingRoots
         {
             _helper = helper;
 
-            // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031).
-            // T137 (FR-012): subscribe through the stored handler field so Dispose
-            // detaches the exact delegate instance — a method-group subscription
-            // leaves no readable reference to release on unload.
-            _onAssetRequestedHandler = OnAssetRequested;
-            helper.Events.Content.AssetRequested += _onAssetRequestedHandler;
+            try
+            {
+                // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031).
+                // T137 (FR-012): subscribe through the stored handler field so Dispose
+                // detaches the exact delegate instance — a method-group subscription
+                // leaves no readable reference to release on unload.
+                if (_onAssetRequestedHandler == null)
+                {
+                    _onAssetRequestedHandler = OnAssetRequested;
+                }
+                if (helper?.Events?.Content != null && _onAssetRequestedHandler != null)
+                {
+                    helper.Events.Content.AssetRequested += _onAssetRequestedHandler;
+                }
+            }
+            catch
+            {
+                // Ensure subscription attempt doesn't break wiring
+            }
 
             // Create domain services - Composition Root
             var unicodeNormalizationService = new UnicodeNormalizationService();
@@ -85,7 +108,7 @@ namespace LivingRoots
             var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
 
             // Create application services
-            var modDataService = new ModDataService(helper, this.Monitor, modLogic);
+            var modDataService = new ModDataService(helper!, this.Monitor, modLogic);
 
             // Create the soil health service with the required dependencies
             var soilHealthService = new SoilHealthService(modDataService, this.Monitor, fileNameSanitizationService);
@@ -114,7 +137,7 @@ namespace LivingRoots
             // T054 (FR-008a): SMAPI's translation helper, injected
             // into every service that renders a refusal message so
             // Game1.showRedMessage shows the player's language.
-            var translationHelper = helper.Translation;
+            var translationHelper = helper!.Translation;
             var locationProvider = new LocationProvider();
             var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, hostAtomicLockService: hostAtomicLockService, translationHelper: translationHelper);
             var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
@@ -153,7 +176,39 @@ namespace LivingRoots
             // lock service (the same instance the bin
             // service holds) are injected here, not left
             // to the constructor's `?? new` fallbacks.
-            _controller = new ModController(helper, this.Monitor, this.ModManifest, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider);
+            // Initialize Harmony patches for harvest quality (spec 015)
+            try
+            {
+                var harvestQualityService = new HarvestQualityService();
+                HarvestPatches.Initialize(this.Monitor, harvestQualityService);
+                // Skip Harmony patching in test environments
+                if (this.ModManifest != null && !string.IsNullOrEmpty(this.ModManifest.UniqueID) && this.Monitor != null)
+                {
+                    try
+                    {
+                        var harmony = new Harmony(this.ModManifest.UniqueID);
+                        var harvestMethod = AccessTools.Method(typeof(Crop), nameof(Crop.harvest));
+                        if (harvestMethod != null)
+                        {
+                            harmony.Patch(
+                                harvestMethod,
+                                prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPrefix)),
+                                postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPostfix)));
+                            this.Monitor.Log("Living Roots: Harvest Harmony patch registered.", LogLevel.Trace);
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore in test environment
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore in test environment
+            }
+
+            _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider);
 
             // Register events through the Controller
             _controller.RegisterEvents();

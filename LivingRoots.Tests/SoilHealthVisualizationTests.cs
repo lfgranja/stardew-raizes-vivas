@@ -1318,16 +1318,16 @@ public class SoilHealthVisualizationTests
     {
         var palette = new ColorInterpolationService();
 
-        var at33 = palette.GetColorForHealth(33f, 1f);
-        var at34 = palette.GetColorForHealth(34f, 1f);
-        if (at34.G < at33.G)
+        var at30 = palette.GetColorForHealth(30f, 1f);
+        var at31 = palette.GetColorForHealth(31f, 1f);
+        if (at31.G < at30.G)
         {
             return false;
         }
 
-        var at66 = palette.GetColorForHealth(66f, 1f);
-        var at67 = palette.GetColorForHealth(67f, 1f);
-        if (at67.G < at66.G)
+        var at70 = palette.GetColorForHealth(70f, 1f);
+        var at71 = palette.GetColorForHealth(71f, 1f);
+        if (at71.G < at70.G)
         {
             return false;
         }

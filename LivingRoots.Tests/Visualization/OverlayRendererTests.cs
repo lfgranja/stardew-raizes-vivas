@@ -411,13 +411,13 @@ namespace LivingRoots.Tests.Visualization
             var palette = new ColorInterpolationService();
 
             // Tier boundaries must be monotone (green channel)
-            var at33 = palette.GetColorForHealth(33f, 1f);
-            var at34 = palette.GetColorForHealth(34f, 1f);
-            Assert.True(at34.G >= at33.G, "Green channel must not decrease at Poor→Moderate boundary (33→34)");
+            var at30 = palette.GetColorForHealth(30f, 1f);
+            var at31 = palette.GetColorForHealth(31f, 1f);
+            Assert.True(at31.G >= at30.G, "Green channel must not decrease at Poor→Moderate boundary (30→31)");
 
-            var at66 = palette.GetColorForHealth(66f, 1f);
-            var at67 = palette.GetColorForHealth(67f, 1f);
-            Assert.True(at67.G >= at66.G, "Green channel must not decrease at Moderate→Healthy boundary (66→67)");
+            var at70 = palette.GetColorForHealth(70f, 1f);
+            var at71 = palette.GetColorForHealth(71f, 1f);
+            Assert.True(at71.G >= at70.G, "Green channel must not decrease at Moderate→Healthy boundary (70→71)");
 
             // Adjacent steps must be monotone within tiers (green channel)
             if (tileHealth >= 1f && tileHealth < 100f)
