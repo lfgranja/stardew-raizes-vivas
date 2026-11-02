@@ -10,8 +10,8 @@ namespace LivingRoots.Patches
 {
     public static class HarvestPatches
     {
-        private static IMonitor monitor;
-        private static IHarvestQualityService service;
+        private static IMonitor? monitor;
+        private static IHarvestQualityService? service;
 
         public static void Initialize(IMonitor modMonitor, IHarvestQualityService harvestService)
         {
@@ -37,7 +37,7 @@ namespace LivingRoots.Patches
             {
                 if (monitor != null)
                 {
-                    monitor.Log(string.Format("Living Roots harvest prefix patch failed; falling back to original. Type: {0} (HResult: 0x{1:X8})", ex.GetType().FullName, ex.HResult), LogLevel.Trace);
+                    monitor.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Living Roots harvest prefix patch failed; falling back to original. Type: {0} (HResult: 0x{1:X8})", ex.GetType().FullName, ex.HResult), LogLevel.Trace);
                 }
             }
             return true;
@@ -84,7 +84,7 @@ namespace LivingRoots.Patches
             {
                 if (monitor != null)
                 {
-                    monitor.Log(string.Format("Living Roots harvest postfix patch failed; skipping modification. Type: {0} (HResult: 0x{1:X8})", ex.GetType().FullName, ex.HResult), LogLevel.Trace);
+                    monitor.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Living Roots harvest postfix patch failed; skipping modification. Type: {0} (HResult: 0x{1:X8})", ex.GetType().FullName, ex.HResult), LogLevel.Trace);
                 }
             }
         }
