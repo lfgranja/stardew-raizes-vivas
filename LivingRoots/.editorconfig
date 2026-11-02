@@ -1,0 +1,6 @@
+root = false
+
+[*.cs]
+
+# CA1707: Harmony patch parameters require double-underscore names (__state, __result).
+dotnet_diagnostic.CA1707.severity = none

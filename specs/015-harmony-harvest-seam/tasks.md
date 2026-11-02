@@ -26,7 +26,7 @@
 **Purpose**: Prepare project for Harmony integration
 
 - [x] T001 Add `<EnableHarmony>true</EnableHarmony>` to the first `<PropertyGroup>` in `LivingRoots/LivingRoots.csproj` (FR-001)
-- [ ] T002 [P] Create directory structure `LivingRoots/Domain/HarvestQuality/` if needed (align with data-model.md) and ensure `LivingRoots/Domain/Services/` and `LivingRoots/Patches/` exist
+- [x] T002 [P] Create directory structure `LivingRoots/Domain/HarvestQuality/` if needed (align with data-model.md) and ensure `LivingRoots/Domain/Services/` and `LivingRoots/Patches/` exist
 
 ---
 
@@ -38,7 +38,7 @@
 
 - [x] T003 [P] Create `LivingRoots/Domain/HarvestQualityTypes.cs` with `HarvestTier` enum (Unknown/Poor/Moderate/Healthy/OutOfScope), `HarvestFeedbackFlags` flags enum (None/Poor/LivingQuality/ExtraHarvest), `HarvestQualityInputs` record/class per data-model.md, `HarvestQualityDecision` record/class per data-model.md (FR-003)
 - [x] T004 [P] Create `LivingRoots/Domain/IHarvestQualityService.cs` interface with `Decide`, `ResolveFeedback`, `BoostQualityProbability`, `BoostExtraHarvestChance` methods per contracts/i-harvest-quality-seam.md (FR-003)
-- [ ] T005 Commit foundational types and interface
+- [x] T005 Commit foundational types and interface
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -54,12 +54,12 @@
 
 > **BLOCKING**: Write ALL tests below BEFORE implementation. Tests must not pass initially.
 
-- [ ] T006 [P] [US2] Create `LivingRoots.Tests/HarvestQualityServiceTests.cs` with xUnit tests for tier mapping: Poor (<31) → force Quality 0, Moderate [31,71) → no modification, Healthy (>=71) → boost flags (FR-003, SC-001)
-- [ ] T007 [P] [US2] Add property-based tests (FsCheck) for invariants: Poor always forces Quality 0 regardless of inputs; Unknown (NaN/Infinity) → no modification; measured 0 → Poor → force 0 (FR-009, FR-010, SC-001)
-- [ ] T008 [P] [US2] Add tests for crop scope (forage/fibre/Qi → OutOfScope, no modification per A6), pest clamp null-safety, inventory-full policy (MainItemBlocked/ExtraItemDroppedAsDebris) (FR-007, FR-008, SC-001)
-- [ ] T009 [P] [US2] Add tests for feedback conditionality/co-occurrence (B1/B2): `ResolveFeedback` returns Poor always when in scope; LivingQuality only on enhanced/extra; both flags when both hold; None for Moderate/Unknown (FR-003, SC-001)
-- [ ] T010 [P] [US2] Add tests for `BoostQualityProbability`/`BoostExtraHarvestChance` composition (Healthy only, else unchanged) and `ProductionSourceGuardTests` compatibility (must reference `ModConstants.SoilQualityHealthyBoost`/`ModConstants.SoilExtraHarvestHealthyBoost`) (FR-003, FR-012)
-- [ ] T011 [US2] Run tests to confirm RED phase - all HarvestQualityService tests must fail
+- [x] T006 [P] [US2] Create `LivingRoots.Tests/HarvestQualityServiceTests.cs` with xUnit tests for tier mapping: Poor (<31) → force Quality 0, Moderate [31,71) → no modification, Healthy (>=71) → boost flags (FR-003, SC-001)
+- [x] T007 [P] [US2] Add property-based tests (FsCheck) for invariants: Poor always forces Quality 0 regardless of inputs; Unknown (NaN/Infinity) → no modification; measured 0 → Poor → force 0 (FR-009, FR-010, SC-001)
+- [x] T008 [P] [US2] Add tests for crop scope (forage/fibre/Qi → OutOfScope, no modification per A6), pest clamp null-safety, inventory-full policy (MainItemBlocked/ExtraItemDroppedAsDebris) (FR-007, FR-008, SC-001)
+- [x] T009 [P] [US2] Add tests for feedback conditionality/co-occurrence (B1/B2): `ResolveFeedback` returns Poor always when in scope; LivingQuality only on enhanced/extra; both flags when both hold; None for Moderate/Unknown (FR-003, SC-001)
+- [x] T010 [P] [US2] Add tests for `BoostQualityProbability`/`BoostExtraHarvestChance` composition (Healthy only, else unchanged) and `ProductionSourceGuardTests` compatibility (must reference `ModConstants.SoilQualityHealthyBoost`/`ModConstants.SoilExtraHarvestHealthyBoost`) (FR-003, FR-012)
+- [x] T011 [US2] Run tests to confirm RED phase - all HarvestQualityService tests must fail
 
 ### Implementation for User Story 2
 
@@ -80,8 +80,8 @@
 
 ### Tests for User Story 1 (TDD where applicable)
 
-- [ ] T016 [P] [US1] Add tests for patch registration/structure validation (static methods, no annotations/PatchAll) - can be done via reflection in tests or manual verification (SC-006)
-- [ ] T017 [US1] Confirm tests written (patch logic mostly verified in-game per FR-004 note; seam fully tested)
+- [x] T016 [P] [US1] Add tests for patch registration/structure validation (static methods, no annotations/PatchAll) - can be done via reflection in tests or manual verification (SC-006)
+- [x] T017 [US1] Confirm tests written (patch logic mostly verified in-game per FR-004 note; seam fully tested)
 
 ### Implementation for User Story 1
 
@@ -115,10 +115,10 @@
 
 - [x] T026 [P] Run `dotnet format --verify-no-changes` (SC-005)
 - [x] T027 [P] Run all tests `dotnet test -c Release` to ensure no regressions (1440+ tests should still pass)
-- [ ] T028 Verify `ProductionSourceGuardTests.NoUnreferencedConstantsSurvive` passes (FR-012)
-- [ ] T029 Verify `FeatureStatusTests` not broken (FR-013)
-- [ ] T030 Create/update ADR `docs/adr/001-harmony-for-harvest-interception.md` documenting decision (recommended per assumptions) - optional but good practice
-- [ ] T031 Final commit with all polish changes
+- [x] T028 Verify `ProductionSourceGuardTests.NoUnreferencedConstantsSurvive` passes (FR-012)
+- [x] T029 Verify `FeatureStatusTests` not broken (FR-013)
+- [x] T030 Create/update ADR `docs/adr/001-harmony-for-harvest-interception.md` documenting decision (recommended per assumptions) - optional but good practice
+- [x] T031 Final commit with all polish changes
 
 ---
 
@@ -192,8 +192,8 @@
 - [x] T032 Implement inventory-full handling (FR-008, partial/HIGH): seam sets `MainItemBlocked`/`ExtraItemDroppedAsDebris` based on `IsInventoryFull`; patch detects full inventory and sets `IsInventoryFull=true`; patch handles main-item-blocked (vanilla red message, crop stays) and extra-item-debris (`Game1.createItemDebris`). Source: FR-008.
 - [x] T033 Implement fibre-seed and Qi-Fruit crop scope (FR-007, partial/HIGH): patch detects fibre seeds and Qi Fruit and sets `IsFibreSeed`/`IsQiFruit=true` so seam returns `OutOfScope`. Source: FR-007.
 - [x] T034 Replace non-deterministic RNG with deterministic roll (FR-011, contradicts/MEDIUM): remove `Random.Shared` from `HarvestPatches.cs`; use deterministic hash of `DaysPlayed` + tile + seed so both clients agree. Source: FR-011, contract §9.
-- [ ] T035 Wire feedback broadcast (contract §6, partial/MEDIUM): inject `IVisualizationService` into `HarvestPatches.Initialize`; broadcast shared outcomes (harvest quality, extra harvest) via `Game1.multiplayer.broadcastSprites` + `location.playSound`; local-only input via `SpriteBatch`. Source: contract §6, FR-004.
-- [ ] T036 Implement extra-harvest spawning (FR-004, partial/MEDIUM): apply `BoostExtraHarvestChance` and spawn extra item when roll succeeds (host-authoritative, single-harvest guarantee). Source: FR-004.
+- [x] T035 Wire feedback broadcast (contract §6, partial/MEDIUM): inject `IVisualizationService` into `HarvestPatches.Initialize`; broadcast shared outcomes (harvest quality, extra harvest) via `Game1.multiplayer.broadcastSprites` + `location.playSound`; local-only input via `SpriteBatch`. Source: contract §6, FR-004.
+- [x] T036 Implement extra-harvest spawning (FR-004, partial/MEDIUM): apply `BoostExtraHarvestChance` and spawn extra item when roll succeeds (host-authoritative, single-harvest guarantee). Source: FR-004.
 - [x] T037 Fix feedback conditionality (FR-004/B1/B2, partial/MEDIUM): track whether quality was enhanced and whether extra harvest occurred; pass correct booleans to `ResolveFeedback`. Source: FR-004, spec edge cases.
 - [x] T038 Refactor to typed patch signature (contract §2, partial/MEDIUM): change `HarvestPrefix`/`HarvestPostfix` from `object instance, object[] args` to typed `Crop.harvest(int, int, HoeDirt, JunimoHarvester, bool)` for compile-time safety and direct access. Source: contract §2, spec FR-004.
 - [x] T039 Wire `IVisualizationService` into `Initialize` (data-model relationships, partial/MEDIUM): add optional `IVisualizationService` param and wire in `ModEntry`. Source: data-model relationships.
