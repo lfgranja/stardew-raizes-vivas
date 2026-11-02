@@ -216,9 +216,10 @@ public class VisualizationInvariantsTests
     }
 
     /// <summary>
-    /// T031b invariant: the 3-tier mapping is exact — health 1-33 maps to
-    /// Poor, 34-66 to Moderate, 67-100 to Healthy, verified through
-    /// <see cref="ColorInterpolationService"/>.
+    /// T031b invariant: the 3-tier mapping is exact — health 1-30 maps to
+    /// Poor, 31-70 to Moderate, 71-100 to Healthy, verified through
+    /// <see cref="ColorInterpolationService"/> (ModConstants.PoorModerateBandEdge=31,
+    /// ModerateHealthyBandEdge=71, migrated per spec 014 FR-013).
     /// </summary>
     [Property(MaxTest = 100)]
     public bool T031b_TierInterpolation_HealthRange_MapsToExpectedCategory(int health)
@@ -230,9 +231,9 @@ public class VisualizationInvariantsTests
 
         var colorService = new ColorInterpolationService();
         var actual = colorService.GetCategoryForHealth(health);
-        var expected = health <= 33
+        var expected = health <= 30
             ? HealthCategory.Poor
-            : health <= 66
+            : health <= 70
                 ? HealthCategory.Moderate
                 : HealthCategory.Healthy;
 

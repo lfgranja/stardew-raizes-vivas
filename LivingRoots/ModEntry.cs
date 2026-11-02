@@ -80,24 +80,17 @@ namespace LivingRoots
         {
             _helper = helper;
 
-            try
+            // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031).
+            // T137 (FR-012): subscribe through the stored handler field so Dispose
+            // detaches the exact delegate instance — a method-group subscription
+            // leaves no readable reference to release on unload.
+            if (_onAssetRequestedHandler == null)
             {
-                // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031).
-                // T137 (FR-012): subscribe through the stored handler field so Dispose
-                // detaches the exact delegate instance — a method-group subscription
-                // leaves no readable reference to release on unload.
-                if (_onAssetRequestedHandler == null)
-                {
-                    _onAssetRequestedHandler = OnAssetRequested;
-                }
-                if (helper?.Events?.Content != null && _onAssetRequestedHandler != null)
-                {
-                    helper.Events.Content.AssetRequested += _onAssetRequestedHandler;
-                }
+                _onAssetRequestedHandler = OnAssetRequested;
             }
-            catch
+            if (helper?.Events?.Content != null && _onAssetRequestedHandler != null)
             {
-                // Ensure subscription attempt doesn't break wiring
+                helper.Events.Content.AssetRequested += _onAssetRequestedHandler;
             }
 
             // Create domain services - Composition Root
@@ -184,23 +177,7 @@ namespace LivingRoots
                 // Skip Harmony patching in test environments
                 if (this.ModManifest != null && !string.IsNullOrEmpty(this.ModManifest.UniqueID) && this.Monitor != null)
                 {
-                    try
-                    {
-                        var harmony = new Harmony(this.ModManifest.UniqueID);
-                        var harvestMethod = AccessTools.Method(typeof(Crop), nameof(Crop.harvest));
-                        if (harvestMethod != null)
-                        {
-                            harmony.Patch(
-                                harvestMethod,
-                                prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPrefix)),
-                                postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPostfix)));
-                            this.Monitor.Log("Living Roots: Harvest Harmony patch registered.", LogLevel.Trace);
-                        }
-                    }
-                    catch
-                    {
-                        // Ignore in test environment
-                    }
+                    RegisterHarmonyPatch();
                 }
             }
             catch
@@ -212,6 +189,33 @@ namespace LivingRoots
 
             // Register events through the Controller
             _controller.RegisterEvents();
+        }
+
+        /// <summary>
+        /// Registers the Harmony patch on Crop.harvest. Extracted into its own
+        /// method so the JIT does not resolve Harmony types while compiling
+        /// WireCompositionRoot (which would abort the whole composition root in
+        /// headless test hosts lacking 0Harmony.dll).
+        /// </summary>
+        private void RegisterHarmonyPatch()
+        {
+            try
+            {
+                var harmony = new Harmony(this.ModManifest.UniqueID);
+                var harvestMethod = AccessTools.Method(typeof(Crop), nameof(Crop.harvest));
+                if (harvestMethod != null)
+                {
+                    harmony.Patch(
+                        harvestMethod,
+                        prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPrefix)),
+                        postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPostfix)));
+                    this.Monitor?.Log("Living Roots: Harvest Harmony patch registered.", LogLevel.Trace);
+                }
+            }
+            catch
+            {
+                // Ignore in test environment
+            }
         }
 
         /*********
