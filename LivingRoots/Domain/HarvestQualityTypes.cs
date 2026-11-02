@@ -20,29 +20,29 @@ namespace LivingRoots.Domain
         ExtraHarvest = 1 << 2
     }
 
-    public sealed class HarvestQualityInputs
+    public readonly record struct HarvestQualityInputs
     {
-        public int FarmingLevel { get; set; }
-        public int FertilizerTier { get; set; }
-        public bool IsPaddyCrop { get; set; }
-        public int RegrowDays { get; set; }
-        public int HarvestMaxIncreasePerFarmingLevel { get; set; }
-        public bool IsForageCrop { get; set; }
-        public bool IsFibreSeed { get; set; }
-        public bool IsQiFruit { get; set; }
-        public int? PestQualityPenalty { get; set; }
-        public bool IsInventoryFull { get; set; }
+        public int FarmingLevel { get; init; }
+        public int FertilizerTier { get; init; }
+        public bool IsPaddyCrop { get; init; }
+        public int RegrowDays { get; init; }
+        public int HarvestMaxIncreasePerFarmingLevel { get; init; }
+        public bool IsForageCrop { get; init; }
+        public bool IsFibreSeed { get; init; }
+        public bool IsQiFruit { get; init; }
+        public int? PestQualityPenalty { get; init; }
+        public bool IsInventoryFull { get; init; }
     }
 
-    public sealed class HarvestQualityDecision
+    public readonly record struct HarvestQualityDecision
     {
-        public HarvestTier Tier { get; set; }
-        public bool IsInScope { get; set; }
-        public bool ForceQualityZero { get; set; }
-        public float QualityBoost { get; set; }
-        public float ExtraHarvestBoost { get; set; }
-        public int? PestQualityPenalty { get; set; }
-        public bool MainItemBlocked { get; set; }
-        public bool ExtraItemDroppedAsDebris { get; set; }
+        public HarvestTier Tier { get; init; }
+        public bool IsInScope { get; init; }
+        public bool ForceQualityZero { get; init; }
+        public float QualityBoost { get; init; }
+        public float ExtraHarvestBoost { get; init; }
+        public int? PestQualityPenalty { get; init; }
+        public bool MainItemBlocked { get; init; }
+        public bool ExtraItemDroppedAsDebris { get; init; }
     }
 }
