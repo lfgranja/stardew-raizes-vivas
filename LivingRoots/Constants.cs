@@ -13,6 +13,8 @@ namespace LivingRoots
         // Soil Health → Crop Growth Constants (spec 005)
         public const float SoilGrowthPoorMultiplier = 1.15f;
         public const float SoilGrowthHealthyMultiplier = 0.85f;
+        public const float SoilQualityHealthyBoost = 0.08f;
+        public const float SoilExtraHarvestHealthyBoost = 0.10f;
 
         // Security Constants
         public const int MaxTilesPerLocation = 500; // Maximum number of tiles allowed per location to prevent DoS attacks
@@ -42,9 +44,9 @@ namespace LivingRoots
         // ColorInterpolationService's category resolution
         // and both interpolation ramps; the edges pair
         // with the category palette above.
-        public const float PoorModerateBandEdge = 34f;
-        public const float ModerateHealthyBandEdge = 67f;
-        public const float ModerateBandWidth = 33f;
+        public const float PoorModerateBandEdge = 31f;
+        public const float ModerateHealthyBandEdge = 71f;
+        public const float ModerateBandWidth = 40f;
         public const int TileSize = 64;
         public const int ViewportMarginTiles = 1; // FR-018: tiles rendered beyond each viewport edge to prevent pop-in
         public const int DegradationTileThreshold = 1000;

@@ -28,7 +28,7 @@ namespace LivingRoots.Tests.Invariants
                 Arb.From(FsCheckFixture.HealthValues()),
                 health =>
                 {
-                    if (health < 0f || health >= 34f) return true; // Outside Poor range [0,34) — skip
+                    if (health < 0f || health >= 31f) return true; // Outside Poor range [0,31) — skip
                     return HealthCategoryExtensions.FromHealthValue(health) == HealthCategory.Poor;
                 });
         }
@@ -40,7 +40,7 @@ namespace LivingRoots.Tests.Invariants
                 Arb.From(FsCheckFixture.HealthValues()),
                 health =>
                 {
-                    if (health < 34f || health >= 67f) return true; // Outside Moderate range [34,67)
+                    if (health < 31f || health >= 71f) return true; // Outside Moderate range [31,71)
                     return HealthCategoryExtensions.FromHealthValue(health) == HealthCategory.Moderate;
                 });
         }
@@ -52,7 +52,7 @@ namespace LivingRoots.Tests.Invariants
                 Arb.From(FsCheckFixture.HealthValues()),
                 health =>
                 {
-                    if (health < 67f || health > 100f) return true; // Outside Healthy range [67,100]
+                    if (health < 71f || health > 100f) return true; // Outside Healthy range [71,100]
                     return HealthCategoryExtensions.FromHealthValue(health) == HealthCategory.Healthy;
                 });
         }
@@ -61,12 +61,10 @@ namespace LivingRoots.Tests.Invariants
         [InlineData(0f, HealthCategory.Poor)]
         [InlineData(15f, HealthCategory.Poor)]
         [InlineData(30f, HealthCategory.Poor)]
-        [InlineData(31f, HealthCategory.Poor)]
-        [InlineData(33f, HealthCategory.Poor)]
-        [InlineData(34f, HealthCategory.Moderate)]
+        [InlineData(31f, HealthCategory.Moderate)]
         [InlineData(50f, HealthCategory.Moderate)]
-        [InlineData(66f, HealthCategory.Moderate)]
-        [InlineData(67f, HealthCategory.Healthy)]
+        [InlineData(70f, HealthCategory.Moderate)]
+        [InlineData(71f, HealthCategory.Healthy)]
         [InlineData(85f, HealthCategory.Healthy)]
         [InlineData(100f, HealthCategory.Healthy)]
         public void FromHealthValue_BoundaryValues_MapsCorrectly(float health, HealthCategory expected)

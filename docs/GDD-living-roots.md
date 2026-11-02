@@ -112,7 +112,7 @@ Tudo fora disso é conteúdo, não verbo. "Beekeeping", "greywater" e "telhado v
   - **0 = baseline:** sujeira vanilla neutra, **sem overlay** (anti-clutter, anti-alert-fatigue, decisão 004).
   - **1–33 Pobre:** crescimento lento, pragas altas, sem estrela.
   - **34–66 Médio:** ≈ vanilla.
-  - **67–100 Vivo:** crescimento +rápido, chance colheita extra, prata/ouro/irídio, desbloqueia interações.
+  - **67–100 Vivo:** crescimento +rápido, chance colheita extra, prata/ouro/irídio, habilita práticas agroecológicas adicionais (ver spec separada — "novas interações" adiado).
 - **Render:** interpolação RGB contínua por tier sob iluminação ambiente (noite/chuva/inverno sem clip/washout), invalidação reativa via `ISoilHealthService.OnTileHealthChanged` → `VisualizationService` no próximo frame ≤16.67ms, zero polling. Farmhand recebe via mesmo evento (transporte de rede real = D1 roadmap, verificação 004 limitada a stubs multi-thread em `LivingRoots.Tests`).
 - **O que DESTROI:** solo arado nu sem cobertura/planta; monocultura (mesma cultura repetida); Joja Fertilizer (+boost agora, −5% saúde).
 - **O que CONSTRÓI:** composto orgânico (+15/aplicação, 1 item consumido, top-dressing permitido); rotação por família (Brassicas, Solanaceae, Leguminosas… + `Rotation Journal`); policultura/companion (Three Sisters: milho + feijão + abóbora); adubo verde (trevo/aveia); cobertura/mulch; manejo animal (pastoreio rotativo `Mobile Coop`, esterco sobre mulch +, sobre nu compacta); ILPF com acácia/gliricídia (N-fix, imunidade seca, `Shaded Milk`/`Soft Wool`).
