@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using LivingRoots;
 using LivingRoots.Controllers;
@@ -293,6 +294,12 @@ namespace LivingRoots.Tests
             mockEvents.Setup(e => e.Input).Returns(mockInputEvents.Object);
             mockEvents.Setup(e => e.Display).Returns(mockDisplayEvents.Object);
             mockHelper.Setup(h => h.Events).Returns(mockEvents.Object);
+            // Mock Translation to avoid NullReferenceException
+            var mockTranslationHelper = new Mock<ITranslationHelper>();
+            var ctor = typeof(Translation).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
+                .First(c => c.GetParameters().Length == 3);
+            mockTranslationHelper.Setup(t => t.Get(It.IsAny<string>())).Returns((string key) => (Translation)ctor.Invoke(new object[] { "en", key, key }));
+            mockHelper.Setup(h => h.Translation).Returns(mockTranslationHelper.Object);
 
             typeof(Mod).GetProperty("Monitor", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(modEntry, mockMonitor.Object);
             typeof(Mod).GetProperty("ModManifest", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(modEntry, mockManifest.Object);
