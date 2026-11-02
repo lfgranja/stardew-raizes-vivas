@@ -38,3 +38,7 @@ EXIT: 0
 ## Recommendation
 
 Hold — reproduction inconclusive because the crashing version of the external tool no longer exists and no repo code was changed to verify. No reopen needed: the bug is external to `stardew-raizes-vivas` and the current tool runs cleanly. If the SIGABRT recurs, capture managed diagnostics (SOS/dotnet-dump) and re-run `/speckit.bug.assess`.
+
+## Update: Second Core Dump Analyzed (PID 1821087)
+
+The second core dump (PID 1821087) referenced as an open residual risk above has now been analyzed via `coredumpctl` + `gdb` (thread 1 backtrace). Result: **same failure mode** as PID 1820007 — identical native stack offsets within `libcoreclr.so` (`0x512cc2`, `0x512be2`, `0x2da6f5`, `0x2da7d6`, `0x28dfc7`, `0x383657`, `0x1b984b`, `0x8efea`, `0x8f341`, `0xc3dbd`). This confirms a single recurring failure mode rather than two distinct bugs. Managed frames #8/#9 remain undecodable (no SOS/dotnet-dump), so the managed exception type is still unknown. The residual risk "second core dump not analyzed" is now resolved.
