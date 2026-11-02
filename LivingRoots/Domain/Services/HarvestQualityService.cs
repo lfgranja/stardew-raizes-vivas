@@ -10,11 +10,6 @@ namespace LivingRoots.Domain.Services
 
         public HarvestQualityDecision Decide(float soilHealth, HarvestQualityInputs inputs)
         {
-            if (inputs == null)
-            {
-                inputs = new HarvestQualityInputs();
-            }
-
             if (inputs.IsForageCrop || inputs.IsFibreSeed || inputs.IsQiFruit)
             {
                 return new HarvestQualityDecision
@@ -25,8 +20,8 @@ namespace LivingRoots.Domain.Services
                     QualityBoost = 0.0f,
                     ExtraHarvestBoost = 0.0f,
                     PestQualityPenalty = inputs.PestQualityPenalty,
-                    MainItemBlocked = false,
-                    ExtraItemDroppedAsDebris = false
+                    MainItemBlocked = inputs.IsInventoryFull,
+                    ExtraItemDroppedAsDebris = inputs.IsInventoryFull
                 };
             }
 
@@ -40,8 +35,8 @@ namespace LivingRoots.Domain.Services
                     QualityBoost = 0.0f,
                     ExtraHarvestBoost = 0.0f,
                     PestQualityPenalty = inputs.PestQualityPenalty,
-                    MainItemBlocked = false,
-                    ExtraItemDroppedAsDebris = false
+                    MainItemBlocked = inputs.IsInventoryFull,
+                    ExtraItemDroppedAsDebris = inputs.IsInventoryFull
                 };
             }
 
@@ -55,8 +50,8 @@ namespace LivingRoots.Domain.Services
                     QualityBoost = 0.0f,
                     ExtraHarvestBoost = 0.0f,
                     PestQualityPenalty = inputs.PestQualityPenalty,
-                    MainItemBlocked = false,
-                    ExtraItemDroppedAsDebris = false
+                    MainItemBlocked = inputs.IsInventoryFull,
+                    ExtraItemDroppedAsDebris = inputs.IsInventoryFull
                 };
             }
 
@@ -70,8 +65,8 @@ namespace LivingRoots.Domain.Services
                     QualityBoost = 0.0f,
                     ExtraHarvestBoost = 0.0f,
                     PestQualityPenalty = inputs.PestQualityPenalty,
-                    MainItemBlocked = false,
-                    ExtraItemDroppedAsDebris = false
+                    MainItemBlocked = inputs.IsInventoryFull,
+                    ExtraItemDroppedAsDebris = inputs.IsInventoryFull
                 };
             }
 
@@ -83,18 +78,13 @@ namespace LivingRoots.Domain.Services
                 QualityBoost = ModConstants.SoilQualityHealthyBoost,
                 ExtraHarvestBoost = ModConstants.SoilExtraHarvestHealthyBoost,
                 PestQualityPenalty = inputs.PestQualityPenalty,
-                MainItemBlocked = false,
-                ExtraItemDroppedAsDebris = false
+                MainItemBlocked = inputs.IsInventoryFull,
+                ExtraItemDroppedAsDebris = inputs.IsInventoryFull
             };
         }
 
         public HarvestFeedback ResolveFeedback(HarvestQualityDecision decision, bool enhancedQualityOccurred, bool extraHarvestOccurred)
         {
-            if (decision == null)
-            {
-                return HarvestFeedback.None;
-            }
-
             var flags = HarvestFeedback.None;
             if (decision.Tier == HarvestTier.Poor && decision.IsInScope)
             {
@@ -118,7 +108,7 @@ namespace LivingRoots.Domain.Services
 
         public float BoostQualityProbability(float vanillaProbability, HarvestQualityDecision decision)
         {
-            if (decision == null || decision.Tier != HarvestTier.Healthy)
+            if (decision.Tier != HarvestTier.Healthy)
             {
                 return vanillaProbability;
             }
@@ -127,7 +117,7 @@ namespace LivingRoots.Domain.Services
 
         public float BoostExtraHarvestChance(float vanillaChance, HarvestQualityDecision decision)
         {
-            if (decision == null || decision.Tier != HarvestTier.Healthy)
+            if (decision.Tier != HarvestTier.Healthy)
             {
                 return vanillaChance;
             }
