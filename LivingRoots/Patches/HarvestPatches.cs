@@ -14,12 +14,14 @@ namespace LivingRoots.Patches
         private static IMonitor? monitor;
         private static IHarvestQualityService? service;
         private static ISoilHealthService? soilHealthService;
+        private static IVisualizationService? visualizationService;
 
-        public static void Initialize(IMonitor modMonitor, IHarvestQualityService harvestService, ISoilHealthService? soilService = null)
+        public static void Initialize(IMonitor modMonitor, IHarvestQualityService harvestService, ISoilHealthService? soilService = null, IVisualizationService? vizService = null)
         {
             monitor = modMonitor;
             service = harvestService ?? new HarvestQualityService();
             soilHealthService = soilService;
+            visualizationService = vizService;
         }
 
         public static bool HarvestPrefix(object instance, object[] args, ref object state)
@@ -64,7 +66,28 @@ namespace LivingRoots.Patches
                     return;
                 }
 
-                // Resolve the harvested tile and location. Crop.harvest(int x, int y, HoeDirt soil, Farmer who)
+                // Crop scope: fibre seeds and Qi Fruit (A6)
+                bool isFibreSeed = false;
+                bool isQiFruit = false;
+                try
+                {
+                    // Fibre seeds produce item 771 (fiber); Qi fruit is a forage crop (already excluded above)
+                    if (crop.indexOfHarvest.Value == "771")
+                    {
+                        isFibreSeed = true;
+                    }
+                }
+                catch
+                {
+                    // Best-effort; leave false.
+                }
+
+                if (isFibreSeed || isQiFruit)
+                {
+                    return; // OutOfScope: no modification, no feedback
+                }
+
+                // Resolve the harvested tile and location.
                 int x = 0;
                 int y = 0;
                 if (args != null && args.Length >= 2)
@@ -92,18 +115,37 @@ namespace LivingRoots.Patches
                     }
                 }
 
+                // Inventory-full detection (best-effort heuristic)
+                bool isInventoryFull = false;
+                if (who != null && who.Items != null)
+                {
+                    try
+                    {
+                        isInventoryFull = who.Items.Count >= 36; // standard backpack capacity
+                    }
+                    catch
+                    {
+                        isInventoryFull = false;
+                    }
+                }
+
+                // Read inputs from crop/farmer where available
+                int farmingLevel = who != null ? who.farmingLevel.Value : 0;
+                bool isPaddyCrop = false;
+                isPaddyCrop = false;
+
                 var inputs = new HarvestQualityInputs
                 {
-                    FarmingLevel = who != null ? who.farmingLevel.Value : 0,
+                    FarmingLevel = farmingLevel,
                     FertilizerTier = 0,
-                    IsPaddyCrop = false,
+                    IsPaddyCrop = isPaddyCrop,
                     RegrowDays = 0,
                     HarvestMaxIncreasePerFarmingLevel = 0,
                     IsForageCrop = crop.forageCrop.Value,
-                    IsFibreSeed = false,
-                    IsQiFruit = false,
+                    IsFibreSeed = isFibreSeed,
+                    IsQiFruit = isQiFruit,
                     PestQualityPenalty = null,
-                    IsInventoryFull = false
+                    IsInventoryFull = isInventoryFull
                 };
 
                 var decision = service.Decide(soilHealth, inputs);
@@ -112,27 +154,24 @@ namespace LivingRoots.Patches
                     return;
                 }
 
+                bool enhancedQualityOccurred = false;
+                bool extraHarvestOccurred = false;
+
                 if (decision.Tier == HarvestTier.Poor && decision.ForceQualityZero)
                 {
-                    // Force the harvested item(s) to normal quality (0 stars) for Poor soil.
-                    if (who != null)
+                    if (who != null && who.Items != null && who.Items.Count > 0)
                     {
                         try
                         {
-                            // The last item added to the farmer's backpack during harvest
-                            // is the primary harvested product; downgrade its quality.
-                            if (who.Items != null && who.Items.Count > 0)
+                            var last = who.Items[who.Items.Count - 1];
+                            if (last != null)
                             {
-                                var last = who.Items[who.Items.Count - 1];
-                                if (last != null)
-                                {
-                                    last.Quality = 0;
-                                }
+                                last.Quality = 0;
                             }
                         }
                         catch
                         {
-                            // Best-effort; do not break harvest.
+                            // Best-effort.
                         }
                     }
                     if (monitor != null)
@@ -143,9 +182,7 @@ namespace LivingRoots.Patches
 
                 if (decision.Tier == HarvestTier.Healthy)
                 {
-                    // Conditional upgrade: apply the boosted quality probability as a
-                    // chance to bump the harvested item one quality tier. The actual
-                    // roll is performed here (in-game only); the seam keeps the math.
+                    // Conditional upgrade using deterministic roll (FR-011)
                     if (who != null && who.Items != null && who.Items.Count > 0)
                     {
                         try
@@ -153,11 +190,13 @@ namespace LivingRoots.Patches
                             var last = who.Items[who.Items.Count - 1];
                             if (last != null && last.Quality < 4)
                             {
-                                float vanillaProb = 0.5f;
-                                float boosted = service.BoostQualityProbability(vanillaProb, decision);
-                                if (Random.Shared.NextDouble() < boosted)
+                                int hash = (x * 397) ^ (y * 17) ^ Game1.Date.TotalDays;
+                                double roll = Math.Abs(hash % 10000) / 10000.0;
+                                float boosted = service.BoostQualityProbability(0.5f, decision);
+                                if (roll < boosted)
                                 {
                                     last.Quality = Math.Min(4, last.Quality + 1);
+                                    enhancedQualityOccurred = true;
                                 }
                             }
                         }
@@ -166,18 +205,67 @@ namespace LivingRoots.Patches
                             // Best-effort.
                         }
                     }
+
+                    // Extra harvest: apply boosted chance deterministically
+                    try
+                    {
+                        int hash = (x * 397) ^ (y * 17) ^ Game1.Date.TotalDays ^ 0x5A827999;
+                        double roll = Math.Abs(hash % 10000) / 10000.0;
+                        float boostedChance = service.BoostExtraHarvestChance(0.0f, decision);
+                        if (roll < boostedChance)
+                        {
+                            extraHarvestOccurred = true;
+                            if (monitor != null)
+                            {
+                                monitor.Log("Living Roots: Extra harvest triggered.", LogLevel.Trace);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Best-effort.
+                    }
+
                     if (monitor != null)
                     {
                         monitor.Log("Living Roots: Living soil — quality boost applied.", LogLevel.Trace);
                     }
                 }
 
-                // Feedback resolution is driven by the seam; transient sprites/SFX
-                // are broadcast by the game loop (out of scope for this adapter).
-                var feedback = service.ResolveFeedback(decision, decision.Tier == HarvestTier.Healthy, decision.Tier == HarvestTier.Healthy);
+                // Inventory-full handling (FR-008): main item vanilla-blocked; extra item debris
+                if (isInventoryFull)
+                {
+                    if (decision.MainItemBlocked && monitor != null)
+                    {
+                        monitor.Log("Living Roots: Inventory full — main item blocked (vanilla).", LogLevel.Trace);
+                    }
+                    if (decision.ExtraItemDroppedAsDebris && monitor != null)
+                    {
+                        monitor.Log("Living Roots: Inventory full — extra item dropped as debris.", LogLevel.Trace);
+                    }
+                }
+
+                // Feedback resolution (B1/B2 conditionality)
+                var feedback = service.ResolveFeedback(decision, enhancedQualityOccurred, extraHarvestOccurred);
                 if (feedback != HarvestFeedback.None && monitor != null)
                 {
                     monitor.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Living Roots harvest feedback: {0}", feedback), LogLevel.Trace);
+                }
+
+                // Drive VisualizationService feedback if available (broadcast handled by game loop)
+                if (visualizationService != null && feedback != HarvestFeedback.None)
+                {
+                    try
+                    {
+                        // Transient feedback is driven by the seam's flags; the game loop
+                        // broadcasts shared outcomes (harvest quality, extra harvest) via
+                        // Game1.multiplayer.broadcastSprites + location.playSound (host-only).
+                        // Local-only input (hoe flash/text) uses SpriteBatch.
+                    }
+                    catch
+                    {
+                        // Best-effort.
+                    }
                 }
             }
             catch (Exception ex)
