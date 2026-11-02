@@ -19,7 +19,7 @@ namespace LivingRoots.Patches
             _service = service ?? new HarvestQualityService();
         }
 
-        public static bool HarvestPrefix(Crop __instance, int xTile, int yTile, HoeDirt soil, JunimoHarvester junimoHarvester, bool isForcedScytheHarvest, ref bool __state)
+        public static bool HarvestPrefix(Crop __instance, int xTile, int yTile, HoeDirt soil, object? junimoHarvester, bool isForcedScytheHarvest, ref bool __state)
         {
             __state = true;
             try
@@ -53,7 +53,7 @@ namespace LivingRoots.Patches
             return true;
         }
 
-        public static void HarvestPostfix(Crop __instance, int xTile, int yTile, HoeDirt soil, JunimoHarvester junimoHarvester, bool isForcedScytheHarvest, bool __result)
+        public static void HarvestPostfix(Crop __instance, int xTile, int yTile, HoeDirt soil, object? junimoHarvester, bool isForcedScytheHarvest, bool __result)
         {
             try
             {
