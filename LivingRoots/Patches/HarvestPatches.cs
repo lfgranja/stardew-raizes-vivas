@@ -10,117 +10,83 @@ namespace LivingRoots.Patches
 {
     public static class HarvestPatches
     {
-        private static IMonitor? _monitor;
-        private static IHarvestQualityService? _service;
+        private static IMonitor monitor;
+        private static IHarvestQualityService service;
 
-        public static void Initialize(IMonitor monitor, IHarvestQualityService service)
+        public static void Initialize(IMonitor modMonitor, IHarvestQualityService harvestService)
         {
-            _monitor = monitor;
-            _service = service ?? new HarvestQualityService();
+            monitor = modMonitor;
+            service = harvestService ?? new HarvestQualityService();
         }
 
-        public static bool HarvestPrefix(Crop __instance, int xTile, int yTile, HoeDirt soil, object? junimoHarvester, bool isForcedScytheHarvest, ref bool __state)
+        public static bool HarvestPrefix(object instance, object[] args, ref object state)
         {
-            __state = true;
+            state = true;
             try
             {
-                if (__instance == null || soil == null)
+                if (instance == null)
                 {
                     return true;
                 }
-                if (_service == null)
+                if (service == null)
                 {
-                    _service = new HarvestQualityService();
-                }
-                // Basic crop scope guard
-                if (__instance.forageCrop.Value)
-                {
-                    return true;
-                }
-                if (__instance.indexOfHarvest.Value == "771") // tea leaves not typical crop scope issues, but keep guard
-                {
-                    // continue
+                    service = new HarvestQualityService();
                 }
             }
             catch (Exception ex)
             {
-                if (_monitor != null)
+                if (monitor != null)
                 {
-                    _monitor.Log($"Living Roots harvest prefix patch failed; falling back to original. Type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    monitor.Log(string.Format("Living Roots harvest prefix patch failed; falling back to original. Type: {0} (HResult: 0x{1:X8})", ex.GetType().FullName, ex.HResult), LogLevel.Trace);
                 }
-                return true;
             }
             return true;
         }
 
-        public static void HarvestPostfix(Crop __instance, int xTile, int yTile, HoeDirt soil, object? junimoHarvester, bool isForcedScytheHarvest, bool __result)
+        public static void HarvestPostfix(object instance, object[] args)
         {
             try
             {
-                if (__instance == null || soil == null || !_serviceInitialized())
+                if (instance == null || service == null)
                 {
                     return;
                 }
-                if (_service == null)
-                {
-                    _service = new HarvestQualityService();
-                }
-                // Apply scope guards
-                if (__instance.forageCrop.Value)
+                var crop = instance as Crop;
+                if (crop == null)
                 {
                     return;
                 }
-                // Get soil health from game state would require service; use defaults for patch structure
+                if (crop.forageCrop.Value)
+                {
+                    return;
+                }
                 float soilHealth = 50.0f;
                 var inputs = new HarvestQualityInputs
                 {
-                    FarmingLevel = Game1.player?.farmingLevel.Value ?? 0,
+                    FarmingLevel = Game1.player != null ? Game1.player.farmingLevel.Value : 0,
                     FertilizerTier = 0,
                     IsPaddyCrop = false,
-                    RegrowDays = __instance.regrowAfterHarvest.Value,
+                    RegrowDays = 0,
                     HarvestMaxIncreasePerFarmingLevel = 0,
-                    IsForageCrop = __instance.forageCrop.Value,
+                    IsForageCrop = crop.forageCrop.Value,
                     IsFibreSeed = false,
                     IsQiFruit = false,
                     PestQualityPenalty = null,
                     IsInventoryFull = false
                 };
-                var decision = _service.Decide(soilHealth, inputs);
+                var decision = service.Decide(soilHealth, inputs);
                 if (!decision.IsInScope || decision.Tier == HarvestTier.Moderate || decision.Tier == HarvestTier.Unknown)
                 {
-                    return;
-                }
-                if (decision.Tier == HarvestTier.Poor && decision.ForceQualityZero)
-                {
-                    // Try to force quality to 0 on harvested items - best effort
-                    try
-                    {
-                        if (Game1.player != null && Game1.player.currentLocation != null)
-                        {
-                            // Postfix can't easily access created items; this is structural
-                        }
-                    }
-                    catch { }
-                    return;
-                }
-                if (decision.Tier == HarvestTier.Healthy)
-                {
-                    // Apply boosts conceptually - structural implementation
                     return;
                 }
             }
             catch (Exception ex)
             {
-                if (_monitor != null)
+                if (monitor != null)
                 {
-                    _monitor.Log($"Living Roots harvest postfix patch failed; skipping modification. Type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    monitor.Log(string.Format("Living Roots harvest postfix patch failed; skipping modification. Type: {0} (HResult: 0x{1:X8})", ex.GetType().FullName, ex.HResult), LogLevel.Trace);
                 }
             }
-        }
-
-        private static bool _serviceInitialized()
-        {
-            return _service != null || _monitor != null;
         }
     }
 }
