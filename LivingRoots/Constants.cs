@@ -13,6 +13,8 @@ namespace LivingRoots
         // Soil Health → Crop Growth Constants (spec 005)
         public const float SoilGrowthPoorMultiplier = 1.15f;
         public const float SoilGrowthHealthyMultiplier = 0.85f;
+        public const float SoilQualityHealthyBoost = 0.08f;
+        public const float SoilExtraHarvestHealthyBoost = 0.10f;
 
         // Security Constants
         public const int MaxTilesPerLocation = 500; // Maximum number of tiles allowed per location to prevent DoS attacks
