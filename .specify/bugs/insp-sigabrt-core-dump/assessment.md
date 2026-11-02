@@ -100,17 +100,42 @@ Process `insp` (PID 1820007) crashed with SIGABRT under .NET CoreCLR 6.0.36 on F
 
 ## Risks & Considerations
 
-- Core dump is 2.6M but managed frames could not be decoded (no SOS/dotnet-dump available); managed exception type unknown.
-- The crashing source version of `insp` no longer exists on disk (rewritten), limiting reproducibility.
+- Core dump 1 (PID 1820007) is 2.6M; core dump 2 (PID 1821087) is 2.5M. Managed frames could not be decoded in either (no SOS/dotnet-dump available); managed exception type unknown in both.
+- The crashing source version of `insp` no longer exists on disk (rewritten), limiting reproducibility for both dumps.
 - Not related to the `stardew-raizes-vivas` codebase; no production/mod code is affected.
-- A second core dump exists (PID 1821087) from the same binary; not analyzed here.
+- Both core dumps (PID 1820007 and PID 1821087) now analyzed; both show identical native stack shape (abort in libcoreclr.so after JIT frames #8/#9), consistent with a single recurring failure mode.
+
+## Second Core Dump Analysis (PID 1821087)
+
+A second core dump from the same binary was provided and analyzed via `coredumpctl` + `gdb` (thread 1 backtrace):
+
+```
+#0  __pthread_kill_implementation (libc.so.6)
+#1  raise
+#2  abort
+#3  libcoreclr.so + 0x512cc2
+#4  libcoreclr.so + 0x512be2
+#5  libcoreclr.so + 0x2da6f5
+#6  libcoreclr.so + 0x2da7d6
+#7  libcoreclr.so + 0x28dfc7
+#8  0x7fa60476468c (JIT-compiled, no symbols)
+#9  0x7fa604764e97 (JIT-compiled, no symbols)
+#10 libcoreclr.so + 0x383657
+#11 libcoreclr.so + 0x1b984b
+#12 libcoreclr.so + 0x8efea
+#13 libcoreclr.so + 0x8f341
+#14 libcoreclr.so + 0xc3dbd
+#15 coreclr_execute_assembly
+```
+
+Same shape as PID 1820007 (offsets identical within libcoreclr.so: 0x512cc2, 0x512be2, 0x2da6f5, 0x2da7d6, 0x28dfc7, 0x383657, 0x1b984b, 0x8efea, 0x8f341, 0xc3dbd). Confirms a single recurring failure mode rather than two distinct bugs. Managed frames #8/#9 still undecodable (no SOS/dotnet-dump). No new information about the managed exception type. Core file extracted to `/tmp/opencode/insp.core` (70M).
 
 ## Open Questions
 
 - [NEEDS CLARIFICATION: What was the exact managed exception (decode JIT frames #8/#9 via SOS/dotnet-dump)?]
 - [NEEDS CLARIFICATION: Exact invocation/environment at crash time (was `DOTNET_ROOT` set)?]
 - [NEEDS CLARIFICATION: Was the crash triggered by a null `Type.GetType` result, or by ICU/globalization code?]
-- [NEEDS CLARIFICATION: Is the second core dump (PID 1821087) a separate instance of the same failure?]
+- [RESOLVED: PID 1821087 is the same failure mode as PID 1820007 (identical native stack offsets); not a separate bug.]
 
 Slug: insp-sigabrt-core-dump
 Path: .specify/bugs/insp-sigabrt-core-dump/assessment.md
