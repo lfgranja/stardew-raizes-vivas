@@ -1,8 +1,8 @@
 # LIVING ROOTS — PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-09-07
-**Commit:** f4832f8
-**Branch:** feat/002-04-composting-bin-service
+**Generated:** 2026-11-02
+**Commit:** 379b3db
+**Branch:** dev
 
 ## OVERVIEW
 
@@ -131,6 +131,8 @@ bash scripts/quality-gate/analyzer-probe.sh
 - `InternalsVisibleTo("LivingRoots.Tests")` allows testing internal members
 - lefthook pre-commit: `dotnet format --verify-no-changes`; pre-push: `dotnet test`
 - Harmony patches use code API only (no annotations/PatchAll), static methods, try/catch with fallback; patch logic must live in pure `HarvestQualityService` seam (patch verified in-game)
+- ADRs live in `docs/adr/` (currently ADR-001: Harmony for harvest interception)
+- Patch registration tests: `LivingRoots.Tests/HarvestPatchesTests.cs` (reflection-based: static, no annotations, Initialize signature)
 
 ## CI
 
