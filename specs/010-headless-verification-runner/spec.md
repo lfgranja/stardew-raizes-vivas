@@ -7,6 +7,18 @@
 
 **Assessment artifacts**: `.specify/assessments/end-to-end-game-verification/` (intake, research, problem, concept, decision — verdict: go, Option B fully headless)
 
+**Assessment (2026-11-02)**: A new assessment pipeline was completed under `.specify/assessments/headless-verification-runner/` (intake, research, problem, concept, decision — verdict: go, Option B Incremental MVP). The 5 open questions from the original assessment remain; the incremental MVP (3-signal capture first) is recommended over the full 161-task spec.
+
+## Clarifications
+
+### Session 2026-11-02 (assessment handoff + clarify)
+
+- Q: Should the runner reuse `scripts/smoke-validation.sh` infrastructure or be separate? → A: Reuse the launch mechanics (Xvfb + SMAPI + mod deploy + cleanup) as a shared fixture/runner via `scripts/lib/`; build a separate, manifest-driven scenario orchestrator with its own deadlines, semantic markers, and report. Keep smoke as a narrow boot-and-no-crash gate on every PR; run scenario assertions as a separate lane. (Option B)
+- Q: Communication mechanism between C# companion and running game process? → A: Hybrid — (1) injection via file-based IPC (scenario JSON dropped into mod data dir, mirroring `SoilHealthState` load); (2) observation via existing save-file JSON output (`modData/soil_health_data_{saveId}.json`); (3) in-process fast path via `ModRegistry.GetApi<T>` for synchronous assertions. Avoid `SendMessage` as primary channel. Implement `ILivingRootsModApi` with `SoilGrowthModifierCompleted` event raised synchronously on game thread at tail of `OnDayEnding`. (Option B)
+- Q: Can `verified` attestation be partially automated, or must it remain human-only? → A: `verified` must remain human-only (T148 sole writer). Automation legitimately advances status only to `machine-pass` (and stays at `partial` on failure/flakiness). Runner never writes `verified`. Any relaxation requires a constitution amendment. (Option B)
+- Q: Accept the 161-task scope as-is, or reduce to Incremental MVP? → A: Accept the full 161-task spec as-is (Option A). Note: this overrides the assessment's recommendation (Option B Incremental MVP). The assessment's evidence-against section flagged YAGNI risk for the full scope; the maintainer explicitly chose the full spec. (Option A)
+- Q: CI runner availability (self-hosted vs. GitHub-hosted with gamepath.zip)? → A: Self-hosted runner (Linux, licensed game + SMAPI) for the headless runner; keep GitHub-hosted for build-analysis. Reuse `BUILDDEPS_TOKEN` for milestone saves/cache-miss. Follow spec's security model (runner-group segregation, non-root, ephemeral/JIT, least-privilege token). (Option B)
+
 ## Plain-Language Summary
 
 The runner is a single command a maintainer can run on a Linux machine to prove that a gameplay feature actually works, without opening the game or playing it by hand. It starts a hidden display, launches Stardew Valley through SMAPI, loads a reproducible save, performs a short scripted scenario, and records three independent kinds of evidence: the mod's saved soil-health data, the crop's growth state, and the SMAPI log. It then compares the evidence with the feature's expected thresholds and writes a pass/fail report plus a tamper-evident evidence bundle. On a clean pass it may advance the feature's Gate 3 record to `machine-pass`; it never writes `verified`, which is reserved for a maintainer's human attestation. On any doubt it refuses to promote the feature.
