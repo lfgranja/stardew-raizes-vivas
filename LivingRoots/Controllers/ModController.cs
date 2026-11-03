@@ -260,7 +260,15 @@ namespace LivingRoots.Controllers
                 gameLoop.Saving += localSavingHandler;
                 gameLoop.DayStarted += localDayStartedHandler;
                 gameLoop.DayEnding += localDayEndingHandler;
-                _helper.Events.Input.ButtonPressed += localButtonPressedHandler;
+                var inputEvents = _helper?.Events?.Input;
+                if (inputEvents != null)
+                {
+                    inputEvents.ButtonPressed += localButtonPressedHandler;
+                }
+                else
+                {
+                    monitorSnapshot.Log("Input events unavailable; skipping ButtonPressed subscription.", LogLevel.Trace);
+                }
 
                 // T100 (FR-002): subscribe to the
                 // world object-list change event so a
@@ -386,7 +394,7 @@ namespace LivingRoots.Controllers
         private void HandleRegistrationError(RegistrationContext ctx)
         {
             ctx.Monitor.Log("Error occurred while registering game events.", LogLevel.Error);
-            ctx.Monitor.Log($"RegisterEvents exception type: {ctx.Exception.GetType().FullName} (HResult: 0x{ctx.Exception.HResult:X8})", LogLevel.Trace);
+            ctx.Monitor.Log($"RegisterEvents exception type: {ctx.Exception.GetType().FullName} (HResult: 0x{ctx.Exception.HResult:X8})", LogLevel.Warn);
 
             // Execute rollback safely; don't let rollback failures mask original error.
             SafeUnsubscribe<GameLaunchedEventArgs>(
@@ -427,35 +435,55 @@ namespace LivingRoots.Controllers
 
             if (ctx.Helper != null)
             {
-                SafeUnsubscribe<ButtonPressedEventArgs>(
-                    ctx.Monitor,
-                    h => ctx.Helper.Events.Input.ButtonPressed -= h,
-                    ctx.LocalButtonPressedHandler,
-                    "ButtonPressed");
+                var rollbackInput = ctx.Helper?.Events?.Input;
+                if (rollbackInput != null)
+                {
+                    SafeUnsubscribe<ButtonPressedEventArgs>(
+                        ctx.Monitor,
+                        h => rollbackInput.ButtonPressed -= h,
+                        ctx.LocalButtonPressedHandler,
+                        "ButtonPressed");
+                }
 
-                SafeUnsubscribe<RenderedWorldEventArgs>(
-                    ctx.Monitor,
-                    h => ctx.Helper.Events.Display.RenderedWorld -= h,
-                    ctx.LocalRenderedWorldHandler,
-                    "RenderedWorld");
+                var rollbackDisplay = ctx.Helper?.Events?.Display;
+                if (rollbackDisplay != null)
+                {
+                    SafeUnsubscribe<RenderedWorldEventArgs>(
+                        ctx.Monitor,
+                        h => rollbackDisplay.RenderedWorld -= h,
+                        ctx.LocalRenderedWorldHandler,
+                        "RenderedWorld");
+                }
 
-                SafeUnsubscribe<ButtonReleasedEventArgs>(
-                    ctx.Monitor,
-                    h => ctx.Helper.Events.Input.ButtonReleased -= h,
-                    ctx.LocalButtonReleasedHandler,
-                    "ButtonReleased");
+                var rollbackInput2 = ctx.Helper?.Events?.Input;
+                if (rollbackInput2 != null)
+                {
+                    SafeUnsubscribe<ButtonReleasedEventArgs>(
+                        ctx.Monitor,
+                        h => rollbackInput2.ButtonReleased -= h,
+                        ctx.LocalButtonReleasedHandler,
+                        "ButtonReleased");
+                }
 
-                SafeUnsubscribe<MenuChangedEventArgs>(
-                    ctx.Monitor,
-                    h => ctx.Helper.Events.Display.MenuChanged -= h,
-                    ctx.LocalMenuChangedHandler,
-                    "MenuChanged");
+                var rollbackDisplay2 = ctx.Helper?.Events?.Display;
+                if (rollbackDisplay2 != null)
+                {
+                    SafeUnsubscribe<MenuChangedEventArgs>(
+                        ctx.Monitor,
+                        h => rollbackDisplay2.MenuChanged -= h,
+                        ctx.LocalMenuChangedHandler,
+                        "MenuChanged");
+                }
 
-                SafeUnsubscribe<RenderedEventArgs>(
-                    ctx.Monitor,
-                    h => ctx.Helper.Events.Display.Rendered -= h,
-                    ctx.LocalRenderedHandler,
-                    "Rendered");
+                var rollbackDisplay3 = ctx.Helper?.Events?.Display;
+                if (rollbackDisplay3 != null)
+                {
+                    SafeUnsubscribe<RenderedEventArgs>(
+                        ctx.Monitor,
+                        h => rollbackDisplay3.Rendered -= h,
+                        ctx.LocalRenderedHandler,
+                        "Rendered");
+                }
 
                 // T100 (FR-002): detach the
                 // world object-list handler the
@@ -468,7 +496,7 @@ namespace LivingRoots.Controllers
                 // a null handler is a no-op
                 // (SafeUnsubscribe treats a null
                 // handler as nothing to detach).
-                var rollbackWorldEvents = ctx.Helper.Events?.World;
+                var rollbackWorldEvents = ctx.Helper?.Events?.World;
                 if (rollbackWorldEvents != null)
                 {
                     SafeUnsubscribe<ObjectListChangedEventArgs>(

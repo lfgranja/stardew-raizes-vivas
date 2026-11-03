@@ -163,6 +163,31 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
+        public void RegisterEvents_WithNullInputEvents_DoesNotThrow()
+        {
+            // Arrange
+            // Regression for gate3-event-registration-error: Input events may be null in
+            // headless smoke environments. RegisterEvents must not throw (NullReferenceException).
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockDisplayEvents = new Mock<IDisplayEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+
+            var mockEvents = new Mock<IModEvents>();
+            mockEvents.Setup(x => x.GameLoop).Returns(mockGameLoopEvents.Object);
+            mockEvents.Setup(x => x.Input).Returns((IInputEvents)null!);
+            mockEvents.Setup(x => x.Display).Returns(mockDisplayEvents.Object);
+
+            _mockHelper.Setup(x => x.Events).Returns(mockEvents.Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object);
+
+            // Act & Assert - Should not throw when Input events are null
+            var ex = Record.Exception(() => controller.RegisterEvents());
+            Assert.Null(ex);
+        }
+
+        [Fact]
         public async System.Threading.Tasks.Task RegisterEvents_IsThreadSafe()
         {
             // Arrange
