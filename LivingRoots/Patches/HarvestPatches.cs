@@ -26,7 +26,7 @@ namespace LivingRoots.Patches
         }
 
         // Typed signature matching Crop.harvest(int xTile, int yTile, HoeDirt soil, JunimoHarvester junimoHarvester, bool isForcedScytheHarvest)
-        public static bool HarvestPrefix(int xTile, int yTile, HoeDirt soil, JunimoHarvester junimoHarvester, bool isForcedScytheHarvest, ref object __state)
+        public static bool Harvest_Prefix(int xTile, int yTile, HoeDirt soil, JunimoHarvester junimoHarvester, bool isForcedScytheHarvest, ref object __state)
         {
             __state = true;
             try
@@ -46,7 +46,7 @@ namespace LivingRoots.Patches
             return true;
         }
 
-        public static void HarvestPostfix(int xTile, int yTile, HoeDirt soil, JunimoHarvester junimoHarvester, bool isForcedScytheHarvest, bool __result, object __state)
+        public static void Harvest_Postfix(int xTile, int yTile, HoeDirt soil, JunimoHarvester junimoHarvester, bool isForcedScytheHarvest, bool __result, object __state)
         {
             try
             {
@@ -335,14 +335,14 @@ namespace LivingRoots.Patches
 
                 // Feedback resolution (B1/B2 conditionality)
                 var feedback = service.ResolveFeedback(decision, enhancedQualityOccurred, extraHarvestOccurred);
-                if (feedback != HarvestFeedback.None && monitor != null)
+                if (feedback != HarvestFeedbackFlags.None && monitor != null)
                 {
                     monitor.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Living Roots harvest feedback: {0}", feedback), LogLevel.Trace);
                 }
 
                 // Drive feedback broadcast (contract §6): shared outcomes broadcast
                 // to all players; local-only input stays on the triggering client.
-                if (feedback != HarvestFeedback.None)
+                if (feedback != HarvestFeedbackFlags.None)
                 {
                     try
                     {
@@ -354,11 +354,11 @@ namespace LivingRoots.Patches
 
                         // Shared (broadcast) outcome: play sound + broadcast sprites (host-only).
                         string? soundName = null;
-                        if (feedback.HasFlag(HarvestFeedback.Poor))
+                        if (feedback.HasFlag(HarvestFeedbackFlags.Poor))
                         {
                             soundName = "harvest";
                         }
-                        else if (feedback.HasFlag(HarvestFeedback.LivingQuality) || feedback.HasFlag(HarvestFeedback.ExtraHarvest))
+                        else if (feedback.HasFlag(HarvestFeedbackFlags.LivingQuality) || feedback.HasFlag(HarvestFeedbackFlags.ExtraHarvest))
                         {
                             soundName = "newRecipe";
                         }
@@ -388,7 +388,7 @@ namespace LivingRoots.Patches
                                     {
                                         var sprites = new List<TemporaryAnimatedSprite>();
                                         var worldPosition = new Vector2(xTile * (float)ModConstants.TileSize + 32f, yTile * (float)ModConstants.TileSize);
-                                        if (feedback.HasFlag(HarvestFeedback.Poor))
+                                        if (feedback.HasFlag(HarvestFeedbackFlags.Poor))
                                         {
                                             var poorSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
                                             poorSprite.text = "Soil too poor for quality crops";
@@ -397,7 +397,7 @@ namespace LivingRoots.Patches
                                             poorSprite.motion = new Vector2(0, -0.5f);
                                             sprites.Add(poorSprite);
                                         }
-                                        if (feedback.HasFlag(HarvestFeedback.LivingQuality))
+                                        if (feedback.HasFlag(HarvestFeedbackFlags.LivingQuality))
                                         {
                                             var livingSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
                                             livingSprite.text = "Living Soil";
@@ -406,7 +406,7 @@ namespace LivingRoots.Patches
                                             livingSprite.motion = new Vector2(0, -0.5f);
                                             sprites.Add(livingSprite);
                                         }
-                                        if (feedback.HasFlag(HarvestFeedback.ExtraHarvest))
+                                        if (feedback.HasFlag(HarvestFeedbackFlags.ExtraHarvest))
                                         {
                                             var extraSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
                                             extraSprite.text = "Extra harvest!";

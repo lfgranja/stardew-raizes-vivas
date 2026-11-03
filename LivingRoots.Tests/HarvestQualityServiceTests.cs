@@ -101,7 +101,7 @@ namespace LivingRoots.Tests
             var inputs = new HarvestQualityInputs { FarmingLevel = 5 };
             var decision = _service.Decide(20.0f, inputs);
             var flags = _service.ResolveFeedback(decision, false, false);
-            Assert.True(flags.HasFlag(HarvestFeedback.Poor));
+            Assert.True(flags.HasFlag(HarvestFeedbackFlags.Poor));
         }
 
         [Fact]
@@ -110,11 +110,11 @@ namespace LivingRoots.Tests
             var inputs = new HarvestQualityInputs { FarmingLevel = 10 };
             var decision = _service.Decide(80.0f, inputs);
             var flags1 = _service.ResolveFeedback(decision, true, false);
-            Assert.True(flags1.HasFlag(HarvestFeedback.LivingQuality));
+            Assert.True(flags1.HasFlag(HarvestFeedbackFlags.LivingQuality));
             var flags2 = _service.ResolveFeedback(decision, false, true);
-            Assert.True(flags2.HasFlag(HarvestFeedback.LivingQuality));
+            Assert.True(flags2.HasFlag(HarvestFeedbackFlags.LivingQuality));
             var flags3 = _service.ResolveFeedback(decision, false, false);
-            Assert.False(flags3.HasFlag(HarvestFeedback.LivingQuality));
+            Assert.False(flags3.HasFlag(HarvestFeedbackFlags.LivingQuality));
         }
 
         [Fact]
@@ -123,8 +123,8 @@ namespace LivingRoots.Tests
             var inputs = new HarvestQualityInputs { FarmingLevel = 10 };
             var decision = _service.Decide(80.0f, inputs);
             var flags = _service.ResolveFeedback(decision, true, true);
-            Assert.True(flags.HasFlag(HarvestFeedback.LivingQuality));
-            Assert.True(flags.HasFlag(HarvestFeedback.ExtraHarvest));
+            Assert.True(flags.HasFlag(HarvestFeedbackFlags.LivingQuality));
+            Assert.True(flags.HasFlag(HarvestFeedbackFlags.ExtraHarvest));
         }
 
         [Fact]
@@ -133,7 +133,7 @@ namespace LivingRoots.Tests
             var inputs = new HarvestQualityInputs { FarmingLevel = 10 };
             var decision = _service.Decide(50.0f, inputs);
             var flags = _service.ResolveFeedback(decision, false, false);
-            Assert.Equal(HarvestFeedback.None, flags);
+            Assert.Equal(HarvestFeedbackFlags.None, flags);
         }
 
         [Fact]

@@ -12,7 +12,9 @@ namespace LivingRoots.Domain
     }
 
     [Flags]
-    public enum HarvestFeedback
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("SonarAnalyzer.CSharp", "S2344:Enumeration type name should not end with 'Flags' or 'Enum'", Justification = "Contract-aligned name required by specs/015 (HarvestFeedbackFlags).")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "Contract-aligned name required by specs/015 (HarvestFeedbackFlags).")]
+    public enum HarvestFeedbackFlags
     {
         None = 0,
         Poor = 1 << 0,
