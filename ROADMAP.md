@@ -522,3 +522,82 @@ Secondary quick wins (low effort, high leverage):
 - **Honesty level**: smoke-level (launch only, not full 3-signal Gate 3)
 - **Claim**: The mod loads under SMAPI 4.5.2 + Stardew 1.6.15 with Harmony patch registered (warning "Patched game code"). Full 3-signal Gate 3 (observation + save diff + SMAPI log) and multiplayer verification (D1) still require manual play or the headless runner (spec 010, not started). No "verified" claim is made for harvest-quality effects.
 <!-- GATE3:END -->
+
+---
+
+## Progresso consolidado — 2026-11-03 (pós-merge PR #668 + pesquisa web)
+
+### Quanto do caminho já percorremos (verificado)
+
+**Código/testes (verificado por build + testes nesta sessão):**
+- ✅ Build Release: 0 erros, 0 warnings (com GamePath válido).
+- ✅ Testes: **1582 aprovados / 0 falhas / 4 ignorados** (`dotnet test -c Release`).
+- ✅ Format gate: clean.
+- ✅ Núcleo persistente de solo (`SoilHealthService`, `ModDataService`, sanitização, cache esparso).
+- ✅ Composting loop (bin → 2 dias → composto → +15, clamped) — spec 004.
+- ✅ Mulch (7 dias, decay skip, overlay tint, host-authoritative) — spec 013.
+- ✅ Growth modifier (health → growth speed) — spec 005.
+- ✅ Soil decay sazonal (greenhouse exempt).
+- ✅ Seam de qualidade (`HarvestQualityService`, 17 testes) + patch Harmony + wiring — specs 014/015 (infraestrutura).
+- ✅ DDD, segurança, concorrência, quality gate local, smoke launch (mod carrega no SMAPI).
+- ✅ UI/visualização reativa (overlay/tooltip/hoe feedback).
+
+**Verificado in-game (Gate 3):** ❌ Ainda 0 runs completos (apenas smoke de carregamento). Gate 3 multi-sinal pendente.
+
+**Roadmap items shipped:** 3 de 21 features nomeadas (composting, mulch, soil-health→crop-growth) + 2 promessas de core (soil decay, growth driver) + seam de harvest-quality (infra apenas).
+
+**Não implementado:** 18 de 21 features nomeadas + 7 de 13 promessas do core (qualidade de colheita real, Joja/monocultura, heirloom, mid/end-game, Elena, multiplayer ao vivo).
+
+### O que ainda falta (resumo executivo)
+
+1. Completar integração harvest-quality (feedback sprites/SFX, extra-harvest gated em SC-008) — specs 014/015.
+2. Rodar Gate 3 (in-game, 3 sinais) — desbloqueia "verificado" para features shipped.
+3. Reconciliar band scale (3 doc-only tasks T117–T119).
+4. Fechar bug do test harness (hang em test-preflight/integration/logparse).
+5. Joja Fertilizer (fecha loop "destrói").
+6. Heirloom pipeline → Three Sisters, Green Manure, Rotation Journal.
+7. Multiplayer ao vivo (D1).
+8. Mid-game (6) e End-game (6) — 0 de 12 iniciados.
+9. Fechar specs 001 (visualização), 010 (headless runner), 011 (quality gate CI).
+
+### Pesquisa de mercado / concorrência (2026)
+
+- Concorrente direto: **ReGen Valley** (Nexus, 2025) — soil health farm-wide, cover crops, grazing, quality por média de fazenda (75+/90+).  
+- Nosso diferencial: **coerência agroecológica**, **compostagem composta**, **framing educativo**, **multiplayer desde o dia 1**, **qualidade per-tile com boost determinístico + feedback transient** (seam único).  
+- Tendência 2026: mods cozy/regenerativos e quality-of-life; comunidade Stardew ativa (Nexus/CurseForge/Steam discussions).  
+- Mercado valida "qualidade dirigida por skill/solo" (Crop Quality, Simple Skills Extended), mas ninguém entrega per-tile com boost determinístico + feedback.
+
+### Marketing e monetização
+
+- **Monetização:** mod gratuito (MIT), sem monetização, sem gacha, sem dual-currency (conforme OBJETIVO.md).  
+- **Crescimento:** distribuição via Nexus Mods/GitHub Releases, showcase em YouTube/Reddit/forums, comunidade co-op (casais/educadores).  
+- **Tip jar opcional:** Ko-fi/Patreon como apoio voluntário (padrão da comunidade), não receita obrigatória.  
+- **Estratégia:** foco em confiança/qualidade, docs claros, smoke verification, e demonstração de valor (Living Soil paga na colheita).  
+- **Não recomendado:** paywalls, DLC, ou monetização direta; manter gratuito para maximizar adoção e confiança.
+
+### Próximo passo — 80/20 (atualizado 2026-11-03)
+
+**Recomendação:** `/speckit.implement` continuando specs 014/015 (harvest-quality) + `/speckit.converge`, após corrigir o bug do harness.  
+Justificativa: infraestrutura cara já mergeada; custo marginal é integração + verificação; único item que faz Living Soil (71–100%) pagar na colheita.
+
+**Pré-requisitos (≤1h, sem código novo):**
+1. Rodar Gate 3 (in-game, 3 sinais).
+2. Reconciliar band scale (T117–T119, doc-only).
+3. Fechar hang do harness (bug assess/fix).
+
+**Alternativa:** `/speckit.specify` para "Joja Fertilizer" (boost agora, −5% saúde) — fecha o "o que destrói", custo baixo.
+
+**Não recomendado agora:** Elena NPC, Heirloom pipeline, Mid/End-game (alto custo).
+
+### Custo vs. impacto (ranking 80/20)
+
+| Item | Custo | Impacto | Veredito |
+|---|---|---|---|
+| Completar harvest-quality (014/015) | Médio | Living Soil paga na colheita | **80/20 principal** |
+| Rodar Gate 3 (in-game) | Baixo | Desbloqueia "verificado" | **Fazer já** |
+| Reconciliar band scale (T117–T119) | Baixo (doc-only) | Convergência spec 005 | **Fazer já** |
+| Fechar hang do harness | Médio | Destrava CI local | **Fazer já** |
+| Joja Fertilizer | Baixo | Fecha loop "destrói" | **Próximo após harvest-quality** |
+| Heirloom pipeline | Alto | Desbloqueia 3 features | **Depois** |
+| Elena + Welcome Kit | Muito alto | Conteúdo/NPC | **Por último** |
+| Mid/End-game (12 features) | Muito alto | Conteúdo | **Por último** |
