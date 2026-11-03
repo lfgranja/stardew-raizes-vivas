@@ -19,6 +19,69 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 > Spec 005 still has 3 doc-only convergence tasks (T117–T119). Gate 3 (in-game SMAPI session) is
 > still pending. Spec 010 (headless runner) not started.
 
+## Progresso consolidado — 2026-11-03 (pós-merge PR #667, atualizado com pesquisa web)
+
+### Quanto do caminho já percorremos (verificado)
+
+**Em código/testes (verificado por build + testes anteriores):**
+- ✅ Núcleo persistente de solo (`SoilHealthService`, `ModDataService`, sanitização, cache esparso).
+- ✅ Composting loop (bin → 2 dias → composto → +15, clamped) — spec 004 (57/59).
+- ✅ Mulch (7 dias, decay skip, overlay tint, host-authoritative) — spec 013 (46/48).
+- ✅ Growth modifier (health → growth speed) — spec 005 (143/146).
+- ✅ Soil decay sazonal (greenhouse exempt).
+- ✅ Seam de qualidade (`HarvestQualityService`, 17 testes) + patch Harmony + wiring — specs 014/015 (infra apenas).
+- ✅ DDD, segurança, concorrência, quality gate local.
+- ✅ Smoke validation real no jogo (mod carrega + success marker).
+
+**Verificado in-game:** ❌ 0 runs completos (apenas smoke de carregamento). Gate 3 (multi-sinal) pendente.
+
+**Não implementado:** 19 de 21 features nomeadas + 7 de 13 promessas do core (qualidade de colheita real, Joja/monocultura, heirloom, mid/end-game, Elena, multiplayer live).
+
+### O que ainda falta (resumo executivo)
+
+1. Completar integração harvest-quality (feedback sprites/SFX, extra-harvest gated em SC-008) — specs 014/015.
+2. Rodar Gate 3 (in-game, 3 sinais) — desbloqueia "verificado" para features shipped.
+3. Reconciliar band scale (3 doc-only tasks T117–T119).
+4. Fechar bug do test harness (hang em test-preflight/integration/logparse).
+5. Joja Fertilizer (fecha loop "destrói").
+6. Heirloom pipeline → Three Sisters, Green Manure, Rotation Journal.
+7. Multiplayer ao vivo (D1).
+8. Mid-game (6) e End-game (6) — 0 de 12 iniciados.
+
+### Próximo passo — 80/20 (maior avanço, menor esforço)
+
+**Recomendação: `/speckit.implement` continuando specs 014/015 (harvest-quality) + `/speckit.converge`, após corrigir o bug do harness.**
+
+Justificativa (com pesquisa de mercado 2026):
+- Único item restante que faz Living Soil (71–100%) **pagar na colheita** (qualidade silver/gold/iridium + colheita extra).
+- Infraestrutura cara (Harmony, seam, testes, wiring) já mergeada — custo marginal é integração + verificação.
+- Mercado valida "qualidade dirigida por skill/solo" (Crop Quality, Simple Skills Extended); ninguém entrega per-tile com boost determinístico + feedback.
+- ReGen Valley entrega farm-wide quality a 75+/90+ avg, mas não per-tile com boost determinístico e feedback transient — nosso seam é único.
+
+**Pré-requisitos (≤1h, sem código novo):**
+1. Rodar Gate 3 (in-game, 3 sinais) — desbloqueia "verificado".
+2. Reconciliar band scale (T117–T119, doc-only).
+3. Fechar hang do harness (bug assess/fix).
+
+**Alternativa (se quiser fechar loop destruição primeiro):** `/speckit.specify` para "Joja Fertilizer" (boost agora, −5% saúde) — fecha o "o que destrói", custo baixo, mas não faz Living Soil pagar.
+
+**Não recomendado agora:** Elena NPC (alto custo/conteúdo), Heirloom pipeline (bloqueia 3 features, alto custo), Mid/End-game (0 de 12).
+
+### Custo vs. impacto (ranking 80/20)
+
+| Item | Custo | Impacto | Veredito |
+|---|---|---|---|
+| Completar harvest-quality (014/015) | Médio | Living Soil paga na colheita | **80/20 principal** |
+| Rodar Gate 3 (in-game) | Baixo | Desbloqueia "verificado" | **Fazer já** |
+| Reconciliar band scale (T117–T119) | Baixo (doc-only) | Convergência spec 005 | **Fazer já** |
+| Fechar hang do harness | Médio | Destrava CI local | **Fazer já** |
+| Joja Fertilizer | Baixo | Fecha loop "destrói" | **Próximo após harvest-quality** |
+| Heirloom pipeline | Alto | Desbloqueia 3 features | **Depois** |
+| Elena + Welcome Kit | Muito alto | Conteúdo/NPC | **Por último** |
+| Mid/End-game (12 features) | Muito alto | Conteúdo | **Por último** |
+
+---
+
 ## Where we actually are (verified, not inferred) — atualizado 2026-11-02 (pesquisa de mercado incluída)
 
 | Metric | Value | How verified |
