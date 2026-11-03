@@ -226,6 +226,18 @@ FIXTURE_CASE_LIMIT_SECONDS=240
 
 SUITE_START="$(date +%s)"
 
+# Pre-suite cleanup: reap orphaned smoke-validation/dotnet processes from
+# prior runs (orphaned = parent gone) so they cannot hold build locks or
+# pipes open. Only orphans (PPID 1) are touched, so a concurrently running
+# suite is left alone.
+for _spid in $(ps -eo pid=,ppid=,args= 2>/dev/null | awk -v repo="$PWD" '$2==1 && $0 ~ /smoke-validation\.sh/ && $0 ~ repo {print $1}'); do
+    kill -TERM "$_spid" 2>/dev/null || true
+done
+sleep 1
+for _spid in $(ps -eo pid=,ppid=,args= 2>/dev/null | awk -v repo="$PWD" '$2==1 && $0 ~ /smoke-validation\.sh/ && $0 ~ repo {print $1}'); do
+    kill -KILL "$_spid" 2>/dev/null || true
+done
+
 # The fixture tree is created up front: the cases write their scratch files
 # (the run-log snapshots, the temporary-directory listings) into it.
 fixture_root >/dev/null 2>&1 || true
@@ -329,15 +341,35 @@ run_script_bounded() {
         env_args+=("${env_assignments[@]}")
     fi
 
-    if env "${env_args[@]}" timeout -k 5 "$limit" "$HARNESS_SCRIPT" \
+    if command -v setsid >/dev/null 2>&1; then
+        setsid env "${env_args[@]}" timeout -k 5 "$limit" "$HARNESS_SCRIPT" \
+            "${script_args[@]+"${script_args[@]}"}" >"$out_file" 2>"$err_file" &
+        local _rpid=$!
+        if wait "$_rpid"; then
+            RUN_CODE=0
+        else
+            RUN_CODE=$?
+        fi
+        kill -TERM -- -"$_rpid" 2>/dev/null || true
+        local _i
+        for _i in $(seq 1 20); do
+            kill -0 "$_rpid" 2>/dev/null || break
+            sleep 0.1
+        done
+        kill -KILL -- -"$_rpid" 2>/dev/null || true
+        _reap_tree "$_rpid" TERM
+        sleep 0.2
+        _reap_tree "$_rpid" KILL
+        wait "$_rpid" 2>/dev/null || true
+    elif env "${env_args[@]}" timeout -k 5 "$limit" "$HARNESS_SCRIPT" \
         "${script_args[@]+"${script_args[@]}"}" >"$out_file" 2>"$err_file"; then
         RUN_CODE=0
     else
         RUN_CODE=$?
     fi
 
-    RUN_STDOUT="$(cat -- "$out_file" 2>/dev/null || true)"
-    RUN_STDERR="$(cat -- "$err_file" 2>/dev/null || true)"
+    RUN_STDOUT="$(timeout 5 cat -- "$out_file" 2>/dev/null || true)"
+    RUN_STDERR="$(timeout 5 cat -- "$err_file" 2>/dev/null || true)"
     rm -f -- "$out_file" "$err_file" 2>/dev/null || true
     # RUN_PERFORMED is the harness's own flag: assert_exit reads it to tell
     # "the run failed" from "no run happened yet". This wrapper does not go
@@ -1061,6 +1093,33 @@ kill_stub() {
         fi
     fi
     rm -f -- "$marker" 2>/dev/null || true
+    return 0
+}
+
+# _reap_tree <root-pid> <signal> — send <signal> to the whole process tree
+# rooted at <root-pid>, including descendants that escaped the process group.
+_reap_tree() {
+    local root="${1-}"
+    local sig="${2-TERM}"
+    [[ -n "$root" ]] || return 0
+    local -a queue=("$root") all=()
+    local pid child ppid cpid j
+    while (( ${#queue[@]} > 0 )); do
+        pid="${queue[0]}"
+        queue=("${queue[@]:1}")
+        all+=("$pid")
+        for child in /proc/[0-9]*/stat; do
+            [[ -r "$child" ]] || continue
+            ppid="$(awk '{print $4}' "$child" 2>/dev/null || true)"
+            if [[ "$ppid" == "$pid" ]]; then
+                cpid="$(basename -- "$(dirname -- "$child")")"
+                queue+=("$cpid")
+            fi
+        done
+    done
+    for ((j = ${#all[@]} - 1; j >= 0; j--)); do
+        kill "-$sig" "${all[$j]}" 2>/dev/null || true
+    done
     return 0
 }
 
@@ -1809,10 +1868,12 @@ else
     kill_lock_holders "$tc5_runtime_lock"
     kill_lock_holders "$tc5_state_lock"
 
-    kill -TERM "$tc5_lock_a" 2>/dev/null || true
-    kill -TERM "$tc5_lock_b" 2>/dev/null || true
-    wait "$tc5_lock_a" 2>/dev/null || true
-    wait "$tc5_lock_b" 2>/dev/null || true
+    # The flock wrappers do not forward signals to their `sleep` children, so a
+    # TERM alone leaves them alive and `wait` blocks for the full 300 s. Reap
+    # the whole tree with KILL and do not block on the wrappers.
+    _reap_tree "$tc5_lock_a" KILL
+    _reap_tree "$tc5_lock_b" KILL
+    kill -KILL "$tc5_lock_a" "$tc5_lock_b" 2>/dev/null || true
 fi
 
 # ---------------------------------------------------------------------------

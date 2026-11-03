@@ -485,6 +485,41 @@ _sandbox_config_home() {
     printf '%s' "$HARNESS_XDG_CONFIG_HOME"
 }
 
+# _reap_descendants <root-pid> <signal> — send <signal> to every process in
+# the tree rooted at <root-pid>, including those that escaped the process
+# group (dotnet/MSBuild/VBCSCompiler/Xvfb). Best effort, never fatal.
+_reap_descendants() {
+    local root="${1-}"
+    local sig="${2-TERM}"
+    [[ -n "$root" ]] || return 0
+    local -a queue=("$root")
+    local -a all=()
+    local pid child
+    while (( ${#queue[@]} > 0 )); do
+        pid="${queue[0]}"
+        queue=("${queue[@]:1}")
+        all+=("$pid")
+        # Enumerate children from /proc to avoid relying on pgrep.
+        for child in /proc/[0-9]*/stat; do
+            [[ -r "$child" ]] || continue
+            # ppid is the 4th field.
+            local ppid
+            ppid="$(awk '{print $4}' "$child" 2>/dev/null || true)"
+            if [[ "$ppid" == "$pid" ]]; then
+                local cpid
+                cpid="$(basename -- "$(dirname -- "$child")")"
+                queue+=("$cpid")
+            fi
+        done
+    done
+    # Signal leaves (reverse) so parents are signalled last.
+    local i
+    for ((i = ${#all[@]} - 1; i >= 0; i--)); do
+        kill "-${sig}" "${all[$i]}" 2>/dev/null || true
+    done
+    return 0
+}
+
 # _run_script_impl [args...] — run the script under test with the sanitised
 # environment plus the assignments collected by run_script_env. Captures stdout,
 # stderr and the exit status; never lets the script's output reach the test's
@@ -553,17 +588,19 @@ _run_script_impl() {
             else
                 RUN_CODE=$?
             fi
-            # Explicit group reap as a backstop.
-            if kill -0 "$runner_pid" 2>/dev/null; then
-                kill -TERM -- -"$runner_pid" 2>/dev/null || true
-                local _i
-                for _i in $(seq 1 50); do
-                    kill -0 "$runner_pid" 2>/dev/null || break
-                    sleep 0.1
-                done
-                kill -KILL -- -"$runner_pid" 2>/dev/null || true
-                wait "$runner_pid" 2>/dev/null || true
-            fi
+            # Explicit group reap as a backstop: signal the whole process
+            # group, then reap escaped grandchildren by ancestry.
+            kill -TERM -- -"$runner_pid" 2>/dev/null || true
+            local _i
+            for _i in $(seq 1 50); do
+                kill -0 "$runner_pid" 2>/dev/null || break
+                sleep 0.1
+            done
+            kill -KILL -- -"$runner_pid" 2>/dev/null || true
+            _reap_descendants "$runner_pid" TERM
+            sleep 0.2
+            _reap_descendants "$runner_pid" KILL
+            wait "$runner_pid" 2>/dev/null || true
         elif env "${env_args[@]}" timeout --kill-after=5 "$RUN_DEADLINE_SECS" \
             "$HARNESS_SCRIPT" "$@" >"$out_file" 2>"$err_file"; then
             RUN_CODE=0
