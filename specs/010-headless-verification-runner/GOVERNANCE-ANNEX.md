@@ -219,3 +219,7 @@ The machine-readable mirror of this table is `specs/010-headless-verification-ru
 ## Change Control
 
 Changes to this annex require a reviewed PR approved by the accountable owner. The review record above is append-only. If a requirement gains or loses an owner, the R/A/C/I table is updated in the same PR that changes the requirement.
+
+## Phase 6 Review Record (2026-11-03)
+
+Final review during Phase 6 polish: CI control matrix, runner-group split, cache-mode settings, and public-hosted dormancy confirmed via `scripts/tests/test-ci-workflow.sh` (8/8 pass). Deviations: none recorded beyond the MSB4166 build-infrastructure note in `verification/build.log`. Owner: maintainer (lfgranja).

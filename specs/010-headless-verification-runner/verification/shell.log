@@ -1,0 +1,5 @@
+=== bash -n ===
+bash -n exit: 0
+
+=== shellcheck ===
+shellcheck not available

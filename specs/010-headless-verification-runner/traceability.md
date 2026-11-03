@@ -2,7 +2,7 @@
 
 **Feature**: 010-headless-verification-runner
 **Created**: 2026-10-27
-**Updated**: 2026-10-27 (traceability remediation: one row per CHK, explicit `Link status`, normalized C-*/TC-* IDs; artifacts: `.sh` suites, `LivingRoots.Verification.Runner/`, `machine-pass` vs. `verified`)
+**Updated**: 2026-11-03 (Phase 6 polish: implementation complete through US3; red-gate-phase-5.log recorded; verification artifacts under verification/)
 **Purpose**: Link every checklist item (CHK) to its governing requirement, planned test case, and code location. Satisfies C-CON-17, C-CON-21, C-REL-19, C-SCN-06, C-SCN-10, and the traceability items in each checklist.
 
 **Status**: Planned-test matrix. Test-case IDs are planned; code locations name the intended remediated artifacts. Where a row has an executable test, it also names the `.sh` suite, C# test file, or manual verification artifact that must exist and pass before the row is satisfied; requirements-quality and documentation rows that have no executable suite say so by naming the reviewed document. This matrix is the contract the implementation must fill in, not an attestation of success.

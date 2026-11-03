@@ -22,11 +22,29 @@ Local (interactive):
 ./scripts/verify-scenario.sh --scenario specs/010-headless-verification-runner/fixtures/valid/compost-growth.scenario.json
 ```
 
+Override game path / skip build:
+
+```bash
+./scripts/verify-scenario.sh --scenario <path> --game-path /path/to/Stardew --skip-build
+```
+
 CI (non-interactive, machine-readable):
 
 ```bash
 ./scripts/verify-scenario.sh --scenario <path> --ci
 ```
+
+## Schema validation (two validators)
+
+```bash
+scripts/tests/lib/schema-validate.sh   # wraps Python jsonschema + ajv-cli
+```
+
+Both validators must agree (accept/reject) per C-SCN-38.
+
+## Verification-only attestation
+
+The runner writes `machine-pass` only. `verified` is a human E attestation (reviewer, date, session) and is never auto-assigned. See `VERIFICATION.md` for the full command/placeholder list.
 
 Common flags:
 

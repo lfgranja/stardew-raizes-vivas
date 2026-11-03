@@ -373,7 +373,7 @@ run_test_file() {
         # it to finish on its own.
         (
             cd -- "${REPO_ROOT}" || exit 127
-            TMPDIR="${tmpdir}" exec bash -- "${test_file}"
+            TMPDIR="${tmpdir}" exec timeout --kill-after=5 300 bash -- "${test_file}"
         ) > "${output_file}" 2>&1 &
         RUNNER_CURRENT_PID="$!"
         RUNNER_CURRENT_OUTPUT="${output_file}"

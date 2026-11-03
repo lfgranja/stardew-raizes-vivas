@@ -223,20 +223,20 @@ Repository root is `/home/luis/development/stardew-raizes-vivas`. Production mod
 
 ### Tests for US3 (write FIRST)
 
-- [ ] T116 [P] [US3] CI-mode tests in `scripts/tests/test-ci-mode.sh`, scaffolded from `scripts/tests/lib/test-suite-template.sh`: `--ci` is non-interactive, same verdict/schema as local, no prompts, stdout/stderr separation, and exit mapping unchanged.
-- [ ] T117 [P] [US3] Reporter tests in `scripts/tests/test-reporters.sh`: JUnit XML with `<skipped>` for quarantine, Allure JSON with `flaky: true`, per-scenario entries preserved, and malformed paths rejected.
-- [ ] T118 [P] [US3] Workflow-contract tests in `scripts/tests/test-ci-workflow.sh`: self-hosted labels, token scoping, `cache-mode`, least privilege, high/low runner group separation, and no invocation on public-hosted PRs (public-hosted dormancy).
-- [ ] T119 [US3] **RED gate (US3)**: run `scripts/tests/test-ci-mode.sh`, `scripts/tests/test-reporters.sh`, and `scripts/tests/test-ci-workflow.sh`; record the failing output in `specs/010-headless-verification-runner/red-gate-phase-5.log`; no US3 implementation may start yet.
+- [X] T116 [P] [US3] CI-mode tests in `scripts/tests/test-ci-mode.sh`, scaffolded from `scripts/tests/lib/test-suite-template.sh`: `--ci` is non-interactive, same verdict/schema as local, no prompts, stdout/stderr separation, and exit mapping unchanged.
+- [X] T117 [P] [US3] Reporter tests in `scripts/tests/test-reporters.sh`: JUnit XML with `<skipped>` for quarantine, Allure JSON with `flaky: true`, per-scenario entries preserved, and malformed paths rejected.
+- [X] T118 [P] [US3] Workflow-contract tests in `scripts/tests/test-ci-workflow.sh`: self-hosted labels, token scoping, `cache-mode`, least privilege, high/low runner group separation, and no invocation on public-hosted PRs (public-hosted dormancy).
+- [X] T119 [US3] **RED gate (US3)**: run `scripts/tests/test-ci-mode.sh`, `scripts/tests/test-reporters.sh`, and `scripts/tests/test-ci-workflow.sh`; record the failing output in `specs/010-headless-verification-runner/red-gate-phase-5.log`; no US3 implementation may start yet.
 
 ### Implementation for US3
 
-- [ ] T120 [US3] Implement `scripts/lib/ci.sh` and wire `--ci` into `scripts/verify-scenario.sh`: non-interactive, machine-readable summary, no behavior change to verdict/security. **Serialized after T099 and US2 T115**; the same single orchestrator owner as T099.
-- [ ] T121 [US3] Implement `scripts/lib/reporters.sh`: JUnit XML + Allure JSON writers, `<skipped>` for quarantine, `flaky` metadata, and per-scenario entries.
-- [ ] T122 [US3] Scaffold `.github/workflows/verify-scenario.yml` from the existing `.github/workflows/build_and_test.yml` substrate, then scope it to a self-hosted runner, least-privilege `GITHUB_TOKEN`, `cache-mode`, token from secrets, bundle upload + durable-store export, and a public-hosted guard.
-- [ ] T122b [US3] Create `.github/workflows/security-aggregation.yml`: daily `schedule` plus `workflow_dispatch`; `permissions: contents: read` and `issues: write`; fail closed when `vars.RUNNER_AUDIT_STORE` is unset; query the trailing 24 h for `401`/`403` events; at ≥ 3 occurrences open or update a single issue.
-- [ ] T122c [US3] Create `.github/CODEOWNERS` assigning `@lfgranja` as owner of `specs/010-headless-verification-runner/`, `scripts/verify-scenario.sh`, `scripts/verify-evidence-bundle.sh`, `LivingRoots.Verification/`, and `LivingRoots/Domain/Interfaces/ILivingRootsModApi.cs`.
-- [ ] T123 [US3] Update `specs/010-headless-verification-runner/GOVERNANCE-ANNEX.md` with the CI control matrix, runner-group split, cache-mode settings, and public-hosted dormancy referenced by the workflow.
-- [ ] T124 [US3] **US3 checkpoint**: run `scripts/tests/test-ci-mode.sh` and `scripts/tests/test-reporters.sh` with stubs; assert local/CI verdict parity and that `scripts/tests/test-ci-workflow.sh` keeps public-hosted CI dormant.
+- [X] T120 [US3] Implement `scripts/lib/ci.sh` and wire `--ci` into `scripts/verify-scenario.sh`: non-interactive, machine-readable summary, no behavior change to verdict/security. **Serialized after T099 and US2 T115**; the same single orchestrator owner as T099.
+- [X] T121 [US3] Implement `scripts/lib/reporters.sh`: JUnit XML + Allure JSON writers, `<skipped>` for quarantine, `flaky` metadata, and per-scenario entries.
+- [X] T122 [US3] Scaffold `.github/workflows/verify-scenario.yml` from the existing `.github/workflows/build_and_test.yml` substrate, then scope it to a self-hosted runner, least-privilege `GITHUB_TOKEN`, `cache-mode`, token from secrets, bundle upload + durable-store export, and a public-hosted guard.
+- [X] T122b [US3] Create `.github/workflows/security-aggregation.yml`: daily `schedule` plus `workflow_dispatch`; `permissions: contents: read` and `issues: write`; fail closed when `vars.RUNNER_AUDIT_STORE` is unset; query the trailing 24 h for `401`/`403` events; at ≥ 3 occurrences open or update a single issue.
+- [X] T122c [US3] Create `.github/CODEOWNERS` assigning `@lfgranja` as owner of `specs/010-headless-verification-runner/`, `scripts/verify-scenario.sh`, `scripts/verify-evidence-bundle.sh`, `LivingRoots.Verification/`, and `LivingRoots/Domain/Interfaces/ILivingRootsModApi.cs`.
+- [X] T123 [US3] Update `specs/010-headless-verification-runner/GOVERNANCE-ANNEX.md` with the CI control matrix, runner-group split, cache-mode settings, and public-hosted dormancy referenced by the workflow.
+- [X] T124 [US3] **US3 checkpoint**: run `scripts/tests/test-ci-mode.sh` and `scripts/tests/test-reporters.sh` with stubs; assert local/CI verdict parity and that `scripts/tests/test-ci-workflow.sh` keeps public-hosted CI dormant.
 
 **Checkpoint**: All three user stories work independently, with the single orchestrator edited serially.
 
@@ -246,17 +246,17 @@ Repository root is `/home/luis/development/stardew-raizes-vivas`. Production mod
 
 **Purpose**: Documentation, hardening evidence, and the authoritative verification pass. Implementation agents must not claim completion before T131–T150. Negative/security test **authoring** lives in the owning phases (T028, T034b, T034c, T065, T067/T068, T077, T082, T106, T125b); Phase 6 only executes those suites and records the RED/green path.
 
-- [ ] T125 [P] Update `specs/010-headless-verification-runner/quickstart.md` with the final command lines, the two-validator schema check, `--game-path`/`--skip-build` documentation, and the verification-only attestation note; record commands and placeholders only, not pre-stated actuals.
-- [ ] T125b [P] Author `scripts/tests/test-doc-links.sh`: assert `VERIFICATION_PROTOCOL.md` §3 and `specs/009-end-to-end-game-verification/checklists/gate3-verification-contract.md` exist, that the required anchors are present, and that both link back to `specs/010-headless-verification-runner/spec.md` FR-021; drift exits `21`.
-- [ ] T126 [P] Update `specs/010-headless-verification-runner/traceability.md` from planned to actual test case IDs and code paths; keep one row per CHK and per SC.
-- [ ] T127 [P] Update `specs/010-headless-verification-runner/CONCURRENCY.md` §9 review date and confirm every primitive, including process-group reaping and the XDG probe, has a row.
-- [ ] T128 [P] Update `specs/010-headless-verification-runner/GOVERNANCE-ANNEX.md` with the final review record and any deviations found during verification.
-- [ ] T129 [P] Create `specs/010-headless-verification-runner/VERIFICATION.md` with the exact verification commands and **placeholders only** for outputs; actuals are recorded by T131–T147, never pre-stated here.
+- [X] T125 [P] Update `specs/010-headless-verification-runner/quickstart.md` with the final command lines, the two-validator schema check, `--game-path`/`--skip-build` documentation, and the verification-only attestation note; record commands and placeholders only, not pre-stated actuals.
+- [X] T125b [P] Author `scripts/tests/test-doc-links.sh`: assert `VERIFICATION_PROTOCOL.md` §3 and `specs/009-end-to-end-game-verification/checklists/gate3-verification-contract.md` exist, that the required anchors are present, and that both link back to `specs/010-headless-verification-runner/spec.md` FR-021; drift exits `21`.
+- [X] T126 [P] Update `specs/010-headless-verification-runner/traceability.md` from planned to actual test case IDs and code paths; keep one row per CHK and per SC.
+- [X] T127 [P] Update `specs/010-headless-verification-runner/CONCURRENCY.md` §9 review date and confirm every primitive, including process-group reaping and the XDG probe, has a row.
+- [X] T128 [P] Update `specs/010-headless-verification-runner/GOVERNANCE-ANNEX.md` with the final review record and any deviations found during verification.
+- [X] T129 [P] Create `specs/010-headless-verification-runner/VERIFICATION.md` with the exact verification commands and **placeholders only** for outputs; actuals are recorded by T131–T147, never pre-stated here.
 - [ ] T130 [P] Record the RED-gate evidence in `specs/010-headless-verification-runner/red-gate-phase-2.log`, `specs/010-headless-verification-runner/red-gate-phase-3.log`, `specs/010-headless-verification-runner/red-gate-phase-4.log`, and `specs/010-headless-verification-runner/red-gate-phase-5.log`; each log must show the intended failing assertion, not a missing-file error.
 - [ ] T131 **Verification — build**: run `dotnet build Stardew-LivingRoots.sln --configuration Release` and record the exact per-project output in `specs/010-headless-verification-runner/verification/build.log`; if `STARDEW_GAME_PATH` or a required assembly is missing, record `BLOCKED` with the exact missing prerequisite. `BLOCKED` is not success and must not be reported as a green Gate 1.
 - [ ] T132 **Verification — tests**: run `dotnet test Stardew-LivingRoots.sln --no-build --verbosity normal` plus `scripts/tests/run-all.sh`; record per-suite counts in `specs/010-headless-verification-runner/verification/test.log`; if the build prerequisite is missing, record `BLOCKED` with the exact missing `STARDEW_GAME_PATH`/assembly. `BLOCKED` is not success.
-- [ ] T133 **Verification — formatting**: run `dotnet format Stardew-LivingRoots.sln --verify-no-changes`; record the result in `specs/010-headless-verification-runner/verification/format.log`; if the solution cannot be loaded because the game prerequisite is missing, record `BLOCKED` with the exact missing item. `BLOCKED` is not success.
-- [ ] T134 **Verification — shell**: run `bash -n` on every `scripts/**/*.sh` and `shellcheck` where available; record the result in `specs/010-headless-verification-runner/verification/shell.log`.
+- [X] T133 **Verification — formatting**: run `dotnet format Stardew-LivingRoots.sln --verify-no-changes`; record the result in `specs/010-headless-verification-runner/verification/format.log`; if the solution cannot be loaded because the game prerequisite is missing, record `BLOCKED` with the exact missing item. `BLOCKED` is not success.
+- [X] T134 **Verification — shell**: run `bash -n` on every `scripts/**/*.sh` and `shellcheck` where available; record the result in `specs/010-headless-verification-runner/verification/shell.log`.
 - [ ] T135 **Verification — schema**: run `scripts/tests/lib/schema-validate.sh` with Python `jsonschema` and `ajv-cli`; record 28/28 valid, 14/14 invalid with one error, 2/2 runner-invalid schema-accepted, identical outcomes, and `evidence-bundle.schema.json` validation in `specs/010-headless-verification-runner/verification/schema.log`.
 - [ ] T136 **Verification — launch-free e2e**: run all twelve VS cases — VS-01 through VS-10 plus **VS-09b** and **VS-09c** — from `quickstart.md` against the fake host; record each exit code and bundle verdict in `specs/010-headless-verification-runner/verification/launch-free.log`.
 - [ ] T137 **Verification — real-host e2e**: require `gamepath.lock.json` to be populated with the real release ID, asset ID, asset name, archive SHA-256, and per-file digests (no placeholder, no fail-closed stub) before the run; then run VS-01 on a host with `STARDEW_GAME_PATH` and a valid cache/token; capture the SMAPI log, bundle, and `test.md` result in `specs/010-headless-verification-runner/verification/real-host.log`. If no host is available, record `BLOCKED` with the exact missing `STARDEW_GAME_PATH`/assembly; do not claim success.
@@ -522,3 +522,13 @@ These are quoted from `data-model.md` and `contracts/scenario.schema.json`; T060
 ## Phase 13: Convergence (appended)
 
 - [X] T184 Fix syntax error in `scripts/tests/test-logparse.sh` (stray `;;` at line ~800) so the shell suite passes `bash -n` and the test file runs per T134 (partial)
+
+## Phase 14: Convergence (appended)
+
+- [X] T185 Fix `scripts/tests/spec-consistency.py` `task_line()` regex to accept uppercase `[X]` checked boxes (currently only `[ x]`), which falsely reports 43 completed tasks as missing; patched run passes 261/261. per C-SCN-36 (partial)
+- [X] T186 Fix `scripts/lib/preflight.sh` `--game-path` handling per FR-001: an invalid path under `--no-acquire` must exit `9` (missing dependency), not `14` (usage); a valid path must not yield `14`. Evidence: `test-game-path.sh` reports both failures. per FR-001 (partial)
+- [X] T187 Fix `scripts/verify-scenario.sh` CLI parsing per T063: `--override` allow-list, `--scenario <dir>`, and `--scenario-glob` must not be rejected as usage errors. Evidence: `test-verify-cli.sh` reports three `not ok` usage-error cases. per T063 (partial)
+- [X] T188 Reconcile `scripts/tests/run-all.sh` discovery with the T061c/T040 contract (empty directory fails clearly, no duplicate execution, explicit file/path selection honored) and correct the argument order in `scripts/tests/test-runall.sh`. Evidence: `test-runall.sh` reports both assertions failing. per T040 (partial)
+- [ ] T189 Fix `scripts/tests/test-preflight.sh` T128 hung-script bound so the suite terminates within its time budget instead of hanging. per T034 (partial)
+- [ ] T190 Investigate and resolve the hang in `scripts/tests/test-integration.sh` (spec 008 smoke lifecycle). per T034 (partial)
+- [ ] T191 Resolve the intermittent hang/flakiness in `scripts/tests/test-logparse.sh` so it runs within budget. per T134 (partial)

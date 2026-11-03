@@ -350,7 +350,7 @@ tasks = read(SPEC / "tasks.md")
 
 
 def task_line(task_id: str) -> str:
-    match = re.search(rf"^- \[[ x]\] {re.escape(task_id)}\b.*$", tasks, re.M)
+    match = re.search(rf"^- \[[ xX]\] {re.escape(task_id)}\b.*$", tasks, re.M)
     return match.group(0) if match else ""
 
 

@@ -10,7 +10,7 @@ set -Eeuo pipefail
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/lib/harness.sh"
 
 # Baseline assertion: run-all.sh exists and is executable.
-assert_file_exists "run-all.sh exists" "scripts/tests/run-all.sh"
-assert_file_mode "run-all.sh is executable" "scripts/tests/run-all.sh" "111"
+assert_file_exists "scripts/tests/run-all.sh" "run-all.sh exists"
+assert_file_mode "scripts/tests/run-all.sh" "755" "run-all.sh is executable"
 
 finish_tests

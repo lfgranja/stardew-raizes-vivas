@@ -508,3 +508,9 @@ Thumbs.db
 .opencode/
 /tmp/opencode/
 
+
+# Acquired game-path cache marker
+.acquired.json
+
+# CodeGraph local index
+.codegraph/

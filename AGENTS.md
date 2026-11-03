@@ -1,161 +1,81 @@
-# LIVING ROOTS — PROJECT KNOWLEDGE BASE
+# Living Roots — Agent Guide
 
-**Generated:** 2026-11-02
-**Commit:** 379b3db
-**Branch:** dev
+Stardew Valley agroecological mod (.NET 6 / C# latest) via SMAPI. DDD layers: `Domain/` (interfaces, models, logic) → `Services/` (impls, persistence) → `Controllers/` (SMAPI event handlers). Composition root: `LivingRoots/ModEntry.cs`.
 
-## OVERVIEW
-
-Stardew Valley agroecological mod (.NET 6 / C# latest) implementing soil health, composting, and sustainable farming mechanics via SMAPI. Follows Domain-Driven Design with layered architecture: Domain (interfaces, models) → Services (implementations, persistence) → Controllers (SMAPI event handlers).
-
-## STRUCTURE
-
-```
-.
-├── LivingRoots/               # Mod entry point + composition root
-│   ├── ModEntry.cs            # Entry point, wires all dependencies (+ Harmony init)
-│   ├── Constants.cs           # All magic numbers live here (class ModConstants)
-│   ├── Patches/               # Harmony patches (code API, static, try/catch fallback)
-│   ├── Controllers/           # SMAPI event handlers, thread-safe state machine
-│   ├── Domain/                # Business logic, interfaces, models
-│   │   ├── Interfaces/        # Service contracts (ICompostApplicationService, etc.)
-│   │   ├── Models/            # Persistence DTOs (SoilHealthState, CompostingBinData)
-│   │   ├── Services/          # Domain services (OrganicWasteValidator, SeasonalDecayMultiplier, HarvestQualityService)
-│   │   ├── HarvestQualityTypes.cs
-│   │   ├── IHarvestQualityService.cs
-│   │   └── Visualization/     # Color/health DTOs, categories, overlay types
-│   └── Services/              # Application services, SMAPI integration
-│       ├── Visualization/     # XNA rendering: overlays, tooltips, hoe feedback
-│       └── *.cs               # CompostingBinService, SoilHealthService, etc.
-├── LivingRoots.Tests/         # xUnit + Moq + FsCheck, one-file-per-subject
-├── .specify/                  # Spec-kit SDD workflows
-├── .github/workflows/         # CI: code-style (always runs) + build-and-test (dormant)
-└── .editorconfig              # .NET formatting rules (space indent, expression-bodied OFF)
-```
-
-## WHERE TO LOOK
-
-| Task | Location | Notes |
-|------|----------|-------|
-| Add new game event handler | `LivingRoots/Controllers/ModController.cs` | Must use `ExecuteWithConcurrencyGuard` for re-entrancy |
-| Add new domain concept | `LivingRoots/Domain/` (interface) + `LivingRoots/Services/` (impl) | DDD pattern: interface in Domain, impl in Services |
-| Change soil health limits | `LivingRoots/Constants.cs` (`ModConstants` class) | No hardcoded values anywhere else |
-| Add console command | `ModController.RegisterConsoleCommand()` | Follow existing lock + flag pattern |
-| Add new rendering effect | `LivingRoots/Services/Visualization/` | Implement via `IVisualizationService` |
-| Thread-safe state | `ModController.cs` | Atomic flags + `Interlocked` operations |
-| Security validation | `ModDataService.SanitizePathSegments()` | Path traversal, homoglyph, Unicode normalization |
-
-## CODE MAP
-
-| Symbol | Type | Location | Refs | Role |
-|--------|------|----------|------|------|
-| `ModEntry` | Class | `LivingRoots/ModEntry.cs` | SMAPI | Composition root, wires all dependencies |
-| `ModController` | Class | `LivingRoots/Controllers/ModController.cs` | ModEntry | Event handler orchestrator with atomic state machine |
-| `SoilHealthService` | Class | `LivingRoots/Services/SoilHealthService.cs` | ModController | Core game logic: load/save/query soil health per tile |
-| `SoilHealthState` | Class | `LivingRoots/Domain/Models/SoilHealthState.cs` | SoilHealthState | Persistence DTO: `Dictionary<LocationName, Dictionary<TileKey, HealthValue>>` |
-| `ModDataService` | Class | `LivingRoots/Services/ModDataService.cs` | SoilHealthService | SMAPI data persistence layer with sanitization |
-| `VisualizationService` | Class | `LivingRoots/Services/Visualization/VisualizationService.cs` | ModController | XNA render orchestrator: overlays, tooltips, hoe feedback |
-| `CompostingBinService` | Class | `LivingRoots/Services/CompostingBinService.cs` | ModController | Machine state machine: Empty→Processing→Ready |
-| `ModConstants` | Static | `LivingRoots/Constants.cs` | Everywhere | Single source of truth for all constants |
-
-## CONVENTIONS
-
-- **DDD Ubiquitous Language**: `SoilHealth`, `Compost`, `LivingSoil`, `HeirloomSeed`, `CompanionPlanting` — use these names
-- **One test file per subject**: `{Subject}Tests.cs` in `LivingRoots.Tests/`
-- **Constructor injection** everywhere — primary DI pattern
-- **No hardcoded values** — everything in `ModConstants`
-- **Sparse cache**: don't store default (0) health values — keeps save files small
-- **Async-only for I/O** — never use `.Result` or `.Wait()` on async calls
-- **Lock-free atomics for frame coordination** — `Interlocked`, `Volatile.Read`, `volatile` fields
-- **Security-first**: all input paths sanitized, Unicode normalized (FormC), bounds-checked
-
-## ANTI-PATTERNS (THIS PROJECT)
-
-- **DO NOT** use `.Result` or `.Wait()` on async calls
-- **DO NOT** hardcode tile coordinates or health values — use `ModConstants`
-- **DO NOT** store zero health values in runtime cache
-- **DO NOT** expose raw exception messages to logs (security)
-- **DO NOT** create premature abstractions — YAGNI enforced
-- **DO NOT** use expression-bodied methods (editorconfig forbids)
-- **DO NOT** suppress overflow checking — `CheckForOverflowUnderflow=true` project-wide
-
-## UNIQUE STYLES
-
-- **Atomic flag state machine** in `ModController` — `_state` field with bit flags for thread-safe registration/unregistration/disposal
-- **Rollback on unsubscribe failure** — if event unsubscription partially fails, re-subscribe successfully removed handlers
-- **Temp cache pattern** in `SoilHealthService.LoadData` — build in temp, swap on success to prevent partial state
-- **Snapshot outside lock** — capture data, release lock, then do I/O
-- **ThreadSafeGameLoopEventsStub** — test stub simulating concurrent game events
-
-## PROCESS NOTE — Process #6 (atomic conventional commit)
-- After every file edit: `git add <file> && git commit -m "feat/fix/docs: <summary> — <files> — <why>"`
-- Hook enforced: `.specify/scripts/atomic-commit-hook.sh`; registered in `.specify/extensions.yml` (`hooks.after_analyze`).
-- Deterministic; user-mandated per #6.
-
-## COMMANDS
+## Commands
 
 ```bash
-# Build
+# Build (requires game assemblies — see below)
 dotnet build Stardew-LivingRoots.sln --configuration Release
 
-# Test (full .NET suite)
+# Tests
 dotnet test Stardew-LivingRoots.sln --configuration Release
-
-# Run a single test by name/filter
+dotnet test LivingRoots.Tests/LivingRoots.Tests.csproj --configuration Release
 dotnet test Stardew-LivingRoots.sln --configuration Release --filter "FullyQualifiedName~SoilHealthServiceTests"
 
-# Run tests for just the test project
-dotnet test LivingRoots.Tests/LivingRoots.Tests.csproj --configuration Release
-
-# Format check (CI gate)
+# Format
 dotnet format Stardew-LivingRoots.sln --verify-no-changes
-
-# Format in place
 dotnet format Stardew-LivingRoots.sln
 
-# Quality gate (Python package; venv at .venv-quality-gate)
+# Quality gate (Python)
 PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m pytest scripts/quality-gate/tests -q
 PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate coverage --summary <path>/Summary.json --baseline .coverage-baseline
 PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate duplication --report <path>/jscpd-report.json --baseline .jscpd-baseline.json
-PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate security --report trivy.json
 .venv-quality-gate/bin/semgrep scan --config p/csharp --error --severity ERROR --metrics off LivingRoots/
 
-# Analyzer probe (must print PASS)
-bash scripts/quality-gate/analyzer-probe.sh
+# Smoke suite (launch-free)
+SMOKE_SKIP_INTEGRATION=1 scripts/tests/run-all.sh
 ```
 
-## NOTES
+lefthook: pre-commit runs `dotnet format --verify-no-changes` + shell syntax/static checks; pre-push runs `dotnet test` + smoke suite.
 
-- `LivingRoots.csproj` has `AppendTargetFrameworkToOutputPath=false` → output goes to `bin/` not `bin/net6.0/`; `EnableHarmony=true` (SMAPI-bundled Harmony 2.2.x)
-- Test project references ModBuildConfig with `EnableModDeploy=false` — SMAPI assemblies copied via custom MSBUILD target
-- `InternalsVisibleTo("LivingRoots.Tests")` allows testing internal members
-- lefthook pre-commit: `dotnet format --verify-no-changes`; pre-push: `dotnet test`
-- Harmony patches use code API only (no annotations/PatchAll), static methods, try/catch with fallback; patch logic must live in pure `HarvestQualityService` seam (patch verified in-game)
-- ADRs live in `docs/adr/` (currently ADR-001: Harmony for harvest interception)
-- Patch registration tests: `LivingRoots.Tests/HarvestPatchesTests.cs` (reflection-based: static, no annotations, Initialize signature)
+## Prerequisite: game assemblies
 
-## CI
+`Pathoschild.Stardew.ModBuildConfig` refuses to build without a `GamePath` holding Stardew's managed assemblies. Local: set `<GamePath>` in `LivingRoots.csproj` (or env `GamePath`). CI `Build and Test` stays dormant unless `BUILDDEPS_ENABLED=true` + `BUILDDEPS_TOKEN`; do not make `Check Formatting` required alone — it would satisfy branch protection with zero tests. Quality Gate (`Quality Gate / gate`) is the merge-blocking check.
 
-Five workflows under `.github/workflows/`:
+## Architecture
 
-| Workflow | Runs | Checks |
-|----------|------|--------|
-| `Code Style (format only)` | every change | formatting only |
-| `Build and Test` | only once `STARDEW_GAME_PATH` is set | build + tests + coverage (dormant) |
-| `Quality Gate` | every PR/push | static (Semgrep/Trivy/jscpd/Gitleaks) + sca + build-analysis + gate + scheduled CodeQL |
-| `protected-paths` | every change | guards spec/protected paths |
-| `security-aggregation` | per its own triggers | security findings aggregation |
+- `LivingRoots/Constants.cs` — `ModConstants` is the single source of all magic numbers; no hardcoded tile coords/health values elsewhere.
+- `LivingRoots/Domain/` — interfaces in `Domain/`, implementations in `Services/` (DDD).
+- `LivingRoots/Controllers/ModController.cs` — SMAPI event orchestrator; atomic bit-flag state machine; use `ExecuteWithConcurrencyGuard` for re-entrancy; snapshot data outside locks, then do I/O.
+- `LivingRoots/Services/ModDataService.cs` — persistence + `SanitizePathSegments()` (path traversal, homoglyph, Unicode FormC normalization).
+- `LivingRoots/Patches/` — Harmony patches via code API only (static methods, try/catch fallback); patch logic lives in `HarvestQualityService` seam.
+- `LivingRoots.Tests/` — xUnit + Moq + FsCheck; one file per subject `{Subject}Tests.cs`.
 
-`Build and Test` is **dormant** because `Pathoschild.Stardew.ModBuildConfig` hard-fails without a Stardew Valley + SMAPI install; those assemblies cannot be downloaded on a GitHub-hosted runner. While dormant there is no test check at all — this is intentional; see `.specify/bugs/ci-skipped-job-false-green/`.
+## Conventions (non-obvious)
 
-**Do NOT add `Check Formatting` alone to `required_status_checks`** until `Build and Test` has produced one genuinely green run — promoting it alone would satisfy branch protection while executing zero tests. If `Build and Test` is ever made required, first remove its `paths-ignore` filter, or documentation-only pull requests will block forever waiting for a check that cannot report.
+- Sparse cache: never store default (0) health values.
+- Async-only I/O: never `.Result`/`.Wait()`.
+- No expression-bodied methods (`.editorconfig` forbids); overflow checking on project-wide (`CheckForOverflowUnderflow=true`).
+- `TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true` — build is strict.
+- Multiplayer is first-class (constitution Principle VI): farm state is host-authoritative/farm-scoped; atomic per-tile/per-machine locks with first-wins; single-player is the degenerate case. No second source of truth.
+- Security: never log raw exception messages; validate soil health 0–100 via `ModConstants`.
 
-`Quality Gate` is the merge-blocking check after its first green run: required check name is `Quality Gate / gate` (see spec 011 Q16). `static`/`sca` require no game assemblies; `build-analysis` materialises the pinned `gamepath.zip` build-deps release via `BUILDDEPS_TOKEN` and fails closed without it.
+## Anti-patterns
 
-## Gate 3 — End-to-End Verification (spec 009)
+- `.Result`/`.Wait()` on async calls.
+- Hardcoded tile coords or health values (use `ModConstants`).
+- Storing zero health in runtime cache.
+- Exposing raw exception messages in logs.
+- Expression-bodied methods.
+- Suppressing overflow checks.
 
-- `verified` = "maintainer-verified with multi-signal evidence": 1 SMAPI session + 3 signals (`SoilHealthState` JSON delta + `Crop.phase`/`phaseDays` delta + SMAPI log). No replication required for `verified`.
-- Manual protocol: `VERIFICATION_PROTOCOL.md` §3 / `specs/009-end-to-end-game-verification/checklists/gate3-verification-contract.md` (SC-009).
-- Save comparator: before/after `modData/soil_health_data_{saveId}.json` diff (float tolerance 0.0001f; NaN ignored; missing keys = 0).
-- Claim discipline: write "verified by manual end-to-end session + multi-signal evidence: observation notes [file], artifact comparison [file], SMAPI log [file], session date [date]." Never "verified by build / N passed."
-- `Build and Test` workflow remains dormant; local preflight: `lefthook` pre-commit (format) + pre-push (tests + smoke).
+## Process
+
+Process #6: after every file edit run `git add <file> && git commit -m "feat/fix/docs: <summary> — <files> — <why>"` (hook: `.specify/scripts/atomic-commit-hook.sh`).
+
+## Verification
+
+Gate 3 (end-to-end) applies to any change touching runnable code: real SMAPI session + 3 signals (soil-health JSON delta, crop phase/phaseDays delta, SMAPI log). Never claim "verified by build / N passed." See `VERIFICATION_PROTOCOL.md`.
+
+## Where to look
+
+| Task | Location |
+|------|----------|
+| New game event handler | `Controllers/ModController.cs` |
+| New domain concept | `Domain/` (interface) + `Services/` (impl) |
+| Soil health limits | `Constants.cs` (`ModConstants`) |
+| New console command | `ModController.RegisterConsoleCommand()` |
+| New render effect | `Services/Visualization/` via `IVisualizationService` |
+| Security validation | `ModDataService.SanitizePathSegments()` |
+| Harmony harvest seam | `Domain/HarvestQualityService` + `Patches/` |
