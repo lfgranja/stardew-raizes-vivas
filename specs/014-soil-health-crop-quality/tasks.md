@@ -353,3 +353,17 @@ With multiple developers/subagents:
 - Avoid: vague tasks, same-file conflicts, cross-story dependencies that break independence
 - The `GamePath` spike and `SC-008` rollback verification are external prerequisites that gate yield *activation* — they do not block test writing or implementation, only final "verified" status
 - `tasks.md` is immediately executable; each task is specific enough for an LLM to complete without additional context
+
+## Phase 7: Convergence (appended 2026-11-03)
+
+- [x] T094 Add `OutputGranted` idempotency guard to `CollectCompost` — `Services/CompostingBinService.cs`, `Domain/Models/CompostingBinStateModel.cs` (partial, FR-005/Q4)
+- [x] T095 Fix growth modifier to apply `SoilGrowthPoorMultiplier` to measured `0` (skip only negative/non-finite) and update stale comment — `Controllers/ModController.cs` (contradicts, A7)
+- [x] T096 Replace heuristic `Quality++` in harvest patch with deterministic `+0.08` on vanilla `p` using `BoostQualityProbability` — `Patches/HarvestPatches.cs` (partial, FR-001/FR-003)
+- [x] T097 Set extra-harvest item `Quality = 0` (normal) instead of inheriting source quality — `Patches/HarvestPatches.cs` (partial, A2/FR-002)
+- [x] T098 Wire transient feedback sprites + floating text + SFX + broadcast via `Game1.multiplayer.broadcastSprites` — `Patches/HarvestPatches.cs` (partial, FR-006/FR-007/FR-008)
+- [x] T099 Regrowth: quality re-rolls per harvest (patch runs per harvest) — `Patches/HarvestPatches.cs` (edge case)
+- [x] T100 Inventory-full: main vanilla-blocked, extra dropped as debris — `Patches/HarvestPatches.cs` (A1)
+- [x] T101 Harvest roll runs locally reading synced soil health (replicated deterministic per A8) — `Patches/HarvestPatches.cs` (FR-009/A8)
+- [x] T102 RED test files added: CropScope, HostAuthoritative, InventoryFull, HarvestFeedback, FeedbackVisibility, Contract (plus earlier Poor/Moderate/Healthy/ExtraHarvest/Unknown) — `LivingRoots.Tests/` (FR-014)
+- [x] T103 Band edges 31/71 verified in tests — `LivingRoots.Tests/` (SC-006)
+- [ ] T104 Run Gate 3 in-game session and record 3 signals — manual (missing, SC-008)

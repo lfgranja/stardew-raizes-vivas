@@ -83,23 +83,23 @@ namespace LivingRoots.Domain.Services
             };
         }
 
-        public HarvestFeedback ResolveFeedback(HarvestQualityDecision decision, bool enhancedQualityOccurred, bool extraHarvestOccurred)
+        public HarvestFeedbackFlags ResolveFeedback(HarvestQualityDecision decision, bool enhancedQualityOccurred, bool extraHarvestOccurred)
         {
-            var flags = HarvestFeedback.None;
+            var flags = HarvestFeedbackFlags.None;
             if (decision.Tier == HarvestTier.Poor && decision.IsInScope)
             {
-                flags |= HarvestFeedback.Poor;
+                flags |= HarvestFeedbackFlags.Poor;
             }
 
             if (decision.Tier == HarvestTier.Healthy && decision.IsInScope)
             {
                 if (enhancedQualityOccurred || extraHarvestOccurred)
                 {
-                    flags |= HarvestFeedback.LivingQuality;
+                    flags |= HarvestFeedbackFlags.LivingQuality;
                 }
                 if (extraHarvestOccurred)
                 {
-                    flags |= HarvestFeedback.ExtraHarvest;
+                    flags |= HarvestFeedbackFlags.ExtraHarvest;
                 }
             }
 

@@ -210,8 +210,8 @@ namespace LivingRoots
                 {
                     harmony.Patch(
                         harvestMethod,
-                        prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPrefix)),
-                        postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPostfix)));
+                        prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.Harvest_Prefix)),
+                        postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.Harvest_Postfix)));
                     this.Monitor?.Log("Living Roots: Harvest Harmony patch registered.", LogLevel.Trace);
                 }
             }

@@ -154,6 +154,12 @@ public class CompostingBinService(
 
             if (bin.State != CompostingBinState.Ready) return 0;
 
+            // Idempotency: if output already granted for this Ready bin, do not grant again.
+            if (bin.OutputGranted)
+            {
+                return 0;
+            }
+
             binToHarvest = bin;
 
             int outputCount = 1;
@@ -169,7 +175,9 @@ public class CompostingBinService(
 
             if (!inventoryRefused && binToHarvest != null)
             {
+                binToHarvest.OutputGranted = true;
                 ApplyHarvestSuccess(binToHarvest);
+                binToHarvest.OutputGranted = false;
             }
         }
 

@@ -514,3 +514,6 @@ Thumbs.db
 
 # CodeGraph local index
 .codegraph/
+
+# Archify generated diagrams (local)
+.archify/
