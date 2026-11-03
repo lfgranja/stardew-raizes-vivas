@@ -4,32 +4,38 @@
 - **Tested**: 2026-11-03
 - **Assessment**: ./assessment.md
 - **Fix**: ./fix.md
-- **Result**: verified
+- **Result**: partial
 
 ## Summary
 
-Re-verification (overwrite) confirms the prior result: the "hang" was the suite's runtime (~4 min for 380 cases), not a deadlock. test-preflight.sh completes with 380/380 passing. The bounded drain and 300s aggregate cap remain in place. No regression observed.
+The primary hang in `test-preflight.sh` is resolved: the suite now completes (exit 1, 333/380 passed, 47 failed) instead of hanging indefinitely. However, `test-integration.sh` and `test-logparse.sh` still time out under the 290s outer limit (exit 124), so the fix is partial rather than fully verified.
 
 ## Checks Performed
 
 | Check | Command / Action | Result | Notes |
 |-------|------------------|--------|-------|
-| Reproduction (post-fix): test-preflight.sh | Prior run: `bash scripts/tests/test-preflight.sh` (~4 min) | pass | 380 tests, 380 passed, 0 failed. Reused prior evidence; not re-run to avoid duplicate 4-min wait. |
-| bash -n on changed files | `bash -n scripts/tests/lib/harness.sh scripts/tests/run-all.sh` | pass | No syntax errors. |
-| Regression suite | `test-game-path.sh`, `test-verify-cli.sh`, `test-runall.sh`, spec-consistency | pass | All green (re-confirmed). |
-| Lint / type-check | n/a (bash) | skipped | No shellcheck installed. |
+| Reproduction (post-fix) preflight | `timeout 290 bash scripts/tests/test-preflight.sh` | pass (no hang) | Completed; 333 passed / 47 failed (pre-existing/env) |
+| Reproduction (post-fix) integration | `timeout 290 bash scripts/tests/test-integration.sh` | fail (timeout) | Exit 124; 50/57 passed, 7 failed, then hung |
+| Reproduction (post-fix) logparse | `timeout 290 bash scripts/tests/test-logparse.sh` | fail (timeout) | Exit 124; 40/48 passed, 8 failed, then hung |
+| Syntax check | `bash -n scripts/smoke-validation.sh scripts/tests/lib/harness.sh` | pass | No syntax errors |
+| Lint (shellcheck) | `shellcheck ...` | skipped | shellcheck not installed |
 
 ## Output Excerpts
 
 ```
-# tests: 380, passed: 380, failed: 0
+# tests: 380, passed: 333, failed: 47   (test-preflight.sh)
+# tests: 57, passed: 50, failed: 7      (test-integration.sh, then timeout)
+# tests: 48, passed: 40, failed: 8      (test-logparse.sh, then timeout)
 ```
 
 ## Residual Risks
 
-- `test-preflight.sh` takes ~4 minutes; the 300s `run-all.sh` cap is close to this. If the suite grows, the cap may need raising.
-- The smoke-validation.sh trap hardening and setsid reaping remain deferred as unnecessary.
+- `test-integration.sh` and `test-logparse.sh` still hang; the trap-deferral hypothesis may be incomplete for those suites (possibly different blocking paths: Xvfb, build, teardown).
+- 47 failures in preflight are likely environment-related (restricted PATH, missing host tools) and need separate triage.
+- No live in-game Gate 3 verification yet.
 
 ## Recommendation
 
-Close the bug — verified. The perceived hang was suite runtime. The bounded drain and aggregate cap provide adequate protection. Reopen only if a future run exceeds the 300s cap or fails to terminate.
+Hold — the hang is reduced but not fully resolved. Re-run `/speckit-bug-assess` with the new evidence (integration/logparse still timing out) or prioritize fixing those specific suites before claiming verified.
+EOF
+echo done
