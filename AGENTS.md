@@ -8,10 +8,10 @@ Stardew Valley agroecological mod (.NET 6, C# latest) via SMAPI. Layered DDD: `D
 # Build (needs game assemblies — see Prerequisite)
 GamePath=/home/luis/stardew-assemblies dotnet build Stardew-LivingRoots.sln --configuration Release
 
-# Tests (all 3 projects)
-dotnet test Stardew-LivingRoots.sln --configuration Release
+# Tests (only LivingRoots.Tests is a test project; Verification/Runner are build-only)
+GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --configuration Release
 # single subject
-dotnet test Stardew-LivingRoots.sln --configuration Release --filter "FullyQualifiedName~SoilHealthServiceTests"
+GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --configuration Release --filter "FullyQualifiedName~SoilHealthServiceTests"
 
 # Format
 dotnet format Stardew-LivingRoots.sln --verify-no-changes
@@ -24,11 +24,13 @@ dotnet restore --locked-mode
 SMOKE_SKIP_INTEGRATION=1 scripts/tests/run-all.sh
 # single file
 scripts/tests/run-all.sh test-cli.sh
+# Integration suite (test-integration.sh) drives the real game and writes into the repo tree — run deliberately, not on every push.
 
 # Quality gate (Python; merge-blocking check is "Quality Gate / gate")
+# Requires: dotnet test --collect:"XPlat Code Coverage" then dotnet tool restore && dotnet reportgenerator -reports:'**/coverage.cobertura.xml' -targetdir:coverage-report -reporttypes:JsonSummary
 PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m pytest scripts/quality-gate/tests -q
-PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate coverage --summary <path>/Summary.json --baseline .coverage-baseline
-PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate duplication --report <path>/jscpd-report.json --baseline .jscpd-baseline.json
+PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate coverage --summary coverage-report/Summary.json --baseline .coverage-baseline
+PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate duplication --report jscpd-report/jscpd-report.json --baseline .jscpd-baseline.json
 .venv-quality-gate/bin/semgrep scan --config p/csharp --error --severity ERROR --metrics off LivingRoots/
 ```
 
