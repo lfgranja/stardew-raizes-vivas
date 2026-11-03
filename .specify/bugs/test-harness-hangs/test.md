@@ -39,3 +39,18 @@ The primary hang in `test-preflight.sh` is resolved: the suite now completes (ex
 Hold — the hang is reduced but not fully resolved. Re-run `/speckit-bug-assess` with the new evidence (integration/logparse still timing out) or prioritize fixing those specific suites before claiming verified.
 EOF
 echo done
+---
+
+## Update 2026-11-03 (deep re-investigation)
+
+A second reproduction run (`timeout 90 bash scripts/tests/test-integration.sh`) reproduced the hang after TC-1's deploy-target assertion, with the process tree showing:
+- a live `dotnet build --configuration Release --no-incremental` (real rebuild, ~2 min) and
+- a live Stardew/SMAPI launch (`smoke-validation.sh` invoking the real game) that never exited within the 120 s budget, plus
+- orphaned `dotnet`/`MSBuild`/`VBCSCompiler` processes from earlier runs (55+ min), indicating resource contention and incomplete reaping of grandchildren.
+
+Conclusion: the residual hang is **not** a trap-deferral bug in the harness. The setsid + group-reap + background-main remediation already in place correctly reaps the direct child and its process group. The remaining hang comes from (a) real-game launch in TC-1 not terminating within the budget and (b) orphaned dotnet/MSBuild grandchildren that do not share the setsid process group and hold build locks/pipes open.
+
+Recommended follow-ups (not applied here, to avoid killing tools owned by other agents/processes):
+1. In `scripts/tests/test-integration.sh`, bound the real-game launch in TC-1 with an explicit `--timeout` and a post-launch kill of the game process; do not rely on the script's own 120 s deadline for a real SMAPI session.
+2. In `_run_script_impl`, additionally enumerate and terminate descendant `dotnet`/`MSBuild`/`VBCSCompiler` processes by ancestry (not just PGID) when the deadline fires, to clear orphaned grandchildren.
+3. Add a pre-suite cleanup that waits for/reaps any lingering smoke-validation/dotnet processes from prior runs before starting.

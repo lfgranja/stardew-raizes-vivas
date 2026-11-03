@@ -48,6 +48,10 @@ if wait "$runner_pid"; then RUN_CODE=0; else RUN_CODE=$?; fi
 
 - The setsid/group-reap backstop was implemented, but the 47 remaining failures appear to be pre-existing/environment-related (restricted PATH cases, missing host tools) rather than regressions from this fix. The hang itself is resolved.
 
+## Deviations from Assessment (update 2026-11-03)
+
+The originally proposed remediation (background main + setsid group reap) resolved `test-preflight.sh` but did **not** fully resolve `test-integration.sh` / `test-logparse.sh`. Deep re-investigation (process tree) shows the residual hang is caused by real-game launch (TC-1) not terminating within budget and orphaned dotnet/MSBuild grandchildren, not by trap deferral. The harness-level group reap is insufficient for grandchildren that do not share the setsid process group. See `test.md` update 2026-11-03 for details and recommended follow-ups.
+
 ## Follow-ups
 
 - Investigate the 47 remaining failures (likely environment/Xvfb/tool-sweep related).
