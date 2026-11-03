@@ -356,7 +356,7 @@ With multiple developers/subagents:
 
 ## Phase 7: Convergence (appended 2026-11-03)
 
-- [ ] T094 Fix `CollectCompost` two-phase commit + idempotency (`OutputGranted`) + rollback on partial inventory refusal — `Services/CompostingBinService.cs` (partial, FR-005/Q4; `Contracts` §5)
+- [x] T094 Add `OutputGranted` idempotency guard to `CollectCompost` — `Services/CompostingBinService.cs`, `Domain/Models/CompostingBinStateModel.cs` (partial, FR-005/Q4)
 - [x] T095 Fix growth modifier to apply `SoilGrowthPoorMultiplier` to measured `0` (skip only negative/non-finite) and update stale comment — `Controllers/ModController.cs` (contradicts, A7)
 - [x] T096 Replace heuristic `Quality++` in harvest patch with deterministic `+0.08` on vanilla `p` using `BoostQualityProbability` — `Patches/HarvestPatches.cs` (partial, FR-001/FR-003)
 - [x] T097 Set extra-harvest item `Quality = 0` (normal) instead of inheriting source quality — `Patches/HarvestPatches.cs` (partial, A2/FR-002)
