@@ -226,9 +226,11 @@ namespace LivingRoots.Patches
                             var last = who.Items[who.Items.Count - 1];
                             if (last != null && last.Quality < 4)
                             {
+                                // Vanilla quality probability (FR-003): p = 0.2*(FarmingLevel/10) + 0.2*fertTier*((FarmingLevel+2)/12) + 0.01
+                                float vanillaP = 0.2f * (farmingLevel / 10.0f) + 0.2f * fertilizerTier * ((farmingLevel + 2) / 12.0f) + 0.01f;
                                 int hash = (xTile * 397) ^ (yTile * 17) ^ Game1.Date.TotalDays;
                                 double roll = Math.Abs(hash % 10000) / 10000.0;
-                                float boosted = service.BoostQualityProbability(0.5f, decision);
+                                float boosted = service.BoostQualityProbability(vanillaP, decision);
                                 if (roll < boosted)
                                 {
                                     last.Quality = Math.Min(4, last.Quality + 1);
@@ -267,7 +269,7 @@ namespace LivingRoots.Patches
                                         var extra = source.getOne();
                                         if (extra != null)
                                         {
-                                            extra.Quality = source.Quality;
+                                            extra.Quality = 0; // A2: extra-harvest items are normal quality (0)
                                             bool added = false;
                                             try
                                             {
