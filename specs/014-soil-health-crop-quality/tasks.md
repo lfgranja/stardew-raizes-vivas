@@ -358,8 +358,8 @@ With multiple developers/subagents:
 
 - [ ] T094 Fix `CollectCompost` two-phase commit + idempotency (`OutputGranted`) + rollback on partial inventory refusal — `Services/CompostingBinService.cs` (partial, FR-005/Q4; `Contracts` §5)
 - [x] T095 Fix growth modifier to apply `SoilGrowthPoorMultiplier` to measured `0` (skip only negative/non-finite) and update stale comment — `Controllers/ModController.cs` (contradicts, A7)
-- [ ] T096 Replace heuristic `Quality++` in harvest patch with deterministic `+0.08` on vanilla `p` using `BoostQualityProbability` — `Patches/HarvestPatches.cs` (partial, FR-001/FR-003)
-- [ ] T097 Set extra-harvest item `Quality = 0` (normal) instead of inheriting source quality — `Patches/HarvestPatches.cs` (partial, A2/FR-002)
+- [x] T096 Replace heuristic `Quality++` in harvest patch with deterministic `+0.08` on vanilla `p` using `BoostQualityProbability` — `Patches/HarvestPatches.cs` (partial, FR-001/FR-003)
+- [x] T097 Set extra-harvest item `Quality = 0` (normal) instead of inheriting source quality — `Patches/HarvestPatches.cs` (partial, A2/FR-002)
 - [ ] T098 Wire actual transient feedback sprites (`marker-poor`, `sparkle-living`) + floating text + SFX + broadcast via `Game1.multiplayer.broadcastSprites`, not just logs — `Patches/HarvestPatches.cs`, `Services/Visualization/` (partial, FR-006/FR-007/FR-008)
 - [ ] T099 Add regrowth handling: quality re-rolls per harvest, tier applies independently — `Patches/HarvestPatches.cs` (missing, edge case)
 - [ ] T100 Implement inventory-full debris handling verification (main blocked, extra dropped) — `Patches/HarvestPatches.cs` (partial, A1)
