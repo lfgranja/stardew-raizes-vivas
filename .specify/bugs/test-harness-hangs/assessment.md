@@ -28,10 +28,11 @@ A partial fix (bounded drain in `_run_script_impl` + 300s per-suite cap) was app
 
 ## Suspected Code Paths
 
-- `scripts/tests/lib/harness.sh:492` `_run_script_impl()` — launches `env … timeout --kill-after=5 "$RUN_DEADLINE_SECS" "$HARNESS_SCRIPT" …` as a background job and `wait`s on it. `timeout` creates a process group and signals it, but per the Bash manual §Signals, "If Bash is waiting for a command to complete and receives a signal for which a trap has been set, it will not execute the trap until the command completes." `smoke-validation.sh` installs `forward_signal` traps (INT/TERM/HUP) and an EXIT trap `on_exit`; if it is blocked in a foreground command, the SIGTERM from `timeout` is deferred indefinitely. `--kill-after=5` should SIGKILL, but if the process is in uninterruptible sleep (D state, e.g. blocked on a pipe/Xvfb) or the signal is blocked, it survives. Additionally, `timeout`'s `waitpid` only reaps the direct child; if that child's trap blocks, `timeout` itself blocks.
+- `scripts/tests/lib/harness.sh:492` `_run_script_impl()` — launches `env … timeout --kill-after=5 "$RUN_DEADLINE_SECS" "$HARNESS_SCRIPT" …` as a foreground command and `wait`s on it. `timeout` creates a process group and signals it, but per the Bash manual §Signals, "If Bash is waiting for a command to complete and receives a signal for which a trap has been set, it will not execute the trap until the command completes." `smoke-validation.sh` installs `forward_signal` traps (INT/TERM/HUP) and an EXIT trap `on_exit`; if it is blocked in a foreground command, the SIGTERM from `timeout` is deferred indefinitely. `--kill-after=5` should SIGKILL, but if the process is in uninterruptible sleep (D state, e.g. blocked on a pipe/Xvfb) or the signal is blocked, it survives. Additionally, `timeout`'s `waitpid` only reaps the direct child; if that child's trap blocks, `timeout` itself blocks.
 - `scripts/smoke-validation.sh:1686` `forward_signal()` — asserts/signals process groups (`build_pgid`, `game_pgid`, `xvfb_pgid`), then `trap - "$sig"; kill "-${sig}" "$$"; exit …`. If the script is blocked in a foreground command when SIGTERM arrives, the trap is deferred; when it finally runs, `signal_group` calls `assert_signallable_group` and `kill` on possibly-empty groups, and `exit` may not be reached if a `wait` inside blocks.
 - `scripts/smoke-validation.sh:1628` `on_exit()` — calls `cleanup`, which asserts PGIDs and may `wait` on children. If a child group is empty or a process is stuck, `cleanup` can block.
 - `scripts/tests/run-all.sh` — per-suite `wait` on the background job; mitigated by the 300s cap (already applied).
+- `scripts/smoke-validation.sh:4338` `main()` — runs the full pipeline in the foreground (`preflight_tool_sweep`, `phase_preflight`, `phase_display`, `phase_build`, `phase_lock`, `phase_conflict_check`, `phase_log_baseline`, `phase_launch`, `cleanup`), so any SIGTERM delivered during those phases is deferred until the foreground command completes.
 
 ## Root Cause Hypothesis
 
@@ -41,7 +42,7 @@ Secondary: **process-group escape** — descendants that call `setsid()` (Xvfb u
 
 The bounded drain (Revision 1) addressed mechanism 2 but not mechanism 1, which is why the hang persists.
 
-## Proposed Remediation (final)
+## Proposed Remediation
 
 **Preferred — make signal handling non-blocking and reaping explicit:**
 
@@ -68,7 +69,7 @@ The bounded drain (Revision 1) addressed mechanism 2 but not mechanism 1, which 
 - `scripts/tests/test-preflight.sh` (EXIT trap on `finish_tests`)
 
 **Tests to add or update**:
-- Regression: a script under test that installs a SIGTERM trap and blocks in a foreground command must be killed within `deadline + 5s` and report rc 124 (or its own code).
+- Regression: a script under test that installs a SIGTERM trap and blocks in a foreground command must be killed within `deadline + 5s` and report rc 124 (or the script's own code).
 - Regression: restricted-PATH invocation (missing Xvfb) completes within the deadline and reports 9.
 - Orphan check: `pgrep` before/after the FR-012 item 8 case shows no surviving grandchildren.
 
@@ -84,3 +85,18 @@ The bounded drain (Revision 1) addressed mechanism 2 but not mechanism 1, which 
 - [NEEDS CLARIFICATION: does `smoke-validation.sh`'s `main()` currently run its launch in the foreground (blocking the trap) or already backgrounded? Need to inspect the main entry point around line 4338.]
 - [NEEDS CLARIFICATION: is the restricted-PATH hang caused by a foreground `command -v` loop or by a `wait` on a child that never exits? The bash -x trace showed the hang at the `timeout` invocation line, suggesting the script itself is blocked before its tool sweep returns — possibly in `cleanup` called by `die` on a prior failure, or in the ERR trap.]
 - [NEEDS CLARIFICATION: should the harness prefer `setsid` (new session) or `set -m` (job control) for group leadership, given interactive-debugging needs?]
+
+## Research References
+
+- GNU Bash Manual §Signals: https://www.gnu.org/s/bash/manual/html_node/Signals.html
+- `timeout` man page (coreutils): https://www.gnu.org/software/coreutils/manual/html_node/timeout-invocation.html
+- StackOverflow #360201 (killing background processes): https://stackoverflow.com/questions/360201/how-do-i-kill-background-processes-jobs-when-my-shell-script-exits
+- Unix.SE (trap deferral): https://unix.stackexchange.com/questions/185903/why-does-bash-ignore-sigterm
+- Veithen sigterm-propagation: https://github.com/veithen/sigterm-propagation
+- Red Hat KB BZ#978840 (trap deferral in foreground commands)
+- DEV Community pipe-drain (2026-09-06)
+- Forcola/Raxol process-group reference (SIGTERM → grace → SIGKILL → confirm reaped)
+- Session-orchestrator ADR-0015 (process group management)
+- Archon #1242, NousResearch #78432 (related hang reports)
+EOF
+echo written
