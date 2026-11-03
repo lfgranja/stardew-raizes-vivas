@@ -32,19 +32,32 @@ Diferencial vs. ReGen Valley (Nexus, 2025): não é a mecânica de soil health (
 4. **Verbo novo por arco, não +10%** — Y1 compostar, Y2-3 rotacionar/incorporar/pastejar, Y4+ assinar/trocar/cozinhar.
 5. **Aconchego seguro** (Safety/Abundance/Softness) — sem fail punitivo, teto em toda penalidade.
 
-## 4. Estado atual (verificado, 2026-11-01)
+## 4. Estado atual (verificado, 2026-11-03)
 
 | Métrica | Valor |
 |---|---|
 | Build | 0 erros, 0 warnings |
-| Testes | 1471 passed / 0 failed / 4 skipped |
+| Testes | 1471 passed / 0 failed / 4 skipped (última run completa 2026-11-01); test-harness hang corrigido (test-logparse 167/167 sem hang) |
 | Format gate | clean |
 | Quality gate | 171 pytest passed; analyzer probe PASS |
 | Specs fechadas | 002, 012 (converged) |
-| Specs quase fechadas | 004 (57/59), 005 (143/146), 008 (184/186), 013 (46/48) |
+| Specs quase fechadas | 004 (65/67), 005 (143/146), 008 (184/186), 013 (46/48), 015 (51/58) |
 | Features nomeadas shipped | 3 de 21 (composting, mulch, soil-health→crop-growth) + seam de harvest-quality (infra) |
 | In-game runs | **0 — nunca executado** |
 | DLLs proprietárias no git | 0 (apenas assets em `.gamepath/Mods/`) |
+
+### 4.1 Paisagem competitiva (pesquisa web 2026-11-03)
+
+- **ReGen Valley** (Nexus, 2025): mod mais próximo; soil health farm-wide (avg 75+/90+) com qualidade de colheita, mas **não** per-tile com boost determinístico + feedback transient — nosso seam é único.
+- **Tilled Soil Decay** (bcmpinc, 1.198 endorsements): configura decaimento de solo lavrado; não toca saúde 0–100.
+- **Retain Tilled Soil** (2026): mantém solo lavrado entre estações; escopo estreito.
+- **Abundant Harvest Fertilizers** (2026): fertilizantes estilo baunilha que aumentam colheita elegível; não dirigido por saúde de solo.
+- **Eco Score** (2026): footprint ambiental (máquinas/árvores) afeta qualidade de peixe/colheita/forrage; abordagem sistêmica, mas não per-tile.
+- **Advanced Farming**: hidroponia/aquaponia/compostagem mid/end-game; escopo diferente.
+- **Spoilage Mod**: apodrecimento de comida + composter → fertilizante; complementar.
+- Mercado: >30.000 mods no Nexus (2026), SMAPI 4.x, SV 1.6.15; modpacks gigantes (Everything Dew ~550 mods) dominam distribuição; competição por atenção é alta, mas nicho agroecológico/educativo é pouco ocupado.
+
+**Implicação:** nosso diferencial (coerência agroecológica + loop de compostagem composto + framing educativo + multiplayer correto desde dia 1 + per-tile determinístico) permanece válido e pouco contestado. Risco: ReGen Valley já entrega "qualidade por avg soil", então nossa entrega de per-tile + feedback deve ser clara e visível.
 
 **Verdade em uma frase:** o mod pode *medir* solo, *exibir*, *mudar* com composto, **solo dirige crescimento** (spec 005) e **solo pode ser protegido com mulch** (spec 013). Falta a *qualidade* (colheita) e a *destruição* (Joja, monocultura) — o jogador cresce mais rápido e protege, mas não *colhe* benefícios além de velocidade nem *perde* solo por má prática.
 
