@@ -241,3 +241,12 @@
 - [x] T051 Add reflection test for try/catch + fallback (partial/LOW): extend `HarvestPatchesTests` to verify patch methods contain try/catch and default to original on failure. Source: T016, SC-006.
 - [ ] T052 Verify T035 audio-only acceptance (partial/LOW): confirm in Gate 3 that the audio cue alone is sufficient UX or whether sprite broadcast is required. Source: T035, contract §6.
 
+
+## Phase 9: Convergence
+
+**Purpose**: Close gaps between spec/plan/contract and current implementation identified by `/speckit.converge` (2026-11-03). Append-only; does not modify prior phases.
+
+- [x] T053 [P] Fix shared broadcastSprites invocation (partial/MEDIUM): `Game1.multiplayer` is a public static field, not a property; replace `GetProperty("multiplayer")` with `GetField("multiplayer")` (or direct field access) in `LivingRoots/Patches/HarvestPatches.cs` so transient harvest-quality/extra-harvest sprites are actually broadcast to all players per contract §6. Source: F2, contract §6.
+- [x] T054 [P] Make deterministic roll cross-client stable (partial/MEDIUM): include `Game1.uniqueIDForThisGame` (and DaysPlayed/fertilizer net field where available) in the quality and extra-harvest hash seeds in `LivingRoots/Patches/HarvestPatches.cs` so both clients agree per contract §9 (A8). Source: F3, contract §9, FR-011.
+- [x] T055 Move crop-scope guard + input capture into Prefix (partial/MEDIUM): refactor `LivingRoots/Patches/HarvestPatches.cs` so `Harvest_Prefix` applies the forage/fibre/Qi crop-scope guard early and captures inputs (soil health, Farming level, fertilizer tier, etc.) into `__state`, per contract §3; Postfix consumes `__state`. Source: F1, contract §3, FR-004.
+- [ ] T056 Handle Junimo/forced-scythe harvests (partial/MEDIUM): apply Poor (force Quality=0) and Healthy (boost) quality outcomes on the Junimo path in `LivingRoots/Patches/HarvestPatches.cs` instead of skipping when `who == null`, per FR-001/FR-004. Source: F4, FR-001, FR-004.
