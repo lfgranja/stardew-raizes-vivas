@@ -155,7 +155,7 @@ write_min_scenario() {
   "schemaVersion": 2,
   "scenarioId": "runner-self-test",
   "featureSlug": "010-headless-verification-runner",
-  "testMdPath": "specs/010-headless-verification-runner/test.md",
+  "testMdPath": "specs/005-soil-health-to-crop-growth/test.md",
   "summary": "Minimal runner self-test scenario.",
   "playerRole": "$role",
   "minimumGameVersion": "1.6.14",
@@ -170,11 +170,11 @@ write_min_scenario() {
   "milestoneSave": "runner-self-test",
   "initCommands": [],
   "steps": [{"action": "observe", "target": "farm"}],
-  "thresholds": [],
+  "thresholds": [{"signal":"smapiLog","predicate":{"op":"cmp","left":"isMainPlayer","operator":"eq","right":true},"description":"host"}],
   "expectedSignals": ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"],
   "rngSeed": 123456789,
   "time": "2026-10-27T12:00:00Z",
-  "determinism": {"idempotent": true, "declaredSources": ["rngSeed"]},
+  "determinism": {"idempotent": true, "declaredSources": []},
   "scenarioKind": "$kind"$expected$host_guard
 }
 JSON
