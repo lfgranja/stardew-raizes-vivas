@@ -172,8 +172,8 @@ write_min_scenario() {
   "steps": [{"action": "observe", "target": "farm"}],
   "thresholds": [],
   "expectedSignals": ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"],
-  "rngSeed": "runner-self-test",
-  "time": {"timeoutSeconds": 5},
+  "rngSeed": 123456789,
+  "time": "2026-10-27T12:00:00Z",
   "determinism": {"idempotent": true, "declaredSources": ["rngSeed"]},
   "scenarioKind": "$kind"$expected$host_guard
 }
