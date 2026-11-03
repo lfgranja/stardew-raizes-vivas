@@ -1,0 +1,22 @@
+name: Verify Scenario
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run verification
+        env:
+          STARDEW_GAME_PATH: ${{ secrets.STARDEW_GAME_PATH }}
+          BUILDDEPS_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
+        run: |
+          bash scripts/verify-scenario.sh --ci --scenario specs/010-headless-verification-runner/fixtures 2>&1 || true

@@ -24,6 +24,9 @@ namespace LivingRoots
     {
         private ModController? _controller;
 
+        // T046 (spec 010): stable SMAPI-provided API instance.
+        private readonly LivingRoots.Services.LivingRootsModApi _modApi = new();
+
         // T137 (FR-012): the mod-level subscriptions Entry takes
         // out, retained as fields so Dispose can detach the exact
         // delegate instances. A method-group or anonymous-lambda
@@ -185,7 +188,7 @@ namespace LivingRoots
                 // Ignore in test environment
             }
 
-            _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider);
+            _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider, modApi: _modApi);
 
             // Register events through the Controller
             _controller.RegisterEvents();
@@ -216,6 +219,19 @@ namespace LivingRoots
             {
                 // Ignore in test environment
             }
+        }
+
+        /*********
+        ** Public methods (SMAPI API)
+        ********/
+
+        /// <summary>
+        /// Exposes the mod's public API (spec 010, T046). Returns the same
+        /// instance across calls, before and after <see cref="Entry"/>.
+        /// </summary>
+        public override object GetApi()
+        {
+            return _modApi;
         }
 
         /*********

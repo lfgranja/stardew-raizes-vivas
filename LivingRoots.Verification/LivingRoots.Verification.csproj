@@ -10,7 +10,6 @@
     <OutputPath>bin/</OutputPath>
     <RollForward>Major</RollForward>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <EnableHarmony>true</EnableHarmony>
     <EnableModZip>false</EnableModZip>
   </PropertyGroup>
   <ItemGroup>
@@ -19,6 +18,9 @@
     <PackageReference Include="System.Collections.Immutable" Version="10.0.14" />
     <PackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.403" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\LivingRoots\LivingRoots.csproj" />
   </ItemGroup>
   <!-- Include mod files in build output -->
   <ItemGroup>

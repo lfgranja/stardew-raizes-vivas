@@ -1,9 +1,9 @@
 {
-  "ai": "command-code",
-  "ai_skills": true,
+  "ai": "opencode",
+  "allow_symlinks": false,
   "feature_numbering": "sequential",
   "here": true,
-  "integration": "command-code",
+  "integration": "opencode",
   "script": "sh",
-  "speckit_version": "1.0.4"
+  "speckit_version": "1.2.5"
 }

@@ -501,6 +501,13 @@ main() {
         discover > "${run_list}"
     fi
 
+    # De-duplicate entries (no suite may execute twice).
+    if [[ -s "${run_list}" ]]; then
+        local _dedup="${RUNNER_TMP}/run.dedup"
+        LC_ALL=C sort -u "${run_list}" > "${_dedup}"
+        mv -f "${_dedup}" "${run_list}"
+    fi
+
     if [[ ! -s "${run_list}" ]]; then
         printf '%s: no test files found in %s (expected test-*.sh)\n' \
             "${RUNNER_NAME}" "${TESTS_DIR}" >&2

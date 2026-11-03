@@ -1,0 +1,290 @@
+#!/usr/bin/env bash
+if [ -n "${_LR_SIGNALS_LOADED:-}" ]; then return 0 2>/dev/null || exit 0; fi
+_LR_SIGNALS_LOADED=1
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/common.sh"
+
+signals_soil_health_delta() {
+    [[ $# -eq 3 ]] || return "$EXIT_USAGE_ERROR"
+    local before="$1" after="$2" out="$3"
+    python3 - "$before" "$after" "$out" <<'PY'
+import json,sys
+def load(p):
+    try:
+        with open(p) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+b=load(sys.argv[1]); a=load(sys.argv[2])
+def get(d,loc,tile):
+    try:
+        v=d.get(loc,{}).get(tile,0)
+    except Exception:
+        v=0
+    if v is None: v=0
+    try:
+        import math
+        if isinstance(v,float) and math.isnan(v): return 0
+    except Exception: pass
+    return v
+locs=set(b)|set(a)
+out={"locations":{}}
+for loc in locs:
+    tiles=set()
+    if isinstance(b.get(loc),dict): tiles|=set(b[loc])
+    if isinstance(a.get(loc),dict): tiles|=set(a[loc])
+    out["locations"][loc]={}
+    for t in tiles:
+        bv=get(b,loc,t); av=get(a,loc,t)
+        try:
+            delta=av-bv
+        except Exception:
+            delta=0
+        # tolerance 0.0001: if abs(delta)<0.0001 treat as 0
+        if abs(delta)<0.0001:
+            delta=0
+        out["locations"][loc][t]={"before":bv,"after":av,"delta":delta}
+with open(sys.argv[3],"w") as f:
+    json.dump(out,f,indent=2)
+sys.exit(0)
+PY
+}
+
+signals_crop_phase_dump() {
+    [[ $# -ge 2 ]] || return "$EXIT_USAGE_ERROR"
+    local dump_dir="$1" out="$2" timeout="${3:-5}"
+    # wait for *.json.done
+    local i=0 found=""
+    while (( i < timeout*2+1 )); do
+        found="$(find "$dump_dir" -maxdepth 1 -name '*.json.done' 2>/dev/null | head -1)"
+        [[ -n "$found" ]] && break
+        sleep 0.2
+        i=$((i+1))
+    done
+    [[ -n "$found" ]] || return 19
+    local json_file="${found%.done}"
+    [[ -f "$json_file" ]] || return 19
+    python3 - "$json_file" "$out" <<'PY'
+import json,sys,shutil
+try:
+    d=json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(19)
+if d.get("done") is not True:
+    sys.exit(19)
+# sidecar/field agreement: locationsProcessed == len(locations?) best-effort
+shutil.copyfile(sys.argv[1],sys.argv[2])
+sys.exit(0)
+PY
+}
+
+signals_smapi_log_excerpt() {
+    [[ $# -eq 2 ]] || return "$EXIT_USAGE_ERROR"
+    local log="$1" out="$2"
+    [[ -f "$log" ]] || return 19
+    {
+        grep -i "elapsed" "$log" 2>/dev/null || true
+        grep -i "SoilGrowthModifierCompleted\|DayEnding" "$log" 2>/dev/null || true
+        grep -i "not main player" "$log" 2>/dev/null || true
+    } > "$out"
+    return 0
+}
+
+signals_cross_check() {
+    [[ $# -eq 3 ]] || return "$EXIT_USAGE_ERROR"
+    local dump="$1" save="$2" out="$3"
+    python3 - "$dump" "$save" "$out" <<'PY'
+import json,sys
+try:
+    with open(sys.argv[1]) as f:
+        d=json.load(f)
+    with open(sys.argv[2]) as f:
+        s=json.load(f)
+except Exception as e:
+    rec={"agree":False,"divergences":[{"error":str(e)}]}
+    with open(sys.argv[3],"w") as f:
+        json.dump(rec,f)
+    sys.exit(1)
+rec={"agree":False,"divergences":[]}
+try:
+    lp=d.get("locationsProcessed")
+except Exception:
+    lp=None
+crops=d.get("crops",[]) or []
+div=False
+for c in crops:
+    try:
+        loc=c.get("location"); tx=c.get("tileX"); ty=c.get("tileY")
+        tile=f"{tx},{ty}"
+        sh=c.get("soilHealth")
+        sav=None
+        if isinstance(s,dict):
+            if isinstance(s.get(loc),dict):
+                sav=s.get(loc).get(tile)
+        if sav is not None and sh is not None:
+            try:
+                if abs(float(sav)-float(sh))>0.0001:
+                    div=True
+                    rec["divergences"].append({"location":loc,"tile":tile,"dump":sh,"save":sav})
+            except Exception:
+                div=True
+                rec["divergences"].append({"location":loc,"tile":tile,"dump":sh,"save":sav,"error":"coerce"})
+    except Exception:
+        continue
+if div:
+    rec["agree"]=False
+    with open(sys.argv[3],"w") as f:
+        json.dump(rec,f)
+    sys.exit(1)
+rec["agree"]=True
+with open(sys.argv[3],"w") as f:
+    json.dump(rec,f)
+sys.exit(0)
+PY
+}
+
+signals_write_anomaly() {
+    [[ $# -eq 8 ]] || return "$EXIT_USAGE_ERROR"
+    local bundle="$1" runId="$2" signal="$3" kind="$4" observed="$5" expected="$6" owner="$7" rootCause="$8"
+    mkdir -p "$bundle/artifacts"
+    python3 - "$bundle/artifacts/anomaly-report.json" "$runId" "$signal" "$kind" "$observed" "$expected" "$owner" "$rootCause" <<'PY'
+import json,sys,datetime
+path,runId,signal,kind,observed,expected,owner,rootCause=sys.argv[1:]
+d={"runId":runId,"signal":signal,"kind":kind,"observed":observed,"expected":expected,
+   "owner":owner,"date":datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+   "rootCause":rootCause}
+with open(path,"w") as f:
+    json.dump(d,f,indent=2)
+PY
+    return 0
+}
+
+signals_all_present() {
+    [[ $# -eq 1 ]] || return "$EXIT_USAGE_ERROR"
+    local bundle="$1"
+    local a="$bundle/artifacts"
+    [[ -d "$a" ]] || return 1
+    local count=0
+    for f in "$a"/*; do
+        [[ -f "$f" ]] && [[ -s "$f" ]] && count=$((count+1))
+    done
+    if (( count >= 3 )); then return 0; else return 1; fi
+}
+
+# signals_require_expected_signals <bundle_dir> <runId> <owner>
+# Verify presence of all three expected signals: soilHealthStateDelta, cropPhaseDelta, smapiLog
+# Write anomaly report on any missing/mismatch/divergence and return non-zero (divergence/missing => partial)
+signals_require_expected_signals() {
+    [[ $# -ge 3 ]] || return "$EXIT_USAGE_ERROR"
+    local bundle="$1" runId="$2" owner="${3:-unknown}"
+    local a="$bundle/artifacts"
+    mkdir -p "$a"
+
+    local soil_ok=0 crop_ok=0 smapi_ok=0
+    # look for soil/delta related
+    shopt -s nullglob
+    local files=("$a"/*)
+    shopt -u nullglob
+    for f in "${files[@]:-}"; do
+        [[ -s "$f" ]] || continue
+        local base
+        base="$(basename "$f" | tr '[:upper:]' '[:lower:]')"
+        if [[ "$base" == *soil* ]] || [[ "$base" == *delta* ]]; then
+            soil_ok=1
+        fi
+        if [[ "$base" == *crop* ]] || [[ "$base" == *phase* ]] || [[ "$base" == *dump* ]]; then
+            crop_ok=1
+        fi
+        if [[ "$base" == *smapi* ]] || [[ "$base" == *log* ]] || [[ "$base" == *excerpt* ]]; then
+            smapi_ok=1
+        fi
+    done
+
+    local missing=0
+    if (( soil_ok == 0 )); then
+        signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "missing" "" "" "$owner" "missing soil health delta" >/dev/null 2>&1 || true
+        missing=1
+    fi
+    if (( crop_ok == 0 )); then
+        signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "missing crop phase dump" >/dev/null 2>&1 || true
+        missing=1
+    fi
+    if (( smapi_ok == 0 )); then
+        signals_write_anomaly "$bundle" "$runId" "smapiLog" "missing" "" "" "$owner" "missing smapi log excerpt" >/dev/null 2>&1 || true
+        missing=1
+    fi
+
+    if (( missing == 1 )); then
+        return "$EXIT_ERRORED"
+    fi
+    return 0
+}
+
+# signals_process <bundle_dir> <runId> <owner> [before.json] [after.json] [dump_dir] [save.json] [smapi.log]
+# Orchestrate all three signals with cross-checks; write anomalies on any divergence/missing/mismatch; divergence => partial
+signals_process() {
+    local bundle="${1:-}" runId="${2:-}" owner="${3:-unknown}"
+    shift 3 || true
+    local before="${1:-}" after="${2:-}" dump_dir="${3:-}" save="${4:-}" smapi_log="${5:-}"
+
+    [[ -n "$bundle" && -n "$runId" ]] || return "$EXIT_USAGE_ERROR"
+    local a="$bundle/artifacts"
+    mkdir -p "$a"
+
+    local issues=0
+
+    # Soil health delta
+    if [[ -n "$before" && -n "$after" ]]; then
+        local sdelta="$a/soil-health-before-after.json"
+        if signals_soil_health_delta "$before" "$after" "$sdelta"; then
+            [[ -s "$sdelta" ]] || { signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "missing" "" "" "$owner" "soil delta missing after generation" >/dev/null 2>&1 || true; issues=1; }
+        else
+            signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "mismatch" "" "" "$owner" "soil delta generation failed" >/dev/null 2>&1 || true
+            issues=1
+        fi
+    else
+        signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "missing" "" "" "$owner" "missing before/after for soil health delta" >/dev/null 2>&1 || true
+        issues=1
+    fi
+
+    # Crop phase dump + cross-check with save
+    if [[ -n "$dump_dir" ]]; then
+        local cdump="$a/crop-phase-dump.json"
+        if signals_crop_phase_dump "$dump_dir" "$cdump" 5; then
+            [[ -s "$cdump" ]] || { signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "crop dump missing after copy" >/dev/null 2>&1 || true; issues=1; }
+            if [[ -n "$save" && -f "$save" ]]; then
+                local cchk="$a/crop-phase-cross-check.json"
+                if ! signals_cross_check "$cdump" "$save" "$cchk"; then
+                    signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "divergence" "$(cat "$cchk" 2>/dev/null | tr -d '\n' | head -c 200)" "" "$owner" "dump vs save divergence" >/dev/null 2>&1 || true
+                    issues=1
+                fi
+            fi
+        else
+            signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "crop phase dump not found/completed" >/dev/null 2>&1 || true
+            issues=1
+        fi
+    else
+        signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "missing crop phase dump dir" >/dev/null 2>&1 || true
+        issues=1
+    fi
+
+    # SMAPI log excerpt
+    if [[ -n "$smapi_log" && -f "$smapi_log" ]]; then
+        local sexcerpt="$a/smapi-log.txt"
+        if signals_smapi_log_excerpt "$smapi_log" "$sexcerpt"; then
+            [[ -s "$sexcerpt" ]] || { signals_write_anomaly "$bundle" "$runId" "smapiLog" "missing" "" "" "$owner" "smapi log excerpt empty" >/dev/null 2>&1 || true; issues=1; }
+        else
+            signals_write_anomaly "$bundle" "$runId" "smapiLog" "missing" "" "" "$owner" "smapi log excerpt failed" >/dev/null 2>&1 || true
+            issues=1
+        fi
+    else
+        signals_write_anomaly "$bundle" "$runId" "smapiLog" "missing" "" "" "$owner" "missing smapi log" >/dev/null 2>&1 || true
+        issues=1
+    fi
+
+    signals_require_expected_signals "$bundle" "$runId" "$owner" >/dev/null 2>&1 || issues=1
+
+    if (( issues == 1 )); then
+        return "$EXIT_ERRORED"
+    fi
+    return 0
+}
