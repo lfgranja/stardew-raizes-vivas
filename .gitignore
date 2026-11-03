@@ -511,3 +511,6 @@ Thumbs.db
 
 # Acquired game-path cache marker
 .acquired.json
+
+# CodeGraph local index
+.codegraph/
