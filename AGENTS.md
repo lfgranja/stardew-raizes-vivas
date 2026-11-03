@@ -1,6 +1,6 @@
 # Living Roots — Agent Guide
 
-Stardew Valley agroecological mod (.NET 6, C# latest) via SMAPI. Layered DDD: `Domain/` (contracts + pure logic) → `Services/` (impls + persistence) → `Controllers/` (SMAPI handlers). Composition root: `LivingRoots/ModEntry.cs` (sole `new` site for services). Authoritative principles: `.specify/memory/constitution.md`. Detailed layer notes: `LivingRoots/AGENTS.md`, `LivingRoots/Domain/AGENTS.md`, `LivingRoots/Services/AGENTS.md`.
+Stardew Valley agroecological mod (.NET 6, C# latest) via SMAPI. Layered DDD: `Domain/` (contracts + pure logic) → `Services/` (impls + persistence) → `Controllers/` (SMAPI handlers). Composition root: `LivingRoots/ModEntry.cs` (sole `new` site for services). Authoritative principles: `.specify/memory/constitution.md`. Nested layer notes: `LivingRoots/AGENTS.md`, `LivingRoots/Domain/AGENTS.md`, `LivingRoots/Services/AGENTS.md`.
 
 ## Commands
 
@@ -43,11 +43,11 @@ lefthook: pre-commit runs `dotnet format --verify-no-changes` + shell syntax/sta
 ## Architecture
 
 - `LivingRoots/Constants.cs` — `ModConstants` is the single source of all magic numbers; no hardcoded tile coords/health values elsewhere.
-- `LivingRoots/Domain/Interfaces/` (plus a few root `Domain/` contracts) — interfaces; `LivingRoots/Services/` — implementations. Pure domain services live in `LivingRoots/Domain/Services/`.
+- `LivingRoots/Domain/` — contracts (root + `Interfaces/`) + pure logic (`Services/`, `Visualization/`); no SMAPI using statements.
+- `LivingRoots/Services/` — application services implementing domain interfaces; persistence via `ModDataService` + `SanitizePathSegments()` (path traversal, homoglyph, Unicode FormC normalization).
 - `LivingRoots/Controllers/ModController.cs` — SMAPI event orchestrator; atomic bit-flag state machine; use `ExecuteWithConcurrencyGuard` for re-entrancy; snapshot data outside locks, then do I/O.
-- `LivingRoots/Services/ModDataService.cs` — persistence + `SanitizePathSegments()` (path traversal, homoglyph, Unicode FormC normalization).
-- `LivingRoots/Patches/HarvestPatches.cs` + seam `Domain/IHarvestQualityService.cs` / `Domain/Services/HarvestQualityService.cs` — Harmony patches via code API only (static methods, try/catch fallback).
-- `LivingRoots.Tests/` — xUnit + Moq + FsCheck + Microsoft.Coyote; one file per subject `{Subject}Tests.cs`. Also `LivingRoots.Verification` / `.Verification.Runner`.
+- `LivingRoots/Patches/HarvestPatches.cs` + seam `Domain/IHarvestQualityService.cs` — Harmony patches via code API only (static methods, try/catch fallback).
+- `LivingRoots.Tests/` — xUnit + Moq + FsCheck + Microsoft.Coyote; one file per subject `{Subject}Tests.cs`. `LivingRoots.Verification` / `.Verification.Runner` are build-only.
 
 ## Conventions (non-obvious)
 
@@ -58,15 +58,7 @@ lefthook: pre-commit runs `dotnet format --verify-no-changes` + shell syntax/sta
 - Multiplayer is first-class (constitution Principle VI): farm state host-authoritative/farm-scoped; atomic per-tile/per-machine locks with first-wins; single-player is the degenerate case. No second source of truth.
 - Security: never log raw exception messages; validate soil health 0–100 via `ModConstants`; sanitize all user-influenced paths.
 - Constructor injection only; `ModEntry.cs` is the sole composition root; primary constructors (C# 12) on controllers.
-
-## Anti-patterns
-
-- `.Result`/`.Wait()` on async calls; holding a lock during I/O.
-- Hardcoded tile coords or health values (use `ModConstants`).
-- Storing zero health in runtime cache.
-- Exposing raw exception messages in logs.
-- Expression-bodied methods; suppressing overflow checks.
-- `new`-ing services outside `ModEntry.cs`.
+- Don't: `new` services outside `ModEntry.cs`; mutate `_state` without `Interlocked`; hold a lock during I/O; implement domain logic in controllers; suppress overflow checks; expose raw exception messages in logs.
 
 ## Process
 
