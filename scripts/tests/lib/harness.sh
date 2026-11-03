@@ -562,10 +562,14 @@ _run_script_impl() {
     # assignments as unused. They are deliberately NOT exported — the captured
     # output would otherwise leak into the environment of the script under
     # test.
+    # Bounded drain (T189-T191 fix): a grandchild that inherits a pipe's
+    # write end can keep EOF from ever arriving, so an unbounded `cat` would
+    # hang the suite even after the direct child is dead. Bound the read with
+    # `timeout` and abandon it on 124; whatever was captured before is kept.
     # shellcheck disable=SC2034  # read by the suites that source this library
-    RUN_STDOUT="$(cat -- "$out_file")"
+    RUN_STDOUT="$(timeout 5 cat -- "$out_file" 2>/dev/null || true)"
     # shellcheck disable=SC2034  # read by the suites that source this library
-    RUN_STDERR="$(cat -- "$err_file")"
+    RUN_STDERR="$(timeout 5 cat -- "$err_file" 2>/dev/null || true)"
     rm -f -- "$out_file" "$err_file"
     RUN_PERFORMED=1
     return 0
