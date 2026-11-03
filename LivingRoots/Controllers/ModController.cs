@@ -1810,9 +1810,9 @@ namespace LivingRoots.Controllers
                         var tile = new Microsoft.Xna.Framework.Vector2(x, y);
                         float health = _soilHealthService.GetSoilHealth(locationName, tile);
 
-                        // NaN / unknown: skip (no change). Zero/missing (sparse -> 0): skip (vanilla, not Poor).
+                        // NaN / unknown: skip (no change). Negative: skip. Measured 0 is Poor (A7).
                         if (float.IsNaN(health) || float.IsInfinity(health)) continue;
-                        if (health <= 0f) continue;
+                        if (health < 0f) continue;
 
                         if (location.terrainFeatures == null
                             || !location.terrainFeatures.TryGetValue(tile, out var feature)
@@ -1824,8 +1824,8 @@ namespace LivingRoots.Controllers
 
                         var crop = dirt.crop;
                         // Tier multipliers on cached base phaseDays (multiplicative, vanilla-blessed via Speed-Gro pattern).
-                        // Poor (<34): SoilGrowthPoorMultiplier (slower), Moderate [34,67): 1.00x (vanilla),
-                        // Healthy (>=67): SoilGrowthHealthyMultiplier (faster).
+                        // Poor (<31): SoilGrowthPoorMultiplier (slower), Moderate [31,71): 1.00x (vanilla),
+                        // Healthy (>=71): SoilGrowthHealthyMultiplier (faster).
                         float multiplier;
                         if (health < ModConstants.PoorModerateBandEdge)
                         {
