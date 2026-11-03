@@ -37,11 +37,12 @@ Diferencial vs. ReGen Valley (Nexus, 2025): não é a mecânica de soil health (
 | Métrica | Valor |
 |---|---|
 | Build | 0 erros, 0 warnings |
-| Testes | 1436 passed / 0 failed / 4 skipped |
+| Testes | 1471 passed / 0 failed / 4 skipped |
 | Format gate | clean |
 | Quality gate | 171 pytest passed; analyzer probe PASS |
-| Specs fechadas | 002, 004, 008, 009 (local), 011 (local), 012 (converged), 013 (shipped) |
-| Features nomeadas shipped | 2 de 21 (composting, mulch) + 5 de 13 promessas de core |
+| Specs fechadas | 002, 012 (converged) |
+| Specs quase fechadas | 004 (57/59), 005 (143/146), 008 (184/186), 013 (46/48) |
+| Features nomeadas shipped | 3 de 21 (composting, mulch, soil-health→crop-growth) + seam de harvest-quality (infra) |
 | In-game runs | **0 — nunca executado** |
 | DLLs proprietárias no git | 0 (apenas assets em `.gamepath/Mods/`) |
 
