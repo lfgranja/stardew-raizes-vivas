@@ -2,7 +2,7 @@
 
 This document outlines the development roadmap for the "Living Roots" mod, detailing the progression of features from early to late game, based on agroecological principles.
 
-> **STATUS ANNOTATION — verified 2026-11-01**
+> **STATUS ANNOTATION — verified 2026-11-03 (deep web research refresh)**
 > Every roadmap item below is marked with what actually exists in code, verified by build, test run and
 > source audit — not by spec claims. Legend:
 > ✅ implemented & verified (build + tests green) · 🟡 partial / inert · ❌ not implemented ·
@@ -601,3 +601,53 @@ Justificativa: infraestrutura cara já mergeada; custo marginal é integração 
 | Heirloom pipeline | Alto | Desbloqueia 3 features | **Depois** |
 | Elena + Welcome Kit | Muito alto | Conteúdo/NPC | **Por último** |
 | Mid/End-game (12 features) | Muito alto | Conteúdo | **Por último** |
+
+---
+
+## Competitive landscape (verified via web research, 2026-11-03)
+
+### Direct competitors (soil-health / regenerative farming)
+
+| Mod | Nexus DL | Approach | Differentiation vs. Living Roots |
+|---|---|---|---|
+| **ReGen Valley** (robertsvalley, v0.51, Nov 2025) | -- (new) | Per-tile soil health (baseline 25), cover crops (rye/clover/sorghum/buckwheat), rotational grazing (cows + pens + beacons), roller/no-till planter, water retention at >80, faster growth at 70+/90+, **farm-wide** yield/quality at avg 75+/90+ | Heavy on animal integration & machinery; no composting loop, no educational framing, no per-tile harvest quality, no multiplayer host-authoritative design documented. Our edge: coherence + compost loop + educational framing + multiplayer correctness. |
+| **Permaculture Farming** (wiki) | — | Mulch crop (2-day grow) prevents tilled soil from disappearing at season change | Narrow: only soil disappearance prevention. |
+| **Spoilage** (Nexus) | — | Realistic food rot + composting bin (perishables → compost) | Composting-only; no soil health, no growth/quality linkage. |
+| **Spore Galore** (Nexus) | — | Mushroom cultivation; composting bin (spent substrate → mushroom compost) | Niche (mushrooms); no soil-health system. |
+| **Crop Quality** (CurseForge) | — | Replaces days-played quality roll with a random number so same crop = same quality | Orthogonal: quality determinism, no soil linkage. |
+
+### Adjacent (quality/yield boosters, no soil)
+
+- **Quality Giant Crops** — quality roll on giant crops (vanilla formula).
+- **Farming level yield mods** — yield scales with Farming skill.
+- **Quality Sprinklers / Iridium Sprinklers** — layout optimization, no soil.
+
+### Our positioning (verified gap)
+
+No mod combines **per-tile soil health + composting loop + mulch + rotation + polyculture + animal management + educational framing + multiplayer correctness** in one coherent loop. ReGen Valley is the closest on soil mechanics but ships farm-wide (not per-tile) quality/yield and leans on machinery/animals rather than compost. Living Roots' differentiator remains coherence, the compounding compost loop, educational framing, and multiplayer correctness from day 1.
+
+### Agronomic grounding (from `research/2026-10-roadmap-feasibility-and-agronomy.md`)
+
+| Mechanic | Evidence | Consequence |
+|---|---|---|
+| Compost/manure | ✅ strong (long-term trials: +13% organic C, +19% N, +47% P) | Build as promised; +15 is a game abstraction |
+| Mulch/soil cover | ✅ strongest (meta-analysis 90 studies: −47% runoff, −76% soil loss) | Best-supported claim in the roadmap; teach real agronomy |
+| Crop rotation | ✅ strong (yield +20–25% in long trials) | Core mid-game mechanic |
+| Polyculture/intercropping | 🟡 medium (yield +20–30% in tropical systems) | Scope carefully; "Three Sisters" needs new crops |
+| Green manure | ✅ strong (N fixation) | Mid-game item |
+| Pest control via beneficial insects | ⚠️ weak-to-negative (entomology) | Do NOT present as established agronomy |
+| Beehive "beneficial insect aura" | ⚠️ weak | Treat as flavor, not science |
+
+### Market validation
+
+- Soil-health mods are a proven niche (ReGen Valley, Permaculture Farming, Spoilage, Spore Galore all ship and are downloaded).
+- "Quality driven by soil" is an open window: ReGen delivers farm-wide at 75+/90+ avg; per-tile deterministic boost + transient feedback (our seam, specs 014/015) has no equivalent competitor with in-game verification.
+- Multiplayer is mainstream (co-op is a vanilla path); Principle VI (host-authoritative, first-wins) is a real differentiator.
+- Agronomic honesty (mulch = strongest evidence) is a unique educational differentiator.
+
+### Implications for roadmap priority
+
+1. **Harvest-quality loop (specs 014/015)** remains the 80/20: only item that makes Living Soil (71–100%) visibly pay off at harvest; infrastructure already merged.
+2. **Mulch** is our strongest agronomic claim — lean on it in marketing/education.
+3. **Pest control via insects** should not be presented as science; reframe or drop.
+4. **Gate 3 (in-game)** is the single biggest unverified assumption and blocks "verified" status for every shipped feature.
