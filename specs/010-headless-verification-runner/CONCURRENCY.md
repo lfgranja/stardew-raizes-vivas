@@ -114,7 +114,7 @@ Coyote and FsCheck are .NET-only; they do not test the bash orchestrator. Bash t
 
 ## 9. TOCTOU review record
 
-**Review basis**: every concurrency primitive is reviewed for a check-then-act sequence. A primitive with no check-then-act sequence is recorded as "no TOCTOU surface" with a one-line justification; a primitive whose check and act are separated is recorded with its guard. Review date **2026-10-27, revised same day** for the host-shared claim root creation/permission check, process-group reaping, and the XDG containment probe; reviewer maintainer (`lfgranja`). The review is repeated whenever a primitive changes, and the review date advances on each revision even when no other prose changes.
+**Review basis**: every concurrency primitive is reviewed for a check-then-act sequence. A primitive with no check-then-act sequence is recorded as "no TOCTOU surface" with a one-line justification; a primitive whose check and act are separated is recorded with its guard. Review date **2026-11-03** (Phase 6 polish): host-shared claim root creation/permission check, process-group reaping, and the XDG containment probe confirmed; reviewer maintainer (`lfgranja`). The review is repeated whenever a primitive changes, and the review date advances on each revision even when no other prose changes.
 
 | Primitive | Check → act | Finding | Disposition |
 |-----------|-------------|---------|-------------|
