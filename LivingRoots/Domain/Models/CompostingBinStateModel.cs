@@ -40,6 +40,12 @@ public class CompostingBinStateModel
     public bool HasPaidThisBatch { get; set; }
 
     /// <summary>
+    /// Idempotency flag: whether the compost output has already been granted for this
+    /// Ready bin (prevents duplicate grant on retry). Reset when the bin becomes Empty.
+    /// </summary>
+    public bool OutputGranted { get; set; }
+
+    /// <summary>
     /// Remaining days until maturation (0 when ready or empty).
     /// </summary>
     public int DaysRemaining { get; set; }
