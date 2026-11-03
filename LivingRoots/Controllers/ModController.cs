@@ -296,6 +296,8 @@ namespace LivingRoots.Controllers
                 // Subscribe to visualization events if services are available
                 if (_visualizationService != null)
                 {
+                    localRenderedWorldHandler = _onRenderedWorldHandler ??= OnRenderedWorld;
+                    localButtonReleasedHandler = _onButtonReleasedHandler ??= OnButtonReleased;
                     var eventsDisplay = _helper?.Events?.Display;
                     var eventsInput = _helper?.Events?.Input;
                     if (eventsDisplay != null) eventsDisplay.RenderedWorld += localRenderedWorldHandler;
