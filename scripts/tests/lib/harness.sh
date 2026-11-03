@@ -540,7 +540,31 @@ _run_script_impl() {
     fi
 
     if (( RUN_DEADLINE_SECS > 0 )) && command -v timeout >/dev/null 2>&1; then
-        if env "${env_args[@]}" timeout --kill-after=5 "$RUN_DEADLINE_SECS" \
+        if command -v setsid >/dev/null 2>&1; then
+            # Launch in a new session/process group so the whole subtree can
+            # be reaped explicitly if `timeout` fails to do so (trap deferral,
+            # pipe retention). The script under test backgrounds its own main
+            # launch (see smoke-validation.sh) so SIGTERM is not deferred.
+            setsid env "${env_args[@]}" timeout --kill-after=5 "$RUN_DEADLINE_SECS" \
+                "$HARNESS_SCRIPT" "$@" >"$out_file" 2>"$err_file" &
+            local runner_pid=$!
+            if wait "$runner_pid"; then
+                RUN_CODE=0
+            else
+                RUN_CODE=$?
+            fi
+            # Explicit group reap as a backstop.
+            if kill -0 "$runner_pid" 2>/dev/null; then
+                kill -TERM -- -"$runner_pid" 2>/dev/null || true
+                local _i
+                for _i in $(seq 1 50); do
+                    kill -0 "$runner_pid" 2>/dev/null || break
+                    sleep 0.1
+                done
+                kill -KILL -- -"$runner_pid" 2>/dev/null || true
+                wait "$runner_pid" 2>/dev/null || true
+            fi
+        elif env "${env_args[@]}" timeout --kill-after=5 "$RUN_DEADLINE_SECS" \
             "$HARNESS_SCRIPT" "$@" >"$out_file" 2>"$err_file"; then
             RUN_CODE=0
         else
