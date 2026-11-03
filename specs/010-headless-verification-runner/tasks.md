@@ -223,20 +223,20 @@ Repository root is `/home/luis/development/stardew-raizes-vivas`. Production mod
 
 ### Tests for US3 (write FIRST)
 
-- [ ] T116 [P] [US3] CI-mode tests in `scripts/tests/test-ci-mode.sh`, scaffolded from `scripts/tests/lib/test-suite-template.sh`: `--ci` is non-interactive, same verdict/schema as local, no prompts, stdout/stderr separation, and exit mapping unchanged.
-- [ ] T117 [P] [US3] Reporter tests in `scripts/tests/test-reporters.sh`: JUnit XML with `<skipped>` for quarantine, Allure JSON with `flaky: true`, per-scenario entries preserved, and malformed paths rejected.
-- [ ] T118 [P] [US3] Workflow-contract tests in `scripts/tests/test-ci-workflow.sh`: self-hosted labels, token scoping, `cache-mode`, least privilege, high/low runner group separation, and no invocation on public-hosted PRs (public-hosted dormancy).
-- [ ] T119 [US3] **RED gate (US3)**: run `scripts/tests/test-ci-mode.sh`, `scripts/tests/test-reporters.sh`, and `scripts/tests/test-ci-workflow.sh`; record the failing output in `specs/010-headless-verification-runner/red-gate-phase-5.log`; no US3 implementation may start yet.
+- [X] T116 [P] [US3] CI-mode tests in `scripts/tests/test-ci-mode.sh`, scaffolded from `scripts/tests/lib/test-suite-template.sh`: `--ci` is non-interactive, same verdict/schema as local, no prompts, stdout/stderr separation, and exit mapping unchanged.
+- [X] T117 [P] [US3] Reporter tests in `scripts/tests/test-reporters.sh`: JUnit XML with `<skipped>` for quarantine, Allure JSON with `flaky: true`, per-scenario entries preserved, and malformed paths rejected.
+- [X] T118 [P] [US3] Workflow-contract tests in `scripts/tests/test-ci-workflow.sh`: self-hosted labels, token scoping, `cache-mode`, least privilege, high/low runner group separation, and no invocation on public-hosted PRs (public-hosted dormancy).
+- [X] T119 [US3] **RED gate (US3)**: run `scripts/tests/test-ci-mode.sh`, `scripts/tests/test-reporters.sh`, and `scripts/tests/test-ci-workflow.sh`; record the failing output in `specs/010-headless-verification-runner/red-gate-phase-5.log`; no US3 implementation may start yet.
 
 ### Implementation for US3
 
-- [ ] T120 [US3] Implement `scripts/lib/ci.sh` and wire `--ci` into `scripts/verify-scenario.sh`: non-interactive, machine-readable summary, no behavior change to verdict/security. **Serialized after T099 and US2 T115**; the same single orchestrator owner as T099.
-- [ ] T121 [US3] Implement `scripts/lib/reporters.sh`: JUnit XML + Allure JSON writers, `<skipped>` for quarantine, `flaky` metadata, and per-scenario entries.
-- [ ] T122 [US3] Scaffold `.github/workflows/verify-scenario.yml` from the existing `.github/workflows/build_and_test.yml` substrate, then scope it to a self-hosted runner, least-privilege `GITHUB_TOKEN`, `cache-mode`, token from secrets, bundle upload + durable-store export, and a public-hosted guard.
-- [ ] T122b [US3] Create `.github/workflows/security-aggregation.yml`: daily `schedule` plus `workflow_dispatch`; `permissions: contents: read` and `issues: write`; fail closed when `vars.RUNNER_AUDIT_STORE` is unset; query the trailing 24 h for `401`/`403` events; at ≥ 3 occurrences open or update a single issue.
-- [ ] T122c [US3] Create `.github/CODEOWNERS` assigning `@lfgranja` as owner of `specs/010-headless-verification-runner/`, `scripts/verify-scenario.sh`, `scripts/verify-evidence-bundle.sh`, `LivingRoots.Verification/`, and `LivingRoots/Domain/Interfaces/ILivingRootsModApi.cs`.
-- [ ] T123 [US3] Update `specs/010-headless-verification-runner/GOVERNANCE-ANNEX.md` with the CI control matrix, runner-group split, cache-mode settings, and public-hosted dormancy referenced by the workflow.
-- [ ] T124 [US3] **US3 checkpoint**: run `scripts/tests/test-ci-mode.sh` and `scripts/tests/test-reporters.sh` with stubs; assert local/CI verdict parity and that `scripts/tests/test-ci-workflow.sh` keeps public-hosted CI dormant.
+- [X] T120 [US3] Implement `scripts/lib/ci.sh` and wire `--ci` into `scripts/verify-scenario.sh`: non-interactive, machine-readable summary, no behavior change to verdict/security. **Serialized after T099 and US2 T115**; the same single orchestrator owner as T099.
+- [X] T121 [US3] Implement `scripts/lib/reporters.sh`: JUnit XML + Allure JSON writers, `<skipped>` for quarantine, `flaky` metadata, and per-scenario entries.
+- [X] T122 [US3] Scaffold `.github/workflows/verify-scenario.yml` from the existing `.github/workflows/build_and_test.yml` substrate, then scope it to a self-hosted runner, least-privilege `GITHUB_TOKEN`, `cache-mode`, token from secrets, bundle upload + durable-store export, and a public-hosted guard.
+- [X] T122b [US3] Create `.github/workflows/security-aggregation.yml`: daily `schedule` plus `workflow_dispatch`; `permissions: contents: read` and `issues: write`; fail closed when `vars.RUNNER_AUDIT_STORE` is unset; query the trailing 24 h for `401`/`403` events; at ≥ 3 occurrences open or update a single issue.
+- [X] T122c [US3] Create `.github/CODEOWNERS` assigning `@lfgranja` as owner of `specs/010-headless-verification-runner/`, `scripts/verify-scenario.sh`, `scripts/verify-evidence-bundle.sh`, `LivingRoots.Verification/`, and `LivingRoots/Domain/Interfaces/ILivingRootsModApi.cs`.
+- [X] T123 [US3] Update `specs/010-headless-verification-runner/GOVERNANCE-ANNEX.md` with the CI control matrix, runner-group split, cache-mode settings, and public-hosted dormancy referenced by the workflow.
+- [X] T124 [US3] **US3 checkpoint**: run `scripts/tests/test-ci-mode.sh` and `scripts/tests/test-reporters.sh` with stubs; assert local/CI verdict parity and that `scripts/tests/test-ci-workflow.sh` keeps public-hosted CI dormant.
 
 **Checkpoint**: All three user stories work independently, with the single orchestrator edited serially.
 
