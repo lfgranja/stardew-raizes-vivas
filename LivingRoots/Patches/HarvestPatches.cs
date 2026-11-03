@@ -228,7 +228,7 @@ namespace LivingRoots.Patches
                             {
                                 // Vanilla quality probability (FR-003): p = 0.2*(FarmingLevel/10) + 0.2*fertTier*((FarmingLevel+2)/12) + 0.01
                                 float vanillaP = 0.2f * (farmingLevel / 10.0f) + 0.2f * fertilizerTier * ((farmingLevel + 2) / 12.0f) + 0.01f;
-                                int hash = (xTile * 397) ^ (yTile * 17) ^ Game1.Date.TotalDays;
+                                int hash = (xTile * 397) ^ (yTile * 17) ^ Game1.Date.TotalDays ^ (int)(Game1.uniqueIDForThisGame & 0xFFFFFFFF) ^ (fertilizerTier * 31);
                                 double roll = Math.Abs(hash % 10000) / 10000.0;
                                 float boosted = service.BoostQualityProbability(vanillaP, decision);
                                 if (roll < boosted)
@@ -247,7 +247,7 @@ namespace LivingRoots.Patches
                     // Extra harvest: apply boosted chance deterministically
                     try
                     {
-                        int hash = (xTile * 397) ^ (yTile * 17) ^ Game1.Date.TotalDays ^ 0x5A827999;
+                        int hash = (xTile * 397) ^ (yTile * 17) ^ Game1.Date.TotalDays ^ (int)(Game1.uniqueIDForThisGame & 0xFFFFFFFF) ^ 0x5A827999;
                         double roll = Math.Abs(hash % 10000) / 10000.0;
                         float boostedChance = service.BoostExtraHarvestChance(0.0f, decision);
                         if (roll < boostedChance && who != null && who.Items != null)
@@ -379,8 +379,22 @@ namespace LivingRoots.Patches
                         {
                             try
                             {
-                                var mpProp = typeof(Game1).GetProperty("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-                                var mp = mpProp != null ? mpProp.GetValue(null) : null;
+                                // Game1.multiplayer is a public static FIELD (not a property); try field first, then property as fallback.
+                                var mpField = typeof(Game1).GetField("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                                var mpProp = mpField == null ? typeof(Game1).GetProperty("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static) : null;
+                                object? mp;
+                                if (mpField != null)
+                                {
+                                    mp = mpField.GetValue(null);
+                                }
+                                else if (mpProp != null)
+                                {
+                                    mp = mpProp.GetValue(null);
+                                }
+                                else
+                                {
+                                    mp = null;
+                                }
                                 if (mp != null)
                                 {
                                     var method = mp.GetType().GetMethod("broadcastSprites", new[] { typeof(GameLocation), typeof(List<TemporaryAnimatedSprite>) });
