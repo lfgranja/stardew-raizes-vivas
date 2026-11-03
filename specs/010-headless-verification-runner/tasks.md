@@ -522,3 +522,13 @@ These are quoted from `data-model.md` and `contracts/scenario.schema.json`; T060
 ## Phase 13: Convergence (appended)
 
 - [X] T184 Fix syntax error in `scripts/tests/test-logparse.sh` (stray `;;` at line ~800) so the shell suite passes `bash -n` and the test file runs per T134 (partial)
+
+## Phase 14: Convergence (appended)
+
+- [ ] T185 Fix `scripts/tests/spec-consistency.py` `task_line()` regex to accept uppercase `[X]` checked boxes (currently only `[ x]`), which falsely reports 43 completed tasks as missing; patched run passes 261/261. per C-SCN-36 (partial)
+- [ ] T186 Fix `scripts/lib/preflight.sh` `--game-path` handling per FR-001: an invalid path under `--no-acquire` must exit `9` (missing dependency), not `14` (usage); a valid path must not yield `14`. Evidence: `test-game-path.sh` reports both failures. per FR-001 (partial)
+- [ ] T187 Fix `scripts/verify-scenario.sh` CLI parsing per T063: `--override` allow-list, `--scenario <dir>`, and `--scenario-glob` must not be rejected as usage errors. Evidence: `test-verify-cli.sh` reports three `not ok` usage-error cases. per T063 (partial)
+- [ ] T188 Reconcile `scripts/tests/run-all.sh` discovery with the T061c/T040 contract (empty directory fails clearly, no duplicate execution, explicit file/path selection honored) and correct the argument order in `scripts/tests/test-runall.sh`. Evidence: `test-runall.sh` reports both assertions failing. per T040 (partial)
+- [ ] T189 Fix `scripts/tests/test-preflight.sh` T128 hung-script bound so the suite terminates within its time budget instead of hanging. per T034 (partial)
+- [ ] T190 Investigate and resolve the hang in `scripts/tests/test-integration.sh` (spec 008 smoke lifecycle). per T034 (partial)
+- [ ] T191 Resolve the intermittent hang/flakiness in `scripts/tests/test-logparse.sh` so it runs within budget. per T134 (partial)
