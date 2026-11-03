@@ -14,8 +14,8 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 > merged into `dev` (PRs #655/#656/#657): the pure `HarvestQualityService` seam, the non-suppressing
 > two-phase Harmony patch for `Crop.harvest`, the defensive `ModEntry` wiring (skipped in test envs),
 > and the full spec/plan/tasks/checklist artifacts. The seam is unit-tested (17 tests) but the patch
-> has **not** been executed in a live SMAPI session yet. Test suite currently reports 1460 passed /
-> 5 failed / 4 skipped (1469 total) — 5 regressions appeared after the merge and are being triaged.
+> has **not** been executed in a live SMAPI session yet. Test suite currently reports 1471 passed /
+> 0 failed / 4 skipped (1475 total) — 5 regressions appeared after the merge and are being triaged.
 > Spec 005 still has 3 doc-only convergence tasks (T117–T119). Gate 3 (in-game SMAPI session) is
 > still pending. Spec 010 (headless runner) not started.
 
@@ -651,3 +651,53 @@ No mod combines **per-tile soil health + composting loop + mulch + rotation + po
 2. **Mulch** is our strongest agronomic claim — lean on it in marketing/education.
 3. **Pest control via insects** should not be presented as science; reframe or drop.
 4. **Gate 3 (in-game)** is the single biggest unverified assumption and blocks "verified" status for every shipped feature.
+
+---
+
+## Pesquisa de mercado e ecossistema (verificada 2026-11-03)
+
+Fontes primárias: Nexus Mods, CurseForge, PCGamesN/Technwz (listas de melhores mods 2026), SMAPI release notes (Pathoschild), Stardew Valley Wiki, mod docs.
+
+### Ecossistema (2026)
+
+- **SMAPI 4.5.2** (lançado 14/03/2026) para Stardew Valley 1.6.14+; 4.4.0+ (jan/2026) adicionou UI de config in-game via GMCM e builds atestados. Mods devem mirar 4.4.0+ / 1.6.14+.
+- **Stardew Valley** está em 1.6.15 (referenciado por mods recentes); sem Steam Workshop oficial — distribuição via Nexus/CurseForge + SMAPI.
+- **Nexus Mods** concentra dezenas de milhares de mods; listas de "best mods 2026" focam em QoL (Chests Anywhere, Stamina Regen, Crops Anytime Anywhere, Simple Crop Label) — **não há mod de agroecologia profunda** além de ReGen Valley e afins.
+- **Multiplayer/headless**: existem mods de servidor dedicado (always-on-server, SMAPIDedicatedServerMod) para co-op; relevante para o pilar "co-op desde o dia 1" (Principle VI).
+
+### Concorrentes diretos (landscape 2026)
+
+| Mod | Foco | Downloads (aprox.) | Sobreposição com Living Roots |
+|---|---|---|---|
+| **ReGen Valley** (Nexus, 2025) | Soil health farm-wide (75+/90+ avg) | — | Concorrente mais próximo; **não** é per-tile com boost determinístico + feedback transient |
+| **Crop Quality** (aedenthorn, 0.2.0) | Exibe qualidade da colheita; tweaks de chances | 9.2K (CurseForge) | Complementar — exibição, não mecânica de solo |
+| **Simple Skills Extended** (Xsyy, 1.18, out/2026) | Skills com bônus de qualidade/extras, por-farmer, integra Cornucopia/SpaceCore | — | Concorrente em "qualidade dirigida por skill"; não per-tile por saúde do solo |
+| **Spore Galore** (HomesteadyEddy) | Cultivo de cogumelos + compostagem (substrato gasto → composto em 2 dias) | — | Sobrepõe compostagem; fecha loop "waste → compost → fertilizer" |
+| **Harvest Ledger** (Tigrevurmud666, 0.5.0) | Economia dinâmica com streak de rotação de culturas (+3%/+5% venda) | — | Sobrepõe rotação; valida demanda por mecânica de rotação |
+| **Tilled Soil Decay Options** (CaptainSully, 2026) | Configura decay de solo arado (atravessa estações) | — | Sobrepõe decay de solo; mostra demanda por controle de decay |
+
+### Implicações para o roadmap
+
+1. **Diferencial único confirmado**: per-tile soil health com boost determinístico de qualidade + colheita extra + feedback transient **não existe** no ecossistema. Simple Skills Extended dá bônus por skill (farm-wide), ReGen Valley dá por média da fazenda. Living Roots é o único per-tile host-authoritative com feedback. → priorizar specs 014/015 (harvest-quality) + Gate 3.
+2. **Compostagem não é diferencial** (Spore Galore já fecha o loop waste→compost). O diferencial de Living Roots é a **coerência agroecológica** (composto + mulch + rotação + policultura + adubo verde) e o **framing educativo**, não a mecânica isolada.
+3. **Rotação de culturas tem demanda validada** (Harvest Ledger streaks). Vale investir em Three Sisters / Rotation Journal / Green Manure (mid-game) após harvest-quality.
+4. **Multiplayer é diferencial real** se verificado ao vivo (D1): a maioria dos mods de solo não é host-authoritative per-tile com first-wins. Verificar D1 cedo aumenta o valor percebido.
+5. **Ecossistema está em 1.6.15 + SMAPI 4.5.x**: manter target 1.6.14+ / SMAPI 4.4.0+ (já adotado) é correto; não há pressão para migrar de framework.
+
+### Onde estamos (atualizado 2026-11-03, com pesquisa)
+
+- **Implementado e verificado por build/testes**: núcleo de solo persistente, compostagem, mulch, decay sazonal (greenhouse exempt), growth modifier, seam de harvest-quality (infra), smoke de carregamento SMAPI.
+- **Implementado mas NÃO executado in-game**: patch Harmony de `Crop.harvest`, feedback sprites/SFX, colheita extra.
+- **Não implementado**: Joja Fertilizer, Heirloom pipeline (Three Sisters, Green Manure, Rotation Journal), mid/end-game (12 features), Elena NPC, Welcome Kit, headless runner (010).
+- **Verificação real (Gate 3)**: 0 runs completos — maior gap.
+
+### Próximo passo (80/20, atualizado)
+
+1. Fechar integração harvest-quality (014/015): feedback sprites/SFX + ativação de colheita extra gated em SC-008.
+2. Rodar Gate 3 (in-game, 3 sinais) — desbloqueia "verificado".
+3. Reconciliar band scale (T117–T119, doc-only).
+4. Joja Fertilizer (fecha loop "destrói") — próximo após harvest-quality.
+5. Heirloom pipeline (desbloqueia 3 features) — depois.
+6. Mid/End-game + Elena — por último.
+
+*Pesquisa realizada em 2026-11-03 via web (Nexus, CurseForge, PCGamesN, Technwz, SMAPI release notes, Stardew Valley Wiki).*
