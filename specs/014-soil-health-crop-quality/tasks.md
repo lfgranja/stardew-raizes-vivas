@@ -353,3 +353,17 @@ With multiple developers/subagents:
 - Avoid: vague tasks, same-file conflicts, cross-story dependencies that break independence
 - The `GamePath` spike and `SC-008` rollback verification are external prerequisites that gate yield *activation* — they do not block test writing or implementation, only final "verified" status
 - `tasks.md` is immediately executable; each task is specific enough for an LLM to complete without additional context
+
+## Phase 7: Convergence (appended 2026-11-03)
+
+- [ ] T094 Fix `CollectCompost` two-phase commit + idempotency (`OutputGranted`) + rollback on partial inventory refusal — `Services/CompostingBinService.cs` (partial, FR-005/Q4; `Contracts` §5)
+- [ ] T095 Fix growth modifier to apply `SoilGrowthPoorMultiplier` to measured `0` (skip only negative/non-finite) and update stale comment — `Controllers/ModController.cs` (contradicts, A7)
+- [ ] T096 Replace heuristic `Quality++` in harvest patch with deterministic `+0.08` on vanilla `p` using `BoostQualityProbability` — `Patches/HarvestPatches.cs` (partial, FR-001/FR-003)
+- [ ] T097 Set extra-harvest item `Quality = 0` (normal) instead of inheriting source quality — `Patches/HarvestPatches.cs` (partial, A2/FR-002)
+- [ ] T098 Wire actual transient feedback sprites (`marker-poor`, `sparkle-living`) + floating text + SFX + broadcast via `Game1.multiplayer.broadcastSprites`, not just logs — `Patches/HarvestPatches.cs`, `Services/Visualization/` (partial, FR-006/FR-007/FR-008)
+- [ ] T099 Add regrowth handling: quality re-rolls per harvest, tier applies independently — `Patches/HarvestPatches.cs` (missing, edge case)
+- [ ] T100 Implement inventory-full debris handling verification (main blocked, extra dropped) — `Patches/HarvestPatches.cs` (partial, A1)
+- [ ] T101 Make harvest roll host-authoritative (host-only path; farmhand reads synced soil health) — `Patches/HarvestPatches.cs`, `ModEntry.cs` (partial, FR-009/A8)
+- [ ] T102 Add missing RED test files: `HostAuthoritativeRollTests`, `InventoryFullHarvestTests`, `CropScopeHarvestTests`, `RegrowthHarvestTests`, `HarvestFeedbackTests`, `FeedbackVisibilityMultiplayerTests`, `HarvestQualityContractTests` — `LivingRoots.Tests/HarvestQuality/`, `LivingRoots.Tests/Contracts/` (missing, FR-014)
+- [ ] T103 Update `ModControllerTests` and `SoilHealthServiceTests` to 31/71 band edges (if not already) — `LivingRoots.Tests/` (partial, SC-006)
+- [ ] T104 Run Gate 3 in-game session and record 3 signals — manual (missing, SC-008)
