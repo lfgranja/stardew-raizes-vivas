@@ -360,7 +360,7 @@ With multiple developers/subagents:
 - [x] T095 Fix growth modifier to apply `SoilGrowthPoorMultiplier` to measured `0` (skip only negative/non-finite) and update stale comment — `Controllers/ModController.cs` (contradicts, A7)
 - [x] T096 Replace heuristic `Quality++` in harvest patch with deterministic `+0.08` on vanilla `p` using `BoostQualityProbability` — `Patches/HarvestPatches.cs` (partial, FR-001/FR-003)
 - [x] T097 Set extra-harvest item `Quality = 0` (normal) instead of inheriting source quality — `Patches/HarvestPatches.cs` (partial, A2/FR-002)
-- [ ] T098 Wire actual transient feedback sprites (`marker-poor`, `sparkle-living`) + floating text + SFX + broadcast via `Game1.multiplayer.broadcastSprites`, not just logs — `Patches/HarvestPatches.cs`, `Services/Visualization/` (partial, FR-006/FR-007/FR-008)
+- [x] T098 Wire transient feedback sprites + floating text + SFX + broadcast via `Game1.multiplayer.broadcastSprites` — `Patches/HarvestPatches.cs` (partial, FR-006/FR-007/FR-008)
 - [ ] T099 Add regrowth handling: quality re-rolls per harvest, tier applies independently — `Patches/HarvestPatches.cs` (missing, edge case)
 - [ ] T100 Implement inventory-full debris handling verification (main blocked, extra dropped) — `Patches/HarvestPatches.cs` (partial, A1)
 - [ ] T101 Make harvest roll host-authoritative (host-only path; farmhand reads synced soil health) — `Patches/HarvestPatches.cs`, `ModEntry.cs` (partial, FR-009/A8)
