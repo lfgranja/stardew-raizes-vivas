@@ -4411,4 +4411,12 @@ main() {
     exit "$EX_OK"
 }
 
-main "$@"
+# Run `main` as a background job and `wait` on it. This lets a trapped signal
+# (INT/TERM/HUP) interrupt the `wait` immediately instead of being deferred
+# until the foreground command `main` is executing completes (Bash manual
+# §Signals). Without this, `timeout --kill-after` cannot reap the script
+# within its deadline when it is blocked inside a foreground command.
+main "$@" &
+main_pid=$!
+wait "$main_pid"
+exit $?
