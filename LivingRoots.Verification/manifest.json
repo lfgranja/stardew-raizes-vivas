@@ -1,0 +1,16 @@
+{
+  "Name": "Stardew Valley - Living Roots (Verification)",
+  "Author": "lfgranja",
+  "Version": "0.0.1",
+  "Description": "Dev-only capture mod for headless verification of Living Roots",
+  "UniqueID": "lfgranja.LivingRoots.Verification",
+  "EntryDll": "LivingRoots.Verification.dll",
+  "MinimumApiVersion": "4.4.0",
+  "MinimumGameVersion": "1.6.14",
+  "Dependencies": [
+    {
+      "UniqueID": "lfgranja.LivingRoots",
+      "MinimumVersion": "0.0.1"
+    }
+  ]
+}

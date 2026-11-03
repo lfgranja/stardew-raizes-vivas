@@ -1670,7 +1670,6 @@ on_exit() {
             if ((run_log_started == 1)) && [[ -n "$run_log_path" ]]; then
                 printf '%s\n' "$report" >>"$run_log_path" 2>/dev/null || true
             fi
-        fi
         rc="$EX_INTERNAL_ERROR"
     fi
     exit "$rc"

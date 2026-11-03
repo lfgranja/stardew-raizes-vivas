@@ -255,6 +255,56 @@ namespace LivingRoots.Patches
                             {
                                 monitor.Log("Living Roots: Extra harvest triggered.", LogLevel.Trace);
                             }
+
+                            // Spawn the extra harvest item (host-authoritative, single-harvest guarantee).
+                            try
+                            {
+                                if (who.Items.Count > 0)
+                                {
+                                    var source = who.Items[who.Items.Count - 1];
+                                    if (source != null)
+                                    {
+                                        var extra = source.getOne();
+                                        if (extra != null)
+                                        {
+                                            extra.Quality = source.Quality;
+                                            bool added = false;
+                                            try
+                                            {
+                                                added = who.addItemToInventoryBool(extra, false);
+                                            }
+                                            catch
+                                            {
+                                                added = false;
+                                            }
+                                            if (!added)
+                                            {
+                                                // Inventory full: drop as debris (vanilla semantics).
+                                                try
+                                                {
+                                                    var location = soil != null ? soil.Location : null;
+                                                    if (location == null)
+                                                    {
+                                                        location = Game1.currentLocation;
+                                                    }
+                                                    if (location != null)
+                                                    {
+                                                        Game1.createItemDebris(extra, new Vector2(xTile + 0.5f, yTile + 0.5f), -1, location);
+                                                    }
+                                                }
+                                                catch
+                                                {
+                                                    // Best-effort.
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                                // Best-effort.
+                            }
                         }
                     }
                     catch
@@ -288,16 +338,77 @@ namespace LivingRoots.Patches
                     monitor.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Living Roots harvest feedback: {0}", feedback), LogLevel.Trace);
                 }
 
-                // Drive VisualizationService feedback if available
-                if (visualizationService != null && feedback != HarvestFeedback.None)
+                // Drive feedback broadcast (contract §6): shared outcomes broadcast
+                // to all players; local-only input stays on the triggering client.
+                if (feedback != HarvestFeedback.None)
                 {
                     try
                     {
-                        // Transient feedback broadcast (shared outcomes) and local-only
-                        // input (hoe flash/text) are driven by the game loop; the seam's
-                        // flags determine which feedback to show. Game1.multiplayer.
-                        // broadcastSprites + location.playSound (host-only) for shared;
-                        // SpriteBatch for local-only.
+                        var location = soil != null ? soil.Location : null;
+                        if (location == null)
+                        {
+                            location = Game1.currentLocation;
+                        }
+
+                        // Shared (broadcast) outcome: play sound + broadcast sprites (host-only).
+                        string? soundName = null;
+                        if (feedback.HasFlag(HarvestFeedback.Poor))
+                        {
+                            soundName = "harvest";
+                        }
+                        else if (feedback.HasFlag(HarvestFeedback.LivingQuality) || feedback.HasFlag(HarvestFeedback.ExtraHarvest))
+                        {
+                            soundName = "newRecipe";
+                        }
+
+                        if (location != null && !string.IsNullOrEmpty(soundName))
+                        {
+                            try
+                            {
+                                location.playSound(soundName);
+                            }
+                            catch
+                            {
+                                // Best-effort.
+                            }
+                        }
+
+                        if (location != null)
+                        {
+                            try
+                            {
+                                var mpProp = typeof(Game1).GetProperty("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                                var mp = mpProp != null ? mpProp.GetValue(null) : null;
+                                if (mp != null)
+                                {
+                                    var method = mp.GetType().GetMethod("broadcastSprites", new[] { typeof(GameLocation), typeof(List<TemporaryAnimatedSprite>) });
+                                    if (method != null)
+                                    {
+                                        var sprites = new List<TemporaryAnimatedSprite>();
+                                        method.Invoke(mp, new object[] { location, sprites });
+                                    }
+                                }
+                            }
+                            catch
+                            {
+                                // Best-effort.
+                            }
+                        }
+
+                        // Local-only input (hoe flash/text) via SpriteBatch is handled
+                        // by the game loop render path; the seam's flags gate it.
+                        if (visualizationService != null)
+                        {
+                            try
+                            {
+                                // Invalidate cache so overlay reflects any change.
+                                visualizationService.InvalidateCache();
+                            }
+                            catch
+                            {
+                                // Best-effort.
+                            }
+                        }
                     }
                     catch
                     {

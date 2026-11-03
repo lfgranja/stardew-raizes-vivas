@@ -24,6 +24,9 @@ namespace LivingRoots
     {
         private ModController? _controller;
 
+        // T046 (spec 010): stable SMAPI-provided API instance.
+        private readonly LivingRoots.Services.LivingRootsModApi _modApi = new();
+
         // T137 (FR-012): the mod-level subscriptions Entry takes
         // out, retained as fields so Dispose can detach the exact
         // delegate instances. A method-group or anonymous-lambda
@@ -80,24 +83,17 @@ namespace LivingRoots
         {
             _helper = helper;
 
-            try
+            // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031).
+            // T137 (FR-012): subscribe through the stored handler field so Dispose
+            // detaches the exact delegate instance — a method-group subscription
+            // leaves no readable reference to release on unload.
+            if (_onAssetRequestedHandler == null)
             {
-                // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031).
-                // T137 (FR-012): subscribe through the stored handler field so Dispose
-                // detaches the exact delegate instance — a method-group subscription
-                // leaves no readable reference to release on unload.
-                if (_onAssetRequestedHandler == null)
-                {
-                    _onAssetRequestedHandler = OnAssetRequested;
-                }
-                if (helper?.Events?.Content != null && _onAssetRequestedHandler != null)
-                {
-                    helper.Events.Content.AssetRequested += _onAssetRequestedHandler;
-                }
+                _onAssetRequestedHandler = OnAssetRequested;
             }
-            catch
+            if (helper?.Events?.Content != null && _onAssetRequestedHandler != null)
             {
-                // Ensure subscription attempt doesn't break wiring
+                helper.Events.Content.AssetRequested += _onAssetRequestedHandler;
             }
 
             // Create domain services - Composition Root
@@ -184,23 +180,7 @@ namespace LivingRoots
                 // Skip Harmony patching in test environments
                 if (this.ModManifest != null && !string.IsNullOrEmpty(this.ModManifest.UniqueID) && this.Monitor != null)
                 {
-                    try
-                    {
-                        var harmony = new Harmony(this.ModManifest.UniqueID);
-                        var harvestMethod = AccessTools.Method(typeof(Crop), nameof(Crop.harvest));
-                        if (harvestMethod != null)
-                        {
-                            harmony.Patch(
-                                harvestMethod,
-                                prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPrefix)),
-                                postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPostfix)));
-                            this.Monitor.Log("Living Roots: Harvest Harmony patch registered.", LogLevel.Trace);
-                        }
-                    }
-                    catch
-                    {
-                        // Ignore in test environment
-                    }
+                    RegisterHarmonyPatch();
                 }
             }
             catch
@@ -208,10 +188,50 @@ namespace LivingRoots
                 // Ignore in test environment
             }
 
-            _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider);
+            _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider, modApi: _modApi);
 
             // Register events through the Controller
             _controller.RegisterEvents();
+        }
+
+        /// <summary>
+        /// Registers the Harmony patch on Crop.harvest. Extracted into its own
+        /// method so the JIT does not resolve Harmony types while compiling
+        /// WireCompositionRoot (which would abort the whole composition root in
+        /// headless test hosts lacking 0Harmony.dll).
+        /// </summary>
+        private void RegisterHarmonyPatch()
+        {
+            try
+            {
+                var harmony = new Harmony(this.ModManifest.UniqueID);
+                var harvestMethod = AccessTools.Method(typeof(Crop), nameof(Crop.harvest));
+                if (harvestMethod != null)
+                {
+                    harmony.Patch(
+                        harvestMethod,
+                        prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPrefix)),
+                        postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.HarvestPostfix)));
+                    this.Monitor?.Log("Living Roots: Harvest Harmony patch registered.", LogLevel.Trace);
+                }
+            }
+            catch
+            {
+                // Ignore in test environment
+            }
+        }
+
+        /*********
+        ** Public methods (SMAPI API)
+        ********/
+
+        /// <summary>
+        /// Exposes the mod's public API (spec 010, T046). Returns the same
+        /// instance across calls, before and after <see cref="Entry"/>.
+        /// </summary>
+        public override object GetApi()
+        {
+            return _modApi;
         }
 
         /*********

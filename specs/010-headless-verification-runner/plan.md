@@ -4,6 +4,16 @@
 
 **Input**: Feature specification from `/specs/010-headless-verification-runner/spec.md`
 
+## Clarifications applied (2026-11-02)
+
+The 5 clarification decisions recorded in `spec.md` §Clarifications (Session 2026-11-02) are applied as follows:
+
+- **Q1 (reuse smoke infra)** → Summary (line 9): orchestrator composed from `scripts/lib/` modules reusing the spec-008 smoke substrate; smoke remains a per-PR boot gate.
+- **Q2 (hybrid IPC)** → Summary (line 16) and FR-009: `ModRegistry.GetApi<T>` + file-based IPC + save-file JSON observation; normative clause added to FR-009 (no `SendMessage`).
+- **Q3 (human-only `verified`)** → Gate 3 section: documented status is `machine-pass`, never `verified`; T148 sole writer.
+- **Q4 (full 161-task spec)** → full scope in scope; assessment's Option B note superseded (see spec.md header).
+- **Q5 (self-hosted runner)** → Target Platform (line 39) and US3: self-hosted runners for CI.
+
 ## Summary
 
 Build a reusable, unattended headless verification runner for Gate 3: a **bash orchestrator** (`scripts/verify-scenario.sh`, composed from the modules in `scripts/lib/`) that reuses the spec-008 `smoke-validation.sh` substrate (Xvfb via `-displayfd`, process-group/signal discipline, run log under XDG state, exit-code taxonomy) to download/verify game files from a private repo (cache-first), launch Stardew Valley under SMAPI, deploy the mod plus a dev/CI-only `LivingRoots.Verification` capture mod, inject a scenario via SMAPI macros + save seeding + custom console commands, capture the three mandatory signals (SoilHealthState JSON delta, Crop phase delta, SMAPI log), evaluate thresholds, and emit one of five base verdicts (`pass`, `fail`, `errored`, `partial`, `skipped`) plus the derived `flaky` mark, with a MIRROR evidence bundle. On a clean non-flaky machine-pass, the runner updates the feature `test.md` GATE3 block and the root GATE3 blocks; the documented status is `machine-pass`, never `verified`. `verified` is a maintainer attestation recorded afterward, never emitted by the machine.

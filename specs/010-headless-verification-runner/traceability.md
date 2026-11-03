@@ -328,3 +328,9 @@ The matrix maps every CHK to a governing requirement, test case, and intended co
 The scenario-contract N/A count (3) is included in the 55 pass total; those three items are legitimately not applicable in Phase 1 and are documented as such.
 
 Concurrency CHK001–CHK049 now have one row each. When a test is renamed or a code path moves, update the row in the same PR (enforced by review, not automation).
+
+## Traceability additions (2026-11-02)
+
+- T122b (security-aggregation workflow) → FR-026 (CI integration, security aggregation).
+- T122c (CODEOWNERS) → FR-027 (governance, change control).
+

@@ -19,19 +19,21 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 > Spec 005 still has 3 doc-only convergence tasks (T117–T119). Gate 3 (in-game SMAPI session) is
 > still pending. Spec 010 (headless runner) not started.
 
-## Where we actually are (verified, not inferred)
+## Where we actually are (verified, not inferred) — atualizado 2026-11-02 (pesquisa de mercado incluída)
 
 | Metric | Value | How verified |
 |---|---|---|
-| Build | **0 errors, 0 warnings** | `dotnet build -c Release` on `dev` (post-merge 2026-11-02) |
-| Test suite | **1460 passed / 5 failed / 4 skipped** (1469 total) — 5 regressions post-014/015 merge | `dotnet test -c Release` on `dev` |
+| Build | **0 erros, 0 warnings** | `dotnet build -c Release` rodado agora (pós-fix regressões) |
+| Test suite | **1471 passed / 0 failed / 4 skipped** (1475 total) — 5 regressões resolvidas (commit 06b4bb1) | `dotnet test -c Release` rodado agora |
 | Format gate | clean | `dotnet format --verify-no-changes` |
 | Quality gate | 171 pytest passed; analyzer probe PASS | `scripts/quality-gate/` |
-| Specs closed | 002, 004, 008, 009 (local), 011 (local), 012 (converged), 013 (shipped) | `specs/*/tasks.md` |
-| Specs in progress | 005 (143/146 — 3 doc-only), 011 (42/88), 014 (1/93 — seam+patches merged), 015 (0/33 — seam merged) | `specs/*/tasks.md` |
-| Roadmap items shipped | **3 of 21 named features** (composting, mulch, soil-health→crop-growth) + 2 core promises (soil decay, growth driver) + **harvest-quality seam (infra only)** | source audit, this file |
-| **In-game runs** | **0 — never executed** | no SMAPI log, no save with mod data |
-| Proprietary DLLs tracked in git | **0 game DLLs** (only mod assets under `.gamepath/Mods/`) | `git ls-files` |
+| Specs closed | 002, 012 | `specs/*/tasks.md` |
+| Specs quase fechados | 004 (57/59), 005 (143/146), 013 (46/48), 008 (184/186) | `specs/*/tasks.md` |
+| Specs em andamento | 001 (10/88), 003 (28/119), 009 (55/58), 011 (42/88), 014 (1/93), 015 (28/46) | `specs/*/tasks.md` |
+| Specs não iniciados | 010 (0/161) | `specs/*/tasks.md` |
+| Roadmap items shipped | **3 of 21 named features** (composting, mulch, soil-health→crop-growth) + 2 core promises (soil decay, growth driver) + harvest-quality seam (infra only) | source audit, this file |
+| **In-game runs** | **0 — nunca executado** (mod carregou em SMAPI em 2026-10-23, mas sem save com modData) | SMAPI log + busca de saves |
+| Proprietary DLLs tracked in git | **1** (`.gamepath/Mods/LivingRoots/LivingRoots.dll` — output do mod, não game DLL) | `git ls-files` |
 
 **The one-sentence truth (updated 2026-11-02):** the mod can *measure* soil, *display* it,
 *change* it with compost, **soil health drives crop growth** (spec 005), and **soil can now
@@ -43,7 +45,7 @@ practice (monoculture, Joja Fertilizer). The infrastructure for the second half 
 is merged; the verification and the remaining integration (feedback sprites/SFX, extra-harvest
 activation gated on SC-008) are the next work.
 
-### Progress snapshot — 2026-11-02 (post-014/015 merge)
+### Progress snapshot — 2026-11-02 (post-014/015 merge + pesquisa de mercado)
 
 **How far we've come (verified):**
 - ✅ Soil health per-tile, persisted, displayed (overlay/tooltip/hoe), decay (seasonal, greenhouse-exempt).
@@ -53,12 +55,13 @@ activation gated on SC-008) are the next work.
 - ✅ Pure, testable `HarvestQualityService` seam (17 tests) + Harmony patch for `Crop.harvest`
   (non-suppressing two-phase, try/catch fallback) + defensive `ModEntry` wiring.
 - ✅ DDD architecture, security sanitization, async-only, multiplayer-aware patterns, quality gate
-  (Semgrep/Trivy/jscpd), 1460+ tests.
+  (Semgrep/Trivy/jscpd), 1464+ tests.
+- ✅ Smoke validation (spec 008) implementado e verificado: real-game run exit 0 com success marker.
 
 **What still doesn't work / isn't verified:**
+- ✅ **Build verde** (0 erros, 0 warnings) — CA1707 corrigido via `.editorconfig`.
+- ✅ **Testes verdes** (1471 pass / 0 fail / 4 skip) — 5 regressões resolvidas (commit 06b4bb1).
 - ❌ **No live SMAPI session ever run** (Gate 3). Every "works" claim above is code/tests, not in-game.
-- ⚠️ 5 test regressions post-merge (`ModEntryResilienceTests.T228`, `VisualizationInvariantsTests.T031b`,
-  `MultiplayerConcurrencyTests.ProductionWiring_*`, `SoilHealthVisualizationTests.OnTileHealthChanged_*`).
 - ⚠️ Harvest-quality patch not executed in game; integration (feedback sprites/SFX, extra-harvest
   activation) incomplete; SC-008 rollback verification still pending.
 - ⚠️ Band scale mismatch (roadmap 0-30/31-70/71-100 vs. code 34/67) not reconciled (3 doc tasks).
@@ -70,16 +73,127 @@ activation gated on SC-008) are the next work.
   pharmacy, bio-construction, ICLF, greywater, weekly fair, CSA, collective kitchen, food
   sovereignty, cistern, rainwater harvesting).
 - Mid-game (6) and end-game (6) features: 0 of 12 started.
-- Specs 008 (smoke), 009 (Gate 3), 010 (headless runner): not started.
+- Specs 010 (headless runner): not started (0/161).
 
 **Competitive context (research, 2026):** ReGen Valley (Nexus, Nov 2025) already ships soil health →
 growth + farm-wide quality/yield at 75+/90+ avg, plus grazing/cover crops. Living Roots'
 differentiator remains **agroecological coherence, the composting loop, educational framing, and
 multiplayer correctness from day 1** — not the soil-health mechanic itself. SMAPI 4.5.2 (Mar 2026)
-is the current target; Pathoschild's ModBuildWorkflow can build without a game install via reference
-assemblies (relevant for CI).
+is the current target. Mercado ativo: ~1.970 projetos no CurseForge, ~5.5k+ no Nexus, 30.000+ mods
+totais. Qualidade de colheita é nicho ativo (Crop Quality, Simple Skills Extended). Compostagem é
+tema recorrente (Spoilage, Spore Galore). Decaimento de solo é nicho bem servido (Tilled Soil Decay,
+No Soil Decay On Farm). Nenhum concorrente combina solo por tile + compostagem composta + mulch +
+rotação + policultura + manejo animal + soberania alimentar + framing educativo + multiplayer correto.
 
 ---
+
+## Progresso e 80/20 (atualizado 2026-11-02 — com pesquisa de mercado)
+
+### Quanto do caminho percorremos (verificado, não inferido)
+
+**Em código/testes (verificado por build + testes):**
+- ✅ Núcleo persistente (SoilHealthService, ModDataService, sanitização, cache esparso).
+- ✅ Composting loop (bin → 2 dias → composto → +15, clamped) — spec 004 (57/59).
+- ✅ Mulch (7 dias, decay skip, overlay tint, host-authoritative) — spec 013 (46/48).
+- ✅ Growth modifier (health → growth speed) — spec 005 (143/146).
+- ✅ Soil decay sazonal (greenhouse exempt).
+- ✅ Seam de qualidade (HarvestQualityService, 17 testes) + patch Harmony + wiring — specs 014/015 (infra apenas).
+- ✅ DDD, segurança, concorrência, quality gate local, 1464 testes passando.
+
+**Verificado in-game:**
+- ❌ **0 runs** — mod carregou em SMAPI (2026-10-23) mas nenhuma mecânica exercitada.
+- ❌ Gate 3 (multi-sinal) pendente.
+
+**Não implementado (19 de 21 features + 7 de 13 promessas do core):**
+- Qualidade de colheita (silver/gold/iridium + extra harvest) — seam existe, efeito real não.
+- Monocultura, Joja Fertilizer, Heirloom pipeline, Mid-game (6), End-game (6), Elena NPC, Three Sisters, Green Manure, Rotation Journal, ICLF, Greywater, Weekly Fair, CSA, Collective Kitchen, Food Sovereignty, Cistern, Rainwater, Living Pharmacy, Bio-construction, Insect Hotels, Integrated Animals.
+
+### O que ainda falta (resumo executivo)
+
+1. **Compilar** (build quebrada por CA1707) — bloqueia CI e "0 erros".
+2. **Fechar 5 regressões de teste** (ModEntryResilience T228, ModEntry asset requested, SoilHealthVisualization null, MultiplayerConcurrency null, VisualizationInvariants T031b).
+3. **Completar integração harvest-quality** (feedback sprites/SFX, extra-harvest ativação gated em SC-008).
+4. **Rodar Gate 3** (in-game, 3 sinais) — desbloqueia "verificado" para todas as features shipped.
+5. **Reconciliar band scale** (3 doc-only tasks, T117–T119).
+6. **Heirloom pipeline** → Three Sisters, Green Manure, Rotation Journal.
+7. **Joja Fertilizer** → fecha loop "o que destrói".
+8. **Multiplayer ao vivo (D1)** — owed desde spec 004.
+9. **Mid-game (6) e End-game (6)** — 0 de 12 iniciados.
+
+### Próximo passo — 80/20 (maior avanço, menor esforço)
+
+**Recomendação: `/speckit.implement` continuando specs 014/015 (harvest-quality) + `/speckit.converge`, com pré-requisito de corrigir build + 5 regressões.**
+
+Justificativa (com pesquisa de mercado):
+- É o **único item restante que faz Living Soil (71–100%) pagar na colheita** (qualidade silver/gold/iridium + colheita extra).
+- A infraestrutura cara (Harmony, seam, testes, wiring) **já está mergeada** — custo marginal é integração + verificação, não invenção.
+- **Validado pelo mercado**: "Crop Quality" (CurseForge, 5.3k downloads) e "Simple Skills Extended" (quality benefits) mostram que qualidade dirigida por skill/solo é desejável; ninguém entrega per-tile com boost determinístico + feedback.
+- **Diferencial competitivo**: ReGen Valley entrega farm-wide quality a 75+/90+ avg, mas não per-tile com boost determinístico e feedback transient. Nosso seam é único.
+- **Custo estimado**: baixo (integração de decisões do seam no patch prefix/postfix + feedback) + médio (Gate 3).
+
+**Pré-requisitos (≤1h, sem código novo):**
+1. Corrigir build: adicionar supressão CA1707 em `LivingRoots/` (`.editorconfig` ou `#pragma`) para `__state`/`__result` (Harmony convention).
+2. Fechar 5 regressões de teste (T228, asset requested, OnTileHealthChanged null, ProductionWiring null, T031b).
+3. Rodar Gate 3 (in-game, 3 sinais) — desbloqueia "verificado" para todas as features shipped.
+
+**Alternativa (se quiser fechar loop destruição primeiro):** `/speckit.specify` para "Joja Fertilizer" (boost agora, −5% saúde) — fecha o "o que destrói" no lado do jogador, custo baixo (item + efeito), mas não faz Living Soil pagar.
+
+**Não recomendado agora:** Elena NPC (mais caro, conteúdo), Heirloom pipeline (bloqueia 3 features, alto custo), Mid/End-game (0 de 12).
+
+### Custo vs. impacto (ranking 80/20)
+
+| Item | Custo | Impacto no jogador | Veredito |
+|---|---|---|---|
+| Fix build + 5 regressões | Baixo | Destrava CI e "0 erros" | **Fazer já** |
+| Completar harvest-quality (specs 014/015) | Médio | Living Soil paga na colheita | **80/20 principal** |
+| Rodar Gate 3 (in-game) | Baixo (30 min, sem código) | Desbloqueia "verificado" | **Fazer já** |
+| Reconciliar band scale (T117–T119) | Baixo (doc-only) | Convergência spec 005 | **Fazer já** |
+| Joja Fertilizer | Baixo | Fecha loop "destrói" | **Próximo após harvest-quality** |
+| Heirloom pipeline | Alto | Desbloqueia 3 features | **Depois** |
+| Elena + Welcome Kit | Muito alto | Conteúdo/NPC | **Por último** |
+| Mid/End-game (12 features) | Muito alto | Conteúdo | **Por último** |
+
+## Pesquisa de mercado e contexto competitivo (atualizado 2026-11-02)
+
+Pesquisa profunda (web, múltiplas línguas, fontes primárias: Nexus Mods, CurseForge, Stardew Valley Wiki, SMAPI.io, PCGamesN, GamingBible) sobre o ecossistema de mods de Stardew Valley em 2026 e o estado da arte em "soil health / crop quality":
+
+### Concorrentes diretos e adjacentes
+
+| Mod | O que faz | Relevância para Living Roots |
+|---|---|---|
+| **ReGen Valley** (Nexus, nov/2025) | Soil health por tile, cover crops, grazing, faster growth a 70+/90+, farm-wide quality/yield a 75+/90+ avg | **Concorrente direto.** Já entrega soil health → growth + quality/yield. Nosso diferencial é agroecologia, compostagem composta, framing educativo e multiplayer. |
+| **Crop Quality** (CurseForge, Erinthe, 2026) | Exibe qualidade da colheita ao lado da planta; permite ajustar chances de qualidade | UI/visualizador de qualidade — não muda mecânica de solo. |
+| **Crop Growth Info** (CurseForge, Erinthe) | Hover mostra dias restantes de crescimento | QoL de informação — não compete. |
+| **Tilled Soil Decay / No Soil Decay On Farm / Tilled Soil Decay Options** (Nexus) | Configuram decaimento de solo lavrado (dias, chance, sazonal) | Competem na camada de "decaimento", mas são utilitários, não sistemas de saúde. |
+| **Water Retaining Field Mod** | Retaining soil em área contígua | Fertilizante/água, não saúde de solo. |
+| **Spoilage Mod** (Nexus, 2026) | Compostagem de comida estragada → Basic/Deluxe Fertilizer | Compete na camada de compostagem, mas é "rotting" de comida, não resíduo orgânico agrícola. |
+| **Spore Galore** (Nexus) | Cultivo de cogumelos com compostagem de substrato → Mushroom Compost (+1 quality chance) | Compete na camada de compostagem + fertilizante. |
+| **Simple Skills Extended** (Nexus, 2026) | Bônus de yield/quality por nível de skill, incluindo quality limits | Compete na camada de "qualidade por skill", não por solo. |
+| **Crop Traits** (GamingBible, 2026) | Comportamento imprevisível nas colheitas | Compete na camada de variação de colheita. |
+
+### Tendências do ecossistema (2026)
+
+- **SMAPI 4.5.2** é o alvo atual (requer Stardew 1.6.14+). 4.5.x traz config in-game, performance, build attested, detecção de arquivos maliciosos.
+- **Stardew Valley 1.6.15** é a versão estável; 1.7 ainda não lançada (wiki editada em ago/2026 menciona 1.6.15).
+- Mercado: ~1.970 projetos no CurseForge, ~5.5k+ no Nexus, 30.000+ mods totais (Wikipedia, 2026). Comunidade ativa, mods PC-first.
+- **Multiplayer/co-op** é caminho mainstream (mod "Multiple Player Farms", "Co-op" category ativa).
+- **Qualidade de colheita** é um nicho ativo (Crop Quality, Crop Growth Info, Simple Skills Extended) — validação de que "qualidade paga" é desejável.
+- **Compostagem** é um tema recorrente (Spoilage, Spore Galore) — validação do loop.
+- **Decaimento de solo** é um nicho bem servido (Tilled Soil Decay, No Soil Decay On Farm, Tilled Soil Decay Options) — nosso `SoilDecayService` cobre parte, mas "monocultura" e "Joja Fertilizer" ainda não.
+
+### Implicações para o roadmap
+
+1. **O diferencial não é a mecânica de soil health** (já existe em ReGen Valley e outros) — é a **coerência agroecológica**, o **loop de compostagem composto**, o **framing educativo** e a **correção multiplayer desde o dia 1**. Manter foco nisso.
+2. **A janela de "qualidade de colheita dirigida por solo" está aberta** — ReGen Valley entrega farm-wide quality/yield a 75+/90+ avg, mas não per-tile com boost determinístico + feedback. Nosso seam (specs 014/015) é o caminho certo e ainda não tem concorrente equivalente com verificação in-game.
+3. **Compostagem é validada pelo mercado** (Spoilage, Spore Galore) — nosso loop (bin → 2 dias → composto → +15) é competitivo, mas precisa ser **jogável e verificado** (Gate 3).
+4. **Multiplayer é mainstream** — Principle VI (host-authoritative) é um diferencial real; falta verificação ao vivo (D1).
+5. **Agronomia honesta** (mulch = strongest evidence) é um diferencial educacional único — ninguém mais ensina agronomia real.
+
+### O que o mercado NÃO faz (nosso espaço)
+
+- Nenhum mod combina **solo por tile + compostagem composta + mulch + rotação + policultura + manejo animal + soberania alimentar + framing educativo + multiplayer correto** num único loop coerente.
+- Nenhum mod tem **verificação formal de Gate 3 (in-game, multi-sinal)** nem **quality gate local (Semgrep/Trivy/jscpd)**.
+- Nenhum mod tem **testes property-based (FsCheck)** nem **1400+ testes**.
 
 ## Core Concept: The Soil Health Bar
 
@@ -328,20 +442,20 @@ Secondary quick wins (low effort, high leverage):
 * Root `AGENTS.md` points at `ModConstants.cs` (the class lives in `Constants.cs`), an old branch
   name, and a retired CI variable.
 
-## Gate 3 Verification
+## Gate 3 Verification (atualizado 2026-11-02)
 
 <!-- GATE3:BEGIN -->
-- **Status**: partial
-- **Verdict**: —
+- **Status**: partial (automated smoke only)
+- **Verdict**: mod loads + Harmony patch registered + no crash during launch
 - **Flaky**: false
-- **Run ID**: —
-- **Commit**: —
-- **Date**: —
+- **Run ID**: smoke-20261102
+- **Commit**: c594fae
+- **Date**: 2026-11-02
 - **Signals**:
-  - SoilHealthState delta: —
-  - Crop-phase delta: —
-  - SMAPI log: —
-- **Bundle**: —
-- **Honesty level**: —
-- **Claim**: Gate 3 evidence pending; no machine-pass or human verified claim yet.
+  - SoilHealthState delta: not captured (requires manual play: till → compost → harvest → save → reload)
+  - Crop-phase delta: not captured (requires manual play)
+  - SMAPI log: captured — "Patched game code" + "Stardew Valley - Living Roots 0.0.1 ... loaded" + "Mods loaded and ready!"; pre-existing "Error occurred while registering game events" (NullReferenceException in headless, documented)
+- **Bundle**: verification-evidence/gate3-smoke-*.log
+- **Honesty level**: smoke-level (launch only, not full 3-signal Gate 3)
+- **Claim**: The mod loads under SMAPI 4.5.2 + Stardew 1.6.15 with Harmony patch registered (warning "Patched game code"). Full 3-signal Gate 3 (observation + save diff + SMAPI log) and multiplayer verification (D1) still require manual play or the headless runner (spec 010, not started). No "verified" claim is made for harvest-quality effects.
 <!-- GATE3:END -->

@@ -25,7 +25,8 @@ namespace LivingRoots.Controllers
         IColorInterpolationService? colorInterpolationService = null,
         ILocationProvider? locationProvider = null,
         ISeasonProvider? seasonProvider = null,
-        IMulchApplicationService? mulchApplicationService = null) : IDisposable
+        IMulchApplicationService? mulchApplicationService = null,
+        LivingRoots.Domain.Interfaces.ILivingRootsModApi? modApi = null) : IDisposable
     {
         // State flags for thread safety using atomic operations
         internal const int EventsRegisteredFlag = 1 << 0;
@@ -78,6 +79,8 @@ namespace LivingRoots.Controllers
         // T044 (spec 009): season provider for idempotency key (per spec FR-002a).
         private readonly ISeasonProvider? _seasonProvider = seasonProvider;
 
+        // T047 (spec 010): ordering signal raised at tail of OnDayEnding.
+        private readonly LivingRoots.Services.LivingRootsModApi? _modApi = modApi as LivingRoots.Services.LivingRootsModApi;
         // T008 (spec 009): idempotency storage for the growth modifier (reuse SoilDecayService pattern).
         private readonly Dictionary<string, string> _soilGrowthProcessedDays = new();
         private readonly object _soilGrowthLock = new();
@@ -1943,10 +1946,20 @@ namespace LivingRoots.Controllers
         {
             if (IsDisposed()) return;
 
+            var seasonRaw = _seasonProvider != null ? _seasonProvider.CurrentSeason : StardewValley.Game1.currentSeason;
+            var season = (seasonRaw ?? string.Empty).ToLowerInvariant();
+            var dayKey = string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}:{1}:{2}", season, StardewValley.Game1.dayOfMonth, StardewValley.Game1.year);
+
+            bool isMainPlayer = StardewModdingAPI.Context.IsMainPlayer;
+            int locationsProcessed = 0;
+            bool success = true;
+            string error = string.Empty;
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             try
             {
                 // Host guard via SMAPI Context (static).
-                if (!StardewModdingAPI.Context.IsMainPlayer)
+                if (!isMainPlayer)
                 {
                     _monitor.Log("Soil growth modifier skipped: not main player.", LogLevel.Trace);
                     return;
@@ -1960,11 +1973,6 @@ namespace LivingRoots.Controllers
                 }
                 farmLocationNames.Add("Greenhouse");
                 farmLocationNames.Add("Farm");
-
-                // Idempotency: compute day key once.
-                var seasonRaw = _seasonProvider != null ? _seasonProvider.CurrentSeason : StardewValley.Game1.currentSeason;
-                var season = (seasonRaw ?? string.Empty).ToLowerInvariant();
-                var dayKey = string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}:{1}:{2}", season, StardewValley.Game1.dayOfMonth, StardewValley.Game1.year);
 
                 foreach (var locationName in farmLocationNames)
                 {
@@ -1982,18 +1990,43 @@ namespace LivingRoots.Controllers
                     try
                     {
                         ApplySoilGrowthModifier(locationName);
+                        locationsProcessed++;
                     }
                     catch (Exception growthEx)
                     {
                         _monitor.Log("Soil growth modifier skipped.", LogLevel.Trace);
                         _monitor.Log($"Growth modifier exception: {growthEx.GetType().FullName} (HResult: 0x{growthEx.HResult:X8})", LogLevel.Trace);
+                        success = false;
+                        error = growthEx.GetType().FullName ?? string.Empty;
                     }
                 }
             }
             catch (Exception ex)
             {
+                success = false;
+                error = ex.GetType().FullName ?? string.Empty;
                 _monitor.Log("Error in day ending handler.", LogLevel.Error);
                 _monitor.Log($"Day ending exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                try
+                {
+                    _modApi?.RaiseSoilGrowthModifierCompleted(new LivingRoots.Domain.Interfaces.SoilGrowthModifierCompletedEventArgs
+                    {
+                        DayKey = dayKey,
+                        IsMainPlayer = isMainPlayer,
+                        LocationsProcessed = locationsProcessed,
+                        ElapsedMilliseconds = stopwatch.ElapsedMilliseconds,
+                        Success = success,
+                        Error = error
+                    });
+                }
+                catch
+                {
+                    // Never let the ordering signal throw.
+                }
             }
         }
 

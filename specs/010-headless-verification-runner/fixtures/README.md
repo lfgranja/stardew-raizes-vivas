@@ -93,3 +93,13 @@ PY
 `check-jsonschema`/`ajv-cli` in CI MUST produce the same accept/reject outcomes. The invalid files are intentionally minimal: each includes every newly required field except the one defect it is designed to prove, so a failure count greater than one signals an accidental schema regression.
 
 **Cross-validator result (2026-10-27):** Python `jsonschema` 4.26.0 (`Draft202012Validator`) and `ajv-cli` 5 (`--spec=draft2020`) agree exactly: **28/28 valid accepted**, **14/14 invalid rejected**, and **2/2 runner-invalid schema-accepted**. Both validators were run over the same files; this is the C-SCN-38 evidence.
+
+## Feature 005 directory suite (US2)
+
+The second feature scenario lives at
+`specs/005-soil-health-to-crop-growth/scenarios/soil-health-growth.scenario.json`
+and is discovered via `scripts/lib/suite.sh` directory globbing. Run with:
+
+```bash
+scripts/verify-scenario.sh --scenario specs/005-soil-health-to-crop-growth/scenarios/
+```

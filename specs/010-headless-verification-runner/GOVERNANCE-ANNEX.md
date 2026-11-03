@@ -210,6 +210,12 @@ The machine-readable mirror of this table is `specs/010-headless-verification-ru
 | Secret leakage in logs | C-SEC-05/C-SEC-09; NFR-004 |
 | Tamper-evident evidence | C-SEC-11/FR-024 `integrity-failure.json`; FR-027 retention |
 
+## Accepted Risk (2026-11-02)
+
+- **Risk**: Principle V (Simplicity/YAGNI) tension with the full 161-task scope (spec 010, Option A). The assessment's evidence-against section flagged YAGNI risk for the full scope; the maintainer explicitly chose the full spec during clarification (2026-11-02 Q4), overriding the assessment's Option B (Incremental MVP) recommendation.
+- **Mitigation**: The incremental-MVP fallback (Option B) remains documented in `.specify/assessments/headless-verification-runner/concept.md` and `decision.md` as a promotion trigger: if implementation stalls or the scope proves unmanageable, the runner can be reduced to the 3-signal MVP without discarding the full spec's design. The `GOVERNANCE-ANNEX.md` review record is append-only; this entry is appended, not inserted.
+- **Owner**: maintainer (lfgranja).
+
 ## Change Control
 
 Changes to this annex require a reviewed PR approved by the accountable owner. The review record above is append-only. If a requirement gains or loses an owner, the R/A/C/I table is updated in the same PR that changes the requirement.

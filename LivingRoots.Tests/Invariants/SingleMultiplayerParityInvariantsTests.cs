@@ -487,7 +487,13 @@ public class SingleMultiplayerParityInvariantsTests
         // Spec 005 (FR-001/FR-006): host-authoritative DayEnding soil-growth
         // gate. Matched by the production line itself (not a line number) so
         // unrelated edits elsewhere in ModController cannot stale this entry.
-        "if (!StardewModdingAPI.Context.IsMainPlayer)"
+        "if (!StardewModdingAPI.Context.IsMainPlayer)",
+        // Spec 010 (FR-009): the SoilGrowthModifierCompleted event carries the
+        // host-authority flag to the dev/CI capture mod; these are data flow,
+        // not a divergent player-count branch.
+        "bool isMainPlayer = StardewModdingAPI.Context.IsMainPlayer",
+        "IsMainPlayer = isMainPlayer,",
+        "public bool IsMainPlayer { get; set; }"
     };
 
     private static bool IsPermittedHostAuthorityGate(string site)
