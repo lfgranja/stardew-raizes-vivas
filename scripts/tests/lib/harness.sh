@@ -540,10 +540,6 @@ _run_script_impl() {
     fi
 
     if (( RUN_DEADLINE_SECS > 0 )) && command -v timeout >/dev/null 2>&1; then
-        # The hard deadline wraps the whole invocation, so a script that hangs
-        # can never outlive the test. `timeout` runs the command in its own
-        # process group and signals the group, so the game the script
-        # launched dies with it.
         if env "${env_args[@]}" timeout --kill-after=5 "$RUN_DEADLINE_SECS" \
             "$HARNESS_SCRIPT" "$@" >"$out_file" 2>"$err_file"; then
             RUN_CODE=0
