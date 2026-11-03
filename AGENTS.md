@@ -24,7 +24,7 @@ dotnet restore --locked-mode
 SMOKE_SKIP_INTEGRATION=1 scripts/tests/run-all.sh
 # single file
 scripts/tests/run-all.sh test-cli.sh
-# Integration suite (test-integration.sh) drives the real game and writes into the repo tree — run deliberately, not on every push.
+# Integration suite (test-integration.sh) drives the real game and writes into the repo tree — run deliberately, not on every push. Takes ~30 min; previously hung on orphaned grandchildren (fixed — see .specify/bugs/test-harness-hangs/).
 
 # Quality gate (Python; merge-blocking check is "Quality Gate / gate")
 # Requires: dotnet test --collect:"XPlat Code Coverage" then dotnet tool restore && dotnet reportgenerator -reports:'**/coverage.cobertura.xml' -targetdir:coverage-report -reporttypes:JsonSummary
