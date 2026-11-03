@@ -387,6 +387,38 @@ namespace LivingRoots.Patches
                                     if (method != null)
                                     {
                                         var sprites = new List<TemporaryAnimatedSprite>();
+                                        var worldPosition = new Vector2(xTile * (float)ModConstants.TileSize + 32f, yTile * (float)ModConstants.TileSize);
+                                        if (feedback.HasFlag(HarvestFeedback.Poor))
+                                        {
+                                            var poorSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
+                                            poorSprite.text = "Soil too poor for quality crops";
+                                            poorSprite.color = Color.Red;
+                                            poorSprite.alphaFade = 0.02f;
+                                            poorSprite.motion = new Vector2(0, -0.5f);
+                                            sprites.Add(poorSprite);
+                                        }
+                                        if (feedback.HasFlag(HarvestFeedback.LivingQuality))
+                                        {
+                                            var livingSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
+                                            livingSprite.text = "Living Soil";
+                                            livingSprite.color = Color.LimeGreen;
+                                            livingSprite.alphaFade = 0.02f;
+                                            livingSprite.motion = new Vector2(0, -0.5f);
+                                            sprites.Add(livingSprite);
+                                        }
+                                        if (feedback.HasFlag(HarvestFeedback.ExtraHarvest))
+                                        {
+                                            var extraSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
+                                            extraSprite.text = "Extra harvest!";
+                                            extraSprite.color = Color.Gold;
+                                            extraSprite.alphaFade = 0.02f;
+                                            extraSprite.motion = new Vector2(0, -0.5f);
+                                            sprites.Add(extraSprite);
+                                        }
+                                        foreach (var s in sprites)
+                                        {
+                                            try { location.TemporarySprites.Add(s); } catch { /* best-effort */ }
+                                        }
                                         method.Invoke(mp, new object[] { location, sprites });
                                     }
                                 }
