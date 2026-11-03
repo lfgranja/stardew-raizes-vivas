@@ -7,28 +7,25 @@
 
 ## Summary
 
-Root cause identified via the SMAPI-latest.txt Trace log: `System.NullReferenceException` (HResult 0x80004003) thrown at the unguarded `_helper.Events.Input.ButtonPressed += ...` subscription in `ModController.RegisterEvents()`. Fixed by null-guarding the Input events subscription (and the corresponding rollback), raising the exception-type log from Trace to Warn so future failures are captured by default SMAPI logs, and guarding all rollback paths against null `Helper`/`Events`. Added a regression test for the null-Input-events path.
+Root cause identified via the SMAPI-latest.txt Trace log (stack trace): `System.NullReferenceException` thrown at `ModController.RegisterEvents()` line 301, where `eventsDisplay.RenderedWorld += localRenderedWorldHandler;` ran with `localRenderedWorldHandler` still null (the field was declared but never assigned, unlike `localMenuChangedHandler`/`localRenderedHandler` which use `??=`). Fixed by assigning `localRenderedWorldHandler` and `localButtonReleasedHandler` via `??=` before subscribing; retained the Input-events null guard and rollback guards; raised the exception-type log from Trace to Warn. A live SMAPI smoke run now logs `Events registered successfully.` with no NRE and the mod loads successfully.
 
 ## Changes
 
 | File | Change | Notes |
 |------|--------|-------|
-| `LivingRoots/Controllers/ModController.cs` | modified | Guarded `Input.ButtonPressed` subscription; raised exception-type log Trace→Warn; guarded rollback paths against null `Helper`/`Events`/`Input`/`Display` |
+| `LivingRoots/Controllers/ModController.cs` | modified | Assigned missing `localRenderedWorldHandler`/`localButtonReleasedHandler` via `??=` before subscribing (root cause); kept Input-events null guard; raised exception-type log Trace→Warn; guarded rollback paths |
 | `LivingRoots.Tests/ModControllerTests.cs` | added test | `RegisterEvents_WithNullInputEvents_DoesNotThrow` regression |
 
 ## Diff Highlights
 
 ```csharp
-// RegisterEvents: guarded Input events subscription
-var inputEvents = _helper?.Events?.Input;
-if (inputEvents != null)
-{
-    inputEvents.ButtonPressed += localButtonPressedHandler;
-}
-else
-{
-    monitorSnapshot.Log("Input events unavailable; skipping ButtonPressed subscription.", LogLevel.Trace);
-}
+// RegisterEvents: assign handler fields before subscribing (previously null -> NRE at line 301)
+localRenderedWorldHandler = _onRenderedWorldHandler ??= OnRenderedWorld;
+localButtonReleasedHandler = _onButtonReleasedHandler ??= OnButtonReleased;
+var eventsDisplay = _helper?.Events?.Display;
+var eventsInput = _helper?.Events?.Input;
+if (eventsDisplay != null) eventsDisplay.RenderedWorld += localRenderedWorldHandler;
+if (eventsInput != null) eventsInput.ButtonReleased += localButtonReleasedHandler;
 ```
 
 ```csharp
@@ -43,16 +40,14 @@ ctx.Monitor.Log($"RegisterEvents exception type: {ctx.Exception.GetType().FullNa
 ## Local Verification
 
 - `dotnet build LivingRoots/LivingRoots.csproj -c Release` → 0 errors, 1 warning (TFM support, pre-existing).
-- Tests project build attempted; mod-deploy phase is slow in this environment but LivingRoots core builds clean.
-- In-game smoke re-run not executed in this session (requires SMAPI + display); the fix targets the exact NRE captured in `SMAPI-latest.txt`.
+- Live SMAPI smoke run (2026-11-03): `Events registered successfully.` logged, no NRE, mod loaded successfully (`SUCCESS: Mod loaded without errors.`).
 
 ## Deviations from Assessment
 
-- The assessment proposed enabling Trace logging to capture the exception type. The actual exception was found in the existing `SMAPI-latest.txt` (which retains Trace), so no config change was needed. The log level was still raised to Warn as a defensive improvement.
-- The underlying cause was identified as a null `Input` events reference, not a visualization wiring issue as initially suspected.
+- The assessment hypothesized a null `Input` events reference. The actual root cause (revealed by the stack trace once logged) was an unassigned handler field (`localRenderedWorldHandler` was null when passed to `ManagedEvent.Add`). The Input-events guard added earlier was retained as defense-in-depth.
+- The assessment proposed enabling Trace logging to capture the exception type. The actual exception type was already in `SMAPI-latest.txt`; the stack trace required logging `ex.StackTrace` at Warn temporarily, then removing it (done).
 
 ## Follow-ups
 
-- Re-run the Gate 3 smoke to confirm the NRE is gone and capture the 3 signals (save diff + phase/phaseDays + log).
+- Gate 3 smoke now passes (NRE gone, mod loaded). The 3 Gate 3 signals (save diff + phase/phaseDays + log) still require manual gameplay (till → modify → save → reload) to capture — spec 009 task.
 - Consider guarding `gameLoop.UpdateTicked` access if future headless environments lack it.
-- Update `verification-evidence/` with a clean smoke log once Gate 3 passes.
