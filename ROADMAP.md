@@ -701,3 +701,65 @@ Fontes primárias: Nexus Mods, CurseForge, PCGamesN/Technwz (listas de melhores 
 6. Mid/End-game + Elena — por último.
 
 *Pesquisa realizada em 2026-11-03 via web (Nexus, CurseForge, PCGamesN, Technwz, SMAPI release notes, Stardew Valley Wiki).*
+
+---
+
+## Atualização 2026-11-03 (pesquisa web + auditoria de progresso)
+
+### Quanto do caminho já percorremos (verificado)
+
+**Em código/testes (verificado por build + testes):**
+- ✅ Núcleo persistente de solo (`SoilHealthService`, `ModDataService`, sanitização, cache esparso).
+- ✅ Composting loop (bin → 2 dias → composto → +15, clamped) — spec 004 (65/67).
+- ✅ Mulch (7 dias, decay skip, overlay tint, host-authoritative) — spec 013 (46/48).
+- ✅ Growth modifier (health → growth speed) — spec 005 (143/146).
+- ✅ Soil decay sazonal (greenhouse exempt).
+- ✅ Seam de qualidade (`HarvestQualityService`, 17 testes) + patch Harmony + wiring — specs 014/015 (infra apenas; spec 014 11/104, spec 015 51/58).
+- ✅ DDD, segurança, concorrência, quality gate local, test harness sem hang.
+- ✅ Smoke validation real (mod carrega + success marker).
+
+**Verificado in-game:** ❌ 0 runs completos (apenas smoke de carregamento). Gate 3 (multi-sinal) pendente.
+
+**Não implementado:** 18 de 21 features nomeadas + 7 de 13 promessas do core (qualidade de colheita real, Joja/monocultura, heirloom, mid/end-game, Elena, multiplayer live).
+
+### O que ainda falta (resumo executivo)
+
+1. Completar integração harvest-quality (feedback sprites/SFX, extra-harvest gated em SC-008) — specs 014/015.
+2. Rodar Gate 3 (in-game, 3 sinais) — desbloqueia "verificado" para features shipped.
+3. Reconciliar band scale (3 doc-only tasks T117–T119, spec 005).
+4. Fechar bugs abertos (codeql, 3 composting complexity, sonarcloud quality gate).
+5. Joja Fertilizer (fecha loop "destrói").
+6. Heirloom pipeline → Three Sisters, Green Manure, Rotation Journal.
+7. Multiplayer ao vivo (D1).
+8. Mid-game (6) e End-game (6) — 0 de 12 iniciados.
+
+### Paisagem competitiva (pesquisa web 2026-11-03)
+
+- **ReGen Valley**: soil health farm-wide (avg 75+/90+) com qualidade de colheita; **não** per-tile com boost determinístico + feedback transient — nosso seam é único.
+- **Tilled Soil Decay / Retain Tilled Soil**: escopo estreito (decaimento/retenção); não tocam saúde 0–100.
+- **Abundant Harvest Fertilizers**: fertilizantes estilo baunilha; não dirigido por saúde de solo.
+- **Eco Score**: footprint ambiental sistêmico; não per-tile.
+- **Advanced Farming**: hidroponia/aquaponia/compostagem mid/end-game; escopo diferente.
+- **Spoilage Mod**: apodrecimento + composter → fertilizante; complementar.
+- Mercado: >30.000 mods no Nexus (2026), SMAPI 4.x, SV 1.6.15; modpacks gigantes (Everything Dew ~550 mods) dominam distribuição. Nicho agroecológico/educativo pouco ocupado.
+
+**Implicação:** diferencial (coerência agroecológica + loop de compostagem composto + framing educativo + multiplayer correto + per-tile determinístico) permanece válido e pouco contestado. Risco: ReGen Valley já entrega "qualidade por avg soil", então nossa entrega per-tile + feedback deve ser clara e visível.
+
+### Próximo passo — 80/20 (maior avanço, menor esforço)
+
+**Recomendação: `/speckit.implement` continuando specs 014/015 (harvest-quality) + `/speckit.converge`, após rodar Gate 3.**
+
+Justificativa (com pesquisa de mercado 2026):
+- Único item restante que faz Living Soil (71–100%) **pagar na colheita** (qualidade silver/gold/iridium + colheita extra).
+- Infraestrutura cara (Harmony, seam, testes, wiring) já mergeada — custo marginal é integração + verificação.
+- Mercado valida "qualidade dirigida por skill/solo" (Crop Quality, Simple Skills Extended); ninguém entrega per-tile com boost determinístico + feedback.
+- ReGen Valley entrega farm-wide quality a 75+/90+ avg, mas não per-tile com boost determinístico e feedback transient — nosso seam é único.
+
+**Pré-requisitos (≤1h, sem código novo):**
+1. Rodar Gate 3 (in-game, 3 sinais) — desbloqueia "verificado".
+2. Reconciliar band scale (T117–T119, doc-only).
+3. Fechar bugs abertos (codeql, composting complexity, sonarcloud quality gate).
+
+**Alternativa (se quiser fechar loop destruição primeiro):** `/speckit.specify` para "Joja Fertilizer" (boost agora, −5% saúde) — fecha o "o que destrói", custo baixo, mas não faz Living Soil pagar.
+
+**Não recomendado agora:** Elena NPC (alto custo/conteúdo), Heirloom pipeline (bloqueia 3 features, alto custo), Mid/End-game (0 de 12).
