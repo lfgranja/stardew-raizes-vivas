@@ -184,12 +184,44 @@ for sc in "${SCENARIO_LIST[@]}"; do
     fi
 done
 
+# Resolve the milestone save from the scenario contract when --milestone-save
+# is absent. Every scenario declares one, and the runner previously ignored it,
+# so save_prepare received an empty string even when the scenario was complete.
+# An explicit --milestone-save wins over the scenario value (the CLI is the
+# operator override); a suite uses the first declared milestone.
+if [[ -z "$MILESTONE_SAVE" ]]; then
+    for _sc in "${SCENARIO_LIST[@]}"; do
+        [[ -f "$_sc" ]] || continue
+        _ms="$(python3 - "$_sc" <<'PY'
+import json, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as f:
+        data = json.load(f)
+except Exception:
+    sys.exit(0)
+value = data.get("milestoneSave") if isinstance(data, dict) else None
+if isinstance(value, str) and value.strip():
+    print(value.strip())
+PY
+)"
+        if [[ -n "$_ms" ]]; then
+            MILESTONE_SAVE="$_ms"
+            break
+        fi
+    done
+fi
+
 # export seams
 export RUNNER_REPO_ROOT="$REPO_ROOT"
 export RUNNER_GAME_PATH="$GAME_PATH"
 export RUNNER_MODS_DIR="${GAME_PATH:+${GAME_PATH}/Mods}"
 export RUNNER_LAUNCHER="${RUNNER_LAUNCHER:-${GAME_PATH:+${GAME_PATH}/StardewModdingAPI}}"
 export RUNNER_XVFB="${RUNNER_XVFB:-Xvfb}"
+RUNNER_SMAPI_LOG_PINNED=0
+if [[ -n "${RUNNER_SMAPI_LOG:-}" ]]; then
+    RUNNER_SMAPI_LOG_PINNED=1
+fi
+export RUNNER_SMAPI_LOG_PINNED
 export RUNNER_SMAPI_LOG="${RUNNER_SMAPI_LOG:-${XDG_CONFIG_HOME:-$HOME/.config}/StardewValley/ErrorLogs/SMAPI-latest.txt}"
 export RUNNER_CACHE_DIR="${RUNNER_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/livingroots/game}"
 export RUNNER_EVIDENCE_ROOT="${RUNNER_EVIDENCE_ROOT:-$REPO_ROOT}"
@@ -257,9 +289,18 @@ if (( NO_ACQUIRE == 0 )); then
     fi
 fi
 
-# isolate (save)
-if declare -F save_prepare >/dev/null 2>&1; then
-    save_prepare "$MILESTONE_SAVE" "$RUNNER_RUN_ROOT" >/dev/null 2>&1 || true
+# isolate (save). This is a direct call, not a `declare -F` probe: a missing
+# milestone used to skip the whole stage silently, which is how a launched run
+# with no save looked healthy. Missing milestone => 19; malformed invocation => 14.
+save_rc=0
+save_prepare "$MILESTONE_SAVE" "$RUNNER_RUN_ROOT" >/dev/null 2>&1 || save_rc=$?
+if (( save_rc != 0 )); then
+    if (( save_rc == EXIT_USAGE_ERROR )); then
+        echo "runner: error: code=14 class=USAGE_ERROR message=save_prepare invocation invalid" >&2
+        exit "$EXIT_USAGE_ERROR"
+    fi
+    echo "runner: error: code=19 class=ERRORED message=milestone save unavailable (${MILESTONE_SAVE:-<none>})" >&2
+    exit "$EXIT_ERRORED"
 fi
 
 # display

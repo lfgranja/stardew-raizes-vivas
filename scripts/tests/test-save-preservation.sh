@@ -47,4 +47,68 @@ for term in player source working; do
     if grep -qi "$term" scripts/lib/save.sh; then pass "term '$term' used in save.sh"; else fail "term '$term'" "missing"; fi
 done
 
+# ---------------------------------------------------------------------------
+# save_prepare: the orchestration primitive that used to be skipped silently.
+# It must resolve the milestone under the caller's saves root, isolate it into
+# the XDG tree the launcher reads, and never mutate the source.
+# ---------------------------------------------------------------------------
+saves_root="$HARNESS_SANDBOX/milestone-saves"
+mkdir -p "$saves_root"
+make_fake_save "$saves_root/farm-year1-day5" "farm-year1-day5" '{"Farm":{"-10,5":10}}' '{}'
+run_root="$HARNESS_SANDBOX/save-prepare-run"
+mkdir -p "$run_root"
+
+_saved_home="${HOME-}"
+_saved_xdg_config="${XDG_CONFIG_HOME-}"
+_saved_xdg_data="${XDG_DATA_HOME-}"
+_saved_xdg_cache="${XDG_CACHE_HOME-}"
+_saved_xdg_state="${XDG_STATE_HOME-}"
+_saved_runner_save_id="${RUNNER_SAVE_ID-}"
+_saved_runner_save_dir="${RUNNER_SAVE_DIR-}"
+_saved_runner_save_instance="${RUNNER_SAVE_INSTANCE_DIR-}"
+_saved_runner_smapi_log="${RUNNER_SMAPI_LOG-}"
+
+RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
+    call_runner_func save_prepare "farm-year1-day5" "$run_root"
+assert_fn_code 0 "save_prepare isolates an existing milestone"
+[[ -n "${RUNNER_SAVE_ID:-}" ]] && pass "save_prepare exports RUNNER_SAVE_ID" || fail "save_prepare RUNNER_SAVE_ID" "empty"
+if [[ "${RUNNER_SAVE_DIR:-}" == */StardewValley/Saves/farm-year1-day5 ]]; then
+    pass "save_prepare working dir is under the isolated XDG saves tree"
+else
+    fail "save_prepare working dir" "got ${RUNNER_SAVE_DIR:-<empty>}"
+fi
+if [[ -f "${RUNNER_SAVE_DIR:-}/modData/soil_health_data_farm-year1-day5.json" ]]; then
+    pass "save_prepare copied the milestone mod data"
+else
+    fail "save_prepare copied mod data" "missing copied soil-health file"
+fi
+source_hash_before="$(save_hash_tree "$saves_root/farm-year1-day5")"
+if [[ "$source_hash_before" == "$(save_hash_tree "$saves_root/farm-year1-day5")" ]]; then
+    pass "save_prepare leaves the source milestone unchanged"
+else
+    fail "save_prepare source unchanged" "source hash moved"
+fi
+
+# Missing milestone must be loud (19), never a silent skip.
+RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
+    call_runner_func save_prepare "does-not-exist" "$run_root"
+assert_fn_code 19 "save_prepare missing milestone => 19"
+
+# Empty milestone is also 19 (the old code passed "" and skipped).
+RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
+    call_runner_func save_prepare "" "$run_root"
+assert_fn_code 19 "save_prepare empty milestone => 19"
+
+# Restore the caller environment: save_isolate calls save_setup_env, which
+# exports HOME/XDG_* into this test process.
+export HOME="$_saved_home"
+export XDG_CONFIG_HOME="$_saved_xdg_config"
+export XDG_DATA_HOME="$_saved_xdg_data"
+export XDG_CACHE_HOME="$_saved_xdg_cache"
+export XDG_STATE_HOME="$_saved_xdg_state"
+export RUNNER_SAVE_ID="$_saved_runner_save_id"
+export RUNNER_SAVE_DIR="$_saved_runner_save_dir"
+export RUNNER_SAVE_INSTANCE_DIR="$_saved_runner_save_instance"
+export RUNNER_SMAPI_LOG="$_saved_runner_smapi_log"
+
 finish_tests
