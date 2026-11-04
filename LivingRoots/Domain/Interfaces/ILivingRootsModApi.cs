@@ -18,6 +18,38 @@ namespace LivingRoots.Domain.Interfaces
         /// transition.
         /// </summary>
         event EventHandler<SoilGrowthModifierCompletedEventArgs>? SoilGrowthModifierCompleted;
+
+        /// <summary>
+        /// True when the production mod has bound the verification services.
+        /// The dev/CI verification mod refuses to act when this is false, so a
+        /// partially wired composition root fails loudly instead of silently
+        /// dropping scenario commands.
+        /// </summary>
+        bool IsVerificationReady { get; }
+
+        /// <summary>
+        /// Reads the stored health for one tile. Returns false when the tile
+        /// has no entry; a stored NaN returns true with a NaN value.
+        /// </summary>
+        bool TryGetSoilHealth(string locationName, int tileX, int tileY, out float health);
+
+        /// <summary>Sets the stored health for one tile (clamped by the service).</summary>
+        void SetSoilHealth(string locationName, int tileX, int tileY, float health);
+
+        /// <summary>Returns a point-in-time copy of every stored tile.</summary>
+        IReadOnlyList<SoilHealthSnapshotEntry> SnapshotSoilHealth();
+
+        /// <summary>
+        /// Places the composting bin on a farm/greenhouse tile. Returns false
+        /// when the location or tile is invalid or already occupied.
+        /// </summary>
+        bool PlaceBin(string locationName, int tileX, int tileY);
+
+        /// <summary>
+        /// Inserts organic waste into the bin at the tile. Returns false when
+        /// the item is not valid organic waste or the bin is not empty.
+        /// </summary>
+        bool InsertWaste(string locationName, int tileX, int tileY, string itemId, int count);
     }
 
     /// <summary>

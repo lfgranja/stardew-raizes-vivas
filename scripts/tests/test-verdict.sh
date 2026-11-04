@@ -64,4 +64,66 @@ call_runner_func verdict_write_attempt "$adir/attempts/1" 1 pass "" "3" 0
 assert_fn_code 0 "write attempt returns 0"
 assert_file_exists "$adir/attempts/1/attempt.json" "attempt.json"
 
+# verdict_evaluate_bundle: derive the five inputs from a complete bundle and
+# evaluate the scenario's multiplier + between predicates. The wrapper must
+# pass the pre record, not just the after record, or the multiplier fails with
+# unmeasured-actual.
+v_eval_dll="$HARNESS_REPO_ROOT/LivingRoots.Verification.Runner/bin/Release/net6.0/LivingRoots.Verification.Runner.dll"
+if [[ -f "$v_eval_dll" ]] && command -v dotnet >/dev/null 2>&1; then
+    vbundle="$HARNESS_SANDBOX/verdict-bundle"
+    mkdir -p "$vbundle/artifacts"
+    printf '{"locations":{"Farm":{"60,15":{"before":10,"after":10,"delta":0}}}}\n' > "$vbundle/artifacts/soil-health-before-after.json"
+    printf '{"agree":true,"divergences":[]}\n' > "$vbundle/artifacts/crop-phase-cross-check.json"
+    printf 'Soil growth modifier elapsed: 1 ms\n' > "$vbundle/artifacts/smapi-log.txt"
+    python3 - "$vbundle/artifacts/crop-phase-before.json" "$vbundle/artifacts/crop-phase-dump.json" <<'PY'
+import json, sys
+crop = {
+    "location": "Farm", "tileX": 60, "tileY": 15, "tileKey": "60,15",
+    "seedId": "LivingRoots.Verification.LongPhaseCrop", "isForageCrop": False,
+    "indexOfHarvest": 24, "currentPhase": 0, "dayOfCurrentPhase": 0,
+    "phaseDays": [4, 4, 4, 4, 99999], "basePhaseDays": [4, 4, 4, 4],
+    "fullyGrown": False, "dead": False, "soilHealth": 10,
+    "healthTier": "poor", "soilHealthState": "measured", "isSentinelPhase": False,
+}
+def dump(phase_days, day):
+    return {"schemaVersion": 1, "dayKey": day, "capturedAtUtc": "2026-11-04T00:00:00Z",
+            "isMainPlayer": True, "locationsProcessed": 1, "elapsedMilliseconds": 1,
+            "done": True, "crops": [dict(crop, phaseDays=phase_days)]}
+json.dump(dump([4, 4, 4, 4, 99999], "spring_1"), open(sys.argv[1], "w"), indent=2)
+json.dump(dump([5, 4, 4, 4, 99999], "spring_6"), open(sys.argv[2], "w"), indent=2)
+PY
+    vscn="$HARNESS_SANDBOX/verdict.scenario.json"
+    python3 - "$vscn" <<'PY'
+import json, sys
+d = {
+    "schemaVersion": 2, "scenarioId": "verdict-bundle", "featureSlug": "010-headless-verification-runner",
+    "testMdPath": "specs/010-headless-verification-runner/test.md", "summary": "verdict bundle",
+    "playerRole": "host", "minimumGameVersion": "1.6.14",
+    "environment": {"gameVersion": "1.6.14", "smapiVersion": "4.4.0", "modVersion": "0.4.0",
+                    "apiVersion": "1.0.0", "saveId": "runner-self-test",
+                    "config": {"saveMode": "save", "headless": True, "skipBuild": True}},
+    "milestoneSave": "runner-self-test",
+    "initCommands": [{"kind": "console", "command": "lr_set_soil_health 60 15 10"}],
+    "steps": [{"action": "observe", "target": "60,15"}],
+    "thresholds": [
+        {"signal": "cropPhaseDelta", "predicate": {"op": "multiplier", "field": "phaseDays", "base": "pre.phaseDays", "tolerance": 0.0001, "factor": 1.15}},
+        {"signal": "soilHealthStateDelta", "predicate": {"op": "between", "field": "soilHealth", "min": 0, "max": 34, "tolerance": 0.0001, "exclusiveMin": True, "exclusiveMax": True}},
+    ],
+    "expectedSignals": ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"],
+    "expectedVerdict": "pass", "rngSeed": 1, "time": "2026-10-27T12:00:00Z",
+    "determinism": {"idempotent": True, "declaredSources": []}, "scenarioKind": "positive",
+}
+json.dump(d, open(sys.argv[1], "w"))
+PY
+    RUNNER_EVALUATOR_DLL="$v_eval_dll" call_runner_func verdict_evaluate_bundle "$vbundle" "$vscn"
+    assert_fn_code 0 "verdict_evaluate_bundle passes a complete bundle"
+    assert_json_eq "$vbundle/verdict.json" '.verdict' "pass" "bundle verdict pass"
+    assert_json_eq "$vbundle/verdict.json" '.signalsComplete' "true" "bundle signals complete"
+    assert_json_eq "$vbundle/verdict.json" '.thresholdsOk' "true" "bundle thresholds ok"
+    assert_json_eq "$vbundle/evaluation/actual.json" '.phaseDays' "5" "bundle actual phaseDays"
+    assert_json_eq "$vbundle/evaluation/pre.json" '.phaseDays' "4" "bundle pre phaseDays"
+else
+    skip "verdict_evaluate_bundle" "evaluator dll or dotnet"
+fi
+
 finish_tests

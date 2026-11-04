@@ -542,6 +542,43 @@ namespace LivingRoots.Services
             return result;
         }
 
+        public bool TryGetSoilHealth(string locationName, Vector2 tile, out float health)
+        {
+            health = 0f;
+            if (!IsValidTile(locationName, tile, out Point tilePoint))
+            {
+                return false;
+            }
+
+            lock (_lock)
+            {
+                if (_runtimeCache.TryGetValue(locationName, out var tiles) && tiles.TryGetValue(tilePoint, out var stored))
+                {
+                    health = stored;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public IReadOnlyList<SoilHealthSnapshotEntry> Snapshot()
+        {
+            var snapshot = new List<SoilHealthSnapshotEntry>();
+            lock (_lock)
+            {
+                foreach (var location in _runtimeCache)
+                {
+                    foreach (var tile in location.Value)
+                    {
+                        snapshot.Add(new SoilHealthSnapshotEntry(location.Key, tile.Key.X, tile.Key.Y, tile.Value));
+                    }
+                }
+            }
+
+            return snapshot;
+        }
+
         public void SetSoilHealth(string locationName, Vector2 tile, float value)
         {
             // Use the validation helper to check for a valid tile

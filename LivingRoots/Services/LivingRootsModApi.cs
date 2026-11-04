@@ -1,5 +1,9 @@
 using System;
+using System.Collections.Generic;
+using LivingRoots.Domain;
 using LivingRoots.Domain.Interfaces;
+using Microsoft.Xna.Framework;
+using StardewValley;
 
 namespace LivingRoots.Services
 {
@@ -15,7 +19,177 @@ namespace LivingRoots.Services
         private readonly object _lock = new();
         private bool _disposed;
 
+        private ISoilHealthService? _soilHealthService;
+        private ICompostingBinService? _compostingBinService;
+        private ILocationProvider? _locationProvider;
+
         public string ApiVersion => ApiVersionValue;
+
+        /// <summary>
+        /// Binds the production services used by the dev/CI verification mod.
+        /// Called once from the composition root; the API stays event-only
+        /// until this runs, so an unwired mod fails closed.
+        /// </summary>
+        public void BindVerificationServices(
+            ISoilHealthService soilHealthService,
+            ICompostingBinService compostingBinService,
+            ILocationProvider? locationProvider)
+        {
+            lock (_lock)
+            {
+                if (_disposed) return;
+                _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
+                _compostingBinService = compostingBinService ?? throw new ArgumentNullException(nameof(compostingBinService));
+                _locationProvider = locationProvider;
+            }
+        }
+
+        public bool IsVerificationReady
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return !_disposed && _soilHealthService != null && _compostingBinService != null;
+                }
+            }
+        }
+
+        public bool TryGetSoilHealth(string locationName, int tileX, int tileY, out float health)
+        {
+            health = 0f;
+            ISoilHealthService? service;
+            lock (_lock)
+            {
+                if (_disposed) return false;
+                service = _soilHealthService;
+            }
+
+            if (service == null) return false;
+            return service.TryGetSoilHealth(locationName, new Vector2(tileX, tileY), out health);
+        }
+
+        public void SetSoilHealth(string locationName, int tileX, int tileY, float health)
+        {
+            ISoilHealthService? service;
+            lock (_lock)
+            {
+                if (_disposed) throw new ObjectDisposedException(nameof(LivingRootsModApi));
+                service = _soilHealthService;
+            }
+
+            if (service == null)
+            {
+                throw new InvalidOperationException("Verification services are not bound.");
+            }
+
+            service.SetSoilHealth(locationName, new Vector2(tileX, tileY), health);
+        }
+
+        public IReadOnlyList<SoilHealthSnapshotEntry> SnapshotSoilHealth()
+        {
+            ISoilHealthService? service;
+            lock (_lock)
+            {
+                if (_disposed) return Array.Empty<SoilHealthSnapshotEntry>();
+                service = _soilHealthService;
+            }
+
+            if (service == null) return Array.Empty<SoilHealthSnapshotEntry>();
+            return service.Snapshot();
+        }
+
+        public bool PlaceBin(string locationName, int tileX, int tileY)
+        {
+            ICompostingBinService? bins;
+            ILocationProvider? locations;
+            lock (_lock)
+            {
+                if (_disposed) return false;
+                bins = _compostingBinService;
+                locations = _locationProvider;
+            }
+
+            if (bins == null) return false;
+
+            GameLocation? location = locations?.GetLocationByName(locationName);
+            if (location == null)
+            {
+                try
+                {
+                    location = Game1.getLocationFromName(locationName);
+                }
+                catch
+                {
+                    location = null;
+                }
+            }
+
+            if (location == null) return false;
+
+            var tile = new Vector2(tileX, tileY);
+            if (!location.isTileOnMap(tile)) return false;
+            if (location.Objects.ContainsKey(tile)) return false;
+            if (!location.IsFarm && !IsGreenhouseLike(location)) return false;
+            if (location.buildings != null && location.buildings.Any(building => building != null && building.occupiesTile(tile))) return false;
+
+            var waterMap = location.waterTiles;
+            if (waterMap != null &&
+                tileX >= 0 && tileY >= 0 &&
+                tileX < waterMap.waterTiles.GetLength(0) &&
+                tileY < waterMap.waterTiles.GetLength(1) &&
+                waterMap[tileX, tileY])
+            {
+                return false;
+            }
+
+            var binItem = new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId };
+            binItem.bigCraftable.Value = true;
+
+            var placedObject = new StardewValley.Object { ItemId = ModConstants.CompostingBinItemId, TileLocation = tile };
+            placedObject.bigCraftable.Value = true;
+            location.Objects.Add(tile, placedObject);
+
+            bins.OnBinPlaced(location.Name, tile, binItem);
+            return true;
+        }
+
+        public bool InsertWaste(string locationName, int tileX, int tileY, string itemId, int count)
+        {
+            ICompostingBinService? bins;
+            lock (_lock)
+            {
+                if (_disposed) return false;
+                bins = _compostingBinService;
+            }
+
+            if (bins == null) return false;
+            if (string.IsNullOrWhiteSpace(itemId) || count <= 0) return false;
+
+            var tile = new Vector2(tileX, tileY);
+            if (bins.GetBinState(locationName, tile) != CompostingBinState.Empty) return false;
+
+            Item item;
+            try
+            {
+                item = ItemRegistry.Create(itemId, count);
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (item == null) return false;
+
+            bins.AddWaste(locationName, tile, item);
+            return bins.GetBinState(locationName, tile) == CompostingBinState.Processing;
+        }
+
+        private static bool IsGreenhouseLike(GameLocation location)
+        {
+            return location.Name != null &&
+                location.Name.Contains("Greenhouse", StringComparison.OrdinalIgnoreCase);
+        }
 
         public event EventHandler<SoilGrowthModifierCompletedEventArgs>? SoilGrowthModifierCompleted
         {

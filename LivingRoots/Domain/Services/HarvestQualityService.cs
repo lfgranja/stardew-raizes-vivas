@@ -5,9 +5,6 @@ namespace LivingRoots.Domain.Services
 {
     public class HarvestQualityService : IHarvestQualityService
     {
-        private const float PoorThreshold = 31.0f;
-        private const float HealthyThreshold = 71.0f;
-
         public HarvestQualityDecision Decide(float soilHealth, HarvestQualityInputs inputs)
         {
             if (inputs.IsForageCrop || inputs.IsFibreSeed || inputs.IsQiFruit)
@@ -40,7 +37,7 @@ namespace LivingRoots.Domain.Services
                 };
             }
 
-            if (soilHealth < PoorThreshold)
+            if (soilHealth < ModConstants.PoorModerateBandEdge)
             {
                 return new HarvestQualityDecision
                 {
@@ -55,7 +52,7 @@ namespace LivingRoots.Domain.Services
                 };
             }
 
-            if (soilHealth < HealthyThreshold)
+            if (soilHealth < ModConstants.ModerateHealthyBandEdge)
             {
                 return new HarvestQualityDecision
                 {

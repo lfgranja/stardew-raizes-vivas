@@ -101,6 +101,18 @@ launch_wait_ready() {
             return 5
         fi
     fi
+    # phase 2 bound: poll for the mod-resolution header (C-LCH-01). The header
+    # appears ~20 s after the sentinel on a real install, so a single grep here
+    # would report 17 on every healthy launch.
+    local j=0
+    local phase2_timeout=$((timeout * 2))
+    while (( j < phase2_timeout )); do
+        if grep -Eq "Loaded [0-9]+ mods:" "$log_path" 2>/dev/null; then
+            break
+        fi
+        sleep 0.5
+        j=$((j+1))
+    done
     if ! grep -Eq "Loaded [0-9]+ mods:" "$log_path" 2>/dev/null; then
         return 17
     fi

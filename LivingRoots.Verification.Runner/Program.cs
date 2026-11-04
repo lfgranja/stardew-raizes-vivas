@@ -35,10 +35,10 @@ namespace LivingRoots.Verification.Runner
                     }
                 case "evaluate":
                     {
-                        // evaluate <scenario-or-predicate> <actual-json> [pre-json]
+                        // evaluate <predicate.json> <actual.json> [pre.json]
                         if (args.Length < 3)
                         {
-                            Console.Error.WriteLine("usage: evaluate <predicate.json> <actual.json>");
+                            Console.Error.WriteLine("usage: evaluate <predicate.json> <actual.json> [pre.json]");
                             return 14;
                         }
                         try
@@ -47,10 +47,25 @@ namespace LivingRoots.Verification.Runner
                             var actualText = File.ReadAllText(args[2]);
                             using var predDoc = JsonDocument.Parse(predText);
                             using var actualDoc = JsonDocument.Parse(actualText);
-                            var reason = string.Empty;
-                            bool ok = PredicateEvaluator.Evaluate(predDoc.RootElement, actualDoc.RootElement, out reason);
-                            Console.WriteLine(JsonSerializer.Serialize(new { passed = ok, reason }));
-                            return ok ? 0 : 19;
+                            JsonElement? pre = null;
+                            JsonDocument? preDoc = null;
+                            try
+                            {
+                                if (args.Length >= 4 && !string.IsNullOrWhiteSpace(args[3]))
+                                {
+                                    preDoc = JsonDocument.Parse(File.ReadAllText(args[3]));
+                                    pre = preDoc.RootElement;
+                                }
+
+                                var reason = string.Empty;
+                                bool ok = PredicateEvaluator.Evaluate(predDoc.RootElement, actualDoc.RootElement, pre, out reason);
+                                Console.WriteLine(JsonSerializer.Serialize(new { passed = ok, reason }));
+                                return ok ? 0 : 19;
+                            }
+                            finally
+                            {
+                                preDoc?.Dispose();
+                            }
                         }
                         catch
                         {

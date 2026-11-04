@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using LivingRoots.Verification.Evidence;
 using Xunit;
 
@@ -29,25 +30,51 @@ namespace LivingRoots.Tests.Verification
                         TileKey = "0,0",
                         SeedId = "1",
                         IsForageCrop = false,
-                        IndexOfHarvest = 0,
+                        IndexOfHarvest = 24,
                         CurrentPhase = 1,
                         DayOfCurrentPhase = 0,
-                        PhaseDays = new List<int> { 1,2,3 },
-                        BasePhaseDays = new List<int> { 1,2,3 },
+                        PhaseDays = new List<int> { 1, 2, 3 },
+                        BasePhaseDays = new List<int> { 1, 2, 3 },
                         FullyGrown = false,
                         Dead = false,
                         SoilHealth = 50.0,
-                        HealthTier = "fair",
+                        HealthTier = HealthTierClassifier.Moderate,
                         SoilHealthState = "measured",
-                        IsSentinelPhase = false
-                    }
-                }
+                        IsSentinelPhase = false,
+                    },
+                },
             };
+
             Assert.Equal("spring:1:1", dump.DayKey);
             Assert.NotEmpty(dump.CapturedAtUtc);
-            foreach (var t in new[] { "poor", "fair", "good", "excellent", "legendary" }) { }
             Assert.Equal("measured", dump.Crops[0].SoilHealthState);
             Assert.Equal(3, dump.Crops[0].BasePhaseDays.Count);
+            Assert.Equal(50.0, dump.Crops[0].SoilHealth);
+        }
+
+        [Fact]
+        public void SoilHealth_IsNullable_SoMissingAndNaNAreNotFabricatedAsZero()
+        {
+            var entry = new CropPhaseEntry
+            {
+                SoilHealth = null,
+                SoilHealthState = "missing",
+                HealthTier = HealthTierClassifier.Unknown,
+            };
+
+            Assert.Null(entry.SoilHealth);
+            Assert.Equal("unknown", entry.HealthTier);
+
+            var json = JsonSerializer.Serialize(entry);
+            Assert.Contains("\"soilHealth\":null", json);
+            Assert.DoesNotContain("expected", json, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void SentinelPhase_IsFlagged()
+        {
+            var entry = new CropPhaseEntry { CurrentPhase = -1, IsSentinelPhase = true };
+            Assert.True(entry.IsSentinelPhase);
         }
     }
 }

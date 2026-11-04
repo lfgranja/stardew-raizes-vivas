@@ -134,7 +134,7 @@ evidence_write_claims() {
     python3 - "$bundle/claims.json" "$runId" "$honesty" <<'PY'
 import json,sys
 path,runId,honesty=sys.argv[1],sys.argv[2],sys.argv[3]
-d={"schemaVersion":1,"runId":runId,"honestyLevel":honesty}
+d={"schemaVersion":1,"runId":runId,"honestyLevel":honesty,"claims":[]}
 json.dump(d,open(path,"w"),indent=2)
 PY
     return 0

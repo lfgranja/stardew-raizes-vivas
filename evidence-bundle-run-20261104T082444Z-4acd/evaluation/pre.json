@@ -1,0 +1,11 @@
+{
+  "soilHealth": 10.0,
+  "soilHealthState": "measured",
+  "healthTier": "poor",
+  "phaseDays": 4,
+  "currentPhase": 0,
+  "dayOfCurrentPhase": 0,
+  "fullyGrown": false,
+  "dead": false,
+  "indexOfHarvest": 24
+}

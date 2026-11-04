@@ -49,4 +49,24 @@ printf 'tampered' > "$d/manifest.json"
 rc=0; bash "$verifier" "$d" >/dev/null 2>&1 || rc=$?
 if (( rc == 19 || rc == 13 )); then pass "digest tamper rejected ($rc)"; else fail "digest tamper" "rc=$rc"; fi
 
+# anomaly reports are evidence of ABSENCE: three of them must not satisfy an R
+# claim that requires the three real signals.
+d="$HARNESS_SANDBOX/an"; make_bundle "$d"
+rm -f "$d/artifacts/soil.json" "$d/artifacts/crop.json" "$d/artifacts/smapi.txt"
+printf '{}\n' > "$d/artifacts/anomaly-report.json"
+printf '{}\n' > "$d/artifacts/anomaly-report-cropPhaseDelta.json"
+printf '{}\n' > "$d/artifacts/anomaly-report-smapiLog.json"
+printf '%s\n' "$(sha256sum "$d/manifest.json" | awk '{print $1}')" > "$d/manifest.sha256"
+rc=0; bash "$verifier" "$d" >/dev/null 2>&1 || rc=$?
+if (( rc == 19 )); then pass "anomaly reports do not satisfy R signals"; else fail "anomaly reports counted as signals" "rc=$rc"; fi
+
+# a W bundle that claims nothing is valid even with only anomaly reports
+d="$HARNESS_SANDBOX/anw"; make_bundle "$d"
+printf '{"schemaVersion":1,"runId":"run-1","honestyLevel":"W","claims":[]}\n' > "$d/claims.json"
+rm -f "$d/artifacts/"*
+printf '{}\n' > "$d/artifacts/anomaly-report.json"
+printf '%s\n' "$(sha256sum "$d/manifest.json" | awk '{print $1}')" > "$d/manifest.sha256"
+rc=0; bash "$verifier" "$d" >/dev/null 2>&1 || rc=$?
+if (( rc == 0 )); then pass "W bundle claiming nothing is valid"; else fail "W bundle claiming nothing" "rc=$rc"; fi
+
 finish_tests

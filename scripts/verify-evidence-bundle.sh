@@ -22,11 +22,29 @@ if [[ ! -f "$bundle/claims.json" ]]; then exit 19; fi
 calc="$(sha256sum "$bundle/manifest.json" | awk '{print $1}')"
 exp="$(tr -d '[:space:]' < "$bundle/manifest.sha256")"
 if [[ "$calc" != "$exp" ]]; then exit 19; fi
-# mandatory signals
-for f in "$bundle"/artifacts/*; do :; done
-# check at least 3 artifacts
-cnt=$(find "$bundle/artifacts" -type f 2>/dev/null | wc -l)
-if (( cnt < 3 )); then exit 19; fi
+# mandatory signals: an anomaly report is evidence of ABSENCE, so it must never
+# satisfy the presence check. W claims launch/connect only; R/E require all
+# three signal kinds as real artifacts.
+sig_rc=0
+python3 - "$bundle" <<'PY' || sig_rc=$?
+import glob,json,os,sys
+b=sys.argv[1]
+try:
+    with open(os.path.join(b,"claims.json")) as f:
+        hl=json.load(f).get("honestyLevel","W")
+except Exception:
+    sys.exit(19)
+if hl in ("R","E"):
+    names=[os.path.basename(p).lower() for p in glob.glob(os.path.join(b,"artifacts","*"))
+           if os.path.isfile(p) and os.path.getsize(p)>0]
+    names=[n for n in names if not n.startswith("anomaly-report")]
+    def has(*keys):
+        return any(any(k in n for k in keys) for n in names)
+    if not (has("soil","delta") and has("crop","phase","dump") and has("smapi","log","excerpt")):
+        sys.exit(19)
+sys.exit(0)
+PY
+if (( sig_rc != 0 )); then exit 19; fi
 # claim/honesty overreach: if claims honestyLevel W but commands present? simple: if claims contains overreach marker
 if grep -q 'overreach' "$bundle/claims.json" 2>/dev/null; then exit 21; fi
 # honesty gating: if honestyLevel R/E requires commands/materials/seeds; check completeness flags

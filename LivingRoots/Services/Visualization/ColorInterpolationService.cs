@@ -8,7 +8,7 @@ namespace LivingRoots.Services.Visualization
 {
     /// <summary>
     /// Computes color mappings from health values using linear RGB interpolation.
-    /// Uses category thresholds with half-open intervals: Poor [1, 34), Moderate [34, 67), Healthy [67, 100].
+    /// Uses category thresholds with half-open intervals: Poor [0, 31), Moderate [31, 71), Healthy [71, 100].
     /// </summary>
     public class ColorInterpolationService : IColorInterpolationService
     {
@@ -109,15 +109,7 @@ namespace LivingRoots.Services.Visualization
             // Unknown — only non-finite values are the unknown state.
             var clamped = Math.Clamp(healthValue, ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth);
 
-            // T072 / FR-010: the Poor interval is floored
-            // at 1 — Poor covers [1, 34), never 0. Health
-            // 0 is the unrendered neutral-dirt baseline (the
-            // overlay renderer omits it, FR-009), so the
-            // measured range the intervals resolve starts at
-            // 1; a sub-floor reading (0 after the clamp)
-            // resolves at the Poor floor rather than inside
-            // the band.
-            var intervalValue = Math.Max(clamped, 1f);
+            var intervalValue = clamped;
 
             if (intervalValue < ModConstants.PoorModerateBandEdge)
             {

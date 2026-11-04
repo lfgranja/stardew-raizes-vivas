@@ -93,7 +93,7 @@ namespace LivingRoots.Patches
                 {
                     locationName = Game1.currentLocation.Name;
                 }
-                float soilHealth = 50.0f;
+                float soilHealth = float.NaN;
                 if (soilHealthService != null && !string.IsNullOrEmpty(locationName))
                 {
                     try
@@ -102,7 +102,7 @@ namespace LivingRoots.Patches
                     }
                     catch
                     {
-                        soilHealth = 50.0f;
+                        soilHealth = float.NaN;
                     }
                 }
 
@@ -396,11 +396,11 @@ namespace LivingRoots.Patches
                         string? soundName = null;
                         if (feedback.HasFlag(HarvestFeedbackFlags.Poor))
                         {
-                            soundName = "harvest";
+                            soundName = "cancel";
                         }
                         else if (feedback.HasFlag(HarvestFeedbackFlags.LivingQuality) || feedback.HasFlag(HarvestFeedbackFlags.ExtraHarvest))
                         {
-                            soundName = "newRecipe";
+                            soundName = "coin";
                         }
 
                         if (location != null && !string.IsNullOrEmpty(soundName))
@@ -441,6 +441,7 @@ namespace LivingRoots.Patches
                                     {
                                         var sprites = new List<TemporaryAnimatedSprite>();
                                         var worldPosition = new Vector2(xTile * (float)ModConstants.TileSize + 32f, yTile * (float)ModConstants.TileSize);
+                                        // FR-007 (non-chromatic): tier info is carried by text + SFX, not color alone.
                                         if (feedback.HasFlag(HarvestFeedbackFlags.Poor))
                                         {
                                             var poorSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);

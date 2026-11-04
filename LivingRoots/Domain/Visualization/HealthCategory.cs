@@ -2,7 +2,7 @@ namespace LivingRoots.Domain.Visualization
 {
     /// <summary>
     /// Enumeration of soil health categories with half-open threshold intervals:
-    /// Poor [0, 34), Moderate [34, 67), Healthy [67, 100]. NaN and Infinity
+    /// Poor [0, 31), Moderate [31, 71), Healthy [71, 100]. NaN and Infinity
     /// resolve to Unknown; finite values outside [0, 100] are clamped to the
     /// nearest boundary category (below 0 → Poor, above 100 → Healthy) per
     /// FR-008/SC-007.
@@ -25,7 +25,7 @@ namespace LivingRoots.Domain.Visualization
         /// </summary>
         /// <param name="healthValue">Health value (0-100).</param>
         /// <returns>
-        /// Poor for [0, 34), Moderate for [34, 67), Healthy for [67, 100].
+        /// Poor for [0, 31), Moderate for [31, 71), Healthy for [71, 100].
         /// Unknown for NaN or Infinity. Finite values outside [0, 100] are
         /// clamped to the nearest boundary category.
         /// </returns>

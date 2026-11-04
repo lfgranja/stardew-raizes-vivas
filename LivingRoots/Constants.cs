@@ -37,13 +37,13 @@ namespace LivingRoots
         public static readonly Color UnknownColor = new Color(107, 114, 128); // #6B7280
         // FR-008 (T185): the soil-health category band
         // edges the color-interpolation service resolves
-        // on — Poor [0, 34), Moderate [34, 67), Healthy
-        // [67, 100] — and the Moderate band width that
-        // normalizes the Moderate→Healthy interpolation
-        // ramp. Single source of truth for
-        // ColorInterpolationService's category resolution
-        // and both interpolation ramps; the edges pair
-        // with the category palette above.
+        // on — Poor [0, 31), Moderate [31, 71), Healthy
+        // [71, 100]. Half-open intervals with edges at
+        // 31 and 71 per Cornell Soil Health Assessment
+        // Training Manual 2nd ed. 2009; paired with the
+        // category palette above. Single source of truth
+        // for ColorInterpolationService's category
+        // resolution and both interpolation ramps.
         public const float PoorModerateBandEdge = 31f;
         public const float ModerateHealthyBandEdge = 71f;
         public const float ModerateBandWidth = 40f;

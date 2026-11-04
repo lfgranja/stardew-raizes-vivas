@@ -184,12 +184,44 @@ for sc in "${SCENARIO_LIST[@]}"; do
     fi
 done
 
+# Resolve the milestone save from the scenario contract when --milestone-save
+# is absent. Every scenario declares one, and the runner previously ignored it,
+# so save_prepare received an empty string even when the scenario was complete.
+# An explicit --milestone-save wins over the scenario value (the CLI is the
+# operator override); a suite uses the first declared milestone.
+if [[ -z "$MILESTONE_SAVE" ]]; then
+    for _sc in "${SCENARIO_LIST[@]}"; do
+        [[ -f "$_sc" ]] || continue
+        _ms="$(python3 - "$_sc" <<'PY'
+import json, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as f:
+        data = json.load(f)
+except Exception:
+    sys.exit(0)
+value = data.get("milestoneSave") if isinstance(data, dict) else None
+if isinstance(value, str) and value.strip():
+    print(value.strip())
+PY
+)"
+        if [[ -n "$_ms" ]]; then
+            MILESTONE_SAVE="$_ms"
+            break
+        fi
+    done
+fi
+
 # export seams
 export RUNNER_REPO_ROOT="$REPO_ROOT"
 export RUNNER_GAME_PATH="$GAME_PATH"
 export RUNNER_MODS_DIR="${GAME_PATH:+${GAME_PATH}/Mods}"
 export RUNNER_LAUNCHER="${RUNNER_LAUNCHER:-${GAME_PATH:+${GAME_PATH}/StardewModdingAPI}}"
 export RUNNER_XVFB="${RUNNER_XVFB:-Xvfb}"
+RUNNER_SMAPI_LOG_PINNED=0
+if [[ -n "${RUNNER_SMAPI_LOG:-}" ]]; then
+    RUNNER_SMAPI_LOG_PINNED=1
+fi
+export RUNNER_SMAPI_LOG_PINNED
 export RUNNER_SMAPI_LOG="${RUNNER_SMAPI_LOG:-${XDG_CONFIG_HOME:-$HOME/.config}/StardewValley/ErrorLogs/SMAPI-latest.txt}"
 export RUNNER_CACHE_DIR="${RUNNER_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/livingroots/game}"
 export RUNNER_EVIDENCE_ROOT="${RUNNER_EVIDENCE_ROOT:-$REPO_ROOT}"
@@ -242,9 +274,10 @@ fi
 if declare -F version_gate_classify >/dev/null 2>&1 && [[ -n "$GAME_PATH" ]]; then
     local_man="$GAME_PATH/Mods/LivingRoots/manifest.json"
     [[ -f "$local_man" ]] || local_man="$REPO_ROOT/LivingRoots/manifest.json"
-    if ! version_gate_classify "$GAME_PATH" "$local_man" >/dev/null 2>&1; then
-        vg_rc=$?
-        (( vg_rc == 19 )) && exit 19
+    vg_rc=0
+    version_gate_classify "$GAME_PATH" "$local_man" >/dev/null 2>&1 || vg_rc=$?
+    if (( vg_rc == 19 )); then
+        exit 19
     fi
 fi
 
@@ -256,9 +289,18 @@ if (( NO_ACQUIRE == 0 )); then
     fi
 fi
 
-# isolate (save)
-if declare -F save_prepare >/dev/null 2>&1; then
-    save_prepare "$MILESTONE_SAVE" "$RUNNER_RUN_ROOT" >/dev/null 2>&1 || true
+# isolate (save). This is a direct call, not a `declare -F` probe: a missing
+# milestone used to skip the whole stage silently, which is how a launched run
+# with no save looked healthy. Missing milestone => 19; malformed invocation => 14.
+save_rc=0
+save_prepare "$MILESTONE_SAVE" "$RUNNER_RUN_ROOT" >/dev/null 2>&1 || save_rc=$?
+if (( save_rc != 0 )); then
+    if (( save_rc == EXIT_USAGE_ERROR )); then
+        echo "runner: error: code=14 class=USAGE_ERROR message=save_prepare invocation invalid" >&2
+        exit "$EXIT_USAGE_ERROR"
+    fi
+    echo "runner: error: code=19 class=ERRORED message=milestone save unavailable (${MILESTONE_SAVE:-<none>})" >&2
+    exit "$EXIT_ERRORED"
 fi
 
 # display
@@ -268,6 +310,11 @@ fi
 trap 'display_stop 2>/dev/null || true; cleanup_run 2>/dev/null || true' EXIT
 
 # launch
+# The verification mod reads this from the game process environment at Entry.
+# injection_run also exports it, but that happens after the process started, so
+# the value must be in the launcher's environment before launch_start.
+export RUNNER_INJECTION_DIR="${RUNNER_INJECTION_DIR:-$RUNNER_RUN_ROOT/injection}"
+mkdir -p "$RUNNER_INJECTION_DIR" 2>/dev/null || true
 LAUNCHER="${RUNNER_LAUNCHER:-${GAME_PATH:+$GAME_PATH/StardewModdingAPI}}"
 LOG_PATH="$RUNNER_SMAPI_LOG"
 mkdir -p "$(dirname "$LOG_PATH")" 2>/dev/null || true
@@ -278,27 +325,48 @@ fi
 if declare -F launch_start >/dev/null 2>&1; then
     launch_start "$LAUNCHER" "$LOG_PATH" "$TIMEOUT" || { display_stop 2>/dev/null || true; exit 9; }
     if declare -F launch_wait_ready >/dev/null 2>&1; then
-        if ! launch_wait_ready "$LOG_PATH" "${LAUNCH_PID:-}" "$TIMEOUT"; then
-            rc=$?
+        rc=0
+        launch_wait_ready "$LOG_PATH" "${LAUNCH_PID:-}" "$TIMEOUT" || rc=$?
+        if (( rc != 0 )); then
             display_stop 2>/dev/null || true
-            exit $rc
+            exit "$rc"
         fi
     fi
 fi
 
-# inject
-if declare -F injection_run >/dev/null 2>&1; then
-    injection_run "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || true
+# inject: direct call, no `declare -F` escape hatch. A queue that the mod never
+# acknowledges is an errored run, not a launch that quietly did nothing.
+RUN_EXIT=0
+inj_rc=0
+injection_run "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || inj_rc=$?
+if (( inj_rc != 0 )); then
+    RUN_EXIT="$EXIT_ERRORED"
 fi
 
 # capture/signals
-if declare -F signals_capture >/dev/null 2>&1; then
-    signals_capture "$BUNDLE_DIR" "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || true
+sigcap_rc=0
+signals_capture "$BUNDLE_DIR" "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || sigcap_rc=$?
+if (( sigcap_rc != 0 )); then
+    RUN_EXIT="$EXIT_ERRORED"
 fi
 
-# evaluate
-if declare -F verdict_evaluate >/dev/null 2>&1; then
-    verdict_evaluate "$BUNDLE_DIR" "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || true
+# verdict gate: the three mandatory signals ARE the evidence. When any is
+# missing the verdict is `partial` (exit 19) and is never promoted to pass
+# (FR-011). This is what stops a launched-but-uncaptured run exiting 0 with an
+# empty artifacts/ directory. `--ignore-exit-code` is deliberately not applied:
+# demoting an incomplete signal set would recreate the false pass.
+sig_rc=0
+signals_require_expected_signals "$BUNDLE_DIR" "$RUN_ID" "${RUNNER_QUARANTINE_OWNER:-runner}" >/dev/null 2>&1 || sig_rc=$?
+if (( sig_rc != 0 )); then
+    RUN_EXIT="$EXIT_ERRORED"
+fi
+
+# evaluate: thresholds are judged against the captured artifacts. The wrapper
+# keeps the pure 5-argument verdict_evaluate unchanged.
+verdict_rc=0
+verdict_out="$(verdict_evaluate_bundle "$BUNDLE_DIR" "${SCENARIO_LIST[@]}" 2>/dev/null)" || verdict_rc=$?
+if (( verdict_rc != 0 )); then
+    RUN_EXIT="$verdict_rc"
 fi
 
 # evidence
@@ -307,7 +375,10 @@ if declare -F evidence_finalize >/dev/null 2>&1; then
     evidence_finalize "$BUNDLE_DIR" "$RUNNER_RUN_ROOT/manifest-input.json" >/dev/null 2>&1 || true
 fi
 if declare -F evidence_write_claims >/dev/null 2>&1; then
-    evidence_write_claims "$BUNDLE_DIR" "$RUN_ID" "R" >/dev/null 2>&1 || true
+    # W = launch/connect only; R requires runtime evidence. A run whose signal
+    # set is incomplete must not claim R (honesty level is sequential).
+    if (( RUN_EXIT == 0 )); then _honesty="R"; else _honesty="W"; fi
+    evidence_write_claims "$BUNDLE_DIR" "$RUN_ID" "$_honesty" >/dev/null 2>&1 || true
 fi
 
 # promote — read testMdPath from each scenario definition (FR-016)
@@ -343,21 +414,26 @@ PY
         continue
     fi
     _PROMOTED_TEST_MDS[$_tm]=1
-    if [[ -f "$_tm" ]] && grep -q 'GATE3:BEGIN' "$_tm" 2>/dev/null; then
+    if (( RUN_EXIT == 0 )) && [[ -f "$_tm" ]] && grep -q 'GATE3:BEGIN' "$_tm" 2>/dev/null; then
         if declare -F promotion_apply >/dev/null 2>&1; then
             promotion_apply "$REPO_ROOT" "$_tm" "$BUNDLE_DIR" >/dev/null 2>&1 || true
         fi
     fi
 done
 
-# cleanup
-if declare -F quit_run >/dev/null 2>&1; then
-    quit_run >/dev/null 2>&1 || true
+# clean quit: direct call. The backstop path records cleanQuit=false instead of
+# pretending the run was clean.
+quit_rc=0
+quit_run >/dev/null 2>&1 || quit_rc=$?
+if (( quit_rc != 0 && RUN_EXIT == 0 )); then
+    RUN_EXIT="$quit_rc"
 fi
 display_stop 2>/dev/null || true
 trap - EXIT
 if declare -F cleanup_run >/dev/null 2>&1; then
     cleanup_run >/dev/null 2>&1 || true
 fi
+
+exit "$RUN_EXIT"
 
 exit 0

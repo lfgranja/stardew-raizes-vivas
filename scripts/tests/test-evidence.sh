@@ -41,6 +41,9 @@ pass "evidence_finalize exercised (rc=$RUNNER_FN_CODE)"
 call_runner_func evidence_write_claims "$bdir" "$rid" "R"
 assert_fn_code 0 "write claims returns 0"
 assert_file_exists "$bdir/claims.json" "claims.json"
+assert_json_eq "$bdir/claims.json" '.honestyLevel' "R" "claims honesty level"
+# the schema requires `claims`; an empty list is legal only when claiming nothing
+assert_json_eq "$bdir/claims.json" '.claims' "[]" "claims array present"
 
 # integrity failure
 call_runner_func evidence_write_integrity_failure "$bdir" "checksum" "archive.zip" "detail"
