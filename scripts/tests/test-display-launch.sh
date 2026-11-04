@@ -56,6 +56,22 @@ log="$ldir/good.log"
 call_runner_func launch_wait_ready "$log" "99999" 2
 assert_fn_code 0 "ready log accepted"
 
+# phase 2 must poll: on a real install the mod-resolution header lands ~20 s
+# after the sentinel, so a single grep would report 17 on every healthy launch.
+delayed="$ldir/delayed.log"
+printf 'Log started at %s UTC\n' "$(date -u '+%Y-%m-%dT%H:%M:%S')" > "$delayed"
+( sleep 1; printf 'Loaded 4 mods:\n' >> "$delayed" ) &
+_delayed_writer=$!
+call_runner_func launch_wait_ready "$delayed" "99999" 5
+assert_fn_code 0 "delayed mod-resolution header accepted (phase 2 polls)"
+wait "$_delayed_writer" 2>/dev/null || true
+
+# sentinel present but the header never appears => 17, not a pass
+stuck="$ldir/stuck.log"
+printf 'Log started at %s UTC\n' "$(date -u '+%Y-%m-%dT%H:%M:%S')" > "$stuck"
+call_runner_func launch_wait_ready "$stuck" "99999" 1
+assert_fn_code 17 "missing mod-resolution header exits 17"
+
 # skipped mod detection
 skiplog="$ldir/skip.log"
 {
