@@ -40,7 +40,7 @@ else
 fi
 
 # healthTier five values
-for t in poor fair good excellent legendary; do
+for t in unknown nonParticipant poor moderate healthy; do
     if grep -Rq "$t" LivingRoots LivingRoots.Verification 2>/dev/null; then
         pass "healthTier value $t present"
     else

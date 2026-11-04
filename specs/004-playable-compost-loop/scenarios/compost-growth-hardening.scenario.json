@@ -21,22 +21,27 @@
   "milestoneSave": "farm-year1-day5",
   "initCommands": [
     {
-      "kind": "macro",
-      "file": "macros/place-bin.txt",
-      "description": "place the composting bin on the target tile"
+      "kind": "console",
+      "command": "lr_plant_crop 60 15 LivingRoots.Verification.LongPhaseCrop",
+      "description": "plant a verification-only dry crop on the target tile"
     },
     {
       "kind": "console",
-      "command": "lr_set_soil_health -10 5 10",
+      "command": "lr_set_soil_health 60 15 10",
       "description": "seed poor soil on the target tile"
+    },
+    {
+      "kind": "console",
+      "command": "lr_place_bin 60 15",
+      "description": "place the composting bin on the target tile"
     }
   ],
   "steps": [
     {
       "action": "insertWaste",
-      "target": "-10,5",
+      "target": "60,15",
       "inputs": {
-        "itemId": "771",
+        "itemId": "24",
         "count": 5
       }
     },
@@ -51,7 +56,7 @@
     },
     {
       "action": "observe",
-      "target": "-10,5"
+      "target": "60,15"
     }
   ],
   "thresholds": [

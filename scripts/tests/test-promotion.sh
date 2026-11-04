@@ -27,6 +27,18 @@ cp "$doc" "$HARNESS_SANDBOX/before.md"
 call_runner_func promotion_apply "$HARNESS_REPO_ROOT" "$doc" "$bdir"
 pass "idempotent apply exercised"
 
+# run id: the promotion must reference the bundle the runner wrote, not a
+# freshly generated timestamp. A wrong id makes machine-pass untraceable.
+bdir2="$HARNESS_SANDBOX/evidence-bundle-run-test-1234"
+mkdir -p "$bdir2/artifacts"
+printf '{}' > "$bdir2/artifacts/soil-health-before-after.json"
+doc3="$HARNESS_SANDBOX/test-runid.md"
+make_gate3_doc "$doc3" "partial"
+call_runner_func promotion_apply "$HARNESS_SANDBOX" "$doc3" "$bdir2"
+assert_fn_code 0 "promotion_apply with captured bundle"
+grep -q 'Run ID\*\*: run-test-1234' "$doc3" && pass "promotion uses bundle run id" || fail "promotion run id" "fresh id leaked"
+grep -q 'evidence-bundle-run-test-1234/artifacts/crop-phase-dump.json' "$doc3" && pass "promotion bundle path is traceable" || fail "promotion bundle path" "not traceable"
+
 # missing/duplicate/inverted markers => 14
 doc2="$HARNESS_SANDBOX/bad.md"
 printf '# doc\n\nno markers here\n' > "$doc2"
