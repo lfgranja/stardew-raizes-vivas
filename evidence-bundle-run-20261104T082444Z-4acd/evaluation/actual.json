@@ -1,0 +1,15 @@
+{
+  "soilHealth": 10.0,
+  "soilHealthState": "measured",
+  "healthTier": "poor",
+  "phaseDays": 5,
+  "currentPhase": 0,
+  "dayOfCurrentPhase": 1,
+  "fullyGrown": false,
+  "dead": false,
+  "indexOfHarvest": 24,
+  "isMainPlayer": true,
+  "locationsProcessed": 3,
+  "elapsedMilliseconds": 0,
+  "eventName": "DayEnding"
+}
