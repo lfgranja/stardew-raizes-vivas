@@ -73,11 +73,13 @@ namespace LivingRoots.Verification.Evidence
         public bool Dead { get; set; }
 
         [JsonPropertyName("soilHealth")]
-        public double SoilHealth { get; set; }
+        public double? SoilHealth { get; set; }
 
-        // healthTier five values: poor, fair, good, excellent, legendary
+        // Five-value contract (data-model.md): unknown, nonParticipant, poor,
+        // moderate, healthy. `unknown` is for missing/NaN; `nonParticipant` is a
+        // measured value <= 0 (the growth modifier skips it).
         [JsonPropertyName("healthTier")]
-        public string HealthTier { get; set; } = string.Empty;
+        public string HealthTier { get; set; } = "unknown";
 
         [JsonPropertyName("soilHealthState")]
         public string SoilHealthState { get; set; } = string.Empty;
