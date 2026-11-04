@@ -1,0 +1,406 @@
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-evaluation.sh ===
+    [exit status: 0]
+    ok - 1.15 mapping present in code
+    ok - 0.85 mapping present in code
+    ok - phaseDays min referenced
+    ok - 99999 not multiplied/clamped
+    ok - healthTier value unknown present
+    ok - healthTier value nonParticipant present
+    ok - healthTier value poor present
+    ok - healthTier value moderate present
+    ok - healthTier value healthy present
+    ok - unmeasured handling present
+    # tests: 10, passed: 10, failed: 0
+PASS test-evaluation.sh
+
+=== test-game-path.sh ===
+    [exit status: 0]
+    ok - missing --game-path value exits 14
+    ok - empty --game-path exits 14
+    ok - invalid game path under --no-acquire exits 9
+    ok - valid game path passes preflight-ish
+    ok - missing assembly exits 9
+    ok - missing path named
+    ok - missing deployment exits 12
+    ok - record blocked returns 0
+    ok - blocked status
+    ok - blocked prereq
+    ok - non-root passes
+    ok - empty resolve exits 14
+    ok - existing dir resolves
+    # tests: 13, passed: 13, failed: 0
+PASS test-game-path.sh
+
+=== test-promotion.sh ===
+    [exit status: 0]
+    ok - promotion_check_docs exercised (rc=14)
+    ok - promotion_apply returns contract code (rc=21)
+    ok - idempotent apply exercised
+    ok - promotion_apply with captured bundle
+    ok - promotion uses bundle run id
+    ok - promotion bundle path is traceable
+    ok - missing markers => 14
+    ok - promotion never writes verified
+    # tests: 8, passed: 8, failed: 0
+PASS test-promotion.sh
+
+=== test-verdict.sh ===
+    [exit status: 0]
+    ok - verdict_from_exit 0
+    ok - verdict_from_exit 18
+    ok - verdict_from_exit 19
+    ok - verdict_from_exit 20
+    ok - verdict_from_exit 4
+    ok - verdict_from_exit 10
+    ok - verdict_from_exit 13
+    ok - verdict_exit_for pass
+    ok - verdict_exit_for fail
+    ok - verdict_exit_for errored
+    ok - verdict_exit_for partial
+    ok - verdict_exit_for skipped
+    ok - expected mismatch returns 1
+    ok - expected match returns 0
+    ok - missing expected defaults pass
+    ok - evaluate clean pass
+    ok - missing signal => partial
+    ok - verdict_evaluate divergence exercised
+    ok - host-guard breach => fail
+    ok - threshold violation => fail
+    ok - 18 demoted to 0
+    ok - integrity refused
+    ok - policy 21 refused
+    ok - ignore 0 exits 14
+    ok - ignore 22 exits 14
+    ok - ignore 99 exits 14
+    ok - aggregate 19 highest
+    ok - mixed with pass => 0
+    ok - write attempt returns 0
+    ok - attempt.json
+    ok - verdict_evaluate_bundle passes a complete bundle
+    ok - bundle verdict pass
+    ok - bundle signals complete
+    ok - bundle thresholds ok
+    ok - bundle actual phaseDays
+    ok - bundle pre phaseDays
+    # tests: 36, passed: 36, failed: 0
+PASS test-verdict.sh
+
+=== test-verify-cli.sh ===
+    [exit status: 1]
+    ok - unknown flag exits 14
+    ok - missing --scenario value exits 14
+    ok - unknown positional exits 14
+    ok - empty --game-path exits 14
+    ok - incompatible acquire flags exit 14
+    ok - --ignore-exit-code 0 exits 14
+    ok - --ignore-exit-code 22 exits 14
+    ok - --ignore-exit-code 99 exits 14
+    ok - --ignore-exit-code foo exits 14
+    ok - no scenario yet still usage? absent scenario exits 14
+    ok - missing --scenario exits 14
+    ok - --help exits 0
+    ok - --verify-bundle absent exits 19
+    not ok - --check-docs no markers? empty tree may be 0/14
+    #   reason: expected '0', got '14'
+    ok - allowed override passes usage
+    ok - unknown override key exits 14
+    ok - unknown override key exits 14
+    ok - dir scenario passes usage
+    ok - scenario-glob passes usage
+    # tests: 19, passed: 18, failed: 1
+FAIL test-verify-cli.sh
+
+5 files, 4 passed, 1 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-evidence.sh ===
+    [exit status: 0]
+    ok - run-id format
+    ok - evidence_init returns 0
+    ok - bundle dir
+    ok - artifacts dir
+    ok - attempts dir
+    ok - add artifact returns 0
+    ok - attempt_dir path
+    ok - bundle_dir path
+    ok - evidence_finalize exercised (rc=0)
+    ok - write claims returns 0
+    ok - claims.json
+    ok - claims honesty level
+    ok - claims array present
+    ok - integrity failure write returns 0
+    ok - evidence_validate exercised (rc=0)
+    ok - no hand-written manifest in evidence.sh
+    ok - no verified references
+    # tests: 17, passed: 17, failed: 0
+PASS test-evidence.sh
+
+=== test-flaky.sh ===
+    [exit status: 0]
+    ok - code 4 classified transient
+    ok - code 6 classified transient
+    ok - code 7 classified transient
+    ok - code 9 classified transient
+    ok - code 10 classified transient
+    ok - code 13 classified transient
+    ok - code 14 classified transient
+    ok - code 18 classified transient
+    ok - code 19 classified transient
+    ok - code 20 classified transient
+    ok - code 21 classified transient
+    ok - code 5 not transient
+    ok - retry_run exercised (rc=0)
+    ok - attempt dirs created
+    ok - retry.sh has no quarantine trigger (single path preserved)
+    ok - cli owner wins
+    ok - retry_flaky exercised (rc=0)
+    # tests: 17, passed: 17, failed: 0
+PASS test-flaky.sh
+
+=== test-quarantine.sh ===
+    [exit status: 0]
+    ok - quarantine_is_never exercised (rc=0)
+    ok - quarantine_load exercised
+    ok - record_flaky exercised
+    ok - status exercised: active
+    ok - apply_timebox exercised
+    ok - auto_disable exercised
+    ok - retire exercised
+    ok - shadow_pass exercised
+    ok - reports_skipped exercised (rc=1)
+    ok - wilson exercised
+    ok - status not-evaluated in closed set
+    ok - status insufficient-data in closed set
+    ok - status confirmed-flaky in closed set
+    ok - status stable in closed set
+    # tests: 14, passed: 14, failed: 0
+PASS test-quarantine.sh
+
+3 files, 3 passed, 0 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-docs.sh ===
+    [exit status: 0]
+    ok - check_docs exercised (rc=14)
+    ok - missing markers => 14
+    ok - duplicate markers => 14
+    ok - inverted markers => 14
+    ok - drift case covered by promotion_check_docs contract
+    ok - machine-pass vocabulary in promotion.sh
+    ok - promotion never writes verified
+    ok - timestamp handling (maybe absent)
+    # tests: 8, passed: 8, failed: 0
+PASS test-docs.sh
+
+=== test-extraction.sh ===
+    [exit status: 0]
+    ok - no unzip/tar shell-out
+    ok - extract verb not yet wired (scaffold)
+    ok - extractor references zip
+    ok - limit 10000 present
+    ok - limit 2147483648 present
+    ok - limit 100 present
+    # tests: 6, passed: 6, failed: 0
+PASS test-extraction.sh
+
+2 files, 2 passed, 0 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-acquisition.sh ===
+    [exit status: 0]
+    ok - placeholder lock exits 19
+    ok - mutable latest exits 19
+    ok - empty files map exits 19
+    ok - non-string digest exits 19
+    ok - valid lock exits 0
+    ok - https github.com ok
+    ok - api.github.com ok
+    ok - objects ok
+    ok - codeload ok
+    ok - http rejected
+    ok - other host rejected
+    ok - embedded creds rejected
+    ok - gh token present; no-token case not applicable
+    ok - BUILDDEPS_TOKEN => 0
+    ok - cache miss on digest mismatch
+    ok - no-acquire cache miss exits 9
+    ok - no token interpolated into URL
+    # tests: 17, passed: 17, failed: 0
+PASS test-acquisition.sh
+
+1 files, 1 passed, 0 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-injection.sh ===
+    [exit status: 0]
+    ok - typed initCommands valid
+    ok - malformed initCommand exits 14
+    ok - valid macro
+    ok - non-.txt exits 14
+    ok - sleep not last exits 14
+    ok - nested runmacro exits 14
+    ok - leading whitespace exits 14
+    ok - build_queue returns 0/14
+    ok - init phase builds
+    ok - init phase has plant
+    ok - init phase excludes steps
+    ok - steps phase builds
+    ok - steps phase has insert
+    ok - steps phase excludes init
+    ok - unknown phase exits 14
+    ok - injection_run waits for the mod ack
+    ok - injection_run includes init
+    ok - injection_run captures before after init
+    ok - injection_run includes steps
+    ok - injection_run writes session
+    ok - injection_run orders init before before-dump before steps
+    ok - farmhand seeding refused (21)
+    ok - no xdotool reference
+    ok - stdin closed via /dev/null
+    # tests: 24, passed: 24, failed: 0
+PASS test-injection.sh
+
+=== test-signals.sh ===
+    [exit status: 0]
+    ok - delta returns 0
+    ok - delta file written
+    ok - crop dump valid
+    ok - dump copied
+    ok - stale dump rejected
+    ok - excerpt returns 0
+    ok - excerpt has elapsed
+    ok - host-guard excerpt returns 0
+    ok - skip line present
+    ok - divergence => 1
+    ok - anomaly write returns 0
+    ok - anomaly file
+    ok - anomaly runId
+    ok - anomaly signal
+    ok - anomaly kind
+    ok - anomaly observed
+    ok - anomaly expected
+    ok - anomaly owner
+    ok - anomaly rootCause
+    ok - second anomaly write returns 0
+    ok - second anomaly file
+    ok - first anomaly preserved
+    ok - second anomaly recorded
+    ok - signals_all_present exercised
+    ok - signals_capture returns 0
+    ok - signals_capture wrote soil-health-before-after.json
+    ok - signals_capture wrote crop-phase-dump.json
+    ok - signals_capture wrote smapi-log.txt
+    ok - signals_capture wrote crop-phase-before.json
+    ok - signals_capture wrote soil-health-before.json
+    ok - signals_capture wrote soil-health-after.json
+    # tests: 31, passed: 31, failed: 0
+PASS test-signals.sh
+
+2 files, 2 passed, 0 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-cleanup.sh ===
+    [exit status: 0]
+    ok - cleanup_register returns 0
+    ok - cleanup_run returns 0
+    ok - process reaped
+    ok - PGID handling present
+    ok - socket handling present
+    ok - orphan registry present
+    ok - CLEANUP_FAILED present
+    ok - quit_request exercised (rc=0)
+    ok - CLEAN_QUIT present
+    ok - 30s stability referenced
+    ok - hash check present
+    # tests: 11, passed: 11, failed: 0
+PASS test-cleanup.sh
+
+=== test-save-preservation.sh ===
+    [exit status: 0]
+    ok - save_isolate returns 0
+    ok - SAVE_WORKING_DIR set
+    ok - SAVE_BACKUP_DIR set
+    ok - SAVE_SOURCE_HASH set
+    ok - source unchanged initially
+    ok - source mutation => 19
+    ok - save_hash_tree exercised (rc=0)
+    ok - restore working copy returns 0
+    ok - no access recorded => 0
+    ok - term 'player' used in save.sh
+    ok - term 'source' used in save.sh
+    ok - term 'working' used in save.sh
+    ok - save_prepare isolates an existing milestone
+    ok - save_prepare exports RUNNER_SAVE_ID
+    ok - save_prepare working dir is under the isolated XDG saves tree
+    ok - save_prepare copied the milestone mod data
+    ok - save_prepare leaves the source milestone unchanged
+    ok - save_prepare missing milestone => 19
+    ok - save_prepare empty milestone => 19
+    # tests: 19, passed: 19, failed: 0
+PASS test-save-preservation.sh
+
+2 files, 2 passed, 0 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-performance.sh ===
+    [exit status: 0]
+    ok - all fast after warmup => 0
+    ok - slow value => 18
+    ok - PERF_GC_DELTA set
+    ok - missing file => 19
+    ok - budget constant 5 present
+    # tests: 5, passed: 5, failed: 0
+PASS test-performance.sh
+
+=== test-stress.sh ===
+    [exit status: 0]
+    ok - stress harness exists
+    ok - stress harness invoked
+    ok - field interleaving_rate present
+    ok - field correctness_rate present
+    ok - field sentinel_order_violations present
+    ok - K>=30 referenced
+    ok - 1000-loop referenced
+    # tests: 7, passed: 7, failed: 0
+PASS test-stress.sh
+
+2 files, 2 passed, 0 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-bundle-negative.sh ===
+    [exit status: 0]
+    ok - missing manifest rejected (19)
+    ok - missing sha rejected (19)
+    ok - missing claims rejected (19)
+    ok - verifier exercised (rc=19)
+    ok - missing signal rejected (19)
+    ok - digest tamper rejected (19)
+    ok - anomaly reports do not satisfy R signals
+    ok - W bundle claiming nothing is valid
+    # tests: 8, passed: 8, failed: 0
+PASS test-bundle-negative.sh
+
+=== test-redaction.sh ===
+    [exit status: 0]
+    ok - redaction log_success (token gone)
+    ok - redaction log_success (exception gone)
+    ok - redaction log_failure (token gone)
+    ok - redaction log_failure (exception gone)
+    ok - redaction log_verbose (token gone)
+    ok - redaction log_verbose (exception gone)
+    ok - redaction log_ci (token gone)
+    ok - redaction log_ci (exception gone)
+    ok - redaction log_junit (token gone)
+    ok - redaction log_junit (exception gone)
+    ok - redaction log_allure (token gone)
+    ok - redaction log_allure (exception gone)
+    ok - redaction log_error_sink (token gone)
+    ok - redaction log_error_sink (exception gone)
+    ok - no token interpolated into URL
+    ok - logging mentions variant redaction
+    # tests: 16, passed: 16, failed: 0
+PASS test-redaction.sh
+
+2 files, 2 passed, 0 failed

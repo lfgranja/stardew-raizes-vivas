@@ -1,0 +1,13 @@
+# T139 — Verification: timed clean-host dry run
+# Data: 2026-11-04
+# Status: BLOCKED
+#
+# Requisito: executar procedimento de clean-host em <= 30 minutos.
+# Registrar wall-clock timings. Exceder 30 min e finding documentado, nao pass silencioso.
+#
+# Resultado: BLOCKED — requer game real + SMAPI + Xvfb para medir o tempo de execucao
+# completo do runner (preflight -> acquisicao -> versao -> isolamento -> lancamento ->
+# injecao -> captura -> avaliacao -> evidencia -> promocao -> limpeza).
+#
+# Para desbloquear: host com STARDEW_GAME_PATH valido e executar o runner completo,
+# mediando o tempo total.

@@ -1,0 +1,26 @@
+# T137 — Verification: real-host e2e
+# Data: 2026-11-04
+# Status: BLOCKED
+#
+# Requisito: gamepath.lock.json populado com release ID real, asset ID, asset name,
+# archive SHA-256 e per-file digests. Atual: failClosed=true (PLACEHOLDER-UNAVAILABLE).
+#
+# Requisito: host com STARDEW_GAME_PATH contendo as 6 assemblies obrigatorias:
+#   Stardew Valley.dll, StardewModdingAPI.dll, StardewValley.GameData.dll,
+#   MonoGame.Framework.dll, xTile.dll, smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll
+#
+# Requisito: BUILDDEPS_TOKEN (fine-grained PAT, Contents:read + Metadata:read) para
+# adquiricao via GitHub Releases do repositorio privado builddeps.
+#
+# Resultado: BLOCKED — nenhum dos prerequisitos esta disponivel neste ambiente.
+#   - gamepath.lock.json: releaseId=PLACEHOLDER-UNAVIDA, failClosed=true
+#   - STARDEW_GAME_PATH: nao definido
+#   - BUILDDEPS_TOKEN: nao definido
+#
+# Execucao de VS-01 nao e possivel sem esses itens.
+# Nao e feita qualquer claim de sucesso.
+#
+# Para desbloquear: popular gamepath.lock.json com valores reais do repositorio
+# lfgranja/stardew-raizes-vivas-builddeps, definir STARDEW_GAME_PATH e
+# BUILDDEPS_TOKEN, entao executar:
+#   ./scripts/verify-scenario.sh --scenario fixtures/valid/compost-growth.scenario.json
