@@ -8,28 +8,75 @@ _LR_VERSION_GATE_LOADED=1
 # shellcheck source=common.sh
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/common.sh"
 
-# version_gate_classify <game_version> <smapi_version> <mod_min_game> <mod_min_api> [matrix_file]
-# Also accepts file paths: if an argument is an existing file it is resolved:
-#   - manifest.json -> MinimumGameVersion / MinimumApiVersion
-#   - *.dll -> version string extracted via strings (best-effort)
+# version_gate_classify <game> <smapi_or_manifest> [mod_min_game] [mod_min_api] [matrix_file]
+#
+# Accepts version strings, file paths, or a game installation directory:
+#   - If <game> is a directory, observed versions are derived from
+#     "$dir/Stardew Valley.dll" (game) and "$dir/StardewModdingAPI.dll" (SMAPI),
+#     and <smapi_or_manifest> is treated as the mod manifest (minimums source).
+#   - *.dll  -> version extracted from the assembly (product version).
+#   - *.json -> MinimumGameVersion / MinimumApiVersion (manifest) or matrix.
+#   - otherwise -> the literal version string.
 # Prints tier: HARD-FAIL | WARN | INFO. Returns 19 on hard-fail.
 version_gate_classify() {
     if [[ $# -lt 2 ]]; then
-        log_error "version_gate_classify: usage: version_gate_classify <game> <smapi> [mod_min_game] [mod_min_api] [matrix]"
+        log_error "version_gate_classify: usage: version_gate_classify <game> <smapi_or_manifest> [mod_min_game] [mod_min_api] [matrix]"
         return "$EXIT_USAGE_ERROR"
     fi
 
     local matrix="${5:-specs/010-headless-verification-runner/compat-matrix.json}"
     # If matrix not provided but arg4 looks like a file path to matrix, adjust.
-    if [[ $# -ge 4 && "$4" == *.json && -f "$4" ]]; then
-        matrix="$4"
-        set -- "$1" "$2" "$3" "" "$matrix"
+    if [[ $# -ge 4 && "$4" == *.json && -f "$4" && "$4" != *manifest.json ]]; then
+        # arg4 might be a matrix file
+        if python3 - "$4" >/dev/null 2>&1 <<'PY'
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(1)
+if "stardewValley" in d or "minimumGameVersion" in d or "smapi" in d:
+    sys.exit(0)
+sys.exit(1)
+PY
+        then
+            matrix="$4"
+            set -- "$1" "$2" "$3" "" "$matrix"
+        fi
     fi
 
     local game_ver="$1"
     local smapi_ver="$2"
     local mod_min_game="${3:-}"
     local mod_min_api="${4:-}"
+
+    # Directory handling: derive observed versions from the game installation.
+    if [[ -d "$game_ver" ]]; then
+        local game_dir="$game_ver"
+        game_ver="$game_dir/Stardew Valley.dll"
+        # smapi version from the SMAPI assembly
+        smapi_ver="$game_dir/StardewModdingAPI.dll"
+        # mod minimums from manifest if provided as arg2
+        if [[ -f "${2:-}" && "${2:-}" == *.json ]]; then
+            mod_min_game="$(python3 - "${2}" <<'PY'
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+except Exception:
+    d={}
+print(d.get("MinimumGameVersion") or d.get("minimumGameVersion") or "")
+PY
+)"
+            mod_min_api="$(python3 - "${2}" <<'PY'
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+except Exception:
+    d={}
+print(d.get("MinimumApiVersion") or d.get("minimumApiVersion") or "")
+PY
+)"
+        fi
+    fi
 
     # Resolve file paths.
     _vg_resolve() {
@@ -44,7 +91,15 @@ print(d.get("MinimumGameVersion") or d.get("minimumGameVersion") or d.get("Versi
 PY
                     ;;
                 *.dll)
-                    strings "$v" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?(-[A-Za-z0-9.]+)?$' | head -1
+                    local base
+                    base="$(basename "$v")"
+                    if [[ "$base" == *"Stardew Valley"* ]]; then
+                        strings "$v" 2>/dev/null | grep -oE '1\.[0-9]+\.[0-9]+' | sort -Vu | tail -1
+                    elif [[ "$base" == *"StardewModdingAPI"* ]]; then
+                        strings "$v" 2>/dev/null | grep -oE '4\.[0-9]+\.[0-9]+' | grep -v '^4\.0\.30319$' | sort -Vu | tail -1
+                    else
+                        strings "$v" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?(-[A-Za-z0-9.]+)?$' | head -1
+                    fi
                     ;;
                 *)
                     cat "$v" 2>/dev/null | head -1
@@ -58,8 +113,8 @@ PY
     if [[ -f "$game_ver" ]]; then game_ver="$(_vg_resolve "$game_ver")"; fi
     if [[ -f "$smapi_ver" ]]; then smapi_ver="$(_vg_resolve "$smapi_ver")"; fi
 
-    # Manifest-derived minimums if mod_min_game empty and a manifest path was given.
-    if [[ -z "$mod_min_game" && -f "${3:-}" ]]; then
+    # Manifest-derived minimums if mod_min_game empty and a manifest path was given in arg3.
+    if [[ -z "$mod_min_game" && -f "${3:-}" && "${3:-}" == *.json ]]; then
         mod_min_game="$(python3 - "$3" <<'PY'
 import json,sys
 d=json.load(open(sys.argv[1]))
@@ -109,7 +164,6 @@ def parse(v):
     parts = v.split(".")
     nums = []
     for p in parts:
-        # strip non-numeric suffix
         m = re.match(r"(\d+)", p)
         nums.append(int(m.group(1)) if m else 0)
     while len(nums) < 3:
@@ -130,17 +184,12 @@ try:
 except Exception:
     matrix = {}
 
-# Minimum checks (compare core triple + prerelease)
-if game[:3] < mod_min_game[:3] or (game[:3] == mod_min_game[:3] and game[3] > mod_min_game[3]):
-    # game below min OR prerelease when min is release -> hard fail
-    pass
-
 # Hard-fail if game core < min core, or smapi core < min core
 if game[:3] < mod_min_game[:3] or smapi[:3] < mod_min_api[:3]:
     print("HARD-FAIL")
     sys.exit(19)
 
-# prerelease below release minimum: if min has no channel and observed has channel -> warn? spec: below minimums hard-fail; treat prerelease as below
+# prerelease below release minimum
 if mod_min_game[3] == 0 and game[3] == 1 and game[:3] == mod_min_game[:3]:
     print("HARD-FAIL")
     sys.exit(19)
@@ -148,7 +197,6 @@ if mod_min_api[3] == 0 and smapi[3] == 1 and smapi[:3] == mod_min_api[:3]:
     print("HARD-FAIL")
     sys.exit(19)
 
-# Null MaximumGameVersion => upper-bound deviation => warn
 max_game_raw = None
 has_max_key = False
 for key in ("MaximumGameVersion", "maximumGameVersion", "maxGameVersion"):
@@ -160,7 +208,6 @@ for key in ("MaximumGameVersion", "maximumGameVersion", "maxGameVersion"):
 
 tier = "INFO"
 
-# pinned game version exact match
 pinned = None
 for key in ("pinnedGameVersion", "pinned"):
     if key in matrix:
@@ -169,14 +216,11 @@ for key in ("pinnedGameVersion", "pinned"):
         pinned = matrix.get("stardewValley", {}).get(key)
 if pinned:
     if parse(pinned)[:3] != game[:3] or parse(pinned)[3] != game[3]:
-        # newer or different -> warn (exact match info)
         tier = "WARN"
 
-# Null maximum => warn
 if has_max_key and max_game_raw is None:
     tier = "WARN"
 
-# If maximum present and observed exceeds => warn
 if max_game_raw is not None:
     try:
         mx = parse(max_game_raw)
@@ -184,12 +228,6 @@ if max_game_raw is not None:
             tier = "WARN"
     except Exception:
         pass
-
-# If no pinned but matrix minimum line differs, newer-than-supported => warn
-# Newer unverified: if game greater than matrix's known supported (minimum line) but not exact pinned, warn
-# (already handled by pinned mismatch)
-
-# Unverified newer: if game core > supported max inferred from line? keep simple.
 
 print(tier)
 PY
