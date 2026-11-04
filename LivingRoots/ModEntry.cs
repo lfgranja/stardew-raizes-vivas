@@ -136,6 +136,11 @@ namespace LivingRoots
             var translationHelper = helper!.Translation;
             var locationProvider = new LocationProvider();
             var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, hostAtomicLockService: hostAtomicLockService, translationHelper: translationHelper);
+            // Spec 010 T102: the dev/CI verification mod reaches production
+            // services through the public API. Bind here, in the sole
+            // composition root, so the API fails closed when the wiring is
+            // incomplete instead of silently accepting scenario commands.
+            _modApi.BindVerificationServices(soilHealthService, compostingBinService, locationProvider);
             var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
             var mulchApplicationService = new MulchApplicationService(modDataService, playerProvider, this.Monitor);
 
