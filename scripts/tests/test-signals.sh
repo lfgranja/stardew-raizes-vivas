@@ -65,6 +65,14 @@ assert_json_eq "$adir/artifacts/anomaly-report.json" '.expected' "12" "anomaly e
 assert_json_eq "$adir/artifacts/anomaly-report.json" '.owner' "lfgranja" "anomaly owner"
 assert_json_eq "$adir/artifacts/anomaly-report.json" '.rootCause' "root cause" "anomaly rootCause"
 
+# a second anomaly must not overwrite the first: a run missing all three
+# signals has to name all three in the bundle.
+call_runner_func signals_write_anomaly "$adir" "run-1" "cropPhaseDelta" "missing" "" "" "lfgranja" "missing crop phase dump"
+assert_fn_code 0 "second anomaly write returns 0"
+assert_file_exists "$adir/artifacts/anomaly-report-cropPhaseDelta.json" "second anomaly file"
+assert_json_eq "$adir/artifacts/anomaly-report.json" '.signal' "soil" "first anomaly preserved"
+assert_json_eq "$adir/artifacts/anomaly-report-cropPhaseDelta.json" '.signal' "cropPhaseDelta" "second anomaly recorded"
+
 # all present
 adir2="$HARNESS_SANDBOX/allp"
 mkdir -p "$adir2/artifacts"

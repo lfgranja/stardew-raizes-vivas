@@ -298,6 +298,20 @@ if declare -F signals_capture >/dev/null 2>&1; then
     signals_capture "$BUNDLE_DIR" "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || true
 fi
 
+# verdict gate: the three mandatory signals ARE the evidence. When any is
+# missing the verdict is `partial` (exit 19) and is never promoted to pass
+# (FR-011). This is what stops a launched-but-uncaptured run exiting 0 with an
+# empty artifacts/ directory. `--ignore-exit-code` is deliberately not applied:
+# demoting an incomplete signal set would recreate the false pass.
+RUN_EXIT=0
+if declare -F signals_require_expected_signals >/dev/null 2>&1; then
+    sig_rc=0
+    signals_require_expected_signals "$BUNDLE_DIR" "$RUN_ID" "${RUNNER_QUARANTINE_OWNER:-runner}" >/dev/null 2>&1 || sig_rc=$?
+    if (( sig_rc != 0 )); then
+        RUN_EXIT="$EXIT_ERRORED"
+    fi
+fi
+
 # evaluate
 if declare -F verdict_evaluate >/dev/null 2>&1; then
     verdict_evaluate "$BUNDLE_DIR" "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || true
@@ -309,7 +323,10 @@ if declare -F evidence_finalize >/dev/null 2>&1; then
     evidence_finalize "$BUNDLE_DIR" "$RUNNER_RUN_ROOT/manifest-input.json" >/dev/null 2>&1 || true
 fi
 if declare -F evidence_write_claims >/dev/null 2>&1; then
-    evidence_write_claims "$BUNDLE_DIR" "$RUN_ID" "R" >/dev/null 2>&1 || true
+    # W = launch/connect only; R requires runtime evidence. A run whose signal
+    # set is incomplete must not claim R (honesty level is sequential).
+    if (( RUN_EXIT == 0 )); then _honesty="R"; else _honesty="W"; fi
+    evidence_write_claims "$BUNDLE_DIR" "$RUN_ID" "$_honesty" >/dev/null 2>&1 || true
 fi
 
 # promote — read testMdPath from each scenario definition (FR-016)
@@ -345,7 +362,7 @@ PY
         continue
     fi
     _PROMOTED_TEST_MDS[$_tm]=1
-    if [[ -f "$_tm" ]] && grep -q 'GATE3:BEGIN' "$_tm" 2>/dev/null; then
+    if (( RUN_EXIT == 0 )) && [[ -f "$_tm" ]] && grep -q 'GATE3:BEGIN' "$_tm" 2>/dev/null; then
         if declare -F promotion_apply >/dev/null 2>&1; then
             promotion_apply "$REPO_ROOT" "$_tm" "$BUNDLE_DIR" >/dev/null 2>&1 || true
         fi
@@ -361,5 +378,7 @@ trap - EXIT
 if declare -F cleanup_run >/dev/null 2>&1; then
     cleanup_run >/dev/null 2>&1 || true
 fi
+
+exit "$RUN_EXIT"
 
 exit 0

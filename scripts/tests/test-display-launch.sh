@@ -127,4 +127,24 @@ else
 fi
 unset RUNNER_XVFB
 
+# ---------------------------------------------------------------------------
+# A launch that reaches ready but captures no signals must exit `partial` (19),
+# never 0. This pins the false pass where the pipeline skipped every capture
+# step with `|| true` and fell off the end with a success status.
+# ---------------------------------------------------------------------------
+cap="$HARNESS_SANDBOX/capture"
+mkdir -p "$cap/logs"
+make_fake_game_dir "$cap/game"
+make_fake_mods "$cap/game/Mods"
+make_display_xvfb "$cap/xvfb"
+write_min_scenario "$cap/scenario.json"
+printf 'Log started at 2020-01-01T00:00:00 UTC\nLoaded 2 mods:\nGameLaunched\n' > "$cap/template.log"
+export RUNNER_XVFB="$cap/xvfb/Xvfb"
+export RUNNER_SMAPI_LOG="$cap/logs/SMAPI-latest.txt"
+export FAKE_SMAPI_LOG_TEMPLATE="$cap/template.log"
+export FAKE_SMAPI_LOG_TARGET="$cap/logs/SMAPI-latest.txt"
+run_verify --scenario "$cap/scenario.json" --game-path "$cap/game" --skip-build --no-acquire --timeout 5
+assert_verify_code 19 "ready launch with no captured signals exits 19, not 0"
+unset RUNNER_XVFB RUNNER_SMAPI_LOG FAKE_SMAPI_LOG_TEMPLATE FAKE_SMAPI_LOG_TARGET
+
 finish_tests

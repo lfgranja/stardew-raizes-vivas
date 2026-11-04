@@ -146,7 +146,15 @@ signals_write_anomaly() {
     [[ $# -eq 8 ]] || return "$EXIT_USAGE_ERROR"
     local bundle="$1" runId="$2" signal="$3" kind="$4" observed="$5" expected="$6" owner="$7" rootCause="$8"
     mkdir -p "$bundle/artifacts"
-    python3 - "$bundle/artifacts/anomaly-report.json" "$runId" "$signal" "$kind" "$observed" "$expected" "$owner" "$rootCause" <<'PY'
+    # One file per anomaly: a fixed name would let the last missing signal
+    # overwrite the earlier ones, so a run missing all three reported only one.
+    local out="$bundle/artifacts/anomaly-report.json"
+    if [[ -e "$out" ]]; then
+        local slug
+        slug="$(printf '%s' "$signal" | tr -c 'A-Za-z0-9._-' '-')"
+        out="$bundle/artifacts/anomaly-report-$slug.json"
+    fi
+    python3 - "$out" "$runId" "$signal" "$kind" "$observed" "$expected" "$owner" "$rootCause" <<'PY'
 import json,sys,datetime
 path,runId,signal,kind,observed,expected,owner,rootCause=sys.argv[1:]
 d={"runId":runId,"signal":signal,"kind":kind,"observed":observed,"expected":expected,
