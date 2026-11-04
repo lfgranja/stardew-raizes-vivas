@@ -10,6 +10,8 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 > The original design text is preserved unchanged; annotations were added, nothing was deleted.
 > **Deep-dive evidence:** `research/2026-10-roadmap-feasibility-and-agronomy.md` (SMAPI 1.6 API, baseline competitivo e base agronômica de cada mecânica abaixo, com fontes primárias).
 > **Update 2026-11-04:** Spec **010** grew to **137/203** tasks (was 0/161); **spec 004 reached `machine-pass`** (bundle `evidence-bundle-run-20261104T082444Z-4acd/`, verdict `pass`, honesty `R`, commit `d908b19`). Full suite: **1621 passed / 1 failed (pre-existing `ProductionSourceGuardTests`, `ModController.cs:399`) / 4 skipped**. Node: soil-health delta **0** (10→10, poor tier) is a neutral signal; crop `phaseDays` 4→5 (`round(4×1.15)=5`) is the strong signal. **Machine-pass ≠ verified** (E humano pendente, `VERIFICATION_PROTOCOL.md` §3). **Open:** band-scale divergence `Constants.cs 31/71` vs docs `34/67` — reconciliation T117–T119 (spec 005).
+>
+> **Nova direção (2026-11-04): o spec 010 (headless verification runner) é o caminho obrigatório para `machine-pass` ANTES de qualquer verificação manual in-game.** O runner está em 137/203 tarefas concluídas; as tarefas de verificação e promoção (T130–T150) estão pendentes e são o próximo bloco. Só após o spec 010 gerar `machine-pass` na feature 004 (compost-growth-hardening) deve-se considerar abertura do jogo para verificação manual. Verificação manual não substitui o runner — ela vem depois, como confirmação humana (E attestation).
 
 ---
 
@@ -33,32 +35,39 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 
 **Não implementado:** 18 de 21 features nomeadas + 7 de 13 promessas do core (qualidade de colheita real, Joja/monocultura, heirloom, mid/end-game, Elena, multiplayer ao vivo).
 
-### O que ainda falta (resumo executivo)
+### O que ainda falta (resumo executivo, ordem de prioridade)
 
-1. **Completar integração harvest-quality** (feedback sprites/SFX, extra-harvest gated em SC-008) — specs 014/015. **80/20 principal.**
-2. **Rodar Gate 3** (in-game, 3 sinais) — desbloqueia "verificado" para features shipped.
-3. **Reconciliar band scale** (3 doc-only tasks T117–T119, spec 005).
-4. **Fechar bug do test harness** (hang em test-preflight/integration/logparse).
-5. **Joja Fertilizer** (fecha loop "destrói") — próximo após harvest-quality.
-6. **Heirloom pipeline** → Three Sisters, Green Manure, Rotation Journal.
-7. **Multiplayer ao vivo (D1)** — owed desde spec 004; Constitution Principle VI.
-8. **Mid-game (6) e End-game (6)** — 0 de 12 iniciados.
-9. **Specs 001 (visualização), 010 (headless runner), 011 (quality gate CI)** — em andamento/parcial.
+1. **Completar spec 010 (headless verification runner) e gerar `machine-pass`** — tarefas T130–T150 (verificação e promoção) estão pendentes. O runner está em 137/203 concluídas. **Este é o caminho obrigatório para `machine-pass` antes de qualquer verificação manual in-game.**
+2. **Rodar Gate 3 via spec 010** (3 sinais: SoilHealthState delta, Crop phase delta, SMAPI log) — captura `machine-pass` na feature 004 sem abrir o jogo manualmente.
+3. **Completar integração harvest-quality** (feedback sprites/SFX, extra-harvest gated em SC-008) — specs 014/015. **80/20 principal de gameplay.** Só após o spec 010 estar verde.
+4. **Reconciliar band scale** (3 doc-only tasks T117–T119, spec 005).
+5. **Fechar bug do test harness** (hang em test-preflight/integration/logparse).
+6. **Joja Fertilizer** (fecha loop "destrói") — próximo após harvest-quality.
+7. **Heirloom pipeline** → Three Sisters, Green Manure, Rotation Journal.
+8. **Multiplayer ao vivo (D1)** — owed desde spec 004; Constitution Principle VI.
+9. **Mid-game (6) e End-game (6)** — 0 de 12 iniciados.
+10. **Specs 001 (visualização), 011 (quality gate CI)** — em andamento/parcial.
 
 ### Próximo passo — 80/20 (maior avanço, menor esforço)
 
-**Recomendação: `/speckit.implement` continuando specs 014/015 (harvest-quality) + `/speckit.converge`, após rodar Gate 3.**
+**Recomendação: completar spec 010 (headless verification runner) e gerar `machine-pass` na feature 004, APENAS ENTÃO `/speckit.implement` continuando specs 014/015 (harvest-quality) + `/speckit.converge`.**
 
 Justificativa (com pesquisa de mercado 2026):
-- Único item restante que faz Living Soil (71–100%) **pagar na colheita** (qualidade silver/gold/iridium + colheita extra).
+- O spec 010 é o único caminho para `machine-pass` sem abrir o jogo manualmente. Todas as 137 tarefas de implementação já estão feitas; faltam as tarefas de verificação e promoção (T130–T150).
+- Após o spec 010 gerar `machine-pass`, specs 014/015 (harvest-quality) é o único item de gameplay que faz Living Soil (71–100%) **pagar na colheita** (qualidade silver/gold/iridium + colheita extra).
 - Infraestrutura cara (Harmony, seam, testes, wiring) já mergeada — custo marginal é integração + verificação.
 - Mercado valida "qualidade dirigida por skill/solo" (Crop Quality, Simple Skills Extended); ninguém entrega per-tile com boost determinístico + feedback.
 - ReGen Valley entrega farm-wide quality a 75+/90+ avg, mas não per-tile com boost determinístico e feedback transient — nosso seam é único.
 
-**Pré-requisitos (≤1h, sem código novo):**
-1. Rodar Gate 3 (in-game, 3 sinais) — desbloqueia "verificado".
-2. Reconciliar band scale (T117–T119, doc-only).
-3. Fechar hang do harness (bug assess/fix).
+**Pré-requisitos (em ordem):**
+1. **Completar spec 010 tarefas T130–T150** (verificação e promoção) — `dotnet build`, `dotnet test`, `dotnet format`, shell, schema, launch-free e2e, real-host e2e, second-host 3/3, timed dry run, audit/deletion drill, bundle negatives, check-docs negatives, acquisition negatives, suite negatives, farmhand path.
+2. **Rodar Gate 3 via spec 010** — capturar `machine-pass` na feature 004 (compost-growth-hardening.scenario.json) com três sinais.
+3. **Reconciliar band scale** (T117–T119, doc-only, spec 005).
+4. **Fechar hang do harness** (bug assess/fix, spec 008).
+
+**Somente após o spec 010 estar verde e o `machine-pass` gerado:**
+- `/speckit.implement` continuando specs 014/015 (harvest-quality integração) → `/speckit.converge`.
+- Verificação manual in-game (opcional, confirmação humana E attestation) — nunca substitui o runner.
 
 **Alternativa (se quiser fechar loop destruição primeiro):** `/speckit.specify` para "Joja Fertilizer" (boost agora, −5% saúde) — fecha o "o que destrói", custo baixo, mas não faz Living Soil pagar.
 
@@ -89,12 +98,12 @@ Justificativa (com pesquisa de mercado 2026):
 | Quality gate | 171 pytest passed; analyzer probe PASS | `scripts/quality-gate/` |
 | Specs closed | 002, 008, 012, 013 | `specs/*/tasks.md` |
 | Specs quase fechados | 004 (machine-pass), 005 (143/146), 009 (55/58), 015 (51/56) | `specs/*/tasks.md` |
-| Specs em andamento | 001 (10/86), 003 (28/117), 010 (137/203), 011 (42/88), 014 (11/104) | `specs/*/tasks.md` |
+| Specs em andamento | 001 (10/86), 003 (28/117), 010 (137/203 — tarefas T130–T150 pendentes), 011 (42/88), 014 (11/104) | `specs/*/tasks.md` |
 | Roadmap items shipped | **3 of 21 named features** (composting, mulch, soil-health→crop-growth) + 2 core promises (soil decay, growth driver) + harvest-quality seam (infra only) | source audit, this file |
-| **In-game runs** | **machine-pass headless** (spec 004, 2026-11-04); **0 Gate 3 manual 3-sinais** | bundle `evidence-bundle-run-20261104T082444Z-4acd/` |
+| **In-game runs** | **machine-pass headless** (spec 004, 2026-11-04, bundle `evidence-bundle-run-20261104T082444Z-4acd/`); **0 Gate 3 manual 3-sinais** | `specs/010-headless-verification-runner/` é o caminho para machine-pass antes de abrir o jogo |
 | Proprietary DLLs tracked in git | **0** (apenas assets em `.gamepath/Mods/`) | `git ls-files` + `.gitignore` |
 
-**The one-sentence truth (updated 2026-11-04):** the mod can *measure* soil, *display* it, *change* it with compost, **soil health drives crop growth** (spec 005), and **soil can now be protected with mulch** (spec 013). The *quality* side has gained its pure, testable seam (`HarvestQualityService`) and a non-suppressing Harmony patch for `Crop.harvest` (specs 014/015), but that patch has **not** been executed in a live SMAPI session yet, so the player still cannot *harvest* the benefits of Living Soil beyond growth speed, nor *lose* soil by bad practice (monoculture, Joja Fertilizer). The infrastructure for the second half of the promise is merged; the verification and the remaining integration (feedback sprites/SFX, extra-harvest activation gated on SC-008) are the next work.
+**The one-sentence truth (updated 2026-11-04):** the mod can *measure* soil, *display* it, *change* it with compost, **soil health drives crop growth** (spec 005), and **soil can now be protected with mulch** (spec 013). The *quality* side has gained its pure, testable seam (`HarvestQualityService`) and a non-suppressing Harmony patch for `Crop.harvest` (specs 014/015). **Spec 010 (headless verification runner) é o caminho obrigatório para `machine-pass` antes de qualquer abertura manual do jogo.** O runner está em 137/203 tarefas concluídas; T130–T150 (verificação e promoção) estão pendentes. Após o spec 010 gerar `machine-pass` na feature 004, specs 014/015 tornam-se o próximo 80/20 de gameplay.
 
 ### Progress snapshot — 2026-11-04 (post-014/015 merge + pesquisa de mercado)
 
@@ -363,22 +372,22 @@ The highest-impact, lowest-effort item available now is **Soil Health → Crop Q
 
 ---
 
-## Gate 3 Verification (atualizado 2026-11-04 — machine-pass spec 004)
+## Gate 3 Verification (atualizado 2026-11-04 — máquina via spec 010 antes de manual)
 
 <!-- GATE3:BEGIN -->
-- **Status**: machine-pass (automated headless; manual 3-signal E still pending)
-- **Verdict**: pass (runner-produced)
+- **Status**: machine-pass headless (spec 004, 2026-11-04, bundle `evidence-bundle-run-20261104T082444Z-4acd/`); **próximo: spec 010 (headless verification runner) tarefas T130–T150 para re-gerar machine-pass na feature 004 com colheita de qualidade**
+- **Verdict**: pass (runner-produced, spec 004)
 - **Flaky**: false
 - **Run ID**: run-20261104T082444Z-4acd
 - **Commit**: d908b19
 - **Date**: 2026-11-04T08:25:23Z
-- **Signals**:
+- **Signals (spec 004)**:
   - SoilHealthState delta: `evidence-bundle-run-20261104T082444Z-4acd/artifacts/soil-health-before-after.json` (Farm/60,15 10→10, delta 0, tier poor — neutral)
   - Crop-phase delta: `evidence-bundle-run-20261104T082444Z-4acd/artifacts/crop-phase-dump.json` (phaseDays 4→5; round(4×1.15)=5 — Poor-soil multiplier passes)
   - SMAPI log: `evidence-bundle-run-20261104T082444Z-4acd/artifacts/smapi-log.txt` (1,894B, 5 day transitions with `Soil growth modifier elapsed`)
 - **Bundle**: `evidence-bundle-run-20261104T082444Z-4acd/`
 - **Honesty level**: R
-- **Claim**: machine-pass by automated headless run + multi-signal evidence (specs/004-playable-compost-loop/test.md). This is **not** a human E attestation; manual Gate 3 (VERIFICATION_PROTOCOL.md §3) remains.
+- **Claim**: machine-pass by automated headless run (spec 004). **Não é verificação manual in-game.** Spec 010 (headless verification runner, 137/203 tarefas) é o caminho obrigatório para machine-pass antes de qualquer abertura manual do jogo. Tarefas T130–T150 (verificação e promoção) estão pendentes.
 <!-- GATE3:END -->
 
 ---

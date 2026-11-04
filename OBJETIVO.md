@@ -49,13 +49,15 @@ Diferencial vs. ReGen Valley (Nexus, 2025): não é a mecânica de soil health (
 | Testes de arquitetura | 84/84 `ArchitecturalPlanTests` pass | `dotnet test` |
 | Specs fechadas/convergidas | 002, 008, 012, 013 | `specs/*/tasks.md` |
 | Specs quase fechadas | 004 (machine-pass), 005 (143/146), 009 (55/58), 015 (51/56) | `specs/*/tasks.md` |
-| Specs em andamento | 001 (10/86), 003 (28/117), 010 (137/203), 011 (42/88), 014 (11/104) | `specs/*/tasks.md` |
+| Specs em andamento | 001 (10/86), 003 (28/117), 010 (137/203 — tarefas T130–T150 pendentes), 011 (42/88), 014 (11/104) | `specs/*/tasks.md` |
 | Features nomeadas shipped | 3 de 21 | composting, mulch, soil-health→crop-growth |
 | Promessas de core | 6 de 13 (1 infra-only) | soil decay, growth driver, mulch, measured/displayed, compost, harvest seam (infra) |
 | In-game runs | machine-pass headless (spec 004, 2026-11-04) | bundle `evidence-bundle-run-20261104T082444Z-4acd/`, honesty **R** |
 | DLLs proprietárias no git | 0 (apenas assets em `.gamepath/Mods/`) | `git ls-files` + `.gitignore` |
 
 > **Gate 3 (2026-11-04):** `evidence-bundle-run-20261104T082444Z-4acd/` — verdict `pass`, honesty `R`. Porém: soil-health delta **0** (10→10, tier poor) é sinal neutro; crop `phaseDays` 4→5 (`round(4×1.15)=5`) é o sinal forte; SMAPI log 1,894B com 5 transições de dia. Um run machine-pass ≠ "verified" (E humano pendente, `VERIFICATION_PROTOCOL.md` §3). Divergência aberta: `Constants.cs` usa `PoorModerateBandEdge=31f`, `ModerateHealthyBandEdge=71f` vs. docs `34/67` — reconciliação T117–T119 (spec 005).
+>
+> **Nova direção (2026-11-04):** o spec 010 (headless verification runner) é o caminho obrigatório para `machine-pass` ANTES de qualquer verificação manual in-game. O runner está em 137/203 tarefas concluídas; as tarefas T130–T150 (verificação e promoção) estão pendentes. Só após o spec 010 gerar `machine-pass` na feature 004 (compost-growth-hardening) deve-se considerar abertura do jogo para verificação manual. Verificação manual não substitui o runner — ela vem depois, como confirmação humana (E attestation).
 
 ### 4.1 Paisagem competitiva (pesquisa web 2026)
 
@@ -90,11 +92,12 @@ Diferencial vs. ReGen Valley (Nexus, 2025): não é a mecânica de soil health (
 
 ## 6. O que FALTA / gaps (não verificado ou não implementado)
 
-### Bloqueia "verificado" (prioridade máxima)
+### Bloqueia "verificado" (prioridade máxima, em ordem)
 
-- **Gate 3 (in-game, 3 sinais)** — machine-pass headless (spec 004, 2026-11-04) mas **não** Gate 3 manual 3-sinais (observação + artifact diff + SMAPI log, E humano). Pendente. Sem ele, nenhuma feature shipped pode afirmar "verified".
-- **Hang do test harness** — `test-preflight`/`test-integration`/`test-logparse` travam se rodarem concorrentemente (`.specify/bugs/test-harness-hangs/`). Precisa de re-verificação.
-- **1 teste falhando pré-existente** — `ProductionSourceGuardTests`, `ModController.cs:399`.
+1. **Completar spec 010 (headless verification runner) — tarefas T130–T150** — o runner está em 137/203 concluídas; as tarefas de verificação e promoção estão pendentes. Este é o caminho obrigatório para `machine-pass` antes de qualquer verificação manual in-game.
+2. **Rodar Gate 3 via spec 010** — capturar `machine-pass` na feature 004 com três sinais (SoilHealthState delta, Crop phase delta, SMAPI log) sem abrir o jogo manualmente.
+3. **Hang do test harness** — `test-preflight`/`test-integration`/`test-logparse` travam se rodarem concorrentemente (`.specify/bugs/test-harness-hangs/`). Precisa de re-verificação.
+4. **1 teste falhando pré-existente** — `ProductionSourceGuardTests`, `ModController.cs:399`.
 
 ### 80/20 principal (faz Living Soil pagar na colheita)
 
@@ -130,17 +133,24 @@ Diferencial vs. ReGen Valley (Nexus, 2025): não é a mecânica de soil health (
 
 ## 8. Próximo passo (80/20 — maior avanço, menor esforço)
 
-**`/speckit.implement` continuando specs 014/015 (harvest-quality) + `/speckit.converge`, após rodar Gate 3.**
+**Recomendação: completar spec 010 (headless verification runner) e gerar `machine-pass` na feature 004, APENAS ENTÃO `/speckit.implement` continuando specs 014/015 (harvest-quality) + `/speckit.converge`.**
 
-- É a *segunda metade* da promessa central: Living Soil (71–100%) finalmente paga na colheita (qualidade silver/gold/iridium + colheita extra).
-- Reusa persistência por tile + overlay existentes; precisa de hook em `Crop.harvest` (virtual, patchável).
-- Único item restante que faz Living Soil visivelmente valer a pena; fecha o loop build → protect → harvest.
+**Fluxo de execução (em ordem):**
+
+1. **`/specify.bug.assess`** → slug: `test-harness-hangs` (pré-requisito CI, spec 008)
+2. **Completar spec 010 tarefas T130–T150** (verificação e promoção) — `dotnet build`, `dotnet test`, `dotnet format`, shell, schema, launch-free e2e, real-host e2e, second-host 3/3, timed dry run, audit/deletion drill, bundle negatives, check-docs negatives, acquisition negatives, suite negatives, farmhand path.
+3. **Rodar Gate 3 via spec 010** — `scripts/verify-scenario.sh --scenario specs/004-playable-compost-loop/scenarios/compost-growth-hardening.scenario.json` — captura `machine-pass` com três sinais sem abrir o jogo manualmente.
+4. **`/speckit.implement`** → specs 014/015 (harvest-quality integração) → **`/speckit.converge`**.
+5. Verificação manual in-game (opcional, confirmação humana E attestation) — nunca substitui o runner.
+
+**Justificativa:**
+- O spec 010 é o único caminho para `machine-pass` sem abrir o jogo manualmente. Todas as 137 tarefas de implementação já estão feitas; faltam as tarefas de verificação e promoção (T130–T150).
+- Após o spec 010 gerar `machine-pass`, specs 014/015 (harvest-quality) é o único item de gameplay que faz Living Soil (71–100%) **pagar na colheita** (qualidade silver/gold/iridium + colheita extra).
 - Infraestrutura cara (Harmony, seam, testes, wiring) já mergeada — custo marginal é integração + verificação.
 
 **Quick wins paralelos (≤1h, sem código novo):**
-1. Fechar T117–T119 (spec 005): reconciliar escala de bandas nos docs (31/71 → 34/67 ou vice-versa).
-2. Rodar Gate 3 in-game (spec 009 T052) para capturar os 3 sinais.
-3. Fechar bug do test harness via `/speckit.bug.assess`.
+1. Fechar T117–T119 (spec 005): reconciliar escala de bandas nos docs (31/71 vs 34/67).
+2. Fechar bug do test harness via `/specify.bug.assess` (slug `test-harness-hangs`).
 
 ---
 
