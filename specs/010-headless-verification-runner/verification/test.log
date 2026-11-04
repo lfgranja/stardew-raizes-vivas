@@ -2197,3 +2197,843 @@ FAIL test-cli.sh
 
 run-all.sh: interrupted by SIGTERM
 8 files, 7 passed, 1 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-acquisition.sh ===
+    [exit status: 0]
+    ok - placeholder lock exits 19
+    ok - mutable latest exits 19
+    ok - empty files map exits 19
+    ok - non-string digest exits 19
+    ok - valid lock exits 0
+    ok - https github.com ok
+    ok - api.github.com ok
+    ok - objects ok
+    ok - codeload ok
+    ok - http rejected
+    ok - other host rejected
+    ok - embedded creds rejected
+    ok - gh token present; no-token case not applicable
+    ok - BUILDDEPS_TOKEN => 0
+    ok - cache miss on digest mismatch
+    ok - no-acquire cache miss exits 9
+    ok - no token interpolated into URL
+    # tests: 17, passed: 17, failed: 0
+PASS test-acquisition.sh
+
+=== test-atomic.sh ===
+    [exit status: 0]
+    ok - atomic_write creates target
+    ok - content matches
+    ok - temp unlinked after success
+    ok - target absent on failure
+    ok - EXDEV maps to internal error
+    ok - fsync_file succeeds
+    ok - fsync_dir succeeds
+    # tests: 7, passed: 7, failed: 0
+PASS test-atomic.sh
+
+=== test-bundle-negative.sh ===
+    [exit status: 0]
+    ok - missing manifest rejected (19)
+    ok - missing sha rejected (19)
+    ok - missing claims rejected (19)
+    ok - verifier exercised (rc=19)
+    ok - missing signal rejected (19)
+    ok - digest tamper rejected (19)
+    ok - anomaly reports do not satisfy R signals
+    ok - W bundle claiming nothing is valid
+    # tests: 8, passed: 8, failed: 0
+PASS test-bundle-negative.sh
+
+=== test-capability.sh ===
+    [exit status: 0]
+    ok - production mod has no verification reference
+    ok - manifest declares dependency
+    ok - verification manifest has no update keys
+    ok - csproj excludes release zip
+    ok - verification mod uses no network/reflection
+    # tests: 5, passed: 5, failed: 0
+PASS test-capability.sh
+
+=== test-ci-mode.sh ===
+    [exit status: 0]
+    ok - --ci --help exits 0
+    ok - ci mode defined
+    ok - ci env detection
+    ok - --ci flag wired
+    ok - non-interactive handling
+    # tests: 5, passed: 5, failed: 0
+PASS test-ci-mode.sh
+
+=== test-ci-workflow.sh ===
+    [exit status: 0]
+    ok - workflow exists
+    ok - self-hosted runner
+    ok - builddeps token
+    ok - permissions block
+    ok - least-privilege contents read
+    ok - invokes runner
+    ok - ci flag
+    ok - self-hosted gated
+    # tests: 8, passed: 8, failed: 0
+PASS test-ci-workflow.sh
+
+=== test-cleanup.sh ===
+    [exit status: 0]
+    ok - cleanup_register returns 0
+    ok - cleanup_run returns 0
+    ok - process reaped
+    ok - PGID handling present
+    ok - socket handling present
+    ok - orphan registry present
+    ok - CLEANUP_FAILED present
+    ok - quit_request exercised (rc=0)
+    ok - CLEAN_QUIT present
+    ok - 30s stability referenced
+    ok - hash check present
+    # tests: 11, passed: 11, failed: 0
+PASS test-cleanup.sh
+
+=== test-cli.sh ===
+    [exit status: 1]
+    ok - --version exits 0
+    ok - --version prints exactly '<name> <VERSION>' on stdout
+    ok - --version writes nothing to stderr
+    ok - --version prints exactly one line
+    ok - --version stdout matches '<name> <VERSION>'
+    ok - --help exits 0
+    ok - --help writes nothing to stderr
+    ok - -h exits 0
+    ok - -h stdout is byte-identical to --help stdout
+    ok - -h writes nothing to stderr
+    not ok - an unknown option exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the unknown option
+    ok - a usage error writes nothing to stdout
+    ok - an unknown option: no run-log directory was created under the sandbox state root
+    ok - an unknown option: no SMAPI log was created
+    ok - an unknown option: no game installation was created
+    ok - an unknown option: the report does not mention 'launch'
+    ok - an unknown option: the report does not mention 'Launch'
+    ok - an unknown option: the report does not mention 'Xvfb'
+    ok - an unknown option: the report does not mention 'xvfb'
+    ok - an unknown option: the report does not mention 'DISPLAY'
+    not ok - a malformed --timeout value exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the option with the malformed value
+    ok - a usage error writes nothing to stdout
+    ok - a malformed --timeout value: no run-log directory was created under the sandbox state root
+    ok - a malformed --timeout value: no SMAPI log was created
+    ok - a malformed --timeout value: no game installation was created
+    ok - a malformed --timeout value: the report does not mention 'launch'
+    ok - a malformed --timeout value: the report does not mention 'Launch'
+    ok - a malformed --timeout value: the report does not mention 'Xvfb'
+    ok - a malformed --timeout value: the report does not mention 'xvfb'
+    ok - a malformed --timeout value: the report does not mention 'DISPLAY'
+    not ok - a non-positive --timeout value exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the option with the non-positive value
+    ok - a usage error writes nothing to stdout
+    ok - a non-positive --timeout value: no run-log directory was created under the sandbox state root
+    ok - a non-positive --timeout value: no SMAPI log was created
+    ok - a non-positive --timeout value: no game installation was created
+    ok - a non-positive --timeout value: the report does not mention 'launch'
+    ok - a non-positive --timeout value: the report does not mention 'Launch'
+    ok - a non-positive --timeout value: the report does not mention 'Xvfb'
+    ok - a non-positive --timeout value: the report does not mention 'xvfb'
+    ok - a non-positive --timeout value: the report does not mention 'DISPLAY'
+    not ok - a missing required argument exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the option whose argument is missing
+    ok - a usage error writes nothing to stdout
+    ok - a missing required argument: no run-log directory was created under the sandbox state root
+    ok - a missing required argument: no SMAPI log was created
+    ok - a missing required argument: no game installation was created
+    ok - a missing required argument: the report does not mention 'launch'
+    ok - a missing required argument: the report does not mention 'Launch'
+    ok - a missing required argument: the report does not mention 'Xvfb'
+    ok - a missing required argument: the report does not mention 'xvfb'
+    ok - a missing required argument: the report does not mention 'DISPLAY'
+    not ok - a stray positional argument exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the stray positional argument
+    ok - a usage error writes nothing to stdout
+    ok - a stray positional argument: no run-log directory was created under the sandbox state root
+    ok - a stray positional argument: no SMAPI log was created
+    ok - a stray positional argument: no game installation was created
+    ok - a stray positional argument: the report does not mention 'launch'
+    ok - a stray positional argument: the report does not mention 'Launch'
+    ok - a stray positional argument: the report does not mention 'Xvfb'
+    ok - a stray positional argument: the report does not mention 'xvfb'
+    ok - a stray positional argument: the report does not mention 'DISPLAY'
+    ok - the help opens with a Usage: line
+    ok - the help has an Options: section
+    ok - the help has the Environment (set automatically) section
+    ok - the Environment section states that the variables are script-managed
+    ok - the Environment section states that the variables are not user-configurable
+    ok - --help documents the option '--game-path'
+    ok - --help documents the argument placeholder 'DIR' of '--game-path'
+    ok - --help documents the default '~/.steam/steam/steamapps/common/Stardew Valley/' of '--game-path'
+    ok - --help renders the table row of '--game-path' as '--game-path DIR'
+    ok - the Usage: line shows the option '--game-path'
+    ok - --help documents the option '--mods-path'
+    ok - --help documents the argument placeholder 'DIR' of '--mods-path'
+    ok - --help documents the default '<game-path>/Mods' of '--mods-path'
+    ok - --help renders the table row of '--mods-path' as '--mods-path DIR'
+    ok - the Usage: line shows the option '--mods-path'
+    ok - --help documents the option '--mod-project'
+    ok - --help documents the argument placeholder 'FILE' of '--mod-project'
+    ok - --help documents the default '<repo-root>/LivingRoots/LivingRoots.csproj' of '--mod-project'
+    ok - --help renders the table row of '--mod-project' as '--mod-project FILE'
+    ok - the Usage: line shows the option '--mod-project'
+    ok - --help documents the option '--timeout'
+    ok - --help documents the argument placeholder 'SECONDS' of '--timeout'
+    ok - --help documents the default '120' of '--timeout'
+    ok - --help renders the table row of '--timeout' as '--timeout SECONDS'
+    ok - the Usage: line shows the option '--timeout'
+    ok - --help documents the option '--build-timeout'
+    ok - --help documents the argument placeholder 'SECONDS' of '--build-timeout'
+    ok - --help documents the default '300' of '--build-timeout'
+    ok - --help renders the table row of '--build-timeout' as '--build-timeout SECONDS'
+    ok - the Usage: line shows the option '--build-timeout'
+    ok - --help documents the option '--grace-period'
+    ok - --help documents the argument placeholder 'SECONDS' of '--grace-period'
+    ok - --help documents the default '15' of '--grace-period'
+    ok - --help renders the table row of '--grace-period' as '--grace-period SECONDS'
+    ok - the Usage: line shows the option '--grace-period'
+    ok - --help documents the option '--smapi-log'
+    ok - --help documents the argument placeholder 'FILE' of '--smapi-log'
+    ok - --help documents the default '~/.config/StardewValley/ErrorLogs/SMAPI-latest.txt' of '--smapi-log'
+    ok - --help renders the table row of '--smapi-log' as '--smapi-log FILE'
+    ok - the Usage: line shows the option '--smapi-log'
+    ok - --help documents the option '--force'
+    ok - --help documents the argument placeholder 'none — flag' of '--force'
+    ok - --help documents the default 'off' of '--force'
+    ok - --help renders the table row of '--force' as '--force (none — flag)'
+    ok - the Usage: line shows the option '--force'
+    ok - --help documents the option '--help'
+    ok - --help documents the argument placeholder 'none — flag' of '--help'
+    ok - --help documents the default '—' of '--help'
+    ok - --help renders the table row of '--help' as '--help (none — flag)'
+    ok - the Usage: line shows the option '--help'
+    ok - --help documents the option '-h'
+    ok - --help documents the argument placeholder 'none — flag' of '-h'
+    ok - --help documents the default '—' of '-h'
+    ok - --help renders the table row of '-h' as '-h (none — flag)'
+    ok - the Usage: line shows the option '-h'
+    ok - --help documents the option '--version'
+    ok - --help documents the argument placeholder 'none — flag' of '--version'
+    ok - --help documents the default '—' of '--version'
+    ok - --help renders the table row of '--version' as '--version (none — flag)'
+    ok - the Usage: line shows the option '--version'
+    ok - the Options: section has exactly one entry per row of the Command-Line Options table
+    ok - the Options: section documents only options from the normative table ('--game-path' is one of them)
+    ok - the Options: section documents only options from the normative table ('--mods-path' is one of them)
+    ok - the Options: section documents only options from the normative table ('--mod-project' is one of them)
+    ok - the Options: section documents only options from the normative table ('--timeout' is one of them)
+    ok - the Options: section documents only options from the normative table ('--build-timeout' is one of them)
+    ok - the Options: section documents only options from the normative table ('--grace-period' is one of them)
+    ok - the Options: section documents only options from the normative table ('--smapi-log' is one of them)
+    ok - the Options: section documents only options from the normative table ('--force' is one of them)
+    ok - the Options: section documents only options from the normative table ('--help' is one of them)
+    ok - the Options: section documents only options from the normative table ('-h' is one of them)
+    ok - the Options: section documents only options from the normative table ('--version' is one of them)
+    ok - the Environment section names SMAPI_NO_TERMINAL
+    ok - the Environment section names SMAPI_DEVELOPER_MODE
+    ok - the Environment section names LIBGL_ALWAYS_SOFTWARE
+    ok - the Environment section names GALLIUM_DRIVER
+    ok - the Environment section names SDL_VIDEODRIVER
+    ok - the Environment section names SDL_AUDIODRIVER
+    ok - the Environment section names ALSOFT_DRIVERS
+    ok - the Environment section names DISPLAY
+    ok - the help gives the run-log location
+    ok - the help gives the run-ID format
+    ok - the help's run-ID example matches '<UTC>-<PID>'
+    ok - the help has a Version: section
+    ok - the help states the script VERSION
+    ok - the help has an Exit codes: section
+    ok - the help documents exit code 0
+    ok - the help documents exit code 1
+    ok - the help documents exit code 2
+    ok - the help documents exit code 3
+    ok - the help documents exit code 4
+    ok - the help documents exit code 5
+    ok - the help documents exit code 6
+    ok - the help documents exit code 7
+    ok - the help documents exit code 9
+    ok - the help documents exit code 10
+    ok - the help documents exit code 11
+    ok - the help documents exit code 12
+    ok - the help documents exit code 13
+    ok - the help documents exit code 14
+    ok - the help documents exit code 15
+    ok - the help documents exit code 16
+    ok - the help documents exit code 17
+    ok - the help documents exit code 129
+    ok - the help documents exit code 130
+    ok - the help documents exit code 143
+    not ok - the ambiguous abbreviation --mod is rejected with 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the ambiguous abbreviation
+    ok - --mod is rejected because of the option NAME, not because of a missing value
+    ok - the ambiguous abbreviation --mod: no run-log directory was created under the sandbox state root
+    ok - the ambiguous abbreviation --mod: no SMAPI log was created
+    ok - the ambiguous abbreviation --mod: no game installation was created
+    ok - the ambiguous abbreviation --mod: the report does not mention 'launch'
+    ok - the ambiguous abbreviation --mod: the report does not mention 'Launch'
+    ok - the ambiguous abbreviation --mod: the report does not mention 'Xvfb'
+    ok - the ambiguous abbreviation --mod: the report does not mention 'xvfb'
+    ok - the ambiguous abbreviation --mod: the report does not mention 'DISPLAY'
+    not ok - the prefix --mods is rejected with 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the prefix
+    ok - --mods is rejected because of the option NAME, not because of a missing value
+    ok - the prefix --mods: no run-log directory was created under the sandbox state root
+    ok - the prefix --mods: no SMAPI log was created
+    ok - the prefix --mods: no game installation was created
+    ok - the prefix --mods: the report does not mention 'launch'
+    ok - the prefix --mods: the report does not mention 'Launch'
+    ok - the prefix --mods: the report does not mention 'Xvfb'
+    ok - the prefix --mods: the report does not mention 'xvfb'
+    ok - the prefix --mods: the report does not mention 'DISPLAY'
+    not ok - the ambiguous abbreviation --mod with a value is rejected with 14
+    #   reason: expected exit code 14, got 13
+    ok - the ambiguous abbreviation --mod with a value: no run-log directory was created under the sandbox state root
+    ok - the ambiguous abbreviation --mod with a value: no SMAPI log was created
+    ok - the ambiguous abbreviation --mod with a value: no game installation was created
+    ok - the ambiguous abbreviation --mod with a value: the report does not mention 'launch'
+    ok - the ambiguous abbreviation --mod with a value: the report does not mention 'Launch'
+    ok - the ambiguous abbreviation --mod with a value: the report does not mention 'Xvfb'
+    ok - the ambiguous abbreviation --mod with a value: the report does not mention 'xvfb'
+    ok - the ambiguous abbreviation --mod with a value: the report does not mention 'DISPLAY'
+    not ok - the prefix --mods with a value is rejected with 14
+    #   reason: expected exit code 14, got 13
+    ok - the prefix --mods with a value: no run-log directory was created under the sandbox state root
+    ok - the prefix --mods with a value: no SMAPI log was created
+    ok - the prefix --mods with a value: no game installation was created
+    ok - the prefix --mods with a value: the report does not mention 'launch'
+    ok - the prefix --mods with a value: the report does not mention 'Launch'
+    ok - the prefix --mods with a value: the report does not mention 'Xvfb'
+    ok - the prefix --mods with a value: the report does not mention 'xvfb'
+    ok - the prefix --mods with a value: the report does not mention 'DISPLAY'
+    ok - the exact option name --mod-project is not a usage error
+    ok - the report does not call --mod-project an unknown option
+    ok - the report does not call --mod-project an abbreviation
+    ok - --timeout=90 --help exits 0
+    ok - --timeout=90 --help prints the same help as --help
+    ok - --timeout=90 --help still shows the default timeout 120
+    not ok - --timeout=abc is rejected with 14
+    #   reason: expected exit code 14, got 13
+    ok - the = form reaches the validator, which names the option
+    ok - the help has an Examples: section
+    ok - the example uses the --opt=VALUE form:   ./scripts/smoke-validation.sh --game-path="/path/to/Stardew Valley"
+    ok - the example uses the --opt=VALUE form:   ./scripts/smoke-validation.sh --mods-path="/path/to/mods" --timeout=180
+    ok - the example uses the --opt=VALUE form:   ./scripts/smoke-validation.sh --smapi-log="/path/to/SMAPI-latest.txt"
+    ok - the help has at least one example
+    ok - the examples name at least one option
+    ok - T152: the relative --game-path is a relative path
+    ok - T152: the relative --game-path resolves to the sandbox's own fixture
+    ok - T152: the relative --game-path does not name the working directory
+    ok - T068 [relative game dir]: the resolved mods path is '../../../../tmp/tmp.1Vb2s1HIr3/file.nT535Drv/livingroots-smoke-harness.4XLeleojn5/fixtures/cli-paths/game/Mods'
+    ok - T068 [relative game dir]: the resolved mods path does not repeat the game directory
+    ok - T068 [relative mods path]: the resolved mods path is '/tmp/tmp.1Vb2s1HIr3/file.nT535Drv/livingroots-smoke-harness.4XLeleojn5/fixtures/cli-paths/game/Mods'
+    ok - T068 [relative mods path]: the resolved mods path does not repeat the game directory
+    ok - T068 [absolute mods path]: the resolved mods path is '/tmp/tmp.1Vb2s1HIr3/file.nT535Drv/livingroots-smoke-harness.4XLeleojn5/fixtures/cli-paths/absolute-mods'
+    ok - T068 [absolute mods path]: the resolved mods path does not repeat the game directory
+    ok - T068 [absolute default]: the resolved mods path is '/tmp/tmp.1Vb2s1HIr3/file.nT535Drv/livingroots-smoke-harness.4XLeleojn5/fixtures/cli-paths/game/Mods'
+    ok - T068 [absolute default]: the resolved mods path does not repeat the game directory
+    /home/luis/development/stardew-raizes-vivas/scripts/tests/lib/harness.sh, linha 586: 127844 Morto                      setsid env "${env_args[@]}" timeout --kill-after=5 "$RUN_DEADLINE_SECS" "$HARNESS_SCRIPT" "$@" > "$out_file" 2> "$err_file"
+    ok - T128: the hung run was ended by the suite's deadline, not by the script's own verdict
+    not ok - T128: the hung run was ended by the deadline, not by the script's own 15s display bound
+    #   reason: expected a number <= 14, got '16'
+    ok - T128: the child the hung run started did not outlive the suite
+    ok - T128: the hung run reached the display phase
+    ok - T128: the hung display run was ended by the deadline, not by the script's own verdict
+    ok - T128: the hung display run was ended by the deadline, not by the script's own 15s display bound
+    ok - T128: the X server the hung run started did not outlive the suite
+    ok - T128: no process of the hung run outlived the suite
+    ok - T138: exactly ONE failure report reaches stderr
+    ok - T138: the failure report announces the internal-error exit code 13
+    ok - T138: the run's exit code is the failure report's own exit code
+    ok - T149: the ERR-trap path exits 13 even when a command inside the handler fails
+    ok - T149: exactly ONE failure report reaches stderr
+    ok - T149: the failure report announces the internal-error exit code 13
+    ok - T149: the run's exit code is the failure report's own exit code
+    ok - T138: the fixture's sentinel timestamp cannot be parsed (the grep matches nothing)
+    ok - T138: the run reached the sentinel's timestamp extraction
+    not ok - T138: the unparseable sentinel yields EXACTLY ONE failure report
+    #   reason: expected '1', got '2'
+    not ok - T138: the unparseable sentinel's run exits with that report's own exit code
+    #   reason: expected '5', got '13'
+    # tests: 255, passed: 242, failed: 13
+FAIL test-cli.sh
+
+=== test-common.sh ===
+    [exit status: 0]
+    # tests: 7, passed: 7, failed: 0
+PASS test-common.sh
+
+=== test-contract-registries.sh ===
+    [exit status: 0]
+    ok - never-quarantine exists
+    ok - never-quarantine schema exists
+    ok - promotion-triggers exists
+    shape ok
+    ok - promotion-triggers shape
+    ok - evidence-bundle schema exists
+    ok - claims schema exists
+    ok - quarantine registry exists
+    # tests: 7, passed: 7, failed: 0
+PASS test-contract-registries.sh
+
+=== test-display-launch.sh ===
+    [interrupted by SIGTERM]
+    ok - display_start succeeds
+    ok - DISPLAY_OWNED=1
+    ok - DISPLAY set
+    ok - DISPLAY_PID set
+    ok - display_stop returns 0
+    ok - display_stop idempotent
+    ok - failing Xvfb exits 10
+    ok - no /tmp/.X*-lock probe
+    ok - missing launcher exits 9
+    ok - ready log accepted
+    ok - delayed mod-resolution header accepted (phase 2 polls)
+    ok - missing mod-resolution header exits 17
+    ok - skipped mod exits 5
+    ok - no-log case classified
+    ok - stdin event => 19
+    ok - launch failure propagates as exit 15, not 0
+    ok - launch failure stops the display
+FAIL test-display-launch.sh
+
+run-all.sh: interrupted by SIGTERM
+11 files, 9 passed, 2 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-cli.sh ===
+    [interrupted by SIGTERM]
+    ok - --version exits 0
+    ok - --version prints exactly '<name> <VERSION>' on stdout
+    ok - --version writes nothing to stderr
+    ok - --version prints exactly one line
+    ok - --version stdout matches '<name> <VERSION>'
+    ok - --help exits 0
+    ok - --help writes nothing to stderr
+    ok - -h exits 0
+    ok - -h stdout is byte-identical to --help stdout
+    ok - -h writes nothing to stderr
+    not ok - an unknown option exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the unknown option
+    ok - a usage error writes nothing to stdout
+    ok - an unknown option: no run-log directory was created under the sandbox state root
+    ok - an unknown option: no SMAPI log was created
+    ok - an unknown option: no game installation was created
+    ok - an unknown option: the report does not mention 'launch'
+    ok - an unknown option: the report does not mention 'Launch'
+    ok - an unknown option: the report does not mention 'Xvfb'
+    ok - an unknown option: the report does not mention 'xvfb'
+    ok - an unknown option: the report does not mention 'DISPLAY'
+    not ok - a malformed --timeout value exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the option with the malformed value
+    ok - a usage error writes nothing to stdout
+    ok - a malformed --timeout value: no run-log directory was created under the sandbox state root
+    ok - a malformed --timeout value: no SMAPI log was created
+    ok - a malformed --timeout value: no game installation was created
+    ok - a malformed --timeout value: the report does not mention 'launch'
+    ok - a malformed --timeout value: the report does not mention 'Launch'
+    ok - a malformed --timeout value: the report does not mention 'Xvfb'
+    ok - a malformed --timeout value: the report does not mention 'xvfb'
+    ok - a malformed --timeout value: the report does not mention 'DISPLAY'
+    not ok - a non-positive --timeout value exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the option with the non-positive value
+    ok - a usage error writes nothing to stdout
+    ok - a non-positive --timeout value: no run-log directory was created under the sandbox state root
+    ok - a non-positive --timeout value: no SMAPI log was created
+    ok - a non-positive --timeout value: no game installation was created
+    ok - a non-positive --timeout value: the report does not mention 'launch'
+    ok - a non-positive --timeout value: the report does not mention 'Launch'
+    ok - a non-positive --timeout value: the report does not mention 'Xvfb'
+    ok - a non-positive --timeout value: the report does not mention 'xvfb'
+    ok - a non-positive --timeout value: the report does not mention 'DISPLAY'
+    not ok - a missing required argument exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the option whose argument is missing
+    ok - a usage error writes nothing to stdout
+    ok - a missing required argument: no run-log directory was created under the sandbox state root
+    ok - a missing required argument: no SMAPI log was created
+    ok - a missing required argument: no game installation was created
+    ok - a missing required argument: the report does not mention 'launch'
+    ok - a missing required argument: the report does not mention 'Launch'
+    ok - a missing required argument: the report does not mention 'Xvfb'
+    ok - a missing required argument: the report does not mention 'xvfb'
+    ok - a missing required argument: the report does not mention 'DISPLAY'
+    not ok - a stray positional argument exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the stray positional argument
+    ok - a usage error writes nothing to stdout
+    ok - a stray positional argument: no run-log directory was created under the sandbox state root
+    ok - a stray positional argument: no SMAPI log was created
+    ok - a stray positional argument: no game installation was created
+    ok - a stray positional argument: the report does not mention 'launch'
+    ok - a stray positional argument: the report does not mention 'Launch'
+    ok - a stray positional argument: the report does not mention 'Xvfb'
+    ok - a stray positional argument: the report does not mention 'xvfb'
+    ok - a stray positional argument: the report does not mention 'DISPLAY'
+    ok - the help opens with a Usage: line
+    ok - the help has an Options: section
+    ok - the help has the Environment (set automatically) section
+    ok - the Environment section states that the variables are script-managed
+    ok - the Environment section states that the variables are not user-configurable
+    ok - --help documents the option '--game-path'
+    ok - --help documents the argument placeholder 'DIR' of '--game-path'
+    ok - --help documents the default '~/.steam/steam/steamapps/common/Stardew Valley/' of '--game-path'
+    ok - --help renders the table row of '--game-path' as '--game-path DIR'
+    ok - the Usage: line shows the option '--game-path'
+    ok - --help documents the option '--mods-path'
+    ok - --help documents the argument placeholder 'DIR' of '--mods-path'
+    ok - --help documents the default '<game-path>/Mods' of '--mods-path'
+    ok - --help renders the table row of '--mods-path' as '--mods-path DIR'
+    ok - the Usage: line shows the option '--mods-path'
+    ok - --help documents the option '--mod-project'
+    ok - --help documents the argument placeholder 'FILE' of '--mod-project'
+    ok - --help documents the default '<repo-root>/LivingRoots/LivingRoots.csproj' of '--mod-project'
+    ok - --help renders the table row of '--mod-project' as '--mod-project FILE'
+    ok - the Usage: line shows the option '--mod-project'
+    ok - --help documents the option '--timeout'
+    ok - --help documents the argument placeholder 'SECONDS' of '--timeout'
+    ok - --help documents the default '120' of '--timeout'
+    ok - --help renders the table row of '--timeout' as '--timeout SECONDS'
+    ok - the Usage: line shows the option '--timeout'
+    ok - --help documents the option '--build-timeout'
+    ok - --help documents the argument placeholder 'SECONDS' of '--build-timeout'
+    ok - --help documents the default '300' of '--build-timeout'
+    ok - --help renders the table row of '--build-timeout' as '--build-timeout SECONDS'
+    ok - the Usage: line shows the option '--build-timeout'
+    ok - --help documents the option '--grace-period'
+    ok - --help documents the argument placeholder 'SECONDS' of '--grace-period'
+    ok - --help documents the default '15' of '--grace-period'
+    ok - --help renders the table row of '--grace-period' as '--grace-period SECONDS'
+    ok - the Usage: line shows the option '--grace-period'
+    ok - --help documents the option '--smapi-log'
+    ok - --help documents the argument placeholder 'FILE' of '--smapi-log'
+    ok - --help documents the default '~/.config/StardewValley/ErrorLogs/SMAPI-latest.txt' of '--smapi-log'
+    ok - --help renders the table row of '--smapi-log' as '--smapi-log FILE'
+    ok - the Usage: line shows the option '--smapi-log'
+    ok - --help documents the option '--force'
+    ok - --help documents the argument placeholder 'none — flag' of '--force'
+    ok - --help documents the default 'off' of '--force'
+    ok - --help renders the table row of '--force' as '--force (none — flag)'
+    ok - the Usage: line shows the option '--force'
+    ok - --help documents the option '--help'
+    ok - --help documents the argument placeholder 'none — flag' of '--help'
+    ok - --help documents the default '—' of '--help'
+    ok - --help renders the table row of '--help' as '--help (none — flag)'
+    ok - the Usage: line shows the option '--help'
+    ok - --help documents the option '-h'
+    ok - --help documents the argument placeholder 'none — flag' of '-h'
+    ok - --help documents the default '—' of '-h'
+    ok - --help renders the table row of '-h' as '-h (none — flag)'
+    ok - the Usage: line shows the option '-h'
+    ok - --help documents the option '--version'
+    ok - --help documents the argument placeholder 'none — flag' of '--version'
+    ok - --help documents the default '—' of '--version'
+    ok - --help renders the table row of '--version' as '--version (none — flag)'
+    ok - the Usage: line shows the option '--version'
+    ok - the Options: section has exactly one entry per row of the Command-Line Options table
+    ok - the Options: section documents only options from the normative table ('--game-path' is one of them)
+    ok - the Options: section documents only options from the normative table ('--mods-path' is one of them)
+    ok - the Options: section documents only options from the normative table ('--mod-project' is one of them)
+    ok - the Options: section documents only options from the normative table ('--timeout' is one of them)
+    ok - the Options: section documents only options from the normative table ('--build-timeout' is one of them)
+    ok - the Options: section documents only options from the normative table ('--grace-period' is one of them)
+    ok - the Options: section documents only options from the normative table ('--smapi-log' is one of them)
+    ok - the Options: section documents only options from the normative table ('--force' is one of them)
+    ok - the Options: section documents only options from the normative table ('--help' is one of them)
+    ok - the Options: section documents only options from the normative table ('-h' is one of them)
+    ok - the Options: section documents only options from the normative table ('--version' is one of them)
+    ok - the Environment section names SMAPI_NO_TERMINAL
+    ok - the Environment section names SMAPI_DEVELOPER_MODE
+    ok - the Environment section names LIBGL_ALWAYS_SOFTWARE
+    ok - the Environment section names GALLIUM_DRIVER
+    ok - the Environment section names SDL_VIDEODRIVER
+    ok - the Environment section names SDL_AUDIODRIVER
+    ok - the Environment section names ALSOFT_DRIVERS
+    ok - the Environment section names DISPLAY
+    ok - the help gives the run-log location
+    ok - the help gives the run-ID format
+    ok - the help's run-ID example matches '<UTC>-<PID>'
+    ok - the help has a Version: section
+    ok - the help states the script VERSION
+    ok - the help has an Exit codes: section
+    ok - the help documents exit code 0
+    ok - the help documents exit code 1
+    ok - the help documents exit code 2
+    ok - the help documents exit code 3
+    ok - the help documents exit code 4
+    ok - the help documents exit code 5
+    ok - the help documents exit code 6
+    ok - the help documents exit code 7
+    ok - the help documents exit code 9
+    ok - the help documents exit code 10
+    ok - the help documents exit code 11
+    ok - the help documents exit code 12
+    ok - the help documents exit code 13
+    ok - the help documents exit code 14
+    ok - the help documents exit code 15
+    ok - the help documents exit code 16
+    ok - the help documents exit code 17
+    ok - the help documents exit code 129
+    ok - the help documents exit code 130
+    ok - the help documents exit code 143
+    not ok - the ambiguous abbreviation --mod is rejected with 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the ambiguous abbreviation
+    ok - --mod is rejected because of the option NAME, not because of a missing value
+    ok - the ambiguous abbreviation --mod: no run-log directory was created under the sandbox state root
+    ok - the ambiguous abbreviation --mod: no SMAPI log was created
+    ok - the ambiguous abbreviation --mod: no game installation was created
+    ok - the ambiguous abbreviation --mod: the report does not mention 'launch'
+    ok - the ambiguous abbreviation --mod: the report does not mention 'Launch'
+    ok - the ambiguous abbreviation --mod: the report does not mention 'Xvfb'
+    ok - the ambiguous abbreviation --mod: the report does not mention 'xvfb'
+    ok - the ambiguous abbreviation --mod: the report does not mention 'DISPLAY'
+    not ok - the prefix --mods is rejected with 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the prefix
+    ok - --mods is rejected because of the option NAME, not because of a missing value
+    ok - the prefix --mods: no run-log directory was created under the sandbox state root
+    ok - the prefix --mods: no SMAPI log was created
+    ok - the prefix --mods: no game installation was created
+    ok - the prefix --mods: the report does not mention 'launch'
+    ok - the prefix --mods: the report does not mention 'Launch'
+    ok - the prefix --mods: the report does not mention 'Xvfb'
+    ok - the prefix --mods: the report does not mention 'xvfb'
+    ok - the prefix --mods: the report does not mention 'DISPLAY'
+    not ok - the ambiguous abbreviation --mod with a value is rejected with 14
+    #   reason: expected exit code 14, got 13
+    ok - the ambiguous abbreviation --mod with a value: no run-log directory was created under the sandbox state root
+    ok - the ambiguous abbreviation --mod with a value: no SMAPI log was created
+    ok - the ambiguous abbreviation --mod with a value: no game installation was created
+    ok - the ambiguous abbreviation --mod with a value: the report does not mention 'launch'
+    ok - the ambiguous abbreviation --mod with a value: the report does not mention 'Launch'
+    ok - the ambiguous abbreviation --mod with a value: the report does not mention 'Xvfb'
+    ok - the ambiguous abbreviation --mod with a value: the report does not mention 'xvfb'
+    ok - the ambiguous abbreviation --mod with a value: the report does not mention 'DISPLAY'
+    not ok - the prefix --mods with a value is rejected with 14
+    #   reason: expected exit code 14, got 13
+    ok - the prefix --mods with a value: no run-log directory was created under the sandbox state root
+    ok - the prefix --mods with a value: no SMAPI log was created
+    ok - the prefix --mods with a value: no game installation was created
+    ok - the prefix --mods with a value: the report does not mention 'launch'
+    ok - the prefix --mods with a value: the report does not mention 'Launch'
+    ok - the prefix --mods with a value: the report does not mention 'Xvfb'
+    ok - the prefix --mods with a value: the report does not mention 'xvfb'
+    ok - the prefix --mods with a value: the report does not mention 'DISPLAY'
+    ok - the exact option name --mod-project is not a usage error
+    ok - the report does not call --mod-project an unknown option
+    ok - the report does not call --mod-project an abbreviation
+    ok - --timeout=90 --help exits 0
+    ok - --timeout=90 --help prints the same help as --help
+    ok - --timeout=90 --help still shows the default timeout 120
+    not ok - --timeout=abc is rejected with 14
+    #   reason: expected exit code 14, got 13
+    ok - the = form reaches the validator, which names the option
+    ok - the help has an Examples: section
+    ok - the example uses the --opt=VALUE form:   ./scripts/smoke-validation.sh --game-path="/path/to/Stardew Valley"
+    ok - the example uses the --opt=VALUE form:   ./scripts/smoke-validation.sh --mods-path="/path/to/mods" --timeout=180
+    ok - the example uses the --opt=VALUE form:   ./scripts/smoke-validation.sh --smapi-log="/path/to/SMAPI-latest.txt"
+    ok - the help has at least one example
+    ok - the examples name at least one option
+    ok - T152: the relative --game-path is a relative path
+    ok - T152: the relative --game-path resolves to the sandbox's own fixture
+    ok - T152: the relative --game-path does not name the working directory
+    ok - T068 [relative game dir]: the resolved mods path is '../../../../tmp/tmp.Xb6t5vbLfH/file.C1hVWvAa/livingroots-smoke-harness.U61jdNeZHP/fixtures/cli-paths/game/Mods'
+    ok - T068 [relative game dir]: the resolved mods path does not repeat the game directory
+    ok - T068 [relative mods path]: the resolved mods path is '/tmp/tmp.Xb6t5vbLfH/file.C1hVWvAa/livingroots-smoke-harness.U61jdNeZHP/fixtures/cli-paths/game/Mods'
+    ok - T068 [relative mods path]: the resolved mods path does not repeat the game directory
+    ok - T068 [absolute mods path]: the resolved mods path is '/tmp/tmp.Xb6t5vbLfH/file.C1hVWvAa/livingroots-smoke-harness.U61jdNeZHP/fixtures/cli-paths/absolute-mods'
+    ok - T068 [absolute mods path]: the resolved mods path does not repeat the game directory
+    ok - T068 [absolute default]: the resolved mods path is '/tmp/tmp.Xb6t5vbLfH/file.C1hVWvAa/livingroots-smoke-harness.U61jdNeZHP/fixtures/cli-paths/game/Mods'
+    ok - T068 [absolute default]: the resolved mods path does not repeat the game directory
+FAIL test-cli.sh
+
+run-all.sh: interrupted by SIGTERM
+1 files, 0 passed, 1 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-doc-links.sh ===
+    [exit status: 0]
+    PASS: doc links OK
+PASS test-doc-links.sh
+
+1 files, 1 passed, 0 failed
+=== test-cli.sh ===
+    [interrupted by SIGTERM]
+    ok - --version exits 0
+    ok - --version prints exactly '<name> <VERSION>' on stdout
+    ok - --version writes nothing to stderr
+    ok - --version prints exactly one line
+    ok - --version stdout matches '<name> <VERSION>'
+    ok - --help exits 0
+    ok - --help writes nothing to stderr
+    ok - -h exits 0
+    ok - -h stdout is byte-identical to --help stdout
+    ok - -h writes nothing to stderr
+    not ok - an unknown option exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the unknown option
+    ok - a usage error writes nothing to stdout
+    ok - an unknown option: no run-log directory was created under the sandbox state root
+    ok - an unknown option: no SMAPI log was created
+    ok - an unknown option: no game installation was created
+    ok - an unknown option: the report does not mention 'launch'
+    ok - an unknown option: the report does not mention 'Launch'
+    ok - an unknown option: the report does not mention 'Xvfb'
+    ok - an unknown option: the report does not mention 'xvfb'
+    ok - an unknown option: the report does not mention 'DISPLAY'
+    not ok - a malformed --timeout value exits 14
+    #   reason: expected exit code 14, got 13
+    ok - the report names the option with the malformed value
+    ok - a usage error writes nothing to stdout
+    ok - a malformed --timeout value: no run-log directory was created under the sandbox state root
+    ok - a malformed --timeout value: no SMAPI log was created
+    ok - a malformed --timeout value: no game installation was created
+    ok - a malformed --timeout value: the report does not mention 'launch'
+    ok - a malformed --timeout value: the report does not mention 'Launch'
+    ok - a malformed --timeout value: the report does not mention 'Xvfb'
+    ok - a malformed --timeout value: the report does not mention 'xvfb'
+    ok - a malformed --timeout value: the report does not mention 'DISPLAY'
+FAIL test-cli.sh
+
+run-all.sh: interrupted by SIGTERM
+1 files, 0 passed, 1 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-logparse.sh ===
+    [interrupted by SIGTERM]
+    (no output)
+FAIL test-logparse.sh
+
+run-all.sh: interrupted by SIGTERM
+1 files, 0 passed, 1 failed
+=== test-preflight.sh ===
+    [interrupted by SIGTERM]
+    # --- TC-20: invalid --mods-path rejected before launch ---
+    not ok - TC-20: a --mods-path that does not exist exits 16
+    #   reason: expected exit code 16, got 13
+    ok - TC-20: the failure report names the offending mods path
+    ok - TC-20: the report ends with an actionable Fix: line
+    ok - TC-20: the rejected mods path was not created
+    ok - TC-20: the deploy target was not touched
+    ok - TC-20: the game was not launched
+    # --- TC-21: SMAPI not functional ---
+    not ok - TC-21: a broken SMAPI installation exits 2
+    #   reason: expected exit code 2, got 13
+    ok - TC-21: the failure report names SMAPI as the failed component
+    ok - TC-21: the failure report names the missing marker file
+    ok - TC-21: the report ends with an actionable Fix: line
+    ok - TC-21: the game was not launched
+    # --- TC-22: Steam prerequisite missing ---
+FAIL test-preflight.sh
+
+run-all.sh: interrupted by SIGTERM
+1 files, 0 passed, 1 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-runall.sh ===
+    [exit status: 0]
+    ok - run-all.sh exists
+    ok - run-all.sh is executable
+    # tests: 2, passed: 2, failed: 0
+PASS test-runall.sh
+
+1 files, 1 passed, 0 failed
+=== test-root-guard.sh ===
+    [exit status: 0]
+    ok - non-root passes root guard
+    ok - root guard present in preflight
+    ok - guard precedes launch
+    # tests: 3, passed: 3, failed: 0
+PASS test-root-guard.sh
+
+1 files, 1 passed, 0 failed
+=== test-retention.sh ===
+    [exit status: 0]
+    ok - function retention_receipt defined
+    ok - function retention_record_timestamp defined
+    ok - function retention_check_expiry defined
+    ok - function retention_export defined
+    ok - function retention_delete_guarded defined
+    ok - receipt exercised (rc=0)
+    ok - delete_guarded exercised (rc=14)
+    ok - export defined
+    ok - retention window
+    # tests: 9, passed: 9, failed: 0
+PASS test-retention.sh
+
+1 files, 1 passed, 0 failed
+=== test-sanitize.sh ===
+    [exit status: 0]
+    ok - vectors file exists
+    ok - sanitize accept: café
+    ok - sanitize reject: ..
+    ok - sanitize reject: foo/../bar
+    ok - sanitize reject: ../etc/passwd
+    ok - sanitize reject: /etc/passwd
+    ok - sanitize reject: C:\Windows
+    ok - sanitize reject: C:foo
+    ok - sanitize reject: a\b
+    ok - sanitize reject: a\x00b
+    ok - sanitize reject: a\x01b
+    ok - sanitize reject: ../..
+    ok - sanitize reject: аdmin
+    ok - sanitize accept: foo/bar
+    ok - sanitize accept: a/b/c
+    ok - C# sanitizer tests exist
+    ok - sanitize_path defined
+    # tests: 17, passed: 17, failed: 0
+PASS test-sanitize.sh
+
+1 files, 1 passed, 0 failed
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-spec-consistency.sh ===
+    [exit status: 1]
+    spec-consistency: FAIL (1 of 265 checks)
+    01. promotion-triggers.json transitions[] must start empty and be appended by the runner
+FAIL test-spec-consistency.sh
+
+1 files, 0 passed, 1 failed
+=== test-version-gate.sh ===
+    [exit status: 0]
+    ok - version_gate_classify defined
+    ok - version_gate exercised (rc=19)
+    ok - version-gate lib present
+    ok - unofficial handling
+    ok - max game version handling
+    ok - directory form: a compatible install does not hard-fail
+    ok - directory form: a compatible install is INFO
+    ok - preflight_version_gate: a compatible install returns 0
+    ok - directory form: an older game version still hard-fails (19)
+    ok - directory form: an older SMAPI version still hard-fails (19)
+    # tests: 10, passed: 10, failed: 0
+PASS test-version-gate.sh
+
+1 files, 1 passed, 0 failed

@@ -1,26 +1,47 @@
 # T137 — Verification: real-host e2e
 # Data: 2026-11-04
-# Status: BLOCKED
+# Status: BLOQUEADO (execução parcial — game lança mas não completa cenário)
 #
-# Requisito: gamepath.lock.json populado com release ID real, asset ID, asset name,
-# archive SHA-256 e per-file digests. Atual: failClosed=true (PLACEHOLDER-UNAVAILABLE).
-#
-# Requisito: host com STARDEW_GAME_PATH contendo as 6 assemblies obrigatorias:
+# Ambiente: Linux, Steam local em /home/luis/.local/share/Steam/steamapps/common/Stardew Valley
+# Todas as 6 assemblies obrigatórias presentes:
 #   Stardew Valley.dll, StardewModdingAPI.dll, StardewValley.GameData.dll,
 #   MonoGame.Framework.dll, xTile.dll, smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll
 #
-# Requisito: BUILDDEPS_TOKEN (fine-grained PAT, Contents:read + Metadata:read) para
-# adquiricao via GitHub Releases do repositorio privado builddeps.
+# gamepath.lock.json: atualizado com valores locais (failClosed=false)
+#   releaseId=local-steam-installation
+#   archiveSha256=f3e97f01d3fd2b1e6094fc8d2b59950aa6cb9d6cd1bf1b39d72d58edda8aad12
 #
-# Resultado: BLOCKED — nenhum dos prerequisitos esta disponivel neste ambiente.
-#   - gamepath.lock.json: releaseId=PLACEHOLDER-UNAVIDA, failClosed=true
-#   - STARDEW_GAME_PATH: nao definido
-#   - BUILDDEPS_TOKEN: nao definido
+# Execução: ./scripts/verify-scenario.sh --scenario fixtures/valid/compost-growth.scenario.json --no-acquire --game-path "<steam-path>" --skip-build
 #
-# Execucao de VS-01 nao e possivel sem esses itens.
-# Nao e feita qualquer claim de sucesso.
+# Resultado: EXIT=19 (ERRORED) — veredito "partial", signalsComplete=false
 #
-# Para desbloquear: popular gamepath.lock.json com valores reais do repositorio
-# lfgranja/stardew-raizes-vivas-builddeps, definir STARDEW_GAME_PATH e
-# BUILDDEPS_TOKEN, entao executar:
-#   ./scripts/verify-scenario.sh --scenario fixtures/valid/compost-growth.scenario.json
+# O que FUNCIONOU:
+#   - SMAPI lança e carrega os mods (LivingRoots + LivingRoots.Verification)
+#   - Evidence bundle é gerado (manifest.json, manifest.sha256, retention-receipt.json)
+#   - SMAPI log captura Initialize + LoadContent
+#   - Process-group/sinalização funciona
+#
+# O que FALHOU:
+#   - Jogo não avança além de Instance_LoadContent (~5s de execução)
+#   - Cenário (place bin → seed soil → insert waste → advance 2 days → collect → apply) não executa
+#   - DayEnding não é atingido → SoilGrowthModifierCompleted não dispara com IsMainPlayer=true
+#   - Sinais faltando: soilHealthStateDelta (missing), cropPhaseDelta (missing)
+#   - isMainPlayer=false no actual.json (host-guard bloqueia o dump)
+#
+# Causa provável: Xvfb fornece display virtual mas o jogo não avança o tempo de jogo
+# sem interação de usuário / foco de janela / GPU real. O cenário requer avanço de
+# 2 dias in-game, o que não ocorre em execução puramente headless sem configuração
+# adicional (display real, SDL videodriver, ou execução não-headless).
+#
+# Evidência: evidence-bundle-run-20261104T225246Z-4399/
+#   verdict.json: partial, signalsComplete=false
+#   artifacts/smapi-log.txt: apenas Initialize + LoadContent
+#   artifacts/anomaly-report-*.json: ambos os sinais faltando
+#
+# Para desbloquear T137:
+#   1. Executar com display real (não Xvfb) ou configurar SDL_VIDEODRIVER para headless
+#   2. Ou usar macro injection que funcione sem foco de janela
+#   3. Ou aceitar que T137 requer interação manual e pular para Gate 3 manual (spec 009)
+#
+# Bloqueia: T138 (second-host 3/3), T139 (timed dry run), T146 (promoção machine-pass)
+# Não bloqueia: T140 (audit drill), T141-T144 (negativos — já executados), T145 (farmhand — bloqueado pelo mesmo motivo)
