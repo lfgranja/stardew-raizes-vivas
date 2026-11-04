@@ -242,9 +242,10 @@ fi
 if declare -F version_gate_classify >/dev/null 2>&1 && [[ -n "$GAME_PATH" ]]; then
     local_man="$GAME_PATH/Mods/LivingRoots/manifest.json"
     [[ -f "$local_man" ]] || local_man="$REPO_ROOT/LivingRoots/manifest.json"
-    if ! version_gate_classify "$GAME_PATH" "$local_man" >/dev/null 2>&1; then
-        vg_rc=$?
-        (( vg_rc == 19 )) && exit 19
+    vg_rc=0
+    version_gate_classify "$GAME_PATH" "$local_man" >/dev/null 2>&1 || vg_rc=$?
+    if (( vg_rc == 19 )); then
+        exit 19
     fi
 fi
 
@@ -278,10 +279,11 @@ fi
 if declare -F launch_start >/dev/null 2>&1; then
     launch_start "$LAUNCHER" "$LOG_PATH" "$TIMEOUT" || { display_stop 2>/dev/null || true; exit 9; }
     if declare -F launch_wait_ready >/dev/null 2>&1; then
-        if ! launch_wait_ready "$LOG_PATH" "${LAUNCH_PID:-}" "$TIMEOUT"; then
-            rc=$?
+        rc=0
+        launch_wait_ready "$LOG_PATH" "${LAUNCH_PID:-}" "$TIMEOUT" || rc=$?
+        if (( rc != 0 )); then
             display_stop 2>/dev/null || true
-            exit $rc
+            exit "$rc"
         fi
     fi
 fi

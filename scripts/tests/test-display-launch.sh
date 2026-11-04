@@ -83,4 +83,32 @@ printf 'debug: stdin event received\n' > "$badlog"
 call_runner_func launch_assert_no_stdin_events "$badlog"
 assert_fn_code 19 "stdin event => 19"
 
+# ---------------------------------------------------------------------------
+# Orchestrator exit propagation: a launcher that exits without producing a
+# SMAPI log must surface launch_wait_ready's code (15), never 0. This pins the
+# false-pass where `if ! launch_wait_ready ...; then rc=$?` captured the
+# negated status and exited 0.
+# ---------------------------------------------------------------------------
+orch="$HARNESS_SANDBOX/orchestrator"
+mkdir -p "$orch"
+make_fake_game_dir "$orch/game"
+rm -f "$orch/game/Stardew Valley.dll"
+printf 'MZ\000\000' > "$orch/game/Stardew Valley.dll"
+printf '1.6.15' >> "$orch/game/Stardew Valley.dll"
+make_fake_mods "$orch/game/Mods"
+make_display_xvfb "$orch/xvfb"
+write_min_scenario "$orch/scenario.json"
+export RUNNER_XVFB="$orch/xvfb/Xvfb"
+run_verify --scenario "$orch/scenario.json" --game-path "$orch/game" --skip-build --no-acquire --timeout 1
+assert_verify_code 15 "launch failure propagates as exit 15, not 0"
+# The failure path must still stop the display; a bare `f; rc=$?` under
+# `set -e` would abort before display_stop and leak the Xvfb process.
+sleep 0.3
+if pgrep -f "$orch/xvfb/Xvfb" >/dev/null 2>&1; then
+    fail "launch failure stops the display" "Xvfb stub still running"
+else
+    pass "launch failure stops the display"
+fi
+unset RUNNER_XVFB
+
 finish_tests
