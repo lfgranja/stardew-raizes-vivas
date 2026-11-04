@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 2,
+  "scenarioId": "harmony-harvest-quality-soil-tier",
+  "featureSlug": "015-harmony-harvest-seam",
+  "testMdPath": "specs/015-harmony-harvest-seam/test.md",
+  "summary": "Fixture scenario: Harmony patch intercepts Crop.harvest and applies soil-tier-based harvest quality (Poor forces Quality=0, Healthy boosts +0.08 on p and +0.10 on ExtraHarvestChance, Moderate is byte-identical vanilla).",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.4.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": false
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health -10 5 10",
+      "description": "seed poor soil (health 10) on the target tile"
+    },
+    {
+      "kind": "macro",
+      "file": "macros/plant-parsnip.txt",
+      "description": "plant parsnip on the poor soil tile"
+    }
+  ],
+  "steps": [
+    {
+      "action": "sleep",
+      "target": "farm",
+      "days": 5
+    },
+    {
+      "action": "harvest",
+      "target": "-10,5"
+    },
+    {
+      "action": "dumpCropPhase",
+      "target": "farm"
+    },
+    {
+      "action": "observe",
+      "target": "-10,5"
+    }
+  ],
+  "thresholds": [
+    {
+      "signal": "soilHealthStateDelta",
+      "predicate": {
+        "op": "between",
+        "field": "soilHealth",
+        "min": 0,
+        "max": 34,
+        "tolerance": 0.0001,
+        "exclusiveMin": true,
+        "exclusiveMax": true
+      },
+      "description": "soil health stays in Poor interval (0, 34) on the target tile"
+    },
+    {
+      "signal": "smapiLog",
+      "predicate": {
+        "op": "unchanged",
+        "field": "elapsedMilliseconds",
+        "tolerance": 0
+      },
+      "description": "SMAPI log records patch activity for the harvest event"
+    }
+  ],
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "cropPhaseDelta",
+    "smapiLog"
+  ],
+  "timeoutSeconds": 300,
+  "inputs": {
+    "season": "spring",
+    "day": 5,
+    "weather": "sunny",
+    "money": 500
+  },
+  "rngSeed": 123456789,
+  "time": "2026-11-04T12:00:00Z",
+  "scenarioKind": "positive",
+  "expectedVerdict": "pass",
+  "determinism": {
+    "idempotent": true,
+    "declaredSources": []
+  }
+}
