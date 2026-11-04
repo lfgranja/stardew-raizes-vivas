@@ -259,8 +259,9 @@ signals_crop_phase_dump <dump_dir> <out.json> [timeout_seconds]
     and sidecar/field agreement, copies the dump to <out.json>. 0/19.
 
 signals_smapi_log_excerpt <log> <out.txt>
-    Extracts the elapsed-ms trace, the DayEnding/SoilGrowthModifierCompleted
-    marker, and the host-guard skip line when present. 0/19.
+    Copies the full SMAPI log into the bundle. It keeps the historical name,
+    but no longer filters: a three-pattern excerpt hid the T137 save-load
+    failure ("File does not exist") and made a live game look stalled. 0/19.
 
 signals_cross_check <dump.json> <save_after.json> <out.json>
     Independent channels must agree (locationsProcessed, per-tile phaseDays /

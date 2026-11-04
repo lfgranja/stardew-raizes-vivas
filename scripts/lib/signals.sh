@@ -87,11 +87,11 @@ signals_smapi_log_excerpt() {
     [[ $# -eq 2 ]] || return "$EXIT_USAGE_ERROR"
     local log="$1" out="$2"
     [[ -f "$log" ]] || return 19
-    {
-        grep -i "elapsed" "$log" 2>/dev/null || true
-        grep -i "SoilGrowthModifierCompleted\|DayEnding" "$log" 2>/dev/null || true
-        grep -i "not main player" "$log" 2>/dev/null || true
-    } > "$out"
+    # This used to keep only elapsed/DayEnding/host-guard lines. That filter
+    # turned a save-load failure into what looked like a five-second stall and
+    # cost a full investigation (T137), so the bundle now keeps the whole log.
+    # The function name is retained for contract compatibility.
+    cp -f "$log" "$out" 2>/dev/null || return 19
     return 0
 }
 
