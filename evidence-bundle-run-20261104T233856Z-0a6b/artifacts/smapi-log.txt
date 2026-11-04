@@ -1,0 +1,590 @@
+[19:38:58 INFO  SMAPI] SMAPI 4.5.2 with Stardew Valley 1.6.15 build 24356 on Unix 7.2.11.200
+[19:38:58 INFO  SMAPI] Mods go here: /home/luis/.local/share/Steam/steamapps/common/Stardew Valley/Mods
+[19:38:58 TRACE SMAPI] Log started at 2026-11-04T23:38:58 UTC
+[19:38:58 TRACE SMAPI] Loaded with custom settings: VerboseLogging: [lfgranja.LivingRoots]
+[19:39:09 WARN  SMAPI] Writing to the terminal is disabled because the --no-terminal argument was received. This usually means launching the terminal failed.
+[19:39:09 DEBUG SMAPI] Waiting for game to launch...
+[19:39:10 TRACE game] Instance_Initialize() finished, elapsed = '00:00:01.3778927'
+[19:39:11 TRACE SMAPI] Scanning for malicious files...
+[19:39:11 DEBUG SMAPI] Loading mod metadata...
+[19:39:11 DEBUG SMAPI] Loading mods...
+[19:39:11 TRACE SMAPI]    Console Commands (from Mods/ConsoleCommands/ConsoleCommands.dll, ID: SMAPI.ConsoleCommands, assembly version: 4.5.2)...
+[19:39:12 TRACE SMAPI]    Save Backup (from Mods/SaveBackup/SaveBackup.dll, ID: SMAPI.SaveBackup, assembly version: 4.5.2)...
+[19:39:12 TRACE SMAPI]       Detected direct console access (System.Console type) in assembly SaveBackup.dll.
+[19:39:12 TRACE SMAPI]    Stardew Valley - Living Roots (from Mods/LivingRoots/LivingRoots.dll, ID: lfgranja.LivingRoots, assembly version: 1.0.0)...
+[19:39:12 TRACE SMAPI]       Detected game patcher in assembly LivingRoots.dll.
+[19:39:12 TRACE SMAPI]    Stardew Valley - Living Roots (Verification) (from Mods/LivingRoots.Verification/LivingRoots.Verification.dll, ID: lfgranja.LivingRoots.Verification, assembly version: 1.0.0)...
+[19:39:12 TRACE SMAPI]       Loading assembly 'LivingRoots.Verification.dll'...
+[19:39:12 INFO  SMAPI] Loaded 4 mods:
+[19:39:12 INFO  SMAPI]    Console Commands 4.5.2 by SMAPI | Adds SMAPI console commands that let you manipulate the game.
+[19:39:12 INFO  SMAPI]    Save Backup 4.5.2 by SMAPI | Automatically backs up all your saves once per day into its folder.
+[19:39:12 INFO  SMAPI]    Stardew Valley - Living Roots 0.0.1 by lfgranja | Agroecological Expansion Pack for Stardew Valley
+[19:39:12 INFO  SMAPI]    Stardew Valley - Living Roots (Verification) 0.0.1 by lfgranja | Dev-only capture mod for headless verification of Living Roots
+
+[19:39:12 INFO  SMAPI]    Patched game code
+[19:39:12 INFO  SMAPI]    --------------------------------------------------
+[19:39:12 INFO  SMAPI]       These mods directly change the game code. They're more likely to cause errors or bugs in-game; if
+[19:39:12 INFO  SMAPI]       your game has issues, try removing these first. Otherwise you can ignore this warning.
+
+[19:39:12 INFO  SMAPI]       - Stardew Valley - Living Roots
+
+[19:39:12 TRACE SMAPI]    Direct console access
+[19:39:12 TRACE SMAPI]    --------------------------------------------------
+[19:39:12 TRACE SMAPI]       These mods access the SMAPI console window directly. This is more fragile, and their output may not
+[19:39:12 TRACE SMAPI]       be logged by SMAPI.
+
+[19:39:12 TRACE SMAPI]       - Save Backup
+
+[19:39:12 DEBUG SMAPI]    No update keys
+[19:39:12 DEBUG SMAPI]    --------------------------------------------------
+[19:39:12 DEBUG SMAPI]       These mods have no update keys in their manifest. SMAPI may not notify you about updates for these
+[19:39:12 DEBUG SMAPI]       mods. Consider notifying the mod authors about this problem.
+
+[19:39:12 DEBUG SMAPI]       - Stardew Valley - Living Roots
+[19:39:12 DEBUG SMAPI]       - Stardew Valley - Living Roots (Verification)
+
+[19:39:12 DEBUG SMAPI] Launching mods...
+[19:39:12 TRACE Save Backup] Already backed up today.
+[19:39:12 TRACE Stardew Valley - Living Roots] Living Roots: Harvest Harmony patch registered.
+[19:39:12 TRACE Stardew Valley - Living Roots] Events registered successfully.
+[19:39:12 TRACE SMAPI]    Found mod-provided API (LivingRoots.Services.LivingRootsModApi).
+[19:39:12 DEBUG SMAPI] Mods loaded and ready!
+[19:39:12 TRACE SMAPI] Checking for updates...
+[19:39:12 TRACE SMAPI] Stardew Valley - Living Roots edited Data/BigCraftables.
+[19:39:13 TRACE SMAPI] Stardew Valley - Living Roots edited Data/Objects.
+[19:39:13 TRACE SMAPI] Stardew Valley - Living Roots edited Data/CraftingRecipes.
+[19:39:13 TRACE SMAPI]    SMAPI okay.
+[19:39:13 TRACE SMAPI]    Checking for updates to 2 mods...
+[19:39:13 TRACE SMAPI]    All mods up to date.
+[19:39:14 TRACE game] setGameMode( 'titleScreenGameMode (0)' )
+[19:39:14 TRACE game] path '/tmp/tmp.qVytgOC0A0/lr-save-owFtOk/xdg/config/StardewValley/startup_preferences' did not exist and will be created
+[19:39:14 TRACE game] Instance_LoadContent() finished, elapsed = '00:00:03.3471481'
+[19:39:14 ERROR game] Oops! Steam achievements won't work because Steam isn't loaded. You can launch the game through Steam to fix that.
+[19:39:14 INFO  SMAPI] Type 'help' for help, or 'help <cmd>' for a command's usage
+[19:39:14 TRACE SMAPI]    Mod blacklist OK.
+[19:39:14 INFO  Stardew Valley - Living Roots] The 'Stardew Valley - Living Roots' mod was loaded successfully!
+[19:39:14 TRACE Stardew Valley - Living Roots] Console command 'lr_version' registered successfully.
+[19:39:14 TRACE game] gameMode was 'titleScreenGameMode (0)', set to 'loadingMode (6)'.
+[19:39:14 TRACE game] Window_ClientSizeChanged(); Window.ClientBounds={X:0 Y:0 Width:1280 Height:1024}
+[19:39:15 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (10, 8)
+[19:39:15 WARN  Stardew Valley - Living Roots] Error in screen-space visualization rendering.
+[19:39:15 TRACE Stardew Valley - Living Roots] Screen-space render exception details: System.InvalidOperationException (HResult: 0x80131509)
+[19:39:15 TRACE SMAPI] Game loader synchronizing...
+[19:39:15 TRACE game] getLoadEnumerator('farm-year1-day5')
+[19:39:15 TRACE SMAPI] Synchronizing 'Load_ReadSave' task...
+[19:39:23 TRACE SMAPI]    task complete.
+[19:39:23 TRACE SMAPI] Synchronizing 'Load_LoadForNewGame' task...
+[19:39:23 TRACE SMAPI] Stardew Valley - Living Roots edited Data/Machines.
+[19:39:23 TRACE game] Successfully loaded ContentHashes.json containing 3560 file(s);
+[19:39:23 TRACE game] EnsureManifestInitialized() finished, elapsed = '00:00:00.0345549'
+[19:39:24 TRACE SMAPI]    task complete.
+[19:39:25 TRACE SMAPI] Synchronizing 'Load_Farmer' task...
+[19:39:25 TRACE SMAPI]    task complete.
+[19:39:25 TRACE SMAPI] Synchronizing 'Load_Locations' task...
+[19:39:25 WARN  game] Ignored unknown location 'Custom_AuroraVineyardRefurbished' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_AuroraVineyardCellarRefurbished' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrandpasShedRuins' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrandpasShed' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_TownEast' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FakeEnchantedGrove' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FakeEnchantedGrove2' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_WillyRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_MarnieShed' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_AndyHouse' in save data, including NPC 'Andy'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_AndyCellar' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_SusanHouse' in save data, including NPC 'Susan'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_JenkinsHouse' in save data, including NPCs 'Olivia', 'Victor'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_OliviaCellar' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_SophiaHouse' in save data, including NPC 'Sophia'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_SophiaCellar' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_CrimsonBadlandsMap' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_MovieTheaterScreen_ClaireEvent' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_CastleVillage_DayEnd_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_AuroraVineyardPictureMap' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_StardustFarmPictureMap' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GaldoranVoid' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Claire_WarpRoom' in save data, including NPC 'Claire'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Martin_WarpRoom' in save data, including NPC 'Martin'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Camilla_WarpRoom' in save data, including NPC 'Camilla'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Alesia_WarpRoom' in save data, including NPC 'Alesia'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Isaac_WarpRoom' in save data, including NPC 'Isaac'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Lance_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Jadu_WarpRoom' in save data, including NPC 'Jadu'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Apples_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Peaches_WarpRoom' in save data, including NPC 'Peaches'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Charlie_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Morgan_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Scarlett_WarpRoom' in save data, including NPC 'ScarlettFake'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Sandy_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ApplesRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GunthersRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Countryside_BusStop_Bus' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Countryside_BusStop_NoBus' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Countryside_ClaireHouse' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ClaireHouse' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_JojaEmporium' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GuntherExpedition1' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GuntherExpedition2' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrampletonFields_Small' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_BusStop_NoBus' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_SakuraVineyardCottageInterior' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Highway' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Sawyer_WarpRoom' in save data, including NPC 'Sawyer'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Jolyne_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Edmund_WarpRoom' in save data, including NPC 'Edmund'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Gale_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Gertrude_WarpRoom' in save data, including NPC 'Gertrude'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Brock_WarpRoom' in save data, including NPC 'Brock'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Cordelia_WarpRoom' in save data, including NPC 'Cordelia'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Freya_WarpRoom' in save data, including NPC 'Freya'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Cassandra_WarpRoom' in save data, including NPC 'Cassandra'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Emin_WarpRoom' in save data, including NPC 'Emin'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Brianna_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Drake_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_HighlandsDwarf_WarpRoom' in save data, including NPC 'HighlandsDwarf'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_MorrisHouse' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ForestWestOld' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_LanceSecretWarp' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Krobus_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_VoidDen' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ScarlettHouse' in save data, including NPCs 'HankSVE', 'Treyvon'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_HanksGarage' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_WoodsCompat' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_VictorSummit' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_AuroraVineyard' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FrontierFarm_HiddenCave' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FrontierFarm_UndergroundTunnel' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FerngillRepublicFrontier_HotSpring' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FerngillRepublicFrontier_Cave' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_MinecartCave' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FarmCliff' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrandpasGrove' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_DayEnd_WarpRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Atlantis' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_DesertRailway' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_EnchantedGrove' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FirstSlashGuestRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrampletonCoast' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrampletonTrainStation' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrenvilleFalls' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_HighlandsCavernPrison' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_HighlandsCavernPrisonEvent' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_IridiumQuarry' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_JojaPetStore' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_SakuraVineyard' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_SakuraVineyardCellar' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_SakuraVineyardCottage' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_SakuraVineyardDiningRoom' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_SpriteSpringCave' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_TreasureCave' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Void' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ZCCC_Entrance' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ZCCC_FoodCourt' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ZCCC_MainHall' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ZCCC_Stage' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ZCCC_VendorFloor' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ZuzuCityStreet' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_HighlandsOutpost' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_CastleVillageOutpost' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FirstSlashGuild' in save data, including NPCs 'Brianna', 'Drake', 'Jolyne'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FirstSlashHallway' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_WizardBasement' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ZCCC_Courtyard' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_SVESummit' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_AdventurerSummit' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_BlueMoonVineyard' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ForbiddenMaze' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_HenchmanBackyard' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_HenchmanHouse' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_DinoIsland_South' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_DinoIsland_North' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_CrimsonBadlands' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FableReef' in save data, including NPC 'Gale'.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrandpasShedGreenhouse' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ForestWest' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Garden' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrampletonSuburbs' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrampletonSuburbsTrainStation' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrampletonSuburbsOutskirts' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GoGoatRanch' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GoGoatRanch_Interior' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_GrandpasShedOutside' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_Highlands' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_HighlandsCavern' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_DiamondCavern' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_JunimoWoods' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_MorrisProperty' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_ShearwaterBridge' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_SpriteSpring2' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_FerngillRepublicFrontier' in save data.
+[19:39:25 WARN  game] Ignored unknown location 'Custom_DeepCave' in save data.
+[19:39:25 WARN  game] NPC MorrisTod can't load portraits from 'Portraits/MorrisTod': Microsoft.Xna.Framework.Content.ContentLoadException: The content file was not found.
+ ---> System.IO.FileNotFoundException: Could not find file '/home/luis/.local/share/Steam/steamapps/common/Stardew Valley/Content/Portraits/MorrisTod.xnb'.
+File name: '/home/luis/.local/share/Steam/steamapps/common/Stardew Valley/Content/Portraits/MorrisTod.xnb'
+   at Interop.ThrowExceptionForIoErrno(ErrorInfo errorInfo, String path, Boolean isDirectory, Func`2 errorRewriter)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String path, OpenFlags flags, Int32 mode)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)
+   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)
+   at Microsoft.Xna.Framework.TitleContainer.PlatformOpenStream(String safeName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Platform\TitleContainer.Desktop.cs:line 29
+   at Microsoft.Xna.Framework.TitleContainer.OpenStream(String name) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\TitleContainer.cs:line 37
+   at Microsoft.Xna.Framework.Content.ContentManager.OpenStream(String assetName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 272
+   --- End of inner exception stack trace ---
+   at Microsoft.Xna.Framework.Content.ContentManager.OpenStream(String assetName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 289
+   at Microsoft.Xna.Framework.Content.ContentManager.ReadAsset[T](String assetName, Action`1 recordDisposableObject) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 319
+   at Microsoft.Xna.Framework.Content.ContentManager.Load[T](String assetName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 255
+   at StardewModdingAPI.Framework.ContentManagers.BaseContentManager.RawLoad[T](IAssetName assetName, Boolean useCache) in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/ContentManagers/BaseContentManager.cs:line 336
+   at StardewModdingAPI.Framework.ContentManagers.GameContentManager.<>c__DisplayClass6_0`1.<LoadExact>b__0() in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/ContentManagers/GameContentManager.cs:line 127
+   at StardewModdingAPI.Framework.Utilities.ContextHash`1.Track[TResult](T key, Func`1 action) in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/Utilities/ContextHash.cs:line 53
+   at StardewModdingAPI.Framework.ContentManagers.GameContentManager.LoadExact[T](IAssetName assetName, Boolean useCache)
+   at StardewModdingAPI.Framework.ContentManagers.BaseContentManager.LoadLocalized[T](IAssetName assetName, LanguageCode language, Boolean useCache) in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/ContentManagers/BaseContentManager.cs:line 154
+   at StardewValley.NPC.TryLoadPortraits(String assetName, String& error, LocalizedContentManager content) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\Farmer\Farmer\NPC.cs:line 1058.
+[19:39:26 WARN  game] NPC GuntherSilvian can't load portraits from 'Portraits/GuntherSilvian': Microsoft.Xna.Framework.Content.ContentLoadException: The content file was not found.
+ ---> System.IO.FileNotFoundException: Could not find file '/home/luis/.local/share/Steam/steamapps/common/Stardew Valley/Content/Portraits/GuntherSilvian.xnb'.
+File name: '/home/luis/.local/share/Steam/steamapps/common/Stardew Valley/Content/Portraits/GuntherSilvian.xnb'
+   at Interop.ThrowExceptionForIoErrno(ErrorInfo errorInfo, String path, Boolean isDirectory, Func`2 errorRewriter)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String path, OpenFlags flags, Int32 mode)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)
+   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)
+   at Microsoft.Xna.Framework.TitleContainer.PlatformOpenStream(String safeName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Platform\TitleContainer.Desktop.cs:line 29
+   at Microsoft.Xna.Framework.TitleContainer.OpenStream(String name) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\TitleContainer.cs:line 37
+   at Microsoft.Xna.Framework.Content.ContentManager.OpenStream(String assetName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 272
+   --- End of inner exception stack trace ---
+   at Microsoft.Xna.Framework.Content.ContentManager.OpenStream(String assetName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 289
+   at Microsoft.Xna.Framework.Content.ContentManager.ReadAsset[T](String assetName, Action`1 recordDisposableObject) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 319
+   at Microsoft.Xna.Framework.Content.ContentManager.Load[T](String assetName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 255
+   at StardewModdingAPI.Framework.ContentManagers.BaseContentManager.RawLoad[T](IAssetName assetName, Boolean useCache) in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/ContentManagers/BaseContentManager.cs:line 336
+   at StardewModdingAPI.Framework.ContentManagers.GameContentManager.<>c__DisplayClass6_0`1.<LoadExact>b__0() in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/ContentManagers/GameContentManager.cs:line 127
+   at StardewModdingAPI.Framework.Utilities.ContextHash`1.Track[TResult](T key, Func`1 action) in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/Utilities/ContextHash.cs:line 53
+   at StardewModdingAPI.Framework.ContentManagers.GameContentManager.LoadExact[T](IAssetName assetName, Boolean useCache)
+   at StardewModdingAPI.Framework.ContentManagers.BaseContentManager.LoadLocalized[T](IAssetName assetName, LanguageCode language, Boolean useCache) in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/ContentManagers/BaseContentManager.cs:line 154
+   at StardewValley.NPC.TryLoadPortraits(String assetName, String& error, LocalizedContentManager content) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\Farmer\Farmer\NPC.cs:line 1058.
+[19:39:26 WARN  game] NPC MarlonFay can't load portraits from 'Portraits/MarlonFay': Microsoft.Xna.Framework.Content.ContentLoadException: The content file was not found.
+ ---> System.IO.FileNotFoundException: Could not find file '/home/luis/.local/share/Steam/steamapps/common/Stardew Valley/Content/Portraits/MarlonFay.xnb'.
+File name: '/home/luis/.local/share/Steam/steamapps/common/Stardew Valley/Content/Portraits/MarlonFay.xnb'
+   at Interop.ThrowExceptionForIoErrno(ErrorInfo errorInfo, String path, Boolean isDirectory, Func`2 errorRewriter)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String path, OpenFlags flags, Int32 mode)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)
+   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)
+   at Microsoft.Xna.Framework.TitleContainer.PlatformOpenStream(String safeName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Platform\TitleContainer.Desktop.cs:line 29
+   at Microsoft.Xna.Framework.TitleContainer.OpenStream(String name) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\TitleContainer.cs:line 37
+   at Microsoft.Xna.Framework.Content.ContentManager.OpenStream(String assetName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 272
+   --- End of inner exception stack trace ---
+   at Microsoft.Xna.Framework.Content.ContentManager.OpenStream(String assetName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 289
+   at Microsoft.Xna.Framework.Content.ContentManager.ReadAsset[T](String assetName, Action`1 recordDisposableObject) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 319
+   at Microsoft.Xna.Framework.Content.ContentManager.Load[T](String assetName) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\MonoGame.Desktop\MonoGame.Framework\Content\ContentManager.cs:line 255
+   at StardewModdingAPI.Framework.ContentManagers.BaseContentManager.RawLoad[T](IAssetName assetName, Boolean useCache) in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/ContentManagers/BaseContentManager.cs:line 336
+   at StardewModdingAPI.Framework.ContentManagers.GameContentManager.<>c__DisplayClass6_0`1.<LoadExact>b__0() in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/ContentManagers/GameContentManager.cs:line 127
+   at StardewModdingAPI.Framework.Utilities.ContextHash`1.Track[TResult](T key, Func`1 action) in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/Utilities/ContextHash.cs:line 53
+   at StardewModdingAPI.Framework.ContentManagers.GameContentManager.LoadExact[T](IAssetName assetName, Boolean useCache)
+   at StardewModdingAPI.Framework.ContentManagers.BaseContentManager.LoadLocalized[T](IAssetName assetName, LanguageCode language, Boolean useCache) in /home/runner/work/SMAPI/SMAPI/src/SMAPI/Framework/ContentManagers/BaseContentManager.cs:line 154
+   at StardewValley.NPC.TryLoadPortraits(String assetName, String& error, LocalizedContentManager content) in D:\GitlabRunner\builds\Gq5qA5P4\1\ConcernedApe\stardewvalley\Farmer\Farmer\NPC.cs:line 1058.
+[19:39:26 TRACE SMAPI]    task complete.
+[19:39:26 TRACE game] gameMode was 'loadingMode (6)', set to 'playingGameMode (3)'.
+[19:39:26 WARN  game] Removed broken NPC 'MorrisTod' in Town: villager with no data or sprites.
+[19:39:26 WARN  game] Removed broken NPC 'GuntherSilvian' in ArchaeologyHouse: villager with no data or sprites.
+[19:39:26 WARN  game] Removed broken NPC 'MarlonFay' in AdventureGuild: villager with no data or sprites.
+[19:39:26 TRACE game] getLoadEnumerator() exited, elapsed = '00:00:11.2697890'
+[19:39:26 TRACE game] setGameMode( 'playingGameMode (3)' )
+[19:39:26 TRACE SMAPI] Game loader done.
+[19:39:27 TRACE SMAPI] Context: loaded save 'farmyear1day5_421179919', starting spring 1 Y1, locale set to . Single-player.
+[19:39:27 TRACE Stardew Valley - Living Roots] Pruned orphan bin record at Farm:60,15 (no matching world object).
+[19:39:27 TRACE Stardew Valley - Living Roots] Loaded composting bin data for save 'farmyear1day5_421179919'.
+[19:39:27 TRACE Stardew Valley - Living Roots] Soil health data loaded successfully.
+[19:39:27 TRACE Stardew Valley - Living Roots (Verification)] Accessed mod-provided API (LivingRoots.Services.LivingRootsModApi) for Stardew Valley - Living Roots.
+[19:39:27 INFO  Stardew Valley - Living Roots (Verification)] verification: Farm map 80x65.
+[19:39:27 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in FarmHouse, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:27 TRACE Stardew Valley - Living Roots] SoilDecay: Greenhouse exempt from decay.
+[19:39:27 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in Farm, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:27 TRACE game] Window_ClientSizeChanged(); Window.ClientBounds={X:0 Y:0 Width:1280 Height:1024}
+[19:39:28 TRACE Stardew Valley - Living Roots] Saved data for key 'visualization_config_modfolder'.
+[19:39:28 TRACE Stardew Valley - Living Roots] Overlay renderer cache invalidated.
+[19:39:28 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:28 TRACE Stardew Valley - Living Roots] Overlay renderer cache invalidated.
+[19:39:28 TRACE Stardew Valley - Living Roots] Bin at (60, 15): Empty → Processing, item: (O)24
+[19:39:28 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:28 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:28 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:28 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 1 ms (location=FarmHouse).
+[19:39:28 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 0 ms (location=Greenhouse).
+[19:39:28 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 13 ms (location=Farm).
+[19:39:28 TRACE SMAPI] Synchronizing 'NewDay' task...
+[19:39:30 TRACE SMAPI]    task complete.
+[19:39:30 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:30 TRACE SMAPI] Context: before save.
+[19:39:30 TRACE Stardew Valley - Living Roots] Saved data for key 'soil_health_data_farmyear1day5_421179919'.
+[19:39:30 TRACE Stardew Valley - Living Roots] Soil health data saved for 'farmyear1day5_421179919'
+[19:39:30 TRACE Stardew Valley - Living Roots] Saved data for key 'composting_bins_farmyear1day5_421179919'.
+[19:39:30 TRACE Stardew Valley - Living Roots] Saved composting bin data for save 'farmyear1day5_421179919'.
+[19:39:30 TRACE Stardew Valley - Living Roots] Soil health data saved successfully.
+[19:39:30 TRACE game] SaveGame.Save() called.
+[19:39:30 TRACE SMAPI] Synchronizing 'Save' task...
+[19:39:30 TRACE game] Saving without compression...
+[19:39:33 TRACE SMAPI]    task complete.
+[19:39:33 TRACE game] SaveGame.Save() completed without exceptions.
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:33 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE SMAPI] Context: after save, starting spring 2 Y1.
+[19:39:34 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in FarmHouse, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:34 TRACE Stardew Valley - Living Roots] SoilDecay: Greenhouse exempt from decay.
+[19:39:34 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in Farm, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:34 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 0 ms (location=FarmHouse).
+[19:39:34 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 0 ms (location=Greenhouse).
+[19:39:34 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 1 ms (location=Farm).
+[19:39:34 TRACE SMAPI] Synchronizing 'NewDay' task...
+[19:39:36 TRACE SMAPI]    task complete.
+[19:39:36 TRACE SMAPI] Context: before save.
+[19:39:36 TRACE Stardew Valley - Living Roots] Saved data for key 'soil_health_data_farmyear1day5_421179919'.
+[19:39:36 TRACE Stardew Valley - Living Roots] Soil health data saved for 'farmyear1day5_421179919'
+[19:39:36 TRACE Stardew Valley - Living Roots] Saved data for key 'composting_bins_farmyear1day5_421179919'.
+[19:39:36 TRACE Stardew Valley - Living Roots] Saved composting bin data for save 'farmyear1day5_421179919'.
+[19:39:36 TRACE Stardew Valley - Living Roots] Soil health data saved successfully.
+[19:39:36 TRACE game] SaveGame.Save() called.
+[19:39:36 TRACE SMAPI] Synchronizing 'Save' task...
+[19:39:36 TRACE game] Saving without compression...
+[19:39:36 TRACE SMAPI]    task complete.
+[19:39:36 TRACE game] SaveGame.Save() completed without exceptions.
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:36 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE SMAPI] Context: after save, starting spring 3 Y1.
+[19:39:37 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in FarmHouse, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:37 TRACE Stardew Valley - Living Roots] SoilDecay: Greenhouse exempt from decay.
+[19:39:37 TRACE Stardew Valley - Living Roots] Bin at (60, 15): Processing → Ready
+[19:39:37 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in Farm, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:37 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:38 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:38 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:38 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:38 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:38 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:38 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:38 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 0 ms (location=FarmHouse).
+[19:39:38 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 0 ms (location=Greenhouse).
+[19:39:38 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 1 ms (location=Farm).
+[19:39:38 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:38 TRACE SMAPI] Synchronizing 'NewDay' task...
+[19:39:38 TRACE SMAPI]    task complete.
+[19:39:38 TRACE SMAPI] Context: before save.
+[19:39:38 TRACE Stardew Valley - Living Roots] Saved data for key 'soil_health_data_farmyear1day5_421179919'.
+[19:39:38 TRACE Stardew Valley - Living Roots] Soil health data saved for 'farmyear1day5_421179919'
+[19:39:38 TRACE Stardew Valley - Living Roots] Saved data for key 'composting_bins_farmyear1day5_421179919'.
+[19:39:38 TRACE Stardew Valley - Living Roots] Saved composting bin data for save 'farmyear1day5_421179919'.
+[19:39:38 TRACE Stardew Valley - Living Roots] Soil health data saved successfully.
+[19:39:39 TRACE game] SaveGame.Save() called.
+[19:39:39 TRACE SMAPI] Synchronizing 'Save' task...
+[19:39:39 TRACE game] Saving without compression...
+[19:39:39 TRACE SMAPI]    task complete.
+[19:39:39 TRACE game] SaveGame.Save() completed without exceptions.
+[19:39:39 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:39 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:39 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:39 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:39 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:39 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:39 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:39 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:39 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:39 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:39 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE SMAPI] Context: after save, starting spring 4 Y1.
+[19:39:40 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in FarmHouse, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:40 TRACE Stardew Valley - Living Roots] SoilDecay: Greenhouse exempt from decay.
+[19:39:40 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in Farm, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:40 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:41 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:41 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:41 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:41 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:41 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 0 ms (location=FarmHouse).
+[19:39:41 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 0 ms (location=Greenhouse).
+[19:39:41 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 1 ms (location=Farm).
+[19:39:41 TRACE SMAPI] Synchronizing 'NewDay' task...
+[19:39:42 TRACE SMAPI]    task complete.
+[19:39:42 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:42 TRACE SMAPI] Context: before save.
+[19:39:42 TRACE Stardew Valley - Living Roots] Saved data for key 'soil_health_data_farmyear1day5_421179919'.
+[19:39:42 TRACE Stardew Valley - Living Roots] Soil health data saved for 'farmyear1day5_421179919'
+[19:39:42 TRACE Stardew Valley - Living Roots] Saved data for key 'composting_bins_farmyear1day5_421179919'.
+[19:39:42 TRACE Stardew Valley - Living Roots] Saved composting bin data for save 'farmyear1day5_421179919'.
+[19:39:42 TRACE Stardew Valley - Living Roots] Soil health data saved successfully.
+[19:39:42 TRACE game] SaveGame.Save() called.
+[19:39:42 TRACE SMAPI] Synchronizing 'Save' task...
+[19:39:42 TRACE game] Saving without compression...
+[19:39:42 TRACE SMAPI]    task complete.
+[19:39:42 TRACE game] SaveGame.Save() completed without exceptions.
+[19:39:42 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:42 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:43 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE SMAPI] Context: after save, starting spring 5 Y1.
+[19:39:44 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in FarmHouse, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:44 TRACE Stardew Valley - Living Roots] SoilDecay: Greenhouse exempt from decay.
+[19:39:44 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in Farm, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:44 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:45 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 0 ms (location=FarmHouse).
+[19:39:45 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 0 ms (location=Greenhouse).
+[19:39:45 TRACE Stardew Valley - Living Roots] Soil growth modifier elapsed: 1 ms (location=Farm).
+[19:39:45 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:45 TRACE SMAPI] Synchronizing 'NewDay' task...
+[19:39:46 TRACE SMAPI]    task complete.
+[19:39:46 TRACE SMAPI] Context: before save.
+[19:39:46 TRACE Stardew Valley - Living Roots] Saved data for key 'soil_health_data_farmyear1day5_421179919'.
+[19:39:46 TRACE Stardew Valley - Living Roots] Soil health data saved for 'farmyear1day5_421179919'
+[19:39:46 TRACE Stardew Valley - Living Roots] Saved data for key 'composting_bins_farmyear1day5_421179919'.
+[19:39:46 TRACE Stardew Valley - Living Roots] Saved composting bin data for save 'farmyear1day5_421179919'.
+[19:39:46 TRACE Stardew Valley - Living Roots] Soil health data saved successfully.
+[19:39:46 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:46 TRACE game] SaveGame.Save() called.
+[19:39:46 TRACE SMAPI] Synchronizing 'Save' task...
+[19:39:46 TRACE game] Saving without compression...
+[19:39:46 TRACE SMAPI]    task complete.
+[19:39:46 TRACE game] SaveGame.Save() completed without exceptions.
+[19:39:46 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:46 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:46 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:46 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:46 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:46 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:46 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE SMAPI] Context: after save, starting spring 6 Y1.
+[19:39:47 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in FarmHouse, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:47 TRACE Stardew Valley - Living Roots] SoilDecay: Greenhouse exempt from decay.
+[19:39:47 TRACE Stardew Valley - Living Roots] SoilDecay: Processed 0 bare tiles in Farm, total health lost: 0.0, season: spring, multiplier: 0.5, decayAmount: 1.0
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:47 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:48 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:49 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
+[19:39:49 TRACE Stardew Valley - Living Roots] Tooltip unknown for tile (6, 6)
