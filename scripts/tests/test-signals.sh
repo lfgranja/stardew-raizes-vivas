@@ -83,4 +83,34 @@ call_runner_func signals_all_present "$adir2"
 # function may expect specific filenames; accept 0/1
 pass "signals_all_present exercised"
 
+# signals_capture: locate the mod's dumps through session.json and copy the
+# three mandatory artifacts into the bundle. The before capture must survive
+# so the multiplier predicate can be re-evaluated later.
+cap_dir="$HARNESS_SANDBOX/capture-injection"
+cap_dump="$cap_dir/dumps"
+mkdir -p "$cap_dump"
+printf '{"Farm":{"60,15":10}}\n' > "$cap_dump/soil_health_before.json"
+printf '{"Farm":{"60,15":10}}\n' > "$cap_dump/soil_health_after.json"
+make_fake_crop_dump "$cap_dump" "before" true
+make_fake_crop_dump "$cap_dump" "after" true
+cap_log="$HARNESS_SANDBOX/capture-smapi.log"
+make_fake_smaapi_log "$cap_log" elapsed
+python3 - "$cap_dir/session.json" "$cap_dump" "$cap_log" <<'PY'
+import json, sys
+json.dump({"dumpDir": sys.argv[2], "smapiLogPath": sys.argv[3]}, open(sys.argv[1], "w"))
+PY
+cap_scn="$HARNESS_SANDBOX/capture.scenario.json"
+write_min_scenario "$cap_scn"
+cap_bundle="$HARNESS_SANDBOX/capture-bundle"
+RUNNER_INJECTION_DIR="$cap_dir" RUN_ID="run-capture" RUNNER_SMAPI_LOG="$cap_log" \
+    call_runner_func signals_capture "$cap_bundle" "$cap_scn"
+assert_fn_code 0 "signals_capture returns 0"
+for artifact in soil-health-before-after.json crop-phase-dump.json smapi-log.txt crop-phase-before.json soil-health-before.json soil-health-after.json; do
+    if [[ -s "$cap_bundle/artifacts/$artifact" ]]; then
+        pass "signals_capture wrote $artifact"
+    else
+        fail "signals_capture $artifact" "missing"
+    fi
+done
+
 finish_tests

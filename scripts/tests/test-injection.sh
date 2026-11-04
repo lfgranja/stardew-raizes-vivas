@@ -96,6 +96,38 @@ grep -q '^lr_plant_crop ' "$step_q" && fail "steps phase leak" "init leaked" || 
 call_runner_func injection_build_queue "$phase_scn" "$HARNESS_SANDBOX/bad.queue" bogus
 assert_fn_code 14 "unknown phase exits 14"
 
+# injection_run: write the session + generation-1 queue and wait for the mod
+# ack. A fake consumer writes the ack as soon as the queue appears; this pins
+# the orchestration contract (no stdin, before dump after init, steps after).
+run_dir="$HARNESS_SANDBOX/run-injection"
+mkdir -p "$run_dir"
+(
+    for _ in $(seq 1 100); do
+        if [[ -f "$run_dir/queue-1.txt" ]]; then
+            printf '{"ok":true,"generation":1}\n' > "$run_dir/ack-1.json"
+            exit 0
+        fi
+        sleep 0.05
+    done
+) &
+acker_pid=$!
+RUNNER_INJECTION_DIR="$run_dir" RUNNER_SAVE_ID="runner-self-test" RUN_ID="run-injection-test" \
+    RUNNER_INJECTION_TIMEOUT=10 call_runner_func injection_run "$phase_scn"
+wait "$acker_pid" 2>/dev/null || true
+assert_fn_code 0 "injection_run waits for the mod ack"
+grep -q '^lr_plant_crop ' "$run_dir/queue-1.txt" && pass "injection_run includes init" || fail "injection_run init" "missing plant"
+grep -q '^lr_dump_crop_phase before$' "$run_dir/queue-1.txt" && pass "injection_run captures before after init" || fail "injection_run before" "missing before dump"
+grep -q '^lr_insert_waste ' "$run_dir/queue-1.txt" && pass "injection_run includes steps" || fail "injection_run steps" "missing insert"
+[[ -f "$run_dir/session.json" ]] && pass "injection_run writes session" || fail "injection_run session" "missing"
+python3 - "$run_dir/queue-1.txt" <<'PY' && pass "injection_run orders init before before-dump before steps" || fail "injection_run order" "wrong order"
+import sys
+lines = [l.strip() for l in open(sys.argv[1], encoding="utf-8") if l.strip()]
+init = lines.index("lr_plant_crop -10 5 LivingRoots.Verification.LongPhaseCrop")
+before = lines.index("lr_dump_crop_phase before")
+step = lines.index("lr_insert_waste -10 5 24 1")
+sys.exit(0 if init < before < step else 1)
+PY
+
 # host atomic lock / farmhand refusal
 # injection_seed signature: <location> <tile> <item_id> <count>
 # farmhand refusal is governed by playerRole; function checks global PLAYER_ROLE or arg? contract says returns 21 when playerRole is farmhand.
