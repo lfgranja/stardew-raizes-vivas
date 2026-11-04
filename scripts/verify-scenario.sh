@@ -310,6 +310,11 @@ fi
 trap 'display_stop 2>/dev/null || true; cleanup_run 2>/dev/null || true' EXIT
 
 # launch
+# The verification mod reads this from the game process environment at Entry.
+# injection_run also exports it, but that happens after the process started, so
+# the value must be in the launcher's environment before launch_start.
+export RUNNER_INJECTION_DIR="${RUNNER_INJECTION_DIR:-$RUNNER_RUN_ROOT/injection}"
+mkdir -p "$RUNNER_INJECTION_DIR" 2>/dev/null || true
 LAUNCHER="${RUNNER_LAUNCHER:-${GAME_PATH:+$GAME_PATH/StardewModdingAPI}}"
 LOG_PATH="$RUNNER_SMAPI_LOG"
 mkdir -p "$(dirname "$LOG_PATH")" 2>/dev/null || true
@@ -329,14 +334,20 @@ if declare -F launch_start >/dev/null 2>&1; then
     fi
 fi
 
-# inject
-if declare -F injection_run >/dev/null 2>&1; then
-    injection_run "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || true
+# inject: direct call, no `declare -F` escape hatch. A queue that the mod never
+# acknowledges is an errored run, not a launch that quietly did nothing.
+RUN_EXIT=0
+inj_rc=0
+injection_run "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || inj_rc=$?
+if (( inj_rc != 0 )); then
+    RUN_EXIT="$EXIT_ERRORED"
 fi
 
 # capture/signals
-if declare -F signals_capture >/dev/null 2>&1; then
-    signals_capture "$BUNDLE_DIR" "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || true
+sigcap_rc=0
+signals_capture "$BUNDLE_DIR" "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || sigcap_rc=$?
+if (( sigcap_rc != 0 )); then
+    RUN_EXIT="$EXIT_ERRORED"
 fi
 
 # verdict gate: the three mandatory signals ARE the evidence. When any is
@@ -344,18 +355,18 @@ fi
 # (FR-011). This is what stops a launched-but-uncaptured run exiting 0 with an
 # empty artifacts/ directory. `--ignore-exit-code` is deliberately not applied:
 # demoting an incomplete signal set would recreate the false pass.
-RUN_EXIT=0
-if declare -F signals_require_expected_signals >/dev/null 2>&1; then
-    sig_rc=0
-    signals_require_expected_signals "$BUNDLE_DIR" "$RUN_ID" "${RUNNER_QUARANTINE_OWNER:-runner}" >/dev/null 2>&1 || sig_rc=$?
-    if (( sig_rc != 0 )); then
-        RUN_EXIT="$EXIT_ERRORED"
-    fi
+sig_rc=0
+signals_require_expected_signals "$BUNDLE_DIR" "$RUN_ID" "${RUNNER_QUARANTINE_OWNER:-runner}" >/dev/null 2>&1 || sig_rc=$?
+if (( sig_rc != 0 )); then
+    RUN_EXIT="$EXIT_ERRORED"
 fi
 
-# evaluate
-if declare -F verdict_evaluate >/dev/null 2>&1; then
-    verdict_evaluate "$BUNDLE_DIR" "${SCENARIO_LIST[@]}" >/dev/null 2>&1 || true
+# evaluate: thresholds are judged against the captured artifacts. The wrapper
+# keeps the pure 5-argument verdict_evaluate unchanged.
+verdict_rc=0
+verdict_out="$(verdict_evaluate_bundle "$BUNDLE_DIR" "${SCENARIO_LIST[@]}" 2>/dev/null)" || verdict_rc=$?
+if (( verdict_rc != 0 )); then
+    RUN_EXIT="$verdict_rc"
 fi
 
 # evidence
@@ -410,9 +421,12 @@ PY
     fi
 done
 
-# cleanup
-if declare -F quit_run >/dev/null 2>&1; then
-    quit_run >/dev/null 2>&1 || true
+# clean quit: direct call. The backstop path records cleanQuit=false instead of
+# pretending the run was clean.
+quit_rc=0
+quit_run >/dev/null 2>&1 || quit_rc=$?
+if (( quit_rc != 0 && RUN_EXIT == 0 )); then
+    RUN_EXIT="$quit_rc"
 fi
 display_stop 2>/dev/null || true
 trap - EXIT

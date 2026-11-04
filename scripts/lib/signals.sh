@@ -52,10 +52,16 @@ PY
 signals_crop_phase_dump() {
     [[ $# -ge 2 ]] || return "$EXIT_USAGE_ERROR"
     local dump_dir="$1" out="$2" timeout="${3:-5}"
-    # wait for *.json.done
+    # Wait for a completed dump. Prefer the explicit `after` generation: the
+    # queue writes a `before` dump first, and `find | head -1` used to pick
+    # whichever inode happened to sort first, so the captured signal could be
+    # the pre-run crop state.
     local i=0 found=""
     while (( i < timeout*2+1 )); do
-        found="$(find "$dump_dir" -maxdepth 1 -name '*.json.done' 2>/dev/null | head -1)"
+        found="$(find "$dump_dir" -maxdepth 1 -name 'crop_phase_dump_after.json.done' 2>/dev/null | head -1)"
+        if [[ -z "$found" ]]; then
+            found="$(find "$dump_dir" -maxdepth 1 -name '*.json.done' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-)"
+        fi
         [[ -n "$found" ]] && break
         sleep 0.2
         i=$((i+1))
@@ -104,6 +110,11 @@ except Exception as e:
     with open(sys.argv[3],"w") as f:
         json.dump(rec,f)
     sys.exit(1)
+# The persisted mod data is wrapped in {"LocationHealthData": {loc: {tile: v}}}.
+# Unwrap it before comparing, otherwise every tile looks absent and the
+# cross-check reports agreement without actually checking anything.
+if isinstance(s, dict) and isinstance(s.get("LocationHealthData"), dict):
+    s = s["LocationHealthData"]
 rec={"agree":False,"divergences":[]}
 try:
     lp=d.get("locationsProcessed")
@@ -171,11 +182,14 @@ signals_all_present() {
     local bundle="$1"
     local a="$bundle/artifacts"
     [[ -d "$a" ]] || return 1
-    local count=0
-    for f in "$a"/*; do
-        [[ -f "$f" ]] && [[ -s "$f" ]] && count=$((count+1))
-    done
-    if (( count >= 3 )); then return 0; else return 1; fi
+    # Exact artifact names, not "any three non-empty files". The anomaly
+    # reports live in the same directory and their filenames contain the
+    # signal names, so a count-based check reported a run missing all three
+    # signals as complete once the anomalies had been written.
+    [[ -s "$a/soil-health-before-after.json" ]] || return 1
+    [[ -s "$a/crop-phase-dump.json" ]] || return 1
+    [[ -s "$a/smapi-log.txt" ]] || return 1
+    return 0
 }
 
 # signals_require_expected_signals <bundle_dir> <runId> <owner>
@@ -187,36 +201,21 @@ signals_require_expected_signals() {
     local a="$bundle/artifacts"
     mkdir -p "$a"
 
-    local soil_ok=0 crop_ok=0 smapi_ok=0
-    # look for soil/delta related
-    shopt -s nullglob
-    local files=("$a"/*)
-    shopt -u nullglob
-    for f in "${files[@]:-}"; do
-        [[ -s "$f" ]] || continue
-        local base
-        base="$(basename "$f" | tr '[:upper:]' '[:lower:]')"
-        if [[ "$base" == *soil* ]] || [[ "$base" == *delta* ]]; then
-            soil_ok=1
-        fi
-        if [[ "$base" == *crop* ]] || [[ "$base" == *phase* ]] || [[ "$base" == *dump* ]]; then
-            crop_ok=1
-        fi
-        if [[ "$base" == *smapi* ]] || [[ "$base" == *log* ]] || [[ "$base" == *excerpt* ]]; then
-            smapi_ok=1
-        fi
-    done
-
+    # Exact artifact names. The earlier fuzzy match looked for *soil*/*crop*/
+    # *smapi* anywhere in the filename, which made `anomaly-report-<signal>.json`
+    # count as the signal itself: after the first pass wrote three anomalies,
+    # the second pass saw them and returned success. Missing signals must never
+    # satisfy their own requirement.
     local missing=0
-    if (( soil_ok == 0 )); then
+    if [[ ! -s "$a/soil-health-before-after.json" ]]; then
         signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "missing" "" "" "$owner" "missing soil health delta" >/dev/null 2>&1 || true
         missing=1
     fi
-    if (( crop_ok == 0 )); then
+    if [[ ! -s "$a/crop-phase-dump.json" ]]; then
         signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "missing crop phase dump" >/dev/null 2>&1 || true
         missing=1
     fi
-    if (( smapi_ok == 0 )); then
+    if [[ ! -s "$a/smapi-log.txt" ]]; then
         signals_write_anomaly "$bundle" "$runId" "smapiLog" "missing" "" "" "$owner" "missing smapi log excerpt" >/dev/null 2>&1 || true
         missing=1
     fi
@@ -295,4 +294,65 @@ signals_process() {
         return "$EXIT_ERRORED"
     fi
     return 0
+}
+
+# signals_capture <bundle_dir> <scenario...>
+#
+# Locate the artifacts the verification mod wrote into the per-run injection
+# directory and hand them to signals_process. The mod owns the capture; the
+# runner owns the location and the judgement. When the session is missing the
+# call still goes through signals_process with empty inputs so all three
+# mandatory anomalies are written (one per signal, not one shared file).
+signals_capture() {
+    [[ $# -ge 2 ]] || return "$EXIT_USAGE_ERROR"
+    local bundle="$1"
+    shift
+    local owner="${RUNNER_QUARANTINE_OWNER:-runner}"
+    local dir="${RUNNER_INJECTION_DIR:-${RUNNER_RUN_ROOT:-/tmp}/injection}"
+    local session="$dir/session.json"
+
+    local dump_dir="" smapi_log="" save_file=""
+    if [[ -f "$session" ]]; then
+        local -a fields=()
+        mapfile -t fields < <(python3 - "$session" <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception:
+    sys.exit(1)
+print(d.get("dumpDir", ""))
+print(d.get("smapiLogPath", ""))
+PY
+)
+        if (( ${#fields[@]} >= 2 )); then
+            dump_dir="${fields[0]}"
+            smapi_log="${fields[1]}"
+        fi
+    fi
+    [[ -n "$smapi_log" ]] || smapi_log="${RUNNER_SMAPI_LOG:-}"
+
+    # The mod persists soil health through SMAPI's data helper under the mod
+    # folder. Pick the newest file: the save id is sanitized inside the mod and
+    # the runner must not re-implement that sanitizer here.
+    if [[ -n "${RUNNER_MODS_DIR:-}" && -d "$RUNNER_MODS_DIR/LivingRoots/data" ]]; then
+        save_file="$(find "$RUNNER_MODS_DIR/LivingRoots/data" -maxdepth 1 -name 'soil_health_data_*.json' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-)"
+    fi
+
+    local before="" after=""
+    if [[ -n "$dump_dir" ]]; then
+        [[ -f "$dump_dir/soil_health_before.json" ]] && before="$dump_dir/soil_health_before.json"
+        [[ -f "$dump_dir/soil_health_after.json" ]] && after="$dump_dir/soil_health_after.json"
+        # Preserve the pre-run captures in the bundle too: the multiplier
+        # threshold is `after == pre * factor`, so a bundle that only carries
+        # the after dump cannot be re-evaluated later.
+        mkdir -p "$bundle/artifacts" 2>/dev/null || true
+        [[ -f "$dump_dir/crop_phase_dump_before.json" ]] && cp -f "$dump_dir/crop_phase_dump_before.json" "$bundle/artifacts/crop-phase-before.json" 2>/dev/null || true
+        [[ -n "$before" ]] && cp -f "$before" "$bundle/artifacts/soil-health-before.json" 2>/dev/null || true
+        [[ -n "$after" ]] && cp -f "$after" "$bundle/artifacts/soil-health-after.json" 2>/dev/null || true
+    fi
+
+    local rc=0
+    signals_process "$bundle" "${RUN_ID:-${RUNNER_RUN_ID:-unknown}}" "$owner" \
+        "$before" "$after" "$dump_dir" "$save_file" "$smapi_log" || rc=$?
+    return "$rc"
 }
