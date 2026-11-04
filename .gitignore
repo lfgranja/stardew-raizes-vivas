@@ -213,6 +213,9 @@ mono_crash.*
 *.log*
 *.tlog
 
+# Headless verification runner evidence bundles (test artifacts, not source)
+evidence-bundle-run-*/
+
 # Others
 ClientBin/
 ~$*
