@@ -1,5 +1,10 @@
 # Phase 13 Completion Summary
 
+> **Atualização 2026-11-04:** This summary previously described a stale state (1447/26/1473). The verified 2026-11-04 state is:
+> **1621 passed / 1 failed (pre-existing `ProductionSourceGuardTests`, `ModController.cs:399`) / 4 skipped** (1626 total); **0 build errors**,
+> **format clean**, and **Gate 3 spec 004 reached `machine-pass`** (bundle `evidence-bundle-run-20261104T082444Z-4acd/`, honesty R).
+> The tables below are preserved as historical context for the T114–T145 wave; T133 remains a documented API limitation (tag-based vs numeric Category IDs).
+
 ## Objective
 Complete remaining Phase 13 implementation tasks (T114-T145) for feature 004-playable-compost-loop using wave-based subagent delegation with TDD red-first approach.
 
@@ -32,13 +37,13 @@ All implementation tasks T127-T141 have code changes verified in git history fro
 | **T114-T126** | 🟡 Red-phase test tasks | 13 test tasks blocking implementation per strict TDD - must be written and observed failing before implementation can proceed |
 | **T133** | 🟡 Fundamental API limitation | Machine rules use tag-based filtering (`RequiredTags`); OrganicWasteValidator uses numeric Category IDs (-74/-75/-79/-80/-81). The `compostable_item` trigger achieves partial parity (validator-accepted items pass Machine rule) but reverse direction (tag-carrying items rejected by validator) cannot be resolved without item definition changes |
 
-## 📊 Current Test Suite State
-- **1447 passed**, **26 failed**, **1473 total**
+## 📊 Current Test Suite State (atualizado 2026-11-04)
+- **1621 passed**, **1 failed (pre-existing `ProductionSourceGuardTests`, `ModController.cs:399`)**, **4 skipped**, **1626 total**
 - **0 build errors**, **0 format violations** (`dotnet format --verify-no-changes` exits 0)
 - **84/84 ArchitecturalPlanTests pass** ✅
 - Gates T142-T145 require T114-T126 red-phase tests to be addressed first
 
-## 26 Test Failures Breakdown
+## 26 Test Failures Breakdown (histórico — pré-2026-11-04)
 - **T133 parity tests** (2): Machine tag-based vs numeric Category ID definitions - fundamental API limitation
 - **Expected red-phase tests** (T114-T126): 13 tests blocking implementation per TDD
 - **Other residuals**: Bin placement, pickup, service tests with various causes
