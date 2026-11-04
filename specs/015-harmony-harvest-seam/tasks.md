@@ -250,3 +250,10 @@
 - [x] T054 [P] Make deterministic roll cross-client stable (partial/MEDIUM): include `Game1.uniqueIDForThisGame` (and DaysPlayed/fertilizer net field where available) in the quality and extra-harvest hash seeds in `LivingRoots/Patches/HarvestPatches.cs` so both clients agree per contract §9 (A8). Source: F3, contract §9, FR-011.
 - [x] T055 Move crop-scope guard + input capture into Prefix (partial/MEDIUM): refactor `LivingRoots/Patches/HarvestPatches.cs` so `Harvest_Prefix` applies the forage/fibre/Qi crop-scope guard early and captures inputs (soil health, Farming level, fertilizer tier, etc.) into `__state`, per contract §3; Postfix consumes `__state`. Source: F1, contract §3, FR-004.
 - [ ] T056 Handle Junimo/forced-scythe harvests (partial/MEDIUM): apply Poor (force Quality=0) and Healthy (boost) quality outcomes on the Junimo path in `LivingRoots/Patches/HarvestPatches.cs` instead of skipping when `who == null`, per FR-001/FR-004. Source: F4, FR-001, FR-004.
+
+## Phase 10: Convergence
+
+- [ ] T057 Execute Gate 3 in-game SMAPI session capturing 3 signals (observation + save diff + SMAPI log) with second player for multiplayer verification (D1) (missing, SC-004). Source: F1, SC-004.
+- [ ] T058 Verify extra-harvest single-harvest guarantee: extra harvest spawns exactly once per harvest (no duplicate on re-harvest) (partial, FR-004/A8/SC-004). Source: F2.
+- [ ] T059 Apply Poor (force Quality=0) and Healthy (boost) quality outcomes on Junimo/forced-scythe harvest path instead of skipping when `who == null` (partial, FR-001/FR-004). Source: F3.
+- [ ] T060 Verify audio-only acceptance in Gate 3: confirm audio cue sufficiency vs. need for sprite broadcast (partial, contract §6/T035). Source: F4.
