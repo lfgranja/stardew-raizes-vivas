@@ -32,19 +32,22 @@ Diferencial vs. ReGen Valley (Nexus, 2025): não é a mecânica de soil health (
 4. **Verbo novo por arco, não +10%** — Y1 compostar, Y2-3 rotacionar/incorporar/pastejar, Y4+ assinar/trocar/cozinhar.
 5. **Aconchego seguro** (Safety/Abundance/Softness) — sem fail punitivo, teto em toda penalidade.
 
-## 4. Estado atual (verificado, 2026-11-03)
+## 4. Estado atual (verificado, 2026-11-04)
 
 | Métrica | Valor |
 |---|---|
 | Build | 0 erros, 0 warnings |
-| Testes | 1471 passed / 0 failed / 4 skipped (última run completa 2026-11-01); test-harness hang corrigido (test-logparse 167/167 sem hang) |
+| Testes | 1621 passed / 1 failed / 4 skipped (fail pré-existente `ProductionSourceGuardTests`, `ModController.cs:399`, não tocado pelo fix gate3-signal-capture) |
 | Format gate | clean |
 | Quality gate | 171 pytest passed; analyzer probe PASS |
-| Specs fechadas | 002, 012 (converged) |
-| Specs quase fechadas | 004 (65/67), 005 (143/146), 008 (184/186), 013 (46/48), 015 (51/58) |
+| Specs fechadas | 002, 008, 012, 013 (converged) |
+| Specs quase fechadas | 004 (57/59), 005 (143/146), 009 (55/58), 015 (51/56) |
+| Specs em andamento | 001 (10/86), 003 (28/117), 010 (137/203), 011 (42/88), 014 (11/104) |
 | Features nomeadas shipped | 3 de 21 (composting, mulch, soil-health→crop-growth) + seam de harvest-quality (infra) |
-| In-game runs | **0 — nunca executado** |
+| In-game runs | **machine-pass (spec 004)** — headless runner, bundle `evidence-bundle-run-20261104T082444Z-4acd/`, honestidade R. **Não** é Gate 3 manual 3-sinais (E humano) — esse continua pendente |
 | DLLs proprietárias no git | 0 (apenas assets em `.gamepath/Mods/`) |
+
+> **Gate 3 (2026-11-04):** `evidence-bundle-run-20261104T082444Z-4acd/` — verdict `pass`, honesty `R`. Porém: soil-health delta **0** (10→10, tier poor) é sinal neutro; crop `phaseDays` 4→5 (`round(4×1.15)=5`) é o sinal forte; SMAPI log 1.894B com 5 transições de dia. Um run machine-pass ≠ "verified" (E humano pendente, `VERIFICATION_PROTOCOL.md` §3). Divergência aberta: `Constants.cs` usa `PoorModerateBandEdge=31f`, `ModerateHealthyBandEdge=71f` vs. docs `34/67` — reconciliação T117–T119 (spec 005).
 
 ### 4.1 Paisagem competitiva (pesquisa web 2026-11-03)
 
@@ -77,11 +80,12 @@ Diferencial vs. ReGen Valley (Nexus, 2025): não é a mecânica de soil health (
 - **Heirloom pipeline** — ❌ bloqueia Three Sisters, Green Manure, Rotation Journal.
 - **Mid-game (6) e End-game (6)** — ❌ não iniciado.
 - **Multiplayer ao vivo (D1)** — ❌ verificação multi-cliente não provada (apenas stubs).
-- **Gate 3 (in-game)** — ❌ 0 runs executados.
+- **Gate 3 (in-game)** — machine-pass (spec 004, 2026-11-04) mas **não** Gate 3 manual 3-sinais (E humano) — pendente.
 - **Spec 001** (visualização) — 10/86 (12%).
 - **Spec 003** (testes state machine) — 28/117 (24%).
-- **Spec 010** (headless runner) — 0/161 (não iniciado).
+- **Spec 010** (headless runner) — 137/203 (68%).
 - **Spec 011** (quality gate) — 42/88 (verificação CI pendente).
+- **Spec 014** (soil-health→crop-quality) — 11/104 (11%) — seam mergada, integração pendente.
 - **Assessment soil-health-to-crop-growth** — needs-clarification (5 perguntas abertas).
 - **Bugs hold** — ~8 bugs dependem de re-verificação SonarCloud/CI.
 
@@ -121,4 +125,4 @@ Diferencial vs. ReGen Valley (Nexus, 2025): não é a mecânica de soil health (
 
 ---
 
-*Última atualização: 2026-11-01 (criado a partir do GDD + ROADMAP + assessments/specs/bugs).*
+*Última atualização: 2026-11-04 (Gate 3 machine-pass spec 004; testes 1621/1/4; spec 010 137/203).* Superseded date: 2026-11-01 (criado a partir do GDD + ROADMAP + assessments/specs/bugs).

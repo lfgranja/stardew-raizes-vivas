@@ -2,7 +2,8 @@
 
 This document outlines the development roadmap for the "Living Roots" mod, detailing the progression of features from early to late game, based on agroecological principles.
 
-> **STATUS ANNOTATION — verified 2026-11-03 (deep web research refresh)**
+> **STATUS ANNOTATION — verified 2026-11-04 (Gate 3 machine-pass)**
+> Previous annotations (2026-11-03, 2026-11-02) are preserved below in the "Progresso consolidado" sections; the newest verified state is this block.
 > Every roadmap item below is marked with what actually exists in code, verified by build, test run and
 > source audit — not by spec claims. Legend:
 > ✅ implemented & verified (build + tests green) · 🟡 partial / inert · ❌ not implemented ·
@@ -18,6 +19,13 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 > 0 failed / 4 skipped (1475 total) — 5 regressions appeared after the merge and are being triaged.
 > Spec 005 still has 3 doc-only convergence tasks (T117–T119). Gate 3 (in-game SMAPI session) is
 > still pending. Spec 010 (headless runner) not started.
+>
+> **Update 2026-11-04:** Spec **010** grew to **137/203** tasks (was 0/161); **spec 004 reached `machine-pass`**
+> (bundle `evidence-bundle-run-20261104T082444Z-4acd/`, verdict `pass`, honesty `R`, commit `d908b19`).
+> Full suite: **1621 passed / 1 failed (pre-existing `ProductionSourceGuardTests`, `ModController.cs:399`) /
+> 4 skipped**. Node: soil-health delta **0** (10→10, poor tier) is a neutral signal; crop `phaseDays` 4→5
+> (`round(4×1.15)=5`) is the strong signal. **Machine-pass ≠ verified** (E humano pendente, `VERIFICATION_PROTOCOL.md` §3).
+> **Open:** band-scale divergence `Constants.cs 31/71` vs docs `34/67` — reconciliation T117–T119 (spec 005).
 
 ## Progresso consolidado — 2026-11-03 (pós-merge PR #667, atualizado com pesquisa web)
 
@@ -505,7 +513,25 @@ Secondary quick wins (low effort, high leverage):
 * Root `AGENTS.md` points at `ModConstants.cs` (the class lives in `Constants.cs`), an old branch
   name, and a retired CI variable.
 
-## Gate 3 Verification (atualizado 2026-11-02)
+## Gate 3 Verification (atualizado 2026-11-04 — machine-pass spec 004)
+
+<!-- GATE3:BEGIN -->
+- **Status**: machine-pass (automated headless; manual 3-signal E still pending)
+- **Verdict**: pass (runner-produced)
+- **Flaky**: false
+- **Run ID**: run-20261104T082444Z-4acd
+- **Commit**: d908b19
+- **Date**: 2026-11-04T08:25:23Z
+- **Signals**:
+  - SoilHealthState delta: `evidence-bundle-run-20261104T082444Z-4acd/artifacts/soil-health-before-after.json` (Farm/60,15 10→10, delta 0, tier poor — neutral)
+  - Crop-phase delta: `evidence-bundle-run-20261104T082444Z-4acd/artifacts/crop-phase-dump.json` (phaseDays 4→5; round(4×1.15)=5 — Poor-soil multiplier passes)
+  - SMAPI log: `evidence-bundle-run-20261104T082444Z-4acd/artifacts/smapi-log.txt` (1,894B, 5 day transitions with `Soil growth modifier elapsed`)
+- **Bundle**: `evidence-bundle-run-20261104T082444Z-4acd/`
+- **Honesty level**: R
+- **Claim**: machine-pass by automated headless run + multi-signal evidence (specs/004-playable-compost-loop/test.md). This is **not** a human E attestation; manual Gate 3 (VERIFICATION_PROTOCOL.md §3) remains.
+<!-- GATE3:END -->
+
+## Gate 3 Verification (histórico 2026-11-02 — smoke only)
 
 <!-- GATE3:BEGIN -->
 - **Status**: partial (automated smoke only)
@@ -542,7 +568,7 @@ Secondary quick wins (low effort, high leverage):
 - ✅ DDD, segurança, concorrência, quality gate local, smoke launch (mod carrega no SMAPI).
 - ✅ UI/visualização reativa (overlay/tooltip/hoe feedback).
 
-**Verificado in-game (Gate 3):** ❌ Ainda 0 runs completos (apenas smoke de carregamento). Gate 3 multi-sinal pendente.
+**Verificado in-game (Gate 3):** ⚠️ machine-pass headless (spec 004, 2026-11-04) — **não** Gate 3 manual 3-sinais (E humano) pendente.
 
 **Roadmap items shipped:** 3 de 21 features nomeadas (composting, mulch, soil-health→crop-growth) + 2 promessas de core (soil decay, growth driver) + seam de harvest-quality (infra apenas).
 

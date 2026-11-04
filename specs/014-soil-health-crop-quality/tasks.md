@@ -366,11 +366,11 @@ With multiple developers/subagents:
 - [x] T101 Harvest roll runs locally reading synced soil health (replicated deterministic per A8) — `Patches/HarvestPatches.cs` (FR-009/A8)
 - [x] T102 RED test files added: CropScope, HostAuthoritative, InventoryFull, HarvestFeedback, FeedbackVisibility, Contract (plus earlier Poor/Moderate/Healthy/ExtraHarvest/Unknown) — `LivingRoots.Tests/` (FR-014)
 - [x] T103 Band edges 31/71 verified in tests — `LivingRoots.Tests/` (SC-006)
-- [ ] T104 Run Gate 3 in-game session and record 3 signals — manual (missing, SC-008)
+- [ ] T104 Run Gate 3 in-game session and record 3 signals — manual (missing, SC-008) — PENDING: manual GamePath play-through, cannot be automated
 
 ## Phase 8: Convergence
 
 - [ ] T105 Execute Gate 3 in-game SMAPI session capturing 3 signals (observation notes + save diff `modData/soil_health_data_{saveId}.json` tolerance 0.0001f + SMAPI log) for the growth+quality loop, with second player for multiplayer verification (D1); record evidence in `specs/014-soil-health-crop-quality/gate3-evidence.md` (missing, SC-008)
-- [ ] T106 Add host-authoritative roll test with simulated second player (no client-side roll occurs) — `LivingRoots.Tests/HarvestQuality/` (partial, SC-004)
-- [ ] T107 Add statistical extra-harvest count verification test over N harvests — Living measurably greater than Medium (`ExtraHarvestChance + 0.10`) — `LivingRoots.Tests/HarvestQuality/` (partial, SC-009)
-- [ ] T108 Add client re-sync convergence test after divergence — observable convergence on next `DayStarted` — `LivingRoots.Tests/HarvestQuality/` (partial, SC-010)
+- [x] T106 Add host-authoritative roll test with simulated second player (no client-side roll occurs) — `LivingRoots.Tests/HarvestQuality/HostAuthoritativeRollTests.cs` (partial, SC-004) — DONE: commit 0d28b7e, 3 tests passing
+- [x] T107 Add statistical extra-harvest count verification test over N harvests — Living measurably greater than Medium (`ExtraHarvestChance + 0.10`) — `LivingRoots.Tests/HarvestQuality/ExtraHarvestStatisticalTests.cs` (partial, SC-009) — DONE: commit c4b2016, 1 test passing
+- [x] T108 Add client re-sync convergence test after divergence — observable convergence on next `DayStarted` — `LivingRoots.Tests/HarvestQuality/ClientResyncConvergenceTests.cs` (partial, SC-010) — DONE: commit 05cc28c, 1 test passing
