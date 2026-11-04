@@ -180,7 +180,17 @@ promotion_apply() {
     [[ -z "$current_status" ]] && current_status="partial"
 
     local run_id
-    if type runner_run_id >/dev/null 2>&1; then
+    # The run ID must match the bundle the runner actually wrote. Deriving a
+    # fresh ID here produced a machine-pass claim that pointed at a bundle that
+    # did not exist. The bundle name is authoritative; RUN_ID is the fallback
+    # for callers that pass a non-standard directory.
+    local bundle_name
+    bundle_name="$(basename -- "$bundle")"
+    if [[ "$bundle_name" == evidence-bundle-* ]]; then
+        run_id="${bundle_name#evidence-bundle-}"
+    elif [[ -n "${RUN_ID:-}" ]]; then
+        run_id="$RUN_ID"
+    elif type runner_run_id >/dev/null 2>&1; then
         run_id="$(runner_run_id)"
     else
         run_id="run-$(date -u +%Y%m%dT%H%M%SZ)-$(printf '%04x' $((RANDOM%65536)))"
