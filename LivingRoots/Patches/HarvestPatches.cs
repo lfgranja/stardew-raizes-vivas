@@ -17,7 +17,6 @@ namespace LivingRoots.Patches
         private static ISoilHealthService? soilHealthService;
         private static IVisualizationService? visualizationService;
 
-        // State captured by the Prefix and consumed by the Postfix (contract §3).
         private sealed class HarvestState
         {
             public bool Skip;
@@ -38,7 +37,6 @@ namespace LivingRoots.Patches
             visualizationService = vizService;
         }
 
-        // Typed signature matching Crop.harvest(int xTile, int yTile, HoeDirt soil, JunimoHarvester junimoHarvester, bool isForcedScytheHarvest)
         public static bool Harvest_Prefix(int xTile, int yTile, HoeDirt soil, JunimoHarvester junimoHarvester, bool isForcedScytheHarvest, ref object __state)
         {
             var state = new HarvestState { Soil = soil, XTile = xTile, YTile = yTile };
@@ -62,7 +60,6 @@ namespace LivingRoots.Patches
                     return true;
                 }
 
-                // Crop scope: fibre seeds and Qi Fruit (A6)
                 bool isFibreSeed = false;
                 try
                 {
@@ -73,17 +70,16 @@ namespace LivingRoots.Patches
                 }
                 catch
                 {
-                    // Best-effort.
+                    // Best-effort: fibre seed detection is optional.
                 }
-                bool isQiFruit = false; // Qi fruit is a forage crop, already excluded above
+                bool isQiFruit = false;
 
                 if (isFibreSeed || isQiFruit)
                 {
                     state.Skip = true;
-                    return true; // OutOfScope
+                    return true;
                 }
 
-                // Soil health from tile
                 string locationName = string.Empty;
                 if (soil != null && soil.Location != null)
                 {
@@ -106,7 +102,6 @@ namespace LivingRoots.Patches
                     }
                 }
 
-                // Inventory-full detection (best-effort heuristic)
                 Farmer? who = null;
                 if (!isForcedScytheHarvest)
                 {
@@ -125,7 +120,6 @@ namespace LivingRoots.Patches
                     }
                 }
 
-                // Read inputs from crop/farmer/soil
                 int farmingLevel = who != null ? who.farmingLevel.Value : 0;
                 bool isPaddyCrop = false;
                 try
@@ -149,7 +143,6 @@ namespace LivingRoots.Patches
                     regrowDays = 0;
                 }
 
-                // Fertilizer tier from soil
                 int fertilizerTier = 0;
                 if (soil != null && soil.fertilizer.Value != null)
                 {
@@ -221,12 +214,6 @@ namespace LivingRoots.Patches
                     return;
                 }
 
-                // NOTE (T056, deferred): Junimo/forced-scythe harvests have no Farmer
-                // inventory (who == null), so Poor/Healthy Quality application below is
-                // skipped on that path; Quality stays vanilla. Full Junimo support
-                // requires intercepting the harvested item from the Junimo hut and is
-                // deferred until a game-runtime verification pass (Gate 3).
-
                 var decision = state.Decision;
                 var who = state.Who;
                 var isInventoryFull = state.IsInventoryFull;
@@ -260,22 +247,24 @@ namespace LivingRoots.Patches
 
                 if (decision.Tier == HarvestTier.Healthy)
                 {
+                    StardewValley.Object? item = null;
                     if (who != null && who.Items != null && who.Items.Count > 0)
+                    {
+                        item = who.Items[who.Items.Count - 1] as StardewValley.Object;
+                    }
+
+                    if (item != null && item.Quality < 4)
                     {
                         try
                         {
-                            var last = who.Items[who.Items.Count - 1];
-                            if (last != null && last.Quality < 4)
+                            float vanillaP = 0.2f * (inputs.FarmingLevel / 10.0f) + 0.2f * inputs.FertilizerTier * ((inputs.FarmingLevel + 2) / 12.0f) + 0.01f;
+                            int hash = (xTile * 397) ^ (yTile * 17) ^ Game1.Date.TotalDays ^ (int)(Game1.uniqueIDForThisGame & 0xFFFFFFFF) ^ (inputs.FertilizerTier * 31);
+                            double roll = Math.Abs(hash % 10000) / 10000.0;
+                            float boosted = service.BoostQualityProbability(vanillaP, decision);
+                            if (roll < boosted)
                             {
-                                float vanillaP = 0.2f * (inputs.FarmingLevel / 10.0f) + 0.2f * inputs.FertilizerTier * ((inputs.FarmingLevel + 2) / 12.0f) + 0.01f;
-                                int hash = (xTile * 397) ^ (yTile * 17) ^ Game1.Date.TotalDays ^ (int)(Game1.uniqueIDForThisGame & 0xFFFFFFFF) ^ (inputs.FertilizerTier * 31);
-                                double roll = Math.Abs(hash % 10000) / 10000.0;
-                                float boosted = service.BoostQualityProbability(vanillaP, decision);
-                                if (roll < boosted)
-                                {
-                                    last.Quality = Math.Min(4, last.Quality + 1);
-                                    enhancedQualityOccurred = true;
-                                }
+                                item.Quality = Math.Min(4, item.Quality + 1);
+                                enhancedQualityOccurred = true;
                             }
                         }
                         catch
@@ -284,7 +273,6 @@ namespace LivingRoots.Patches
                         }
                     }
 
-                    // Extra harvest: apply boosted chance deterministically
                     try
                     {
                         int hash = (xTile * 397) ^ (yTile * 17) ^ Game1.Date.TotalDays ^ (int)(Game1.uniqueIDForThisGame & 0xFFFFFFFF) ^ 0x5A827999;
@@ -298,54 +286,50 @@ namespace LivingRoots.Patches
                                 monitor.Log("Living Roots: Extra harvest triggered.", LogLevel.Trace);
                             }
 
-                            // Spawn the extra harvest item (host-authoritative, single-harvest guarantee).
-                            try
+                            if (who.Items.Count > 0)
                             {
-                                if (who.Items.Count > 0)
+                                var source = who.Items[who.Items.Count - 1];
+                                if (source != null)
                                 {
-                                    var source = who.Items[who.Items.Count - 1];
-                                    if (source != null)
+                                    var extra = source.getOne();
+                                    if (extra != null)
                                     {
-                                        var extra = source.getOne();
-                                        if (extra != null)
+                                        extra.Quality = 0;
+                                        bool added = false;
+                                        try
                                         {
-                                            extra.Quality = 0; // A2: extra-harvest items are normal quality (0)
-                                            bool added = false;
+                                            added = who.addItemToInventoryBool(extra, false);
+                                        }
+                                        catch
+                                        {
+                                            added = false;
+                                        }
+                                        if (!added)
+                                        {
                                             try
                                             {
-                                                added = who.addItemToInventoryBool(extra, false);
+                                                var location = soil != null ? soil.Location : null;
+                                                if (location == null)
+                                                {
+                                                    location = Game1.currentLocation;
+                                                }
+                                                if (location != null)
+                                                {
+                                                    Game1.createItemDebris(extra, new Vector2(xTile + 0.5f, yTile + 0.5f), -1, location);
+                                                }
                                             }
                                             catch
                                             {
-                                                added = false;
-                                            }
-                                            if (!added)
-                                            {
-                                                // Inventory full: drop as debris (vanilla semantics).
-                                                try
-                                                {
-                                                    var location = soil != null ? soil.Location : null;
-                                                    if (location == null)
-                                                    {
-                                                        location = Game1.currentLocation;
-                                                    }
-                                                    if (location != null)
-                                                    {
-                                                        Game1.createItemDebris(extra, new Vector2(xTile + 0.5f, yTile + 0.5f), -1, location);
-                                                    }
-                                                }
-                                                catch
-                                                {
-                                                    // Best-effort.
-                                                }
+                                                // Best-effort.
                                             }
                                         }
                                     }
                                 }
                             }
-                            catch
+
+                            if (monitor != null)
                             {
-                                // Best-effort.
+                                monitor.Log("Living Roots: Living soil — quality boost applied.", LogLevel.Trace);
                             }
                         }
                     }
@@ -354,150 +338,27 @@ namespace LivingRoots.Patches
                         // Best-effort.
                     }
 
-                    if (monitor != null)
+                    if (isInventoryFull)
                     {
-                        monitor.Log("Living Roots: Living soil — quality boost applied.", LogLevel.Trace);
-                    }
-                }
-
-                // Inventory-full handling (FR-008)
-                if (isInventoryFull)
-                {
-                    if (decision.MainItemBlocked && monitor != null)
-                    {
-                        monitor.Log("Living Roots: Inventory full — main item blocked (vanilla).", LogLevel.Trace);
-                    }
-                    if (decision.ExtraItemDroppedAsDebris && monitor != null)
-                    {
-                        monitor.Log("Living Roots: Inventory full — extra item dropped as debris.", LogLevel.Trace);
-                    }
-                }
-
-                // Feedback resolution (B1/B2 conditionality)
-                var feedback = service.ResolveFeedback(decision, enhancedQualityOccurred, extraHarvestOccurred);
-                if (feedback != HarvestFeedbackFlags.None && monitor != null)
-                {
-                    monitor.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Living Roots harvest feedback: {0}", feedback), LogLevel.Trace);
-                }
-
-                // Drive feedback broadcast (contract §6): shared outcomes broadcast
-                // to all players; local-only input stays on the triggering client.
-                if (feedback != HarvestFeedbackFlags.None)
-                {
-                    try
-                    {
-                        var location = soil != null ? soil.Location : null;
-                        if (location == null)
+                        if (decision.MainItemBlocked && monitor != null)
                         {
-                            location = Game1.currentLocation;
+                            monitor.Log("Living Roots: Inventory full — main item blocked (vanilla).", LogLevel.Trace);
                         }
-
-                        // Shared (broadcast) outcome: play sound + broadcast sprites (host-only).
-                        string? soundName = null;
-                        if (feedback.HasFlag(HarvestFeedbackFlags.Poor))
+                        if (decision.ExtraItemDroppedAsDebris && monitor != null)
                         {
-                            soundName = "cancel";
-                        }
-                        else if (feedback.HasFlag(HarvestFeedbackFlags.LivingQuality) || feedback.HasFlag(HarvestFeedbackFlags.ExtraHarvest))
-                        {
-                            soundName = "coin";
-                        }
-
-                        if (location != null && !string.IsNullOrEmpty(soundName))
-                        {
-                            try
-                            {
-                                location.playSound(soundName);
-                            }
-                            catch
-                            {
-                                // Best-effort.
-                            }
-                        }
-
-                        if (location != null)
-                        {
-                            try
-                            {
-                                object? mp;
-                                var mpField = typeof(Game1).GetField("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-                                var mpProp = mpField == null ? typeof(Game1).GetProperty("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static) : null;
-                                if (mpField != null)
-                                {
-                                    mp = mpField.GetValue(null);
-                                }
-                                else if (mpProp != null)
-                                {
-                                    mp = mpProp.GetValue(null);
-                                }
-                                else
-                                {
-                                    mp = null;
-                                }
-                                if (mp != null)
-                                {
-                                    var method = mp.GetType().GetMethod("broadcastSprites", new[] { typeof(GameLocation), typeof(List<TemporaryAnimatedSprite>) });
-                                    if (method != null)
-                                    {
-                                        var sprites = new List<TemporaryAnimatedSprite>();
-                                        var worldPosition = new Vector2(xTile * (float)ModConstants.TileSize + 32f, yTile * (float)ModConstants.TileSize);
-                                        // FR-007 (non-chromatic): tier info is carried by text + SFX, not color alone.
-                                        if (feedback.HasFlag(HarvestFeedbackFlags.Poor))
-                                        {
-                                            var poorSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
-                                            poorSprite.text = "Soil too poor for quality crops";
-                                            poorSprite.color = Color.Red;
-                                            poorSprite.alphaFade = 0.02f;
-                                            poorSprite.motion = new Vector2(0, -0.5f);
-                                            sprites.Add(poorSprite);
-                                        }
-                                        if (feedback.HasFlag(HarvestFeedbackFlags.LivingQuality))
-                                        {
-                                            var livingSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
-                                            livingSprite.text = "Living Soil";
-                                            livingSprite.color = Color.LimeGreen;
-                                            livingSprite.alphaFade = 0.02f;
-                                            livingSprite.motion = new Vector2(0, -0.5f);
-                                            sprites.Add(livingSprite);
-                                        }
-                                        if (feedback.HasFlag(HarvestFeedbackFlags.ExtraHarvest))
-                                        {
-                                            var extraSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
-                                            extraSprite.text = "Extra harvest!";
-                                            extraSprite.color = Color.Gold;
-                                            extraSprite.alphaFade = 0.02f;
-                                            extraSprite.motion = new Vector2(0, -0.5f);
-                                            sprites.Add(extraSprite);
-                                        }
-                                        foreach (var s in sprites)
-                                        {
-                                            try { location.TemporarySprites.Add(s); } catch { /* best-effort */ }
-                                        }
-                                        method.Invoke(mp, new object[] { location, sprites });
-                                    }
-                                }
-                            }
-                            catch
-                            {
-                                // Best-effort.
-                            }
-                        }
-
-                        if (visualizationService != null)
-                        {
-                            try
-                            {
-                                visualizationService.InvalidateCache();
-                            }
-                            catch
-                            {
-                                // Best-effort.
-                            }
+                            monitor.Log("Living Roots: Inventory full — extra item dropped as debris.", LogLevel.Trace);
                         }
                     }
-                    catch
+
+                    var feedback = service.ResolveFeedback(decision, enhancedQualityOccurred, extraHarvestOccurred);
+                    if (feedback != HarvestFeedbackFlags.None && monitor != null)
                     {
-                        // Best-effort.
+                        monitor.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Living Roots harvest feedback: {0}", feedback), LogLevel.Trace);
+                    }
+
+                    if (feedback != HarvestFeedbackFlags.None)
+                    {
+                        DoFeedbackBroadcast(soil, xTile, yTile, feedback, visualizationService);
                     }
                 }
             }
@@ -507,6 +368,123 @@ namespace LivingRoots.Patches
                 {
                     monitor.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Living Roots harvest postfix patch failed; skipping modification. Type: {0} (HResult: 0x{1:X8})", ex.GetType().FullName, ex.HResult), LogLevel.Trace);
                 }
+            }
+        }
+
+        private static void DoFeedbackBroadcast(HoeDirt? soil, int xTile, int yTile, HarvestFeedbackFlags feedback, IVisualizationService? visualizationService)
+        {
+            try
+            {
+                var location = soil != null ? soil.Location : null;
+                if (location == null)
+                {
+                    location = Game1.currentLocation;
+                }
+
+                string? soundName = null;
+                if (feedback.HasFlag(HarvestFeedbackFlags.Poor))
+                {
+                    soundName = "cancel";
+                }
+                else if (feedback.HasFlag(HarvestFeedbackFlags.LivingQuality) || feedback.HasFlag(HarvestFeedbackFlags.ExtraHarvest))
+                {
+                    soundName = "coin";
+                }
+
+                if (location != null && !string.IsNullOrEmpty(soundName))
+                {
+                    try
+                    {
+                        location.playSound(soundName);
+                    }
+                    catch
+                    {
+                        // Best-effort.
+                    }
+                }
+
+                if (location != null)
+                {
+                    try
+                    {
+                        object? mp;
+                        var mpField = typeof(Game1).GetField("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                        var mpProp = mpField == null ? typeof(Game1).GetProperty("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static) : null;
+                        if (mpField != null)
+                        {
+                            mp = mpField.GetValue(null);
+                        }
+                        else if (mpProp != null)
+                        {
+                            mp = mpProp.GetValue(null);
+                        }
+                        else
+                        {
+                            mp = null;
+                        }
+                        if (mp != null)
+                        {
+                            var method = mp.GetType().GetMethod("broadcastSprites", new[] { typeof(GameLocation), typeof(List<TemporaryAnimatedSprite>) });
+                            if (method != null)
+                            {
+                                var sprites = new List<TemporaryAnimatedSprite>();
+                                var worldPosition = new Vector2(xTile * (float)ModConstants.TileSize + 32f, yTile * (float)ModConstants.TileSize);
+                                if (feedback.HasFlag(HarvestFeedbackFlags.Poor))
+                                {
+                                    var poorSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
+                                    poorSprite.text = "Soil too poor for quality crops";
+                                    poorSprite.color = Color.Red;
+                                    poorSprite.alphaFade = 0.02f;
+                                    poorSprite.motion = new Vector2(0, -0.5f);
+                                    sprites.Add(poorSprite);
+                                }
+                                if (feedback.HasFlag(HarvestFeedbackFlags.LivingQuality))
+                                {
+                                    var livingSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
+                                    livingSprite.text = "Living Soil";
+                                    livingSprite.color = Color.LimeGreen;
+                                    livingSprite.alphaFade = 0.02f;
+                                    livingSprite.motion = new Vector2(0, -0.5f);
+                                    sprites.Add(livingSprite);
+                                }
+                                if (feedback.HasFlag(HarvestFeedbackFlags.ExtraHarvest))
+                                {
+                                    var extraSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
+                                    extraSprite.text = "Extra harvest!";
+                                    extraSprite.color = Color.Gold;
+                                    extraSprite.alphaFade = 0.02f;
+                                    extraSprite.motion = new Vector2(0, -0.5f);
+                                    sprites.Add(extraSprite);
+                                }
+                                foreach (var s in sprites)
+                                {
+                                    try { location.TemporarySprites.Add(s); } catch { /* best-effort */ }
+                                }
+                                method.Invoke(mp, new object[] { location, sprites });
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Best-effort.
+                    }
+                }
+
+                if (visualizationService != null)
+                {
+                    try
+                    {
+                        visualizationService.InvalidateCache();
+                    }
+                    catch
+                    {
+                        // Best-effort.
+                    }
+                }
+            }
+            catch
+            {
+                // Best-effort.
             }
         }
     }
