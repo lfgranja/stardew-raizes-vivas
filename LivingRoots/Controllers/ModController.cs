@@ -396,7 +396,7 @@ namespace LivingRoots.Controllers
         private void HandleRegistrationError(RegistrationContext ctx)
         {
             ctx.Monitor.Log("Error occurred while registering game events.", LogLevel.Error);
-            ctx.Monitor.Log($"RegisterEvents exception type: {ctx.Exception.GetType().FullName} (HResult: 0x{ctx.Exception.HResult:X8})", LogLevel.Warn);
+            ctx.Monitor.Log($"RegisterEvents exception type: {ctx.Exception.GetType().FullName} (HResult: 0x{ctx.Exception.HResult:X8})", LogLevel.Trace);
 
             // Execute rollback safely; don't let rollback failures mask original error.
             SafeUnsubscribe<GameLaunchedEventArgs>(
