@@ -23,7 +23,8 @@ namespace LivingRoots.Tests.HarvestQuality
             var items = new List<Item?>();
             for (int i = 0; i < count; i++)
             {
-                items.Add(new object() as Item);
+                var obj = (Item)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(StardewValley.Object));
+                items.Add(obj);
             }
 
             return items;
@@ -120,7 +121,8 @@ namespace LivingRoots.Tests.HarvestQuality
         [Fact]
         public void IsFull_FreeSlotExists_IsFalse()
         {
-            var inventory = new List<Item?> { new object() as Item, null };
+            var obj = (Item)System.Runtime.Serialization.FormatterServices.GetUninitializedObject(typeof(StardewValley.Object));
+            var inventory = new List<Item?> { obj, null };
 
             Assert.False(HarvestInventoryDelta.IsFull(inventory, 36));
         }
