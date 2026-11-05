@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using LivingRoots;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Interfaces;
 using LivingRoots.Verification.Evidence;
@@ -58,6 +59,7 @@ namespace LivingRoots.Verification
         private bool _quitRequested;
         private int _sessionPollCounter;
         private int _queuePollCounter;
+        private List<HarvestRecord> _lastHarvestRecords = new();
 
         public override void Entry(IModHelper helper)
         {
@@ -334,6 +336,16 @@ namespace LivingRoots.Verification
                         break;
                     }
 
+                case "lr_harvest_matrix":
+                    {
+                        if (!RunHarvestMatrix(command.GetInt(0), command.GetInt(1)))
+                        {
+                            FailGeneration("harvest-matrix-failed");
+                        }
+
+                        break;
+                    }
+
                 case "lr_advance_days":
                     {
                         var days = command.GetInt(0);
@@ -540,11 +552,8 @@ namespace LivingRoots.Verification
                     return;
                 }
 
-                if (Game1.cropData.ContainsKey(LongPhaseSeedId))
-                {
-                    return;
-                }
-
+                // The harvest matrix needs the full vanilla quality range so a
+                // probe tile can be classified as 0, 1, or 2 before planting.
                 Game1.cropData[LongPhaseSeedId] = new CropData
                 {
                     Seasons = new List<Season>
@@ -562,6 +571,10 @@ namespace LivingRoots.Verification
                     HarvestItemId = "24",
                     HarvestMinStack = 1,
                     HarvestMaxStack = 1,
+                    ExtraHarvestChance = 0.0,
+                    HarvestMaxIncreasePerFarmingLevel = 0f,
+                    HarvestMinQuality = 0,
+                    HarvestMaxQuality = 3,
                     HarvestMethod = HarvestMethod.Grab,
                     Texture = "TileSheets\\crops",
                     SpriteIndex = 0,
@@ -572,6 +585,283 @@ namespace LivingRoots.Verification
             catch
             {
                 Monitor.Log("Verification crop registration failed.", LogLevel.Trace);
+            }
+        }
+
+        private bool RunHarvestMatrix(int baseX, int baseY)
+        {
+            var player = Game1.player;
+            var api = _api;
+            if (player == null || api == null)
+            {
+                return false;
+            }
+
+            GameLocation? location = GetFarmLocation();
+            if (location == null)
+            {
+                return false;
+            }
+
+            var originalInventory = new List<Item>(player.Items);
+            int originalFarmingLevel = player.farmingLevel.Value;
+            var records = new List<HarvestRecord>();
+
+            try
+            {
+                player.farmingLevel.Value = 10;
+                if (!TryBuildHarvestProbes(location, baseX, baseY, out var probes))
+                {
+                    return false;
+                }
+
+                if (probes.Any(probe => !TryHarvestProbe(location, api, probe, records)))
+                {
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Never log the raw message: it can contain save paths.
+                Monitor.Log("Harvest matrix failed. Type: " + ex.GetType().FullName, LogLevel.Trace);
+                return false;
+            }
+            finally
+            {
+                player.farmingLevel.Value = originalFarmingLevel;
+                player.Items.OverwriteWith(originalInventory);
+            }
+
+            _lastHarvestRecords = records;
+            return true;
+        }
+
+        private static bool TryBuildHarvestProbes(GameLocation location, int baseX, int baseY, out IReadOnlyList<HarvestProbe> probes)
+        {
+            probes = Array.Empty<HarvestProbe>();
+            var candidates = ScanHarvestCandidates(location, baseX, baseY);
+            double qualityProbability = HarvestRollCalculator.VanillaQualityProbability(Game1.player.FarmingLevel, 0);
+            return HarvestMatrixPlanner.TrySelect(
+                candidates,
+                qualityProbability,
+                ModConstants.SoilQualityHealthyBoost,
+                ModConstants.SoilExtraHarvestHealthyBoost,
+                out probes);
+        }
+
+        private static List<HarvestProbeCandidate> ScanHarvestCandidates(GameLocation location, int baseX, int baseY)
+        {
+            const int scanRadius = 8;
+            var candidates = new List<HarvestProbeCandidate>();
+            int totalDays = Game1.Date.TotalDays;
+            int uniqueId = unchecked((int)(Game1.uniqueIDForThisGame & 0xFFFFFFFFUL));
+            double vanillaProbability = HarvestRollCalculator.VanillaQualityProbability(Game1.player.FarmingLevel, 0);
+            double secondChance = Math.Min(0.75, vanillaProbability * 2.0);
+
+            for (int y = baseY - scanRadius; y <= baseY + scanRadius; y++)
+            {
+                int row = y;
+                var availableColumns = Enumerable
+                    .Range(baseX - scanRadius, (scanRadius * 2) + 1)
+                    .Where(x => IsProbeTileAvailable(location, x, row));
+                foreach (int x in availableColumns)
+                {
+                    int vanillaQuality = ReproduceVanillaQuality(x, row, vanillaProbability, secondChance);
+                    double qualityRoll = HarvestRollCalculator.QualityRoll(x, row, totalDays, uniqueId, 0);
+                    double extraRoll = HarvestRollCalculator.ExtraRoll(x, row, totalDays, uniqueId);
+                    candidates.Add(new HarvestProbeCandidate(x, row, qualityRoll, extraRoll, vanillaQuality));
+                }
+            }
+
+            return candidates;
+        }
+
+        private static int ReproduceVanillaQuality(int tileX, int tileY, double probability, double secondChance)
+        {
+            Random random = Utility.CreateRandom(
+                tileX * 7.0,
+                tileY * 11.0,
+                Game1.stats.DaysPlayed,
+                Game1.uniqueIDForThisGame);
+
+            if (random.NextDouble() < probability)
+            {
+                return 2;
+            }
+
+            if (random.NextDouble() < secondChance)
+            {
+                return 1;
+            }
+
+            return 0;
+        }
+
+        private static bool IsProbeTileAvailable(GameLocation location, int tileX, int tileY)
+        {
+            var tile = new Vector2(tileX, tileY);
+            if (!location.isTileOnMap(tile) || location.isWaterTile(tileX, tileY))
+            {
+                return false;
+            }
+
+            if (location.buildings != null && location.buildings.Any(building => building != null && building.occupiesTile(tile)))
+            {
+                return false;
+            }
+
+            if (location.Objects != null && location.Objects.ContainsKey(tile))
+            {
+                return false;
+            }
+
+            if (location.terrainFeatures.TryGetValue(tile, out var feature)
+                && (!(feature is HoeDirt dirt) || dirt.crop != null))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TryHarvestProbe(GameLocation location, ILivingRootsModApi api, HarvestProbe probe, List<HarvestRecord> records)
+        {
+            var candidate = probe.Candidate;
+            PlantCrop(location.Name, candidate.TileX, candidate.TileY, LongPhaseSeedId);
+            if (!location.terrainFeatures.TryGetValue(new Vector2(candidate.TileX, candidate.TileY), out var feature)
+                || feature is not HoeDirt dirt
+                || dirt.crop == null)
+            {
+                return false;
+            }
+
+            ForceCropMaturity(dirt.crop);
+            float health = ProbeHealth(probe.Name);
+            api.SetSoilHealth(location.Name, candidate.TileX, candidate.TileY, health);
+
+            var record = HarvestProbe(location, dirt, probe, health);
+            if (record == null)
+            {
+                return false;
+            }
+
+            records.Add(record);
+            return true;
+        }
+
+        private static HarvestRecord? HarvestProbe(GameLocation location, HoeDirt dirt, HarvestProbe probe, float health)
+        {
+            var player = Game1.player;
+            var candidate = probe.Candidate;
+
+            // The patch inspects the last inventory slot for the main item and
+            // the extra item merges into it when the qualities match. Leaving
+            // exactly one null slot guarantees both reads are unambiguous.
+            player.Items.OverwriteWith(new List<Item> { null! });
+            int debrisBefore = location.debris.Count;
+            bool harvested = dirt.crop.harvest(candidate.TileX, candidate.TileY, dirt);
+
+            Item? main = player.Items.Count > 0 ? player.Items[0] : null;
+            if (!harvested || main == null)
+            {
+                return null;
+            }
+
+            int extraCount = Math.Max(0, main.Stack - 1);
+            int? extraQuality = null;
+            for (int i = debrisBefore; i < location.debris.Count; i++)
+            {
+                Debris debris = location.debris[i];
+                if (debris?.item == null || debris.item.ItemId != "24")
+                {
+                    continue;
+                }
+
+                extraCount += debris.item.Stack;
+                if (!extraQuality.HasValue)
+                {
+                    extraQuality = debris.item.Quality;
+                }
+            }
+
+            if (extraCount > 0 && !extraQuality.HasValue)
+            {
+                extraQuality = main.Quality;
+            }
+
+            return new HarvestRecord
+            {
+                Location = location.Name,
+                TileX = candidate.TileX,
+                TileY = candidate.TileY,
+                TileKey = candidate.TileX + "," + candidate.TileY,
+                Probe = probe.Name,
+                SoilHealth = health,
+                HealthTier = ProbeHealthTier(health),
+                QualityRoll = candidate.QualityRoll,
+                ExtraRoll = candidate.ExtraRoll,
+                VanillaQuality = candidate.VanillaQuality,
+                MainItemId = main.ItemId,
+                MainQuality = main.Quality,
+                ExtraCount = extraCount,
+                ExtraQuality = extraQuality,
+                Harvested = harvested,
+            };
+        }
+
+        private static void ForceCropMaturity(Crop crop)
+        {
+            int lastPhase = crop.phaseDays.Count > 0 ? crop.phaseDays.Count - 1 : 0;
+            crop.currentPhase.Value = lastPhase;
+            crop.fullyGrown.Value = true;
+            crop.dayOfCurrentPhase.Value = 0;
+            crop.dead.Value = false;
+        }
+
+        private static float ProbeHealth(string probe)
+        {
+            if (probe == HarvestMatrixPlanner.PoorProbe)
+            {
+                return 10f;
+            }
+
+            if (probe == HarvestMatrixPlanner.ModerateProbe)
+            {
+                return 50f;
+            }
+
+            return 90f;
+        }
+
+        private static string ProbeHealthTier(float health)
+        {
+            if (health <= ModConstants.MinSoilHealth)
+            {
+                return HealthTierClassifier.NonParticipant;
+            }
+
+            if (health < ModConstants.PoorModerateBandEdge)
+            {
+                return HealthTierClassifier.Poor;
+            }
+
+            if (health < ModConstants.ModerateHealthyBandEdge)
+            {
+                return HealthTierClassifier.Moderate;
+            }
+
+            return HealthTierClassifier.Healthy;
+        }
+
+        private static GameLocation? GetFarmLocation()
+        {
+            try
+            {
+                return Game1.getLocationFromName(DefaultLocation);
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -647,6 +937,7 @@ namespace LivingRoots.Verification
 
             stopwatch.Stop();
             dump.ElapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+            dump.Harvests = new List<HarvestRecord>(_lastHarvestRecords);
             return dump;
         }
 
