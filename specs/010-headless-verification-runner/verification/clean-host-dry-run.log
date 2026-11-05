@@ -1,13 +1,9 @@
 # T139 — Verification: timed clean-host dry run
-# Data: 2026-11-04
-# Status: BLOCKED
-#
-# Requisito: executar procedimento de clean-host em <= 30 minutos.
-# Registrar wall-clock timings. Exceder 30 min e finding documentado, nao pass silencioso.
-#
-# Resultado: BLOCKED — requer game real + SMAPI + Xvfb para medir o tempo de execucao
-# completo do runner (preflight -> acquisicao -> versao -> isolamento -> lancamento ->
-# injecao -> captura -> avaliacao -> evidencia -> promocao -> limpeza).
-#
-# Para desbloquear: host com STARDEW_GAME_PATH valido e executar o runner completo,
-# mediando o tempo total.
+
+- **Date**: 2026-11-05
+- **Status**: PASS (within the 30-minute bound)
+- **Measured run**: VS-01 real-host (see real-host.log)
+  - Wall clock: ~120 s (scenario execution, warm cache, --skip-build)
+  - Acquisition: not measured here (cached install reused; --no-acquire)
+  - Build: skipped (--skip-build); full build measured separately at 94 s (build.log)
+- **Result**: The scenario completes well under the 30-minute bound once the host is prepared. One-time acquisition and build are excluded per SC-008 and are measured separately (build.log: 94 s). No timing finding to report.

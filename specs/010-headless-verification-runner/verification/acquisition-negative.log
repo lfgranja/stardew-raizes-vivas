@@ -1,25 +1,22 @@
-Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
-
-=== test-acquisition.sh ===
-    [exit status: 0]
-    ok - placeholder lock exits 19
-    ok - mutable latest exits 19
-    ok - empty files map exits 19
-    ok - non-string digest exits 19
-    ok - valid lock exits 0
-    ok - https github.com ok
-    ok - api.github.com ok
-    ok - objects ok
-    ok - codeload ok
-    ok - http rejected
-    ok - other host rejected
-    ok - embedded creds rejected
-    ok - gh token present; no-token case not applicable
-    ok - BUILDDEPS_TOKEN => 0
-    ok - cache miss on digest mismatch
-    ok - no-acquire cache miss exits 9
-    ok - no token interpolated into URL
-    # tests: 17, passed: 17, failed: 0
-PASS test-acquisition.sh
-
-1 files, 1 passed, 0 failed
+# acquisition negative — T141-T144 verification
+# Date: 2026-11-05T03:00:40Z
+# Command: bash scripts/tests/test-acquisition.sh
+ok - placeholder lock exits 19
+ok - mutable latest exits 19
+ok - empty files map exits 19
+ok - non-string digest exits 19
+ok - valid lock exits 0
+ok - https github.com ok
+ok - api.github.com ok
+ok - objects ok
+ok - codeload ok
+ok - http rejected
+ok - other host rejected
+ok - embedded creds rejected
+ok - gh token present; no-token case not applicable
+ok - BUILDDEPS_TOKEN => 0
+ok - cache miss on digest mismatch
+ok - no-acquire cache miss exits 9
+ok - no token interpolated into URL
+# tests: 17, passed: 17, failed: 0
+# Exit: 0

@@ -91,6 +91,22 @@ for artifact in manifest.get("artifacts") or []:
         print(f"runner: error: class=ERRORED message=artifact not in subject: {artifact}", file=sys.stderr)
         sys.exit(19)
 
+# Subject completeness: every bundle file (except the manifest, its detached
+# anchor, and builder work files) MUST appear in subject[]. A file added after
+# finalization cannot escape the anchor.
+SKIP = {"manifest.json", "manifest.sha256", ".manifest-input.json", ".attempts_list"}
+for root, dirs, files in os.walk(bundle):
+    dirs.sort()
+    for name in sorted(files):
+        if name.startswith("."):
+            continue
+        full = os.path.join(root, name)
+        rel = os.path.relpath(full, bundle).replace(os.sep, "/")
+        if rel in SKIP:
+            continue
+        if rel not in names:
+            print(f"runner: error: class=ERRORED message=bundle file not in subject: {rel}", file=sys.stderr)
+            sys.exit(19)
 if manifest.get("claimsFile") != "claims.json":
     print("runner: error: class=ERRORED message=claimsFile must be claims.json", file=sys.stderr)
     sys.exit(19)

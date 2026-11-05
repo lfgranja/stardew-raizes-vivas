@@ -404,3 +404,7 @@ PASS test-bundle-negative.sh
 PASS test-redaction.sh
 
 2 files, 2 passed, 0 failed
+
+## Deviation statement (added 2026-11-05)
+
+Implementation pre-existed; genuine RED evidence cannot be reconstructed retroactively. Tests are regression guards, not TDD RED evidence. Marking unverified, not fabricating, per tdd-guardian "absence → unverified, never violation" policy.

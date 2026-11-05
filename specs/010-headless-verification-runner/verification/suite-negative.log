@@ -1,23 +1,20 @@
-Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
-
-=== test-suite.sh ===
-    [exit status: 0]
-    ok - empty directory discovery returns 20 (no tests)
-    ok - discovers a.scenario.json
-    ok - discovers b.scenario.json
-    ok - fallback *.json not used when *.scenario.json present
-    ok - lexicographic order: a first
-    ok - fallback discovers a.json
-    ok - fallback discovers z.json
-    ok - suite rerun cap is 4
-    ok - aggregate fail over pass
-    ok - aggregate errored over fail
-    ok - aggregate pass over no-tests when pass present
-    ok - aggregate no-tests alone
-    ok - aggregate fail over policy
-    ok - aggregate errored over policy
-    ok - malformed scenario in suite rejected with 14
-    # tests: 15, passed: 15, failed: 0
-PASS test-suite.sh
-
-1 files, 1 passed, 0 failed
+# suite negative — T141-T144 verification
+# Date: 2026-11-05T03:00:46Z
+# Command: bash scripts/tests/test-suite.sh
+ok - empty directory discovery returns 20 (no tests)
+ok - discovers a.scenario.json
+ok - discovers b.scenario.json
+ok - fallback *.json not used when *.scenario.json present
+ok - lexicographic order: a first
+ok - fallback discovers a.json
+ok - fallback discovers z.json
+ok - suite rerun cap is 4
+ok - aggregate fail over pass
+ok - aggregate errored over fail
+ok - aggregate pass over no-tests when pass present
+ok - aggregate no-tests alone
+ok - aggregate fail over policy
+ok - aggregate errored over policy
+ok - malformed scenario in suite rejected with 14
+# tests: 15, passed: 15, failed: 0
+# Exit: 0

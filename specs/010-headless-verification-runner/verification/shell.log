@@ -1,6 +1,5 @@
-=== bash -n ===
-bash -n exit: 0
-
-=== shellcheck ===
-zsh:1: command not found: shellcheck
-shellcheck not available
+# T134 — Verification: shell
+# Date: 2026-11-05T02:52:41Z
+# bash -n on scripts/**/*.sh
+bash -n result: PASS
+shellcheck: not installed (skipped)

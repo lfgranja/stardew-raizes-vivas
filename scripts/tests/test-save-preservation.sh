@@ -131,6 +131,73 @@ RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
     call_runner_func save_prepare "" "$run_root"
 assert_fn_code 19 "save_prepare empty milestone => 19"
 
+# ---------------------------------------------------------------------------
+# FR-008 / runner hardening additions
+# ---------------------------------------------------------------------------
+
+# Reset the environment to a clean baseline before the new cases.
+export HOME="$_saved_home"
+export XDG_CONFIG_HOME="$_saved_xdg_config"
+export XDG_DATA_HOME="$_saved_xdg_data"
+export XDG_CACHE_HOME="$_saved_xdg_cache"
+export XDG_STATE_HOME="$_saved_xdg_state"
+unset RUNNER_SAVE_ID RUNNER_SAVE_DIR RUNNER_SAVE_INSTANCE_DIR RUNNER_SMAPI_LOG RUNNER_ORIGINAL_HOME 2>/dev/null || true
+
+# Test: save_prepare aligns a renamed milestone (folder != inner file name).
+mkdir -p "$saves_root/renamed-fr008"
+make_fake_save "$saves_root/renamed-fr008" "OldInner_999" '{"Farm":{"-10,5":10}}' '{}'
+RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
+    call_runner_func save_prepare "renamed-fr008" "$run_root"
+assert_fn_code 0 "save_prepare aligns a renamed milestone (exit 0)"
+if [[ -f "${RUNNER_SAVE_DIR:-}/renamed-fr008" ]]; then
+    pass "inner save file renamed to match the folder"
+else
+    fail "inner save file renamed" "missing ${RUNNER_SAVE_DIR:-}/renamed-fr008"
+fi
+if [[ ! -e "${RUNNER_SAVE_DIR:-}/OldInner_999" ]]; then
+    pass "old inner save-file name removed from the working copy"
+else
+    fail "old inner save-file name" "still present"
+fi
+
+# Test: save_prepare fails loudly (19) when align is disabled and names disagree.
+mkdir -p "$saves_root/disabled-align"
+make_fake_save "$saves_root/disabled-align" "OldInner_777" '{"Farm":{"-10,5":10}}' '{}'
+# Monkey-patch save_align_inner_name to a no-op to simulate "disabled".
+save_align_inner_name() { return 0; }
+RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
+    call_runner_func save_prepare "disabled-align" "$run_root"
+assert_fn_code 19 "save_prepare fails when align is disabled and names disagree"
+# Restore the real implementation.
+unset _LR_SAVE_LOADED 2>/dev/null || true
+# shellcheck disable=SC1090
+source "$RUNNER_REPO_ROOT/scripts/lib/save.sh" 2>/dev/null || true
+
+# Test: save_prepare fails loudly (19) for zero candidate files (ambiguous layout).
+mkdir -p "$saves_root/zero-candidate"
+printf '{}' > "$saves_root/zero-candidate/sidecar.json"
+RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
+    call_runner_func save_prepare "zero-candidate" "$run_root"
+assert_fn_code 19 "save_prepare zero candidates => 19"
+
+# Test: save_prepare fails loudly (19) for multiple candidate files (ambiguous layout).
+mkdir -p "$saves_root/multi-candidate"
+printf 'one' > "$saves_root/multi-candidate/one"
+printf 'two' > "$saves_root/multi-candidate/two"
+RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
+    call_runner_func save_prepare "multi-candidate" "$run_root"
+assert_fn_code 19 "save_prepare multiple candidates => 19"
+
+# Test: save_prepare preserves original HOME in RUNNER_ORIGINAL_HOME (FR-008).
+_orig_home="$HOME"
+mkdir -p "$saves_root/fr008-save"
+make_fake_save "$saves_root/fr008-save" "fr008-save" '{"Farm":{"-10,5":10}}' '{}'
+unset RUNNER_ORIGINAL_HOME 2>/dev/null || true
+RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
+    call_runner_func save_prepare "fr008-save" "$run_root"
+assert_fn_code 0 "save_prepare FR-008 exit 0"
+assert_eq "$_orig_home" "${RUNNER_ORIGINAL_HOME:-}" "RUNNER_ORIGINAL_HOME preserved"
+
 # Restore the caller environment: save_isolate calls save_setup_env, which
 # exports HOME/XDG_* into this test process.
 export HOME="$_saved_home"

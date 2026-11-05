@@ -176,3 +176,7 @@ PASS test-schema-contract.sh
 PASS test-version-gate.sh
 
 11 files, 11 passed, 0 failed
+
+## Deviation statement (added 2026-11-05)
+
+Implementation pre-existed; genuine RED evidence cannot be reconstructed retroactively. Tests are regression guards, not TDD RED evidence. Marking unverified, not fabricating, per tdd-guardian "absence → unverified, never violation" policy.
