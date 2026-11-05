@@ -44,8 +44,8 @@ namespace LivingRoots.Domain
 
             for (int i = 0; i < slots; i++)
             {
-                Item? beforeItem = i < beforeCount ? before[i] : null;
-                Item? afterItem = i < afterCount ? after[i] : null;
+                Item? beforeItem = i < beforeCount ? before![i] : null;
+                Item? afterItem = i < afterCount ? after![i] : null;
 
                 int added = 0;
                 if (beforeItem == null && afterItem != null)

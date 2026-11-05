@@ -21,7 +21,8 @@ namespace LivingRoots.Services
         {
             try
             {
-                return Game1.player.removeItemFromInventory(item);
+                Game1.player.removeItemFromInventory(item);
+                return true;
             }
             catch
             {

@@ -99,7 +99,8 @@ namespace LivingRoots.Services
 
             try
             {
-                return _farmer.removeItemFromInventory(item);
+                _farmer.removeItemFromInventory(item);
+                return true;
             }
             catch
             {
