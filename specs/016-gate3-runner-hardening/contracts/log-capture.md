@@ -12,7 +12,7 @@ The default capture level is **full**. The bundle artifact `artifacts/smapi-log.
 
 ## Opt-in excerpting
 
-Excerpting is permitted only as an explicit, documented, opt-in capture level selected by a documented option (for example a scenario field or CLI flag). It is never a silent filter:
+Excerpting is permitted only as an explicit, documented, opt-in capture level selected via the `RUNNER_SMAPI_CAPTURE` environment variable (`full` | `excerpt`, default `full`). It is never a silent filter:
 
 - The default remains `full`; an excerpt is produced only when the opt-in is explicitly requested.
 - The opt-in level and its parameters MUST be recorded in the run context / scenario so the bundle is reproducible.

@@ -68,19 +68,25 @@ As a reviewer, I want the red-gate logs to show the intended failing assertion r
 - Q: Should the SMAPI log capture be full or configurable? → A: Full capture is the default; any excerpting is an explicit, documented, opt-in level (never a silent filter). Size caps via density ranking apply only to LLM diagnosis, with the full log retained as a forensic secondary artifact.
 - Q: Should `subject[]` cover every bundle file or only artifacts? → A: Every bundle file must be covered. The verifier enforces this as a filesystem rule (no schema version bump required); a schema bump is only needed if the field set changes.
 - Q: Should red-gate evidence be reconstructed or documented as a deviation? → A: Document the deviation. True RED gates cannot be reconstructed because tests were written alongside/after implementation; the tests are regression guards, not TDD RED evidence. Marking unverified (not fabricating) follows the tdd-guardian "absence → unverified, never violation" policy.
+- Q: Should the SKIP set include all dotfiles or only named work files? → A: Only the named work files (`manifest.json`, `manifest.sha256`, `.manifest-input.json`, `.attempts_list`). The verifier code is authoritative; data-model and contract must match.
+- Q: What is the failure behavior when T131-T145 are not all complete? → A: Refuse promotion (not partial promotion). `RUN_EXIT` must be 0; all gates must pass before `promotion_apply` is invoked.
+- Q: Should `retention-receipt.json` be covered by `subject[]`? → A: Yes. Move receipt generation before manifest input assembly so the filesystem walk covers it.
+- Q: What is the opt-in excerpt selection mechanism? → A: Environment variable `RUNNER_SMAPI_CAPTURE=full|excerpt` (default `full`). Matches the existing `RUNNER_*` env-var convention. No schema change required.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: The system MUST align the isolated save's folder name and inner save file name during `save_prepare`, or fail loudly with a named cause.
-- **FR-002**: The system MUST capture the full SMAPI log in `artifacts/smapi-log.txt` as the default. Any excerpting must be an explicit, documented, opt-in capture level (never a silent filter). Size caps via density ranking apply only to LLM diagnosis, with the full log retained as a forensic secondary artifact.
+- **FR-002**: The system MUST capture the full SMAPI log in `artifacts/smapi-log.txt` as the default. Any excerpting must be an explicit, documented, opt-in capture level controlled via the `RUNNER_SMAPI_CAPTURE` environment variable (`full` | `excerpt`, default `full`), never a silent filter. Size caps via density ranking apply only to LLM diagnosis, with the full log retained as a forensic secondary artifact.
 - **FR-003**: The system MUST produce a manifest that satisfies `contracts/evidence-bundle.schema.json` via the single producer `ManifestBuilder`, with a detached `manifest.sha256` anchor.
-- **FR-004**: The offline verifier MUST validate the manifest schema, digest, subject entries, claims/manifest honesty, and runId agreement before returning 0.
-- **FR-005**: The offline verifier MUST reject any bundle where a file exists that is not covered by `subject[]`. This is enforced as a filesystem rule; no schema version bump is required unless the field set changes.
+- **FR-004**: The offline verifier MUST validate the manifest schema, digest, subject entries, claims/manifest honesty, runId agreement, and subject-completeness (every bundle file covered) before returning 0.
+- **FR-005**: The offline verifier MUST reject any bundle where a file exists that is not covered by `subject[]`. The SKIP set (files excluded from `subject[]`) is: `manifest.json`, `manifest.sha256`, `.manifest-input.json`, `.attempts_list`. This is enforced as a filesystem rule; no schema version bump is required unless the field set changes.
 - **FR-006**: The system MUST write `claims.json` before assembling the manifest input, so `subject[]` covers it.
-- **FR-007**: The system MUST document in each red-gate log that implementation pre-existed and that genuine RED evidence cannot be reconstructed retroactively; true RED gates are not fabricated. The tests are treated as regression guards, not TDD RED evidence.
+- **FR-007**: The system MUST document in each red-gate log that implementation pre-existed and that genuine RED evidence cannot be reconstructed retroactively; true RED gates are not fabricated. The tests are treated as regression guards, not TDD RED evidence. SC-002 is satisfied when each log contains either a failing assertion or a documented deviation statement.
 - **FR-008**: The system MUST preserve the original `HOME` for Python helpers that import user-installed modules when the save isolation rewrites it.
+- **FR-009**: The system MUST ensure `retention-receipt.json` is covered by `subject[]`, by moving receipt generation before manifest input assembly (or an equivalent ordering that guarantees coverage).
+- **FR-010**: When T131-T145 are not all complete, the system MUST refuse promotion (not partial promotion). `RUN_EXIT` must be 0 and all required gates must pass before `promotion_apply` is invoked.
 
 ### Key Entities
 
@@ -93,7 +99,7 @@ As a reviewer, I want the red-gate logs to show the intended failing assertion r
 ### Measurable Outcomes
 
 - **SC-001**: A bundle with an uncovered file is rejected by the verifier with exit 19.
-- **SC-002**: Every red-gate log contains at least one failing assertion.
+- **SC-002**: Every red-gate log contains either a failing assertion or a documented deviation statement (implementation pre-existed; genuine RED evidence cannot be reconstructed).
 - **SC-003**: The save-name alignment is covered by an automated test that fails when the fix is reverted.
 - **SC-004**: The full SMAPI log capture is covered by an automated test that fails when the excerpt is reintroduced.
 
