@@ -220,9 +220,15 @@ public class CompostingBinService(
             return 0;
         }
 
+        int finalOutputCount = _outputCountProvider != null ? _outputCountProvider() : 1;
+        if (finalOutputCount < 0)
+        {
+            finalOutputCount = 0;
+        }
+
         Game1.playSound("Ship");
-        _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced 1 compost", LogLevel.Trace);
-        return 1;
+        _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced {finalOutputCount} compost", LogLevel.Trace);
+        return finalOutputCount;
     }
 
     private static void ApplyHarvestSuccess(CompostingBinStateModel bin)

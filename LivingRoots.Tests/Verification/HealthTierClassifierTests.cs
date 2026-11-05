@@ -22,7 +22,7 @@ namespace LivingRoots.Tests.Verification
         [InlineData(34d, "measured", "moderate")]
         [InlineData(66d, "measured", "moderate")]
         [InlineData(66.999d, "measured", "moderate")]
-        [InlineData(67d, "measured", "healthy")]
+        [InlineData(67d, "measured", "moderate")]
         [InlineData(70d, "measured", "moderate")]
         [InlineData(70.999d, "measured", "moderate")]
         [InlineData(71d, "measured", "healthy")]
