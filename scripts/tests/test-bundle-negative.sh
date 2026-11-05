@@ -7,13 +7,56 @@ verifier="$HARNESS_REPO_ROOT/scripts/verify-evidence-bundle.sh"
 make_bundle() {
     local dir="$1"; shift
     rm -rf "$dir"; mkdir -p "$dir/artifacts" "$dir/attempts/1"
-    printf '{"schemaVersion":1,"runId":"run-1","manifestVersion":"1"}\n' > "$dir/manifest.json"
-    printf 'deadbeef\n' > "$dir/manifest.sha256"
-    printf '{"honestyLevel":"R"}\n' > "$dir/claims.json"
     printf 'x' > "$dir/artifacts/soil.json"
     printf 'y' > "$dir/artifacts/crop.json"
     printf 'z' > "$dir/artifacts/smapi.txt"
     printf '{"attempt":1}\n' > "$dir/attempts/1/attempt.json"
+    printf '{"schemaVersion":1,"runId":"run-20260101T000000Z-abcd","honestyLevel":"R","claims":[]}\n' > "$dir/claims.json"
+    python3 - "$dir" <<'PY'
+import hashlib, json, os, sys
+bundle = sys.argv[1]
+def sha(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+artifacts = sorted(
+    f"artifacts/{name}" for name in os.listdir(os.path.join(bundle, "artifacts"))
+)
+manifest = {
+    "schemaVersion": 1,
+    "runId": "run-20260101T000000Z-abcd",
+    "timestamp": "2026-01-01T00:00:00Z",
+    "toolVersions": {"runner": "0.1.0"},
+    "gameVersion": "1.6.14",
+    "modVersion": "0.4.0",
+    "environment": {
+        "gameVersion": "1.6.14",
+        "smapiVersion": "4.4.0",
+        "modVersion": "0.4.0",
+        "apiVersion": "1.0.0",
+        "saveId": "fixture",
+    },
+    "expectedSignals": ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"],
+    "subject": [
+        {"name": name, "digest": {"sha256": sha(os.path.join(bundle, name))}}
+        for name in artifacts
+    ],
+    "verdict": "pass",
+    "honestyLevel": "R",
+    "attempts": [],
+    "claimsFile": "claims.json",
+    "artifacts": artifacts,
+    "commands": [{"argv": ["fixture"]}],
+    "materials": [{"uri": "file://fixture", "sha256": "0" * 64, "name": "fixture"}],
+    "seeds": [{"seedId": "fixture", "source": "fixture"}],
+}
+with open(os.path.join(bundle, "manifest.json"), "w", encoding="utf-8") as f:
+    json.dump(manifest, f, indent=2)
+    f.write("\n")
+PY
+    printf '%s\n' "$(sha256sum "$dir/manifest.json" | awk '{print $1}')" > "$dir/manifest.sha256"
 }
 
 # missing manifest
@@ -62,9 +105,40 @@ if (( rc == 19 )); then pass "anomaly reports do not satisfy R signals"; else fa
 
 # a W bundle that claims nothing is valid even with only anomaly reports
 d="$HARNESS_SANDBOX/anw"; make_bundle "$d"
-printf '{"schemaVersion":1,"runId":"run-1","honestyLevel":"W","claims":[]}\n' > "$d/claims.json"
 rm -f "$d/artifacts/"*
 printf '{}\n' > "$d/artifacts/anomaly-report.json"
+printf '{"schemaVersion":1,"runId":"run-20260101T000000Z-abcd","honestyLevel":"W","claims":[]}\n' > "$d/claims.json"
+python3 - "$d" <<'PY'
+import hashlib, json, os, sys
+bundle = sys.argv[1]
+name = "artifacts/anomaly-report.json"
+digest = hashlib.sha256(open(os.path.join(bundle, name), "rb").read()).hexdigest()
+manifest = {
+    "schemaVersion": 1,
+    "runId": "run-20260101T000000Z-abcd",
+    "timestamp": "2026-01-01T00:00:00Z",
+    "toolVersions": {"runner": "0.1.0"},
+    "gameVersion": "1.6.14",
+    "modVersion": "0.4.0",
+    "environment": {
+        "gameVersion": "1.6.14",
+        "smapiVersion": "4.4.0",
+        "modVersion": "0.4.0",
+        "apiVersion": "1.0.0",
+        "saveId": "fixture",
+    },
+    "expectedSignals": ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"],
+    "subject": [{"name": name, "digest": {"sha256": digest}}],
+    "verdict": "partial",
+    "honestyLevel": "W",
+    "attempts": [],
+    "claimsFile": "claims.json",
+    "artifacts": [name],
+}
+with open(os.path.join(bundle, "manifest.json"), "w", encoding="utf-8") as f:
+    json.dump(manifest, f, indent=2)
+    f.write("\n")
+PY
 printf '%s\n' "$(sha256sum "$d/manifest.json" | awk '{print $1}')" > "$d/manifest.sha256"
 rc=0; bash "$verifier" "$d" >/dev/null 2>&1 || rc=$?
 if (( rc == 0 )); then pass "W bundle claiming nothing is valid"; else fail "W bundle claiming nothing" "rc=$rc"; fi

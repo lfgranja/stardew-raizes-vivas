@@ -53,6 +53,58 @@ assert_fn_code 0 "integrity failure write returns 0"
 call_runner_func evidence_validate "$bdir"
 pass "evidence_validate exercised (rc=$RUNNER_FN_CODE)"
 
+# manifest assembly: the payload handed to ManifestBuilder must satisfy the
+# published evidence-bundle contract. Before evidence_write_manifest_input
+# existed the input was {"runId": ...} and every real bundle failed the schema.
+rid2="run-20260101T000000Z-abcd"
+b2="$root/evidence-bundle-$rid2"
+mkdir -p "$b2/artifacts"
+printf 'x' > "$b2/artifacts/soil-health-before-after.json"
+printf 'y' > "$b2/artifacts/crop-phase-dump.json"
+printf 'z' > "$b2/artifacts/smapi-log.txt"
+call_runner_func evidence_write_claims "$b2" "$rid2" "R"
+assert_fn_code 0 "write claims for manifest assembly"
+ctx2="$HARNESS_SANDBOX/manifest-context.json"
+python3 - "$ctx2" "$rid2" "$HARNESS_REPO_ROOT" <<'PY'
+import json, sys
+path, rid, repo = sys.argv[1:4]
+ctx = {
+    "runId": rid,
+    "timestamp": "2026-01-01T00:00:00Z",
+    "scenario": f"{repo}/specs/004-playable-compost-loop/scenarios/compost-growth-hardening.scenario.json",
+    "verdict": "pass",
+    "honestyLevel": "R",
+    "gamePath": "",
+    "milestoneSave": "farm-year1-day5",
+    "modManifest": f"{repo}/LivingRoots/manifest.json",
+    "commit": "0" * 40,
+    "buildSkipped": True,
+    "toolVersions": {"dotnet": "10.0.400"},
+    "environmentOverrides": [],
+}
+json.dump(ctx, open(path, "w"), indent=2)
+PY
+mi2="$HARNESS_SANDBOX/manifest-input.json"
+call_runner_func evidence_write_manifest_input "$b2" "$ctx2" "$mi2"
+assert_fn_code 0 "manifest input assembled"
+call_runner_func evidence_finalize "$b2" "$mi2"
+assert_fn_code 0 "manifest finalized"
+if python3 - "$HARNESS_REPO_ROOT" "$b2" <<'PY'
+import json, jsonschema, sys
+repo, bundle = sys.argv[1:3]
+schema = json.load(open(f"{repo}/specs/010-headless-verification-runner/contracts/evidence-bundle.schema.json"))
+data = json.load(open(f"{bundle}/manifest.json"))
+jsonschema.Draft202012Validator(schema).validate(data)
+PY
+then
+    pass "assembled manifest satisfies evidence-bundle.schema.json"
+else
+    fail "assembled manifest" "fails evidence-bundle.schema.json"
+fi
+vrc=0
+bash "$HARNESS_REPO_ROOT/scripts/verify-evidence-bundle.sh" "$b2" >/dev/null 2>&1 || vrc=$?
+assert_eq 0 "$vrc" "offline verifier accepts the assembled bundle"
+
 # single-producer rule: no hand-written manifest in evidence.sh
 if grep -Eq 'printf[^$]*manifest\.json|cat[^$]*>.*manifest\.json|echo[^$]*manifest\.json' scripts/lib/evidence.sh; then
     fail "single producer" "hand-written manifest found"
