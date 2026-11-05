@@ -46,25 +46,7 @@ namespace LivingRoots.Domain
             {
                 Item? beforeItem = i < beforeCount ? before![i] : null;
                 Item? afterItem = i < afterCount ? after![i] : null;
-
-                if (beforeItem == null && afterItem != null)
-                {
-                    added = afterItem.Stack > 0 ? afterItem.Stack : 1;
-                }
-                else if (beforeItem != null && afterItem != null &&
-                         !string.Equals(beforeItem.QualifiedItemId, afterItem.QualifiedItemId, StringComparison.Ordinal))
-                {
-                    added = afterItem.Stack > 0 ? afterItem.Stack : 1;
-                }
-                else if (beforeItem != null && afterItem != null && beforeItem.Quality != afterItem.Quality)
-                {
-                    added = afterItem.Stack > 0 ? afterItem.Stack : 1;
-                }
-                else if (beforeItem != null && afterItem != null && afterItem.Stack > beforeItem.Stack)
-                {
-                    added = afterItem.Stack - beforeItem.Stack;
-                }
-
+                int added = ComputeAdded(beforeItem, afterItem);
                 if (added > 0)
                 {
                     result.Add(new HarvestInventoryChange(i, added));
@@ -75,6 +57,34 @@ namespace LivingRoots.Domain
         }
 
         /// <summary>Returns the primary added slot, or -1 when nothing was added.</summary>
+        private static int ComputeAdded(Item? beforeItem, Item? afterItem)
+        {
+            if (afterItem == null)
+            {
+                return 0;
+            }
+
+            int stack = afterItem.Stack > 0 ? afterItem.Stack : 1;
+            if (beforeItem == null)
+            {
+                return stack;
+            }
+
+            bool different = !string.Equals(beforeItem.QualifiedItemId, afterItem.QualifiedItemId, StringComparison.Ordinal)
+                             || beforeItem.Quality != afterItem.Quality;
+            if (different)
+            {
+                return stack;
+            }
+
+            if (afterItem.Stack > beforeItem.Stack)
+            {
+                return afterItem.Stack - beforeItem.Stack;
+            }
+
+            return 0;
+        }
+
         public static int FindPrimaryAddedSlot(IReadOnlyList<HarvestInventoryChange> changes)
         {
             if (changes == null || changes.Count == 0)
@@ -98,9 +108,9 @@ namespace LivingRoots.Domain
                 return false;
             }
 
-            foreach (var item in items)
+            for (int i = 0; i < items.Count; i++)
             {
-                if (item == null)
+                if (items[i] == null)
                 {
                     return false;
                 }
