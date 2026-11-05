@@ -21,9 +21,21 @@ def sha(path):
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+SKIP = {"manifest.json", "manifest.sha256", ".manifest-input.json", ".attempts_list"}
+subject = []
 artifacts = sorted(
     f"artifacts/{name}" for name in os.listdir(os.path.join(bundle, "artifacts"))
 )
+for root, dirs, files in os.walk(bundle):
+    dirs.sort()
+    for name in sorted(files):
+        if name.startswith("."):
+            continue
+        full = os.path.join(root, name)
+        rel = os.path.relpath(full, bundle).replace(os.sep, "/")
+        if rel in SKIP:
+            continue
+        subject.append({"name": rel, "digest": {"sha256": sha(full)}})
 manifest = {
     "schemaVersion": 1,
     "runId": "run-20260101T000000Z-abcd",
@@ -39,10 +51,7 @@ manifest = {
         "saveId": "fixture",
     },
     "expectedSignals": ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"],
-    "subject": [
-        {"name": name, "digest": {"sha256": sha(os.path.join(bundle, name))}}
-        for name in artifacts
-    ],
+    "subject": subject,
     "verdict": "pass",
     "honestyLevel": "R",
     "attempts": [],
@@ -106,6 +115,7 @@ if (( rc == 19 )); then pass "anomaly reports do not satisfy R signals"; else fa
 # a W bundle that claims nothing is valid even with only anomaly reports
 d="$HARNESS_SANDBOX/anw"; make_bundle "$d"
 rm -f "$d/artifacts/"*
+rm -rf "$d/attempts"
 printf '{}\n' > "$d/artifacts/anomaly-report.json"
 printf '{"schemaVersion":1,"runId":"run-20260101T000000Z-abcd","honestyLevel":"W","claims":[]}\n' > "$d/claims.json"
 python3 - "$d" <<'PY'
@@ -113,6 +123,7 @@ import hashlib, json, os, sys
 bundle = sys.argv[1]
 name = "artifacts/anomaly-report.json"
 digest = hashlib.sha256(open(os.path.join(bundle, name), "rb").read()).hexdigest()
+claims_digest = hashlib.sha256(open(os.path.join(bundle, "claims.json"), "rb").read()).hexdigest()
 manifest = {
     "schemaVersion": 1,
     "runId": "run-20260101T000000Z-abcd",
@@ -128,7 +139,10 @@ manifest = {
         "saveId": "fixture",
     },
     "expectedSignals": ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"],
-    "subject": [{"name": name, "digest": {"sha256": digest}}],
+    "subject": [
+        {"name": name, "digest": {"sha256": digest}},
+        {"name": "claims.json", "digest": {"sha256": claims_digest}},
+    ],
     "verdict": "partial",
     "honestyLevel": "W",
     "attempts": [],
