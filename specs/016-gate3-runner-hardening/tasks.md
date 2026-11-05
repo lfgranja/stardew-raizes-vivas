@@ -27,9 +27,9 @@
 
 **Purpose**: Confirm baseline state and prepare for hardening work
 
-- [ ] T001 Verify clean build: `GamePath=... dotnet build Stardew-LivingRoots.sln --configuration Release` exits 0 (baseline)
-- [ ] T002 [P] Verify shell syntax: `bash -n` on all `scripts/**/*.sh` passes
-- [ ] T003 [P] Verify format: `dotnet format Stardew-LivingRoots.sln --verify-no-changes` exits 0
+- [X] T001 Verify clean build: `GamePath=... dotnet build Stardew-LivingRoots.sln --configuration Release` exits 0 (baseline)
+- [X] T002 [P] Verify shell syntax: `bash -n` on all `scripts/**/*.sh` passes
+- [X] T003 [P] Verify format: `dotnet format Stardew-LivingRoots.sln --verify-no-changes` exits 0
 
 **Checkpoint**: Baseline confirmed green before any changes
 
@@ -39,10 +39,10 @@
 
 **Purpose**: Update contracts and data-model to reflect clarified decisions; must complete before user story work
 
-- [ ] T004 Update `specs/016-gate3-runner-hardening/data-model.md` SKIP set to match verifier code: `manifest.json`, `manifest.sha256`, `.manifest-input.json`, `.attempts_list` (not "all dotfiles"); also document FR-006 ordering (claims.json before manifest assembly)
-- [ ] T005 [P] Update `specs/016-gate3-runner-hardening/contracts/verifier-completeness.md` to state the SKIP set explicitly and the exit code 19 on violation
-- [ ] T006 [P] Update `specs/016-gate3-runner-hardening/contracts/log-capture.md` to reference `RUNNER_SMAPI_CAPTURE` env var (already done in clarify; verify consistency)
-- [ ] T007 [P] Update `specs/010-headless-verification-runner/contracts/evidence-bundle.schema.json` subject description to clarify completeness (documentation only; no schema bump required unless field set changes, per FR-005)
+- [X] T004 Update `specs/016-gate3-runner-hardening/data-model.md` SKIP set to match verifier code: `manifest.json`, `manifest.sha256`, `.manifest-input.json`, `.attempts_list` (not "all dotfiles"); also document FR-006 ordering (claims.json before manifest assembly)
+- [X] T005 [P] Update `specs/016-gate3-runner-hardening/contracts/verifier-completeness.md` to state the SKIP set explicitly and the exit code 19 on violation
+- [X] T006 [P] Update `specs/016-gate3-runner-hardening/contracts/log-capture.md` to reference `RUNNER_SMAPI_CAPTURE` env var (already done in clarify; verify consistency)
+- [X] T007 [P] Update `specs/010-headless-verification-runner/contracts/evidence-bundle.schema.json` subject description to clarify completeness (documentation only; no schema bump required unless field set changes, per FR-005)
 
 **Checkpoint**: Contracts and data-model aligned with implementation
 
@@ -58,22 +58,22 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T008 [P] [US1] Add RED test: `scripts/tests/test-save-preservation.sh` asserts `save_prepare` fails loudly (exit 19) when milestone save folder and inner file name disagree and `save_align_inner_name` is disabled
-- [ ] T009 [P] [US1] Add RED test: `scripts/tests/test-smapi-log-full.sh` asserts `artifacts/smapi-log.txt` is byte-identical to the source SMAPI log (not a filtered excerpt)
-- [ ] T010 [P] [US1] Add RED test: `scripts/tests/test-manifest-schema.sh` asserts `verify-evidence-bundle.sh` returns 19 when `manifest.json` is not schema-valid
-- [ ] T011 [P] [US1] Add RED test: `scripts/tests/test-manifest-schema.sh` asserts `verify-evidence-bundle.sh` returns 19 when `manifest.sha256` does not match manifest bytes
-- [ ] T012 [US1] Run RED tests, confirm all FAIL with intended assertions (record in `red-gate-phase-6.log`)
+- [X] T008 [P] [US1] Add RED test: `scripts/tests/test-save-preservation.sh` asserts `save_prepare` fails loudly (exit 19) when milestone save folder and inner file name disagree and `save_align_inner_name` is disabled
+- [X] T009 [P] [US1] Add RED test: `scripts/tests/test-smapi-log-full.sh` asserts `artifacts/smapi-log.txt` is byte-identical to the source SMAPI log (not a filtered excerpt)
+- [X] T010 [P] [US1] Add RED test: `scripts/tests/test-manifest-schema.sh` asserts `verify-evidence-bundle.sh` returns 19 when `manifest.json` is not schema-valid
+- [X] T011 [P] [US1] Add RED test: `scripts/tests/test-manifest-schema.sh` asserts `verify-evidence-bundle.sh` returns 19 when `manifest.sha256` does not match manifest bytes
+- [X] T012 [US1] Run RED tests, confirm all FAIL with intended assertions (record in `red-gate-phase-6.log`)
 
 **Checkpoint (RED)**: All US1 tests fail for the right reason before any implementation
 
 ### Implementation for User Story 1 (GREEN PHASE)
 
-- [ ] T013 [P] [US1] Ensure `save_align_inner_name` in `scripts/lib/save.sh` renames single non-sidecar file to match folder; fail loudly (exit 19) on zero or multiple candidates
-- [ ] T014 [P] [US1] Ensure `signals_smapi_log_excerpt` in `scripts/lib/signals.sh` performs full `cp -f` (not filtered grep); document capture level
-- [ ] T015 [US1] Ensure `evidence_finalize` in `scripts/lib/evidence.sh` invokes `ManifestBuilder` with full payload; `verify-evidence-bundle.sh` validates schema + digest
-- [ ] T048 [P] [US1] Add RED test: `scripts/tests/test-home-preservation.sh` asserts `save_prepare` preserves original HOME for Python helpers (exit 0 with HOME unchanged after save isolation)
-- [ ] T049 [US1] Ensure `save_prepare` in `scripts/lib/save.sh` preserves original HOME in `RUNNER_ORIGINAL_HOME` before rewriting HOME/XDG (FR-008)
-- [ ] T016 [US1] Run US1 tests, confirm all PASS (GREEN)
+- [X] T013 [P] [US1] Ensure `save_align_inner_name` in `scripts/lib/save.sh` renames single non-sidecar file to match folder; fail loudly (exit 19) on zero or multiple candidates
+- [X] T014 [P] [US1] Ensure `signals_smapi_log_excerpt` in `scripts/lib/signals.sh` performs full `cp -f` (not filtered grep); document capture level
+- [X] T015 [US1] Ensure `evidence_finalize` in `scripts/lib/evidence.sh` invokes `ManifestBuilder` with full payload; `verify-evidence-bundle.sh` validates schema + digest
+- [X] T048 [P] [US1] Add RED test: `scripts/tests/test-home-preservation.sh` asserts `save_prepare` preserves original HOME for Python helpers (exit 0 with HOME unchanged after save isolation)
+- [X] T049 [US1] Ensure `save_prepare` in `scripts/lib/save.sh` preserves original HOME in `RUNNER_ORIGINAL_HOME` before rewriting HOME/XDG (FR-008)
+- [X] T016 [US1] Run US1 tests, confirm all PASS (GREEN)
 
 **Checkpoint**: US1 complete — regression guards for all three defects in place
 
@@ -89,17 +89,17 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T017 [P] [US2] Add RED test: `scripts/tests/test-bundle-negative.sh` asserts verifier returns 19 when an extra file is added to a bundle that is not in `subject[]`
-- [ ] T018 [P] [US2] Add RED test: `scripts/tests/test-bundle-negative.sh` asserts verifier returns 0 when `subject[]` covers every bundle file
-- [ ] T019 [US2] Run RED tests, confirm FAIL with intended assertions
+- [X] T017 [P] [US2] Add RED test: `scripts/tests/test-bundle-negative.sh` asserts verifier returns 19 when an extra file is added to a bundle that is not in `subject[]`
+- [X] T018 [P] [US2] Add RED test: `scripts/tests/test-bundle-negative.sh` asserts verifier returns 0 when `subject[]` covers every bundle file
+- [X] T019 [US2] Run RED tests, confirm FAIL with intended assertions
 
 **Checkpoint (RED)**: US2 tests fail for the right reason
 
 ### Implementation for User Story 2 (GREEN PHASE)
 
-- [ ] T020 [US2] Add completeness check to `scripts/verify-evidence-bundle.sh`: enumerate all bundle files, verify each (except SKIP set) appears in `subject[]` with matching digest; return 19 on violation
-- [ ] T021 [US2] Update `evidence_finalize` in `scripts/lib/evidence.sh` to move `retention_receipt` before manifest input assembly so `retention-receipt.json` is covered
-- [ ] T022 [US2] Run US2 tests, confirm all PASS (GREEN)
+- [X] T020 [US2] Add completeness check to `scripts/verify-evidence-bundle.sh`: enumerate all bundle files, verify each (except SKIP set) appears in `subject[]` with matching digest; return 19 on violation
+- [X] T021 [US2] Update `evidence_finalize` in `scripts/lib/evidence.sh` to move `retention_receipt` before manifest input assembly so `retention-receipt.json` is covered
+- [X] T022 [US2] Run US2 tests, confirm all PASS (GREEN)
 
 **Checkpoint**: US2 complete — subject[] covers every bundle file
 
@@ -115,16 +115,16 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T023 [P] [US3] Add RED test: `scripts/tests/test-red-gate-evidence.sh` asserts each `red-gate-phase-*.log` contains either `not ok`/`FAIL` or a documented deviation statement
-- [ ] T024 [US3] Run RED test, confirm FAIL (current logs have neither genuine RED nor deviation statement)
+- [X] T023 [P] [US3] Add RED test: `scripts/tests/test-red-gate-evidence.sh` asserts each `red-gate-phase-*.log` contains either `not ok`/`FAIL` or a documented deviation statement
+- [X] T024 [US3] Run RED test, confirm FAIL (current logs have neither genuine RED nor deviation statement)
 
 **Checkpoint (RED)**: US3 test fails for the right reason
 
 ### Implementation for User Story 3 (GREEN PHASE)
 
-- [ ] T025 [US3] Add deviation statement to each `red-gate-phase-*.log`: "Implementation pre-existed; genuine RED evidence cannot be reconstructed retroactively. Tests are regression guards, not TDD RED evidence."
-- [ ] T026 [US3] Update `specs/010-headless-verification-runner/tasks.md` T130 to reflect the documented deviation (not a fabricated RED gate)
-- [ ] T027 [US3] Run US3 test, confirm PASS (GREEN)
+- [X] T025 [US3] Add deviation statement to each `red-gate-phase-*.log`: "Implementation pre-existed; genuine RED evidence cannot be reconstructed retroactively. Tests are regression guards, not TDD RED evidence."
+- [X] T026 [US3] Update `specs/010-headless-verification-runner/tasks.md` T130 to reflect the documented deviation (not a fabricated RED gate)
+- [X] T027 [US3] Run US3 test, confirm PASS (GREEN)
 
 **Checkpoint**: US3 complete — red-gate evidence is honest
 
@@ -134,8 +134,8 @@
 
 **Purpose**: Improvements that affect multiple user stories (verification tasks are in Phase 7 only)
 
-- [ ] T028 [P] Update `specs/010-headless-verification-runner/verification/schema.log` with post-fix bundle validation (already done; verify consistency)
-- [ ] T029 [P] Update `specs/010-headless-verification-runner/verification/real-host.log` with final run details (already done; verify consistency)
+- [X] T028 [P] Update `specs/010-headless-verification-runner/verification/schema.log` with post-fix bundle validation (already done; verify consistency)
+- [X] T029 [P] Update `specs/010-headless-verification-runner/verification/real-host.log` with final run details (already done; verify consistency)
 
 ---
 
@@ -143,18 +143,18 @@
 
 **Purpose**: Documentation, hardening evidence, and the authoritative verification pass. Implementation agents must not claim completion before T036–T045. Phase 7 only executes existing test suites and records the RED/green path.
 
-- [ ] T036 **Verification — build**: run `dotnet build` (Release), record in `verification/build.log`
-- [ ] T037 **Verification — tests**: run `dotnet test` + `run-all.sh`, record counts in `verification/test.log`
-- [ ] T038 **Verification — format**: run `dotnet format --verify-no-changes`, record in `verification/format.log`
-- [ ] T039 **Verification — shell**: run `bash -n` on all scripts, record in `verification/shell.log`
-- [ ] T040 **Verification — schema**: run schema validation, record 30/30 valid, 14/14 invalid, 2/2 runner-invalid, 0 mismatches in `verification/schema.log`
-- [ ] T041 **Verification — launch-free e2e**: run all 12 VS cases, record in `verification/launch-free.log`
-- [ ] T042 **Verification — real-host e2e**: run VS-01 on real host, record in `verification/real-host.log`
-- [ ] T043 **Verification — subject completeness**: add uncovered file to bundle, confirm verifier returns 19, record in `verification/bundle-negative.log`
-- [ ] T044 **Verification — save alignment**: revert `save_align_inner_name`, confirm test fails, restore, confirm pass, record in `verification/`
-- [ ] T045 **Verification — log capture**: revert full-log capture, confirm test fails, restore, confirm pass, record in `verification/`
-- [ ] T046 **Verification — red-gate evidence**: confirm each log has deviation statement or failing assertion, record in `verification/`
-- [ ] T047 **Final commit**: commit all artifacts with `docs(016): ...`; list every artifact in commit body; do not amend earlier commits
+- [X] T036 **Verification — build**: run `dotnet build` (Release), record in `verification/build.log`
+- [X] T037 **Verification — tests**: run `dotnet test` + `run-all.sh`, record counts in `verification/test.log`
+- [X] T038 **Verification — format**: run `dotnet format --verify-no-changes`, record in `verification/format.log`
+- [X] T039 **Verification — shell**: run `bash -n` on all scripts, record in `verification/shell.log`
+- [X] T040 **Verification — schema**: run schema validation, record 30/30 valid, 14/14 invalid, 2/2 runner-invalid, 0 mismatches in `verification/schema.log`
+- [X] T041 **Verification — launch-free e2e**: run all 12 VS cases, record in `verification/launch-free.log`
+- [X] T042 **Verification — real-host e2e**: run VS-01 on real host, record in `verification/real-host.log`
+- [X] T043 **Verification — subject completeness**: add uncovered file to bundle, confirm verifier returns 19, record in `verification/bundle-negative.log`
+- [X] T044 **Verification — save alignment**: revert `save_align_inner_name`, confirm test fails, restore, confirm pass, record in `verification/`
+- [X] T045 **Verification — log capture**: revert full-log capture, confirm test fails, restore, confirm pass, record in `verification/`
+- [X] T046 **Verification — red-gate evidence**: confirm each log has deviation statement or failing assertion, record in `verification/`
+- [X] T047 **Final commit**: commit all artifacts with `docs(016): ...`; list every artifact in commit body; do not amend earlier commits
 
 ---
 
