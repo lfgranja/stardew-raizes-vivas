@@ -22,7 +22,12 @@ namespace LivingRoots.Domain
             int day,
             IReadOnlyList<SoilHealthSnapshotEntry> entries)
         {
-            throw new NotImplementedException("T118 implements host-to-client soil-health sync.");
+            if (string.IsNullOrWhiteSpace(saveId))
+            {
+                throw new ArgumentException("saveId is required", nameof(saveId));
+            }
+
+            return new SoilHealthSyncMessage(saveId, day, entries ?? Array.Empty<SoilHealthSnapshotEntry>());
         }
 
         /// <summary>
@@ -35,7 +40,24 @@ namespace LivingRoots.Domain
             string currentSaveId,
             Action<string, int, int, float> applyTile)
         {
-            throw new NotImplementedException("T118 implements host-to-client soil-health sync.");
+            if (message == null || applyTile == null)
+            {
+                return 0;
+            }
+
+            if (!string.Equals(message.SaveId, currentSaveId, StringComparison.Ordinal))
+            {
+                return 0;
+            }
+
+            int applied = 0;
+            foreach (var entry in message.Entries)
+            {
+                applyTile(entry.LocationName, entry.TileX, entry.TileY, entry.Health);
+                applied++;
+            }
+
+            return applied;
         }
     }
 }
