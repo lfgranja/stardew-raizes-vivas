@@ -17,7 +17,7 @@ namespace LivingRoots.Tests.HarvestQuality
         private static Item MakeItem(string id, int stack, int quality = 0)
         {
             var item = new Mock<Item>();
-            item.SetupGet(i => i.QualifiedItemId).Returns(id.StartsWith("(") ? id : $"(O){id}");
+            item.SetupGet(i => i.QualifiedItemId).Returns(id.StartsWith('(') ? id : $"(O){id}");
             item.SetupGet(i => i.ItemId).Returns(id);
             item.SetupProperty(i => i.Stack, stack);
             item.SetupProperty(i => i.Quality, quality);
