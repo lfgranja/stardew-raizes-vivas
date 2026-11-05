@@ -74,10 +74,12 @@ run_verify() {
     mkdir -p -- "$RUNNER_SANDBOX/home" "$RUNNER_SANDBOX/xdg" \
         "$RUNNER_SANDBOX/state" "$RUNNER_SANDBOX/run" 2>/dev/null || true
     # The orchestrator now treats a missing milestone as a loud 19. Minimal
-    # scenarios declare `runner-self-test`, so stage an empty save under the
+    # scenarios declare `runner-self-test`, so stage a loadable save (folder
+    # and inner file share a name, per save_prepare's align rule) under the
     # sandbox XDG tree; a suite that wants the missing-milestone path passes an
     # explicit --milestone-save that does not exist.
     mkdir -p -- "$RUNNER_SANDBOX/xdg/StardewValley/Saves/runner-self-test" 2>/dev/null || true
+    : > "$RUNNER_SANDBOX/xdg/StardewValley/Saves/runner-self-test/runner-self-test" 2>/dev/null || true
     if env \
         HOME="$RUNNER_SANDBOX/home" \
         XDG_CONFIG_HOME="$RUNNER_SANDBOX/xdg" \

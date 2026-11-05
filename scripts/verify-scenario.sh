@@ -292,6 +292,10 @@ fi
 # isolate (save). This is a direct call, not a `declare -F` probe: a missing
 # milestone used to skip the whole stage silently, which is how a launched run
 # with no save looked healthy. Missing milestone => 19; malformed invocation => 14.
+# save_prepare rewrites HOME/XDG_* for the game process; capture the original
+# home first so later Python helpers that import user-installed modules (the
+# offline verifier needs `jsonschema`) keep working.
+RUNNER_ORIGINAL_HOME="${RUNNER_ORIGINAL_HOME:-$HOME}"
 save_rc=0
 save_prepare "$MILESTONE_SAVE" "$RUNNER_RUN_ROOT" >/dev/null 2>&1 || save_rc=$?
 if (( save_rc != 0 )); then
@@ -370,15 +374,121 @@ if (( verdict_rc != 0 )); then
 fi
 
 # evidence
-printf '{"runId":"%s"}\n' "$RUN_ID" > "$RUNNER_RUN_ROOT/manifest-input.json" 2>/dev/null || true
-if declare -F evidence_finalize >/dev/null 2>&1; then
-    evidence_finalize "$BUNDLE_DIR" "$RUNNER_RUN_ROOT/manifest-input.json" >/dev/null 2>&1 || true
-fi
+#
+# Order matters: claims.json is written BEFORE the manifest input is assembled,
+# because the manifest's subject[] covers claims.json and every other bundle
+# file (FR-014). The old order finalized the manifest first and then wrote
+# claims, so the claims file could never be covered by the anchor.
 if declare -F evidence_write_claims >/dev/null 2>&1; then
     # W = launch/connect only; R requires runtime evidence. A run whose signal
     # set is incomplete must not claim R (honesty level is sequential).
     if (( RUN_EXIT == 0 )); then _honesty="R"; else _honesty="W"; fi
     evidence_write_claims "$BUNDLE_DIR" "$RUN_ID" "$_honesty" >/dev/null 2>&1 || true
+fi
+
+_manifest_ctx="$RUNNER_RUN_ROOT/manifest-context.json"
+_manifest_input="$RUNNER_RUN_ROOT/manifest-input.json"
+_manifest_rc=0
+if declare -F evidence_write_manifest_input >/dev/null 2>&1; then
+    python3 - "$_manifest_ctx" "$RUN_ID" "${SCENARIO_LIST[0]:-}" "$BUNDLE_DIR" \
+        "$GAME_PATH" "${MILESTONE_SAVE:-}" "$REPO_ROOT" "$_honesty" "$SKIP_BUILD" \
+        "${OVERRIDES[*]:-}" <<'PY' || _manifest_rc=$?
+import datetime
+import json
+import os
+import subprocess
+import sys
+
+(out, run_id, scenario, bundle, game_path, milestone, repo, honesty, skip_build, overrides_raw) = sys.argv[1:11]
+
+scenario_data = {}
+if scenario and os.path.isfile(scenario):
+    try:
+        with open(scenario, encoding="utf-8") as f:
+            scenario_data = json.load(f)
+    except Exception:
+        scenario_data = {}
+
+verdict = "errored"
+verdict_path = os.path.join(bundle, "verdict.json")
+if os.path.isfile(verdict_path):
+    try:
+        with open(verdict_path, encoding="utf-8") as f:
+            verdict = json.load(f).get("verdict") or verdict
+    except Exception:
+        pass
+
+try:
+    commit = subprocess.check_output(
+        ["git", "-C", repo, "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+    ).strip()
+except Exception:
+    commit = "0" * 40
+
+tool_versions = {}
+try:
+    tool_versions["dotnet"] = subprocess.check_output(
+        ["dotnet", "--version"], text=True, stderr=subprocess.DEVNULL, timeout=30
+    ).strip()
+except Exception:
+    pass
+
+overrides = []
+for key in [part for part in overrides_raw.split("\n") if part.strip()]:
+    if "=" in key:
+        name, value = key.split("=", 1)
+        if name.startswith("environment."):
+            overrides.append({"key": name, "value": value})
+
+ctx = {
+    "runId": run_id,
+    "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "scenario": scenario,
+    "verdict": verdict,
+    "honestyLevel": honesty,
+    "gamePath": game_path,
+    "milestoneSave": milestone,
+    "modManifest": os.path.join(repo, "LivingRoots", "manifest.json"),
+    "commit": commit,
+    "buildSkipped": skip_build == "1",
+    "toolVersions": tool_versions,
+    "environmentOverrides": overrides,
+}
+for key in ("gameVersion", "smapiVersion", "modVersion", "apiVersion", "saveId"):
+    env = scenario_data.get("environment") if isinstance(scenario_data, dict) else None
+    if isinstance(env, dict) and isinstance(env.get(key), str) and env[key]:
+        ctx[key] = env[key]
+ctx["seedId"] = (scenario_data.get("milestoneSave") if isinstance(scenario_data, dict) else "") or milestone or ""
+
+with open(out, "w", encoding="utf-8") as f:
+    json.dump(ctx, f, indent=2)
+    f.write("\n")
+PY
+    if (( _manifest_rc == 0 )); then
+        evidence_write_manifest_input "$BUNDLE_DIR" "$_manifest_ctx" "$_manifest_input" >/dev/null 2>&1 || _manifest_rc=$?
+    fi
+    if (( _manifest_rc == 0 )) && declare -F evidence_finalize >/dev/null 2>&1; then
+        evidence_finalize "$BUNDLE_DIR" "$_manifest_input" >/dev/null 2>&1 || _manifest_rc=$?
+    fi
+    # A bundle whose manifest could not be produced in full is not promotable.
+    if (( _manifest_rc != 0 )); then
+        RUN_EXIT="$EXIT_ERRORED"
+    fi
+fi
+
+# The offline verifier is the trust root for the claim (FR-015). A bundle that
+# does not validate must never be promoted, even when the run's own verdict is
+# `pass`.
+if [[ -x "$REPO_ROOT/scripts/verify-evidence-bundle.sh" ]] || [[ -f "$REPO_ROOT/scripts/verify-evidence-bundle.sh" ]]; then
+    _verify_rc=0
+    _verify_out="$(HOME="${RUNNER_ORIGINAL_HOME:-$HOME}" bash "$REPO_ROOT/scripts/verify-evidence-bundle.sh" "$BUNDLE_DIR" 2>&1)" || _verify_rc=$?
+    if (( _verify_rc != 0 )); then
+        # The verifier is the trust root; never demote silently. The operator
+        # needs the exact refusal site to tell a capture failure from a schema
+        # or digest failure.
+        printf '%s\n' "$_verify_out" >&2
+        RUN_EXIT="$EXIT_ERRORED"
+    fi
 fi
 
 # promote — read testMdPath from each scenario definition (FR-016)

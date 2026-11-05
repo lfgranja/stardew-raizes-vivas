@@ -65,6 +65,207 @@ PY
     return 0
 }
 
+# evidence_write_manifest_input <bundle> <context.json> <output.json>
+#
+# Assemble the FULL manifest payload the schema requires (FR-014) from the
+# scenario contract, the run context and the files the bundle actually holds.
+# ManifestBuilder remains the only writer of manifest.json / manifest.sha256;
+# this function produces its input, never the manifest itself.
+#
+# Before this existed the orchestrator handed ManifestBuilder a bare
+# {"runId": ...}, so every produced manifest failed
+# contracts/evidence-bundle.schema.json with 13 missing required fields and the
+# offline verifier (which never validated the schema) still accepted it.
+evidence_write_manifest_input() {
+    [[ $# -eq 3 ]] || return "$EXIT_USAGE_ERROR"
+    local bundle="$1" context="$2" output="$3"
+    [[ -d "$bundle" ]] || return 19
+    [[ -f "$context" ]] || return 14
+    python3 - "$bundle" "$context" "$output" <<'PY'
+import hashlib
+import json
+import os
+import shlex
+import sys
+
+bundle, context_path, output = sys.argv[1:4]
+
+with open(context_path, encoding="utf-8") as f:
+    ctx = json.load(f)
+
+scenario = {}
+scenario_path = ctx.get("scenario") or ""
+if scenario_path and os.path.isfile(scenario_path):
+    try:
+        with open(scenario_path, encoding="utf-8") as f:
+            scenario = json.load(f)
+    except Exception:
+        scenario = {}
+
+def scenario_env(key, default=""):
+    env = scenario.get("environment")
+    if isinstance(env, dict):
+        value = env.get(key)
+        if isinstance(value, str) and value:
+            return value
+    value = ctx.get(key)
+    if isinstance(value, str) and value:
+        return value
+    return default
+
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+# Bundle-relative regular files, excluding the manifest, its detached anchor and
+# the builder's own work files. Sorted so two runs over the same bundle agree.
+SKIP = {"manifest.json", "manifest.sha256", ".manifest-input.json", ".attempts_list"}
+subject = []
+artifacts = []
+for root, dirs, files in os.walk(bundle):
+    dirs.sort()
+    for name in sorted(files):
+        if name.startswith("."):
+            continue
+        full = os.path.join(root, name)
+        rel = os.path.relpath(full, bundle).replace(os.sep, "/")
+        if rel in SKIP or not os.path.isfile(full):
+            continue
+        subject.append({"name": rel, "digest": {"sha256": sha256(full)}})
+        if rel.startswith("artifacts/"):
+            artifacts.append(rel)
+
+attempts = []
+list_path = os.path.join(bundle, ".attempts_list")
+if os.path.isfile(list_path):
+    with open(list_path, encoding="utf-8") as f:
+        for line in f:
+            entry = line.strip()
+            if not entry:
+                continue
+            if entry.startswith("attempts/") and entry.endswith("/attempt.json") and os.path.isfile(os.path.join(bundle, entry)):
+                if entry not in attempts:
+                    attempts.append(entry)
+
+expected_signals = scenario.get("expectedSignals")
+if not isinstance(expected_signals, list) or len(expected_signals) != 3:
+    expected_signals = ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"]
+
+env_cfg = {}
+scenario_config = (scenario.get("environment") or {}).get("config") if isinstance(scenario.get("environment"), dict) else None
+if isinstance(scenario_config, dict):
+    if scenario_config.get("saveMode") in ("save", "nosave"):
+        env_cfg["saveMode"] = scenario_config["saveMode"]
+    if isinstance(scenario_config.get("headless"), bool):
+        env_cfg["headless"] = scenario_config["headless"]
+if isinstance(ctx.get("buildSkipped"), bool):
+    env_cfg["buildSkipped"] = ctx["buildSkipped"]
+
+environment = {
+    "gameVersion": scenario_env("gameVersion", "1.6.14"),
+    "smapiVersion": scenario_env("smapiVersion", "4.4.0"),
+    "modVersion": scenario_env("modVersion", "0.4.0"),
+    "apiVersion": scenario_env("apiVersion", "1.0.0"),
+    "saveId": scenario_env("saveId", "unknown"),
+}
+if ctx.get("mode") in ("ci", "local"):
+    environment["mode"] = ctx["mode"]
+if env_cfg:
+    environment["config"] = env_cfg
+
+# Commands: the scenario's declared init commands and steps, as argv arrays.
+commands = []
+def add_argv(argv):
+    argv = [str(part) for part in argv if str(part)]
+    if argv:
+        commands.append({"argv": argv})
+
+for entry in scenario.get("initCommands") or []:
+    if not isinstance(entry, dict):
+        continue
+    if isinstance(entry.get("command"), str):
+        add_argv(shlex.split(entry["command"]))
+    elif isinstance(entry.get("file"), str):
+        add_argv(["debug", "runmacro", entry["file"]])
+
+for step in scenario.get("steps") or []:
+    if not isinstance(step, dict):
+        continue
+    argv = ["step", str(step.get("action", "unknown"))]
+    if isinstance(step.get("target"), str):
+        argv.append(step["target"])
+    if isinstance(step.get("inputs"), dict) and step["inputs"]:
+        argv.append(json.dumps(step["inputs"], sort_keys=True, separators=(",", ":")))
+    add_argv(argv)
+
+# Materials: real files the run depended on, each with its own digest.
+materials = []
+def add_material(path, name, role):
+    if isinstance(path, str) and os.path.isfile(path):
+        materials.append({
+            "uri": "file://" + os.path.abspath(path),
+            "sha256": sha256(path),
+            "name": name,
+            "size": os.path.getsize(path),
+            "annotations": {"role": role},
+        })
+
+game_path = ctx.get("gamePath") or ""
+if game_path:
+    add_material(os.path.join(game_path, "Stardew Valley.dll"), "Stardew Valley.dll", "game-file")
+    add_material(os.path.join(game_path, "StardewModdingAPI.dll"), "StardewModdingAPI.dll", "game-file")
+if scenario_path:
+    add_material(scenario_path, os.path.basename(scenario_path), "dataset-instance")
+add_material(ctx.get("modManifest") or "", "manifest.json", "mod-manifest")
+if not materials:
+    # A material list is mandatory only for R/E; keep it honest with the file we
+    # always have rather than inventing an entry.
+    add_material(scenario_path, os.path.basename(scenario_path) or "scenario.json", "dataset-instance")
+
+seed_id = ctx.get("milestoneSave") or environment["saveId"]
+seeds = [{
+    "seedId": str(seed_id),
+    "source": "milestoneSave",
+    "baseCommit": str(ctx.get("commit") or "0000000000000000000000000000000000000000"),
+}]
+
+tool_versions = {"runner": "0.1.0"}
+for name, version in (ctx.get("toolVersions") or {}).items():
+    if isinstance(name, str) and isinstance(version, str) and version:
+        tool_versions[name] = version
+
+manifest = {
+    "schemaVersion": 1,
+    "runId": ctx.get("runId") or "",
+    "timestamp": ctx.get("timestamp") or "",
+    "toolVersions": tool_versions,
+    "gameVersion": environment["gameVersion"],
+    "modVersion": environment["modVersion"],
+    "environment": environment,
+    "expectedSignals": expected_signals,
+    "subject": subject,
+    "verdict": ctx.get("verdict") or "errored",
+    "honestyLevel": ctx.get("honestyLevel") or "W",
+    "attempts": attempts,
+    "claimsFile": "claims.json",
+    "artifacts": artifacts,
+}
+if isinstance(ctx.get("environmentOverrides"), list):
+    manifest["environmentOverrides"] = ctx["environmentOverrides"]
+if manifest["honestyLevel"] in ("R", "E"):
+    manifest["commands"] = commands
+    manifest["materials"] = materials
+    manifest["seeds"] = seeds
+
+with open(output, "w", encoding="utf-8") as f:
+    json.dump(manifest, f, indent=2)
+    f.write("\n")
+PY
+}
+
 evidence_finalize() {
     [[ $# -eq 2 ]] || return "$EXIT_USAGE_ERROR"
     local bundle="$1" input="$2"
@@ -110,7 +311,9 @@ PY
     # invoke ManifestBuilder (the single producer)
     if command -v dotnet >/dev/null 2>&1; then
         local dll
-        for cand in "LivingRoots.Verification.Runner/bin/Release/net6.0/LivingRoots.Verification.Runner.dll" "LivingRoots.Verification.Runner/bin/Debug/net6.0/LivingRoots.Verification.Runner.dll" "$(dirname "$SCRIPT_DIR")/LivingRoots.Verification.Runner/bin/Release/net6.0/LivingRoots.Verification.Runner.dll"; do
+        local _lib_dir
+        _lib_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+        for cand in "LivingRoots.Verification.Runner/bin/Release/net6.0/LivingRoots.Verification.Runner.dll" "LivingRoots.Verification.Runner/bin/Debug/net6.0/LivingRoots.Verification.Runner.dll" "$(dirname "$_lib_dir")/LivingRoots.Verification.Runner/bin/Release/net6.0/LivingRoots.Verification.Runner.dll"; do
             [[ -f "$cand" ]] && dll="$cand" && break
         done
         if [[ -n "${dll:-}" ]]; then
@@ -165,4 +368,4 @@ evidence_validate() {
 
 export -f evidence_run_id evidence_bundle_dir evidence_init evidence_add_artifact \
        evidence_attempt_dir evidence_record_attempt evidence_finalize \
-       evidence_write_claims evidence_write_integrity_failure evidence_validate
+       evidence_write_manifest_input evidence_write_claims evidence_write_integrity_failure evidence_validate
