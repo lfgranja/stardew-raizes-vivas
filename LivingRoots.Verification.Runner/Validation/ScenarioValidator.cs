@@ -51,7 +51,13 @@ namespace LivingRoots.Verification.Runner.Validation
                     return 14;
                 }
 
-                var schemaPath = FindSchema(fullPath);
+                int schemaVersion = 2;
+                if (obj["schemaVersion"] is JsonValue sv && sv.TryGetValue<int>(out var parsedVersion))
+                {
+                    schemaVersion = parsedVersion;
+                }
+
+                var schemaPath = FindSchema(fullPath, schemaVersion);
                 if (schemaPath is not null)
                 {
                     try
@@ -104,8 +110,9 @@ namespace LivingRoots.Verification.Runner.Validation
             }
         }
 
-        private static string? FindSchema(string scenarioPath)
+        private static string? FindSchema(string scenarioPath, int schemaVersion)
         {
+            string schemaFile = schemaVersion == 3 ? "scenario-v3.schema.json" : "scenario.schema.json";
             var dirs = new List<string>();
             var d = Path.GetDirectoryName(scenarioPath);
             while (!string.IsNullOrEmpty(d))
@@ -117,13 +124,13 @@ namespace LivingRoots.Verification.Runner.Validation
 
             foreach (var dir in dirs)
             {
-                var cand = Path.Combine(dir, "specs", "010-headless-verification-runner", "contracts", "scenario.schema.json");
+                var cand = Path.Combine(dir, "specs", "010-headless-verification-runner", "contracts", schemaFile);
                 if (File.Exists(cand))
                 {
                     return cand;
                 }
 
-                cand = Path.Combine(dir, "contracts", "scenario.schema.json");
+                cand = Path.Combine(dir, "contracts", schemaFile);
                 if (File.Exists(cand))
                 {
                     return cand;
@@ -329,7 +336,29 @@ namespace LivingRoots.Verification.Runner.Validation
             }
             if (signal == "cropPhaseDelta")
             {
-                return new HashSet<string> { "phaseDays", "currentPhase", "dayOfCurrentPhase", "fullyGrown", "dead", "indexOfHarvest", "healthTier", "soilHealthState" };
+                return new HashSet<string>
+                {
+                    "phaseDays",
+                    "currentPhase",
+                    "dayOfCurrentPhase",
+                    "fullyGrown",
+                    "dead",
+                    "indexOfHarvest",
+                    "healthTier",
+                    "soilHealthState",
+                    "poorHarvestQuality",
+                    "moderateHarvestQuality",
+                    "healthyHarvestQuality",
+                    "poorExtraCount",
+                    "moderateExtraCount",
+                    "healthyExtraCount",
+                    "healthyExtraQuality",
+                    "poorVanillaQuality",
+                    "moderateVanillaQuality",
+                    "healthyVanillaQuality",
+                    "healthyQualityRoll",
+                    "healthyExtraRoll",
+                };
             }
             if (signal == "smapiLog")
             {

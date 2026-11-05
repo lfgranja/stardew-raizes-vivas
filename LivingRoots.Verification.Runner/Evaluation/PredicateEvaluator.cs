@@ -127,7 +127,25 @@ namespace LivingRoots.Verification.Runner.Evaluation
 
         private static bool IsNumericField(string field)
         {
-            return field is "soilHealth" or "phaseDays" or "currentPhase" or "dayOfCurrentPhase" or "indexOfHarvest" or "elapsedMilliseconds" or "locationsProcessed";
+            return field is "soilHealth"
+                or "phaseDays"
+                or "currentPhase"
+                or "dayOfCurrentPhase"
+                or "indexOfHarvest"
+                or "elapsedMilliseconds"
+                or "locationsProcessed"
+                or "poorHarvestQuality"
+                or "moderateHarvestQuality"
+                or "healthyHarvestQuality"
+                or "poorExtraCount"
+                or "moderateExtraCount"
+                or "healthyExtraCount"
+                or "healthyExtraQuality"
+                or "poorVanillaQuality"
+                or "moderateVanillaQuality"
+                or "healthyVanillaQuality"
+                or "healthyQualityRoll"
+                or "healthyExtraRoll";
         }
 
         private static bool IsBooleanField(string field)
