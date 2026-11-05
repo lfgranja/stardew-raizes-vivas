@@ -7,6 +7,9 @@ namespace LivingRoots.Domain
     /// <summary>A slot whose item count grew between two inventory snapshots.</summary>
     public readonly record struct HarvestInventoryChange(int SlotIndex, int AddedCount);
 
+    /// <summary>Captured slot identity for diffing inventories without booted game data.</summary>
+    public readonly record struct InventorySlotSnapshot(Item? Item, string? QualifiedItemId, int Stack, int Quality);
+
     /// <summary>
     /// Snapshot/diff helpers for locating the item vanilla actually harvested.
     /// The postfix must not assume the last slot holds the harvest: stacking,
@@ -15,18 +18,34 @@ namespace LivingRoots.Domain
     /// </summary>
     public static class HarvestInventoryDelta
     {
-        /// <summary>Captures the item references and stack counts of an inventory.</summary>
-        public static IReadOnlyList<Item?> Snapshot(IReadOnlyList<Item?>? items)
+        /// <summary>Captures slot identity and stack counts of an inventory.</summary>
+        public static IReadOnlyList<InventorySlotSnapshot> Snapshot(IReadOnlyList<Item?>? items)
         {
             if (items == null)
             {
-                return Array.Empty<Item?>();
+                return Array.Empty<InventorySlotSnapshot>();
             }
 
-            var copy = new List<Item?>(items.Count);
+            var copy = new List<InventorySlotSnapshot>(items.Count);
             foreach (var item in items)
             {
-                copy.Add(item);
+                if (item == null)
+                {
+                    copy.Add(new InventorySlotSnapshot(null, null, 0, 0));
+                    continue;
+                }
+
+                string? id = null;
+                try
+                {
+                    id = item.QualifiedItemId;
+                }
+                catch
+                {
+                    id = null;
+                }
+
+                copy.Add(new InventorySlotSnapshot(item, id, item.Stack, item.Quality));
             }
 
             return copy;
@@ -34,8 +53,8 @@ namespace LivingRoots.Domain
 
         /// <summary>Returns the slots whose stack count grew, in slot order.</summary>
         public static IReadOnlyList<HarvestInventoryChange> Diff(
-            IReadOnlyList<Item?> before,
-            IReadOnlyList<Item?> after)
+            IReadOnlyList<InventorySlotSnapshot> before,
+            IReadOnlyList<InventorySlotSnapshot> after)
         {
             var result = new List<HarvestInventoryChange>();
             int beforeCount = before == null ? 0 : before.Count;
@@ -44,9 +63,9 @@ namespace LivingRoots.Domain
 
             for (int i = 0; i < slots; i++)
             {
-                Item? beforeItem = i < beforeCount ? before![i] : null;
-                Item? afterItem = i < afterCount ? after![i] : null;
-                int added = ComputeAdded(beforeItem, afterItem);
+                var beforeSlot = i < beforeCount ? before![i] : default;
+                var afterSlot = i < afterCount ? after![i] : default;
+                int added = ComputeAdded(beforeSlot, afterSlot);
                 if (added > 0)
                 {
                     result.Add(new HarvestInventoryChange(i, added));
@@ -56,35 +75,36 @@ namespace LivingRoots.Domain
             return result;
         }
 
-        /// <summary>Returns the primary added slot, or -1 when nothing was added.</summary>
-        private static int ComputeAdded(Item? beforeItem, Item? afterItem)
+        private static int ComputeAdded(InventorySlotSnapshot beforeSlot, InventorySlotSnapshot afterSlot)
         {
-            if (afterItem == null)
+            if (afterSlot.Item == null)
             {
                 return 0;
             }
 
-            int stack = afterItem.Stack > 0 ? afterItem.Stack : 1;
-            if (beforeItem == null)
+            int stack = afterSlot.Stack > 0 ? afterSlot.Stack : 1;
+            if (beforeSlot.Item == null)
             {
                 return stack;
             }
 
-            bool different = !string.Equals(beforeItem.QualifiedItemId, afterItem.QualifiedItemId, StringComparison.Ordinal)
-                             || beforeItem.Quality != afterItem.Quality;
-            if (different)
+            bool sameRef = ReferenceEquals(beforeSlot.Item, afterSlot.Item);
+            bool sameId = string.Equals(beforeSlot.QualifiedItemId, afterSlot.QualifiedItemId, StringComparison.Ordinal)
+                          && beforeSlot.Quality == afterSlot.Quality;
+            if (!sameRef && !sameId)
             {
                 return stack;
             }
 
-            if (afterItem.Stack > beforeItem.Stack)
+            if (afterSlot.Stack > beforeSlot.Stack)
             {
-                return afterItem.Stack - beforeItem.Stack;
+                return afterSlot.Stack - beforeSlot.Stack;
             }
 
             return 0;
         }
 
+        /// <summary>Returns the primary added slot, or -1 when nothing was added.</summary>
         public static int FindPrimaryAddedSlot(IReadOnlyList<HarvestInventoryChange> changes)
         {
             if (changes == null || changes.Count == 0)
