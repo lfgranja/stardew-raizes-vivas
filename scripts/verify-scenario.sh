@@ -386,6 +386,14 @@ if declare -F evidence_write_claims >/dev/null 2>&1; then
     evidence_write_claims "$BUNDLE_DIR" "$RUN_ID" "$_honesty" >/dev/null 2>&1 || true
 fi
 
+# Retention receipt must be written BEFORE manifest input assembly so that
+# retention-receipt.json is covered by subject[] (FR-009). The receipt is
+# append-only (WORM); calling it here and not again in evidence_finalize
+# keeps a single receipt per run.
+if declare -F retention_receipt >/dev/null 2>&1; then
+    retention_receipt "$BUNDLE_DIR" >/dev/null 2>&1 || true
+fi
+
 _manifest_ctx="$RUNNER_RUN_ROOT/manifest-context.json"
 _manifest_input="$RUNNER_RUN_ROOT/manifest-input.json"
 _manifest_rc=0

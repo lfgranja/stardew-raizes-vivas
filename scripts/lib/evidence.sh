@@ -320,9 +320,10 @@ PY
             dotnet "$dll" build-manifest "$bundle" "$manifest_input" >/dev/null 2>&1
             local rc=$?
             if (( rc == 0 )); then
-                # manifest.sha256 must be written only after finalization by ManifestBuilder
-                # wire retention receipt/export
-                retention_receipt "$bundle" >/dev/null 2>&1 || true
+                # manifest.sha256 was written by ManifestBuilder. Retention receipt
+                # is written before manifest input assembly (verify-scenario.sh)
+                # so retention-receipt.json is covered by subject[]. Export is
+                # WORM (no overwrite).
                 retention_export "$bundle" "$bundle" >/dev/null 2>&1 || true
                 return 0
             fi

@@ -179,6 +179,8 @@ save_assert_no_player_save_access() {
 # silently, which is how a launched-but-empty run could look healthy.
 save_prepare() {
     [[ $# -eq 2 ]] || return "$EXIT_USAGE_ERROR"
+    # Capture the original home before isolation rewrites HOME/XDG_* (FR-008).
+    export RUNNER_ORIGINAL_HOME="${RUNNER_ORIGINAL_HOME:-$HOME}"
     local milestone="$1" run_root="$2"
     if [[ -z "$milestone" ]]; then
         log_error "save_prepare: no milestone save was resolved (pass --milestone-save or set milestoneSave in the scenario)"
