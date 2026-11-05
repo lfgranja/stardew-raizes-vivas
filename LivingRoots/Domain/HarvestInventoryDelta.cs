@@ -47,14 +47,16 @@ namespace LivingRoots.Domain
                 Item? beforeItem = i < beforeCount ? before![i] : null;
                 Item? afterItem = i < afterCount ? after![i] : null;
 
-                int added = 0;
                 if (beforeItem == null && afterItem != null)
                 {
                     added = afterItem.Stack > 0 ? afterItem.Stack : 1;
                 }
                 else if (beforeItem != null && afterItem != null &&
-                         (beforeItem.QualifiedItemId != afterItem.QualifiedItemId ||
-                          beforeItem.Quality != afterItem.Quality))
+                         !string.Equals(beforeItem.QualifiedItemId, afterItem.QualifiedItemId, StringComparison.Ordinal))
+                {
+                    added = afterItem.Stack > 0 ? afterItem.Stack : 1;
+                }
+                else if (beforeItem != null && afterItem != null && beforeItem.Quality != afterItem.Quality)
                 {
                     added = afterItem.Stack > 0 ? afterItem.Stack : 1;
                 }
