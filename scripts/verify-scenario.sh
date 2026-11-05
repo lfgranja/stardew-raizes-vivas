@@ -292,6 +292,10 @@ fi
 # isolate (save). This is a direct call, not a `declare -F` probe: a missing
 # milestone used to skip the whole stage silently, which is how a launched run
 # with no save looked healthy. Missing milestone => 19; malformed invocation => 14.
+# save_prepare rewrites HOME/XDG_* for the game process; capture the original
+# home first so later Python helpers that import user-installed modules (the
+# offline verifier needs `jsonschema`) keep working.
+RUNNER_ORIGINAL_HOME="${RUNNER_ORIGINAL_HOME:-$HOME}"
 save_rc=0
 save_prepare "$MILESTONE_SAVE" "$RUNNER_RUN_ROOT" >/dev/null 2>&1 || save_rc=$?
 if (( save_rc != 0 )); then
@@ -477,17 +481,7 @@ fi
 # `pass`.
 if [[ -x "$REPO_ROOT/scripts/verify-evidence-bundle.sh" ]] || [[ -f "$REPO_ROOT/scripts/verify-evidence-bundle.sh" ]]; then
     _verify_rc=0
-    # The bundle was produced after save_prepare switched HOME into the isolated
-    # instance; the verifier's schema validation must run against the operator's
-    # own python environment, not the sandbox HOME.
-    _saved_home="${HOME:-}"
-    if [[ -n "${RUNNER_ORIGINAL_HOME:-}" ]]; then
-        export HOME="$RUNNER_ORIGINAL_HOME"
-    fi
-    _verify_out="$(bash "$REPO_ROOT/scripts/verify-evidence-bundle.sh" "$BUNDLE_DIR" 2>&1)" || _verify_rc=$?
-    if [[ -n "$_saved_home" ]]; then
-        export HOME="$_saved_home"
-    fi
+    _verify_out="$(HOME="${RUNNER_ORIGINAL_HOME:-$HOME}" bash "$REPO_ROOT/scripts/verify-evidence-bundle.sh" "$BUNDLE_DIR" 2>&1)" || _verify_rc=$?
     if (( _verify_rc != 0 )); then
         # The verifier is the trust root; never demote silently. The operator
         # needs the exact refusal site to tell a capture failure from a schema

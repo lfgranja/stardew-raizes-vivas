@@ -230,25 +230,38 @@ promotion_apply() {
 - **Session ID**: —
 <!-- GATE3:END -->'
 
-    python3 - "$feature_test_md" "$new_block" << 'PY'
-import sys,re
-path = sys.argv[1]
-new_block = sys.argv[2]
-with open(path) as f:
-    s = f.read()
-s2, n = re.subn(r'<!-- GATE3:BEGIN -->.*?<!-- GATE3:END -->', new_block, s, count=1, flags=re.DOTALL)
-if n == 0:
-    sys.exit(14)
-with open(path,'w') as f:
-    f.write(s2)
+    local _written _write_rc=0
+    _written="$(python3 - "$feature_test_md" "$new_block" "$repo" <<'PY'
+import sys,re,os
+path, new_block, repo = sys.argv[1:4]
+targets = [(path, "test.md")]
+for mirror, component in (("ROADMAP.md", "ROADMAP.md"),
+                          ("COMPLETION_SUMMARY.md", "COMPLETION_SUMMARY.md")):
+    mirror_path = os.path.join(repo, mirror)
+    if os.path.isfile(mirror_path):
+        targets.append((mirror_path, component))
+
+for target, component in targets:
+    with open(target) as f:
+        s = f.read()
+    s2, n = re.subn(r'<!-- GATE3:BEGIN -->.*?<!-- GATE3:END -->', new_block, s, count=1, flags=re.DOTALL)
+    if n == 0:
+        sys.exit(14)
+    with open(target,'w') as f:
+        f.write(s2)
+    print(component)
 PY
-    local rc=$?
-    if (( rc != 0 )); then
-        return "$rc"
+)" || _write_rc=$?
+    if (( _write_rc != 0 )); then
+        return "$_write_rc"
     fi
 
     if [[ "$new_status" == "machine-pass" ]]; then
-        _promotion_append_transition "$repo" "test.md" "$current_status" "$new_status" "$run_id"
+        local _component
+        while IFS= read -r _component; do
+            [[ -n "$_component" ]] || continue
+            _promotion_append_transition "$repo" "$_component" "$current_status" "$new_status" "$run_id"
+        done <<< "$_written"
     fi
 
     return 0
