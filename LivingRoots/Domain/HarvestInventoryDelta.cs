@@ -53,6 +53,14 @@ namespace LivingRoots.Domain
 
         /// <summary>Returns the slots whose stack count grew, in slot order.</summary>
         public static IReadOnlyList<HarvestInventoryChange> Diff(
+            IReadOnlyList<Item?> before,
+            IReadOnlyList<Item?> after)
+        {
+            return Diff(Snapshot(before), Snapshot(after));
+        }
+
+        /// <summary>Returns the slots whose stack count grew, in slot order.</summary>
+        public static IReadOnlyList<HarvestInventoryChange> Diff(
             IReadOnlyList<InventorySlotSnapshot> before,
             IReadOnlyList<InventorySlotSnapshot> after)
         {
