@@ -89,5 +89,22 @@ namespace LivingRoots.Services
 
             return false;
         }
+
+        public bool TryRemoveItem(Item item)
+        {
+            if (item == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return _farmer.removeItemFromInventory(item);
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }

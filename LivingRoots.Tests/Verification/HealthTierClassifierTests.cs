@@ -1,3 +1,4 @@
+using FsCheck.Xunit;
 using LivingRoots.Verification.Evidence;
 using Xunit;
 

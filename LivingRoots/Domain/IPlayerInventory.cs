@@ -15,5 +15,12 @@ namespace LivingRoots.Domain
         /// <param name="item">Item to add.</param>
         /// <returns>True when the item was accepted; false when the inventory refused it.</returns>
         bool TryAddItem(StardewValley.Item item);
+
+        /// <summary>
+        /// Removes a previously granted item (compensating rollback for partial grants).
+        /// </summary>
+        /// <param name="item">Item to remove.</param>
+        /// <returns>True when the item was removed.</returns>
+        bool TryRemoveItem(StardewValley.Item item);
     }
 }

@@ -19,7 +19,7 @@ namespace LivingRoots.Tests.HarvestQuality
             var items = new List<Item?>();
             for (int i = 0; i < count; i++)
             {
-                items.Add(new Object("24", maxStack));
+                items.Add(new StardewValley.Object("24", maxStack));
             }
 
             return items;
@@ -30,14 +30,14 @@ namespace LivingRoots.Tests.HarvestQuality
         {
             var before = new List<Item?>
             {
-                new Object("24", 1),
+                new StardewValley.Object("24", 1),
                 null,
             };
 
             var after = new List<Item?>
             {
-                new Object("24", 3),
-                new Object("24", 1),
+                new StardewValley.Object("24", 3),
+                new StardewValley.Object("24", 1),
             };
 
             var changes = HarvestInventoryDelta.Diff(before, after);
@@ -52,8 +52,8 @@ namespace LivingRoots.Tests.HarvestQuality
         [Fact]
         public void Diff_BlockedHarvest_ReturnsNoChanges()
         {
-            var before = new List<Item?> { new Object("24", 1) };
-            var after = new List<Item?> { new Object("24", 1) };
+            var before = new List<Item?> { new StardewValley.Object("24", 1) };
+            var after = new List<Item?> { new StardewValley.Object("24", 1) };
 
             var changes = HarvestInventoryDelta.Diff(before, after);
 
@@ -64,8 +64,8 @@ namespace LivingRoots.Tests.HarvestQuality
         [Fact]
         public void FindPrimaryAddedSlot_ReturnsLowestChangedSlot()
         {
-            var before = new List<Item?> { new Object("24", 1), new Object("24", 1) };
-            var after = new List<Item?> { new Object("24", 1), new Object("24", 3) };
+            var before = new List<Item?> { new StardewValley.Object("24", 1), new StardewValley.Object("24", 1) };
+            var after = new List<Item?> { new StardewValley.Object("24", 1), new StardewValley.Object("24", 3) };
 
             var changes = HarvestInventoryDelta.Diff(before, after);
 
@@ -75,13 +75,13 @@ namespace LivingRoots.Tests.HarvestQuality
         [Property]
         public Property Diff_SnapshotOfSameInventory_IsEmpty()
         {
-            var inventory = new List<Item?> { new Object("24", 2), null, new Object("24", 1) };
+            var inventory = new List<Item?> { new StardewValley.Object("24", 2), null, new StardewValley.Object("24", 1) };
             var before = HarvestInventoryDelta.Snapshot(inventory);
             var after = HarvestInventoryDelta.Snapshot(inventory);
 
             var changes = HarvestInventoryDelta.Diff(before, after);
 
-            return changes.Count == 0;
+            return (changes.Count == 0).ToProperty();
         }
 
         [Theory]
@@ -100,7 +100,7 @@ namespace LivingRoots.Tests.HarvestQuality
         [Fact]
         public void IsFull_FreeSlotExists_IsFalse()
         {
-            var inventory = new List<Item?> { new Object("24", 1), null };
+            var inventory = new List<Item?> { new StardewValley.Object("24", 1), null };
 
             Assert.False(HarvestInventoryDelta.IsFull(inventory, 36));
         }
@@ -108,8 +108,8 @@ namespace LivingRoots.Tests.HarvestQuality
         [Fact]
         public void SelectTargetInventory_PrefersJunimoThenPlayer()
         {
-            var player = new List<Item?> { new Object("24", 1) };
-            var junimo = new List<Item?> { new Object("24", 2) };
+            var player = new List<Item?> { new StardewValley.Object("24", 1) };
+            var junimo = new List<Item?> { new StardewValley.Object("24", 2) };
 
             var selectedJunimo = HarvestInventoryDelta.SelectTargetInventory(junimo, player);
             var selectedPlayer = HarvestInventoryDelta.SelectTargetInventory(null, player);

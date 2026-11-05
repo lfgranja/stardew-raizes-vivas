@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FsCheck;
 using FsCheck.Xunit;
 using LivingRoots.Domain;
+using LivingRoots.Domain.Services;
 using Xunit;
 
 namespace LivingRoots.Tests.HarvestQuality
@@ -113,8 +114,8 @@ namespace LivingRoots.Tests.HarvestQuality
             var applied = new List<SoilHealthSnapshotEntry>();
             SoilHealthSync.Apply(message, "save-1", (loc, x, y, h) => applied.Add(new SoilHealthSnapshotEntry(loc, x, y, h)));
 
-            return applied.Count == entries.Count
-                   && Math.Abs(applied[0].Health - entries[0].Health) < 0.00001f;
+            return (applied.Count == entries.Count
+                   && Math.Abs(applied[0].Health - entries[0].Health) < 0.00001f).ToProperty();
         }
 
         [Fact]

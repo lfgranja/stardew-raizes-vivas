@@ -16,6 +16,18 @@ namespace LivingRoots.Services
         {
             return Game1.player.addItemToInventoryBool(item);
         }
+
+        public bool TryRemoveItem(Item item)
+        {
+            try
+            {
+                return Game1.player.removeItemFromInventory(item);
+            }
+            catch
+            {
+                return false;
+            }
+        }
 #pragma warning restore S2325
     }
 }

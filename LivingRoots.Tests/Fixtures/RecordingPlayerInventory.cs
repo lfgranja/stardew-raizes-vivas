@@ -49,14 +49,9 @@ public sealed class RecordingPlayerInventory : IPlayerInventory, IPlayerInventor
     }
 
     /// <inheritdoc />
-    public bool HasCapacity(Item item, int count)
+    public bool TryRemoveItem(Item item)
     {
-        if (CapacityPredicate != null)
-        {
-            return CapacityPredicate(item, count);
-        }
-
-        return HasCapacityResult;
+        return _added.Remove(item);
     }
 
     /// <summary>Resets the call counter and granted list.</summary>

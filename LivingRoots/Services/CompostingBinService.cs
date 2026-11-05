@@ -171,14 +171,37 @@ public class CompostingBinService(
 
             binToHarvest = bin;
 
-            int outputCount = 1;
-            for (int i = 0; i < outputCount; i++)
+            int outputCount = _outputCountProvider != null ? _outputCountProvider() : 1;
+            if (outputCount < 0)
             {
-                var compost = new StardewValley.Object(ModConstants.CompostItemId, 1);
-                if (!_playerInventory.TryAddItem(compost))
+                outputCount = 0;
+            }
+
+            // Dry-run capacity check (plan Q4): refuse before mutating inventory.
+            var compost = new StardewValley.Object(ModConstants.CompostItemId, 1);
+            if (_playerInventory is IPlayerInventoryCapacity capacity &&
+                !capacity.HasCapacity(compost, outputCount))
+            {
+                inventoryRefused = true;
+            }
+            else
+            {
+                var granted = new List<StardewValley.Item>();
+                for (int i = 0; i < outputCount; i++)
                 {
-                    inventoryRefused = true;
-                    break;
+                    var item = new StardewValley.Object(ModConstants.CompostItemId, 1);
+                    if (!_playerInventory.TryAddItem(item))
+                    {
+                        inventoryRefused = true;
+                        foreach (var grantedItem in granted)
+                        {
+                            _playerInventory.TryRemoveItem(grantedItem);
+                        }
+
+                        break;
+                    }
+
+                    granted.Add(item);
                 }
             }
 
@@ -536,7 +559,8 @@ public class CompostingBinService(
                         InputTimestamp = bin.Value.InputTimestamp,
                         MaturationLevel = bin.Value.MaturationLevel,
                         ConsecutiveIdleDays = bin.Value.ConsecutiveIdleDays,
-                        ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays
+                        ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays,
+                        OutputGranted = bin.Value.OutputGranted
                     };
                 }
             }
@@ -595,7 +619,8 @@ public class CompostingBinService(
             InputTimestamp = binData.InputTimestamp,
             MaturationLevel = Math.Clamp(binData.MaturationLevel, 1, ModConstants.MaturationMaxLevel),
             ConsecutiveIdleDays = Math.Clamp(binData.ConsecutiveIdleDays, 0, ModConstants.MaturationIdleResetDays),
-            ConsecutiveActiveDays = binData.ConsecutiveActiveDays
+            ConsecutiveActiveDays = binData.ConsecutiveActiveDays,
+            OutputGranted = binData.OutputGranted
         };
     }
 
