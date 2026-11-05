@@ -7,6 +7,10 @@ using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 
+using System;
+using System.Collections.Generic;
+using System.Threading;
+
 namespace LivingRoots.Controllers
 {
     public sealed class ModController(
@@ -81,6 +85,12 @@ namespace LivingRoots.Controllers
 
         // T047 (spec 010): ordering signal raised at tail of OnDayEnding.
         private readonly LivingRoots.Services.LivingRootsModApi? _modApi = modApi as LivingRoots.Services.LivingRootsModApi;
+
+        // T118 (FR-009/A8): host→client soil-health snapshot channel. This is
+        // strictly for replicated farm state sync (not scenario injection), so
+        // CrossModCommunicationGuardTests allows it in LivingRoots.
+        internal const string SoilHealthSyncMessageType = "SoilHealthSync";
+        private EventHandler<ModMessageReceivedEventArgs>? _onModMessageReceivedHandler;
         // T008 (spec 009): idempotency storage for the growth modifier (reuse SoilDecayService pattern).
         private readonly Dictionary<string, string> _soilGrowthProcessedDays = new();
         private readonly object _soilGrowthLock = new();
@@ -1931,24 +1941,13 @@ namespace LivingRoots.Controllers
 
             try
             {
-                // T074 (FR-004, T063): the SMAPI DayStarted
-                // event fires once per day for the whole host —
-                // not once per location — so a day-start path
-                // that only processes Game1.currentLocation
-                // silently starves every other farm location's
-                // bins and soil. The mod's bins live on the
-                // farm and in the Greenhouse (FR-002, T057),
-                // the complete set of farm locations a save
-                // holds, so the day tick reaches the location
-                // the host occupies plus the farm locations it
-                // does not: the Greenhouse, and the farm
-                // itself, whose location name is "Farm" for
-                // every farm type. Each service keeps its own
-                // Exactly-once per day, per location guard
-                // (T056 in CompostingBinService, T068 in
-                // SoilDecayService), so a location named twice
-                // on the same day — the occupied farm overlaps
-                // the literal pair — is ticked once.
+                if (!StardewModdingAPI.Context.IsMainPlayer)
+                {
+                    // Farmhand clients receive host-synced soil health (FR-009/A8);
+                    // they must not mutate shared farm state locally (T119).
+                    return;
+                }
+
                 var farmLocationNames = new HashSet<string>();
                 var currentLocationName = StardewValley.Game1.currentLocation?.Name;
                 if (!string.IsNullOrEmpty(currentLocationName))
@@ -1964,6 +1963,8 @@ namespace LivingRoots.Controllers
                     _compostingBinService.ProcessDayStart(locationName);
                     _soilDecayService.ProcessDayStart(locationName);
                 }
+
+                BroadcastSoilHealthSnapshotIfHost();
             }
             catch (Exception ex)
             {
@@ -3047,6 +3048,63 @@ namespace LivingRoots.Controllers
             finally
             {
                 _hostAtomicLockService?.ReleaseLock(location.Name, tile, farmerId);
+            }
+        }
+
+        internal void OnModMessageReceived(object? sender, ModMessageReceivedEventArgs e)
+        {
+            if (IsDisposed() || e == null || !string.Equals(e.Type, SoilHealthSyncMessageType, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            if (StardewModdingAPI.Context.IsMainPlayer)
+            {
+                return;
+            }
+
+            try
+            {
+                var message = e.ReadAs<SoilHealthSyncMessage>();
+                if (message == null)
+                {
+                    return;
+                }
+
+                var saveId = _saveIdProvider.GetSaveId() ?? string.Empty;
+                SoilHealthSync.Apply(message, saveId, (loc, x, y, h) =>
+                {
+                    _soilHealthService.SetSoilHealth(loc, new Microsoft.Xna.Framework.Vector2(x, y), h);
+                });
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Soil health sync receive failed: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+        }
+
+        internal void BroadcastSoilHealthSnapshotIfHost()
+        {
+            if (!StardewModdingAPI.Context.IsMainPlayer || _helper?.Multiplayer == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var saveId = _saveIdProvider.GetSaveId();
+                if (string.IsNullOrWhiteSpace(saveId))
+                {
+                    return;
+                }
+
+                var entries = _soilHealthService.Snapshot();
+                var message = SoilHealthSync.Create(saveId, StardewValley.Game1.Date.TotalDays, entries);
+                _helper.Multiplayer.SendMessage(message, SoilHealthSyncMessageType, modIDs: new[] { _manifest.UniqueID });
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"Soil health sync send failed: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
             }
         }
     }

@@ -195,6 +195,16 @@ namespace LivingRoots
 
             _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider, modApi: _modApi);
 
+            // T118 (FR-009/A8): host→client soil-health sync channel.
+            try
+            {
+                helper.Events.Multiplayer.ModMessageReceived += _controller.OnModMessageReceived;
+            }
+            catch (Exception ex)
+            {
+                this.Monitor?.Log($"Soil health sync subscription failed: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+
             // Register events through the Controller
             _controller.RegisterEvents();
         }
