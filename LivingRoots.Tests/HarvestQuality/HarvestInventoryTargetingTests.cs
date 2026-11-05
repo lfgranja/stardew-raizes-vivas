@@ -4,7 +4,6 @@ using FsCheck.Xunit;
 using LivingRoots;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Services;
-using Moq;
 using StardewValley;
 using Xunit;
 
@@ -14,14 +13,9 @@ namespace LivingRoots.Tests.HarvestQuality
     {
         private readonly HarvestQualityService _service = new HarvestQualityService();
 
-        private static Item MakeItem(string id, int stack, int quality = 0)
+        private static InventorySlotSnapshot Slot(string? id, int stack, int quality = 0)
         {
-            var item = new Mock<Item>();
-            item.SetupGet(i => i.QualifiedItemId).Returns(id.StartsWith('(') ? id : $"(O){id}");
-            item.SetupGet(i => i.ItemId).Returns(id);
-            item.SetupProperty(i => i.Stack, stack);
-            item.SetupProperty(i => i.Quality, quality);
-            return item.Object;
+            return new InventorySlotSnapshot(new object() as Item, id == null ? null : (id.StartsWith('(') ? id : $"(O){id}"), stack, quality);
         }
 
         private static List<Item?> MakeFullInventory(int count, int stack)
@@ -29,25 +23,30 @@ namespace LivingRoots.Tests.HarvestQuality
             var items = new List<Item?>();
             for (int i = 0; i < count; i++)
             {
-                items.Add(MakeItem("24", stack));
+                items.Add(null);
             }
-
+            // Full means no free slot; represent occupied slots as non-null sentinels.
+            for (int i = 0; i < count; i++)
+            {
+                items[i] = new object() as Item;
+            }
             return items;
         }
 
         [Fact]
         public void Diff_DetectsNewAndStackedItems()
         {
-            var before = new List<Item?>
+            var item = new object() as Item;
+            var before = new List<InventorySlotSnapshot>
             {
-                MakeItem("24", 1),
-                null,
+                new InventorySlotSnapshot(item, "(O)24", 1, 0),
+                new InventorySlotSnapshot(null, null, 0, 0),
             };
 
-            var after = new List<Item?>
+            var after = new List<InventorySlotSnapshot>
             {
-                MakeItem("24", 3),
-                MakeItem("24", 1),
+                new InventorySlotSnapshot(item, "(O)24", 3, 0),
+                new InventorySlotSnapshot(new object() as Item, "(O)24", 1, 0),
             };
 
             var changes = HarvestInventoryDelta.Diff(before, after);
@@ -62,8 +61,9 @@ namespace LivingRoots.Tests.HarvestQuality
         [Fact]
         public void Diff_BlockedHarvest_ReturnsNoChanges()
         {
-            var before = new List<Item?> { MakeItem("24", 1) };
-            var after = new List<Item?> { MakeItem("24", 1) };
+            var item = new object() as Item;
+            var before = new List<InventorySlotSnapshot> { new InventorySlotSnapshot(item, "(O)24", 1, 0) };
+            var after = new List<InventorySlotSnapshot> { new InventorySlotSnapshot(item, "(O)24", 1, 0) };
 
             var changes = HarvestInventoryDelta.Diff(before, after);
 
@@ -74,8 +74,18 @@ namespace LivingRoots.Tests.HarvestQuality
         [Fact]
         public void FindPrimaryAddedSlot_ReturnsLowestChangedSlot()
         {
-            var before = new List<Item?> { MakeItem("24", 1), MakeItem("24", 1) };
-            var after = new List<Item?> { MakeItem("24", 1), MakeItem("24", 3) };
+            var itemA = new object() as Item;
+            var itemB = new object() as Item;
+            var before = new List<InventorySlotSnapshot>
+            {
+                new InventorySlotSnapshot(itemA, "(O)24", 1, 0),
+                new InventorySlotSnapshot(itemB, "(O)24", 1, 0),
+            };
+            var after = new List<InventorySlotSnapshot>
+            {
+                new InventorySlotSnapshot(itemA, "(O)24", 1, 0),
+                new InventorySlotSnapshot(itemB, "(O)24", 3, 0),
+            };
 
             var changes = HarvestInventoryDelta.Diff(before, after);
 
@@ -85,11 +95,15 @@ namespace LivingRoots.Tests.HarvestQuality
         [Property]
         public Property Diff_SnapshotOfSameInventory_IsEmpty()
         {
-            var inventory = new List<Item?> { MakeItem("24", 2), null, MakeItem("24", 1) };
-            var before = HarvestInventoryDelta.Snapshot(inventory);
-            var after = HarvestInventoryDelta.Snapshot(inventory);
+            var item = new object() as Item;
+            var inventory = new List<InventorySlotSnapshot>
+            {
+                new InventorySlotSnapshot(item, "(O)24", 2, 0),
+                new InventorySlotSnapshot(null, null, 0, 0),
+                new InventorySlotSnapshot(new object() as Item, "(O)24", 1, 0),
+            };
 
-            var changes = HarvestInventoryDelta.Diff(before, after);
+            var changes = HarvestInventoryDelta.Diff(inventory, inventory);
 
             return (changes.Count == 0).ToProperty();
         }
@@ -110,7 +124,7 @@ namespace LivingRoots.Tests.HarvestQuality
         [Fact]
         public void IsFull_FreeSlotExists_IsFalse()
         {
-            var inventory = new List<Item?> { MakeItem("24", 1), null };
+            var inventory = new List<Item?> { new object() as Item, null };
 
             Assert.False(HarvestInventoryDelta.IsFull(inventory, 36));
         }
@@ -118,8 +132,8 @@ namespace LivingRoots.Tests.HarvestQuality
         [Fact]
         public void SelectTargetInventory_PrefersJunimoThenPlayer()
         {
-            var player = new List<Item?> { MakeItem("24", 1) };
-            var junimo = new List<Item?> { MakeItem("24", 2) };
+            var player = new List<Item?> { (Item?)null };
+            var junimo = new List<Item?> { new object() as Item };
 
             var selectedJunimo = HarvestInventoryDelta.SelectTargetInventory(junimo, player);
             var selectedPlayer = HarvestInventoryDelta.SelectTargetInventory(null, player);
