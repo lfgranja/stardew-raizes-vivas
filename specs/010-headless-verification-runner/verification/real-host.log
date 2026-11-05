@@ -1,0 +1,52 @@
+# T137 — Verification: real-host e2e
+
+- **Date**: 2026-11-04
+- **Status**: PASS (real host, headless, no human input)
+- **Host**: Linux, Fedora 44 KDE/Wayland (Xvfb display)
+- **Game**: Steam install at `/home/luis/.local/share/Steam/steamapps/common/Stardew Valley`
+- **Command**:
+  `./scripts/verify-scenario.sh --scenario specs/004-playable-compost-loop/scenarios/compost-growth-hardening.scenario.json --no-acquire --game-path "<steam-path>" --skip-build`
+- **Exit**: 0
+- **Bundle**: `evidence-bundle-run-20261104T233856Z-0a6b/`
+- **Verdict**: `pass` — `signalsComplete=true`, `signalsAgree=true`, `thresholdsOk=true`
+- **Honesty**: R (runtime evidence; `verified` remains human-only)
+
+## Root causes found (previous status was a misdiagnosis)
+
+The earlier note claimed the game "stalls after Instance_LoadContent" and
+suggested a real display, SDL videodriver changes, or manual interaction. The
+full SMAPI log disproved that:
+
+1. **Save folder / inner file name mismatch.** The isolated save was
+   `Saves/farm-year1-day5/`, but the main save file inside it was
+   `Agroeco_421179919`. Stardew resolves a save as `Saves/<name>/<name>`, so
+   `SaveGame.Load("farm-year1-day5")` logged `DebugOutput: File does not exist`
+   and returned to the title screen. The game kept running and rendering; it
+   never stalled. Fixed in `scripts/lib/save.sh` (`save_align_inner_name`), and
+   `save_prepare` now fails loudly (19) when the working copy has no
+   `<name>/<name>` file.
+2. **The bundle kept only a grep-filtered log.** `signals_smapi_log_excerpt`
+   kept only `elapsed`, `DayEnding`/`SoilGrowthModifierCompleted`, and
+   `not main player` lines, so `artifacts/smapi-log.txt` was two lines long and
+   looked like a five-second stall. It now copies the full SMAPI log.
+
+The spec 010 `fixtures/valid/*.scenario.json` files are schema contract
+fixtures, not runnable gameplay scenarios (off-map tile `-10,5`, no macro
+files). T137 uses the real scenario at
+`specs/004-playable-compost-loop/scenarios/compost-growth-hardening.scenario.json`.
+
+## Evidence
+
+- SMAPI: `Context: loaded save 'farmyear1day5_421179919', starting spring 1 Y1 … Single-player.`
+- All three signals present and agreeing: soil-health delta, crop-phase delta
+  (`phaseDays` 4 → 5, Poor soil 1.15×), SMAPI log.
+- `evaluation/actual.json`: `isMainPlayer=true`, `locationsProcessed=3`,
+  `eventName=DayEnding`.
+- Promotion: `test.md` GATE3 block now points at run
+  `run-20261104T233856Z-0a6b`; `promotion-triggers.json` gained the matching
+  `partial → machine-pass` transition.
+
+## What this unblocks
+
+T138 (second host), T139 (timed dry run), T140 (audit drill), T145 (farmhand
+path), and T146 (promotion audit) can now run against a working baseline.

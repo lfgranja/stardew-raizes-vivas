@@ -26,6 +26,7 @@
 #   PASS <file>   the file ran at least one case and every case passed
 #   SKIP <file>   every case in the file was skipped — nothing was tested
 #   FAIL <file>   the file failed
+#   HANG <file>   the per-file deadline fired before the file finished
 #
 # A file whose every case was skipped is never reported as PASS. The harness
 # counts the skipped cases in a counter of their own and reports that count
@@ -69,6 +70,17 @@ readonly REPO_ROOT
 # The value run_test_file returns for a file whose every case was skipped. It
 # is the runner's own marker; 77 is the conventional "skipped" status.
 readonly SKIP_VERDICT=77
+
+# The per-file deadline. The launch-heavy suites (test-logparse,
+# test-integration) run the real rebuild-and-launch pipeline once per case,
+# and the build is deliberately `--no-incremental`: one build alone costs
+# ~21 s, and a log-gate suite runs the pipeline twenty-odd times. The
+# historical 300 s cap therefore killed legitimate suites mid-run, which
+# read as a hang because a file's output is only printed once it exits.
+# The bound still exists so a genuinely stuck file cannot outlive the
+# runner; it is configurable for slower hosts.
+RUNNER_FILE_TIMEOUT_SECS="${RUN_ALL_FILE_TIMEOUT_SECS:-2700}"
+readonly RUNNER_FILE_TIMEOUT_SECS
 
 # The runner's own scratch directory. Every test file's temporary directory
 # lives inside it, so one removal reclaims the whole tree. Removed on exit.
@@ -373,7 +385,7 @@ run_test_file() {
         # it to finish on its own.
         (
             cd -- "${REPO_ROOT}" || exit 127
-            TMPDIR="${tmpdir}" exec timeout --kill-after=5 300 bash -- "${test_file}"
+            TMPDIR="${tmpdir}" exec timeout --kill-after=5 "${RUNNER_FILE_TIMEOUT_SECS}" bash -- "${test_file}"
         ) > "${output_file}" 2>&1 &
         RUNNER_CURRENT_PID="$!"
         RUNNER_CURRENT_OUTPUT="${output_file}"
@@ -392,6 +404,12 @@ run_test_file() {
 
     printf '=== %s ===\n' "${label}"
     printf '    [exit status: %d]\n' "${status}"
+    if (( status == 124 || status == 137 )); then
+        # `timeout --kill-after` reports 124 when its deadline fired and 137
+        # when the SIGKILL escalation was needed. Neither is a test failure
+        # the file chose; naming the deadline makes the diagnosis immediate.
+        printf '    [deadline fired after %ss]\n' "${RUNNER_FILE_TIMEOUT_SECS}"
+    fi
     if [[ -n "${output}" ]]; then
         printf '%s\n' "${output}" | sed 's/^/    /'
     else
@@ -408,7 +426,11 @@ run_test_file() {
             verdict=0
         fi
     else
-        printf 'FAIL %s\n' "${label}"
+        if (( status == 124 || status == 137 )); then
+            printf 'HANG %s\n' "${label}"
+        else
+            printf 'FAIL %s\n' "${label}"
+        fi
         verdict=1
     fi
     printf '\n'

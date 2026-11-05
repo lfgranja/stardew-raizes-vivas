@@ -89,6 +89,38 @@ else
     fail "save_prepare source unchanged" "source hash moved"
 fi
 
+# A milestone packaged by renaming only its folder must still load: Stardew
+# resolves Saves/<name>/<name>, so save_isolate has to rename the inner main
+# file (T137: farm-year1-day5/Agroeco_421179919 -> "File does not exist").
+mkdir -p "$saves_root/renamed-only"
+make_fake_save "$saves_root/renamed-only" "Agroeco_421179919" '{"Farm":{"-10,5":10}}' '{}'
+RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
+    call_runner_func save_prepare "renamed-only" "$run_root"
+assert_fn_code 0 "save_prepare aligns a renamed milestone"
+if [[ -f "${RUNNER_SAVE_DIR:-}/renamed-only" ]]; then
+    pass "inner save file matches the folder name"
+else
+    fail "inner save file" "missing renamed-only"
+fi
+if [[ ! -e "${RUNNER_SAVE_DIR:-}/Agroeco_421179919" ]]; then
+    pass "old inner save-file name removed from the working copy"
+else
+    fail "old inner save-file name" "still present"
+fi
+if [[ -f "$saves_root/renamed-only/Agroeco_421179919" ]]; then
+    pass "renaming leaves the source milestone untouched"
+else
+    fail "source milestone renamed" "source changed"
+fi
+
+# An unloadable milestone must fail at prepare time, not at game load.
+mkdir -p "$saves_root/ambiguous"
+printf 'one' > "$saves_root/ambiguous/one"
+printf 'two' > "$saves_root/ambiguous/two"
+RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
+    call_runner_func save_prepare "ambiguous" "$run_root"
+assert_fn_code 19 "unloadable milestone => 19"
+
 # Missing milestone must be loud (19), never a silent skip.
 RUNNER_SAVES_ROOT="$saves_root" RUNNER_SMAPI_LOG_PINNED=1 \
     call_runner_func save_prepare "does-not-exist" "$run_root"

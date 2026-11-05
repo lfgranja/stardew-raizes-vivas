@@ -1,0 +1,178 @@
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-atomic.sh ===
+    [exit status: 0]
+    ok - atomic_write creates target
+    ok - content matches
+    ok - temp unlinked after success
+    ok - target absent on failure
+    ok - EXDEV maps to internal error
+    ok - fsync_file succeeds
+    ok - fsync_dir succeeds
+    # tests: 7, passed: 7, failed: 0
+PASS test-atomic.sh
+
+=== test-capability.sh ===
+    [exit status: 0]
+    ok - production mod has no verification reference
+    ok - manifest declares dependency
+    ok - verification manifest has no update keys
+    ok - csproj excludes release zip
+    ok - verification mod uses no network/reflection
+    # tests: 5, passed: 5, failed: 0
+PASS test-capability.sh
+
+=== test-common.sh ===
+    [exit status: 0]
+    # tests: 7, passed: 7, failed: 0
+PASS test-common.sh
+
+=== test-contract-registries.sh ===
+    [exit status: 0]
+    ok - never-quarantine exists
+    ok - never-quarantine schema exists
+    ok - promotion-triggers exists
+    shape ok
+    ok - promotion-triggers shape
+    ok - evidence-bundle schema exists
+    ok - claims schema exists
+    ok - quarantine registry exists
+    # tests: 7, passed: 7, failed: 0
+PASS test-contract-registries.sh
+
+=== test-lock.sh ===
+    [exit status: 0]
+    ok - function lock_acquire defined
+    ok - function lock_release defined
+    ok - function claim_acquire defined
+    ok - function claim_release defined
+    ok - function _claim_root_resolve defined
+    ok - function _claim_root_validate_or_create defined
+    ok - noclobber (O_EXCL-like) used
+    ok - global order game-cache
+    ok - global order build-output
+    ok - global order shared-doc
+    ok - claim root var referenced
+    ok - backoff present
+    ok - token referenced
+    # tests: 13, passed: 13, failed: 0
+PASS test-lock.sh
+
+=== test-retention.sh ===
+    [exit status: 0]
+    ok - function retention_receipt defined
+    ok - function retention_record_timestamp defined
+    ok - function retention_check_expiry defined
+    ok - function retention_export defined
+    ok - function retention_delete_guarded defined
+    ok - receipt exercised (rc=0)
+    ok - delete_guarded exercised (rc=14)
+    ok - export defined
+    ok - retention window
+    # tests: 9, passed: 9, failed: 0
+PASS test-retention.sh
+
+=== test-root-guard.sh ===
+    [exit status: 0]
+    ok - non-root passes root guard
+    ok - root guard present in preflight
+    ok - guard precedes launch
+    # tests: 3, passed: 3, failed: 0
+PASS test-root-guard.sh
+
+=== test-runall.sh ===
+    [exit status: 0]
+    ok - run-all.sh exists
+    ok - run-all.sh is executable
+    # tests: 2, passed: 2, failed: 0
+PASS test-runall.sh
+
+=== test-sanitize.sh ===
+    [exit status: 0]
+    ok - vectors file exists
+    ok - sanitize accept: café
+    ok - sanitize reject: ..
+    ok - sanitize reject: foo/../bar
+    ok - sanitize reject: ../etc/passwd
+    ok - sanitize reject: /etc/passwd
+    ok - sanitize reject: C:\Windows
+    ok - sanitize reject: C:foo
+    ok - sanitize reject: a\b
+    ok - sanitize reject: a\x00b
+    ok - sanitize reject: a\x01b
+    ok - sanitize reject: ../..
+    ok - sanitize reject: аdmin
+    ok - sanitize accept: foo/bar
+    ok - sanitize accept: a/b/c
+    ok - C# sanitizer tests exist
+    ok - sanitize_path defined
+    # tests: 17, passed: 17, failed: 0
+PASS test-sanitize.sh
+
+=== test-schema-contract.sh ===
+    [exit status: 0]
+    ok - scenario schema exists
+    ok - valid fixture accepted: actions-coverage.scenario.json
+    ok - valid fixture accepted: boundary-33-poor.scenario.json
+    ok - valid fixture accepted: boundary-34-moderate.scenario.json
+    ok - valid fixture accepted: boundary-66-moderate.scenario.json
+    ok - valid fixture accepted: boundary-67-healthy-fail.scenario.json
+    ok - valid fixture accepted: boundary-67-healthy.scenario.json
+    ok - valid fixture accepted: cmp-boolean-string.scenario.json
+    ok - valid fixture accepted: composite-allof.scenario.json
+    ok - valid fixture accepted: composite-anyof.scenario.json
+    ok - valid fixture accepted: compost-growth-healthy.scenario.json
+    ok - valid fixture accepted: compost-growth-moderate.scenario.json
+    ok - valid fixture accepted: compost-growth.scenario.json
+    ok - valid fixture accepted: equivalence-35-moderate.scenario.json
+    ok - valid fixture accepted: equivalence-68-healthy.scenario.json
+    ok - valid fixture accepted: equivalence-missing-key.scenario.json
+    ok - valid fixture accepted: equivalence-nan-health.scenario.json
+    ok - valid fixture accepted: equivalence-zero-health.scenario.json
+    ok - valid fixture accepted: farmhand-host-guard.scenario.json
+    ok - valid fixture accepted: farmhand-unchanged.scenario.json
+    ok - valid fixture accepted: harmony-harvest-quality.scenario.json
+    ok - valid fixture accepted: negative-crash-errored.scenario.json
+    ok - valid fixture accepted: negative-expected-fail.scenario.json
+    ok - valid fixture accepted: negative-incomplete-signals-partial.scenario.json
+    ok - valid fixture accepted: negative-skipped.scenario.json
+    ok - valid fixture accepted: negative-version-mismatch-errored.scenario.json
+    ok - valid fixture accepted: phase-days-clamp-min.scenario.json
+    ok - valid fixture accepted: sentinel-phase-minus-one.scenario.json
+    ok - valid fixture accepted: sentinel-poor-positive.scenario.json
+    ok - valid fixture accepted: sentinel-untouched.scenario.json
+    ok - valid fixture accepted: soil-quality-tier-harvest.scenario.json
+    ok - invalid fixture rejected: cmp-wrong-operand-type.scenario.json
+    ok - invalid fixture rejected: debug-console-prefix.scenario.json
+    ok - invalid fixture rejected: duplicate-signals.scenario.json
+    ok - invalid fixture rejected: empty-summary.scenario.json
+    ok - invalid fixture rejected: farmhand-without-host-guard.scenario.json
+    ok - invalid fixture rejected: health-tier-invalid-value.scenario.json
+    ok - invalid fixture rejected: macro-traversal.scenario.json
+    ok - invalid fixture rejected: missing-test-md-path.scenario.json
+    ok - invalid fixture rejected: negative-scenario-expecting-pass.scenario.json
+    ok - invalid fixture rejected: null-summary.scenario.json
+    ok - invalid fixture rejected: sentinel-wrong-field.scenario.json
+    ok - invalid fixture rejected: too-many-steps.scenario.json
+    ok - invalid fixture rejected: unknown-property.scenario.json
+    ok - invalid fixture rejected: wrong-schema-version.scenario.json
+    ok - schema-validate helper exists
+    # tests: 46, passed: 46, failed: 0
+PASS test-schema-contract.sh
+
+=== test-version-gate.sh ===
+    [exit status: 0]
+    ok - version_gate_classify defined
+    ok - version_gate exercised (rc=19)
+    ok - version-gate lib present
+    ok - unofficial handling
+    ok - max game version handling
+    ok - directory form: a compatible install does not hard-fail
+    ok - directory form: a compatible install is INFO
+    ok - preflight_version_gate: a compatible install returns 0
+    ok - directory form: an older game version still hard-fails (19)
+    ok - directory form: an older SMAPI version still hard-fails (19)
+    # tests: 10, passed: 10, failed: 0
+PASS test-version-gate.sh
+
+11 files, 11 passed, 0 failed

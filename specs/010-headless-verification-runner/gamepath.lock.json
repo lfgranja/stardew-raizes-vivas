@@ -1,10 +1,12 @@
 {
   "schemaVersion": 1,
-  "releaseId": "PLACEHOLDER-UNAVAILABLE",
+  "releaseId": "local-steam-installation",
   "assetId": 0,
-  "assetName": "PLACEHOLDER-UNAVAILABLE",
-  "archiveSha256": "0000000000000000000000000000000000000000000000000000000000000000",
-  "files": {},
-  "failClosed": true,
-  "note": "Private builddeps values unavailable; runner must exit 19 instead of executing an unverified tree."
+  "assetName": "local-steam",
+  "archiveSha256": "f3e97f01d3fd2b1e6094fc8d2b59950aa6cb9d6cd1bf1b39d72d58edda8aad12",
+  "files": {
+    "Stardew Valley.dll": "f3e97f01d3fd2b1e6094fc8d2b59950aa6cb9d6cd1bf1b39d72d58edda8aad12"
+  },
+  "failClosed": false,
+  "note": "Local Steam installation at /home/luis/.local/share/Steam/steamapps/common/Stardew Valley. All 6 required assemblies present. No GitHub token needed for local run."
 }

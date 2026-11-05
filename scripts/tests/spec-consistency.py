@@ -338,10 +338,52 @@ if promotion_triggers is not None:
         and isinstance(promotion_triggers.get("transitions"), list),
         "promotion-triggers.json must use {schemaVersion, components[], transitions[]}",
     )
-    check(
-        promotion_triggers.get("transitions") == [],
-        "promotion-triggers.json transitions[] must start empty and be appended by the runner",
-    )
+    # `transitions[]` starts empty in the registry's initial commit and is then
+    # append-only: every qualifying machine-pass run appends one record. The
+    # committed file therefore stops being empty after the first promotion, so
+    # the snapshot check validates the record shape and append semantics
+    # instead of requiring an empty array forever (which would also contradict
+    # the never-rewrite rule).
+    transitions = promotion_triggers.get("transitions")
+    if isinstance(transitions, list):
+        transition_keys = {"component", "from", "to", "runId", "owner", "recordedAt"}
+        seen_transitions: set[tuple[object, object]] = set()
+        previous_recorded = ""
+        for index, transition in enumerate(transitions):
+            check(
+                isinstance(transition, dict)
+                and set(transition.keys()) == transition_keys,
+                f"promotion-triggers.json transitions[{index}] must have exactly "
+                "{component, from, to, runId, owner, recordedAt}",
+            )
+            if not isinstance(transition, dict):
+                continue
+            check(
+                transition.get("from") == "partial"
+                and transition.get("to") == "machine-pass",
+                f"transitions[{index}] must record partial -> machine-pass "
+                "(the runner never writes verified)",
+            )
+            key = (transition.get("component"), transition.get("runId"))
+            check(
+                key not in seen_transitions,
+                f"transitions[{index}] duplicates component/runId {key}",
+            )
+            seen_transitions.add(key)
+            recorded = transition.get("recordedAt")
+            check(
+                isinstance(recorded, str)
+                and re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", recorded)
+                is not None,
+                f"transitions[{index}].recordedAt must be an ISO-8601 UTC timestamp",
+            )
+            if isinstance(recorded, str):
+                check(
+                    recorded >= previous_recorded,
+                    f"transitions[{index}].recordedAt must not go backwards "
+                    "(the registry is append-only)",
+                )
+                previous_recorded = recorded
 
 # ---------------------------------------------------------------------------
 # 6. Task-plan coverage for every remediation gap

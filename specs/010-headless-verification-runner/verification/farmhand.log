@@ -1,0 +1,14 @@
+# T145 — Verification: farmhand path
+# Data: 2026-11-04
+# Status: BLOCKED
+#
+# Requisito: exercitar o caminho de host-guard via debug split (autorado em T067/T068).
+# Registrar skip line, absence of mutation, forbidden evidence, non-promotion.
+#
+# Resultado: BLOCKED — requer game real com SMAPI e execucao via debug split
+# (farmhand nao e host). Mesmo quando o guard holds, o run e inelegivel para
+# machine-pass e fica partial com qualificador "host-authority guard exercised,
+# transport not verified".
+#
+# Para desbloquear: host com STARDEW_GAME_PATH valido e executar o scenario
+# fixtures/valid/farmhand-host-guard.scenario.json

@@ -2,4 +2,5 @@
 bash -n exit: 0
 
 === shellcheck ===
+zsh:1: command not found: shellcheck
 shellcheck not available

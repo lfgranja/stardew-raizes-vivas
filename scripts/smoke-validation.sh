@@ -408,7 +408,7 @@ on_error() {
     # In a subshell the handler therefore only RETURNS the status: the outer
     # shell reports the failure, exactly once, with the outer shell's own
     # view of what failed.
-    if ((BASH_SUBSHELL > 0)); then
+    if (( BASH_SUBSHELL > 0 )); then
         return "$status"
     fi
 
@@ -4411,12 +4411,11 @@ main() {
     exit "$EX_OK"
 }
 
-# Run `main` as a background job and `wait` on it. This lets a trapped signal
-# (INT/TERM/HUP) interrupt the `wait` immediately instead of being deferred
-# until the foreground command `main` is executing completes (Bash manual
-# §Signals). Without this, `timeout --kill-after` cannot reap the script
-# within its deadline when it is blocked inside a foreground command.
-main "$@" &
-main_pid=$!
-wait "$main_pid"
-exit $?
+# `main` runs in THIS shell, not in a background job. A background subshell
+# gets its own copy of every variable, so the process groups and the temp
+# directory `main` records are invisible to the EXIT trap's cleanup — an
+# interrupted run then leaves its Xvfb, its build and its scratch tree
+# behind. The harness bounds a hung script with `timeout --kill-after`
+# (scripts/tests/lib/harness.sh), so the script does not need to background
+# its own work to be killable.
+main "$@"

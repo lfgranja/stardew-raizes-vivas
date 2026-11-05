@@ -492,24 +492,38 @@ _reap_descendants() {
     local root="${1-}"
     local sig="${2-TERM}"
     [[ -n "$root" ]] || return 0
+    # The parent map is built in ONE pass over /proc, with no fork per
+    # process. The previous shape ran `awk` once for every /proc entry, which
+    # cost 14–20 s on a host with ~450 processes — and this runs twice per
+    # invocation of the script under test, so a suite paid up to 40 s per
+    # case. A fork-free read is ~200 ms.
+    local -A children_of=()
+    local path line rest ppid pid child
+    for path in /proc/[0-9]*/stat; do
+        # read is a builtin and the redirection is opened by the shell: no
+        # child process. An unreadable entry (the process exited mid-scan) is
+        # skipped.
+        IFS= read -r line 2>/dev/null < "$path" || continue
+        # Field 2 (comm) may contain spaces and parentheses, so the safe
+        # anchor is the LAST ')': everything after it is
+        # "STATE PPID ...", which makes PPID the second word.
+        rest="${line##*)}"
+        # shellcheck disable=SC2086  # intentional word split: STATE PPID ...
+        set -- $rest
+        ppid="${2-}"
+        [[ -n "$ppid" ]] || continue
+        pid="${path#/proc/}"
+        pid="${pid%/stat}"
+        children_of["$ppid"]+=" ${pid}"
+    done
     local -a queue=("$root")
     local -a all=()
-    local pid child
     while (( ${#queue[@]} > 0 )); do
         pid="${queue[0]}"
         queue=("${queue[@]:1}")
         all+=("$pid")
-        # Enumerate children from /proc to avoid relying on pgrep.
-        for child in /proc/[0-9]*/stat; do
-            [[ -r "$child" ]] || continue
-            # ppid is the 4th field.
-            local ppid
-            ppid="$(awk '{print $4}' "$child" 2>/dev/null || true)"
-            if [[ "$ppid" == "$pid" ]]; then
-                local cpid
-                cpid="$(basename -- "$(dirname -- "$child")")"
-                queue+=("$cpid")
-            fi
+        for child in ${children_of["$pid"]-}; do
+            queue+=("$child")
         done
     done
     # Signal leaves (reverse) so parents are signalled last.

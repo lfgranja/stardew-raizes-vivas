@@ -1,0 +1,13 @@
+# T138 — Verification: second-host 3/3
+# Data: 2026-11-04
+# Status: BLOCKED
+#
+# Requisito: segundo Linux host com STARDEW_GAME_PATH e BUILDDEPS_TOKEN (ou cache valido).
+# Executar o mesmo commit/scenario/save/seed tres vezes e registrar igualdade de veredito 3/3.
+#
+# Resultado: BLOCKED — nenhum segundo host disponivel neste ambiente.
+# Nao e possivel executar VS-01 tres vezes em hosts distintos.
+#
+# Para desbloquear: provisionar segundo host Linux com game instalado e executar:
+#   ./scripts/verify-scenario.sh --scenario fixtures/valid/compost-growth.scenario.json
+# (3 vezes, comparando vereditos)

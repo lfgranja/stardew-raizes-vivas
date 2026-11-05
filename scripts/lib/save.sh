@@ -32,6 +32,40 @@ save_setup_env() {
     return 0
 }
 
+# save_align_inner_name <working_dir> <save_name>
+#
+# Stardew resolves a save as <Saves>/<name>/<name>: the folder and the main
+# save file must share a name. A milestone packaged by renaming only the folder
+# (e.g. farm-year1-day5/Agroeco_421179919) launches fine and then fails with
+# "DebugOutput: File does not exist" when SaveGame.Load runs. Rename the single
+# non-sidecar file inside the working copy to match the folder.
+save_align_inner_name() {
+    [[ $# -eq 2 ]] || return "$EXIT_USAGE_ERROR"
+    local dir="$1" save_name="$2"
+    [[ -d "$dir" && -n "$save_name" ]] || return "$EXIT_USAGE_ERROR"
+    [[ -f "$dir/$save_name" ]] && return 0
+
+    local -a candidates=()
+    local f base
+    while IFS= read -r -d '' f; do
+        base="${f##*/}"
+        case "$base" in
+            SaveGameInfo|SaveGameInfo_old|*_old|*.json|*.xml) continue ;;
+        esac
+        candidates+=("$base")
+    done < <(find "$dir" -maxdepth 1 -type f -print0 2>/dev/null)
+
+    # Ambiguous layouts are left untouched; save_prepare turns the missing
+    # <name> file into a loud 19 instead of guessing which file is the save.
+    [[ ${#candidates[@]} -eq 1 ]] || return 0
+    local found="${candidates[0]}"
+    mv -f "$dir/$found" "$dir/$save_name" 2>/dev/null || return 19
+    if [[ -f "$dir/${found}_old" ]]; then
+        mv -f "$dir/${found}_old" "$dir/${save_name}_old" 2>/dev/null || return 19
+    fi
+    return 0
+}
+
 save_isolate() {
     [[ $# -eq 3 ]] || return "$EXIT_USAGE_ERROR"
     local instance="$1" source="$2" save_name="$3"
@@ -65,8 +99,11 @@ save_isolate() {
     if ! cp -a "$source/." "$working/" 2>/dev/null; then
         return 19
     fi
-    # Create sidecar backup
-    if ! cp -a "$source/." "$backup/" 2>/dev/null; then
+    # The working copy must look like a native save: <name>/<name>.
+    save_align_inner_name "$working" "$save_name" || return $?
+    # Create sidecar backup from the aligned working copy so a restore is
+    # byte-for-byte identical (the source itself is never modified).
+    if ! cp -a "$working/." "$backup/" 2>/dev/null; then
         return 19
     fi
 
@@ -159,6 +196,13 @@ save_prepare() {
     local instance
     instance="$(save_create_instance_dir "$run_root")" || return $?
     save_isolate "$instance" "$source" "$milestone" || return $?
+
+    # A save the game cannot resolve is a prepare-time error, not a game-time
+    # mystery: SaveGame.Load(<name>) reads <Saves>/<name>/<name>.
+    if [[ ! -f "$SAVE_WORKING_DIR/$milestone" ]]; then
+        log_error "save_prepare: milestone '$milestone' is not a loadable save (missing $SAVE_WORKING_DIR/$milestone)"
+        return "$EXIT_ERRORED"
+    fi
 
     export RUNNER_SAVE_ID="$milestone"
     export RUNNER_SAVE_DIR="$SAVE_WORKING_DIR"

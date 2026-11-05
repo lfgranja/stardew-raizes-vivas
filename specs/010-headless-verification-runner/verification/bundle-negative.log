@@ -1,0 +1,16 @@
+Running test files from /home/luis/development/stardew-raizes-vivas/scripts/tests
+
+=== test-bundle-negative.sh ===
+    [exit status: 0]
+    ok - missing manifest rejected (19)
+    ok - missing sha rejected (19)
+    ok - missing claims rejected (19)
+    ok - verifier exercised (rc=19)
+    ok - missing signal rejected (19)
+    ok - digest tamper rejected (19)
+    ok - anomaly reports do not satisfy R signals
+    ok - W bundle claiming nothing is valid
+    # tests: 8, passed: 8, failed: 0
+PASS test-bundle-negative.sh
+
+1 files, 1 passed, 0 failed

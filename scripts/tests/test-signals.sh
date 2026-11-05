@@ -42,6 +42,16 @@ call_runner_func signals_smapi_log_excerpt "$log2" "$exo2"
 assert_fn_code 0 "host-guard excerpt returns 0"
 grep -q "not main player" "$exo2" 2>/dev/null && pass "skip line present" || pass "skip line (maybe optional)"
 
+# The bundle keeps the full log: a save-load failure used to be filtered out
+# and made a live game look stalled (T137).
+log3="$HARNESS_SANDBOX/full.log"
+make_fake_smaapi_log "$log3" elapsed
+printf '[18:46:36 DEBUG game] DebugOutput: File does not exist\n' >> "$log3"
+exo3="$HARNESS_SANDBOX/excerpt3.txt"
+call_runner_func signals_smapi_log_excerpt "$log3" "$exo3"
+assert_fn_code 0 "full log copy returns 0"
+grep -q "File does not exist" "$exo3" 2>/dev/null && pass "full log keeps the save-load failure" || fail "full log" "filtered out the save-load failure"
+
 # cross-check divergence
 dump="$HARNESS_SANDBOX/cross.json"
 printf '{"locationsProcessed":1,"crops":[{"location":"Farm","tileX":0,"tileY":0,"phaseDays":[1],"soilHealth":10}]}\n' > "$dump"

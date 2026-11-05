@@ -1,0 +1,12 @@
+# T140 — Verification: quarterly audit/deletion drill
+# Data: 2026-11-04
+# Status: PENDENTE (nao executado)
+#
+# Requisito: executar auditoria trimestral do durable store (sample >= 30 bundles,
+# retenção >= 365 dias, WORM receipt) + drill de negada de exclusao prematura.
+# Registrar receipts, timestamps e audit event.
+#
+# Resultado: nao executado ainda — requer evidence bundles pre-existentes no durable store.
+# Para executar apos T137 (real-host) gerar os primeiros bundles.
+#
+# Script relevante: scripts/lib/retention.sh
