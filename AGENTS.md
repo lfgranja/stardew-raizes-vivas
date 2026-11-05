@@ -26,6 +26,14 @@ SMOKE_SKIP_INTEGRATION=1 scripts/tests/run-all.sh
 # single file
 scripts/tests/run-all.sh test-cli.sh
 
+# Verification runner (real game, headless)
+./scripts/verify-scenario.sh --scenario specs/004-playable-compost-loop/scenarios/compost-growth-hardening.scenario.json \
+  --no-acquire --game-path "/home/luis/.local/share/Steam/steamapps/common/Stardew Valley" --skip-build
+# offline bundle check
+./scripts/verify-scenario.sh --verify-bundle evidence-bundle-run-<id>
+# docs marker check
+./scripts/verify-scenario.sh --check-docs
+
 # Quality gate (merge-blocking; needs coverage + reportgenerator first)
 PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m pytest scripts/quality-gate/tests -q
 PYTHONPATH=scripts/quality-gate .venv-quality-gate/bin/python -m quality_gate coverage --summary coverage-report/Summary.json --baseline .coverage-baseline
@@ -47,6 +55,9 @@ lefthook: pre-commit runs `dotnet format --verify-no-changes` + shell syntax/sta
 - `LivingRoots/Controllers/ModController.cs` — SMAPI event orchestrator; atomic bit-flag state machine; `ExecuteWithConcurrencyGuard` for re-entrancy; snapshot data outside locks, then do I/O.
 - `LivingRoots/Patches/HarvestPatches.cs` + seam `Domain/IHarvestQualityService.cs` — Harmony patches via code API only (static methods, try/catch fallback).
 - `LivingRoots.Tests/` — xUnit + Moq + FsCheck + Microsoft.Coyote; one file per subject `{Subject}Tests.cs`.
+- `scripts/verify-scenario.sh` — headless verification runner (spec 010): launches SMAPI under Xvfb, injects a file queue into `LivingRoots.Verification`, captures 3 signals (soil-health delta, crop phase/phaseDays delta, SMAPI log), evaluates verdict, assembles a schema-valid evidence bundle with detached SHA-256 anchor, and promotes `machine-pass` via `scripts/lib/promotion.sh`.
+- `scripts/lib/` — shared runner libraries (evidence, save, signals, verdict, promotion, retention, cleanup, quit, etc.). `ModEntry.cs` is the sole composition root for services; `scripts/lib/evidence.sh` is the sole manifest producer's input assembler.
+- `specs/010-headless-verification-runner/` — spec, contracts, fixtures, verification logs, Gate 3 evidence.
 
 ## Conventions (non-obvious)
 
@@ -56,6 +67,7 @@ lefthook: pre-commit runs `dotnet format --verify-no-changes` + shell syntax/sta
 - `TreatWarningsAsErrors=true`, `EnforceCodeStyleInBuild=true` — build is strict; restore with `--locked-mode`.
 - Multiplayer is first-class (constitution Principle VI): farm state host-authoritative/farm-scoped; atomic per-tile/per-machine locks with first-wins; single-player is the degenerate case. No second source of truth.
 - Security: never log raw exception messages; validate soil health 0–100 via `ModConstants`; sanitize all user-influenced paths.
+- Verification runner quirk: `save_prepare` rewrites `HOME`/`XDG_*` for the game process; `RUNNER_ORIGINAL_HOME` preserves the original home so Python helpers (e.g., the offline verifier's `jsonschema` import) keep working. `RUNNER_SMAPI_CAPTURE=full|excerpt` (default `full`) controls log capture level.
 - Constructor injection only; `ModEntry.cs` is the sole composition root; primary constructors (C# 12) on controllers.
 - Don't: `new` services outside `ModEntry.cs`; mutate `_state` without `Interlocked`; hold a lock during I/O; implement domain logic in controllers; suppress overflow checks; expose raw exception messages in logs.
 
@@ -79,4 +91,7 @@ Gate 3 (end-to-end) applies to any change touching runnable code: real SMAPI ses
 | Security validation | `ModDataService.SanitizePathSegments()` |
 | Harmony harvest seam | `Patches/HarvestPatches.cs` + `Domain/IHarvestQualityService.cs` |
 | Composition / wiring | `ModEntry.cs` |
+| Verification runner | `scripts/verify-scenario.sh` + `scripts/lib/` (evidence, save, signals, verdict, promotion) |
+| Evidence bundle contract | `specs/010-headless-verification-runner/contracts/evidence-bundle.schema.json` |
+| Gate 3 evidence | `specs/010-headless-verification-runner/gate3-evidence/` + `verification/` |
 | Nested layer notes | `LivingRoots/AGENTS.md`, `LivingRoots/Domain/AGENTS.md`, `LivingRoots/Services/AGENTS.md` |
