@@ -19,19 +19,35 @@ namespace LivingRoots.Domain.Services
             bool isPaddyCrop,
             int regrowDays)
         {
-            throw new NotImplementedException("T122 implements the vanilla quality math.");
+            float p = 0.2f * (farmingLevel / 10.0f)
+                      + 0.2f * fertilizerTier * ((farmingLevel + 2) / 12.0f)
+                      + 0.01f;
+            if (isPaddyCrop)
+            {
+                p += 0.1f;
+            }
+
+            if (regrowDays > 0)
+            {
+                p += 0.1f;
+            }
+
+            return p;
         }
 
-        /// <summary>Vanilla silver chance: <c>min(0.75, 2p)</c>.</summary>
         public static float ComputeSilverProbability(float baselineProbability)
         {
-            throw new NotImplementedException("T122 implements the vanilla quality math.");
+            return Math.Min(0.75f, 2.0f * baselineProbability);
         }
 
-        /// <summary>Vanilla iridium chance: <c>p / 2</c>, only when fertilizer tier is 3 (deluxe).</summary>
         public static float ComputeIridiumProbability(float baselineProbability, int fertilizerTier)
         {
-            throw new NotImplementedException("T122 implements the vanilla quality math.");
+            if (fertilizerTier < 3)
+            {
+                return 0.0f;
+            }
+
+            return baselineProbability / 2.0f;
         }
     }
 }
