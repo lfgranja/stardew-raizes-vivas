@@ -407,11 +407,8 @@ on_error() {
     #
     # In a subshell the handler therefore only RETURNS the status: the outer
     # shell reports the failure, exactly once, with the outer shell's own
-    # view of what failed. The "outer" shell is not always depth 0: `main`
-    # runs as a background job, and THAT shell re-declares the owning depth
-    # before it installs the trap. A depth deeper than the owner is a
-    # command substitution and stays silent.
-    if (( BASH_SUBSHELL > ${LR_ERROR_SHELL_DEPTH:-0} )); then
+    # view of what failed.
+    if (( BASH_SUBSHELL > 0 )); then
         return "$status"
     fi
 
@@ -4414,33 +4411,11 @@ main() {
     exit "$EX_OK"
 }
 
-# Run `main` as a background job and `wait` on it. This lets a trapped signal
-# (INT/TERM/HUP) interrupt the `wait` immediately instead of being deferred
-# until the foreground command `main` is executing completes (Bash manual
-# §Signals). Without this, `timeout --kill-after` cannot reap the script
-# within its deadline when it is blocked inside a foreground command.
-#
-# A background subshell does NOT inherit the ERR trap (not even under
-# `set -E`), so the trap is re-installed inside the job. Without it an
-# internal error exits with the failing command's raw status and prints no
-# failure report, breaking the ERR-trap contract (FR-007).
-run_main_in_background() {
-    # The job IS the run's owning shell; record its depth so `on_error` can
-    # still tell it apart from a command substitution nested inside it.
-    LR_ERROR_SHELL_DEPTH="$BASH_SUBSHELL"
-    trap 'on_error "$?" "$LINENO" "${FUNCNAME[0]:-<top-level>}"' ERR
-    main "$@"
-}
-
-run_main_in_background "$@" &
-main_pid=$!
-
-# The status capture is NOT optional: a bare `wait` on a failing child is
-# itself a failing command, so under `set -e` it triggers the ERR trap,
-# which reports an internal error and exits 13. That masked every
-# documented non-zero exit (14 for a usage error, 5 for a mod-load failure,
-# 12 for a build failure, …) as 13. `||` disables errexit for this one
-# command; the child's status is then the script's status.
-main_status=0
-wait "$main_pid" || main_status=$?
-exit "$main_status"
+# `main` runs in THIS shell, not in a background job. A background subshell
+# gets its own copy of every variable, so the process groups and the temp
+# directory `main` records are invisible to the EXIT trap's cleanup — an
+# interrupted run then leaves its Xvfb, its build and its scratch tree
+# behind. The harness bounds a hung script with `timeout --kill-after`
+# (scripts/tests/lib/harness.sh), so the script does not need to background
+# its own work to be killable.
+main "$@"
