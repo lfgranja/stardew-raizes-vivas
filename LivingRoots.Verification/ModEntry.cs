@@ -615,9 +615,16 @@ namespace LivingRoots.Verification
                     return false;
                 }
 
-                if (probes.Any(probe => !TryHarvestProbe(location, api, probe, records)))
+                foreach (var probe in probes)
                 {
-                    return false;
+                    Monitor.Log(
+                        $"verification: harvest probe {probe.Name} at {probe.Candidate.TileX},{probe.Candidate.TileY} (vanilla={probe.Candidate.VanillaQuality}, qualityRoll={probe.Candidate.QualityRoll:0.####}, extraRoll={probe.Candidate.ExtraRoll:0.####}).",
+                        LogLevel.Info);
+                    if (!TryHarvestProbe(location, api, probe, records))
+                    {
+                        Monitor.Log($"verification: harvest probe {probe.Name} at {probe.Candidate.TileX},{probe.Candidate.TileY} failed.", LogLevel.Info);
+                        return false;
+                    }
                 }
             }
             catch (Exception ex)
@@ -636,41 +643,53 @@ namespace LivingRoots.Verification
             return true;
         }
 
-        private static bool TryBuildHarvestProbes(GameLocation location, int baseX, int baseY, out IReadOnlyList<HarvestProbe> probes)
+        private bool TryBuildHarvestProbes(GameLocation location, int baseX, int baseY, out IReadOnlyList<HarvestProbe> probes)
         {
             probes = Array.Empty<HarvestProbe>();
             var candidates = ScanHarvestCandidates(location, baseX, baseY);
             double qualityProbability = HarvestRollCalculator.VanillaQualityProbability(Game1.player.FarmingLevel, 0);
-            return HarvestMatrixPlanner.TrySelect(
+            if (!HarvestMatrixPlanner.TrySelect(
                 candidates,
                 qualityProbability,
                 ModConstants.SoilQualityHealthyBoost,
                 ModConstants.SoilExtraHarvestHealthyBoost,
-                out probes);
+                out probes))
+            {
+                Monitor.Log(
+                    $"verification: harvest matrix could not fill every probe from {candidates.Count} candidate tiles around {baseX},{baseY}.",
+                    LogLevel.Info);
+                return false;
+            }
+
+            Monitor.Log($"verification: harvest matrix selected {probes.Count} probes from {candidates.Count} candidates.", LogLevel.Info);
+            return true;
         }
 
         private static List<HarvestProbeCandidate> ScanHarvestCandidates(GameLocation location, int baseX, int baseY)
         {
-            const int scanRadius = 8;
             var candidates = new List<HarvestProbeCandidate>();
+            var layer = location.Map?.Layers != null && location.Map.Layers.Count > 0 ? location.Map.Layers[0] : null;
+            if (layer == null)
+            {
+                return candidates;
+            }
+
             int totalDays = Game1.Date.TotalDays;
             int uniqueId = unchecked((int)(Game1.uniqueIDForThisGame & 0xFFFFFFFFUL));
             double vanillaProbability = HarvestRollCalculator.VanillaQualityProbability(Game1.player.FarmingLevel, 0);
             double secondChance = Math.Min(0.75, vanillaProbability * 2.0);
 
-            for (int y = baseY - scanRadius; y <= baseY + scanRadius; y++)
+            foreach (var tile in HarvestProbeScanner.OrderedTiles(baseX, baseY, layer.LayerWidth, layer.LayerHeight))
             {
-                int row = y;
-                var availableColumns = Enumerable
-                    .Range(baseX - scanRadius, (scanRadius * 2) + 1)
-                    .Where(x => IsProbeTileAvailable(location, x, row));
-                foreach (int x in availableColumns)
+                if (!IsProbeTileAvailable(location, tile.X, tile.Y))
                 {
-                    int vanillaQuality = ReproduceVanillaQuality(x, row, vanillaProbability, secondChance);
-                    double qualityRoll = HarvestRollCalculator.QualityRoll(x, row, totalDays, uniqueId, 0);
-                    double extraRoll = HarvestRollCalculator.ExtraRoll(x, row, totalDays, uniqueId);
-                    candidates.Add(new HarvestProbeCandidate(x, row, qualityRoll, extraRoll, vanillaQuality));
+                    continue;
                 }
+
+                int vanillaQuality = ReproduceVanillaQuality(tile.X, tile.Y, vanillaProbability, secondChance);
+                double qualityRoll = HarvestRollCalculator.QualityRoll(tile.X, tile.Y, totalDays, uniqueId, 0);
+                double extraRoll = HarvestRollCalculator.ExtraRoll(tile.X, tile.Y, totalDays, uniqueId);
+                candidates.Add(new HarvestProbeCandidate(tile.X, tile.Y, qualityRoll, extraRoll, vanillaQuality));
             }
 
             return candidates;
@@ -727,11 +746,17 @@ namespace LivingRoots.Verification
         private bool TryHarvestProbe(GameLocation location, ILivingRootsModApi api, HarvestProbe probe, List<HarvestRecord> records)
         {
             var candidate = probe.Candidate;
-            PlantCrop(location.Name, candidate.TileX, candidate.TileY, LongPhaseSeedId);
+            if (!PlantCrop(location.Name, candidate.TileX, candidate.TileY, LongPhaseSeedId))
+            {
+                Monitor.Log($"verification: harvest probe {probe.Name} could not plant at {candidate.TileX},{candidate.TileY}.", LogLevel.Info);
+                return false;
+            }
+
             if (!location.terrainFeatures.TryGetValue(new Vector2(candidate.TileX, candidate.TileY), out var feature)
                 || feature is not HoeDirt dirt
                 || dirt.crop == null)
             {
+                Monitor.Log($"verification: harvest probe {probe.Name} has no crop at {candidate.TileX},{candidate.TileY}.", LogLevel.Info);
                 return false;
             }
 
@@ -749,7 +774,7 @@ namespace LivingRoots.Verification
             return true;
         }
 
-        private static HarvestRecord? HarvestProbe(GameLocation location, HoeDirt dirt, HarvestProbe probe, float health)
+        private HarvestRecord? HarvestProbe(GameLocation location, HoeDirt dirt, HarvestProbe probe, float health)
         {
             var player = Game1.player;
             var candidate = probe.Candidate;
@@ -764,6 +789,9 @@ namespace LivingRoots.Verification
             Item? main = player.Items.Count > 0 ? player.Items[0] : null;
             if (!harvested || main == null)
             {
+                Monitor.Log(
+                    $"verification: harvest probe {probe.Name} at {candidate.TileX},{candidate.TileY} produced harvested={harvested}, mainItem={(main != null)}.",
+                    LogLevel.Info);
                 return null;
             }
 
