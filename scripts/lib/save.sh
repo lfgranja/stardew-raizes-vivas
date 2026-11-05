@@ -17,11 +17,18 @@ save_create_instance_dir() {
     return 0
 }
 
-# Setup environment variables to isolate game config/data/cache under instance
+# Setup environment variables to isolate game config/data/cache under instance.
+#
+# The ORIGINAL HOME is preserved in RUNNER_ORIGINAL_HOME on first use: the
+# runner's own python tooling (schema validation, manifest assembly) runs after
+# this switch and needs the user's own site packages, which live under
+# ~/.local. Without the snapshot the offline verifier died with
+# "jsonschema unavailable" on every real-host run.
 save_setup_env() {
     [[ $# -eq 1 ]] || return "$EXIT_USAGE_ERROR"
     local inst="$1"
     [[ -n "$inst" && -d "$inst" ]] || return 9
+    export RUNNER_ORIGINAL_HOME="${HOME:-/tmp}"
     export HOME="$inst/home"
     export XDG_CONFIG_HOME="$inst/xdg/config"
     export XDG_DATA_HOME="$inst/xdg/data"
