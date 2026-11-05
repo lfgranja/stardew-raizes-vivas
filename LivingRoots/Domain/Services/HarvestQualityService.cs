@@ -103,6 +103,11 @@ namespace LivingRoots.Domain.Services
             return flags;
         }
 
+        public HarvestFeedbackPlan BuildFeedbackPlan(HarvestQualityDecision decision, bool enhancedQualityOccurred, bool extraHarvestOccurred, bool isMainPlayer)
+        {
+            throw new NotImplementedException("T124 implements the harvest feedback plan.");
+        }
+
         public float BoostQualityProbability(float vanillaProbability, HarvestQualityDecision decision)
         {
             if (decision.Tier != HarvestTier.Healthy)
