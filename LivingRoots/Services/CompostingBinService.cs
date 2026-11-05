@@ -22,7 +22,8 @@ public class CompostingBinService(
     IPlayerInventory playerInventory,
     ILocationProvider? locationProvider = null,
     IHostAtomicLockService? hostAtomicLockService = null,
-    ITranslationHelper? translationHelper = null) : ICompostingBinService
+    ITranslationHelper? translationHelper = null,
+    Func<int>? outputCountProvider = null) : ICompostingBinService
 {
     private readonly IModDataService _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
     private readonly IOrganicWasteValidator _organicWasteValidator = organicWasteValidator ?? throw new ArgumentNullException(nameof(organicWasteValidator));
@@ -45,6 +46,14 @@ public class CompostingBinService(
     // test doubles keep constructing the service; a null
     // helper falls back to the raw key.
     private readonly ITranslationHelper? _translationHelper = translationHelper;
+
+    // T120 (plan Q4): injectable output multiplier seam. A null
+    // provider keeps the current single-item behaviour so existing
+    // production wiring is unchanged until the batch yield is
+    // implemented.
+#pragma warning disable S1144 // S1144: field retained for the T120 output-count tests
+    private readonly Func<int>? _outputCountProvider = outputCountProvider;
+#pragma warning restore S1144
 
     private readonly Dictionary<string, Dictionary<string, CompostingBinStateModel>> _runtimeCache = new();
     private readonly object _lock = new();
