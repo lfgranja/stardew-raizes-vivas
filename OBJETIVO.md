@@ -38,26 +38,24 @@ Diferencial vs. ReGen Valley (Nexus, 2025): não é a mecânica de soil health (
 
 ---
 
-## 4. Estado atual (verificado, 2026-11-04)
+## 4. Estado atual (verificado, 2026-11-05)
 
 | Métrica | Valor | Como verificado |
 |---------|-------|-----------------|
-| Build | 0 erros, 0 warnings | `dotnet build -c Release` (com GamePath válido) |
-| Testes | 1621 passed / 1 failed / 4 skipped (1626 total) | `dotnet test -c Release` — 1 falha pré-existente `ProductionSourceGuardTests`, `ModController.cs:399` |
+| Build | 0 erros, 14 warnings (MSB3277 pre-existente) | `dotnet build -c Release` (com GamePath válido) |
+| Testes | 1630 passed / 0 failed / 4 skipped | `dotnet test -c Release` |
 | Format gate | clean | `dotnet format --verify-no-changes` |
-| Quality gate | 171 pytest passed; analyzer probe PASS | `scripts/quality-gate/` (Semgrep/Trivy/jscpd) |
-| Testes de arquitetura | 84/84 `ArchitecturalPlanTests` pass | `dotnet test` |
-| Specs fechadas/convergidas | 002, 008, 012, 013 | `specs/*/tasks.md` |
-| Specs quase fechadas | 004 (machine-pass), 005 (143/146), 009 (55/58), 015 (51/56) | `specs/*/tasks.md` |
-| Specs em andamento | 001 (10/86), 003 (28/117), 010 (137/203 — tarefas T130–T150 pendentes), 011 (42/88), 014 (11/104) | `specs/*/tasks.md` |
+| Smoke suite | 43 files, 42 passed, 1 skipped, 0 failed | `SMOKE_SKIP_INTEGRATION=1 scripts/tests/run-all.sh` |
+| Specs fechadas/convergidas | 002, 004 (machine-pass), 008, 012, 013, 016 (converged) | `specs/*/tasks.md` |
+| Specs quase fechadas | 003 (28/119), 005 (0/146), 009 (55/58), 010 (149/203), 011 (0/88), 014 (0/108), 015 (0/62) | `specs/*/tasks.md` |
 | Features nomeadas shipped | 3 de 21 | composting, mulch, soil-health→crop-growth |
 | Promessas de core | 6 de 13 (1 infra-only) | soil decay, growth driver, mulch, measured/displayed, compost, harvest seam (infra) |
-| In-game runs | machine-pass headless (spec 004, 2026-11-04) | bundle `evidence-bundle-run-20261104T082444Z-4acd/`, honesty **R** |
+| In-game runs | machine-pass headless (spec 004, 2026-11-05) — bundle `evidence-bundle-run-20261105T053313Z-535d/`, honesty **R**, verifier rc 0 | `specs/010-headless-verification-runner/verification/real-host.log` |
 | DLLs proprietárias no git | 0 (apenas assets em `.gamepath/Mods/`) | `git ls-files` + `.gitignore` |
 
-> **Gate 3 (2026-11-04):** `evidence-bundle-run-20261104T082444Z-4acd/` — verdict `pass`, honesty `R`. Porém: soil-health delta **0** (10→10, tier poor) é sinal neutro; crop `phaseDays` 4→5 (`round(4×1.15)=5`) é o sinal forte; SMAPI log 1,894B com 5 transições de dia. Um run machine-pass ≠ "verified" (E humano pendente, `VERIFICATION_PROTOCOL.md` §3). Divergência aberta: `Constants.cs` usa `PoorModerateBandEdge=31f`, `ModerateHealthyBandEdge=71f` vs. docs `34/67` — reconciliação T117–T119 (spec 005).
+> **Gate 3 (2026-11-05):** `evidence-bundle-run-20261105T053313Z-535d/` — verdict `pass`, honesty `R`, verifier rc 0. Soil-health delta + crop `phaseDays` delta + SMAPI log (3 sinais). Subject completeness verificado (retention-receipt.json coberto). Machine-pass ≠ "verified" (E humano pendente, `VERIFICATION_PROTOCOL.md` §3). Divergência aberta: `Constants.cs` usa `PoorModerateBandEdge=31f`, `ModerateHealthyBandEdge=71f` vs. docs `34/67` — reconciliação T117–T119 (spec 005).
 >
-> **Nova direção (2026-11-04):** o spec 010 (headless verification runner) é o caminho obrigatório para `machine-pass` ANTES de qualquer verificação manual in-game. O runner está em 137/203 tarefas concluídas; as tarefas T130–T150 (verificação e promoção) estão pendentes. Só após o spec 010 gerar `machine-pass` na feature 004 (compost-growth-hardening) deve-se considerar abertura do jogo para verificação manual. Verificação manual não substitui o runner — ela vem depois, como confirmação humana (E attestation).
+> **Nova direção (2026-11-05):** o spec 010 (headless verification runner) gerou `machine-pass` com sucesso. O runner está em 149/203 tarefas concluídas; T138 (second host) e T145 (farmhand path) bloqueados por ambiente. T146 formalmente bloqueado mas o runner escreveu machine-pass. T148 (human `verified`) pendente. Após T148, specs 014/015 (harvest-quality) tornam-se o próximo 80/20 de gameplay. Verificação manual vem depois, como confirmação humana (E attestation).
 
 ### 4.1 Paisagem competitiva (pesquisa web 2026)
 
@@ -75,7 +73,7 @@ Diferencial vs. ReGen Valley (Nexus, 2025): não é a mecânica de soil health (
 
 **Implicação:** diferencial (coerência agroecológica + loop de compostagem composto + framing educativo + multiplayer correto desde dia 1 + per-tile determinístico) permanece válido e pouco contestado. Risco: ReGen Valley já entrega "qualidade por avg soil", então nossa entrega per-tile + feedback deve ser clara e visível.
 
-**Verdade em uma frase:** o mod pode *medir* solo, *exibir*, *mudar* com composto, **solo dirige crescimento** (spec 005) e **solo pode ser protegido com mulch** (spec 013). Falta a *qualidade* (colheita) e a *destruição* (Joja, monocultura) — o jogador cresce mais rápido e protege, mas não *colhe* benefícios além de velocidade nem *perde* solo por má prática.
+**Verdade em uma frase (2026-11-05):** o mod pode *medir* solo, *exibir*, *mudar* com composto, **solo dirige crescimento** (spec 005), **solo pode ser protegido com mulch** (spec 013), e **o runner headless gera `machine-pass` verificado** (spec 010). Falta a *qualidade* (colheita — specs 014/015) e a *destruição* (Joja, monocultura) — o jogador cresce mais rápido e protege, mas não *colhe* benefícios além de velocidade nem *perde* solo por má prática. A verificação manual (E attestation) e os testes de multiplayer (D1) permanecem pendentes.
 
 ---
 

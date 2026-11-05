@@ -2,16 +2,16 @@
 
 This document outlines the development roadmap for the "Living Roots" mod, detailing the progression of features from early to late game, based on agroecological principles.
 
-> **STATUS ANNOTATION — verified 2026-11-04 (Gate 3 machine-pass, spec 004)**
+> **STATUS ANNOTATION — verified 2026-11-05 (Gate 3 machine-pass, spec 004 + spec 016 converged)**
 > Previous annotations (2026-11-03, 2026-11-02) are preserved below in the "Progresso consolidado" sections; the newest verified state is this block.
 > Every roadmap item below is marked with what actually exists in code, verified by build, test run and source audit — not by spec claims. Legend:
 > ✅ implemented & verified (build + tests green) · 🟡 partial / inert · ❌ not implemented ·
 > ⚠️ implemented but **has no effect on gameplay**.
 > The original design text is preserved unchanged; annotations were added, nothing was deleted.
 > **Deep-dive evidence:** `research/2026-10-roadmap-feasibility-and-agronomy.md` (SMAPI 1.6 API, baseline competitivo e base agronômica de cada mecânica abaixo, com fontes primárias).
-> **Update 2026-11-04:** Spec **010** grew to **137/203** tasks (was 0/161); **spec 004 reached `machine-pass`** (bundle `evidence-bundle-run-20261104T082444Z-4acd/`, verdict `pass`, honesty `R`, commit `d908b19`). Full suite: **1621 passed / 1 failed (pre-existing `ProductionSourceGuardTests`, `ModController.cs:399`) / 4 skipped**. Node: soil-health delta **0** (10→10, poor tier) is a neutral signal; crop `phaseDays` 4→5 (`round(4×1.15)=5`) is the strong signal. **Machine-pass ≠ verified** (E humano pendente, `VERIFICATION_PROTOCOL.md` §3). **Open:** band-scale divergence `Constants.cs 31/71` vs docs `34/67` — reconciliation T117–T119 (spec 005).
+> **Update 2026-11-05:** Spec **010** at **149/203** tasks. Spec **016** (Gate 3 runner hardening) **converged** (43/45 tasks, all verified). **Spec 004 reached `machine-pass`** (bundle `evidence-bundle-run-20261105T053313Z-535d/`, verdict `pass`, honesty `R`, verifier rc 0). Full suite: **1630 passed / 0 failed / 4 skipped**. Subject completeness verificado (retention-receipt.json coberto). **Machine-pass ≠ verified** (E humano pendente, `VERIFICATION_PROTOCOL.md` §3). **Open:** band-scale divergence `Constants.cs 31/71` vs docs `34/67` — reconciliação T117–T119 (spec 005). T138 (second host) e T145 (farmhand path) bloqueados por ambiente.
 >
-> **Nova direção (2026-11-04): o spec 010 (headless verification runner) é o caminho obrigatório para `machine-pass` ANTES de qualquer verificação manual in-game.** O runner está em 137/203 tarefas concluídas; as tarefas de verificação e promoção (T130–T150) estão pendentes e são o próximo bloco. Só após o spec 010 gerar `machine-pass` na feature 004 (compost-growth-hardening) deve-se considerar abertura do jogo para verificação manual. Verificação manual não substitui o runner — ela vem depois, como confirmação humana (E attestation).
+> **Nova direção (2026-11-05): o spec 010 (headless verification runner) gerou `machine-pass` com sucesso.** O runner está em 149/203 tarefas concluídas; T138 (second host) e T145 (farmhand path) bloqueados por ambiente. T146 formalmente bloqueado mas o runner escreveu machine-pass. T148 (human `verified`) pendente. Spec 016 (runner hardening) convergiu. Após T148, specs 014/015 (harvest-quality) tornam-se o próximo 80/20 de gameplay. Verificação manual não substitui o runner — ela vem depois, como confirmação humana (E attestation).
 
 ---
 
