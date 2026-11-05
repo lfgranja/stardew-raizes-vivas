@@ -18,18 +18,14 @@ namespace LivingRoots.Tests.HarvestQuality
             return new InventorySlotSnapshot(new object() as Item, id == null ? null : (id.StartsWith('(') ? id : $"(O){id}"), stack, quality);
         }
 
-        private static List<Item?> MakeFullInventory(int count, int stack)
+        private static List<Item?> MakeFullInventory(int count)
         {
             var items = new List<Item?>();
             for (int i = 0; i < count; i++)
             {
-                items.Add(null);
+                items.Add(new object() as Item);
             }
-            // Full means no free slot; represent occupied slots as non-null sentinels.
-            for (int i = 0; i < count; i++)
-            {
-                items[i] = new object() as Item;
-            }
+
             return items;
         }
 
@@ -114,8 +110,8 @@ namespace LivingRoots.Tests.HarvestQuality
         [InlineData(36)]
         public void IsFull_BackpackTiers(int maxItems)
         {
-            var notFull = MakeFullInventory(maxItems - 1, 999);
-            var full = MakeFullInventory(maxItems, 999);
+            var notFull = MakeFullInventory(maxItems - 1);
+            var full = MakeFullInventory(maxItems);
 
             Assert.False(HarvestInventoryDelta.IsFull(notFull, maxItems));
             Assert.True(HarvestInventoryDelta.IsFull(full, maxItems));
