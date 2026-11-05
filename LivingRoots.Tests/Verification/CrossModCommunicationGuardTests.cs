@@ -12,58 +12,81 @@ namespace LivingRoots.Tests.Verification
     public class CrossModCommunicationGuardTests
     {
         [Fact]
-        public void ProductionSources_NoSendMessageOrModMessageReceived_ForScenarioInjectionSignalCaptureOrDumpOrchestration()
+        public void ProductionSources_VerificationMod_HasNoScenarioInjectionSendMessageOrModMessageReceived()
         {
-            // Arrange — scan the real production trees (main mod + verification
-            // companion), never build output.
+            // Arrange — scan the verification companion mod only. The main mod
+            // legitimately uses SendMessage/ModMessageReceived for host-authoritative
+            // soil-health sync (FR-009/A8); only LivingRoots.Verification is
+            // forbidden from using them for scenario injection/signal capture.
             var repoRoot = LocateRepoRoot();
-            var productionRoots = new[]
-            {
-                Path.Combine(repoRoot, "LivingRoots"),
-                Path.Combine(repoRoot, "LivingRoots.Verification")
-            };
+            var verificationRoot = Path.Combine(repoRoot, "LivingRoots.Verification");
+            Assert.True(Directory.Exists(verificationRoot), $"Verification mod root not found at {verificationRoot}.");
 
             var violations = new List<string>();
             var scanned = 0;
 
-            // Act — quantify over every production source file.
-            foreach (var root in productionRoots)
+            foreach (var file in Directory.EnumerateFiles(verificationRoot, "*.cs", SearchOption.AllDirectories))
             {
-                if (!Directory.Exists(root))
+                if (IsBuildOutput(file))
                 {
                     continue;
                 }
 
-                foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
+                scanned++;
+                var content = File.ReadAllText(file);
+                var relative = Path.GetRelativePath(repoRoot, file);
+
+                if (Regex.IsMatch(content, @"\bSendMessage\b"))
                 {
-                    if (IsBuildOutput(file))
-                    {
-                        continue;
-                    }
+                    violations.Add(relative + " (SendMessage)");
+                }
 
-                    scanned++;
-                    var content = File.ReadAllText(file);
-                    var relative = Path.GetRelativePath(repoRoot, file);
-
-                    if (Regex.IsMatch(content, @"\bSendMessage\b"))
-                    {
-                        violations.Add(relative + " (SendMessage)");
-                    }
-
-                    if (Regex.IsMatch(content, @"\bModMessageReceived\b"))
-                    {
-                        violations.Add(relative + " (ModMessageReceived)");
-                    }
+                if (Regex.IsMatch(content, @"\bModMessageReceived\b"))
+                {
+                    violations.Add(relative + " (ModMessageReceived)");
                 }
             }
 
-            // Assert — the guard must never be vacuous, and no production file
-            // may use SendMessage/ModMessageReceived for scenario injection,
-            // signal capture, or dump orchestration.
-            Assert.True(scanned > 0, "No production sources were scanned — the guard is vacuous.");
+            Assert.True(scanned > 0, "No verification mod sources were scanned — the guard is vacuous.");
             Assert.True(
                 violations.Count == 0,
-                "FR-009 violation — these production files use SendMessage/ModMessageReceived (only ModRegistry.GetApi<T> is allowed for scenario injection, signal capture, or dump orchestration): " + string.Join(", ", violations));
+                "FR-009 violation — these LivingRoots.Verification files use SendMessage/ModMessageReceived (only ModRegistry.GetApi<T> is allowed): " + string.Join(", ", violations));
+        }
+
+        [Fact]
+        public void LivingRootsMainMod_HasHostScopedSoilHealthSyncChannel()
+        {
+            // Arrange — the main mod must contain a host-scoped soil-health sync
+            // channel using helper.Multiplayer.SendMessage and ModMessageReceived
+            // (FR-009/A8). This is RED today because no such channel exists yet.
+            var repoRoot = LocateRepoRoot();
+            var mainRoot = Path.Combine(repoRoot, "LivingRoots");
+            Assert.True(Directory.Exists(mainRoot), $"Main mod root not found at {mainRoot}.");
+
+            var hasSend = false;
+            var hasReceive = false;
+
+            foreach (var file in Directory.EnumerateFiles(mainRoot, "*.cs", SearchOption.AllDirectories))
+            {
+                if (IsBuildOutput(file))
+                {
+                    continue;
+                }
+
+                var content = File.ReadAllText(file);
+                if (Regex.IsMatch(content, @"\bSendMessage\b"))
+                {
+                    hasSend = true;
+                }
+
+                if (Regex.IsMatch(content, @"\bModMessageReceived\b"))
+                {
+                    hasReceive = true;
+                }
+            }
+
+            Assert.True(hasSend, "LivingRoots must contain a host-scoped soil-health sync send channel.");
+            Assert.True(hasReceive, "LivingRoots must contain a ModMessageReceived handler for soil-health sync.");
         }
 
         [Fact]
