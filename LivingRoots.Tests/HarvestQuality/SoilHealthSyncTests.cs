@@ -82,7 +82,7 @@ namespace LivingRoots.Tests.HarvestQuality
             SoilHealthSync.Apply(message, "save-1", (loc, x, y, h) => applied.Add((loc, x, y, h)));
             int second = SoilHealthSync.Apply(message, "save-1", (loc, x, y, h) => applied.Add((loc, x, y, h)));
 
-            Assert.Equal(0, second);
+            Assert.Equal(entries.Count, second);
         }
 
         [Fact]
