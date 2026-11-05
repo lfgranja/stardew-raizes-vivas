@@ -90,7 +90,6 @@ namespace LivingRoots.Controllers
         // strictly for replicated farm state sync (not scenario injection), so
         // CrossModCommunicationGuardTests allows it in LivingRoots.
         internal const string SoilHealthSyncMessageType = "SoilHealthSync";
-        private EventHandler<ModMessageReceivedEventArgs>? _onModMessageReceivedHandler;
         // T008 (spec 009): idempotency storage for the growth modifier (reuse SoilDecayService pattern).
         private readonly Dictionary<string, string> _soilGrowthProcessedDays = new();
         private readonly object _soilGrowthLock = new();

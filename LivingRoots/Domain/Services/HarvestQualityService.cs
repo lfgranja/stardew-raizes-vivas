@@ -90,7 +90,7 @@ namespace LivingRoots.Domain.Services
 
             if (decision.Tier == HarvestTier.Healthy && decision.IsInScope)
             {
-                if (enhancedQualityOccurred || extraHarvestOccurred)
+                if (enhancedQualityOccurred)
                 {
                     flags |= HarvestFeedbackFlags.LivingQuality;
                 }
@@ -105,7 +105,47 @@ namespace LivingRoots.Domain.Services
 
         public HarvestFeedbackPlan BuildFeedbackPlan(HarvestQualityDecision decision, bool enhancedQualityOccurred, bool extraHarvestOccurred, bool isMainPlayer)
         {
-            throw new NotImplementedException("T124 implements the harvest feedback plan.");
+            if (decision.Tier == HarvestTier.Poor && decision.IsInScope)
+            {
+                return new HarvestFeedbackPlan(
+                    HarvestFeedbackFlags.Poor,
+                    new[] { new HarvestFeedbackMessage("marker-poor", "Soil too poor for quality crops") },
+                    "cancel",
+                    1000,
+                    isMainPlayer);
+            }
+
+            if (decision.Tier == HarvestTier.Healthy && decision.IsInScope)
+            {
+                var flags = HarvestFeedbackFlags.None;
+                var messages = new List<HarvestFeedbackMessage>();
+
+                if (enhancedQualityOccurred)
+                {
+                    flags |= HarvestFeedbackFlags.LivingQuality;
+                    messages.Add(new HarvestFeedbackMessage("sparkle-living", "Living Soil"));
+                }
+
+                if (extraHarvestOccurred)
+                {
+                    flags |= HarvestFeedbackFlags.ExtraHarvest;
+                    messages.Add(new HarvestFeedbackMessage("sparkle-living", "Extra harvest!"));
+                }
+
+                if (flags == HarvestFeedbackFlags.None)
+                {
+                    return HarvestFeedbackPlan.None;
+                }
+
+                return new HarvestFeedbackPlan(
+                    flags,
+                    messages,
+                    "coin",
+                    1000,
+                    isMainPlayer);
+            }
+
+            return HarvestFeedbackPlan.None;
         }
 
         public float BoostQualityProbability(float vanillaProbability, HarvestQualityDecision decision)
@@ -114,7 +154,8 @@ namespace LivingRoots.Domain.Services
             {
                 return vanillaProbability;
             }
-            return vanillaProbability + decision.QualityBoost;
+
+            return Math.Clamp(vanillaProbability + decision.QualityBoost, 0.0f, 1.0f);
         }
 
         public float BoostExtraHarvestChance(float vanillaChance, HarvestQualityDecision decision)
@@ -123,7 +164,8 @@ namespace LivingRoots.Domain.Services
             {
                 return vanillaChance;
             }
-            return vanillaChance + decision.ExtraHarvestBoost;
+
+            return Math.Clamp(vanillaChance + decision.ExtraHarvestBoost, 0.0f, 1.0f);
         }
     }
 }
