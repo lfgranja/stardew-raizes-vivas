@@ -390,11 +390,40 @@ def build(dump, include_crop):
     return rec
 
 actual = build(after_dump, True)
+
+def harvest_record(probe):
+    for h in after_dump.get("harvests", []) or []:
+        if str(h.get("probe", "")) == probe:
+            return h
+    return None
+
+def harvest_value(record, key):
+    if record is None:
+        return None
+    return record.get(key)
+
+poor = harvest_record("poor")
+moderate = harvest_record("moderate")
+healthy_quality = harvest_record("healthy-quality")
+healthy_extra = harvest_record("healthy-extra")
+
 actual.update({
     "isMainPlayer": after_dump.get("isMainPlayer", False),
     "locationsProcessed": after_dump.get("locationsProcessed", 0),
     "elapsedMilliseconds": after_dump.get("elapsedMilliseconds", 0),
     "eventName": "DayEnding",
+    "poorHarvestQuality": harvest_value(poor, "mainQuality"),
+    "moderateHarvestQuality": harvest_value(moderate, "mainQuality"),
+    "healthyHarvestQuality": harvest_value(healthy_quality, "mainQuality"),
+    "poorExtraCount": harvest_value(poor, "extraCount"),
+    "moderateExtraCount": harvest_value(moderate, "extraCount"),
+    "healthyExtraCount": harvest_value(healthy_extra, "extraCount"),
+    "healthyExtraQuality": harvest_value(healthy_extra, "extraQuality"),
+    "poorVanillaQuality": harvest_value(poor, "vanillaQuality"),
+    "moderateVanillaQuality": harvest_value(moderate, "vanillaQuality"),
+    "healthyVanillaQuality": harvest_value(healthy_quality, "vanillaQuality"),
+    "healthyQualityRoll": harvest_value(healthy_quality, "qualityRoll"),
+    "healthyExtraRoll": harvest_value(healthy_extra, "extraRoll"),
 })
 pre = build(before_dump, True)
 
