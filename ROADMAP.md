@@ -375,26 +375,30 @@ The highest-impact, lowest-effort item available now is **Soil Health → Crop Q
 ## Gate 3 Verification (atualizado 2026-11-04 — máquina via spec 010 antes de manual)
 
 <!-- GATE3:BEGIN -->
-- **Status**: machine-pass headless (spec 004, 2026-11-04, bundle `evidence-bundle-run-20261104T082444Z-4acd/`); **próximo: spec 010 (headless verification runner) tarefas T130–T150 para re-gerar machine-pass na feature 004 com colheita de qualidade**
-- **Verdict**: pass (runner-produced, spec 004)
+- **Status**: machine-pass
+- **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261104T082444Z-4acd
-- **Commit**: d908b19
-- **Date**: 2026-11-04T08:25:23Z
-- **Signals (spec 004)**:
-  - SoilHealthState delta: `evidence-bundle-run-20261104T082444Z-4acd/artifacts/soil-health-before-after.json` (Farm/60,15 10→10, delta 0, tier poor — neutral)
-  - Crop-phase delta: `evidence-bundle-run-20261104T082444Z-4acd/artifacts/crop-phase-dump.json` (phaseDays 4→5; round(4×1.15)=5 — Poor-soil multiplier passes)
-  - SMAPI log: `evidence-bundle-run-20261104T082444Z-4acd/artifacts/smapi-log.txt` (1,894B, 5 day transitions with `Soil growth modifier elapsed`)
-- **Bundle**: `evidence-bundle-run-20261104T082444Z-4acd/`
+- **Run ID**: run-20261105T024756Z-07ba
+- **Commit**: 97b29345fe19a2feb459e51438468f9a677d5893
+- **Date**: 2026-11-05T02:49:24Z
+- **Player role**: host
+- **Signals**:
+  - SoilHealthState delta: `evidence-bundle-run-20261105T024756Z-07ba/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261105T024756Z-07ba/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261105T024756Z-07ba/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261105T024756Z-07ba/`
 - **Honesty level**: R
-- **Claim**: machine-pass by automated headless run (spec 004). **Não é verificação manual in-game.** Spec 010 (headless verification runner, 137/203 tarefas) é o caminho obrigatório para machine-pass antes de qualquer abertura manual do jogo. Tarefas T130–T150 (verificação e promoção) estão pendentes.
+- **Claim**: machine-pass by automated headless run + multi-signal evidence
+- **Reviewer**: —
+- **Review date**: —
+- **Session ID**: —
 <!-- GATE3:END -->
 
 ---
 
 ## Gate 3 Verification (histórico 2026-11-02 — smoke only)
 
-<!-- GATE3:BEGIN -->
+<!-- GATE3-HISTORY:BEGIN -->
 - **Status**: partial (automated smoke only)
 - **Verdict**: mod loads + Harmony patch registered + no crash during launch
 - **Flaky**: false
@@ -408,7 +412,7 @@ The highest-impact, lowest-effort item available now is **Soil Health → Crop Q
 - **Bundle**: verification-evidence/gate3-smoke-*.log
 - **Honesty level**: smoke-level (launch only, not full 3-signal Gate 3)
 - **Claim**: The mod loads under SMAPI 4.5.2 + Stardew 1.6.15 with Harmony patch registered (warning "Patched game code"). Full 3-signal Gate 3 (observation + save diff + SMAPI log) and multiplayer verification (D1) still require manual play or the headless runner (spec 010, not started). No "verified" claim is made for harvest-quality effects.
-<!-- GATE3:END -->
+<!-- GATE3-HISTORY:END -->
 
 ---
 
