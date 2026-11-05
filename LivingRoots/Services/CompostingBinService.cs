@@ -154,6 +154,7 @@ public class CompostingBinService(
         var key = GetTileKey(tile);
         bool inventoryRefused = false;
         CompostingBinStateModel? binToHarvest = null;
+        int outputCount = 1;
 
         lock (_lock)
         {
@@ -171,10 +172,15 @@ public class CompostingBinService(
 
             binToHarvest = bin;
 
-            int outputCount = _outputCountProvider != null ? _outputCountProvider() : 1;
+            outputCount = _outputCountProvider != null ? _outputCountProvider() : 1;
             if (outputCount < 0)
             {
                 outputCount = 0;
+            }
+
+            if (outputCount == 0)
+            {
+                return 0;
             }
 
             // Dry-run capacity check (plan Q4): refuse before mutating inventory.
@@ -220,15 +226,9 @@ public class CompostingBinService(
             return 0;
         }
 
-        int finalOutputCount = _outputCountProvider != null ? _outputCountProvider() : 1;
-        if (finalOutputCount < 0)
-        {
-            finalOutputCount = 0;
-        }
-
         Game1.playSound("Ship");
-        _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced {finalOutputCount} compost", LogLevel.Trace);
-        return finalOutputCount;
+        _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced {outputCount} compost", LogLevel.Trace);
+        return outputCount;
     }
 
     private static void ApplyHarvestSuccess(CompostingBinStateModel bin)
