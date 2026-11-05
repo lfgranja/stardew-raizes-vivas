@@ -39,10 +39,10 @@
 
 **Purpose**: Update contracts and data-model to reflect clarified decisions; must complete before user story work
 
-- [ ] T004 Update `specs/016-gate3-runner-hardening/data-model.md` SKIP set to match verifier code: `manifest.json`, `manifest.sha256`, `.manifest-input.json`, `.attempts_list` (not "all dotfiles")
+- [ ] T004 Update `specs/016-gate3-runner-hardening/data-model.md` SKIP set to match verifier code: `manifest.json`, `manifest.sha256`, `.manifest-input.json`, `.attempts_list` (not "all dotfiles"); also document FR-006 ordering (claims.json before manifest assembly)
 - [ ] T005 [P] Update `specs/016-gate3-runner-hardening/contracts/verifier-completeness.md` to state the SKIP set explicitly and the exit code 19 on violation
 - [ ] T006 [P] Update `specs/016-gate3-runner-hardening/contracts/log-capture.md` to reference `RUNNER_SMAPI_CAPTURE` env var (already done in clarify; verify consistency)
-- [ ] T007 [P] Update `specs/010-headless-verification-runner/contracts/evidence-bundle.schema.json` subject description to clarify completeness (documentation only, no schema bump)
+- [ ] T007 [P] Update `specs/010-headless-verification-runner/contracts/evidence-bundle.schema.json` subject description to clarify completeness (documentation only; no schema bump required unless field set changes, per FR-005)
 
 **Checkpoint**: Contracts and data-model aligned with implementation
 
@@ -71,6 +71,8 @@
 - [ ] T013 [P] [US1] Ensure `save_align_inner_name` in `scripts/lib/save.sh` renames single non-sidecar file to match folder; fail loudly (exit 19) on zero or multiple candidates
 - [ ] T014 [P] [US1] Ensure `signals_smapi_log_excerpt` in `scripts/lib/signals.sh` performs full `cp -f` (not filtered grep); document capture level
 - [ ] T015 [US1] Ensure `evidence_finalize` in `scripts/lib/evidence.sh` invokes `ManifestBuilder` with full payload; `verify-evidence-bundle.sh` validates schema + digest
+- [ ] T048 [P] [US1] Add RED test: `scripts/tests/test-home-preservation.sh` asserts `save_prepare` preserves original HOME for Python helpers (exit 0 with HOME unchanged after save isolation)
+- [ ] T049 [US1] Ensure `save_prepare` in `scripts/lib/save.sh` preserves original HOME in `RUNNER_ORIGINAL_HOME` before rewriting HOME/XDG (FR-008)
 - [ ] T016 [US1] Run US1 tests, confirm all PASS (GREEN)
 
 **Checkpoint**: US1 complete — regression guards for all three defects in place
@@ -130,16 +132,10 @@
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-**Purpose**: Improvements that affect multiple user stories
+**Purpose**: Improvements that affect multiple user stories (verification tasks are in Phase 7 only)
 
 - [ ] T028 [P] Update `specs/010-headless-verification-runner/verification/schema.log` with post-fix bundle validation (already done; verify consistency)
 - [ ] T029 [P] Update `specs/010-headless-verification-runner/verification/real-host.log` with final run details (already done; verify consistency)
-- [ ] T030 [P] Run `dotnet format Stardew-LivingRoots.sln --verify-no-changes` and record in `verification/format.log`
-- [ ] T031 [P] Run `bash -n` on all scripts and record in `verification/shell.log`
-- [ ] T032 Run full test suite: `scripts/tests/run-all.sh` (SMOKE_SKIP_INTEGRATION=1) and record in `verification/test.log`
-- [ ] T033 Run real-host scenario (VS-01) and record exit code + bundle in `verification/real-host.log`
-- [ ] T034 Run offline verifier on the new bundle and record in `verification/real-host.log`
-- [ ] T035 Verify promotion wrote `machine-pass` to all three docs and 3 transitions to `promotion-triggers.json`
 
 ---
 
@@ -248,4 +244,4 @@ With multiple agents:
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 - TDD enforced: tests written first, must FAIL before implementation makes them pass
-- Property-based testing: use FsCheck for invariants (e.g., subject completeness, digest matching) where applicable
+- Property-based testing: use shell-based fuzzing (random inputs to `verify-evidence-bundle.sh`) for invariants (e.g., subject completeness, digest matching) where applicable; FsCheck is C#-only and not applicable to shell tests

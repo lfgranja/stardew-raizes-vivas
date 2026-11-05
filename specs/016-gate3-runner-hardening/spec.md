@@ -59,7 +59,7 @@ As a reviewer, I want the red-gate logs to show the intended failing assertion r
 
 - What happens when a new file type is added to the bundle layout? The verifier must reject unless `subject[]` is updated.
 - How does the system handle a bundle where `retention-receipt.json` was written after finalization? The verifier must detect the uncovered file.
-- What happens when the SMAPI log grows beyond a reasonable size? Capture level should be documented, not silently truncated.
+- What happens when the SMAPI log grows beyond a reasonable size? Full capture remains the default; no size cap is defined for v1 (out of scope). Capture level is documented via `RUNNER_SMAPI_CAPTURE`; size caps via density ranking apply only to LLM diagnosis (secondary artifact).
 
 ## Clarifications
 
