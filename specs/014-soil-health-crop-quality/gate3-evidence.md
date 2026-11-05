@@ -95,8 +95,9 @@ never wrote `verified`.
   maintainer's honesty-level E review (spec 010 T148), and the multiplayer
   leg remains open as T109 below.
 - **Single deterministic sample per tier.** The run proves the outcome for the
-  selected tiles, not a quality distribution. The statistical criteria
-  (`SC-001`, `SC-009`) remain covered by unit tests, not by this Gate 3 run.
+  selected tiles, not a quality distribution. `SC-009` has a separate
+  unit-level statistical test, but `SC-001` (quality distributions across
+  tiers) is not established by this run and remains a documented gap.
 - **Growth loop.** This scenario measures harvest quality and extra yield; the
   growth loop is covered separately by the spec 004 machine-pass bundle
   `evidence-bundle-run-20261105T053313Z-535d`.
