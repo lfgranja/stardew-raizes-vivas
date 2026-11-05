@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 3,
+  "scenarioId": "soil-health-harvest-quality",
+  "featureSlug": "014-soil-health-crop-quality",
+  "testMdPath": "specs/014-soil-health-crop-quality/test.md",
+  "summary": "Harvest-quality matrix over poor, moderate, and healthy soil using the real Harmony-patched Crop.harvest path.",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.4.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": true
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health 60 15 90",
+      "description": "pin the target tile and location for the harvest probe scan"
+    }
+  ],
+  "steps": [
+    {
+      "action": "harvest",
+      "target": "60,15"
+    },
+    {
+      "action": "observe",
+      "target": "60,15"
+    }
+  ],
+  "thresholds": [
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "poorVanillaQuality",
+        "operator": "eq",
+        "right": 1
+      },
+      "description": "the poor probe was planted on a tile whose vanilla harvest quality is 1"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "poorHarvestQuality",
+        "operator": "eq",
+        "right": 0
+      },
+      "description": "poor soil forces the harvested item quality to 0"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "poorExtraCount",
+        "operator": "eq",
+        "right": 0
+      },
+      "description": "poor soil does not grant the healthy extra harvest"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "moderateVanillaQuality",
+        "operator": "eq",
+        "right": 1
+      },
+      "description": "the moderate probe was planted on a tile whose vanilla harvest quality is 1"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "moderateHarvestQuality",
+        "operator": "eq",
+        "right": 1
+      },
+      "description": "moderate soil leaves the vanilla harvest quality untouched"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "moderateExtraCount",
+        "operator": "eq",
+        "right": 0
+      },
+      "description": "moderate soil does not grant the healthy extra harvest"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "healthyVanillaQuality",
+        "operator": "eq",
+        "right": 0
+      },
+      "description": "the healthy quality probe was planted on a tile whose vanilla harvest quality is 0"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "healthyHarvestQuality",
+        "operator": "eq",
+        "right": 1
+      },
+      "description": "healthy soil applies the +0.08 quality boost, raising quality 0 to 1"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "between",
+        "field": "healthyQualityRoll",
+        "min": 0.2,
+        "max": 0.29,
+        "exclusiveMin": false,
+        "exclusiveMax": true,
+        "tolerance": 0.0001
+      },
+      "description": "the healthy quality probe tile rolls inside the boosted quality window"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "healthyExtraCount",
+        "operator": "eq",
+        "right": 1
+      },
+      "description": "healthy soil grants the +0.10 extra harvest exactly once"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "healthyExtraQuality",
+        "operator": "eq",
+        "right": 0
+      },
+      "description": "the extra harvest item keeps normal quality"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "between",
+        "field": "healthyExtraRoll",
+        "min": 0.0,
+        "max": 0.1,
+        "exclusiveMin": false,
+        "exclusiveMax": true,
+        "tolerance": 0.0001
+      },
+      "description": "the healthy extra probe tile rolls inside the extra-harvest window"
+    }
+  ],
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "cropPhaseDelta",
+    "smapiLog"
+  ],
+  "expectedVerdict": "pass",
+  "rngSeed": 1,
+  "time": "2026-11-05T00:00:00Z",
+  "determinism": {
+    "idempotent": true,
+    "declaredSources": []
+  },
+  "scenarioKind": "positive"
+}
