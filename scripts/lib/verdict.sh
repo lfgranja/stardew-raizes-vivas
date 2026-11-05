@@ -330,11 +330,9 @@ def tier_for(value, state):
         return "unknown"
     if math.isnan(v):
         return "unknown"
-    if v <= 0:
-        return "nonParticipant"
-    if v < 34:
+    if v < 31:
         return "poor"
-    if v < 67:
+    if v < 71:
         return "moderate"
     return "healthy"
 
