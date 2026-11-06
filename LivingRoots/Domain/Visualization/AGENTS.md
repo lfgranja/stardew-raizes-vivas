@@ -15,10 +15,10 @@ Plain C# DTOs/models for soil health tile rendering — no SMAPI or XNA dependen
 
 ## Health Categories
 
-| Category | Range (governing scale, spec 009; supersedes spec 005 FR-004) |
+| Category | Range (governing scale, spec 014/FR-013; Cornell CSHA) |
 |----------|----------------------------------------------------------------|
-| Poor | [0, 34) |
-| Moderate | [34, 67) |
+| Poor | [0, 31) |
+| Moderate | [31, 71) |
 | Healthy | [67, 100] |
 | Unknown | N/A (NaN/Infinity only) |
 
