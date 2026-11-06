@@ -112,7 +112,8 @@ namespace LivingRoots.Tests
             var flags1 = _service.ResolveFeedback(decision, true, false);
             Assert.True(flags1.HasFlag(HarvestFeedbackFlags.LivingQuality));
             var flags2 = _service.ResolveFeedback(decision, false, true);
-            Assert.True(flags2.HasFlag(HarvestFeedbackFlags.LivingQuality));
+            Assert.True(flags2.HasFlag(HarvestFeedbackFlags.ExtraHarvest));
+            Assert.False(flags2.HasFlag(HarvestFeedbackFlags.LivingQuality));
             var flags3 = _service.ResolveFeedback(decision, false, false);
             Assert.False(flags3.HasFlag(HarvestFeedbackFlags.LivingQuality));
         }
