@@ -11,7 +11,7 @@ namespace LivingRoots.Domain
     {
         /// <summary>
         /// Gets the color for a health value with interpolation.
-        /// Uses category thresholds with half-open intervals: Poor [0, 34), Moderate [34, 67), Healthy [67, 100].
+        /// Uses category thresholds with half-open intervals: Poor [0, 31), Moderate [31, 71), Healthy [71, 100] (Cornell CSHA, spec 014/FR-013).
         /// </summary>
         /// <param name="healthValue">Health value (0-100)</param>
         /// <returns>Interpolated color for the health value</returns>
