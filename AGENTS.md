@@ -96,4 +96,10 @@ Gate 3 (end-to-end) applies to any change touching runnable code: real SMAPI ses
 | Verification runner | `scripts/verify-scenario.sh` + `scripts/lib/` (evidence, save, signals, verdict, promotion) |
 | Evidence bundle contract | `specs/010-headless-verification-runner/contracts/evidence-bundle.schema.json` |
 | Gate 3 evidence | `specs/010-headless-verification-runner/gate3-evidence/` + `verification/` |
+| Architecture/flow diagrams | `.archify/*/` — `candidate.json` + rendered `*.html`; revalidate with `node ~/.agents/skills/archify/bin/archify.mjs finalize <type> <candidate.json> <output.html> --quality <profile> --repo-root .` (use `--out-dir` on reruns) |
 | Nested layer notes | `LivingRoots/AGENTS.md`, `LivingRoots/Domain/AGENTS.md`, `LivingRoots/Services/AGENTS.md` |
+
+## Repo indexes & diagrams
+
+- Codegraph: initialized; refresh with `codegraph sync` (or `codegraph index` for full rebuild).
+- Archify artifacts live under `.archify/`; candidates with repository evidence require `--repo-root` on finalize/validate. Browser-check may be environment-dependent; validate/deliver/check receipts are still useful evidence.
