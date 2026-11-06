@@ -90,6 +90,7 @@ namespace LivingRoots.Controllers
         // CrossModCommunicationGuardTests allows it in LivingRoots.
         internal const string SoilHealthSyncMessageType = "SoilHealthSync";
         internal Func<bool> IsMainPlayerCheck { get; set; } = () => StardewModdingAPI.Context.IsMainPlayer;
+        internal Func<int> GetCurrentDay { get; set; } = () => StardewValley.Game1.Date.TotalDays;
         // T008 (spec 009): idempotency storage for the growth modifier (reuse SoilDecayService pattern).
         private readonly Dictionary<string, string> _soilGrowthProcessedDays = new();
         private readonly object _soilGrowthLock = new();
@@ -3106,7 +3107,7 @@ namespace LivingRoots.Controllers
                 }
 
                 var entries = _soilHealthService.Snapshot();
-                var message = SoilHealthSync.Create(saveId, StardewValley.Game1.Date.TotalDays, entries);
+                var message = SoilHealthSync.Create(saveId, GetCurrentDay(), entries);
                 _helper.Multiplayer.SendMessage(message, SoilHealthSyncMessageType, modIDs: new[] { _manifest.UniqueID });
             }
             catch (Exception ex)
