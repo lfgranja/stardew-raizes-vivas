@@ -1013,7 +1013,7 @@ namespace LivingRoots.Tests
         }
 
         #endregion
-    
+
 
         [Fact]
         public void TryApplyCompostWithLock_OnHostSuccess_BroadcastsSoilHealthSync()
@@ -1087,7 +1087,7 @@ namespace LivingRoots.Tests
                 It.IsAny<long[]>()), Times.Never());
         }
 
-    
+
 
         [Fact]
         public void TryApplyCompostWithLock_OnFarmhandContext_DoesNotBroadcastEvenIfApplied()
