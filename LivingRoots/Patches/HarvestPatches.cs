@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using HarmonyLib;
+using LivingRoots;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Services;
 using Microsoft.Xna.Framework;
@@ -27,12 +29,14 @@ namespace LivingRoots.Patches
             public HoeDirt? Soil;
             public int XTile;
             public int YTile;
+            public IList<Item?>? TargetInventory;
+            public IReadOnlyList<InventorySlotSnapshot>? BeforeSnapshot;
         }
 
         public static void Initialize(IMonitor modMonitor, IHarvestQualityService harvestService, ISoilHealthService? soilService = null, IVisualizationService? vizService = null)
         {
-            monitor = modMonitor;
-            service = harvestService ?? new HarvestQualityService();
+            monitor = modMonitor ?? throw new ArgumentNullException(nameof(modMonitor));
+            service = harvestService ?? throw new ArgumentNullException(nameof(harvestService));
             soilHealthService = soilService;
             visualizationService = vizService;
         }
@@ -45,7 +49,8 @@ namespace LivingRoots.Patches
             {
                 if (service == null)
                 {
-                    service = new HarvestQualityService();
+                    state.Skip = true;
+                    return true;
                 }
 
                 Crop? crop = soil != null ? soil.crop : null;
@@ -54,6 +59,7 @@ namespace LivingRoots.Patches
                     state.Skip = true;
                     return true;
                 }
+
                 if (crop.forageCrop.Value)
                 {
                     state.Skip = true;
@@ -61,18 +67,17 @@ namespace LivingRoots.Patches
                 }
 
                 bool isFibreSeed = false;
+                bool isQiFruit = false;
                 try
                 {
-                    if (crop.indexOfHarvest.Value == "771")
-                    {
-                        isFibreSeed = true;
-                    }
+                    string harvestId = crop.indexOfHarvest?.Value ?? string.Empty;
+                    isFibreSeed = string.Equals(harvestId, "771", StringComparison.Ordinal);
+                    isQiFruit = string.Equals(harvestId, "890", StringComparison.Ordinal);
                 }
                 catch
                 {
-                    // Best-effort: fibre seed detection is optional.
+                    // Best-effort.
                 }
-                bool isQiFruit = false;
 
                 if (isFibreSeed || isQiFruit)
                 {
@@ -89,6 +94,7 @@ namespace LivingRoots.Patches
                 {
                     locationName = Game1.currentLocation.Name;
                 }
+
                 float soilHealth = float.NaN;
                 if (soilHealthService != null && !string.IsNullOrEmpty(locationName))
                 {
@@ -102,25 +108,15 @@ namespace LivingRoots.Patches
                     }
                 }
 
-                Farmer? who = null;
-                if (!isForcedScytheHarvest)
-                {
-                    who = Game1.player;
-                }
-                bool isInventoryFull = false;
-                if (who != null && who.Items != null)
-                {
-                    try
-                    {
-                        isInventoryFull = who.Items.Count >= 36;
-                    }
-                    catch
-                    {
-                        isInventoryFull = false;
-                    }
-                }
+                Farmer? who = junimoHarvester == null ? Game1.player : null;
+                IList<Item?>? targetInventory = GetTargetInventory(who, junimoHarvester);
+                state.TargetInventory = targetInventory;
+                state.BeforeSnapshot = HarvestInventoryDelta.Snapshot(ToReadOnly(targetInventory));
 
-                int farmingLevel = who != null ? who.farmingLevel.Value : 0;
+                int maxItems = GetMaxItems(who);
+                bool isInventoryFull = targetInventory != null && HarvestInventoryDelta.IsFull(ToReadOnly(targetInventory), maxItems);
+
+                int farmingLevel = who != null ? who.FarmingLevel : 0;
                 bool isPaddyCrop = false;
                 try
                 {
@@ -130,6 +126,7 @@ namespace LivingRoots.Patches
                 {
                     isPaddyCrop = false;
                 }
+
                 int regrowDays = 0;
                 try
                 {
@@ -141,6 +138,20 @@ namespace LivingRoots.Patches
                 catch
                 {
                     regrowDays = 0;
+                }
+
+                int harvestMaxIncreasePerFarmingLevel = 0;
+                try
+                {
+                    var data = crop.GetData();
+                    if (data != null)
+                    {
+                        harvestMaxIncreasePerFarmingLevel = data.HarvestMaxIncreasePerFarmingLevel;
+                    }
+                }
+                catch
+                {
+                    // Best-effort.
                 }
 
                 int fertilizerTier = 0;
@@ -167,7 +178,7 @@ namespace LivingRoots.Patches
                     FertilizerTier = fertilizerTier,
                     IsPaddyCrop = isPaddyCrop,
                     RegrowDays = regrowDays,
-                    HarvestMaxIncreasePerFarmingLevel = 0,
+                    HarvestMaxIncreasePerFarmingLevel = harvestMaxIncreasePerFarmingLevel,
                     IsForageCrop = crop.forageCrop.Value,
                     IsFibreSeed = isFibreSeed,
                     IsQiFruit = isQiFruit,
@@ -194,8 +205,10 @@ namespace LivingRoots.Patches
                 {
                     monitor.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Living Roots harvest prefix patch failed; falling back to original. Type: {0} (HResult: 0x{1:X8})", ex.GetType().FullName, ex.HResult), LogLevel.Trace);
                 }
+
                 state.Skip = true;
             }
+
             return true;
         }
 
@@ -215,49 +228,46 @@ namespace LivingRoots.Patches
                 }
 
                 var decision = state.Decision;
-                var who = state.Who;
-                var isInventoryFull = state.IsInventoryFull;
                 var inputs = state.Inputs;
+                var targetInventory = state.TargetInventory;
+                var afterSnapshot = HarvestInventoryDelta.Snapshot(ToReadOnly(targetInventory));
+                var changes = state.BeforeSnapshot != null
+                    ? HarvestInventoryDelta.Diff(state.BeforeSnapshot, afterSnapshot)
+                    : new List<HarvestInventoryChange>();
+                int primarySlot = HarvestInventoryDelta.FindPrimaryAddedSlot(changes);
 
                 bool enhancedQualityOccurred = false;
                 bool extraHarvestOccurred = false;
 
-                if (decision.Tier == HarvestTier.Poor && decision.ForceQualityZero)
+                if (!__result && primarySlot < 0)
                 {
-                    if (who != null && who.Items != null && who.Items.Count > 0)
+                    // Harvest was blocked and nothing was added.
+                    DoFeedbackBroadcast(soil, xTile, yTile, service.BuildFeedbackPlan(decision, false, false, Context.IsMainPlayer));
+                    return;
+                }
+
+                if (decision.Tier == HarvestTier.Poor && decision.ForceQualityZero && primarySlot >= 0 && targetInventory != null)
+                {
+                    try
                     {
-                        try
+                        if (targetInventory[primarySlot] is StardewValley.Object obj)
                         {
-                            var last = who.Items[who.Items.Count - 1];
-                            if (last != null)
-                            {
-                                last.Quality = 0;
-                            }
-                        }
-                        catch
-                        {
-                            // Best-effort.
+                            obj.Quality = 0;
                         }
                     }
-                    if (monitor != null)
+                    catch
                     {
-                        monitor.Log("Living Roots: Poor soil — harvest quality forced to normal.", LogLevel.Trace);
+                        // Best-effort.
                     }
                 }
 
-                if (decision.Tier == HarvestTier.Healthy)
+                if (decision.Tier == HarvestTier.Healthy && primarySlot >= 0 && targetInventory != null)
                 {
-                    StardewValley.Object? item = null;
-                    if (who != null && who.Items != null && who.Items.Count > 0)
-                    {
-                        item = who.Items[who.Items.Count - 1] as StardewValley.Object;
-                    }
-
-                    if (item != null && item.Quality < 4)
+                    if (targetInventory[primarySlot] is StardewValley.Object item && item.Quality < 4)
                     {
                         try
                         {
-                            float vanillaP = 0.2f * (inputs.FarmingLevel / 10.0f) + 0.2f * inputs.FertilizerTier * ((inputs.FarmingLevel + 2) / 12.0f) + 0.01f;
+                            float vanillaP = HarvestQualityMath.ComputeBaselineProbability(inputs.FarmingLevel, inputs.FertilizerTier, inputs.IsPaddyCrop, inputs.RegrowDays);
                             int hash = (xTile * 397) ^ (yTile * 17) ^ Game1.Date.TotalDays ^ (int)(Game1.uniqueIDForThisGame & 0xFFFFFFFF) ^ (inputs.FertilizerTier * 31);
                             double roll = Math.Abs(hash % 10000) / 10000.0;
                             float boosted = service.BoostQualityProbability(vanillaP, decision);
@@ -275,61 +285,29 @@ namespace LivingRoots.Patches
 
                     try
                     {
-                        int hash = (xTile * 397) ^ (yTile * 17) ^ Game1.Date.TotalDays ^ (int)(Game1.uniqueIDForThisGame & 0xFFFFFFFF) ^ 0x5A827999;
-                        double roll = Math.Abs(hash % 10000) / 10000.0;
-                        float boostedChance = service.BoostExtraHarvestChance(0.0f, decision);
-                        if (roll < boostedChance && who != null && who.Items != null)
+                        float baseExtra = GetBaseExtraHarvestChance(soil?.crop);
+                        float boostedChance = service.BoostExtraHarvestChance(baseExtra, decision);
+                        if (boostedChance > 0f)
                         {
-                            extraHarvestOccurred = true;
-                            if (monitor != null)
+                            int hash = (xTile * 397) ^ (yTile * 17) ^ Game1.Date.TotalDays ^ (int)(Game1.uniqueIDForThisGame & 0xFFFFFFFF) ^ 0x5A827999;
+                            double roll = Math.Abs(hash % 10000) / 10000.0;
+                            if (roll < boostedChance && primarySlot >= 0 && targetInventory != null)
                             {
-                                monitor.Log("Living Roots: Extra harvest triggered.", LogLevel.Trace);
-                            }
-
-                            if (who.Items.Count > 0)
-                            {
-                                var source = who.Items[who.Items.Count - 1];
+                                extraHarvestOccurred = true;
+                                var source = targetInventory[primarySlot];
                                 if (source != null)
                                 {
                                     var extra = source.getOne();
                                     if (extra != null)
                                     {
                                         extra.Quality = 0;
-                                        bool added = false;
-                                        try
-                                        {
-                                            added = who.addItemToInventoryBool(extra, false);
-                                        }
-                                        catch
-                                        {
-                                            added = false;
-                                        }
+                                        bool added = TryAddToTarget(extra, state.Who, junimoHarvester, targetInventory);
                                         if (!added)
                                         {
-                                            try
-                                            {
-                                                var location = soil != null ? soil.Location : null;
-                                                if (location == null)
-                                                {
-                                                    location = Game1.currentLocation;
-                                                }
-                                                if (location != null)
-                                                {
-                                                    Game1.createItemDebris(extra, new Vector2(xTile + 0.5f, yTile + 0.5f), -1, location);
-                                                }
-                                            }
-                                            catch
-                                            {
-                                                // Best-effort.
-                                            }
+                                            DropAsDebris(extra, soil, xTile, yTile);
                                         }
                                     }
                                 }
-                            }
-
-                            if (monitor != null)
-                            {
-                                monitor.Log("Living Roots: Living soil — quality boost applied.", LogLevel.Trace);
                             }
                         }
                     }
@@ -337,30 +315,10 @@ namespace LivingRoots.Patches
                     {
                         // Best-effort.
                     }
-
-                    if (isInventoryFull)
-                    {
-                        if (decision.MainItemBlocked && monitor != null)
-                        {
-                            monitor.Log("Living Roots: Inventory full — main item blocked (vanilla).", LogLevel.Trace);
-                        }
-                        if (decision.ExtraItemDroppedAsDebris && monitor != null)
-                        {
-                            monitor.Log("Living Roots: Inventory full — extra item dropped as debris.", LogLevel.Trace);
-                        }
-                    }
-
-                    var feedback = service.ResolveFeedback(decision, enhancedQualityOccurred, extraHarvestOccurred);
-                    if (feedback != HarvestFeedbackFlags.None && monitor != null)
-                    {
-                        monitor.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Living Roots harvest feedback: {0}", feedback), LogLevel.Trace);
-                    }
-
-                    if (feedback != HarvestFeedbackFlags.None)
-                    {
-                        DoFeedbackBroadcast(soil, xTile, yTile, feedback, visualizationService);
-                    }
                 }
+
+                var plan = service.BuildFeedbackPlan(decision, enhancedQualityOccurred, extraHarvestOccurred, Context.IsMainPlayer);
+                DoFeedbackBroadcast(soil, xTile, yTile, plan);
             }
             catch (Exception ex)
             {
@@ -371,7 +329,111 @@ namespace LivingRoots.Patches
             }
         }
 
-        private static void DoFeedbackBroadcast(HoeDirt? soil, int xTile, int yTile, HarvestFeedbackFlags feedback, IVisualizationService? visualizationService)
+        private static IReadOnlyList<Item?>? ToReadOnly(IList<Item?>? items)
+        {
+            if (items == null)
+            {
+                return null;
+            }
+
+            var list = new List<Item?>(items.Count);
+            foreach (var item in items)
+            {
+                list.Add(item);
+            }
+
+            return list;
+        }
+
+        private static int GetMaxItems(Farmer? who)
+        {
+            if (who == null)
+            {
+                return ModConstants.DefaultBackpackSlots;
+            }
+
+            try
+            {
+                return who.MaxItems;
+            }
+            catch
+            {
+                return ModConstants.DefaultBackpackSlots;
+            }
+        }
+
+        private static IList<Item?>? GetTargetInventory(Farmer? who, JunimoHarvester? junimoHarvester)
+        {
+            if (junimoHarvester != null)
+            {
+                try
+                {
+                    var hut = junimoHarvester.home;
+                    if (hut?.GetOutputChest() is StardewValley.Objects.Chest chest)
+                    {
+                        return chest.Items;
+                    }
+                }
+                catch
+                {
+                    // Best-effort.
+                }
+            }
+
+            return who?.Items;
+        }
+
+        private static float GetBaseExtraHarvestChance(Crop? crop)
+        {
+            if (crop == null)
+            {
+                return 0.0f;
+            }
+
+            try
+            {
+                var data = crop.GetData();
+                if (data != null)
+                {
+                    return Math.Clamp(data.ExtraHarvestChance, 0.0f, 1.0f);
+                }
+            }
+            catch
+            {
+                // Best-effort.
+            }
+
+            return 0.0f;
+        }
+
+        private static bool TryAddToTarget(Item extra, Farmer? who, JunimoHarvester? junimoHarvester, IList<Item?>? targetInventory)
+        {
+            try
+            {
+                if (junimoHarvester != null)
+                {
+                    var hut = junimoHarvester.home;
+                    if (hut?.GetOutputChest() is StardewValley.Objects.Chest chest)
+                    {
+                        var leftover = chest.addItem(extra);
+                        return leftover == null;
+                    }
+                }
+
+                if (who != null)
+                {
+                    return who.addItemToInventoryBool(extra, false);
+                }
+            }
+            catch
+            {
+                // Best-effort.
+            }
+
+            return false;
+        }
+
+        private static void DropAsDebris(Item extra, HoeDirt? soil, int xTile, int yTile)
         {
             try
             {
@@ -381,88 +443,32 @@ namespace LivingRoots.Patches
                     location = Game1.currentLocation;
                 }
 
-                string? soundName = null;
-                if (feedback.HasFlag(HarvestFeedbackFlags.Poor))
-                {
-                    soundName = "cancel";
-                }
-                else if (feedback.HasFlag(HarvestFeedbackFlags.LivingQuality) || feedback.HasFlag(HarvestFeedbackFlags.ExtraHarvest))
-                {
-                    soundName = "coin";
-                }
-
-                if (location != null && !string.IsNullOrEmpty(soundName))
-                {
-                    try
-                    {
-                        location.playSound(soundName);
-                    }
-                    catch
-                    {
-                        // Best-effort.
-                    }
-                }
-
                 if (location != null)
                 {
+                    Game1.createItemDebris(extra, new Vector2(xTile + 0.5f, yTile + 0.5f), -1, location);
+                }
+            }
+            catch
+            {
+                // Best-effort.
+            }
+        }
+
+        private static void DoFeedbackBroadcast(HoeDirt? soil, int xTile, int yTile, HarvestFeedbackPlan plan)
+        {
+            try
+            {
+                if (plan == null || plan.IsEmpty)
+                {
+                    return;
+                }
+
+                var location = soil?.Location ?? Game1.currentLocation;
+                if (location != null && !string.IsNullOrEmpty(plan.SoundName))
+                {
                     try
                     {
-                        object? mp;
-                        var mpField = typeof(Game1).GetField("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-                        var mpProp = mpField == null ? typeof(Game1).GetProperty("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static) : null;
-                        if (mpField != null)
-                        {
-                            mp = mpField.GetValue(null);
-                        }
-                        else if (mpProp != null)
-                        {
-                            mp = mpProp.GetValue(null);
-                        }
-                        else
-                        {
-                            mp = null;
-                        }
-                        if (mp != null)
-                        {
-                            var method = mp.GetType().GetMethod("broadcastSprites", new[] { typeof(GameLocation), typeof(List<TemporaryAnimatedSprite>) });
-                            if (method != null)
-                            {
-                                var sprites = new List<TemporaryAnimatedSprite>();
-                                var worldPosition = new Vector2(xTile * (float)ModConstants.TileSize + 32f, yTile * (float)ModConstants.TileSize);
-                                if (feedback.HasFlag(HarvestFeedbackFlags.Poor))
-                                {
-                                    var poorSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
-                                    poorSprite.text = "Soil too poor for quality crops";
-                                    poorSprite.color = Color.Red;
-                                    poorSprite.alphaFade = 0.02f;
-                                    poorSprite.motion = new Vector2(0, -0.5f);
-                                    sprites.Add(poorSprite);
-                                }
-                                if (feedback.HasFlag(HarvestFeedbackFlags.LivingQuality))
-                                {
-                                    var livingSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
-                                    livingSprite.text = "Living Soil";
-                                    livingSprite.color = Color.LimeGreen;
-                                    livingSprite.alphaFade = 0.02f;
-                                    livingSprite.motion = new Vector2(0, -0.5f);
-                                    sprites.Add(livingSprite);
-                                }
-                                if (feedback.HasFlag(HarvestFeedbackFlags.ExtraHarvest))
-                                {
-                                    var extraSprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, 1000f, 1, 1, worldPosition, false, false);
-                                    extraSprite.text = "Extra harvest!";
-                                    extraSprite.color = Color.Gold;
-                                    extraSprite.alphaFade = 0.02f;
-                                    extraSprite.motion = new Vector2(0, -0.5f);
-                                    sprites.Add(extraSprite);
-                                }
-                                foreach (var s in sprites)
-                                {
-                                    try { location.TemporarySprites.Add(s); } catch { /* best-effort */ }
-                                }
-                                method.Invoke(mp, new object[] { location, sprites });
-                            }
-                        }
+                        location.playSound(plan.SoundName);
                     }
                     catch
                     {
@@ -470,11 +476,40 @@ namespace LivingRoots.Patches
                     }
                 }
 
-                if (visualizationService != null)
+                if (location == null)
+                {
+                    return;
+                }
+
+                var sprites = new List<TemporaryAnimatedSprite>();
+                var worldPosition = new Vector2(xTile * (float)ModConstants.TileSize + ModConstants.HarvestFeedbackTextOffsetX, yTile * (float)ModConstants.TileSize);
+                foreach (var message in plan.Messages)
+                {
+                    var sprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, plan.DurationMs, 1, 1, worldPosition, false, false)
+                    {
+                        text = message.Text,
+                        color = GetFeedbackColor(message),
+                        alphaFade = 0.02f,
+                        motion = new Vector2(0, -0.5f)
+                    };
+                    sprites.Add(sprite);
+                    try
+                    {
+                        location.TemporarySprites.Add(sprite);
+                    }
+                    catch
+                    {
+                        // Best-effort.
+                    }
+                }
+
+                if (plan.BroadcastToAllPlayers && sprites.Count > 0)
                 {
                     try
                     {
-                        visualizationService.InvalidateCache();
+                        object? mp = typeof(Game1).GetField("multiplayer", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.GetValue(null);
+                        var method = mp?.GetType().GetMethod("broadcastSprites", new[] { typeof(GameLocation), typeof(List<TemporaryAnimatedSprite>) });
+                        method?.Invoke(mp, new object[] { location, sprites });
                     }
                     catch
                     {
@@ -486,6 +521,21 @@ namespace LivingRoots.Patches
             {
                 // Best-effort.
             }
+        }
+
+        private static Color GetFeedbackColor(HarvestFeedbackMessage message)
+        {
+            if (string.Equals(message.SpriteKey, "marker-poor", StringComparison.Ordinal))
+            {
+                return Color.Red;
+            }
+
+            if (string.Equals(message.Text, "Extra harvest!", StringComparison.Ordinal))
+            {
+                return Color.Gold;
+            }
+
+            return Color.LimeGreen;
         }
     }
 }
