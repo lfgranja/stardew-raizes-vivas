@@ -3040,14 +3040,22 @@ namespace LivingRoots.Controllers
                 return false;
             }
 
+            bool applied;
             try
             {
-                return _compostApplicationService.TryApplyCompost(location, tile);
+                applied = _compostApplicationService.TryApplyCompost(location, tile);
             }
             finally
             {
                 _hostAtomicLockService?.ReleaseLock(location.Name, tile, farmerId);
             }
+
+            if (applied)
+            {
+                BroadcastSoilHealthSnapshotIfHost();
+            }
+
+            return applied;
         }
 
         internal void OnModMessageReceived(object? sender, ModMessageReceivedEventArgs e)
