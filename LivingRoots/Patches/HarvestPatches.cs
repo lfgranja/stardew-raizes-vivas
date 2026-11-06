@@ -242,7 +242,7 @@ namespace LivingRoots.Patches
                 if (!__result && primarySlot < 0)
                 {
                     // Harvest was blocked and nothing was added.
-                    DoFeedbackBroadcast(soil, xTile, yTile, service.BuildFeedbackPlan(decision, false, false, Context.IsMainPlayer));
+                    DoFeedbackBroadcast(soil, xTile, yTile, service.BuildFeedbackPlan(decision, false, false, IsMainPlayerSafe()));
                     return;
                 }
 
@@ -317,7 +317,7 @@ namespace LivingRoots.Patches
                     }
                 }
 
-                var plan = service.BuildFeedbackPlan(decision, enhancedQualityOccurred, extraHarvestOccurred, Context.IsMainPlayer);
+                var plan = service.BuildFeedbackPlan(decision, enhancedQualityOccurred, extraHarvestOccurred, IsMainPlayerSafe());
                 DoFeedbackBroadcast(soil, xTile, yTile, plan);
             }
             catch (Exception ex)
@@ -520,6 +520,18 @@ namespace LivingRoots.Patches
             catch
             {
                 // Best-effort.
+            }
+        }
+
+        private static bool IsMainPlayerSafe()
+        {
+            try
+            {
+                return Context.IsMainPlayer;
+            }
+            catch
+            {
+                return true;
             }
         }
 
