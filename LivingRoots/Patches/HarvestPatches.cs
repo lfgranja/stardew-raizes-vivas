@@ -4,6 +4,7 @@ using HarmonyLib;
 using LivingRoots;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Services;
+using LivingRoots.Services.Visualization;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewValley;
@@ -481,12 +482,18 @@ namespace LivingRoots.Patches
                 var worldPosition = new Vector2(xTile * (float)ModConstants.TileSize + ModConstants.HarvestFeedbackTextOffsetX, yTile * (float)ModConstants.TileSize);
                 foreach (var message in plan.Messages)
                 {
-                    var sprite = new TemporaryAnimatedSprite(null, Rectangle.Empty, plan.DurationMs, 1, 1, worldPosition, false, false)
+                    var texture = HarvestFeedbackTextures.GetTexture(message.SpriteKey);
+                    var sourceRect = texture != null ? new Rectangle(0, 0, 16, 16) : Rectangle.Empty;
+                    var spritePos = texture != null ? worldPosition - new Vector2(0, 18f) : worldPosition;
+                    var sprite = new TemporaryAnimatedSprite(texture != null ? texture.Name ?? string.Empty : string.Empty, sourceRect, plan.DurationMs, 1, 1, spritePos, false, false)
                     {
+                        texture = texture,
+                        sourceRect = sourceRect,
                         text = message.Text,
                         color = GetFeedbackColor(message),
                         alphaFade = 0.02f,
-                        motion = new Vector2(0, -0.5f)
+                        motion = new Vector2(0, -0.5f),
+                        scale = texture != null ? 2f : 1f
                     };
                     sprites.Add(sprite);
                     try
