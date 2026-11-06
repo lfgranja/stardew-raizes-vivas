@@ -486,7 +486,7 @@ public class SingleMultiplayerParityInvariantsTests
     {
         // Spec 005 (FR-001/FR-006): host-authoritative DayEnding/DayStarted
         // gates. Matched by the production line itself (not a line number).
-        "if (!StardewModdingAPI.Context.IsMainPlayer)",
+        "if (!StardewModdingAPI.Context.IsMainPlayer",
         // Spec 014 T118/T119: host→client soil-health sync receive ignores host;
         // farmhand clients must not mutate shared farm state locally.
         "if (StardewModdingAPI.Context.IsMainPlayer)",
