@@ -1316,132 +1316,132 @@ public class CompostingBinServiceTests
     /// game, and the suite runs test collections sequentially
     /// (xunit.runner.json), so the swap cannot race a sibling class.
     /// </remarks>
-        [Fact]
-        public void CollectCompost_DryRunCapacityRefusal_RetainsBinAndInventory()
-        {
-            var item = CreateValidItem();
-            _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
+    [Fact]
+    public void CollectCompost_DryRunCapacityRefusal_RetainsBinAndInventory()
+    {
+        var item = CreateValidItem();
+        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
 
-            _timeStub.TotalDays = 1;
-            _service.AddWaste("Farm", new Vector2(10, 10), item);
-            _timeStub.TotalDays = 3;
-            _service.ProcessDayStart("Farm");
+        _timeStub.TotalDays = 1;
+        _service.AddWaste("Farm", new Vector2(10, 10), item);
+        _timeStub.TotalDays = 3;
+        _service.ProcessDayStart("Farm");
 
-            _inventory.HasCapacityResult = false;
-            _inventory.AcceptsItems = true;
+        _inventory.HasCapacityResult = false;
+        _inventory.AcceptsItems = true;
 
-            var beforeCount = _inventory.AddedItems.Count;
-            var result = _service.CollectCompost("Farm", new Vector2(10, 10));
+        var beforeCount = _inventory.AddedItems.Count;
+        var result = _service.CollectCompost("Farm", new Vector2(10, 10));
 
-            Assert.Equal(0, result);
-            Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", new Vector2(10, 10)));
-            Assert.Equal(beforeCount, _inventory.AddedItems.Count);
-        }
+        Assert.Equal(0, result);
+        Assert.Equal(CompostingBinState.Ready, _service.GetBinState("Farm", new Vector2(10, 10)));
+        Assert.Equal(beforeCount, _inventory.AddedItems.Count);
+    }
 
-        [Theory]
-        [InlineData(0)]
-        [InlineData(1)]
-        [InlineData(2)]
-        [InlineData(5)]
-        public void CollectCompost_OutputCountProvider_IsRespected(int outputCount)
-        {
-            var item = CreateValidItem();
-            _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(5)]
+    public void CollectCompost_OutputCountProvider_IsRespected(int outputCount)
+    {
+        var item = CreateValidItem();
+        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
 
-            var service = new CompostingBinService(
-                _mockModDataService.Object,
-                _mockSaveIdProvider.Object,
-                _mockWasteValidator.Object,
-                _mockMonitor.Object,
-                _timeStub,
-                _factory,
-                _inventory,
-                null,
-                null,
-                null,
-                () => outputCount);
+        var service = new CompostingBinService(
+            _mockModDataService.Object,
+            _mockSaveIdProvider.Object,
+            _mockWasteValidator.Object,
+            _mockMonitor.Object,
+            _timeStub,
+            _factory,
+            _inventory,
+            null,
+            null,
+            null,
+            () => outputCount);
 
-            _timeStub.TotalDays = 1;
-            service.AddWaste("Farm", new Vector2(10, 10), item);
-            _timeStub.TotalDays = 3;
-            service.ProcessDayStart("Farm");
+        _timeStub.TotalDays = 1;
+        service.AddWaste("Farm", new Vector2(10, 10), item);
+        _timeStub.TotalDays = 3;
+        service.ProcessDayStart("Farm");
 
-            _inventory.Reset();
-            _inventory.HasCapacityResult = true;
-            _inventory.AcceptsItems = true;
+        _inventory.Reset();
+        _inventory.HasCapacityResult = true;
+        _inventory.AcceptsItems = true;
 
-            var result = service.CollectCompost("Farm", new Vector2(10, 10));
+        var result = service.CollectCompost("Farm", new Vector2(10, 10));
 
-            Assert.Equal(outputCount, result);
-            Assert.Equal(outputCount, _inventory.AddedItems.Count);
-        }
+        Assert.Equal(outputCount, result);
+        Assert.Equal(outputCount, _inventory.AddedItems.Count);
+    }
 
-        [Fact]
-        public void CollectCompost_PartialAdd_RollsBackInventoryAndBin()
-        {
-            var item = CreateValidItem();
-            _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
+    [Fact]
+    public void CollectCompost_PartialAdd_RollsBackInventoryAndBin()
+    {
+        var item = CreateValidItem();
+        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
 
-            var service = new CompostingBinService(
-                _mockModDataService.Object,
-                _mockSaveIdProvider.Object,
-                _mockWasteValidator.Object,
-                _mockMonitor.Object,
-                _timeStub,
-                _factory,
-                _inventory,
-                null,
-                null,
-                null,
-                () => 2);
+        var service = new CompostingBinService(
+            _mockModDataService.Object,
+            _mockSaveIdProvider.Object,
+            _mockWasteValidator.Object,
+            _mockMonitor.Object,
+            _timeStub,
+            _factory,
+            _inventory,
+            null,
+            null,
+            null,
+            () => 2);
 
-            _timeStub.TotalDays = 1;
-            service.AddWaste("Farm", new Vector2(10, 10), item);
-            _timeStub.TotalDays = 3;
-            service.ProcessDayStart("Farm");
+        _timeStub.TotalDays = 1;
+        service.AddWaste("Farm", new Vector2(10, 10), item);
+        _timeStub.TotalDays = 3;
+        service.ProcessDayStart("Farm");
 
-            _inventory.Reset();
-            _inventory.HasCapacityResult = true;
-            _inventory.AcceptsItems = true;
-            _inventory.RefuseOnCall = 2;
+        _inventory.Reset();
+        _inventory.HasCapacityResult = true;
+        _inventory.AcceptsItems = true;
+        _inventory.RefuseOnCall = 2;
 
-            var before = _inventory.AddedItems.Count;
-            var result = service.CollectCompost("Farm", new Vector2(10, 10));
+        var before = _inventory.AddedItems.Count;
+        var result = service.CollectCompost("Farm", new Vector2(10, 10));
 
-            Assert.Equal(0, result);
-            Assert.Equal(CompostingBinState.Ready, service.GetBinState("Farm", new Vector2(10, 10)));
-            Assert.Equal(before, _inventory.AddedItems.Count);
-        }
+        Assert.Equal(0, result);
+        Assert.Equal(CompostingBinState.Ready, service.GetBinState("Farm", new Vector2(10, 10)));
+        Assert.Equal(before, _inventory.AddedItems.Count);
+    }
 
-        [Fact]
-        public void CollectCompost_SecondCall_DoesNotGrantTwice()
-        {
-            var item = CreateValidItem();
-            _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
+    [Fact]
+    public void CollectCompost_SecondCall_DoesNotGrantTwice()
+    {
+        var item = CreateValidItem();
+        _mockWasteValidator.Setup(x => x.IsValidOrganicWaste(item)).Returns(true);
 
-            _timeStub.TotalDays = 1;
-            _service.AddWaste("Farm", new Vector2(10, 10), item);
-            _timeStub.TotalDays = 3;
-            _service.ProcessDayStart("Farm");
+        _timeStub.TotalDays = 1;
+        _service.AddWaste("Farm", new Vector2(10, 10), item);
+        _timeStub.TotalDays = 3;
+        _service.ProcessDayStart("Farm");
 
-            _inventory.Reset();
-            _inventory.HasCapacityResult = true;
-            _inventory.AcceptsItems = true;
+        _inventory.Reset();
+        _inventory.HasCapacityResult = true;
+        _inventory.AcceptsItems = true;
 
-            var first = _service.CollectCompost("Farm", new Vector2(10, 10));
-            var second = _service.CollectCompost("Farm", new Vector2(10, 10));
+        var first = _service.CollectCompost("Farm", new Vector2(10, 10));
+        var second = _service.CollectCompost("Farm", new Vector2(10, 10));
 
-            Assert.Equal(1, first);
-            Assert.Equal(0, second);
-            Assert.Single(_inventory.AddedItems);
-        }
+        Assert.Equal(1, first);
+        Assert.Equal(0, second);
+        Assert.Single(_inventory.AddedItems);
+    }
 
-        [Fact]
-        public void CompostingBinStateData_HasDurableOutputGrantedField()
-        {
-            var property = typeof(CompostingBinStateData).GetProperty("OutputGranted");
-            Assert.NotNull(property);
-        }
+    [Fact]
+    public void CompostingBinStateData_HasDurableOutputGrantedField()
+    {
+        var property = typeof(CompostingBinStateData).GetProperty("OutputGranted");
+        Assert.NotNull(property);
+    }
 
     private sealed class RecordingSoundsHelper : ISoundsHelper
     {

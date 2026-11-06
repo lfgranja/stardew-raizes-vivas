@@ -17,7 +17,7 @@ namespace LivingRoots.Patches
         private static IMonitor? monitor;
         private static IHarvestQualityService? service;
         private static ISoilHealthService? soilHealthService;
-        
+
         private sealed class HarvestState
         {
             public bool Skip;
