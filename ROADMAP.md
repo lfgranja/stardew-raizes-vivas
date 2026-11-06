@@ -5,10 +5,12 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 > **STATUS ANNOTATION — verified 2026-11-06 (spec 014 T131–T133, machine-pass host-only, tests 1747/0/4)**
 > Previous annotations (2026-11-05, 2026-11-04, 2026-11-03, 2026-11-02) are preserved below; newest verified state is this block. Legend: ✅ implemented & verified (build + tests green) · 🟡 partial/inert · ❌ not implemented · ⚠️ has caveats / not verified in-game-human. Original design text preserved; annotations added.
 > **Verified now:** build Release 0 errors (`GamePath=/home/luis/stardew-assemblies`); tests **1747 passed / 0 failed / 4 skipped** (1751); band-scale 31/71 gate PASS. Spec 014 **131/133** (`tasks.md`) — T131–T133 complete; FR-009/A8 soil-health sync + procedural harvest feedback wired/tested; `/speckit.converge` found no new actionable findings (no Phase 11). Gate 3 spec 014 scenario **machine-pass** (host-only), `verdict: pass`, `signalsComplete/Agree/thresholdsOk: true`, verifier exit 0 — bundles `evidence-bundle-run-20261106T014215Z-759d`, `evidence-bundle-run-20261106T014750Z-14b6` (`specs/014-soil-health-crop-quality/gate3-evidence.md`). **Machine-pass ≠ verified** (no human E attestation). **T109 D1 blocked** (real farmhand). **T110 deferred** (historical 34/67 contract migration). Specs: 010 **150/203**, 016 **43/43**.
-> **Git snapshot (2026-11-06):** local `dev` ahead of `origin/dev` (98+ commits before doc commits); no open PRs; branches `dev`/`main`. Push/PR hygiene pending confirmation.
-> **Sources (2026, high reliability):** SMAPI 4.5.2 / SDV 1.6.14+ (https://smapi.io/); JunimoServer E2E/headless patterns (https://docs.junimoserver.com/developers/testing/e2e-testing.html); ReGen Valley Nexus #39740 (https://www.nexusmods.com/stardewvalley/mods/39740); quality/harvest-adjacent mods Nexus #47141/#51999/#54375.
+> **Git snapshot (2026-11-05 refresh):** PRs #701–#705 mesclados em `dev`; higiene concluída (local/remoto apenas `dev`/`main`). `origin/dev` em `0260fed`; `dev` local pode estar alguns commits à frente apenas com docs desta atualização — publicar quando apropriado (sem reescrever histórico).
+> **Sources (2026, high reliability, refreshed 2026-11-05):** SMAPI **4.5.2** (atual) / SDV **1.6.14+** (https://smapi.io/ ; https://github.com/Pathoschild/SMAPI/releases/tag/4.5.2); smapi.io mod-compat list com caveat de “sunset” (https://smapi.io/mods); JunimoServer headless/E2E reference (https://docs.junimoserver.com/, latest release marcado instável no site — **contexto, não evidência Living Roots**); Nexus #39740 acesso direto bloqueado (403) nesta sessão — contexto já registrado no repo (`research/2026-11-05-web-research-ecosystem-status.md`).
 
 > **2026-11-05 (preserved):** spec 010 149/203, spec 016 converged, spec 004 machine-pass `535d`, suite 1630/0/4. T138/T145 blocked by environment.
+>
+> > **2026-11-05 (refresh, pesquisa web + hygiene):** fatos externos revalidados via fontes primárias (SMAPI 4.5.2/SDV 1.6.14+, caveat compat list, JunimoServer como referência). Nexus #39740 não revalidado ao vivo (403). Estado técnico do produto **sem regressão conhecida** vs. anotação 2026-11-06: spec 014 131/133 machine-pass host-only 759d/14b6, 1747/0/4, D1/T110/humano E pendentes. Ver `research/2026-11-05-web-research-ecosystem-status.md`.
 
 ---
 
@@ -32,10 +34,11 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 
 ### O que ainda falta (prioridade prática)
 
-1. **Higiene git/publicação (confirmar):** tratar/push 98+ commits locais vs `origin/dev`; PRs revisáveis se desejado (sem PRs abertos).
-2. **D1 real (T109):** ambiente com segundo jogador + evidência honesta.
-3. **Fechar pendências de specs abertas** conforme valor: 004 T034/T037 (manual/D1), 009 manual, 010 restantes, 015 abertas (T047/49/50/52/57) — avaliar contra estado real de 014.
-4. **Próximo slice de gameplay:** após MP, escolher item de maior impacto (ex.: validar/fechar lacunas de integração 014/015, ou mecânica destrutiva Joja/monocultura) com TDD + Gate 3.
+1. **Reconciliação 014↔015 (80/20, baixo custo):** `/speckit.analyze`/convergência baseada em evidência — mapear tarefas spec 015 já cobertas por 014, duplicidades (Junimo) e bloqueios reais (D1/humano/pest); sem reescrever histórico.
+2. **D1 real (T109):** ambiente com segundo jogador + evidência honesta (FR-009/A8 testada por unidade, **não** atestada ao vivo).
+3. **Publicar docs desta atualização:** `dev` local pode estar à frente de `origin/dev` por commits de documentação; push/PR conforme decisão humana.
+4. **Pendências de specs:** 004 T034/T037 (manual/D1), 009 manual, 010 restantes, 015 abertas (validar contra 014), 011/013 residuais — priorizar por valor.
+5. **Próximo slice de gameplay (após reconciliação):** candidato 80/20 = tradeoff destrutivo/decisão (ex. Joja/monocultura, escopo controlado) com TDD + Gate 3 honesto.
 
 ## Progresso consolidado — 2026-11-04 (histórico, pós-merge PRs #655/#656/#657 + pesquisa web)
 
@@ -121,7 +124,7 @@ Justificativa (com pesquisa de mercado 2026):
 | Spec 010 / 016 | **150/203** / **43/43** | `specs/*/tasks.md` |
 | Gate 3 (spec 014 scenario) | **machine-pass host-only** (759d, 14b6), verifier exit 0, 3-signal predicates pass — **NOT verified (human E)** | `gate3-evidence.md`, `evidence-bundle-run-20261106T014750Z-14b6/` |
 | Roadmap/realidade | soil measure/display/change/decay/compost/mulch/growth + harvest-quality tier logic/wiring/feedback/sync implemented in code with automated evidence; MP convergence not human-verified; D1 not attested | source + tests + gate3-evidence |
-| Git | local `dev` ahead of `origin/dev`; no open PRs; `dev`/`main` only | `git status`, `gh pr list` |
+| Git (refresh 2026-11-05) | PRs #701–#705 merged; hygiene done (só `dev`/`main` local/remoto). `origin/dev`=`0260fed`; `dev` local pode estar à frente apenas por docs desta sessão | `git status`, `gh pr list`, `git branch -vv/-r`, `git ls-remote --heads origin` |
 
 **One-sentence truth (2026-11-06):** Living Roots mede, persiste e muda soil health; solo afeta crescimento e, no código atual (spec 014, 131/133), também direciona qualidade/extra de colheita com guards, feedback procedural e sync FR-009/A8 — com **machine-pass headless host-only** (759d/14b6) e suíte 1747/0/4 — mas **sem atesto humano `verified`** e com **D1/T110** ainda pendentes.
 
@@ -369,26 +372,26 @@ Before building any of the above, the roadmap's promises were checked against th
 
 ---
 
-## Recommended next action (80/20, updated 2026-11-06)
+## Recommended next action (80/20, refreshed 2026-11-05)
 
-**1) Publicação/higiene (decisão humana):** `dev` local está muito à frente de `origin/dev` e não há PRs abertos. Confirmar commit/push dos docs pendentes desta atualização e definir PRs revisáveis contra `origin/dev` (sem reescrever histórico).
+**1) Reconciliar 014↔015 (maior clareza/menor retrabalho):** `/speckit.analyze` (read-only) focado em 014+015 → mapear tarefas de 015 satisfeitas por implementação/evidência de 014, resolver duplicidades (ex.: Junimo T056/T059) e separar bloqueios reais (D1/humano/pest). Se acionável, `/speckit.converge` **append-only**. Baseado em `research/2026-11-06-next-step-80-20.md` e estado atual.
 
-**2) Fechar evidência multiplayer (T109 D1, quando viável):** executar sessão real host+farmhand para atestar convergência FR-009/A8; registrar honestamente (não promover a `verified` sem humano/E).
+**2) D1 real (T109, quando viável):** sessão host+farmhand para convergência FR-009/A8; evidência honesta. JunimoServer/`xvfb`+dedicated patterns são **referências** para investigação futura, não prova.
 
-**3) Reconciliar 014/015:** spec 014 está 131/133 com machine-pass host-only; spec 015 tem tarefas abertas — validar quais ainda refletem lacunas reais vs. sobreposição já resolvida por 014, com testes e evidência.
+**3) Publicar docs desta atualização:** commits locais de documentação à frente de `origin/dev` (`0260fed`) — push/PR conforme decisão humana, sem reescrever histórico.
 
-**4) Próximo slice de gameplay (após 2/3 conforme prioridade):** escolher uma mecânica de alto valor percebido (ex.: fechamento de loop destrutivo/decisão — Joja/monocultura — ou próximo item de progressão com baixo custo) via `/speckit.specify`→plan→TDD→Gate 3.
+**4) Próximo slice de gameplay (após 1):** `/speckit.specify` para tradeoff destrutivo/decisão de alto valor (candidato: Joja/monocultura, escopo controlado), com TDD + Gate 3 + honesty.
 
-**Pesquisa/mercado (honesta):** SMAPI 4.5.2/SDV 1.6.14+ é a base atual; JunimoServer mostra padrões E2E headless úteis como referência; ReGen Valley (#39740) e mods de qualidade/colheita validam demanda, mas não substituem o diferencial de coerência per-tile + MP + framing educativo do Living Roots.
+**Pesquisa/mercado (honesta, 2026-11-05 refresh):** SMAPI **4.5.2** / SDV **1.6.14+** confirmados (smapi.io/releases). smapi.io mod-compat tem caveat de sunset. JunimoServer = referência headless/E2E. Nexus #39740 não revalidado ao vivo (403 nesta sessão). Detalhes em `research/2026-11-05-web-research-ecosystem-status.md`. `machine-pass` ≠ `verified`; D1/humano pendentes.
 
 ---
 
 ## Blockers that are not roadmap items (verificar antes de agir)
 
-* **Push/publicação pendente:** commits locais não publicados no remoto; risco operacional de divergência/perda de contexto compartilhado (não é perda local). Confirmar estratégia.
-* **Evidência ≠ verificação humana:** machine-pass não é `verified`; D1/T110 pendentes.
+* **Push/publicação de docs pendentes:** após hygiene/merges (#701–#705), `origin/dev` está em `0260fed`; novos commits locais desta atualização de documentação podem precisar de push/PR conforme decisão humana (sem reescrever histórico).
+* **Evidência ≠ verificação humana:** machine-pass não é `verified`; D1/T110/humano E pendentes.
 * **Licenciamento/assets:** manter vigilância — `.gitignore` protege game assemblies; verificar periodicamente `git ls-files` para DLLs proprietárias/assets indevidos.
-* ~~`COMPLETION_SUMMARY.md` stale 26 failing / `AGENTS.md` ModConstants path~~ — corrigidos nesta rodada de docs (verificar se persistem em outras cópias/branches).
+* ~~`COMPLETION_SUMMARY.md` stale 26 failing / `AGENTS.md` ModConstants path~~ — corrigidos em rodadas anteriores (verificar se persistem em outras cópias/branches).
 
 ---
 
