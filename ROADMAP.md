@@ -9,7 +9,7 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 > ⚠️ implemented but **has no effect on gameplay**.
 > The original design text is preserved unchanged; annotations were added, nothing was deleted.
 > **Deep-dive evidence:** `research/2026-10-roadmap-feasibility-and-agronomy.md` (SMAPI 1.6 API, baseline competitivo e base agronômica de cada mecânica abaixo, com fontes primárias).
-> **Update 2026-11-05:** Spec **010** at **149/203** tasks. Spec **016** (Gate 3 runner hardening) **converged** (43/45 tasks, all verified). **Spec 004 reached `machine-pass`** (bundle `evidence-bundle-run-20261105T053313Z-535d/`, verdict `pass`, honesty `R`, verifier rc 0). Full suite: **1630 passed / 0 failed / 4 skipped**. Subject completeness verificado (retention-receipt.json coberto). **Machine-pass ≠ verified** (E humano pendente, `VERIFICATION_PROTOCOL.md` §3). **Open:** band-scale divergence `Constants.cs 31/71` vs docs `34/67` — reconciliação T117–T119 (spec 005). T138 (second host) e T145 (farmhand path) bloqueados por ambiente.
+> **Update 2026-11-05:** Spec **010** at **149/203** tasks. Spec **016** (Gate 3 runner hardening) **converged** (43/45 tasks, all verified). **Spec 004 reached `machine-pass`** (bundle `evidence-bundle-run-20261105T053313Z-535d/`, verdict `pass`, honesty `R`, verifier rc 0). Full suite: **1630 passed / 0 failed / 4 skipped**. Subject completeness verificado (retention-receipt.json coberto). **Machine-pass ≠ verified** (E humano pendente, `VERIFICATION_PROTOCOL.md` §3). **Update 2026-11-05 (spec 014 convergence):** band scale aligned to Cornell CSHA 31/71 (`[0,31)/[31,71)/[71,100]`) by spec 014 FR-013/T127; T117–T119 (spec 005) superseded. T138 (second host) e T145 (farmhand path) bloqueados por ambiente.
 >
 > **Nova direção (2026-11-05): o spec 010 (headless verification runner) gerou `machine-pass` com sucesso.** O runner está em 149/203 tarefas concluídas; T138 (second host) e T145 (farmhand path) bloqueados por ambiente. T146 formalmente bloqueado mas o runner escreveu machine-pass. T148 (human `verified`) pendente. Spec 016 (runner hardening) convergiu. Após T148, specs 014/015 (harvest-quality) tornam-se o próximo 80/20 de gameplay. Verificação manual não substitui o runner — ela vem depois, como confirmação humana (E attestation).
 
@@ -121,7 +121,7 @@ Justificativa (com pesquisa de mercado 2026):
 - ✅ **Testes verdes** (1621 pass / 1 fail pré-existente / 4 skip).
 - ❌ **No live SMAPI session ever run** (Gate 3 manual 3-sinais). Every "works" claim above is code/tests, not in-game.
 - ⚠️ Harvest-quality patch not executed in game; integration (feedback sprites/SFX, extra-harvest activation) incomplete; SC-008 rollback verification still pending.
-- ⚠️ Band scale mismatch (roadmap 0-30/31-70/71-100 vs. code 34/67) not reconciled (3 doc tasks).
+- ✅ Band scale reconciled to Cornell CSHA 31/71 (`[0,31)/[31,71)/[71,100]`) by spec 014 FR-013/T127 (supersedes prior 34/67/0-30-70 mismatches).
 - ❌ Multiplayer live verification (D1) not proven.
 
 **What's still not implemented (roadmap):**
