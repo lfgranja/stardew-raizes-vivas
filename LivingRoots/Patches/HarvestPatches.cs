@@ -391,7 +391,7 @@ namespace LivingRoots.Patches
                 var data = crop.GetData();
                 if (data != null)
                 {
-                    return Math.Clamp(data.ExtraHarvestChance, 0.0f, 1.0f);
+                    return Math.Clamp((float)data.ExtraHarvestChance, 0.0f, 1.0f);
                 }
             }
             catch
