@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using LivingRoots.Controllers;
 using LivingRoots.Domain;
+using LivingRoots.Domain.Interfaces;
 using LivingRoots.Services;
 using Microsoft.Xna.Framework;
 using Moq;
@@ -1024,7 +1025,7 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
             _mockHelper.Setup(x => x.Multiplayer).Returns(mockMultiplayer.Object);
             _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns("save1");
-            _mockSoilHealthService.Setup(x => x.Snapshot()).Returns(new System.Collections.Generic.Dictionary<string, float>());
+            _mockSoilHealthService.Setup(x => x.Snapshot()).Returns(System.Array.Empty<SoilHealthSnapshotEntry>());
 
             var mockCompostApp = new Mock<ICompostApplicationService>();
             mockCompostApp.Setup(x => x.TryApplyCompost(It.IsAny<StardewValley.GameLocation>(), It.IsAny<Microsoft.Xna.Framework.Vector2>())).Returns(true);
@@ -1043,9 +1044,9 @@ namespace LivingRoots.Tests
             // Assert
             Assert.True(result);
             mockMultiplayer.Verify(m => m.SendMessage(
-                It.IsAny<object>(),
+                It.IsAny<SoilHealthSyncMessage>(),
                 ModController.SoilHealthSyncMessageType,
-                It.Is<string[]>(ids => ids != null && ids.Length == 1),
+                It.IsAny<string[]>(),
                 It.IsAny<long[]>()), Times.AtLeastOnce());
         }
 
@@ -1060,7 +1061,7 @@ namespace LivingRoots.Tests
             _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
             _mockHelper.Setup(x => x.Multiplayer).Returns(mockMultiplayer.Object);
             _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns("save1");
-            _mockSoilHealthService.Setup(x => x.Snapshot()).Returns(new System.Collections.Generic.Dictionary<string, float>());
+            _mockSoilHealthService.Setup(x => x.Snapshot()).Returns(System.Array.Empty<SoilHealthSnapshotEntry>());
 
             var mockCompostApp = new Mock<ICompostApplicationService>();
             mockCompostApp.Setup(x => x.TryApplyCompost(It.IsAny<StardewValley.GameLocation>(), It.IsAny<Microsoft.Xna.Framework.Vector2>())).Returns(false);
@@ -1079,7 +1080,7 @@ namespace LivingRoots.Tests
             // Assert
             Assert.False(result);
             mockMultiplayer.Verify(m => m.SendMessage(
-                It.IsAny<object>(),
+                It.IsAny<SoilHealthSyncMessage>(),
                 ModController.SoilHealthSyncMessageType,
                 It.IsAny<string[]>(),
                 It.IsAny<long[]>()), Times.Never());
