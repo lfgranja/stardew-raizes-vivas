@@ -7,6 +7,7 @@ using LivingRoots.Controllers;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Interfaces;
 using LivingRoots.Services;
+using LivingRoots.Tests.Fixtures;
 using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
@@ -1035,11 +1036,10 @@ namespace LivingRoots.Tests
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object, mockCompostApp.Object, hostAtomicLockService: mockLock.Object);
             controller.IsMainPlayerCheck = () => true;
 
-            var location = new Mock<StardewValley.GameLocation>();
-            location.SetupGet(l => l.Name).Returns("Farm");
+            var fixture = new GameLocationFixture("Farm", isFarm: true);
 
             // Act
-            bool result = controller.TryApplyCompostWithLock(location.Object, new Microsoft.Xna.Framework.Vector2(1, 1), 123L);
+            bool result = controller.TryApplyCompostWithLock(fixture.Location, new Microsoft.Xna.Framework.Vector2(1, 1), 123L);
 
             // Assert
             Assert.True(result);
@@ -1071,11 +1071,10 @@ namespace LivingRoots.Tests
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object, mockCompostApp.Object, hostAtomicLockService: mockLock.Object);
             controller.IsMainPlayerCheck = () => false;
 
-            var location = new Mock<StardewValley.GameLocation>();
-            location.SetupGet(l => l.Name).Returns("Farm");
+            var fixture = new GameLocationFixture("Farm", isFarm: true);
 
             // Act
-            bool result = controller.TryApplyCompostWithLock(location.Object, new Microsoft.Xna.Framework.Vector2(1, 1), 123L);
+            bool result = controller.TryApplyCompostWithLock(fixture.Location, new Microsoft.Xna.Framework.Vector2(1, 1), 123L);
 
             // Assert
             Assert.False(result);
