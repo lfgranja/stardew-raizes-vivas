@@ -21,6 +21,14 @@ hits="$(
     ':(exclude)specs/014-soil-health-crop-quality/tasks.md' \
     ':(exclude)**/evidence-bundle-*' \
     ':(exclude)**/gate3-evidence/*' \
+    ':(exclude).specify/assessments/*' \
+    ':(exclude).specify/bugs/*' \
+    ':(exclude).specify/research/*' \
+    ':(exclude)specs/001-soil-health-visualization/*' \
+    ':(exclude)specs/004-playable-compost-loop/*' \
+    ':(exclude)specs/005-soil-health-to-crop-growth/*' \
+    ':(exclude)specs/009-soil-tier-multiplier-corrections/*' \
+    ':(exclude)docs/design-system/REALITY-CHECK-EVALUATION.md' \
     2>/dev/null || true
 )"
 
