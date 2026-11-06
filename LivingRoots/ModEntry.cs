@@ -181,7 +181,7 @@ namespace LivingRoots
             try
             {
                 var harvestQualityService = new HarvestQualityService();
-                HarvestPatches.Initialize(this.Monitor, harvestQualityService, soilHealthService, visualizationService);
+                HarvestPatches.Initialize(this.Monitor, harvestQualityService, soilHealthService);
                 // Skip Harmony patching in test environments
                 if (this.ModManifest != null && !string.IsNullOrEmpty(this.ModManifest.UniqueID) && this.Monitor != null)
                 {
