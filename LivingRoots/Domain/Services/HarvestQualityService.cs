@@ -111,7 +111,7 @@ namespace LivingRoots.Domain.Services
                     HarvestFeedbackFlags.Poor,
                     new[] { new HarvestFeedbackMessage("marker-poor", "Soil too poor for quality crops") },
                     "cancel",
-                    1000,
+                    ModConstants.HarvestFeedbackDurationMs,
                     isMainPlayer);
             }
 
@@ -141,7 +141,7 @@ namespace LivingRoots.Domain.Services
                     flags,
                     messages,
                     "coin",
-                    1000,
+                    ModConstants.HarvestFeedbackDurationMs,
                     isMainPlayer);
             }
 
