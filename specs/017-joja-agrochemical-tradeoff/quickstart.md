@@ -65,7 +65,7 @@ Adjust filters to actual 017 test names.
 - **Expected:** parity for touched keys; before-use framing and after-use/refusal messages are clear and cozy/non-punitive.
 
 ## Host-only Gate 3 (optional, if runner/scenario added later)
-If implementation adds a headless verification scenario, run via `scripts/verify-scenario.sh` following repo protocol and record 3 required signals. Classify result as **host-only `machine-pass` only** unless separate human `verified`/D1 attestation exists.
+If implementation adds a headless verification scenario, run via `scripts/verify-scenario.sh` following repo protocol and record 3 required signals. Classify result as **host-only `machine-pass` only** unless separate human `verified`/D1 attestation exists. If a host-only end-to-end run is **infeasible/unavailable**, do not fabricate a run: record infeasibility + reason, claim only completed lower-level evidence (e.g., automated), and keep human `verified`/D1 pending. Preserve prior evidence provenance (no rewrites/retroactive promotion).
 
 ## Not validated by this MVP quickstart
 - Real-farmhand D1 convergence.
@@ -73,3 +73,4 @@ If implementation adds a headless verification scenario, run via `scripts/verify
 - Vanilla fertilizer-hook/Harmony behavior (explicitly out of MVP).
 - Monoculture.
 - Final balance/tuning (`P=10` provisional).
+- SC-004 comprehension playtest (qualitative follow-up if run with minimal protocol: participant/context scope, before/immediately-after-first-use timing, identify shortcut + soil-health cost, binary pass requiring both, evidence note with sample size/pass count; pending if not run).

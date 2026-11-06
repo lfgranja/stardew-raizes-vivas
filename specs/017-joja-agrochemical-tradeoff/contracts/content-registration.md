@@ -30,9 +30,15 @@ Player-facing text introduced/changed for 017 MUST be localized for supported la
 
 ## Telegraphed tradeoff copy requirements
 - **Before:** player can understand this is an industrial shortcut with soil cost.
-- **After:** player can understand soil was harmed by that choice and outcome is bounded/recoverable through existing systems.
-- **Refusal:** player understands why action did not apply; no false success.
-- Tone: informative/cozy/non-punitive ("recompensar, nunca pregar" spirit), no shaming.
+- **After (immediate, attributed, legible):** feedback is shown immediately after a supported authoritative outcome is known and attributes the soil consequence to the Joja/agrochemical choice (C1 confirmation/proxy only). Required content elements: action/choice attribution, soil-health consequence direction, and no implication of a mechanical 014/015/vanilla-tier buff.
+- **Unknown-baseline legibility (C2):** when prior soil was unmeasured/`NaN`, player-facing feedback MUST remain understandable and MUST NOT imply prior measurement history, a prior known soil value, or an invisible no-op. Copy/feedback should describe the current measured outcome/result without inventing a remembered baseline.
+- **Boundary honesty:** when the observed effect is reduced by valid bounds/tier context (e.g., soil already at minimum), feedback/outcome remains honest and non-misleading; it does not claim full nominal penalty impact as if it occurred.
+- **Refusal (minimum structure):** refusal feedback states (1) the refusal cause/class in player-understandable terms, (2) that the agrochemical was not applied / no success occurred, and (3) a next-step implication where relevant (e.g., host-only MVP path, invalid target). No false success.
+- **Bounded/recoverable player legibility:** player-facing requirements communicate that the consequence is bounded and recoverable through existing soil-care systems (no irreversible dead-end implied), distinct from internal numeric validity rules.
+- **Accessibility/legibility (player-facing, text/procedural):** shortcut, cost, attribution, and refusal information is presented as clear text/procedural feedback; critical outcome meaning is not conveyed by color/asset presence alone. Tone guidance does not replace this legibility requirement.
+- **Fallback:** if intended player-facing feedback cannot be shown through the normal path, the system MUST still preserve a non-misleading outcome record/log-safe diagnostic path and MUST NOT present false success. Implementation may choose the minimal safe fallback consistent with SMAPI/game constraints; absence of a HUD message is not success.
+- **Localization parity (touched 017 keys):** `default.json`, `en.json`, and `pt.json` contain parity for new/touched keys. Parity includes equivalent meaning for shortcut/cost/attribution/refusal and equivalent cozy/non-punitive tone intent; exact wording may differ by locale.
+- Tone: informative/cozy/non-punitive ("recompensar, nunca pregar" spirit), no shaming or moralizing. Acceptable copy states facts/consequences and options; unacceptable copy insults, shames, or implies player failure.
 
 ## Out of scope
 - Full Joja narrative/economy/content expansion.

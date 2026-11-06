@@ -7,7 +7,7 @@ Defines the behavioral contract for applying the single Joja/agrochemical input 
 - **Domain interface:** `LivingRoots/Domain/Interfaces/` (e.g., `IAgrochemicalApplicationService`), consistent with `ICompostApplicationService`/`IMulchApplicationService`.
 - **Implementation:** `LivingRoots/Services/`.
 - **Composition:** `LivingRoots/ModEntry.cs` only (no `new` services outside composition root).
-- **Controller orchestration:** `LivingRoots/Controllers/ModController.cs` performs authority/support checks, per-tile lock, refusal display, and FR-009 broadcast.
+- **Controller orchestration (authoritative orchestration owner):** `LivingRoots/Controllers/ModController.cs` performs authority/support checks (C4), per-tile lock acquire/release, player-item presence checks where required by interception, refusal/confirmation display, held-item consumption, and FR-009 broadcast. The controller is the owner of the MVP authoritative success/failure side-effect ordering that touches SMAPI/game/UI boundaries.
 
 ## Behavioral contract
 
@@ -17,13 +17,12 @@ Defines the behavioral contract for applying the single Joja/agrochemical input 
 - Current soil state via `ISoilHealthService`.
 
 ### Success (host, eligible, authoritative)
-1. Validate target/input eligibility. Invalid targets return refusal (no mutation/consumption/false success).
-2. Resolve baseline (C2): `baseline = IsNaN(currentSoil) ? ModConstants.MaxSoilHealth : currentSoil`.
-3. Compute penalty (C3): `postPenalty = clamp(baseline - ModConstants.AgrochemicalSoilPenalty, MinSoilHealth, MaxSoilHealth)` where provisional penalty is `10f`.
-4. Write **explicit measured** soil value via absolute `ISoilHealthService.SetSoilHealth(locationName, tile, postPenalty)`.
-5. Consume held agrochemical input only as part of authoritative success ordering (never on refusal/conflict/unsupported path).
-6. Provide immediate confirmation result/message key for controller/UI feedback (C1: confirmation only, no 014/015 mechanical buff).
-7. Controller broadcasts `BroadcastSoilHealthSnapshotIfHost()` after successful host commit (FR-009 compatibility).
+Ordering is requirements-level (not a timing API guarantee) and MUST preserve C4/FR-008 invariants:
+
+1. **Controller preconditions (before domain mutation):** confirm supported authority/path (host-only MVP; farmhand unsupported → refusal), acquire per-tile lock / resolve first-wins contention, and validate the held agrochemical input/eligible target as required. Any refusal at this stage occurs **before** soil mutation, item consumption, or false-success feedback.
+2. **Service/domain evaluation (under lock, authoritative context only):** resolve baseline (C2) `baseline = IsNaN(currentSoil) ? ModConstants.MaxSoilHealth : currentSoil`; compute penalty (C3) `postPenalty = clamp(baseline - ModConstants.AgrochemicalSoilPenalty, MinSoilHealth, MaxSoilHealth)` where provisional penalty is `10f`.
+3. **Service/domain commit:** write **explicit measured** soil value via absolute `ISoilHealthService.SetSoilHealth(locationName, tile, postPenalty)`. The service MUST NOT rely on `UpdateHealth` negative delta from unknown/unmeasured state.
+4. **Controller post-commit side effects (only after authoritative measured commit):** consume the held agrochemical input, emit immediate confirmation/attribution feedback (C1: confirmation/proxy only, no 014/015 mechanical buff), then broadcast `BroadcastSoilHealthSnapshotIfHost()` (FR-009 compatibility). Consumption/feedback/broadcast MUST NOT occur on refusal/conflict/unsupported path.
 
 ### Refusal
 Return explicit refusal with a stable message key/reason. Refusals MUST:
@@ -31,6 +30,7 @@ Return explicit refusal with a stable message key/reason. Refusals MUST:
 - not consume the item;
 - not emit false-success feedback;
 - be localized via normal translation boundary.
+- be attributable to a refusal class with ordering preserved (C4 unsupported path/farmhand refusals occur before domain mutation/consumption/feedback).
 
 #### Refusal classes (minimum)
 | Class | Example cause | Ordering |
@@ -48,10 +48,13 @@ Return explicit refusal with a stable message key/reason. Refusals MUST:
 - **Idempotence/safety:** repeated valid applications each apply the same bounded immediate rule (MVP no hidden stacking/cooldown state). Conflicts are explicit first-wins refusals.
 
 ## Result shape (guidance)
-Implementation may use `bool + out messageKey` (mulch pattern) or an equivalent explicit result type. The shape MUST expose:
-- success/failure;
+Implementation may use a service result + controller orchestration (preferred for MVP clarity) or an equivalent explicit result type. The shape MUST expose:
+- success/failure/refusal class (or equivalent explicit state);
 - localized message key (refusal reason or confirmation/attribution key);
-- enough information for controller tests to assert no mutation/consumption/broadcast on refusal.
+- computed/measured values needed for controller assertions when useful (e.g., baseline used, post-penalty value), without exposing internal implementation details as requirements;
+- enough information for controller tests to assert: no mutation/consumption/broadcast/false-success on refusal; consumption and FR-009 broadcast occur only after authoritative measured commit on success.
+
+The service/domain result MUST NOT be interpreted as having consumed the held item or emitted UI/broadcast side effects by itself; those remain controller-owned MVP side effects.
 
 ## Test contract
 Automated tests MUST cover:
@@ -60,7 +63,7 @@ Automated tests MUST cover:
 - min-bound clamp;
 - refusal before mutation/consumption for unsupported farmhand path;
 - no `UpdateHealth(-P)` on penalty path;
-- no broadcast on refusal/failure;
-- host success lock acquire/release and FR-009 broadcast;
+- no broadcast, no item consumption, and no success feedback on refusal/failure;
+- host success lock acquire/release, item consumption only after authoritative measured commit, and FR-009 broadcast after commit;
 - lock contention explicit refusal;
 - i18n key/message contract for new player-facing text.

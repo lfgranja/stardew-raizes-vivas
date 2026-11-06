@@ -6,7 +6,7 @@
 
 ## Summary
 
-Deliver the first controlled GDD destructive-decision slice: one Joja-framed agrochemical input, applied through a **mod-intercepted** path (no vanilla fertilizer hook), that gives an immediate **confirmation/proxy-only** short-term gain (C1:A; no 014/015 quality/growth or vanilla fertilizer-tier mechanical buff) and applies an immediate bounded soil penalty (**provisional `P=10`**, tunable, C3:A). Unmeasured/`NaN` soil uses an explicit neutral baseline of **`MaxSoilHealth` (100)** and records an explicit measured post-penalty result via absolute soil write (C2:B). Shared-farm mutation is **host-authoritative MVP**; unsupported farmhand attempts are refused **before** soil mutation, item consumption, or false-success feedback (C4:A), with FR-009 snapshot sync compatibility. Scope is small (1 item/rule), TDD-first, no mandatory new assets, honest Gate 3 (host-only `machine-pass` only when evidenced; no D1/`verified` overclaim).
+Deliver the first controlled GDD destructive-decision slice: one Joja-framed agrochemical input, applied through a **mod-intercepted** path (no vanilla fertilizer hook), that gives an immediate **confirmation/proxy-only** short-term gain (C1:A; no 014/015 quality/growth or vanilla fertilizer-tier mechanical buff) and applies an immediate bounded soil penalty (**provisional `P=10`**, tunable, C3:A). Unmeasured/`NaN` soil uses an explicit neutral baseline of **`MaxSoilHealth` (100)** and records an explicit measured post-penalty result via absolute soil write (C2:B). Shared-farm mutation is **host-authoritative MVP**; controller orchestration owns authority/lock/refusal, held-item consumption, confirmation display, and FR-009 broadcast, while the service/domain path commits the explicit measured soil write in authoritative context. Unsupported farmhand attempts are refused **before** soil mutation, item consumption, or false-success feedback (C4:A); consumption/broadcast occur only after authoritative measured commit. Scope is small (1 item/rule), TDD-first, no mandatory new assets, honest Gate 3 (host-only `machine-pass` only when evidenced/feasible; infeasible runs recorded, never fabricated; no D1/`verified` overclaim; provenance preserved; claims auditable). SC-004 comprehension is playtest follow-up evidence with a minimal protocol when run.
 
 ## Technical Context
 
@@ -17,7 +17,7 @@ Deliver the first controlled GDD destructive-decision slice: one Joja-framed agr
 **Target Platform**: Stardew Valley 1.6 + SMAPI (Windows/macOS/Linux where game/SMAPI supported); development/build requires `GamePath`  
 **Project Type**: SMAPI mod (domain-driven layered codebase)  
 **Performance Goals**: Negligible overhead on player input/intercept and soil mutation paths; reuse existing per-tile lock/snapshot patterns; no heavy per-tick work  
-**Constraints**: DDD layering (Domain/Services/Controllers); `ModEntry.cs` sole composition root; host-authoritative shared farm state (Constitution VI); no Harmony fertilizer hook in MVP; no `HoeDirt.fertilizer` writes; no 014/015 double-counting; explicit measured soil writes for C2 (never negative `UpdateHealth` from unknown); first-wins conflict refusal; `ModConstants` for tunables; i18n parity for touched keys (`default/en/pt`); Gate 3 honesty  
+**Constraints**: DDD layering (Domain/Services/Controllers); `ModEntry.cs` sole composition root; host-authoritative shared farm state (Constitution VI); no Harmony fertilizer hook in MVP; no `HoeDirt.fertilizer` writes; no 014/015 double-counting; explicit measured soil writes for C2 (never negative `UpdateHealth` from unknown); controller-owned authoritative side-effect ordering (lock/refusal before mutation/consumption; consume/feedback/FR-009 after measured commit); first-wins conflict refusal; `ModConstants` for tunables; i18n meaning/tone parity for touched keys (`default/en/pt`); non-misleading fallback; Gate 3 honesty/provenance/claim records  
 **Scale/Scope**: 1 controlled MVP input/rule; localized soil penalty on eligible targets; host-supported authoritative path; farmhand unsupported path refused; provisional `P=10`
 
 ## Constitution Check
@@ -34,7 +34,7 @@ Deliver the first controlled GDD destructive-decision slice: one Joja-framed agr
 | VI. Multiplayer First-Class (NON-NEGOTIABLE) | **PASS with explicit MVP boundary** | Host-authoritative mutation, no second source of truth, per-tile lock/first-wins, explicit refusal (inventory intact/no unsafe mutation), FR-009 snapshot sync compatibility. Unsupported farmhand path explicitly refused in MVP; D1 live farmhand convergence is follow-up evidence, not claimed. |
 
 **Gate result (pre-Phase 0): PASS.**  
-**Gate result (post-Phase 1): PASS.** Design artifacts keep host authority, C2 absolute measured write, C4 refusal-before-mutation/consumption, C1 no-double-counting, and honest Gate 3 boundaries explicit.
+**Gate result (post-Phase 1, checklist-resolution): PASS.** Design artifacts keep host authority, C2 absolute measured write + legibility, C4 refusal-before-mutation/consumption, controller/service ordering ownership, C1 no-double-counting, SC-004 playtest protocol framing, and honest Gate 3/provenance/claim boundaries explicit.
 
 ## Phase 0: Research (complete)
 

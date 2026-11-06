@@ -49,16 +49,20 @@ Player-visible and system-recorded result.
 
 | Outcome | Required effects | Forbidden effects |
 |---|---|---|
-| `Success` (host, eligible) | Explicit shortcut confirmation feedback; bounded soil penalty applied as explicit measured value; item consumed according to authoritative success ordering; host snapshot sync broadcast after successful commit. | No mechanical buff to 014/015 quality/growth; no vanilla fertilizer-tier interaction; no `HoeDirt.fertilizer` write; no Harmony fertilizer hook. |
-| `Refusal` | Explicit localized refusal reason; no misleading success. For unsupported farmhand path: refusal before any soil mutation, item consumption, or false-success feedback. | No unsafe partial soil mutation; no local-only authoritative soil change; no silent no-op presented as success. |
+| `Success` (host, eligible) | Explicit shortcut confirmation feedback (attributed, honest for bounds/C2 unknown baseline); bounded soil penalty applied as explicit measured value; item consumed by controller **only after** authoritative measured commit; host snapshot sync broadcast by controller after successful commit. | No mechanical buff to 014/015 quality/growth; no vanilla fertilizer-tier interaction; no `HoeDirt.fertilizer` write; no Harmony fertilizer hook; no implication of prior measurement history for C2 unknown baseline. |
+| `Refusal` | Explicit localized refusal reason (cause + no-success/non-application + next-step implication where relevant); no misleading success. For unsupported farmhand path: refusal before any soil mutation, item consumption, or false-success feedback. | No unsafe partial soil mutation; no local-only authoritative soil change; no silent no-op presented as success; no item consumption/broadcast/false-success. |
 
 ### 6. Verification Evidence (planning reference)
 | Level | Meaning |
 |---|---|
 | Automated | Unit/controller/property-style tests for logic/invariants. |
-| Host-only machine evidence | End-to-end run in host-only context; **not** human `verified`, **not** D1. |
+| Host-only machine evidence / `machine-pass` | End-to-end run in host-only context with required signals/evidence; **not** human `verified`, **not** D1. |
+| Infeasible/unavailable (planned) | Planned run cannot execute; record infeasibility + reason and claim only completed lower-level evidence. Not pass/fail. |
 | Human `verified` | Separate human attestation. |
 | D1 farmhand convergence | Separate real-farmhand MP attestation; follow-up. |
+| Qualitative follow-up evidence | Structured playtest/legibility evidence (e.g., SC-004 protocol when run); does not substitute for required automated/Gate 3 claim levels. |
+
+**Claim record:** `claim + evidence class + source artifact/path + status (+ scope note)`. Provenance: never rewrite/retroactively promote prior artifacts.
 
 ## Validation rules
 
@@ -76,15 +80,15 @@ Player-visible and system-recorded result.
 
 ```text
 ApplicationAttempt
-  -> [unsupported authority / ineligible target / missing input / conflict]
+  -> [controller: unsupported authority / ineligible target / missing input / conflict]
        => Refusal (explicit, before mutation/consumption/false-success)
-  -> [host + eligible + lock acquired]
-       => ResolveBaseline(priorMeasured | unmeasured=>100)
-       => Compute postPenalty = clamp(baseline - P, 0, 100), P=10 provisional
-       => WriteMeasuredSoil(postPenalty)   // absolute measured write
-       => ConsumeInput (authoritative success ordering)
-       => EmitConfirmationFeedback
-       => BroadcastSoilHealthSnapshotIfHost (FR-009)
+  -> [controller: host + eligible + lock acquired + authoritative preconditions pass]
+       => Service/domain: ResolveBaseline(priorMeasured | unmeasured=>100)
+       => Service/domain: Compute postPenalty = clamp(baseline - P, 0, 100), P=10 provisional
+       => Service/domain: WriteMeasuredSoil(postPenalty)   // absolute measured write
+       => Controller (post-commit only): ConsumeInput
+       => Controller (post-commit only): EmitConfirmationFeedback (attributed, honest)
+       => Controller (post-commit only): BroadcastSoilHealthSnapshotIfHost (FR-009)
        => Success
 ```
 
