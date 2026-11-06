@@ -491,6 +491,8 @@ public class SingleMultiplayerParityInvariantsTests
         // farmhand clients must not mutate shared farm state locally.
         "if (StardewModdingAPI.Context.IsMainPlayer)",
         "BroadcastSoilHealthSnapshotIfHost",
+        // T131: testable seam for host-authority gates (same semantics as Context.IsMainPlayer).
+        "IsMainPlayerCheck",
         "OnModMessageReceived",
         // Spec 014 T124: host-scoped broadcast flag for shared harvest feedback.
         "IsMainPlayerSafe",
