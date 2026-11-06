@@ -1035,6 +1035,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object, mockCompostApp.Object, hostAtomicLockService: mockLock.Object);
             controller.IsMainPlayerCheck = () => true;
+            controller.GetCurrentDay = () => 5;
 
             var fixture = new GameLocationFixture("Farm", isFarm: true);
 
@@ -1070,6 +1071,7 @@ namespace LivingRoots.Tests
 
             var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object, mockCompostApp.Object, hostAtomicLockService: mockLock.Object);
             controller.IsMainPlayerCheck = () => false;
+            controller.GetCurrentDay = () => 5;
 
             var fixture = new GameLocationFixture("Farm", isFarm: true);
 
