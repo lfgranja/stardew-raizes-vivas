@@ -1,103 +1,41 @@
-# Gate 3 Evidence — Living Roots (feature 014)
+# Gate 3 Evidence — Spec 014 Soil Health → Crop Quality (T130)
 
-- **Session date**: 2026-11-05
-- **Scenario**: `specs/014-soil-health-crop-quality/scenarios/soil-health-harvest-quality.scenario.json`
-- **Bundle pointer**: `evidence-bundle-run-20261105T175047Z-04bf/`
-- **Run ID**: `run-20261105T175047Z-04bf`
-- **Commit**: `d6656499b7c39c44c1816f7311367141817cee90`
-- **Verdict**: `pass` (`signalsComplete=true`, `signalsAgree=true`, `thresholdsOk=true`)
-- **Honesty level**: R (runtime evidence; `verified` remains human-only, spec 010 T148)
-- **Offline verifier**: `scripts/verify-evidence-bundle.sh evidence-bundle-run-20261105T175047Z-04bf` → exit 0
+**Status:** `machine-pass` evidence recorded for host-only spec 014 scenario. **NOT `verified`** (human E pending per `VERIFICATION_PROTOCOL.md` §3; agent must not write `verified`).  
+**T109 D1 (real second player) remains BLOCKED** — headless runner is host-only; FR-009/A8 replicated deterministic sync implemented and unit-tested, but live farmhand convergence is not attested here.
 
-## What the run did
+## T130 verification commands (2026-11-06)
 
-The real-host headless runner launched SMAPI under Xvfb with no human input,
-loaded the `farm-year1-day5` milestone save, and drove the verification mod
-through the scenario queue. The mod pinned soil health on the anchor tile,
-selected four deterministic probes with the whole-map nearest-first scanner,
-planted `LongPhaseCrop` on each, forced maturity, set Poor/Moderate/Healthy
-soil health per probe, and harvested each crop through the real
-Harmony-patched `Crop.harvest` path.
+| Check | Result |
+|---|---|
+| `GamePath=/home/luis/stardew-assemblies dotnet build Stardew-LivingRoots.sln --configuration Release` | PASS (0 errors) |
+| `GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --no-build --configuration Release` | PASS — **1739 passed, 0 failed, 4 skipped** (1743 total) |
+| `dotnet format LivingRoots/LivingRoots.csproj --verify-no-changes --no-restore` | PASS (workspace warnings only) |
+| `dotnet format whitespace` applied to affected projects; import order fixed in `ModController.cs` | PASS |
+| `bash scripts/tests/test-band-scale-31-71.sh` (34/67 outside migration history) | PASS |
 
-Probe conditions: Farming level temporarily 10, fertilizer tier 0,
-`HarvestMinQuality=0`, `HarvestMaxQuality=3`, inventory reduced to one null
-slot so the main item and the extra item are unambiguous.
+## Spec 014 Gate 3 scenario
 
 Command:
-
 ```bash
-./scripts/verify-scenario.sh \
-  --scenario specs/014-soil-health-crop-quality/scenarios/soil-health-harvest-quality.scenario.json \
-  --no-acquire \
-  --game-path "/home/luis/.local/share/Steam/steamapps/common/Stardew Valley" \
-  --skip-build
+./scripts/verify-scenario.sh --scenario specs/014-soil-health-crop-quality/scenarios/soil-health-harvest-quality.scenario.json \
+  --no-acquire --game-path "/home/luis/.local/share/Steam/steamapps/common/Stardew Valley" --skip-build
 ```
 
-Runner exit: 0.
+Evidence bundle: `evidence-bundle-run-20261106T005420Z-13f3` (duplicate run `evidence-bundle-run-20261106T005231Z-605c` also produced `verdict: pass`).
 
-## Harvest matrix
+Bundle verification:
+```bash
+scripts/verify-evidence-bundle.sh evidence-bundle-run-20261106T005420Z-13f3
+# exit 0
+```
 
-Recorded in `artifacts/crop-phase-dump.json` under `harvests[]`.
+`verdict.json`: `{"verdict":"pass","actualVerdict":"pass","signalsComplete":true,"signalsAgree":true,"thresholdsOk":true,"expectedVerdict":"pass","farmhandBreach":false,"evaluatorMissing":false}`
 
-| Probe | Tile | Health | Tier | Vanilla quality | Quality roll | Extra roll | Harvest quality | Extra count | Extra quality |
-|---|---|---|---|---|---|---|---|---|---|
-| poor | 59,15 | 10 | poor | 1 | 0.4127 | 0.1830 | **0** | 0 | — |
-| moderate | 56,10 | 50 | moderate | 1 | 0.2829 | 0.5364 | **1** | 0 | — |
-| healthy-quality | 56,15 | 90 | healthy | 0 | 0.2744 | 0.5313 | **1** | 0 | — |
-| healthy-extra | 46,15 | 90 | healthy | 0 | 0.7222 | 0.0847 | **0** | **1** | **0** |
+`evaluation/actual.json` (key harvest-quality signals): poor forces quality 0 (vanilla 1, no extra); moderate preserves vanilla quality 1 (no extra); healthy upgrades quality 0→1 (`healthyQualityRoll` 0.2744) and grants extra harvest count 1 with extra quality 0 (`healthyExtraRoll` 0.0847). Threshold predicates in `evaluation/predicates/` match scenario expectations.
 
-Interpretation:
+## Honest caveats
 
-- **Poor**: the tile's vanilla quality would have been 1; the patch forced the
-  harvested item to quality 0. No extra harvest.
-- **Moderate**: vanilla quality 1 was preserved unchanged. No extra harvest.
-- **Healthy quality**: vanilla quality would have stayed 0 because the roll
-  0.2744 is above the vanilla probability 0.21. The roll lies inside the
-  `+0.08` boosted window `[0.21, 0.29)`, and the harvested item came out at
-  quality 1.
-- **Healthy extra**: the crop data has `ExtraHarvestChance=0`, so vanilla
-  grants no extra item. The extra roll 0.0847 lies inside the `+0.10` window
-  `[0, 0.10)`, and the harvest produced exactly one extra item at quality 0.
-
-## Gate 3 signals
-
-1. **Soil-health state delta** — `artifacts/soil-health-before-after.json`
-2. **Crop-phase delta / harvest records** — `artifacts/crop-phase-dump.json`
-   (plus `crop-phase-before.json` and `crop-phase-cross-check.json`)
-3. **SMAPI log** — `artifacts/smapi-log.txt`
-
-Key log lines:
-
-- `299`: `harvest matrix selected 4 probes from 4188 candidates`
-- `300`: `harvest probe poor at 59,15 (vanilla=1, qualityRoll=0.4127, extraRoll=0.183)`
-- `302`: `Living Roots: Poor soil — harvest quality forced to normal.`
-- `303`: `harvest probe moderate at 56,10 (vanilla=1, qualityRoll=0.2829, extraRoll=0.5364)`
-- `305`: `harvest probe healthy-quality at 56,15 (vanilla=0, qualityRoll=0.2744, extraRoll=0.5313)`
-- `309`: `harvest probe healthy-extra at 46,15 (vanilla=0, qualityRoll=0.7222, extraRoll=0.0847)`
-- `311`: `Living Roots: Extra harvest triggered.`
-- `312`: `Living Roots: Living soil — quality boost applied.`
-
-All 12 scenario predicates passed (`evaluation/thresholds.jsonl`).
-
-## Promotion
-
-The runner promoted the GATE3 block in
-`specs/014-soil-health-crop-quality/test.md`, `ROADMAP.md`, and
-`COMPLETION_SUMMARY.md` from `partial` to `machine-pass` through the single
-owner `scripts/lib/promotion.sh`. Three transitions were appended to
-`specs/010-headless-verification-runner/promotion-triggers.json`. The runner
-never wrote `verified`.
-
-## Scope and remaining gaps
-
-- **Host-only.** The scenario declares `playerRole: host`; the second-player
-  multiplayer D1 leg was not exercised. `verified` still requires a
-  maintainer's honesty-level E review (spec 010 T148), and the multiplayer
-  leg remains open as T109 below.
-- **Single deterministic sample per tier.** The run proves the outcome for the
-  selected tiles, not a quality distribution. `SC-009` has a separate
-  unit-level statistical test, but `SC-001` (quality distributions across
-  tiers) is not established by this run and remains a documented gap.
-- **Growth loop.** This scenario measures harvest quality and extra yield; the
-  growth loop is covered separately by the spec 004 machine-pass bundle
-  `evidence-bundle-run-20261105T053313Z-535d`.
+- **Not `verified`**: agent-recorded machine-pass only; no human E confirmation.
+- **T109 D1 blocked**: real second-player/farmhand convergence not tested by headless runner.
+- **Bundle metadata sparse**: `manifest.json`/`claims.json` do not populate all spec-016 honesty/claim fields in this run (`honestyClass`/`scenarioId`/`thresholdResults` absent from manifest top-level; `claims.json` has empty claims) — verifier still accepted the bundle (exit 0). Interpret as scenario machine-pass with limited claim metadata.
+- Pre-existing unrelated worktree state was not introduced by this convergence; all changes above were committed atomically on `dev`.
