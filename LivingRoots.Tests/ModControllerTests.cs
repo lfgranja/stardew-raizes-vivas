@@ -1011,5 +1011,79 @@ namespace LivingRoots.Tests
         }
 
         #endregion
+    
+
+        [Fact]
+        public void TryApplyCompostWithLock_OnHostSuccess_BroadcastsSoilHealthSync()
+        {
+            // Arrange
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+            var mockMultiplayer = new Mock<IMultiplayerHelper>();
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+            _mockHelper.Setup(x => x.Multiplayer).Returns(mockMultiplayer.Object);
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns("save1");
+            _mockSoilHealthService.Setup(x => x.Snapshot()).Returns(new System.Collections.Generic.Dictionary<string, float>());
+
+            var mockCompostApp = new Mock<ICompostApplicationService>();
+            mockCompostApp.Setup(x => x.TryApplyCompost(It.IsAny<StardewValley.GameLocation>(), It.IsAny<Microsoft.Xna.Framework.Vector2>())).Returns(true);
+            var mockLock = new Mock<IHostAtomicLockService>();
+            mockLock.Setup(x => x.TryAcquireLock(It.IsAny<string>(), It.IsAny<Microsoft.Xna.Framework.Vector2>(), It.IsAny<long>())).Returns(true);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object, mockCompostApp.Object, hostAtomicLockService: mockLock.Object);
+            controller.IsMainPlayerCheck = () => true;
+
+            var location = new Mock<StardewValley.GameLocation>();
+            location.SetupGet(l => l.Name).Returns("Farm");
+
+            // Act
+            bool result = controller.TryApplyCompostWithLock(location.Object, new Microsoft.Xna.Framework.Vector2(1, 1), 123L);
+
+            // Assert
+            Assert.True(result);
+            mockMultiplayer.Verify(m => m.SendMessage(
+                It.IsAny<object>(),
+                ModController.SoilHealthSyncMessageType,
+                It.Is<string[]>(ids => ids != null && ids.Length == 1),
+                It.IsAny<long[]>()), Times.AtLeastOnce());
+        }
+
+        [Fact]
+        public void TryApplyCompostWithLock_OnFarmhandOrFailure_DoesNotBroadcastSoilHealthSync()
+        {
+            // Arrange
+            var mockGameLoopEvents = new Mock<IGameLoopEvents>();
+            var mockCommandHelper = new Mock<ICommandHelper>();
+            var mockMultiplayer = new Mock<IMultiplayerHelper>();
+            _mockHelper.Setup(x => x.Events).Returns(CreateModEventsMock(mockGameLoopEvents.Object).Object);
+            _mockHelper.Setup(x => x.ConsoleCommands).Returns(mockCommandHelper.Object);
+            _mockHelper.Setup(x => x.Multiplayer).Returns(mockMultiplayer.Object);
+            _mockSaveIdProvider.Setup(x => x.GetSaveId()).Returns("save1");
+            _mockSoilHealthService.Setup(x => x.Snapshot()).Returns(new System.Collections.Generic.Dictionary<string, float>());
+
+            var mockCompostApp = new Mock<ICompostApplicationService>();
+            mockCompostApp.Setup(x => x.TryApplyCompost(It.IsAny<StardewValley.GameLocation>(), It.IsAny<Microsoft.Xna.Framework.Vector2>())).Returns(false);
+            var mockLock = new Mock<IHostAtomicLockService>();
+            mockLock.Setup(x => x.TryAcquireLock(It.IsAny<string>(), It.IsAny<Microsoft.Xna.Framework.Vector2>(), It.IsAny<long>())).Returns(true);
+
+            var controller = new ModController(_mockHelper.Object, _mockMonitor.Object, _mockManifest.Object, _mockSoilHealthService.Object, _mockSaveIdProvider.Object, _mockCompostingBinService.Object, _mockSoilDecayService.Object, mockCompostApp.Object, hostAtomicLockService: mockLock.Object);
+            controller.IsMainPlayerCheck = () => false;
+
+            var location = new Mock<StardewValley.GameLocation>();
+            location.SetupGet(l => l.Name).Returns("Farm");
+
+            // Act
+            bool result = controller.TryApplyCompostWithLock(location.Object, new Microsoft.Xna.Framework.Vector2(1, 1), 123L);
+
+            // Assert
+            Assert.False(result);
+            mockMultiplayer.Verify(m => m.SendMessage(
+                It.IsAny<object>(),
+                ModController.SoilHealthSyncMessageType,
+                It.IsAny<string[]>(),
+                It.IsAny<long[]>()), Times.Never());
+        }
+
     }
 }

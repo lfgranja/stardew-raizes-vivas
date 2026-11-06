@@ -89,6 +89,7 @@ namespace LivingRoots.Controllers
         // strictly for replicated farm state sync (not scenario injection), so
         // CrossModCommunicationGuardTests allows it in LivingRoots.
         internal const string SoilHealthSyncMessageType = "SoilHealthSync";
+        internal Func<bool> IsMainPlayerCheck { get; set; } = () => StardewModdingAPI.Context.IsMainPlayer;
         // T008 (spec 009): idempotency storage for the growth modifier (reuse SoilDecayService pattern).
         private readonly Dictionary<string, string> _soilGrowthProcessedDays = new();
         private readonly object _soilGrowthLock = new();
@@ -1939,7 +1940,7 @@ namespace LivingRoots.Controllers
 
             try
             {
-                if (!StardewModdingAPI.Context.IsMainPlayer)
+                if (!IsMainPlayerCheck())
                 {
                     // Farmhand clients receive host-synced soil health (FR-009/A8);
                     // they must not mutate shared farm state locally (T119).
@@ -3056,7 +3057,7 @@ namespace LivingRoots.Controllers
                 return;
             }
 
-            if (StardewModdingAPI.Context.IsMainPlayer)
+            if (IsMainPlayerCheck())
             {
                 return;
             }
@@ -3083,7 +3084,7 @@ namespace LivingRoots.Controllers
 
         internal void BroadcastSoilHealthSnapshotIfHost()
         {
-            if (!StardewModdingAPI.Context.IsMainPlayer || _helper?.Multiplayer == null)
+            if (!IsMainPlayerCheck() || _helper?.Multiplayer == null)
             {
                 return;
             }
