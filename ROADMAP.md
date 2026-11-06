@@ -220,7 +220,7 @@ All mod mechanics will revolve around "Soil Health," a new property for each til
 | BUILDS: rotation / polyculture / green manure / animals | ❌ | four unimplemented |
 | BUILDS: mulch (soil cover) | ✅ | spec 013 — 1 object + 1 recipe + decay hook, 7-day duration, 0f decay multiplier |
 
-> **Banding mismatch to settle in the next spec:** the roadmap says 0-30 / 31-70 / 71-100; the implemented (spec 001) bands are `[0,34) / [34,67) / [67,100]` in `LivingRoots/Domain/Visualization/HealthCategory.cs`. Nothing reconciles them yet.
+> **Banding reconciled (spec 014 FR-013/T127):** governing scale is Cornell CSHA `[0,31) / [31,71) / [71,100]` in `LivingRoots/Domain/Visualization/HealthCategory.cs` and `Constants.cs`. Historical 34/67 and 0-30/31-70/71-100 notes are migration history.
 
 ---
 
@@ -357,7 +357,7 @@ Before building any of the above, the roadmap's promises were checked against th
 The highest-impact, lowest-effort item available now is **Soil Health → Crop Quality** — entry point `/speckit.implement` on specs 014/015 with the briefing `briefings/soil-tier-outcomes-harvest-feedback.md` as input. It is the *second half* of the soil-health promise: a harvest-time hook (`Crop.harvest` is virtual and patchable) that turns Living Soil (71–100%) into silver/gold/iridium quality and extra-harvest probability. Cost is higher than mulch (Harmony or a `DayEnding` pass, plus a per-tile quality roll), but it is the *only* remaining item that makes Living Soil visibly pay off at harvest, and it reuses the existing per-tile persistence + overlay. Agronomic grounding: quality/yield gains at high soil health are the most player-visible payoff of the whole mod.
 
 **Secondary quick wins (low effort, high leverage):**
-- Close the 3 open doc-only convergence tasks of spec 005 (T117–T119): reconcile the band scale table in `Domain/AGENTS.md`, `IColorInterpolationService.cs` XML doc and `Domain/Visualization/AGENTS.md` from spec-001 half-open `[0,34)/[34,67)/[67,100]` to ROADMAP.md `[0,30]/[31,70]/[71,100]`. ~30 min, no code, unblocks "converged" status for spec 005.
+- Spec 005 T117–T119 superseded/resolved by spec 014 FR-013/T127 (Cornell CSHA 31/71 is the governing scale).
 - Run the Gate 3 in-game session (spec 009 T052) to capture the 3 signals and close the "0 in-game runs" gap — ~30 min with a Stardew install, no code.
 - Close the open bug `test-harness-hangs` (`/specify.bug.assess`) — low effort, unblocks CI verification.
 
