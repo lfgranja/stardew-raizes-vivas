@@ -1,9 +1,8 @@
 # Phase 13 Completion Summary
 
-> **Atualização 2026-11-04:** This summary previously described a stale state (1447/26/1473). The verified 2026-11-04 state is:
-> **1621 passed / 1 failed (pre-existing `ProductionSourceGuardTests`, `ModController.cs:399`) / 4 skipped** (1626 total); **0 build errors**,
-> **format clean**, and **Gate 3 spec 004 reached `machine-pass`** (bundle `evidence-bundle-run-20261104T082444Z-4acd/`, honesty R).
-> The tables below are preserved as historical context for the T114–T145 wave; T133 remains a documented API limitation (tag-based vs numeric Category IDs).
+> **Atualização 2026-11-06 (verificada):** build Release **0 erros** (`GamePath=/home/luis/stardew-assemblies`), testes **1747 passed / 0 failed / 4 skipped** (1751), format limpo nos projetos verificados, band-scale 31/71 passou. Gate 3 atual (marker abaixo): **machine-pass** host-only, bundle `evidence-bundle-run-20261106T014750Z-14b6` (honesty R, verifier exit 0) — **NÃO `verified` humano/E**. Spec 014 está **131/133** (`tasks.md`): T131–T133 completos; **T109 D1** (farmhand real) bloqueado; **T110** (contrato histórico 34/67) deferido. Estado git (snapshot): `dev` `50cc892` local, 99 commits à frente de `origin/dev` no momento desta nota; sem PRs abertos.
+>
+> **Atualização 2026-11-04 (histórica):** 1621/1/4 (1626); Gate 3 spec 004 machine-pass `evidence-bundle-run-20261104T082444Z-4acd/`. As tabelas abaixo preservam contexto histórico da onda T114–T145; T133 permanece limitação documentada de API.
 
 ## Objective
 Complete remaining Phase 13 implementation tasks (T114-T145) for feature 004-playable-compost-loop using wave-based subagent delegation with TDD red-first approach.
@@ -37,11 +36,11 @@ All implementation tasks T127-T141 have code changes verified in git history fro
 | **T114-T126** | 🟡 Red-phase test tasks | 13 test tasks blocking implementation per strict TDD - must be written and observed failing before implementation can proceed |
 | **T133** | 🟡 Fundamental API limitation | Machine rules use tag-based filtering (`RequiredTags`); OrganicWasteValidator uses numeric Category IDs (-74/-75/-79/-80/-81). The `compostable_item` trigger achieves partial parity (validator-accepted items pass Machine rule) but reverse direction (tag-carrying items rejected by validator) cannot be resolved without item definition changes |
 
-## 📊 Current Test Suite State (atualizado 2026-11-04)
-- **1621 passed**, **1 failed (pre-existing `ProductionSourceGuardTests`, `ModController.cs:399`)**, **4 skipped**, **1626 total**
-- **0 build errors**, **0 format violations** (`dotnet format --verify-no-changes` exits 0)
-- **84/84 ArchitecturalPlanTests pass** ✅
-- Gates T142-T145 require T114-T126 red-phase tests to be addressed first
+## 📊 Current Test Suite State (atualizado 2026-11-06)
+- **1747 passed**, **0 failed**, **4 skipped**, **1751 total** (`dotnet test --no-build -c Release`, `GamePath=/home/luis/stardew-assemblies`)
+- **0 build errors** (Release), formato verificado limpo nos projetos checados
+- Spec 014 Gate 3 machine-pass host-only registrado em `specs/014-soil-health-crop-quality/gate3-evidence.md` (bundles `759d`, `14b6`; **não `verified`**)
+- Pendências de verificação: **T109 D1** (farmhand real, bloqueado), confirmação humana/E conforme `VERIFICATION_PROTOCOL.md`
 
 ## 26 Test Failures Breakdown (histórico — pré-2026-11-04)
 - **T133 parity tests** (2): Machine tag-based vs numeric Category ID definitions - fundamental API limitation
@@ -99,15 +98,15 @@ The `compostable_item` trigger change improves one direction (items with the tag
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261105T175047Z-04bf
-- **Commit**: d6656499b7c39c44c1816f7311367141817cee90
-- **Date**: 2026-11-05T17:52:34Z
+- **Run ID**: run-20261106T014750Z-14b6
+- **Commit**: 3f5235cda6798206956e2196a99d0c99833194ad
+- **Date**: 2026-11-06T01:48:37Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261105T175047Z-04bf/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261105T175047Z-04bf/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261105T175047Z-04bf/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261105T175047Z-04bf/`
+  - SoilHealthState delta: `evidence-bundle-run-20261106T014750Z-14b6/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261106T014750Z-14b6/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261106T014750Z-14b6/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261106T014750Z-14b6/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
