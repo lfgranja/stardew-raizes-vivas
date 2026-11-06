@@ -54,6 +54,16 @@ scripts/verify-evidence-bundle.sh evidence-bundle-run-20261106T014215Z-759d  # e
 
 `evidence-bundle-run-20261106T014215Z-759d` `verdict.json`: `{"verdict":"pass","actualVerdict":"pass","signalsComplete":true,"signalsAgree":true,"thresholdsOk":true,"expectedVerdict":"pass","farmhandBreach":false,"evaluatorMissing":false}`. `evaluation/actual.json` matches expected host-only signals (poor quality 0 / vanilla 1, no extra; moderate quality 1, no extra; healthy quality 1, extra 1, healthy extra quality 0; deterministic rolls `healthyQualityRoll` 0.2744, `healthyExtraRoll` 0.0847).
 
+## `/speckit.implement` rerun (2026-11-06, spec 016 runner)
+
+**machine-pass evidence only; NOT `verified`.**
+```bash
+./scripts/verify-scenario.sh --scenario specs/014-soil-health-crop-quality/scenarios/soil-health-harvest-quality.scenario.json \
+  --no-acquire --game-path "/home/luis/.local/share/Steam/steamapps/common/Stardew Valley" --skip-build
+scripts/verify-evidence-bundle.sh evidence-bundle-run-20261106T014750Z-14b6  # exit 0
+```
+`evidence-bundle-run-20261106T014750Z-14b6` `verdict.json`: pass / actual pass, `signalsComplete/Agree/thresholdsOk: true`, `farmhandBreach: false`.
+
 ## Honest caveats
 
 - **Not `verified`**: agent-recorded machine-pass only; no human E confirmation.
