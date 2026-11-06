@@ -17,15 +17,13 @@ namespace LivingRoots.Patches
         private static IMonitor? monitor;
         private static IHarvestQualityService? service;
         private static ISoilHealthService? soilHealthService;
-        private static IVisualizationService? visualizationService;
-
+        
         private sealed class HarvestState
         {
             public bool Skip;
             public HarvestQualityDecision Decision;
             public HarvestQualityInputs Inputs;
             public Farmer? Who;
-            public bool IsInventoryFull;
             public HoeDirt? Soil;
             public int XTile;
             public int YTile;
@@ -33,12 +31,11 @@ namespace LivingRoots.Patches
             public IReadOnlyList<InventorySlotSnapshot>? BeforeSnapshot;
         }
 
-        public static void Initialize(IMonitor modMonitor, IHarvestQualityService harvestService, ISoilHealthService? soilService = null, IVisualizationService? vizService = null)
+        public static void Initialize(IMonitor modMonitor, IHarvestQualityService harvestService, ISoilHealthService? soilService = null)
         {
             monitor = modMonitor ?? throw new ArgumentNullException(nameof(modMonitor));
             service = harvestService ?? throw new ArgumentNullException(nameof(harvestService));
             soilHealthService = soilService;
-            visualizationService = vizService;
         }
 
         public static bool Harvest_Prefix(int xTile, int yTile, HoeDirt soil, JunimoHarvester junimoHarvester, bool isForcedScytheHarvest, ref object __state)
@@ -146,7 +143,7 @@ namespace LivingRoots.Patches
                     var data = crop.GetData();
                     if (data != null)
                     {
-                        harvestMaxIncreasePerFarmingLevel = data.HarvestMaxIncreasePerFarmingLevel;
+                        harvestMaxIncreasePerFarmingLevel = (int)data.HarvestMaxIncreasePerFarmingLevel;
                     }
                 }
                 catch
@@ -197,7 +194,6 @@ namespace LivingRoots.Patches
                 state.Decision = decision;
                 state.Inputs = inputs;
                 state.Who = who;
-                state.IsInventoryFull = isInventoryFull;
             }
             catch (Exception ex)
             {
@@ -301,7 +297,7 @@ namespace LivingRoots.Patches
                                     if (extra != null)
                                     {
                                         extra.Quality = 0;
-                                        bool added = TryAddToTarget(extra, state.Who, junimoHarvester, targetInventory);
+                                        bool added = TryAddToTarget(extra, state.Who, junimoHarvester);
                                         if (!added)
                                         {
                                             DropAsDebris(extra, soil, xTile, yTile);
@@ -406,7 +402,7 @@ namespace LivingRoots.Patches
             return 0.0f;
         }
 
-        private static bool TryAddToTarget(Item extra, Farmer? who, JunimoHarvester? junimoHarvester, IList<Item?>? targetInventory)
+        private static bool TryAddToTarget(Item extra, Farmer? who, JunimoHarvester? junimoHarvester)
         {
             try
             {
