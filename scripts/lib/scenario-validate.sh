@@ -134,7 +134,7 @@ AllowedFields = {
 def sentinel_ok(sentinel, field):
     if sentinel == "SENTINEL_UNTOUCHED_99999":
         return field == "phaseDays"
-    if sentinel in ("NAN_HEALTH", "MISSING_KEY", "HEALTH_LE_ZERO", "POOR_POSITIVE_LT_34"):
+    if sentinel in ("NAN_HEALTH", "MISSING_KEY", "HEALTH_LE_ZERO", "POOR_POSITIVE_LT_31", "POOR_POSITIVE_LT_34"):
         return field == "healthTier"
     if sentinel == "PHASE_MINUS_ONE":
         return field == "currentPhase"
