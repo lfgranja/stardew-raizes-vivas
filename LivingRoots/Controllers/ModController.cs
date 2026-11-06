@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Interfaces;
 using LivingRoots.Domain.Visualization;
@@ -6,10 +9,6 @@ using LivingRoots.Services.Visualization;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
-
-using System;
-using System.Collections.Generic;
-using System.Threading;
 
 namespace LivingRoots.Controllers
 {
