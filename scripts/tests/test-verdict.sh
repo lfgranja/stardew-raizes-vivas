@@ -126,4 +126,92 @@ else
     skip "verdict_evaluate_bundle" "evaluator dll or dotnet"
 fi
 
+# verdict_evaluate_bundle: harvest matrix fields are derived from the after
+# dump and evaluated with the same predicate engine (v3 scenario vocabulary).
+if [[ -f "$v_eval_dll" ]] && command -v dotnet >/dev/null 2>&1; then
+    hbundle="$HARNESS_SANDBOX/harvest-verdict-bundle"
+    mkdir -p "$hbundle/artifacts"
+    printf '{"locations":{"Farm":{"60,15":{"before":90,"after":90,"delta":0}}}}\n' > "$hbundle/artifacts/soil-health-before-after.json"
+    printf '{"agree":true,"divergences":[]}\n' > "$hbundle/artifacts/crop-phase-cross-check.json"
+    printf 'Soil growth modifier elapsed: 1 ms\n' > "$hbundle/artifacts/smapi-log.txt"
+    python3 - "$hbundle/artifacts/crop-phase-before.json" "$hbundle/artifacts/crop-phase-dump.json" <<'PY'
+import json, sys
+crop = {
+    "location": "Farm", "tileX": 60, "tileY": 15, "tileKey": "60,15",
+    "seedId": "LivingRoots.Verification.LongPhaseCrop", "isForageCrop": False,
+    "indexOfHarvest": 24, "currentPhase": 4, "dayOfCurrentPhase": 0,
+    "phaseDays": [4, 4, 4, 4, 99999], "basePhaseDays": [4, 4, 4, 4],
+    "fullyGrown": True, "dead": False, "soilHealth": 90,
+    "healthTier": "healthy", "soilHealthState": "measured", "isSentinelPhase": False,
+}
+harvests = [
+    {"location": "Farm", "tileX": 61, "tileY": 15, "tileKey": "61,15", "probe": "poor",
+     "soilHealth": 10, "healthTier": "poor", "qualityRoll": 0.15, "extraRoll": 0.5,
+     "vanillaQuality": 1, "mainItemId": "24", "mainQuality": 0, "extraCount": 0,
+     "extraQuality": None, "harvested": True},
+    {"location": "Farm", "tileX": 62, "tileY": 15, "tileKey": "62,15", "probe": "moderate",
+     "soilHealth": 50, "healthTier": "moderate", "qualityRoll": 0.25, "extraRoll": 0.5,
+     "vanillaQuality": 1, "mainItemId": "24", "mainQuality": 1, "extraCount": 0,
+     "extraQuality": None, "harvested": True},
+    {"location": "Farm", "tileX": 63, "tileY": 15, "tileKey": "63,15", "probe": "healthy-quality",
+     "soilHealth": 90, "healthTier": "healthy", "qualityRoll": 0.22, "extraRoll": 0.5,
+     "vanillaQuality": 0, "mainItemId": "24", "mainQuality": 1, "extraCount": 0,
+     "extraQuality": None, "harvested": True},
+    {"location": "Farm", "tileX": 64, "tileY": 15, "tileKey": "64,15", "probe": "healthy-extra",
+     "soilHealth": 90, "healthTier": "healthy", "qualityRoll": 0.9, "extraRoll": 0.05,
+     "vanillaQuality": 0, "mainItemId": "24", "mainQuality": 0, "extraCount": 1,
+     "extraQuality": 0, "harvested": True},
+]
+before = {"schemaVersion": 1, "dayKey": "spring_1", "capturedAtUtc": "2026-11-05T00:00:00Z",
+          "isMainPlayer": True, "locationsProcessed": 1, "elapsedMilliseconds": 1,
+          "done": True, "crops": [dict(crop)], "harvests": []}
+after = {"schemaVersion": 1, "dayKey": "spring_1", "capturedAtUtc": "2026-11-05T00:00:01Z",
+         "isMainPlayer": True, "locationsProcessed": 1, "elapsedMilliseconds": 2,
+         "done": True, "crops": [dict(crop)], "harvests": harvests}
+json.dump(before, open(sys.argv[1], "w"), indent=2)
+json.dump(after, open(sys.argv[2], "w"), indent=2)
+PY
+    hscn="$HARNESS_SANDBOX/harvest-verdict.scenario.json"
+    python3 - "$hscn" <<'PY'
+import json, sys
+def eq(field, value):
+    return {"signal": "cropPhaseDelta", "predicate": {"op": "cmp", "left": field, "operator": "eq", "right": value}}
+d = {
+    "schemaVersion": 3, "scenarioId": "harvest-verdict", "featureSlug": "014-soil-health-crop-quality",
+    "testMdPath": "specs/014-soil-health-crop-quality/test.md", "summary": "harvest verdict bundle",
+    "playerRole": "host", "minimumGameVersion": "1.6.14",
+    "environment": {"gameVersion": "1.6.14", "smapiVersion": "4.4.0", "modVersion": "0.4.0",
+                    "apiVersion": "1.0.0", "saveId": "runner-self-test",
+                    "config": {"saveMode": "save", "headless": True, "skipBuild": True}},
+    "milestoneSave": "runner-self-test",
+    "initCommands": [{"kind": "console", "command": "lr_set_soil_health 60 15 90"}],
+    "steps": [{"action": "harvest", "target": "60,15"}],
+    "thresholds": [
+        eq("poorHarvestQuality", 0), eq("moderateHarvestQuality", 1), eq("healthyHarvestQuality", 1),
+        eq("poorExtraCount", 0), eq("moderateExtraCount", 0), eq("healthyExtraCount", 1),
+        eq("healthyExtraQuality", 0), eq("poorVanillaQuality", 1), eq("moderateVanillaQuality", 1),
+        eq("healthyVanillaQuality", 0),
+        {"signal": "cropPhaseDelta", "predicate": {"op": "between", "field": "healthyQualityRoll", "min": 0.2, "max": 0.28, "tolerance": 0.0001}},
+        {"signal": "cropPhaseDelta", "predicate": {"op": "between", "field": "healthyExtraRoll", "min": 0.0, "max": 0.1, "tolerance": 0.0001}},
+    ],
+    "expectedSignals": ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"],
+    "expectedVerdict": "pass", "rngSeed": 1, "time": "2026-11-05T00:00:00Z",
+    "determinism": {"idempotent": True, "declaredSources": []}, "scenarioKind": "positive",
+}
+json.dump(d, open(sys.argv[1], "w"))
+PY
+    RUNNER_EVALUATOR_DLL="$v_eval_dll" call_runner_func verdict_evaluate_bundle "$hbundle" "$hscn"
+    assert_fn_code 0 "harvest verdict bundle passes"
+    assert_json_eq "$hbundle/verdict.json" '.verdict' "pass" "harvest bundle verdict pass"
+    assert_json_eq "$hbundle/evaluation/actual.json" '.poorHarvestQuality' "0" "derived poor quality"
+    assert_json_eq "$hbundle/evaluation/actual.json" '.moderateHarvestQuality' "1" "derived moderate quality"
+    assert_json_eq "$hbundle/evaluation/actual.json" '.healthyHarvestQuality' "1" "derived healthy quality"
+    assert_json_eq "$hbundle/evaluation/actual.json" '.healthyExtraCount' "1" "derived healthy extra count"
+    assert_json_eq "$hbundle/evaluation/actual.json" '.healthyExtraQuality' "0" "derived healthy extra quality"
+    assert_json_eq "$hbundle/evaluation/actual.json" '.healthyQualityRoll' "0.22" "derived healthy quality roll"
+    assert_json_eq "$hbundle/evaluation/actual.json" '.healthyExtraRoll' "0.05" "derived healthy extra roll"
+else
+    skip "harvest verdict bundle" "evaluator dll or dotnet"
+fi
+
 finish_tests

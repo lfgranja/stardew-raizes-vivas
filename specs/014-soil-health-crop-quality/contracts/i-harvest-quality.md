@@ -10,12 +10,13 @@
 - **Fallback**: Harmony only if public fields are insufficient for harvest-quality interception.
 - **Verification gate**: member names (`Crop.harvest`, `Crop.dayUpdate`, `HoeDirt.dayUpdate`, `Object.Quality`) must be verified against the 1.6.3/1.6.14 binary via a `GamePath` build before writing hooks. No hook code is written until this gate passes.
 
-## 2. Host Authority (FR-009)
+## 2. Replicated Deterministic Roll (FR-009/A8)
 
-- Quality roll and extra-harvest roll execute **once on the host** (`Context.IsMainPlayer`/`IsMasterGame`).
-- Result persists via the Stardew save (host's save = the save); client never rolls.
-- Client re-syncs on next `DayStarted`.
-- Divergence rule: host state wins.
+- Soil health is **host-authoritative** and synced host→client on `DayStarted` and on compost application via `helper.Multiplayer.SendMessage`/`ModMessageReceived` (main-mod sync channel; not scenario injection).
+- The harvest quality and extra-harvest modifier runs **client-locally on whichever client triggers the harvest**, reading the synced soil health. SV's single-harvest guarantee ensures the extra-harvest roll fires once.
+- The host takes the same local path (no message round-trip when `Context.IsMainPlayer`).
+- Results are deterministic across clients given shared inputs (soil health, DaysPlayed, uniqueID, tile, fertilizer net field). Divergences are transient; client re-syncs soil health on next `DayStarted`. Host state wins for shared soil health.
+- Strict host-only proxying of the synchronous harvest path is rejected (A8).
 
 ## 3. Tier Rules (FR-001, FR-002, FR-003)
 

@@ -63,16 +63,18 @@ if not isinstance(data, dict):
     fail("/")
 
 # Schema validation (Draft 2020-12) if available.
+schema_version = data.get("schemaVersion", 2)
+schema_file = "scenario-v3.schema.json" if schema_version == 3 else "scenario.schema.json"
 schema_candidates = []
 d = os.path.dirname(os.path.abspath(scenario))
 while True:
-    schema_candidates.append(os.path.join(d, "specs", "010-headless-verification-runner", "contracts", "scenario.schema.json"))
-    schema_candidates.append(os.path.join(d, "contracts", "scenario.schema.json"))
+    schema_candidates.append(os.path.join(d, "specs", "010-headless-verification-runner", "contracts", schema_file))
+    schema_candidates.append(os.path.join(d, "contracts", schema_file))
     parent = os.path.dirname(d)
     if parent == d:
         break
     d = parent
-schema_candidates.append(os.path.join(os.getcwd(), "specs", "010-headless-verification-runner", "contracts", "scenario.schema.json"))
+schema_candidates.append(os.path.join(os.getcwd(), "specs", "010-headless-verification-runner", "contracts", schema_file))
 schema_path = None
 for c in schema_candidates:
     if os.path.isfile(c):
@@ -126,13 +128,13 @@ if isinstance(steps, list):
 # thresholds
 AllowedFields = {
     "soilHealthStateDelta": {"soilHealth", "healthTier", "soilHealthState"},
-    "cropPhaseDelta": {"phaseDays", "currentPhase", "dayOfCurrentPhase", "fullyGrown", "dead", "indexOfHarvest", "healthTier", "soilHealthState"},
+    "cropPhaseDelta": {"phaseDays", "currentPhase", "dayOfCurrentPhase", "fullyGrown", "dead", "indexOfHarvest", "healthTier", "soilHealthState", "poorHarvestQuality", "moderateHarvestQuality", "healthyHarvestQuality", "poorExtraCount", "moderateExtraCount", "healthyExtraCount", "healthyExtraQuality", "poorVanillaQuality", "moderateVanillaQuality", "healthyVanillaQuality", "healthyQualityRoll", "healthyExtraRoll"},
     "smapiLog": {"elapsedMilliseconds", "eventName", "locationsProcessed", "isMainPlayer"},
 }
 def sentinel_ok(sentinel, field):
     if sentinel == "SENTINEL_UNTOUCHED_99999":
         return field == "phaseDays"
-    if sentinel in ("NAN_HEALTH", "MISSING_KEY", "HEALTH_LE_ZERO", "POOR_POSITIVE_LT_34"):
+    if sentinel in ("NAN_HEALTH", "MISSING_KEY", "HEALTH_LE_ZERO", "POOR_POSITIVE_LT_31", "POOR_POSITIVE_LT_34"):
         return field == "healthTier"
     if sentinel == "PHASE_MINUS_ONE":
         return field == "currentPhase"

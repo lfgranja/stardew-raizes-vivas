@@ -484,10 +484,19 @@ public class SingleMultiplayerParityInvariantsTests
     /// </summary>
     private static readonly string[] DocumentedHostAuthorityGates = new[]
     {
-        // Spec 005 (FR-001/FR-006): host-authoritative DayEnding soil-growth
-        // gate. Matched by the production line itself (not a line number) so
-        // unrelated edits elsewhere in ModController cannot stale this entry.
-        "if (!StardewModdingAPI.Context.IsMainPlayer)",
+        // Spec 005 (FR-001/FR-006): host-authoritative DayEnding/DayStarted
+        // gates. Matched by the production line itself (not a line number).
+        "if (!StardewModdingAPI.Context.IsMainPlayer",
+        // Spec 014 T118/T119: host→client soil-health sync receive ignores host;
+        // farmhand clients must not mutate shared farm state locally.
+        "if (StardewModdingAPI.Context.IsMainPlayer)",
+        "BroadcastSoilHealthSnapshotIfHost",
+        // T131: testable seam for host-authority gates (same semantics as Context.IsMainPlayer).
+        "IsMainPlayerCheck",
+        "OnModMessageReceived",
+        // Spec 014 T124: host-scoped broadcast flag for shared harvest feedback.
+        "IsMainPlayerSafe",
+        "return Context.IsMainPlayer",
         // Spec 010 (FR-009): the SoilGrowthModifierCompleted event carries the
         // host-authority flag to the dev/CI capture mod; these are data flow,
         // not a divergent player-count branch.

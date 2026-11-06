@@ -437,6 +437,6 @@ Task: "T100 [US4] VERIFICATION: Principle VI multiplayer verified"
 
 ## Phase 14: Convergence
 
-- [ ] T117 Update `Domain/AGENTS.md` band scale table from spec-001 half-open [0,34)/[34,67)/[67,100] to ROADMAP.md [0,30]/[31,70]/[71,100] per FR-004 (contradicts)
-- [ ] T118 Update `Domain/IColorInterpolationService.cs` XML doc comment from half-open spec-001 scale to ROADMAP.md [0,30]/[31,70]/[71,100] per FR-004 (contradicts)
-- [ ] T119 Update `Domain/Visualization/AGENTS.md` band scale table from spec-001 half-open [0-33/34-66/67-100] to ROADMAP.md [0,30]/[31,70]/[71,100] per FR-004 (contradicts)
+- [x] T117 Update band scale references to Cornell CSHA 31/71 (`[0,31)/[31,71)/[71,100]`) — superseded/resolved by spec 014 FR-013/T127 (original 0-30/31-70/71-100 target replaced by governing 31/71 scale)
+- [x] T118 Update `Domain/IColorInterpolationService.cs` XML doc comment to Cornell CSHA 31/71 — superseded/resolved by spec 014 FR-013/T127
+- [x] T119 Update `Domain/Visualization/AGENTS.md` band scale table to Cornell CSHA 31/71 — superseded/resolved by spec 014 FR-013/T127

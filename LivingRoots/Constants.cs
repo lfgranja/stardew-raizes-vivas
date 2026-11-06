@@ -10,11 +10,14 @@ namespace LivingRoots
         public const float MinSoilHealth = 0f;
         public const float MaxSoilHealth = 100f;  // Changed from 10 to 100 to align with documentation
 
-        // Soil Health → Crop Growth Constants (spec 005)
+        // Soil Health → Crop Quality Constants (spec 005/014, FR-012 "first-pass, tunable")
         public const float SoilGrowthPoorMultiplier = 1.15f;
         public const float SoilGrowthHealthyMultiplier = 0.85f;
-        public const float SoilQualityHealthyBoost = 0.08f;
-        public const float SoilExtraHarvestHealthyBoost = 0.10f;
+        public const float SoilQualityHealthyBoost = 0.08f; // first-pass, tunable
+        public const float SoilExtraHarvestHealthyBoost = 0.10f; // first-pass, tunable
+        public const int HarvestFeedbackDurationMs = 1000; // first-pass, tunable
+        public const float HarvestFeedbackTextOffsetX = 32f; // first-pass, tunable
+        public const int DefaultBackpackSlots = 36; // first-pass, tunable fallback
 
         // Security Constants
         public const int MaxTilesPerLocation = 500; // Maximum number of tiles allowed per location to prevent DoS attacks

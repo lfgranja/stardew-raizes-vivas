@@ -30,6 +30,9 @@ public class CompostingBinStateData
     /// <summary>Game day when waste was added via ITimeProvider.TotalDays, or null.</summary>
     public int? InputTimestamp { get; set; }
 
+    /// <summary>Idempotency flag: true once compost output has been granted for this Ready bin.</summary>
+    public bool OutputGranted { get; set; }
+
     /// <summary>Maturation level (1-5).</summary>
     [JsonIgnore]
     public int MaturationLevel { get; set; } = 1;

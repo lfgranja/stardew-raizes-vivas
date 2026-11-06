@@ -93,6 +93,19 @@ call_runner_func injection_build_queue "$phase_scn" "$step_q" steps
 assert_fn_code 0 "steps phase builds"
 grep -q '^lr_insert_waste ' "$step_q" && pass "steps phase has insert" || fail "steps phase insert" "missing"
 grep -q '^lr_plant_crop ' "$step_q" && fail "steps phase leak" "init leaked" || pass "steps phase excludes init"
+# harvest step maps to the verification-only harvest matrix command
+harvest_scn="$HARNESS_SANDBOX/harvest.scenario.json"
+python3 - "$phase_scn" "$harvest_scn" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1]))
+d["scenarioId"]="harvest-map"
+d["steps"]=[{"action":"harvest","target":"-10,5"}]
+json.dump(d,open(sys.argv[2],"w"))
+PY
+harvest_q="$HARNESS_SANDBOX/harvest.queue"
+call_runner_func injection_build_queue "$harvest_scn" "$harvest_q" steps
+assert_fn_code 0 "harvest phase builds"
+grep -qx 'lr_harvest_matrix -10 5' "$harvest_q" && pass "harvest maps to lr_harvest_matrix" || fail "harvest mapping" "missing lr_harvest_matrix"
 call_runner_func injection_build_queue "$phase_scn" "$HARNESS_SANDBOX/bad.queue" bogus
 assert_fn_code 14 "unknown phase exits 14"
 

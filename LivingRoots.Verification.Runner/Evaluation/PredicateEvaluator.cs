@@ -127,7 +127,25 @@ namespace LivingRoots.Verification.Runner.Evaluation
 
         private static bool IsNumericField(string field)
         {
-            return field is "soilHealth" or "phaseDays" or "currentPhase" or "dayOfCurrentPhase" or "indexOfHarvest" or "elapsedMilliseconds" or "locationsProcessed";
+            return field is "soilHealth"
+                or "phaseDays"
+                or "currentPhase"
+                or "dayOfCurrentPhase"
+                or "indexOfHarvest"
+                or "elapsedMilliseconds"
+                or "locationsProcessed"
+                or "poorHarvestQuality"
+                or "moderateHarvestQuality"
+                or "healthyHarvestQuality"
+                or "poorExtraCount"
+                or "moderateExtraCount"
+                or "healthyExtraCount"
+                or "healthyExtraQuality"
+                or "poorVanillaQuality"
+                or "moderateVanillaQuality"
+                or "healthyVanillaQuality"
+                or "healthyQualityRoll"
+                or "healthyExtraRoll";
         }
 
         private static bool IsBooleanField(string field)
@@ -436,7 +454,7 @@ namespace LivingRoots.Verification.Runner.Evaluation
                     return true;
                 case "HEALTH_LE_ZERO":
                     return dict.TryGetValue("healthTier", out var ht3) && ht3?.ToString() == "nonParticipant";
-                case "POOR_POSITIVE_LT_34":
+                case "POOR_POSITIVE_LT_31" or "POOR_POSITIVE_LT_34":
                     return dict.TryGetValue("healthTier", out var ht4) && ht4?.ToString() == "poor";
                 case "PHASE_MINUS_ONE":
                     if (!TryGetNumeric(dict, "currentPhase", out var cp, out _))

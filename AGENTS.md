@@ -53,7 +53,8 @@ lefthook: pre-commit runs `dotnet format --verify-no-changes` + shell syntax/sta
 - `LivingRoots/Domain/` — contracts (`Interfaces/`) + pure logic (`Services/`, `Visualization/`); no SMAPI using statements.
 - `LivingRoots/Services/` — application services implementing domain interfaces; persistence via `ModDataService` + `SanitizePathSegments()`.
 - `LivingRoots/Controllers/ModController.cs` — SMAPI event orchestrator; atomic bit-flag state machine; `ExecuteWithConcurrencyGuard` for re-entrancy; snapshot data outside locks, then do I/O.
-- `LivingRoots/Patches/HarvestPatches.cs` + seam `Domain/IHarvestQualityService.cs` — Harmony patches via code API only (static methods, try/catch fallback).
+- `LivingRoots/Patches/HarvestPatches.cs` + seam `Domain/IHarvestQualityService.cs` — Harmony harvest patches (static, try/catch fallback); scope guards (forage/Qi/fibre) and tier outcomes; feedback via `Services/Visualization/HarvestFeedbackTextures.cs` (deterministic 16×16 procedural pixels, headless-safe lazy `Texture2D`).
+- `LivingRoots/Controllers/ModController.cs` also owns FR-009/A8 soil-health sync: host broadcasts snapshot on `DayStarted` and after successful compost apply; farmhands apply via `ModMessageReceived` (`SoilHealthSyncMessage`), host guards farm-state mutation.
 - `LivingRoots.Tests/` — xUnit + Moq + FsCheck + Microsoft.Coyote; one file per subject `{Subject}Tests.cs`.
 - `scripts/verify-scenario.sh` — headless verification runner (spec 010): launches SMAPI under Xvfb, injects a file queue into `LivingRoots.Verification`, captures 3 signals (soil-health delta, crop phase/phaseDays delta, SMAPI log), evaluates verdict, assembles a schema-valid evidence bundle with detached SHA-256 anchor, and promotes `machine-pass` via `scripts/lib/promotion.sh`.
 - `scripts/lib/` — shared runner libraries (evidence, save, signals, verdict, promotion, retention, cleanup, quit, etc.). `ModEntry.cs` is the sole composition root for services; `scripts/lib/evidence.sh` is the sole manifest producer's input assembler.
@@ -89,7 +90,8 @@ Gate 3 (end-to-end) applies to any change touching runnable code: real SMAPI ses
 | New console command | `ModController.RegisterConsoleCommand()` |
 | New render effect | `Services/Visualization/` via `IVisualizationService` (+ `Domain/Visualization/`) |
 | Security validation | `ModDataService.SanitizePathSegments()` |
-| Harmony harvest seam | `Patches/HarvestPatches.cs` + `Domain/IHarvestQualityService.cs` |
+| Harmony harvest seam / feedback | `Patches/HarvestPatches.cs`, `Domain/IHarvestQualityService.cs`, `Services/Visualization/HarvestFeedbackTextures.cs` |
+| Soil-health MP sync (FR-009/A8) | `Controllers/ModController.cs` (`BroadcastSoilHealthSnapshotIfHost`, `OnModMessageReceived`) |
 | Composition / wiring | `ModEntry.cs` |
 | Verification runner | `scripts/verify-scenario.sh` + `scripts/lib/` (evidence, save, signals, verdict, promotion) |
 | Evidence bundle contract | `specs/010-headless-verification-runner/contracts/evidence-bundle.schema.json` |

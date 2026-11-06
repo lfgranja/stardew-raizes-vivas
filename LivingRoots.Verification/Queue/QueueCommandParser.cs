@@ -107,6 +107,10 @@ namespace LivingRoots.Verification.Queue
                     min = 4;
                     max = 5;
                     return true;
+                case "lr_harvest_matrix":
+                    min = 2;
+                    max = 2;
+                    return true;
                 case "lr_advance_days":
                 case "lr_dump_crop_phase":
                 case "lr_dump_soil_health":
@@ -173,6 +177,14 @@ namespace LivingRoots.Verification.Queue
                     if (args.Count == 5 && !IsSafeLabel(args[4]))
                     {
                         error = "bad-location";
+                        return false;
+                    }
+
+                    return true;
+                case "lr_harvest_matrix":
+                    if (!IsInt(args[0]) || !IsInt(args[1]))
+                    {
+                        error = "bad-number";
                         return false;
                     }
 

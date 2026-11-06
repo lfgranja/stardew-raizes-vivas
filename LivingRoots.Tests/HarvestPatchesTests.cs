@@ -38,7 +38,7 @@ namespace LivingRoots.Tests
             var method = typeof(HarvestPatches).GetMethod("Initialize", BindingFlags.Public | BindingFlags.Static);
             Assert.NotNull(method);
             Assert.True(method!.IsStatic);
-            Assert.Equal(4, method.GetParameters().Length);
+            Assert.Equal(3, method.GetParameters().Length);
         }
 
         [Fact]

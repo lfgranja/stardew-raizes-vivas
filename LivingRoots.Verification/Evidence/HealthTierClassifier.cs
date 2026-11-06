@@ -5,8 +5,8 @@ namespace LivingRoots.Verification.Evidence
     /// <summary>
     /// Maps a stored soil-health value and its capture state onto the
     /// five-value tier contract used by the scenario predicates.
-    /// The boundaries are the spec FR-010 ones (34 / 67), not the
-    /// visualization band edges.
+    /// Boundaries are the spec FR-013 / A7 ones (31 / 71); measured 0 is
+    /// Poor, only NaN/missing is Unknown.
     /// </summary>
     public static class HealthTierClassifier
     {
@@ -16,8 +16,8 @@ namespace LivingRoots.Verification.Evidence
         public const string Moderate = "moderate";
         public const string Healthy = "healthy";
 
-        public const double PoorModerateEdge = 34d;
-        public const double ModerateHealthyEdge = 67d;
+        public const double PoorModerateEdge = 31d;
+        public const double ModerateHealthyEdge = 71d;
 
         public static string Classify(double? health, string state)
         {
@@ -35,11 +35,6 @@ namespace LivingRoots.Verification.Evidence
             if (double.IsNaN(value) || double.IsInfinity(value))
             {
                 return Unknown;
-            }
-
-            if (value <= 0d)
-            {
-                return NonParticipant;
             }
 
             if (value < PoorModerateEdge)

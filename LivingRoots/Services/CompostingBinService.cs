@@ -22,7 +22,8 @@ public class CompostingBinService(
     IPlayerInventory playerInventory,
     ILocationProvider? locationProvider = null,
     IHostAtomicLockService? hostAtomicLockService = null,
-    ITranslationHelper? translationHelper = null) : ICompostingBinService
+    ITranslationHelper? translationHelper = null,
+    Func<int>? outputCountProvider = null) : ICompostingBinService
 {
     private readonly IModDataService _modDataService = modDataService ?? throw new ArgumentNullException(nameof(modDataService));
     private readonly IOrganicWasteValidator _organicWasteValidator = organicWasteValidator ?? throw new ArgumentNullException(nameof(organicWasteValidator));
@@ -45,6 +46,14 @@ public class CompostingBinService(
     // test doubles keep constructing the service; a null
     // helper falls back to the raw key.
     private readonly ITranslationHelper? _translationHelper = translationHelper;
+
+    // T120 (plan Q4): injectable output multiplier seam. A null
+    // provider keeps the current single-item behaviour so existing
+    // production wiring is unchanged until the batch yield is
+    // implemented.
+#pragma warning disable S1144 // S1144: field retained for the T120 output-count tests
+    private readonly Func<int>? _outputCountProvider = outputCountProvider;
+#pragma warning restore S1144
 
     private readonly Dictionary<string, Dictionary<string, CompostingBinStateModel>> _runtimeCache = new();
     private readonly object _lock = new();
@@ -145,6 +154,7 @@ public class CompostingBinService(
         var key = GetTileKey(tile);
         bool inventoryRefused = false;
         CompostingBinStateModel? binToHarvest = null;
+        int outputCount = 1;
 
         lock (_lock)
         {
@@ -162,14 +172,42 @@ public class CompostingBinService(
 
             binToHarvest = bin;
 
-            int outputCount = 1;
-            for (int i = 0; i < outputCount; i++)
+            outputCount = _outputCountProvider != null ? _outputCountProvider() : 1;
+            if (outputCount < 0)
             {
-                var compost = new StardewValley.Object(ModConstants.CompostItemId, 1);
-                if (!_playerInventory.TryAddItem(compost))
+                outputCount = 0;
+            }
+
+            if (outputCount == 0)
+            {
+                return 0;
+            }
+
+            // Dry-run capacity check (plan Q4): refuse before mutating inventory.
+            var compost = new StardewValley.Object(ModConstants.CompostItemId, 1);
+            if (_playerInventory is IPlayerInventoryCapacity capacity &&
+                !capacity.HasCapacity(compost, outputCount))
+            {
+                inventoryRefused = true;
+            }
+            else
+            {
+                var granted = new List<StardewValley.Item>();
+                for (int i = 0; i < outputCount; i++)
                 {
-                    inventoryRefused = true;
-                    break;
+                    var item = new StardewValley.Object(ModConstants.CompostItemId, 1);
+                    if (!_playerInventory.TryAddItem(item))
+                    {
+                        inventoryRefused = true;
+                        foreach (var grantedItem in granted)
+                        {
+                            _playerInventory.TryRemoveItem(grantedItem);
+                        }
+
+                        break;
+                    }
+
+                    granted.Add(item);
                 }
             }
 
@@ -189,8 +227,8 @@ public class CompostingBinService(
         }
 
         Game1.playSound("Ship");
-        _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced 1 compost", LogLevel.Trace);
-        return 1;
+        _monitor.Log($"Bin at ({tile.X}, {tile.Y}): Ready → Empty, produced {outputCount} compost", LogLevel.Trace);
+        return outputCount;
     }
 
     private static void ApplyHarvestSuccess(CompostingBinStateModel bin)
@@ -527,7 +565,8 @@ public class CompostingBinService(
                         InputTimestamp = bin.Value.InputTimestamp,
                         MaturationLevel = bin.Value.MaturationLevel,
                         ConsecutiveIdleDays = bin.Value.ConsecutiveIdleDays,
-                        ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays
+                        ConsecutiveActiveDays = bin.Value.ConsecutiveActiveDays,
+                        OutputGranted = bin.Value.OutputGranted
                     };
                 }
             }
@@ -586,7 +625,8 @@ public class CompostingBinService(
             InputTimestamp = binData.InputTimestamp,
             MaturationLevel = Math.Clamp(binData.MaturationLevel, 1, ModConstants.MaturationMaxLevel),
             ConsecutiveIdleDays = Math.Clamp(binData.ConsecutiveIdleDays, 0, ModConstants.MaturationIdleResetDays),
-            ConsecutiveActiveDays = binData.ConsecutiveActiveDays
+            ConsecutiveActiveDays = binData.ConsecutiveActiveDays,
+            OutputGranted = binData.OutputGranted
         };
     }
 

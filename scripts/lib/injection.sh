@@ -148,6 +148,8 @@ for step in (d.get("steps", []) or []) if phase in ("all", "steps") else []:
         item_id = str(inputs.get("itemId", "771"))
         count = str(inputs.get("count", "1"))
         lines.append(f"lr_insert_waste {xy[0]} {xy[1]} {item_id} {count}")
+    elif action == "harvest" and xy:
+        lines.append(f"lr_harvest_matrix {xy[0]} {xy[1]}")
     elif action == "sleep":
         days = step.get("days", inputs.get("days", 1))
         try:

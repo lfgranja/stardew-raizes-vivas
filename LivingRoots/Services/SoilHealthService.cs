@@ -733,7 +733,7 @@ namespace LivingRoots.Services
 
             // Don't store default values; keep the cache sparse to prevent unbounded growth.
             // Exception (T166/T182 adjudication, FR-008/FR-014): an explicit 0f is a
-            // measured reading — the floor of the Poor half-open interval [0, 34) — and
+            // measured reading — the floor of the Poor half-open interval [0, 31) — and
             // round-trips so the tile renders Poor, never Unknown. Only near-zero values
             // that reached 0 through clamping (negative, NaN, or infinite inputs, all of
             // which ClampHealthValue maps to 0) are dropped; a never-set key still queries

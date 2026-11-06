@@ -29,6 +29,63 @@ namespace LivingRoots.Verification.Evidence
 
         [JsonPropertyName("crops")]
         public List<CropPhaseEntry> Crops { get; set; } = new List<CropPhaseEntry>();
+
+        /// <summary>
+        /// Harvest-matrix outcomes captured in the same window as the crop
+        /// phase snapshot. The list is empty for scenarios that do not run the
+        /// harvest probe; consumers must treat an absent probe as missing
+        /// evidence, never as a pass.
+        /// </summary>
+        [JsonPropertyName("harvests")]
+        public List<HarvestRecord> Harvests { get; set; } = new List<HarvestRecord>();
+    }
+
+    public sealed class HarvestRecord
+    {
+        [JsonPropertyName("location")]
+        public string Location { get; set; } = string.Empty;
+
+        [JsonPropertyName("tileX")]
+        public int TileX { get; set; }
+
+        [JsonPropertyName("tileY")]
+        public int TileY { get; set; }
+
+        [JsonPropertyName("tileKey")]
+        public string TileKey { get; set; } = string.Empty;
+
+        [JsonPropertyName("probe")]
+        public string Probe { get; set; } = string.Empty;
+
+        [JsonPropertyName("soilHealth")]
+        public double SoilHealth { get; set; }
+
+        [JsonPropertyName("healthTier")]
+        public string HealthTier { get; set; } = "unknown";
+
+        [JsonPropertyName("qualityRoll")]
+        public double QualityRoll { get; set; }
+
+        [JsonPropertyName("extraRoll")]
+        public double ExtraRoll { get; set; }
+
+        [JsonPropertyName("vanillaQuality")]
+        public int VanillaQuality { get; set; }
+
+        [JsonPropertyName("mainItemId")]
+        public string MainItemId { get; set; } = string.Empty;
+
+        [JsonPropertyName("mainQuality")]
+        public int MainQuality { get; set; }
+
+        [JsonPropertyName("extraCount")]
+        public int ExtraCount { get; set; }
+
+        [JsonPropertyName("extraQuality")]
+        public int? ExtraQuality { get; set; }
+
+        [JsonPropertyName("harvested")]
+        public bool Harvested { get; set; }
     }
 
     public sealed class CropPhaseEntry

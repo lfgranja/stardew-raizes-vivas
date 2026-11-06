@@ -1,20 +1,20 @@
 # Feature Test Record: 014-soil-health-crop-quality
 
 <!-- GATE3:BEGIN -->
-- **Status**: partial
-- **Verdict**: —
+- **Status**: machine-pass
+- **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: —
-- **Commit**: —
-- **Date**: —
-- **Player role**: —
+- **Run ID**: run-20261106T014750Z-14b6
+- **Commit**: 3f5235cda6798206956e2196a99d0c99833194ad
+- **Date**: 2026-11-06T01:48:37Z
+- **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: —
-  - Crop-phase delta: —
-  - SMAPI log: —
-- **Bundle**: —
-- **Honesty level**: —
-- **Claim**: Not yet verified. Gate 3 evidence incomplete — headless runner requires a complete Stardew Valley 1.6.x + SMAPI 4.4.0+ install at STARDEW_GAME_PATH to execute the soil-quality-tier scenario. Implementation (spec 014) is complete: band scale migration 34/67→31/71, CollectCompost two-phase fix, Poor→Quality=0, Healthy→+0.08/+0.10, Moderate=vanilla, transient feedback, host-authority, inventory-full debris, all unit tests green, build clean, format clean.
+  - SoilHealthState delta: `evidence-bundle-run-20261106T014750Z-14b6/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261106T014750Z-14b6/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261106T014750Z-14b6/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261106T014750Z-14b6/`
+- **Honesty level**: R
+- **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
 - **Review date**: —
 - **Session ID**: —

@@ -10,7 +10,7 @@ namespace LivingRoots.Tests.Invariants
     /// T017 — Property-based invariant tests for
     /// <see cref="HealthCategoryExtensions.FromHealthValue"/> (spec 005,
     /// governed by spec 009).
-    /// Verifies the HealthCategory scale: Poor [0,34), Moderate [34,67),
+    /// Verifies the HealthCategory scale: Poor [0,31), Moderate [31,71),
     /// Healthy [67,100], with NaN/Infinity → Unknown and finite
     /// out-of-range values clamped to the boundary category.
     /// </summary>
