@@ -3,6 +3,8 @@
 ## Purpose
 Defines the behavioral contract for applying the single Joja/agrochemical input to a soil target in MVP. The contract enforces spec 017 clarifications C1–C4, host authority, and no-double-counting boundaries.
 
+**Canonical/maintenance note (A11):** C1–C4 are canonical in `spec.md` Clarifications; ordering/authority behavior here is coordinated with `contracts/multiplayer-gate3.md`; claim schema is canonical in `contracts/multiplayer-gate3.md`. Duplication is intentional — avoid label drift.
+
 ## Placement
 - **Domain interface:** `LivingRoots/Domain/Interfaces/` (e.g., `IAgrochemicalApplicationService`), consistent with `ICompostApplicationService`/`IMulchApplicationService`.
 - **Implementation:** `LivingRoots/Services/`.
@@ -47,20 +49,23 @@ Return explicit refusal with a stable message key/reason. Refusals MUST:
 - **No second source of truth.** Host authoritative; farmhand unsupported path refused.
 - **Idempotence/safety:** repeated valid applications each apply the same bounded immediate rule (MVP no hidden stacking/cooldown state). Conflicts are explicit first-wins refusals.
 
-## Result shape (guidance)
-Implementation may use a service result + controller orchestration (preferred for MVP clarity) or an equivalent explicit result type. The shape MUST expose:
+## Result shape (required minimums)
+Implementation may use a service result + controller orchestration (preferred for MVP clarity) or an equivalent explicit result type. The shape MUST expose, or make available for controller/message-selection/assertion logic:
 - success/failure/refusal class (or equivalent explicit state);
 - localized message key (refusal reason or confirmation/attribution key);
-- computed/measured values needed for controller assertions when useful (e.g., baseline used, post-penalty value), without exposing internal implementation details as requirements;
+- **`baseline_used`** — the explicit pre-penalty baseline used for computation (C2: `MaxSoilHealth` for unmeasured/`NaN`; measured value otherwise);
+- **`post_penalty`** — the explicit bounded post-penalty measured value computed/committed for a success path;
+- clamp/applied-delta information sufficient for honest FR-005/FR-007 messaging and assertions: at minimum **`requested_penalty`** and **`applied_penalty`** (or an equivalent explicit **`was_clamped`** indicator plus the applied delta), so bounds-reduced outcomes are not presented as a full nominal penalty;
 - enough information for controller tests to assert: no mutation/consumption/broadcast/false-success on refusal; consumption and FR-009 broadcast occur only after authoritative measured commit on success.
 
-The service/domain result MUST NOT be interpreted as having consumed the held item or emitted UI/broadcast side effects by itself; those remain controller-owned MVP side effects.
+The service/domain result MUST NOT be interpreted as having consumed the held item or emitted UI/broadcast side effects by itself; those remain controller-owned MVP side effects. Values may be carried as fields/properties or equivalent accessors; names above describe required data, not a fixed C# API spelling.
 
 ## Test contract
 Automated tests MUST cover:
 - unknown/`NaN` baseline => explicit measured `SetSoilHealth(90)` for `P=10` (or computed clamp);
 - measured baseline => correct bounded post-penalty;
 - min-bound clamp;
+- result/feedback path exposes `baseline_used`, `post_penalty`, and clamp/applied-delta info (`requested_penalty`/`applied_penalty` or equivalent) so FR-005/FR-007 honest bounded outcomes are testable (no false full-penalty claim when clamped);
 - refusal before mutation/consumption for unsupported farmhand path;
 - no `UpdateHealth(-P)` on penalty path;
 - no broadcast, no item consumption, and no success feedback on refusal/failure;

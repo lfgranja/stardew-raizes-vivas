@@ -16,7 +16,7 @@ GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --con
 dotnet format Stardew-LivingRoots.sln --verify-no-changes
 ```
 
-**Expected:** tests pass (including new 017 unit/controller/invariant tests), no format drift. Record exact counts; do not claim verification beyond what ran.
+**Expected:** tests pass (including new 017 unit/controller/invariant tests), no format drift. Record exact counts; do not claim verification beyond what ran. Such results map to `evidence_class: automated` claims with a concrete `source_artifact_path` and `status: pending` until evidence is recorded.
 
 ### Targeted test runs (after 017 tests exist)
 
@@ -65,12 +65,14 @@ Adjust filters to actual 017 test names.
 - **Expected:** parity for touched keys; before-use framing and after-use/refusal messages are clear and cozy/non-punitive.
 
 ## Host-only Gate 3 (optional, if runner/scenario added later)
-If implementation adds a headless verification scenario, run via `scripts/verify-scenario.sh` following repo protocol and record 3 required signals. Classify result as **host-only `machine-pass` only** unless separate human `verified`/D1 attestation exists. If a host-only end-to-end run is **infeasible/unavailable**, do not fabricate a run: record infeasibility + reason, claim only completed lower-level evidence (e.g., automated), and keep human `verified`/D1 pending. Preserve prior evidence provenance (no rewrites/retroactive promotion).
+If implementation adds a headless verification scenario, run via `scripts/verify-scenario.sh` following repo protocol and record 3 required signals. Record claims using the normalized schema canonical in `contracts/multiplayer-gate3.md`: `claim`, `evidence_class` (`automated` | `host-only-machine-pass` | `human-verified` | `d1-farmhand-convergence` | `qualitative-follow-up` | `planned-run-not-executed`), `source_artifact_path`, `status` (`pending` | `complete` | `blocked` | `infeasible`), and `scope_note`. A passing host-only end-to-end run is `host-only-machine-pass` only — never `human-verified` or `d1-farmhand-convergence`. If a host-only end-to-end run is **infeasible/unavailable**, do not fabricate a run: record a `planned-run-not-executed` claim with `status` `infeasible`/`blocked` plus reason, claim only completed lower-level evidence (e.g., `automated`) separately, and keep `human-verified`/`d1-farmhand-convergence` pending. `planned-run-not-executed` is not a pass. Preserve prior evidence provenance (no rewrites/retroactive promotion).
 
 ## Not validated by this MVP quickstart
-- Real-farmhand D1 convergence.
-- Human `verified` attestation.
+- `d1-farmhand-convergence` (real-farmhand D1 convergence).
+- `human-verified` attestation.
 - Vanilla fertilizer-hook/Harmony behavior (explicitly out of MVP).
 - Monoculture.
 - Final balance/tuning (`P=10` provisional).
-- SC-004 comprehension playtest (qualitative follow-up if run with minimal protocol: participant/context scope, before/immediately-after-first-use timing, identify shortcut + soil-health cost, binary pass requiring both, evidence note with sample size/pass count; pending if not run).
+- SC-004 comprehension playtest (`qualitative-follow-up`; protocol if run: participant/context scope, before/immediately-after-first-use timing, identify shortcut + soil-health cost, binary pass requiring both, evidence note with sample size/pass count; `pending` if not run).
+
+Claims for the items above remain `pending` — or `planned-run-not-executed` with reason if a planned run was skipped — and are not passes.
