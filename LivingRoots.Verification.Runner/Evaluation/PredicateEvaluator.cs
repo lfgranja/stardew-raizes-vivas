@@ -454,7 +454,7 @@ namespace LivingRoots.Verification.Runner.Evaluation
                     return true;
                 case "HEALTH_LE_ZERO":
                     return dict.TryGetValue("healthTier", out var ht3) && ht3?.ToString() == "nonParticipant";
-                case "POOR_POSITIVE_LT_34":
+                case "POOR_POSITIVE_LT_31" or "POOR_POSITIVE_LT_34":
                     return dict.TryGetValue("healthTier", out var ht4) && ht4?.ToString() == "poor";
                 case "PHASE_MINUS_ONE":
                     if (!TryGetNumeric(dict, "currentPhase", out var cp, out _))

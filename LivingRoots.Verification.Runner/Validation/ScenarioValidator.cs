@@ -373,7 +373,7 @@ namespace LivingRoots.Verification.Runner.Validation
             {
                 return field == "phaseDays";
             }
-            if (sentinel is "NAN_HEALTH" or "MISSING_KEY" or "HEALTH_LE_ZERO" or "POOR_POSITIVE_LT_34")
+            if (sentinel is "NAN_HEALTH" or "MISSING_KEY" or "HEALTH_LE_ZERO" or "POOR_POSITIVE_LT_31" or "POOR_POSITIVE_LT_34")
             {
                 return field == "healthTier";
             }
