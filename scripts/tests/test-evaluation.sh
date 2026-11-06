@@ -12,7 +12,7 @@ runner_proj="LivingRoots.Verification.Runner"
 # Build once (may fail without game assemblies, but helper compiles standalone)
 dotnet build "$runner_proj/$runner_proj.csproj" --configuration Release >/dev/null 2>&1 || true
 
-# Use a tiny scenario JSON with threshold 33/34/66/67 mapping check via helper `evaluate`
+# Use a tiny scenario JSON with threshold 31/71 (1.15/0.85) mapping check via helper `evaluate`
 # The helper reads scenario + evidence; instead test documented mapping by calling the
 # C# evaluator through a small console invocation if possible. Fallback: source check.
 if grep -R "1.15" "$runner_proj" >/dev/null 2>&1; then
