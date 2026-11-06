@@ -85,18 +85,20 @@ namespace LivingRoots.Domain
 
         private static int ComputeAdded(InventorySlotSnapshot beforeSlot, InventorySlotSnapshot afterSlot)
         {
-            if (afterSlot.Item == null)
+            bool afterOccupied = afterSlot.Item != null || afterSlot.Stack > 0 || afterSlot.QualifiedItemId != null;
+            if (!afterOccupied)
             {
                 return 0;
             }
 
             int stack = afterSlot.Stack > 0 ? afterSlot.Stack : 1;
-            if (beforeSlot.Item == null)
+            bool beforeOccupied = beforeSlot.Item != null || beforeSlot.Stack > 0 || beforeSlot.QualifiedItemId != null;
+            if (!beforeOccupied)
             {
                 return stack;
             }
 
-            bool sameRef = ReferenceEquals(beforeSlot.Item, afterSlot.Item);
+            bool sameRef = beforeSlot.Item != null && ReferenceEquals(beforeSlot.Item, afterSlot.Item);
             bool sameId = string.Equals(beforeSlot.QualifiedItemId, afterSlot.QualifiedItemId, StringComparison.Ordinal)
                           && beforeSlot.Quality == afterSlot.Quality;
             if (!sameRef && !sameId)
