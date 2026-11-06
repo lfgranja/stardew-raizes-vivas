@@ -10,6 +10,6 @@
     <AssemblyName>LivingRoots.Verification.Runner</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="JsonSchema.Net" Version="9.5.0" />
+    <PackageReference Include="JsonSchema.Net" Version="9.6.0" />
   </ItemGroup>
 </Project>
