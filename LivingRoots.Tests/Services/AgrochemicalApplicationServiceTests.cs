@@ -583,6 +583,15 @@ public class AgrochemicalApplicationServiceTests
     /// application must fail honestly in that case. Item consumption and
     /// feedback stay controller-owned and are not asserted here.
     /// </summary>
+    /// <remarks>
+    /// T097-RED (Phase 10 converge): the commit-drop refusal now expects the
+    /// dedicated <see cref="AgrochemicalApplicationOutcome.RefusedCommitFailed"/>
+    /// class with the <see cref="ModConstants.TranslationKeyAgrochemicalCommitFailed"/>
+    /// key, replacing the provisional action-conflict mapping. This fails today:
+    /// the current implementation still returns <see cref="AgrochemicalApplicationOutcome.RefusedConflict"/>
+    /// with the action-conflict key (the intended honest mapping; the flip is
+    /// recorded in the test history).
+    /// </remarks>
     [Fact]
     public void TrySetSoilHealth_CapacityRejection_MockedAtSeam_FailsHonestly()
     {
@@ -599,6 +608,52 @@ public class AgrochemicalApplicationServiceTests
         // Assert
         Assert.False(result.Succeeded);
         Assert.NotEqual(AgrochemicalApplicationOutcome.Success, result.Outcome);
+        Assert.Equal(AgrochemicalApplicationOutcome.RefusedCommitFailed, result.Outcome);
+        Assert.Equal(ModConstants.TranslationKeyAgrochemicalCommitFailed, result.MessageKey);
+        Assert.NotEqual(ModConstants.TranslationKeyAgrochemicalActionConflict, result.MessageKey);
+        // The computation did occur; only the commit failed — the honest carried data stays.
+        Assert.Equal(50f, result.BaselineUsed, 4);
+        Assert.Equal(40f, result.PostPenalty, 4);
+        Assert.Equal(ModConstants.AgrochemicalSoilPenalty, result.RequestedPenalty, 4);
+        Assert.Equal(ModConstants.AgrochemicalSoilPenalty, result.AppliedPenalty, 4);
+        Assert.False(result.WasClamped);
+        mockSoil.Verify(
+            x => x.TrySetSoilHealth("Farm", It.IsAny<Point>(), It.IsAny<float>()),
+            Times.Once);
+    }
+
+    /// <summary>
+    /// T097-RED (Phase 10 converge): the same commit-drop rule on the
+    /// bounds-reduced path. A measured 5 clamps the penalty to 5; when the seam
+    /// then refuses the measured write (capacity), the application must refuse with
+    /// <see cref="AgrochemicalApplicationOutcome.RefusedCommitFailed"/> and the
+    /// commit-failed key — never a zero-delta Success, and never the action-conflict
+    /// key — while still carrying the honestly clamped computation.
+    /// </summary>
+    [Fact]
+    public void TrySetSoilHealth_CommitDropOnClampedPath_RefusesWithCommitFailedKey()
+    {
+        // Arrange: baseline 5 -> postPenalty 0, applied 5, clamped — then the seam refuses.
+        var mockSoil = CreateSoilMock(5f);
+        mockSoil
+            .Setup(x => x.TrySetSoilHealth("Farm", It.IsAny<Point>(), It.IsAny<float>()))
+            .Returns(false);
+        var service = new AgrochemicalApplicationService(mockSoil.Object);
+
+        // Act
+        var result = service.Apply(_fixture.Location, Tile);
+
+        // Assert
+        Assert.False(result.Succeeded);
+        Assert.Equal(AgrochemicalApplicationOutcome.RefusedCommitFailed, result.Outcome);
+        Assert.Equal(ModConstants.TranslationKeyAgrochemicalCommitFailed, result.MessageKey);
+        Assert.NotEqual(ModConstants.TranslationKeyAgrochemicalActionConflict, result.MessageKey);
+        Assert.NotEqual(AgrochemicalApplicationOutcome.RefusedConflict, result.Outcome);
+        Assert.Equal(5f, result.BaselineUsed, 4);
+        Assert.Equal(0f, result.PostPenalty, 4);
+        Assert.Equal(ModConstants.AgrochemicalSoilPenalty, result.RequestedPenalty, 4);
+        Assert.Equal(5f, result.AppliedPenalty, 4);
+        Assert.True(result.WasClamped);
         mockSoil.Verify(
             x => x.TrySetSoilHealth("Farm", It.IsAny<Point>(), It.IsAny<float>()),
             Times.Once);
