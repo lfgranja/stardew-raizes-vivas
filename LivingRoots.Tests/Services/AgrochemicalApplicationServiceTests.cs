@@ -481,6 +481,39 @@ public class AgrochemicalApplicationServiceTests
         VerifyNoSoilAccess(mockSoil);
     }
 
+    /// <summary>
+    /// T099-RED (FR-008/FR-006, Phase 10 converge): a location name longer than
+    /// <see cref="ModConstants.MaxLocationNameLength"/> cannot be persisted or synchronized
+    /// (the persistence layer refuses it), so the application must treat it as an
+    /// invalid target — never as a 0f floor reading that falls into the soil-at-minimum
+    /// branch. No soil read or write may occur. This fails today: the current code
+    /// issues the soil read, receives the 0f sentinel for the unmappable name, and
+    /// reports <see cref="AgrochemicalApplicationOutcome.RefusedSoilAtMinimum"/>.
+    /// </summary>
+    [Fact]
+    public void Apply_OverlongLocationName_ReturnsRefusedInvalidTarget()
+    {
+        // Arrange: one character over the persistence-layer limit. The real
+        // SoilHealthService answers 0f for this location (and never persists it),
+        // which is exactly the sentinel that misroutes into RefusedSoilAtMinimum.
+        var overlongName = new string('A', ModConstants.MaxLocationNameLength + 1);
+        var fixture = new GameLocationFixture(overlongName, isFarm: true);
+        var mockSoil = new Mock<ISoilHealthService>();
+        mockSoil
+            .Setup(x => x.GetSoilHealth(It.IsAny<string>(), It.IsAny<Vector2>()))
+            .Returns(0f); // mirrors the real service's invalid-query sentinel
+        var service = new AgrochemicalApplicationService(mockSoil.Object);
+
+        // Act
+        var result = service.Apply(fixture.Location, Tile);
+
+        // Assert
+        Assert.Equal(AgrochemicalApplicationOutcome.RefusedInvalidTarget, result.Outcome);
+        Assert.False(result.Succeeded);
+        Assert.NotEqual(AgrochemicalApplicationOutcome.RefusedSoilAtMinimum, result.Outcome);
+        VerifyNoSoilAccess(mockSoil);
+    }
+
     // ------------------------------------------------------------------
     // T064: boolean-commit seam (ISoilHealthService.TrySetSoilHealth)
     // ------------------------------------------------------------------
