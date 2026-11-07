@@ -3315,16 +3315,56 @@ namespace LivingRoots.Controllers
             }
         }
 
+        // T088 (FR-013): built-in English fallbacks for the 017 keys, used when
+        // the translation subsystem is present but yields a missing/blank entry
+        // (or the untranslated raw key SMAPI returns for absent keys) — mirrors
+        // ModEntry.LocalizeOrFallback's raw-key detection. No translation may
+        // surface the raw i18n key to the player. Key names are logged by name
+        // only; no player data, no stack traces.
+        private static readonly Dictionary<string, string> AgrochemicalEnglishFallbacks = new(StringComparer.Ordinal)
+        {
+            [ModConstants.AgrochemicalItemNameKey] = "Joja Agrochemical",
+            [ModConstants.AgrochemicalItemDescriptionKey] = "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health.",
+            [ModConstants.TranslationKeyAgrochemicalApplied] = "Agrochemical applied.",
+            [ModConstants.TranslationKeyAgrochemicalAppliedClamped] = "Agrochemical applied only partially: the soil had less health available than the full penalty.",
+            [ModConstants.TranslationKeyAgrochemicalAppliedUnknownBaseline] = "Agrochemical applied. There was no prior soil health reading, so the starting health was treated as 100.",
+            [ModConstants.TranslationKeyAgrochemicalInvalidTarget] = "The agrochemical can only be applied to tilled soil.",
+            [ModConstants.TranslationKeyAgrochemicalMissingInput] = "Hold a Joja agrochemical to apply it to the soil.",
+            [ModConstants.TranslationKeyAgrochemicalActionConflict] = "Another player is already working this tile.",
+            [ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority] = "Only the host can apply agrochemicals in multiplayer.",
+            [ModConstants.TranslationKeyAgrochemicalSoilAtMinimum] = "This soil is already at the lowest health; the agrochemical would have no effect."
+        };
+
         private string TranslateAgrochemicalMessage(string messageKey)
         {
             var translation = _helper?.Translation;
             if (translation == null)
             {
+                // Headless/test compositions have no translation subsystem; the
+                // key selection stays observable via the raw key (characterization
+                // contract pinned by the test suite). Production always has one.
+                _monitor.Log(
+                    $"Agrochemical translation subsystem unavailable for key '{messageKey}'.",
+                    LogLevel.Trace);
                 return messageKey;
             }
 
             var translated = translation.Get(messageKey);
-            return string.IsNullOrWhiteSpace(translated) ? messageKey : translated;
+            if (string.IsNullOrWhiteSpace(translated)
+                || string.Equals(translated, messageKey, StringComparison.Ordinal))
+            {
+                // T088: a missing/blank (or untranslated raw-key) entry must never
+                // reach the player. Log the key name only and return a
+                // non-misleading English literal from the 017 fallback map.
+                _monitor.Log(
+                    $"Agrochemical translation missing or blank for key '{messageKey}'; using the built-in English fallback.",
+                    LogLevel.Warn);
+                return AgrochemicalEnglishFallbacks.TryGetValue(messageKey, out var fallback)
+                    ? fallback
+                    : "The agrochemical could not be applied.";
+            }
+
+            return translated;
         }
 
         internal void OnModMessageReceived(object? sender, ModMessageReceivedEventArgs e)
