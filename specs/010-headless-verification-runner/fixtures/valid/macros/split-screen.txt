@@ -1,2 +1,2 @@
-/debug split
+/lr_split_screen
 /sleep
