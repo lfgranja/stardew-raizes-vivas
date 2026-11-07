@@ -61,7 +61,23 @@ public class AgrochemicalApplicationService(ISoilHealthService soilHealthService
                 baselineWasUnknown);
         }
 
-        _soilHealthService.SetSoilHealth(location.Name, tile, postPenalty);
+        if (!_soilHealthService.TrySetSoilHealth(location.Name, tilePoint, postPenalty))
+        {
+            // 017 T064: the commit seam refused the measured write (capacity limit or
+            // a tile the soil service cannot persist). Provisional mapping: the
+            // action-conflict key stands in for a capacity/commit-drop refusal until a
+            // dedicated refusal class exists. Baseline/penalty data is preserved
+            // honestly — it IS clamped if clamped — and success is never claimed.
+            return new AgrochemicalApplicationResult(
+                AgrochemicalApplicationOutcome.RefusedConflict,
+                ModConstants.TranslationKeyAgrochemicalActionConflict,
+                baselineUsed,
+                postPenalty,
+                requestedPenalty,
+                appliedPenalty,
+                wasClamped,
+                baselineWasUnknown);
+        }
 
         return new AgrochemicalApplicationResult(
             AgrochemicalApplicationOutcome.Success,
