@@ -93,6 +93,45 @@ public class AgrochemicalContentParityTests
             [ModConstants.TranslationKeyAgrochemicalSoilAtMinimum] = new[] { "mínim", "minim", "já", "ja" }
         };
 
+    private static readonly string[] EnglishRefusalNoSuccessTokens =
+    {
+        "not applied",
+        "no success",
+        "not used",
+        "nothing happened"
+    };
+
+    private static readonly string[] PortugueseRefusalNoSuccessTokens =
+    {
+        "não foi aplicado",
+        "não afetou",
+        "nenhuma aplicação",
+        "não consumido"
+    };
+
+    private static readonly string[] EnglishRefusalNextStepTokens =
+    {
+        "try",
+        "again",
+        "wait",
+        "host",
+        "regenerate",
+        "care"
+    };
+
+    private static readonly string[] PortugueseRefusalNextStepTokens =
+    {
+        "tente",
+        "tentar",
+        "novamente",
+        "de novo",
+        "aguarde",
+        "espere",
+        "anfitri",
+        "regener",
+        "cuidado"
+    };
+
     private static readonly string[] ShamingTokens =
     {
         "stupid",
@@ -262,6 +301,56 @@ public class AgrochemicalContentParityTests
                 "the refusal cause/class in player-understandable terms",
                 tokensByKey[key]);
         }
+    }
+
+    /// <summary>
+    /// T065 (FR-008, contract refusal minimum structure): every refusal key in every locale
+    /// must state (1) the cause/class in player-understandable terms, (2) that the agrochemical
+    /// was not applied / no success occurred, and (3) a next-step implication. Refusals must
+    /// never read as success; drift is caught per locale/key.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    /// <param name="key">Refusal translation key under test.</param>
+    [Theory]
+    [InlineData("default.json", ModConstants.TranslationKeyAgrochemicalInvalidTarget)]
+    [InlineData("default.json", ModConstants.TranslationKeyAgrochemicalMissingInput)]
+    [InlineData("default.json", ModConstants.TranslationKeyAgrochemicalActionConflict)]
+    [InlineData("default.json", ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority)]
+    [InlineData("default.json", ModConstants.TranslationKeyAgrochemicalSoilAtMinimum)]
+    [InlineData("en.json", ModConstants.TranslationKeyAgrochemicalInvalidTarget)]
+    [InlineData("en.json", ModConstants.TranslationKeyAgrochemicalMissingInput)]
+    [InlineData("en.json", ModConstants.TranslationKeyAgrochemicalActionConflict)]
+    [InlineData("en.json", ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority)]
+    [InlineData("en.json", ModConstants.TranslationKeyAgrochemicalSoilAtMinimum)]
+    [InlineData("pt.json", ModConstants.TranslationKeyAgrochemicalInvalidTarget)]
+    [InlineData("pt.json", ModConstants.TranslationKeyAgrochemicalMissingInput)]
+    [InlineData("pt.json", ModConstants.TranslationKeyAgrochemicalActionConflict)]
+    [InlineData("pt.json", ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority)]
+    [InlineData("pt.json", ModConstants.TranslationKeyAgrochemicalSoilAtMinimum)]
+    public void RefusalMessages_StateCause_NoSuccessAndNextStep(string localeFileName, string key)
+    {
+        var value = RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, key);
+        var portuguese = IsPortuguese(localeFileName);
+
+        var causeTokens = portuguese ? PortugueseRefusalCauseTokens[key] : EnglishRefusalCauseTokens[key];
+        AssertContainsAny(
+            localeFileName,
+            key,
+            value,
+            "the refusal cause/class in player-understandable terms",
+            causeTokens);
+        AssertContainsAny(
+            localeFileName,
+            key,
+            value,
+            "that the agrochemical was not applied / no success occurred",
+            portuguese ? PortugueseRefusalNoSuccessTokens : EnglishRefusalNoSuccessTokens);
+        AssertContainsAny(
+            localeFileName,
+            key,
+            value,
+            "a next-step implication for the player",
+            portuguese ? PortugueseRefusalNextStepTokens : EnglishRefusalNextStepTokens);
     }
 
     /// <summary>
