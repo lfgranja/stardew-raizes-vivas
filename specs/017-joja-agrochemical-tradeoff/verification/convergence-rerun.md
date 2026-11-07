@@ -142,3 +142,23 @@ until 2026-11-07. Dispositions:
   SMAPI observation of the slot-clear (or of a measured-zero save/load round trip) is ever
   demanded, it must be executed and recorded as new evidence; absent that, the rows stay
   `blocked`. This section changes no claim status and attests nothing.
+
+## Residual recording — Phase-11 closure evidence (2026-11-07, T119)
+
+The Phase-11 closure (118/118 tasks, `c6c4e7a`) was recorded in its commit message but never had
+its raw logs committed, and one observation was not recorded anywhere:
+
+- **Retained raw logs (committed with this note):** `verification/convergence-phase11-targeted.log`
+  — exit 0, **123 passed / 0 failed / 123 total** (contains the four Phase-11 additions: the three
+  `AgrochemicalCapacityTests` capacity-seam pins and the `ConstantsFile_DeclaresAllFiveRefusalKeysPlusCommitFailedBoundToMessages`
+  constants-binding pin; final `Aprovado!` line captured); `verification/convergence-phase11-full.log`
+  — exit 0, **1875 passed / 0 failed / 4 skipped / 1879 total** (current tree at T119 re-run).
+- **Transient observation (recorded, not reproducible):** on 2026-11-07 the first of three
+  back-to-back full-suite runs reported exactly **1 failure of 1879**; the failing test's name
+  was lost (output truncated to `tail -2`). The two surrounding full runs are fully green
+  (1875/0/4/1879) and this re-run is also green; the 017 targeted filter is repeatedly green
+  (123/123). No committed artifact claims a flaky-free current/full suite. If the failure recurs,
+  capture the full output before drawing conclusions.
+- **Scope note:** `1871/0/4` remains the Phase-10/c9ff596 figure cited by the validate/release
+  chain (their scope, not the current tree); the current tree is `1875 passed / 4 skipped` per
+  `convergence-phase11-full.log`.
