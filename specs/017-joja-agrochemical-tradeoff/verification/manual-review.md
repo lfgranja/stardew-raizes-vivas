@@ -221,3 +221,168 @@ reviewed keys (11 keys × 3 locales). Row 52 itself is intentionally not edited;
 ("Review performed by the implementation agent … does not satisfy human-verified … not SC-004")
 stands against the strings reviewed here. The claim remains a narrow copy-review claim; it is not
 `human-verified`, not SC-004, and not in-game rendering evidence.
+
+## Corrective addendum (2026-11-07, Phase 12 / T120) — T116 superseded by the shipped T109 copy
+
+**Append-only; nothing above is modified, re-dated, or rewritten.** This addendum corrects a
+material accuracy defect in the Phase 10 semantic copy review addendum above (the "T116" addendum,
+2026-11-07): it reviewed and endorsed the **pre-T109** copy of `message.agrochemical.commit-failed`,
+which T109 (2026-11-07) rewrote into the shipped, actionable capacity-remedy strings. The T116
+addendum is retained verbatim above as a record of what was reviewed at the time; its commit-failed
+content is **superseded** by this addendum. The T116 review of `message.agrochemical.missing-input`
+remains accurate — that key was not touched by T109 (see "Missing-input unchanged" below).
+
+Review type and boundaries are identical to the original review and the T116 addendum:
+implementation-agent **AI-assisted** copy review — **not** a human attestation, **not**
+`human-verified`, **not** SC-004, not Gate 3, not a rendering/font-fit check, not a balance check.
+No claim is promoted by this addendum; the acceptance recorded here for the shipped strings is a
+copy-review judgment, not evidence of any kind beyond that narrow scope.
+
+### Why the T116 addendum went stale (disclosure)
+
+T116 was authored against the tree at the time and quoted the commit-failed copy that shipped
+before T109 landed (`da6f7c7` pt, `cda08fa` en, `047d589` default, `b21d485` ModController fallback
+sync — all 2026-11-07). The strings it quoted and marked "Pass" are the pre-T109 strings:
+
+- pre-T109 `default`/`en` (verbatim): "The agrochemical could not be committed to the soil, so
+  nothing changed. Your agrochemical was not consumed. Please wait for the farm data to free up
+  and try again."
+- pre-T109 `pt` (verbatim): "Não foi possível aplicar o agroquímico ao solo, então ele não foi
+  aplicado. Seu agroquímico não foi consumido. Aguarde os dados da fazenda liberarem e tente
+  novamente."
+
+The T116 addendum's commit-failed findings — including its "next step: 'Please wait for the farm
+data to free up and try again.' | Pass" row, its legibility note ("Understandable as 'the farm is
+busy; try again shortly'"), and its FR-012 note ("same remediation: wait, then retry") — describe
+copy that **no longer ships**. The pre-T109 next step was also not actionable for the player: the
+DoS caps whose refusal this message reports (`MaxLocationsPerSave` = 50,
+`MaxTilesPerLocation` = 500) are hard guards that never free up at runtime, so "wait … and try
+again" named a remedy that does not exist. Why T109 rewrote it, and the disposition of that
+rewrite, are recorded in `verification/convergence-phase11-addendum.md` (Phase 12 / T121).
+
+### The shipped strings as of T109 (quoted verbatim; verified 2026-11-07 against `LivingRoots/i18n/`)
+
+- **`message.agrochemical.commit-failed`** — `default` ≡ `en` (byte-identical, English-fallback
+  rule; commit `047d589`):
+
+  > "The agrochemical could not be committed to the soil, so nothing changed. Your agrochemical
+  > was not consumed. The farm data is at capacity; apply the agrochemical to a tile that already
+  > has soil data, then try again later."
+
+  `pt` (commit `da6f7c7`):
+
+  > "Não foi possível gravar no solo, então nada mudou. Seu agroquímico não foi consumido. Os
+  > dados da fazenda estão no limite; aplique em um tile que já tenha leitura de solo e tente
+  > novamente mais tarde."
+
+### Structure (cause + explicit non-change/non-consumption + actionable capacity remedy)
+
+| Key | Locale | Cause | Explicit no-change / non-consumption | Next step (capacity remedy) | Result |
+|---|---|---|---|---|---|
+| commit-failed | default/en | "could not be committed to the soil" | "so nothing changed. Your agrochemical was not consumed." | "The farm data is at capacity; apply the agrochemical to a tile that already has soil data, then try again later." | Pass |
+| commit-failed | pt | "Não foi possível gravar no solo" | "então nada mudou. Seu agroquímico não foi consumido." | "Os dados da fazenda estão no limite; aplique em um tile que já tenha leitura de solo e tente novamente mais tarde." | Pass |
+| commit-failed | default ≡ en | byte-identical | ✓ | ✓ | Parity |
+
+- **Cause.** en pins the commit-layer diagnosis ("could not be committed to the soil" — a
+  `TrySetSoilHealth` false result, distinct from an ordinary application refusal). pt renders the
+  same seam as "gravar no solo" ("to write … into the soil"); see the pt rendering decision below.
+- **Explicit non-consumption.** en: "so nothing changed. Your agrochemical was not consumed."
+  pt: "então nada mudou. Seu agroquímico não foi consumido." Both protect the player's item and
+  state that nothing happened; neither locale implies success, crediting, or consumption.
+- **Next step (actionable).** en: "The farm data is at capacity; apply the agrochemical to a tile
+  that already has soil data, then try again later." pt: "Os dados da fazenda estão no limite;
+  aplique em um tile que já tenha leitura de solo e tente novamente mais tarde." The remedy is
+  truthful for the DoS caps: the guards refuse **new** location/tile entries only, and updating a
+  tile that already has soil data does not add an entry, so it is not cap-gated. The named action
+  exists, is player-executable, and is the same remedy in both languages. The pre-T109 "wait for
+  the … to free up" remedy implied that time alone would clear the refusal — not true of a hard
+  cap — which is why the T116 "Pass" cannot stand.
+
+### FR-012 / parity and the pt rendering decision (accepted — the T121 decision)
+
+- `default` ≡ `en`, byte-identical (English-fallback rule). Parity at the byte level holds.
+- `pt` carries the same three structural elements (cause / explicit non-change and
+  non-consumption / remedy next step). FR-012 parity holds at the **structural level** in all
+  three locales.
+- **pt rendering decision (recorded here and in `convergence-phase11-addendum.md` / T121):**
+  "Não foi possível **gravar** no solo" is accepted as the pt rendering of the commit-layer
+  diagnosis (the farm-data commit/write seam refusing). "Gravar" is ordinary, legible Portuguese
+  for "to write/record"; the T116-era pt used the ordinary apply verb ("aplicar"), which was
+  recorded then as *lossy but honest* because the commit-layer nuance was lexically absent. The
+  shipped pt is closer to en than the pre-T109 pt on every structural element, and the T109
+  rewrite moves the pt **into** lexically carrying a commit/write-seam diagnosis.
+- **Accepted residual drift, recorded explicitly:** pt does not carry the en loan-verb "commit"
+  and deliberately avoids software jargon ("commitar"); "gravar no solo" renders the seam rather
+  than translating the token. pt also renders the no-change clause as "então nada mudou"
+  (nothing changed) and the cap clause as "os dados da fazenda estão no limite" (the farm data is
+  at the limit) — direct mappings with no meaning change. No nuance-claim beyond structural
+  parity (cause / non-change / non-consumption / remedy) is made for pt.
+- `en`'s "committed to the soil" still leaks implementation vocabulary; this phrasing is pinned by
+  the content-parity cause tokens (`EnglishCommitFailedCauseTokens`) and was deliberately retained
+  by T109. It remains a wording-pass candidate, not executed here; no comprehension hazard of
+  consequence was identified.
+- The `AgrochemicalEnglishFallbacks` literal in `ModController.cs` matches the shipped `en`
+  byte-identically as of `b21d485` (re-verified 2026-11-07; see T121 record).
+
+### Cozy / non-punitive tone (re-affirmed for the shipped strings)
+
+Both shipped commit-failed strings are diagnostic and protective, not blaming: they state the
+cause plainly, protect the player's item ("not consumed" / "não foi consumido"), and give a
+concrete, achievable next step instead of a vague wait. Neither shames, moralizes, implies
+recklessness, or overclaims effect. The factual, non-punitive voice of the Phase 9 rewrite is
+preserved. Tone: Pass (re-affirmed on the shipped strings, not inherited from the T116 text).
+
+### Legibility
+
+- `en` "committed" and "the farm data is at capacity" are implementation-adjacent; understandable
+  as "the farm is at its data limit; use an already-tracked tile" for most players. Not a false
+  claim; acceptable with the jargon note above.
+- `pt` "os dados da fazenda estão no limite" and "aplique em um tile que já tenha leitura de solo"
+  are ordinary Portuguese and consistent with the in-game soil-reading concept; no jargon is
+  introduced by the rewrite.
+- Neither string was measured against an in-game font/HUD (rendering unverified, as with all rows
+  of this review).
+- The T109 next step names a player-executable action; the pre-T109 "wait" was not. Legibility
+  of the *remedy* improved with the rewrite.
+
+### Missing-input — unchanged by T109, remains accurate as reviewed
+
+`message.agrochemical.missing-input` was **not** touched by T109. Its shipped copy is
+byte-identical to what the T116 addendum reviewed and passed (×3 locales):
+
+- `default`/`en`: "You need to be holding a Joja agrochemical when you apply it to the soil —
+  you are not holding one, so nothing happened. Hold one in your hand, then try again."
+- `pt`: "Você precisa estar segurando um agroquímico Joja ao aplicá-lo no solo — você não está
+  segurando um, então ele não foi aplicado. Segure um na mão e tente novamente."
+
+The T116 structure/parity/tone/legibility findings for this key (Pass; Pass with note on the
+pt no-success clause "então ele não foi aplicado" vs. en "so nothing happened" — same
+implication, fluent pt rendering) stand unmodified.
+
+### Row-52 re-anchor (claim-records.md)
+
+Claim-records row 52 — the AI-assisted copy-review claim produced by T052, most recently
+re-anchored by the T116 addendum — is **re-anchored to the shipped (post-T109) commit-failed
+strings and the unchanged missing-input strings by this addendum.** Row 52 itself is
+intentionally **not edited** (this addendum does not touch `claim-records.md`); the re-anchor
+takes effect by this text. The T116 addendum's re-anchor text is superseded for the
+commit-failed scope only. Row 52 remains a narrow copy-review claim covering 11 keys × 3 locales
+(count unchanged); it is not `human-verified`, not SC-004, and not in-game rendering evidence.
+No claim status changes anywhere in the register; D1 / human-verified / SC-004 remain `pending`;
+the two `blocked` rows remain `blocked`; the host-only machine-pass rows are unaffected.
+
+### summary.md note (unchanged by this addendum)
+
+`verification/summary.md` (~line 26) still reads "10 keys × 3 locales"; per the T116 addendum the
+current touched-key set is **11 keys × 3 locales**, and this addendum reaffirms that figure.
+summary.md is not edited here (Phase 12 / T120 does not own that file); the line remains stale
+pending a maintainer-scoped edit.
+
+### What this addendum does not prove
+
+Not automated coverage (`AgrochemicalContentParityTests` remains the lexical proxy, including its
+`PortugueseCommitFailedCauseTokens` pins); not a human `verified` attestation; not SC-004
+comprehension evidence (no participant run exists); not in-game rendering/font-fit or HUD
+behavior; not final balance/`P=10` tuning; not Gate 3. It changes no claim status. The T116
+addendum above is retained verbatim for provenance; on conflict, the shipped-string findings in
+this addendum govern for `message.agrochemical.commit-failed`.
