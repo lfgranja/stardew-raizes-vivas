@@ -21,7 +21,12 @@ public class AgrochemicalApplicationService(ISoilHealthService soilHealthService
     /// <inheritdoc />
     public AgrochemicalApplicationResult Apply(GameLocation location, Vector2 tile)
     {
-        if (location == null || string.IsNullOrWhiteSpace(location.Name))
+        // T099 (FR-008/FR-006): an overlong location name cannot be persisted or synchronized
+        // (the persistence layer refuses it), so it is an invalid target — never a 0f floor
+        // reading that falls into the soil-at-minimum branch. Refuse before any soil read or write.
+        if (location == null ||
+            string.IsNullOrWhiteSpace(location.Name) ||
+            location.Name.Length > ModConstants.MaxLocationNameLength)
         {
             return CreateInvalidTargetResult();
         }
@@ -45,6 +50,10 @@ public class AgrochemicalApplicationService(ISoilHealthService soilHealthService
             baselineUsed - requestedPenalty,
             ModConstants.MinSoilHealth,
             ModConstants.MaxSoilHealth);
+        // T101 (documentation only): baselineUsed - postPenalty can differ from the requested
+        // penalty by ~1 ulp (the subtraction is not exact in all cases); tests tolerate this via
+        // matcher comparisons. The formula is kept as-is; do not "fix" it by switching to rounded
+        // arithmetic.
         var appliedPenalty = baselineUsed - postPenalty;
         var wasClamped = appliedPenalty < requestedPenalty;
 
@@ -63,14 +72,15 @@ public class AgrochemicalApplicationService(ISoilHealthService soilHealthService
 
         if (!_soilHealthService.TrySetSoilHealth(location.Name, tilePoint, postPenalty))
         {
-            // 017 T064: the commit seam refused the measured write (capacity limit or
-            // a tile the soil service cannot persist). Provisional mapping: the
-            // action-conflict key stands in for a capacity/commit-drop refusal until a
-            // dedicated refusal class exists. Baseline/penalty data is preserved
+            // 017 T097: the commit seam refused the measured write (capacity limit or a tile
+            // the soil service cannot persist). The dedicated commit-drop refusal class is
+            // reported with the commit-failed key — never the action-conflict key, never
+            // success. RefusedConflict stays reserved for controller lock-contention; the
+            // service no longer reports it for capacity. Baseline/penalty data is preserved
             // honestly — it IS clamped if clamped — and success is never claimed.
             return new AgrochemicalApplicationResult(
-                AgrochemicalApplicationOutcome.RefusedConflict,
-                ModConstants.TranslationKeyAgrochemicalActionConflict,
+                AgrochemicalApplicationOutcome.RefusedCommitFailed,
+                ModConstants.TranslationKeyAgrochemicalCommitFailed,
                 baselineUsed,
                 postPenalty,
                 requestedPenalty,
