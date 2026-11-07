@@ -160,6 +160,106 @@ public class AgrochemicalContentParityTests
         "máxima"
     };
 
+    // T097: Wave B introduces ModConstants.TranslationKeyAgrochemicalCommitFailed alongside the
+    // key. It is deliberately referenced only through the constants-file token check below so
+    // this file compiles (and the suite runs) before the constant exists; a direct reference
+    // would break compilation of the whole test project ahead of Wave B.
+    private const string CommitFailedTranslationKey = "message.agrochemical.commit-failed";
+
+    private static readonly string[] EnglishCommitFailedNoSuccessTokens =
+    {
+        "not applied",
+        "nothing happened",
+        "failed",
+        "could not",
+        "did not"
+    };
+
+    private static readonly string[] PortugueseCommitFailedNoSuccessTokens =
+    {
+        "não foi aplicado",
+        "não afetou",
+        "nenhuma aplicação",
+        "falhou",
+        "não pôde",
+        "não foi possível"
+    };
+
+    private static readonly string[] EnglishCommitFailedCauseTokens =
+    {
+        "could not be committed",
+        "failed to apply",
+        "not be saved",
+        "commit"
+    };
+
+    private static readonly string[] PortugueseCommitFailedCauseTokens =
+    {
+        "não pôde ser aplicad",
+        "não foi possível",
+        "não foi salva",
+        "falha",
+        "falhou",
+        "commit",
+        "confirmar"
+    };
+
+    // Claim-of-consumption / claim-of-success tokens chosen so they cannot occur inside a
+    // negated denial (e.g. "was not consumed", "não foi aplicado"); the required no-success
+    // phrasing is the primary guard against success claims.
+    private static readonly string[] EnglishCommitFailedNoClaimTokens =
+    {
+        "was consumed",
+        "has been consumed",
+        "is used up",
+        "was applied",
+        "applied successfully",
+        "successfully applied",
+        "succeeded"
+    };
+
+    private static readonly string[] PortugueseCommitFailedNoClaimTokens =
+    {
+        "consumido com sucesso",
+        "utilizado com sucesso",
+        "aplicado com sucesso",
+        "com êxito"
+    };
+
+    private static readonly string[] EnglishCommitFailedNoBuffTokens =
+    {
+        "quality",
+        "extra harvest",
+        "growth",
+        "fertilizer tier",
+        "phase days"
+    };
+
+    private static readonly string[] PortugueseCommitFailedNoBuffTokens =
+    {
+        "qualidade",
+        "colheita extra",
+        "crescimento",
+        "fertilizante",
+        "fase"
+    };
+
+    private static readonly string[] EnglishMissingInputDiagnosisTokens =
+    {
+        "holding",
+        "you need to be holding",
+        "you are not holding",
+        "hold a joja"
+    };
+
+    private static readonly string[] PortugueseMissingInputDiagnosisTokens =
+    {
+        "segurando",
+        "você precisa segurar",
+        "não está segurando",
+        "segure um agroquímico"
+    };
+
     private static readonly string[] ShamingTokens =
     {
         "stupid",
@@ -683,6 +783,155 @@ public class AgrochemicalContentParityTests
             value,
             "C2 unknown-baseline legibility: copy must not imply a remembered prior soil value or reading",
             new[] { "previous reading", "your soil was", "before it was" });
+    }
+
+    /// <summary>
+    /// T097 (FR-008, commit-failure honesty): the dedicated commit-failure refusal key must ship
+    /// in every locale as a non-empty string. Wave B introduces
+    /// <c>ModConstants.TranslationKeyAgrochemicalCommitFailed</c> and the
+    /// <c>message.agrochemical.commit-failed</c> locale entries; this assertion is expected RED
+    /// until then.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void CommitFailedRefusal_ShipsInAllLocalesAsNonEmptyString(string localeFileName)
+    {
+        RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, CommitFailedTranslationKey);
+    }
+
+    /// <summary>
+    /// T097 (FR-008, refusal minimum structure): the commit-failure refusal must state (1) an
+    /// explicit cause reference to a commit/apply failure, (2) that the application did not
+    /// happen / no success occurred, and (3) a next-step implication (try again, wait, or ask the
+    /// host). Expected RED until Wave B ships the copy.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void CommitFailedRefusal_StatesCause_NoSuccessAndNextStep(string localeFileName)
+    {
+        var value = RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, CommitFailedTranslationKey);
+        var portuguese = IsPortuguese(localeFileName);
+
+        AssertContainsAny(
+            localeFileName,
+            CommitFailedTranslationKey,
+            value,
+            "an explicit cause reference to a commit/apply failure",
+            portuguese ? PortugueseCommitFailedCauseTokens : EnglishCommitFailedCauseTokens);
+        AssertContainsAny(
+            localeFileName,
+            CommitFailedTranslationKey,
+            value,
+            "that the application failed / did not happen (no-success)",
+            portuguese ? PortugueseCommitFailedNoSuccessTokens : EnglishCommitFailedNoSuccessTokens);
+        AssertContainsAny(
+            localeFileName,
+            CommitFailedTranslationKey,
+            value,
+            "a next-step implication for the player (try again, wait, or ask the host)",
+            portuguese ? PortugueseRefusalNextStepTokens : EnglishRefusalNextStepTokens);
+    }
+
+    /// <summary>
+    /// T097 (FR-008, no false success): the commit-failure refusal must never read as having
+    /// consumed the input or applied successfully. Claim-of-success/claim-of-consumption tokens
+    /// are chosen so they cannot occur inside a negated denial; the required no-success phrasing
+    /// in <see cref="CommitFailedRefusal_StatesCause_NoSuccessAndNextStep"/> is the primary
+    /// guard. Expected RED until Wave B ships the copy.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void CommitFailedRefusal_MakesNoConsumedOrSuccessClaim(string localeFileName)
+    {
+        var value = RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, CommitFailedTranslationKey);
+
+        AssertContainsNone(
+            localeFileName,
+            CommitFailedTranslationKey,
+            value,
+            "no false success: copy must not claim the input was consumed or that application succeeded",
+            IsPortuguese(localeFileName) ? PortugueseCommitFailedNoClaimTokens : EnglishCommitFailedNoClaimTokens);
+    }
+
+    /// <summary>
+    /// T097 (C1-style, FR-003/FR-004/SC-006): the commit-failure refusal must not claim a
+    /// quality, growth, extra-harvest, or fertilizer-tier mechanical buff; it is a refusal, not a
+    /// confirmation. Mirrors <see cref="SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly"/>.
+    /// Expected RED until Wave B ships the copy.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void CommitFailedRefusal_MakesNoMechanicalBuffClaims(string localeFileName)
+    {
+        var value = RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, CommitFailedTranslationKey);
+
+        AssertContainsNone(
+            localeFileName,
+            CommitFailedTranslationKey,
+            value,
+            "C1 no-double-counting: refusal copy must not claim a quality, growth, extra-harvest, or fertilizer-tier mechanical buff",
+            IsPortuguese(localeFileName) ? PortugueseCommitFailedNoBuffTokens : EnglishCommitFailedNoBuffTokens);
+    }
+
+    /// <summary>
+    /// T097 (FR-002/FR-012): the commit-failure refusal must stay cozy and non-punitive; no
+    /// shaming, insulting, or moralizing vocabulary. Mirrors the
+    /// <see cref="AllAgrochemicalCopy_UsesCozyNonPunitiveTone"/> tone sweep (which iterates
+    /// <see cref="RequiredAgrochemicalKeys"/> and therefore does not cover the new key). Expected
+    /// RED until Wave B ships the copy.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void CommitFailedRefusal_UsesCozyNonPunitiveTone(string localeFileName)
+    {
+        var value = RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, CommitFailedTranslationKey);
+
+        AssertContainsNone(
+            localeFileName,
+            CommitFailedTranslationKey,
+            value,
+            "cozy/non-punitive tone: text must not shame, insult, or moralize the player",
+            ShamingTokens);
+    }
+
+    /// <summary>
+    /// T097 (FR-008): <c>LivingRoots/Constants.cs</c> must declare
+    /// <c>TranslationKeyAgrochemicalCommitFailed</c> bound to
+    /// <c>message.agrochemical.commit-failed</c> so the key is part of <see cref="ModConstants"/>.
+    /// Written as a constants-file token check (like the production-source guards in
+    /// <c>ProductionSourceGuardTests</c>) so the suite compiles before Wave B lands the constant.
+    /// Expected RED until Wave B extends <c>Constants.cs</c>.
+    /// </summary>
+    [Fact]
+    public void ConstantsFile_DeclaresCommitFailedTranslationKeyBoundToMessageKey()
+    {
+        var constantsPath = Path.Combine(LocateRepoRoot(), "LivingRoots", "Constants.cs");
+        Assert.True(File.Exists(constantsPath), $"Constants.cs not found at {constantsPath}.");
+        var content = File.ReadAllText(constantsPath);
+
+        Assert.True(
+            content.Contains("TranslationKeyAgrochemicalCommitFailed", StringComparison.Ordinal),
+            "LivingRoots/Constants.cs must declare TranslationKeyAgrochemicalCommitFailed " +
+            "(T097: the commit-failure refusal key is part of ModConstants).");
+        Assert.True(
+            content.Contains(CommitFailedTranslationKey, StringComparison.Ordinal),
+            $"LivingRoots/Constants.cs must bind TranslationKeyAgrochemicalCommitFailed to " +
+            $"'{CommitFailedTranslationKey}'.");
     }
 
     /// <summary>
