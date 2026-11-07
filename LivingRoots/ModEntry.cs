@@ -143,6 +143,10 @@ namespace LivingRoots
             _modApi.BindVerificationServices(soilHealthService, compostingBinService, locationProvider);
             var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
             var mulchApplicationService = new MulchApplicationService(modDataService, playerProvider, this.Monitor);
+            // Spec 017: the agrochemical service owns only the bounded
+            // measured soil-health mutation. The controller owns authority,
+            // locking, consumption, feedback, and the FR-009 broadcast.
+            var agrochemicalApplicationService = new AgrochemicalApplicationService(soilHealthService);
 
             // Create soil decay service
             var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
@@ -193,7 +197,7 @@ namespace LivingRoots
                 // Ignore in test environment
             }
 
-            _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider, modApi: _modApi);
+            _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider, modApi: _modApi, agrochemicalApplicationService: agrochemicalApplicationService);
 
             // T118 (FR-009/A8): host→client soil-health sync channel.
             try
@@ -381,6 +385,19 @@ namespace LivingRoots
                         Texture = "Mods/lfgranja.LivingRoots/Mulch",
                         SpriteIndex = 0,
                         ContextTags = new List<string> { ModConstants.MulchTag, "compostable_item" }
+                    };
+                    // Spec 017: the single Joja/agrochemical input. It is
+                    // deliberately Category 0 with no context tags: it must not
+                    // enter the fertilizer slot, the organic-waste/composting
+                    // validator, or any vanilla regenerative path. The mod
+                    // intercepts right-click for its only supported use.
+                    data[ModConstants.AgrochemicalItemId] = new StardewValley.GameData.Objects.ObjectData
+                    {
+                        Name = "Joja Agrochemical",
+                        DisplayName = "Joja Agrochemical",
+                        Description = "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health.",
+                        Type = "Basic",
+                        Price = 50
                     };
                 });
             }
