@@ -3,5 +3,15 @@
   "message.compost.max-health": "Este solo já está com a saúde máxima.",
   "message.compost.action-conflict": "Outro jogador já está interagindo com este tile.",
   "message.harvest.inventory-full": "Seu inventário está cheio!",
-  "message.accessibility.patterns-hidden": "Padrões de acessibilidade ocultos: há muitos tiles visíveis ao mesmo tempo."
+  "message.accessibility.patterns-hidden": "Padrões de acessibilidade ocultos: há muitos tiles visíveis ao mesmo tempo.",
+  "item.agrochemical.name": "Agroquímico Joja",
+  "item.agrochemical.description": "Um atalho industrial da Joja. Funciona rápido, mas custa 10 de saúde do solo.",
+  "message.agrochemical.applied": "Agroquímico aplicado. A saúde do solo agora está menor.",
+  "message.agrochemical.applied-clamped": "Agroquímico aplicado parcialmente: o solo tinha pouca saúde disponível.",
+  "message.agrochemical.applied-unknown-baseline": "Agroquímico aplicado. O solo estava sem leitura de saúde, então a saúde inicial foi tratada como 100.",
+  "message.agrochemical.invalid-target": "O agroquímico só pode ser aplicado em solo arado.",
+  "message.agrochemical.missing-input": "Segure um agroquímico Joja para aplicá-lo no solo.",
+  "message.agrochemical.action-conflict": "Outro jogador já está trabalhando neste tile.",
+  "message.agrochemical.unsupported-authority": "Apenas o anfitrião pode aplicar agroquímicos no multiplayer.",
+  "message.agrochemical.soil-at-minimum": "Este solo já está com a saúde mínima; o agroquímico não teria efeito."
 }
