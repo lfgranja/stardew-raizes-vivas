@@ -80,6 +80,7 @@ Claim schema is canonical in `contracts/multiplayer-gate3.md`; this section mirr
 9. **Localization:** New/touched player-facing text keys are present for supported languages touched (`default`/`en`/`pt` parity expected).
 10. **Result data for honest bounds (A8):** Success results expose `baseline_used`, `post_penalty`, and clamp/applied-delta information (`requested_penalty`/`applied_penalty` or an equivalent explicit clamped indicator) so a bounds-reduced outcome is not messaged/tested as a full nominal penalty.
 11. **One input per success / no hidden state (A12):** Each successful application consumes one agrochemical input; repeated applications require additional inputs and apply the same immediate bounded rule (no hidden cooldown/stacking state).
+12. **Soil-at-minimum refusal (017 convergence adjudication, 2026-11-06):** A measured baseline of exactly `0` (`MinSoilHealth`) MUST produce an explicit `RefusedSoilAtMinimum` outcome: no soil write, no item consumption, no FR-009 broadcast, and localized refusal stating cause, no-success/non-application outcome, and next-step implication. A zero-delta `Success` is forbidden for this case. This is the spec-faithful reading of FR-005/FR-008 for the at-minimum case (not a violation); see `contracts/agrochemical-application-service.md` §Adjudication. Distinct from the clamped-to-zero-with-nonzero-baseline outcome (`PostPenalty=0`, `WasClamped=true`, `AppliedPenalty>0`), which remains a bounded Success per rule 10.
 
 ## State transitions
 
