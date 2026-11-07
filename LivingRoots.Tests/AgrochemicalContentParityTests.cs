@@ -9,16 +9,19 @@ namespace LivingRoots.Tests;
 
 /// <summary>
 /// 017 i18n/content parity tests for the Joja/agrochemical tradeoff (T021-T022, plus
-/// remediation RED coverage T065/T068/T081).
+/// remediation coverage T065/T068/T081 and the Phase 10 convergence RED coverage
+/// T097/T104).
 /// </summary>
 /// <remarks>
 /// <para>
 /// Every assertion reads the three shipped locale files in <c>LivingRoots/i18n</c> and checks
 /// the exact key set exposed by <see cref="ModConstants"/>. The 017 keys shipped in T031-T034,
-/// so the original T021-T022 assertions are green regression guards. Assertions added during
-/// the 017 remediation (T065 refusal structure, T068 bounded/recoverable legibility, T081
-/// Portuguese magnitude/comparison copy) pin the updated copy contract and are expected RED
-/// until Wave B ships the new strings.
+/// and the 017 remediation copy (T065 refusal structure, T068 bounded/recoverable legibility,
+/// T081 Portuguese magnitude/comparison copy) shipped in Phase 9; those assertions are green
+/// regression guards. Assertions added in Phase 10 (T097 commit-failure refusal structure,
+/// tone, no-consume/no-success/no-buff claims, and the <c>TranslationKeyAgrochemicalCommitFailed</c>
+/// constants-file binding; T104 missing-input explicit-diagnosis phrasing) pin the new copy
+/// contract and are expected RED until Wave B ships the new strings.
 /// </para>
 /// <para>
 /// T022 checks are contract-driven lexical proxies for the content contract: they prove the
