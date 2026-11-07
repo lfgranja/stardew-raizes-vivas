@@ -764,7 +764,11 @@ public class AgrochemicalApplicationServiceTests
     /// The 500-tile capacity fill is intentionally not simulated (allocation cost);
     /// the capacity signal is covered at the seam by the T064/T097 mocked-seam tests.
     /// Sub-1e-4 postPenalty storage semantics (store explicit 0f vs keep the
-    /// sparse-cache drop) are pending the Wave B decision and are not pinned here.
+    /// sparse-cache drop) were decided 2026-11-06 (decision (1): the sparse-cache
+    /// drop rule is kept unchanged; sub-1e-4 results never persist across save/load,
+    /// exact 0f survives only in-memory within a session). See the "Decision
+    /// 2026-11-06 — sub-1e-4 postPenalty storage semantics" section of
+    /// verification/measured-zero-persistence.md. Not pinned here by test.
     /// </summary>
     [Fact]
     public void RealSeam_TrySetSoilHealth_OutOfBoundTile_ReturnsFalse_WithoutCacheMutation()
