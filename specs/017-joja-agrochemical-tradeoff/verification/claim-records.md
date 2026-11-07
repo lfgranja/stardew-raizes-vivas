@@ -26,6 +26,14 @@ behavior evidence.
 These are the artifacts this register cites (or will cite once produced). A missing artifact means
 the related row stays `pending` (or `infeasible`/`blocked` with a reason).
 
+> **Preamble note (2026-11-07, Phase 11 doc-hygiene):** the `**Current state:**` paragraph above
+> (line 7) is retained **verbatim** — this register is append-only — but it describes the
+> **Phase 7/8 tree** and is stale on its own. The current state lives in the dated addenda at
+> the end of this file (Phase 9 convergence re-verification addendum; Phase 10 / T090
+> machine-pass row for `run-20261107T040235Z-589a` @ `c9ff596`, commit promoted by the runner)
+> and in [`convergence-rerun.md`](convergence-rerun.md). Read the register end-to-end; on
+> conflict, the newest dated addendum governs. This note promotes no claim and changes no status.
+
 | Artifact | Purpose | Produced by |
 |---|---|---|
 | `verification/red-phase.md` + `verification/red-phase-run.log` | Historical RED gate: 60 targeted tests failed for expected missing-behavior reasons before implementation. Not passing evidence. | T025 |
