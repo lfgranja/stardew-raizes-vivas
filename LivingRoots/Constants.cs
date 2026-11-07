@@ -220,7 +220,7 @@ namespace LivingRoots
         // Spec 017: Joja / Agrochemical Tradeoff (MVP, provisional/tunable).
         public const string AgrochemicalItemId = "LivingRoots.JojaAgrochemical";
         public const string QualifiedAgrochemicalItemId = "(O)LivingRoots.JojaAgrochemical";
-        public const float AgrochemicalSoilPenalty = 10f; // C3 provisional, 0-100 scale
+        public const float AgrochemicalSoilPenalty = 10f; // C3 provisional, 0-100 scale — TUNING THIS CONSTANT REQUIRES SYNCING: i18n/default.json + en.json + pt.json "applied"/"description" strings and the English fallbacks in ModController.TranslateAgrochemicalMessage (tests hardcode the magnitude token).
         public const string AgrochemicalItemNameKey = "item.agrochemical.name";
         public const string AgrochemicalItemDescriptionKey = "item.agrochemical.description";
         public const string TranslationKeyAgrochemicalApplied = "message.agrochemical.applied";
