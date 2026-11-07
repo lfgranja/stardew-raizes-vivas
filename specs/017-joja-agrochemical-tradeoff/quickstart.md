@@ -20,9 +20,10 @@ dotnet format Stardew-LivingRoots.sln --verify-no-changes
 
 ### Targeted test runs (017 test inventory)
 
-The 017 suite is split across four classes. The combined filter below is the authoritative
-targeted command for T048; the RED gate used the same filter (see
-`verification/red-phase.md`).
+The 017 suite is split across five classes. The combined filter below is the authoritative
+targeted command for T048; the historical RED gate used the same filter (see
+`verification/red-phase.md`, a failing-run record retained as historical gate evidence, not a
+passing result).
 
 ```bash
 GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --configuration Release \
@@ -31,13 +32,16 @@ GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --con
 
 | Test class | Cases | Covers |
 |---|---:|---|
-| `LivingRoots.Tests.AgrochemicalApplicationServiceTests` | 13 | Service baseline/penalty/clamp/refusal rules and FsCheck invariants (S1, S2, S5). |
-| `LivingRoots.Tests.AgrochemicalPersistenceTests` | 3 | Mocked `ISoilHealthService.SaveData`/`LoadData` seam (S1, S2). |
-| `LivingRoots.Tests.ModControllerAgrochemicalTests` | 19 | Authority, ordering, lock contention, consumption, feedback, broadcast/refusal invariants (S3, S4, S5). |
-| `LivingRoots.Tests.AgrochemicalContentParityTests` | 25 | Required 017 keys, locale parity, tone/boundary proxies (S6). |
+| `LivingRoots.Tests.AgrochemicalApplicationServiceTests` | 16 | Service baseline/penalty/clamp/refusal rules and FsCheck invariants (S1, S2, S5). |
+| `LivingRoots.Tests.AgrochemicalPersistenceTests` | 4 | Mocked `ISoilHealthService.SaveData`/`LoadData` seam (S1, S2). |
+| `LivingRoots.Tests.ModControllerAgrochemicalTests` | 20 | Authority, ordering, lock contention, consumption, feedback, broadcast/refusal invariants (S3, S4, S5). |
+| `LivingRoots.Tests.AgrochemicalContentParityTests` | 45 | Required 017 keys, locale parity, tone/boundary proxies (S6). |
+| `LivingRoots.Tests.AgrochemicalRegistrationTests` | 3 | Registration wiring for the `Data/Objects` item (FR-001/FR-003). |
 
-The targeted run currently discovers 60 cases. T048 records the authoritative pass/fail counts
-in `verification/automated-tests.md`; do not cite this table as a passing result by itself.
+The targeted 017 enumeration is **88** cases (16/4/20/45/3) on the post-Phase-9 tree; see
+[`verification/convergence-rerun.md`](verification/convergence-rerun.md) for the re-verification
+record. T048 records the authoritative pass/fail counts in `verification/automated-tests.md`;
+do not cite this table as a passing result by itself.
 
 ### Verification artifacts and scope
 
