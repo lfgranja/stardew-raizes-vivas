@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,12 +8,675 @@ using Xunit;
 namespace LivingRoots.Tests;
 
 /// <summary>
-/// 017 RED-phase i18n/content parity tests (T021-T022). Assertions are added before implementation.
+/// 017 RED-phase i18n/content parity tests for the Joja/agrochemical tradeoff (T021-T022).
 /// </summary>
+/// <remarks>
+/// <para>
+/// Every assertion reads the three shipped locale files in <c>LivingRoots/i18n</c> and checks
+/// the exact key set exposed by <see cref="ModConstants"/>. At the time these tests are authored
+/// the 017 keys do not exist yet, so the suite is expected to fail RED until T031-T034 ship the
+/// copy; the test bodies are the executable specification.
+/// </para>
+/// <para>
+/// T022 checks are contract-driven lexical proxies for the content contract: they prove the
+/// shipped strings avoid mechanical-buff and shaming vocabulary, but they cannot prove semantic
+/// meaning, nuance or tone. Manual review remains required (T052) and these tests must not be
+/// reported as satisfying it.
+/// </para>
+/// <para>
+/// Fallback behavior is deliberately out of scope here. The runtime fallback for
+/// <c>ShowAgrochemicalFeedback</c> throwing or returning null (no false success, no duplicate
+/// mutation/consumption/broadcast) is covered by controller tests T019 and must not be inferred
+/// from i18n parity alone.
+/// </para>
+/// </remarks>
 public class AgrochemicalContentParityTests
 {
-    [Fact(Skip = "017 RED scaffold: replaced by T021-T022")]
-    public void Scaffold_Placeholder()
+    private static readonly string[] LocaleFileNames =
     {
+        "default.json",
+        "en.json",
+        "pt.json"
+    };
+
+    private static readonly string[] RequiredAgrochemicalKeys =
+    {
+        ModConstants.AgrochemicalItemNameKey,
+        ModConstants.AgrochemicalItemDescriptionKey,
+        ModConstants.TranslationKeyAgrochemicalApplied,
+        ModConstants.TranslationKeyAgrochemicalAppliedClamped,
+        ModConstants.TranslationKeyAgrochemicalAppliedUnknownBaseline,
+        ModConstants.TranslationKeyAgrochemicalInvalidTarget,
+        ModConstants.TranslationKeyAgrochemicalMissingInput,
+        ModConstants.TranslationKeyAgrochemicalActionConflict,
+        ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority,
+        ModConstants.TranslationKeyAgrochemicalSoilAtMinimum
+    };
+
+    private static readonly string[] SuccessAgrochemicalKeys =
+    {
+        ModConstants.TranslationKeyAgrochemicalApplied,
+        ModConstants.TranslationKeyAgrochemicalAppliedClamped,
+        ModConstants.TranslationKeyAgrochemicalAppliedUnknownBaseline
+    };
+
+    private static readonly string[] RefusalAgrochemicalKeys =
+    {
+        ModConstants.TranslationKeyAgrochemicalInvalidTarget,
+        ModConstants.TranslationKeyAgrochemicalMissingInput,
+        ModConstants.TranslationKeyAgrochemicalActionConflict,
+        ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority,
+        ModConstants.TranslationKeyAgrochemicalSoilAtMinimum
+    };
+
+    private static readonly Dictionary<string, string[]> EnglishRefusalCauseTokens =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            [ModConstants.TranslationKeyAgrochemicalInvalidTarget] = new[] { "tilled", "soil" },
+            [ModConstants.TranslationKeyAgrochemicalMissingInput] = new[] { "agrochemical", "hold", "Joja" },
+            [ModConstants.TranslationKeyAgrochemicalActionConflict] = new[] { "player", "tile" },
+            [ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority] = new[] { "host", "farmhand", "multiplayer" },
+            [ModConstants.TranslationKeyAgrochemicalSoilAtMinimum] = new[] { "minimum", "already", "lowest" }
+        };
+
+    private static readonly Dictionary<string, string[]> PortugueseRefusalCauseTokens =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            [ModConstants.TranslationKeyAgrochemicalInvalidTarget] = new[] { "arado", "solo" },
+            [ModConstants.TranslationKeyAgrochemicalMissingInput] =
+                new[] { "agroquímico", "agroquimico", "segur", "Joja" },
+            [ModConstants.TranslationKeyAgrochemicalActionConflict] = new[] { "jogador", "tile" },
+            [ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority] = new[] { "anfitri", "host", "jogador" },
+            [ModConstants.TranslationKeyAgrochemicalSoilAtMinimum] = new[] { "mínim", "minim", "já", "ja" }
+        };
+
+    private static readonly string[] ShamingTokens =
+    {
+        "stupid",
+        "idiot",
+        "shame",
+        "greedy",
+        "ruin",
+        "destroy",
+        "burro",
+        "idiota",
+        "vergonha",
+        "ganancioso",
+        "arruinar",
+        "destruir"
+    };
+
+    /// <summary>
+    /// T021 (FR-012): every 017 key from <see cref="ModConstants"/> must ship in every
+    /// supported locale as a non-empty string.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(string localeFileName)
+    {
+        var locale = LoadLocale(localeFileName);
+
+        foreach (var key in RequiredAgrochemicalKeys)
+        {
+            RequireNonEmptyString(locale, localeFileName, key);
+        }
+    }
+
+    /// <summary>
+    /// T021 (FR-012): all three locale files must be JSON objects and expose the same 017 key
+    /// set. Only the required 017 subset is compared; unrelated locale entries may differ.
+    /// </summary>
+    /// <remarks>
+    /// <c>JObject.Parse</c> is also the object-shape assertion: an absent, malformed, or non-object
+    /// document throws and fails this test before the key-set comparison.
+    /// </remarks>
+    [Fact]
+    public void LocaleFiles_ParseAsJsonObjects_AndExposeIdentical017KeySets()
+    {
+        var expectedKeys = new HashSet<string>(RequiredAgrochemicalKeys, StringComparer.Ordinal);
+        var observedKeysByLocale = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+
+        foreach (var localeFileName in LocaleFileNames)
+        {
+            var locale = LoadLocale(localeFileName);
+            var observedKeys = new HashSet<string>(
+                RequiredAgrochemicalKeys.Where(key => locale.Property(key) != null),
+                StringComparer.Ordinal);
+            observedKeysByLocale[localeFileName] = observedKeys;
+
+            var missingKeys = expectedKeys
+                .Except(observedKeys, StringComparer.Ordinal)
+                .OrderBy(key => key, StringComparer.Ordinal)
+                .ToArray();
+            Assert.True(
+                missingKeys.Length == 0,
+                $"017 i18n parity: '{localeFileName}' is missing required agrochemical key(s): " +
+                $"[{string.Join(", ", missingKeys)}]. default.json, en.json and pt.json must all " +
+                "expose the same 017 key set.");
+        }
+
+        var referenceLocaleFileName = LocaleFileNames[0];
+        var referenceKeys = observedKeysByLocale[referenceLocaleFileName];
+        foreach (var localeFileName in LocaleFileNames.Skip(1))
+        {
+            var observedKeys = observedKeysByLocale[localeFileName];
+            var missingFromLocale = referenceKeys
+                .Except(observedKeys, StringComparer.Ordinal)
+                .OrderBy(key => key, StringComparer.Ordinal)
+                .ToArray();
+            var extraInLocale = observedKeys
+                .Except(referenceKeys, StringComparer.Ordinal)
+                .OrderBy(key => key, StringComparer.Ordinal)
+                .ToArray();
+
+            Assert.True(
+                missingFromLocale.Length == 0 && extraInLocale.Length == 0,
+                $"017 i18n parity: '{referenceLocaleFileName}' and '{localeFileName}' must expose " +
+                "the same 017 key set. " +
+                $"Only in '{referenceLocaleFileName}': [{string.Join(", ", missingFromLocale)}]. " +
+                $"Only in '{localeFileName}': [{string.Join(", ", extraInLocale)}].");
+        }
+    }
+
+    /// <summary>
+    /// T021 (FR-002/FR-012): the item description must telegraph both the Joja/industrial
+    /// shortcut and its soil-health cost, using locale-appropriate vocabulary.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(string localeFileName)
+    {
+        const string key = ModConstants.AgrochemicalItemDescriptionKey;
+        var description = RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, key);
+
+        if (IsPortuguese(localeFileName))
+        {
+            Assert.True(
+                ContainsToken(description, "solo"),
+                $"017 i18n ({localeFileName}, '{key}'): the Portuguese item description must " +
+                $"name the soil ('solo') cost; got \"{description}\".");
+            Assert.True(
+                ContainsAnyToken(description, new[] { "saúde", "saude" }),
+                $"017 i18n ({localeFileName}, '{key}'): the Portuguese item description must " +
+                $"name the soil-health ('saúde'/'saude') cost; got \"{description}\".");
+            AssertContainsAny(
+                localeFileName,
+                key,
+                description,
+                "the Joja/industrial shortcut",
+                "atalho",
+                "industrial",
+                "Joja");
+            return;
+        }
+
+        Assert.True(
+            ContainsToken(description, "soil"),
+            $"017 i18n ({localeFileName}, '{key}'): the item description must name the soil cost; " +
+            $"got \"{description}\".");
+        Assert.True(
+            ContainsToken(description, "health"),
+            $"017 i18n ({localeFileName}, '{key}'): the item description must name the soil-health " +
+            $"cost; got \"{description}\".");
+        AssertContainsAny(
+            localeFileName,
+            key,
+            description,
+            "the Joja/industrial shortcut",
+            "shortcut",
+            "industrial",
+            "Joja");
+    }
+
+    /// <summary>
+    /// T021 (FR-008/FR-012): every refusal key must exist, be non-empty, and name its
+    /// refusal cause using key-specific vocabulary in every locale.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(string localeFileName)
+    {
+        var locale = LoadLocale(localeFileName);
+        var portuguese = IsPortuguese(localeFileName);
+        var tokensByKey = portuguese ? PortugueseRefusalCauseTokens : EnglishRefusalCauseTokens;
+
+        foreach (var key in RefusalAgrochemicalKeys)
+        {
+            var value = RequireNonEmptyString(locale, localeFileName, key);
+            AssertContainsAny(
+                localeFileName,
+                key,
+                value,
+                "the refusal cause/class in player-understandable terms",
+                tokensByKey[key]);
+        }
+    }
+
+    /// <summary>
+    /// T021 (FR-004/FR-006/FR-007): success copy must state an applied soil consequence,
+    /// acknowledge a clamped/partial outcome, and describe an unknown baseline without
+    /// inventing measurement history.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void SuccessMessages_StateAnAppliedSoilConsequence(string localeFileName)
+    {
+        var locale = LoadLocale(localeFileName);
+
+        if (!IsPortuguese(localeFileName))
+        {
+            var appliedKey = ModConstants.TranslationKeyAgrochemicalApplied;
+            var applied = RequireNonEmptyString(locale, localeFileName, appliedKey);
+            Assert.True(
+                ContainsToken(applied, "soil"),
+                $"017 i18n ({localeFileName}, '{appliedKey}'): success copy must attribute the " +
+                $"consequence to the soil; got \"{applied}\".");
+            AssertContainsAny(
+                localeFileName,
+                appliedKey,
+                applied,
+                "an applied/now soil-health consequence",
+                "applied",
+                "now");
+
+            var clampedKey = ModConstants.TranslationKeyAgrochemicalAppliedClamped;
+            var clamped = RequireNonEmptyString(locale, localeFileName, clampedKey);
+            AssertContainsAny(
+                localeFileName,
+                clampedKey,
+                clamped,
+                "the clamped/partial applied outcome",
+                "partial",
+                "only",
+                "applied");
+            AssertNoFullNominalPenaltyClaim(localeFileName, clampedKey, clamped);
+        }
+
+        var unknownBaselineKey = ModConstants.TranslationKeyAgrochemicalAppliedUnknownBaseline;
+        var unknownBaseline = RequireNonEmptyString(locale, localeFileName, unknownBaselineKey);
+        if (IsPortuguese(localeFileName))
+        {
+            AssertContainsAny(
+                localeFileName,
+                unknownBaselineKey,
+                unknownBaseline,
+                "a no-history/unmeasured baseline signal",
+                "sem leitura",
+                "não medid",
+                "nao medid",
+                "medi");
+            return;
+        }
+
+        AssertContainsAny(
+            localeFileName,
+            unknownBaselineKey,
+            unknownBaseline,
+            "a no-history/unmeasured baseline signal",
+            "no prior",
+            "unmeasured",
+            "reading");
+    }
+
+    /// <summary>
+    /// T022 (C1, FR-003/FR-004/SC-006): success and clamped success copy is confirmation and
+    /// attribution only. It must not claim a quality, growth, extra-harvest, or fertilizer-tier
+    /// mechanical buff.
+    /// </summary>
+    /// <remarks>
+    /// Contract-driven lexical proxy only: this proves the shipped strings avoid mechanical-buff
+    /// vocabulary. It does not prove the runtime path avoids 014/015 APIs, <c>HoeDirt.fertilizer</c>
+    /// writes, or Harmony fertilizer hooks; those boundaries belong to service/controller tests
+    /// (T012/T015) and manual semantic review (T052).
+    /// </remarks>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(string localeFileName)
+    {
+        var locale = LoadLocale(localeFileName);
+        var forbiddenTokens = IsPortuguese(localeFileName)
+            ? new[] { "qualidade", "colheita extra", "crescimento", "fertilizante", "fase" }
+            : new[] { "quality", "extra harvest", "growth", "fertilizer tier", "phase days" };
+
+        foreach (var key in SuccessAgrochemicalKeys)
+        {
+            var value = RequireNonEmptyString(locale, localeFileName, key);
+            AssertContainsNone(
+                localeFileName,
+                key,
+                value,
+                "C1 no-double-counting: success/confirmation copy must attribute the soil consequence " +
+                "only and must not claim a quality, growth, extra-harvest, or fertilizer-tier mechanical buff",
+                forbiddenTokens);
+        }
+    }
+
+    /// <summary>
+    /// T022 (FR-002/FR-012): every 017 value in every locale must stay cozy and non-punitive;
+    /// no shaming, insulting, or moralizing vocabulary.
+    /// </summary>
+    /// <remarks>
+    /// Contract-driven lexical proxy only: tone and nuance still require manual review (T052).
+    /// The absence of these tokens does not by itself prove the copy is cozy or non-punitive.
+    /// </remarks>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void AllAgrochemicalCopy_UsesCozyNonPunitiveTone(string localeFileName)
+    {
+        var locale = LoadLocale(localeFileName);
+
+        foreach (var key in RequiredAgrochemicalKeys)
+        {
+            var value = RequireNonEmptyString(locale, localeFileName, key);
+            AssertContainsNone(
+                localeFileName,
+                key,
+                value,
+                "cozy/non-punitive tone: text must not shame, insult, or moralize the player",
+                ShamingTokens);
+        }
+    }
+
+    /// <summary>
+    /// T022 (FR-005/FR-007, boundary honesty): clamped success copy must acknowledge a bounded or
+    /// partial applied outcome and must not claim the full nominal 10-point penalty.
+    /// </summary>
+    /// <remarks>
+    /// Copy alone is not the runtime guard: the controller's feedback mapping also derives its
+    /// message from <c>AppliedPenalty</c>/<c>WasClamped</c> on the service result, so a clamped
+    /// outcome cannot be presented as a full nominal penalty. These assertions only stop the
+    /// shipped strings from asserting the opposite; service/controller boundary tests (T013/T018)
+    /// prove runtime honesty, and manual semantic review remains T052.
+    /// </remarks>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(string localeFileName)
+    {
+        var key = ModConstants.TranslationKeyAgrochemicalAppliedClamped;
+        var value = RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, key);
+
+        if (IsPortuguese(localeFileName))
+        {
+            AssertContainsAny(
+                localeFileName,
+                key,
+                value,
+                "a bounded/partial applied-delta signal",
+                "aplicad",
+                "parcial",
+                "apenas",
+                "limitad");
+        }
+        else
+        {
+            AssertContainsAny(
+                localeFileName,
+                key,
+                value,
+                "a bounded/partial applied-delta signal",
+                "applied",
+                "partial",
+                "only",
+                "limited");
+        }
+
+        AssertNoFullNominalPenaltyClaim(localeFileName, key, value);
+    }
+
+    /// <summary>
+    /// T022 (C2, FR-006): the unknown-baseline success key must say the prior soil value was not
+    /// measured and must not imply a remembered prior reading.
+    /// </summary>
+    /// <remarks>
+    /// Contract-driven lexical proxy only. Manual semantic review (T052) must still confirm the
+    /// copy cannot be read as a prior known value; this test only rejects the listed phrasings.
+    /// </remarks>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(string localeFileName)
+    {
+        var key = ModConstants.TranslationKeyAgrochemicalAppliedUnknownBaseline;
+        var value = RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, key);
+
+        if (IsPortuguese(localeFileName))
+        {
+            AssertContainsAny(
+                localeFileName,
+                key,
+                value,
+                "a no-history signal ('sem leitura'/'não medid'/'nao medid')",
+                "sem leitura",
+                "não medid",
+                "nao medid");
+            AssertContainsNone(
+                localeFileName,
+                key,
+                value,
+                "C2 unknown-baseline legibility: copy must not imply a remembered prior soil value or reading",
+                new[] { "leitura anterior", "seu solo estava", "antes era" });
+            return;
+        }
+
+        AssertContainsAny(
+            localeFileName,
+            key,
+            value,
+            "a no-history signal ('no prior'/'unmeasured'/'no reading')",
+            "no prior",
+            "unmeasured",
+            "no reading");
+        AssertContainsNone(
+            localeFileName,
+            key,
+            value,
+            "C2 unknown-baseline legibility: copy must not imply a remembered prior soil value or reading",
+            new[] { "previous reading", "your soil was", "before it was" });
+    }
+
+    /// <summary>
+    /// Walks up from the current working directory until <c>Stardew-LivingRoots.sln</c> is found.
+    /// </summary>
+    /// <returns>The repository root directory.</returns>
+    /// <exception cref="DirectoryNotFoundException">
+    /// Thrown when no directory in the current working directory's ancestry contains the solution.
+    /// </exception>
+    private static string LocateRepoRoot()
+    {
+        DirectoryInfo? directory = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (directory != null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Stardew-LivingRoots.sln")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException(
+            "Could not locate the repository root: no 'Stardew-LivingRoots.sln' was found while " +
+            $"walking up from '{Directory.GetCurrentDirectory()}'.");
+    }
+
+    /// <summary>
+    /// Reads a locale file from the source tree with <see cref="File.ReadAllText(string)"/> and
+    /// parses it as a JSON object with <see cref="JObject.Parse(string)"/>.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    /// <returns>The parsed locale object.</returns>
+    private static JObject LoadLocale(string localeFileName)
+    {
+        var path = Path.Combine(LocateRepoRoot(), "LivingRoots", "i18n", localeFileName);
+        Assert.True(
+            File.Exists(path),
+            $"017 i18n: expected locale file '{path}' to exist in the source tree.");
+        return JObject.Parse(File.ReadAllText(path));
+    }
+
+    /// <summary>
+    /// Requires <paramref name="key"/> to exist in <paramref name="locale"/> as a non-empty
+    /// string whose trimmed value is also non-empty.
+    /// </summary>
+    /// <param name="locale">Parsed locale object.</param>
+    /// <param name="localeFileName">Locale file name used in failure messages.</param>
+    /// <param name="key">Required translation key.</param>
+    /// <returns>The non-empty translation value.</returns>
+    private static string RequireNonEmptyString(JObject locale, string localeFileName, string key)
+    {
+        var token = locale[key];
+        Assert.True(
+            token != null,
+            $"017 i18n parity: '{localeFileName}' is missing the required agrochemical key '{key}'.");
+        var nonNullToken = token!;
+        Assert.True(
+            nonNullToken.Type == JTokenType.String,
+            $"017 i18n parity: '{localeFileName}' key '{key}' must be a JSON string, but was " +
+            $"'{nonNullToken.Type}'.");
+        var value = nonNullToken.Value<string>();
+        Assert.False(
+            string.IsNullOrWhiteSpace(value),
+            $"017 i18n parity: '{localeFileName}' key '{key}' must have a non-empty trimmed string " +
+            "value.");
+        return value!;
+    }
+
+    /// <summary>
+    /// Whether the locale is Portuguese, which uses the locale-specific token sets below.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    /// <returns><see langword="true"/> for <c>pt.json</c>.</returns>
+    private static bool IsPortuguese(string localeFileName)
+    {
+        return string.Equals(localeFileName, "pt.json", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Case-insensitive single-token containment.
+    /// </summary>
+    /// <param name="text">Text to inspect.</param>
+    /// <param name="token">Token to find.</param>
+    /// <returns><see langword="true"/> when the token occurs case-insensitively.</returns>
+    private static bool ContainsToken(string text, string token)
+    {
+        return text.Contains(token, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Case-insensitive any-of containment.
+    /// </summary>
+    /// <param name="text">Text to inspect.</param>
+    /// <param name="tokens">Accepted tokens.</param>
+    /// <returns><see langword="true"/> when at least one token occurs.</returns>
+    private static bool ContainsAnyToken(string text, string[] tokens)
+    {
+        foreach (var token in tokens)
+        {
+            if (ContainsToken(text, token))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Asserts that a translation value contains at least one of the required tokens.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name used in failure messages.</param>
+    /// <param name="key">Translation key used in failure messages.</param>
+    /// <param name="value">Translation value under test.</param>
+    /// <param name="requirement">Human-readable requirement description.</param>
+    /// <param name="tokens">Accepted tokens.</param>
+    private static void AssertContainsAny(
+        string localeFileName,
+        string key,
+        string value,
+        string requirement,
+        params string[] tokens)
+    {
+        Assert.True(
+            ContainsAnyToken(value, tokens),
+            $"017 i18n ({localeFileName}, '{key}'): value must mention {requirement}; expected at " +
+            $"least one of [{string.Join(", ", tokens)}], but was \"{value}\".");
+    }
+
+    /// <summary>
+    /// Asserts that a translation value contains none of the forbidden tokens.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name used in failure messages.</param>
+    /// <param name="key">Translation key used in failure messages.</param>
+    /// <param name="value">Translation value under test.</param>
+    /// <param name="requirement">Human-readable requirement description.</param>
+    /// <param name="forbiddenTokens">Rejected tokens.</param>
+    private static void AssertContainsNone(
+        string localeFileName,
+        string key,
+        string value,
+        string requirement,
+        params string[] forbiddenTokens)
+    {
+        var matchedTokens = forbiddenTokens
+            .Where(token => ContainsToken(value, token))
+            .ToArray();
+        Assert.True(
+            matchedTokens.Length == 0,
+            $"017 i18n ({localeFileName}, '{key}'): {requirement}; found forbidden token(s) " +
+            $"[{string.Join(", ", matchedTokens)}] in \"{value}\".");
+    }
+
+    /// <summary>
+    /// Asserts that clamped success copy does not claim the full nominal 10-point penalty was
+    /// applied.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name used in failure messages.</param>
+    /// <param name="key">Translation key used in failure messages.</param>
+    /// <param name="value">Translation value under test.</param>
+    private static void AssertNoFullNominalPenaltyClaim(string localeFileName, string key, string value)
+    {
+        if (IsPortuguese(localeFileName))
+        {
+            AssertContainsNone(
+                localeFileName,
+                key,
+                value,
+                "boundary honesty: clamped copy must not claim the full nominal 10-point penalty was applied",
+                "10 pontos",
+                "todos os 10");
+            return;
+        }
+
+        AssertContainsNone(
+            localeFileName,
+            key,
+            value,
+            "boundary honesty: clamped copy must not claim the full nominal 10-point penalty was applied",
+            "full 10",
+            "all 10",
+            "10 points");
     }
 }
