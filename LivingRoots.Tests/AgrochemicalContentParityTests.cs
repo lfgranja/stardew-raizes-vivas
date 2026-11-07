@@ -935,6 +935,53 @@ public class AgrochemicalContentParityTests
     }
 
     /// <summary>
+    /// T104 (FR-002/FR-008, explicit-diagnosis phrasing): the <c>missing-input</c> refusal must
+    /// diagnose the holding condition addressed to the player, not issue a bare instruction.
+    /// Requiring the player-addressed pronoun (<c>you</c>/<c>você</c>) distinguishes an explicit
+    /// diagnosis ("You need to be holding…") from the current requirement-style copy ("Hold a
+    /// Joja agrochemical…"), which lacks it. Expected RED until Wave B tightens the copy.
+    /// Existing missing-input assertions are intentionally unchanged.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void MissingInputRefusal_NamesTheHoldingConditionAsExplicitDiagnosis(string localeFileName)
+    {
+        var key = ModConstants.TranslationKeyAgrochemicalMissingInput;
+        var value = RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, key);
+
+        if (IsPortuguese(localeFileName))
+        {
+            AssertContainsAny(
+                localeFileName,
+                key,
+                value,
+                "the holding condition in explicit-diagnosis phrasing ('você precisa estar segurando…' / 'não está segurando…')",
+                PortugueseMissingInputDiagnosisTokens);
+            Assert.True(
+                ContainsToken(value, "você"),
+                $"017 i18n ({localeFileName}, '{key}'): the missing-input refusal must address the " +
+                $"player as 'você' (explicit diagnosis, not a bare instruction like \"Segure um agroquímico…\"); " +
+                $"got \"{value}\".");
+            return;
+        }
+
+        AssertContainsAny(
+            localeFileName,
+            key,
+            value,
+            "the holding condition in explicit-diagnosis phrasing ('you need to be holding…' / 'you are not holding…')",
+            EnglishMissingInputDiagnosisTokens);
+        Assert.True(
+            ContainsToken(value, "you"),
+            $"017 i18n ({localeFileName}, '{key}'): the missing-input refusal must address the player " +
+            $"as 'you' (explicit diagnosis, not a bare instruction like \"Hold a Joja agrochemical…\"); " +
+            $"got \"{value}\".");
+    }
+
+    /// <summary>
     /// Walks up from the current working directory until <c>Stardew-LivingRoots.sln</c> is found.
     /// </summary>
     /// <returns>The repository root directory.</returns>
