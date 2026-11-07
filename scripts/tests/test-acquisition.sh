@@ -39,7 +39,7 @@ assert_fn_code 0 "objects ok"
 call_runner_func acquisition_validate_redirect "https://codeload.github.com/x"
 assert_fn_code 0 "codeload ok"
 insecure_proto='ht''tp'
-call_runner_func acquisition_validate_redirect "${insecure_proto}://github.com/x"
+call_runner_func acquisition_validate_redirect "${insecure_proto}://github.com/x" # NOSONAR shell:S5332 - intentional fixture: asserts insecure http scheme is rejected
 assert_fn_code 19 "http rejected"
 call_runner_func acquisition_validate_redirect "https://evil.example.com/x"
 assert_fn_code 19 "other host rejected"
