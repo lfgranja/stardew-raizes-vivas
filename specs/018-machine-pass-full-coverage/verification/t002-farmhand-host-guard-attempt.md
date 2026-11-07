@@ -26,16 +26,9 @@
 - `LivingRoots.Verification.ModEntry` consumes the queue and writes ack/error on parse/command failures; `scripts/lib/injection.sh` `injection_wait_ack` returns **19** when ack indicates `ok != true` or parse fails.
 - Therefore the failure is **queue architecture incompatibility** (non-`lr_` command in verification queue), not a proven failure of SMAPI `debug split` in headless mode.
 
-## 018 T002 status
+## 2026-11-07 authorized mechanism update (explicit user authorization: safe replacement for non-`lr_*` `/debug split`)
 
-**Blocked by mechanism (current evidence).** Do **not** promote to `machine-pass`/`verified`. Do **not** claim `debug split` headless feasibility from this run.
-
-- `debug split` headless feasibility: **still untested** via a compatible path.
-- Farmhand guard via verification queue: **blocked** until one of: (a) verification mod whitelists specific debug commands (strict allowlist, TDD, security review), (b) runner injects console commands outside the `lr_*` queue, or (c) alternative farmhand simulation strategy is designed.
-- Honesty classification for this attempt: **attempted, runner exited 19, partial/incomplete signals, no farmhand breach observed, not a pass**.
-
-## Next actions (MDMV-aligned)
-
-1. Design/code (if chosen): extend verification queue/parser with an explicit, minimal allowlist for `debug split` (or a dedicated `lr_debug_split` wrapper) under TDD; document trust boundary.
-2. Re-run T002 end-to-end only after mechanism is fixed; record `partial` (farmhand runs never `machine-pass` per 010/GOVERNANCE-ANNEX) if clean, with full signal evidence.
-3. If mechanism remains infeasible, mark 018 farmhand-guard scenarios `blocked` with reason and preserve D1 transport as `blocked/pending`.
+- Implemented `lr_split_screen` as a safe `lr_*` queue command (`LivingRoots.Verification` parser + handler, `475caa8`): best-effort reflection lookup of `ICommandHelper.Trigger(string,string[])`. `specs/010-headless-verification-runner/fixtures/valid/macros/split-screen.txt` updated to `/lr_split_screen` (`dad10f1`).
+- **Evidence (code/assembly):** `strings` on referenced `/home/luis/stardew-assemblies/StardewModdingAPI.dll` shows `TriggerActionManager`/gamepad triggers but **no console-command `Trigger` on `ICommandHelper`**; handler will log `ICommandHelper.Trigger unavailable in this SMAPI build; debug split not triggered (honest)`. Therefore `isMainPlayer` will not flip via this path in the referenced SMAPI build.
+- **No run executed against feature test.md files** to avoid runner promotion corrupting 004/014/017 GATE3 records. The 010 fixture (`farmhand-host-guard.scenario.json`, targets `004-playable-compost-loop/test.md`, expects `expectedVerdict: pass` + `isMainPlayer eq false`) is **unlikely to pass** in this headless/SMAPI environment; running it now would risk an unhelpful promotion.
+- **Honest status:** mechanism is **feasible as a safe `lr_*` replacement** (parser blocker removed) but **blocked/partial-feasible by SMAPI console-trigger API availability and/or headless split capability** in this environment. Headless split not demonstrated. Farmhand/split-screen **never `machine-pass`** (010/GOVERNANCE-ANNEX). Class: **partial/blocked-feasible, not promoted**. D1 transport remains blocked/pending.
