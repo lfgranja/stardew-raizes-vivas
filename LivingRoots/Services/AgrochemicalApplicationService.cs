@@ -147,14 +147,18 @@ public class AgrochemicalApplicationService(ISoilHealthService soilHealthService
 
     private static AgrochemicalApplicationResult CreateInvalidTargetResult()
     {
+        // T074: the refusal never read the soil, so it carries no baseline and
+        // resolves no post penalty — NaN sentinels document "no value was produced",
+        // and WasClamped is false because nothing was computed, let alone clamped.
+        // RequestedPenalty still reports what was asked for, which is known.
         return new AgrochemicalApplicationResult(
             AgrochemicalApplicationOutcome.RefusedInvalidTarget,
             ModConstants.TranslationKeyAgrochemicalInvalidTarget,
-            0f,
-            0f,
+            float.NaN,
+            float.NaN,
             ModConstants.AgrochemicalSoilPenalty,
-            0f,
-            true,
+            float.NaN,
+            false,
             false);
     }
 }
