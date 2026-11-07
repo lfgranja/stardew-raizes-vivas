@@ -57,6 +57,8 @@ the related row stays `pending` (or `infeasible`/`blocked` with a reason).
 | Normal-play acquisition path for the Joja agrochemical input. | `qualitative-follow-up` | `verification/provisioning-validation.md` | `blocked` | MVP boundary; acquisition formally descoped to a follow-up by decision 2026-11-06. The input is unavailable in normal play at MVP (verification-only `lr_give_agrochemical` grant only; no `Data/Shops`/recipe/shop/mail/quest). US1's independent test is reproducible only via the verification queue until then. Do not promote absent real evidence or a scoped implementation. |
 | Measured-zero outcome persists as measured across save/load. | `automated` | `verification/persistence-roundtrip.md` | `blocked` | Sparse-cache zero omission: a clamped-to-zero result (baseline 5, P=10 → 0) is omitted by `SoilHealthService`'s sparse cache and reloads as Unknown/`NaN`; pre-existing project behavior, not a 017 regression, but the spec save/load edge case does not hold for clamped-to-zero outcomes (see `verification/measured-zero-persistence.md`, 2026-11-06). Follow-up may persist zeros; do not promote. |
 
+| Host-only real-game Gate 3 machine-pass (3 required signals) for the 017 MVP path, re-run on the post-Phase-9/10 tree. | `host-only-machine-pass` | `verification/host-only-gate3-phase10-run.md`; `evidence-bundle-run-20261107T040235Z-589a/`; `test.md` (`machine-pass`, honesty `R`, commit c9ff596) | `complete` | Clean host pass of the 016-hardened runner with the current tree deployed: measured 50 → 40 (delta -10), `phaseDays` unchanged, host `isMainPlayer` true, thresholds 3/3, signals agree, offline bundle verifier exit 0. **Not** D1, **not** human-verified, **not** SC-004; measured 50 → 40 path only (C2 unknown-baseline automated-only); provisional `P=10`. Supersedes nothing — the 2026-11-06 e5882c1 bundle is retained; this row attests commit c9ff596. |
+
 ## Rules
 
 - A claim is only `complete` when a concrete source artifact exists and supports that claim at
@@ -111,3 +113,6 @@ review) are also Phase-7/8-era artifacts; row 52 is re-anchored to the post-Phas
 in `manual-review.md` (2026-11-06 addendum) without editing the row. No status is changed by
 this addendum; D1, human `verified`, and SC-004 remain `pending`; the two `blocked` rows remain
 `blocked`.
+
+
+**Addendum (2026-11-07, Phase 10 / T090):** the 016-hardened runner re-ran the host-only Gate 3 on the post-Phase-9/10 tree after the attestation-integrity repair (T091) and produced a clean host pass; `test.md` was promoted by the runner itself (not hand-edited), and this row records it append-only. D1, human `verified`, and SC-004 remain `pending`; the two `blocked` rows (normal-play acquisition; measured-zero save/load) remain `blocked`; the 2026-11-06 infeasibility record and the e5882c1-era machine-pass row are unchanged.

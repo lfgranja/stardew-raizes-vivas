@@ -97,3 +97,17 @@ Further scope caveats, unchanged in substance but re-flagged against the current
 - D1, human `verified`, SC-004 remain `pending`. Nothing in this addendum promotes them.
 
 Prior rows and the "Remaining work" list are unchanged; items 1–4 there remain open.
+
+## Addendum (2026-11-07, Phase 10 / T090) — post-Phase-9/10 tree attestation
+
+Phase 9 (T064–T089) and Phase 10 (T090–T104) changed runnable code after the e5882c1-era
+host-only machine-pass. That claim, the rows above, and this summary remain the **Phase-7/8
+attestation**. The current tree is attested by: `verification/convergence-rerun.md` (Phase-9
+re-verification, 88-enumerated targeted suite at that tree → corrected to 119 after Phase 10;
+full suite 1844 → 1871), `verification/convergence-phase10-*.log` (retained raw logs), and —
+decisive — a fresh 016-hardened host-only Gate 3 re-run on the post-Phase-9/10 tree
+(`verification/host-only-gate3-phase10-run.md`; `test.md` promoted by the runner to
+`machine-pass`, honesty `R`, commit `c9ff596`; bundle `evidence-bundle-run-20261107T040235Z-589a/`).
+This addendum does not re-attest Phase-7/8 rows; it points to the post-Phase-9/10 evidence.
+D1 (farmhand), `human-verified`, and SC-004 remain `pending`; the acquisition and measured-zero
+rows remain `blocked`; `P=10` remains provisional.
