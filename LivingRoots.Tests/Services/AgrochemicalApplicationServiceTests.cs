@@ -483,13 +483,13 @@ public class AgrochemicalApplicationServiceTests
     }
 
     /// <summary>
-    /// T099-RED (FR-008/FR-006, Phase 10 converge): a location name longer than
+    /// T099 (FR-008/FR-006, Phase 10 converge): a location name longer than
     /// <see cref="ModConstants.MaxLocationNameLength"/> cannot be persisted or synchronized
     /// (the persistence layer refuses it), so the application must treat it as an
     /// invalid target — never as a 0f floor reading that falls into the soil-at-minimum
-    /// branch. No soil read or write may occur. This fails today: the current code
-    /// issues the soil read, receives the 0f sentinel for the unmappable name, and
-    /// reports <see cref="AgrochemicalApplicationOutcome.RefusedSoilAtMinimum"/>.
+    /// branch. No soil read or write may occur; the overlong-name guard refuses at
+    /// the top of <see cref="IAgrochemicalApplicationService.Apply"/> with
+    /// <see cref="AgrochemicalApplicationOutcome.RefusedInvalidTarget"/>.
     /// </summary>
     [Fact]
     public void Apply_OverlongLocationName_ReturnsRefusedInvalidTarget()
@@ -585,13 +585,10 @@ public class AgrochemicalApplicationServiceTests
     /// feedback stay controller-owned and are not asserted here.
     /// </summary>
     /// <remarks>
-    /// T097-RED (Phase 10 converge): the commit-drop refusal now expects the
-    /// dedicated <see cref="AgrochemicalApplicationOutcome.RefusedCommitFailed"/>
-    /// class with the <see cref="ModConstants.TranslationKeyAgrochemicalCommitFailed"/>
-    /// key, replacing the provisional action-conflict mapping. This fails today:
-    /// the current implementation still returns <see cref="AgrochemicalApplicationOutcome.RefusedConflict"/>
-    /// with the action-conflict key (the intended honest mapping; the flip is
-    /// recorded in the test history).
+    /// T097 (Phase 10 converge): the commit-drop refusal uses the dedicated
+    /// <see cref="AgrochemicalApplicationOutcome.RefusedCommitFailed"/> class with the
+    /// <see cref="ModConstants.TranslationKeyAgrochemicalCommitFailed"/> key — never the
+    /// action-conflict key and never a success outcome.
     /// </remarks>
     [Fact]
     public void TrySetSoilHealth_CapacityRejection_MockedAtSeam_FailsHonestly()
@@ -624,7 +621,7 @@ public class AgrochemicalApplicationServiceTests
     }
 
     /// <summary>
-    /// T097-RED (Phase 10 converge): the same commit-drop rule on the
+    /// T097 (Phase 10 converge): the same commit-drop rule on the
     /// bounds-reduced path. A measured 5 clamps the penalty to 5; when the seam
     /// then refuses the measured write (capacity), the application must refuse with
     /// <see cref="AgrochemicalApplicationOutcome.RefusedCommitFailed"/> and the
