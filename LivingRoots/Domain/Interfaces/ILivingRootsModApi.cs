@@ -78,6 +78,17 @@ namespace LivingRoots.Domain.Interfaces
         /// failed. Intended for headless verification; not a gameplay privilege boundary.
         /// </summary>
         bool ApplyMulch(string locationName, int tileX, int tileY);
+
+        /// <summary>
+        /// Dev/CI-only seam (authorized): acquire a host atomic tile lock as <paramref name="holderFarmerId"/>.
+        /// Deterministic contention testing (e.g. 017 action-conflict/RefusedConflict path). Not for gameplay.
+        /// </summary>
+        bool TryAcquireHostLock(string locationName, int tileX, int tileY, long holderFarmerId);
+
+        /// <summary>
+        /// Dev/CI-only seam (authorized): release a host atomic tile lock held by <paramref name="holderFarmerId"/>.
+        /// </summary>
+        void ReleaseHostLock(string locationName, int tileX, int tileY, long holderFarmerId);
     }
 
     /// <summary>

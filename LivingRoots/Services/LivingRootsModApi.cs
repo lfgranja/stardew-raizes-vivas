@@ -24,6 +24,8 @@ namespace LivingRoots.Services
         private ILocationProvider? _locationProvider;
         private Func<string, int, int, bool>? _applyAgrochemical;
         private Func<string, int, int, bool>? _applyMulch;
+        private Func<string, int, int, long, bool>? _acquireHostLock;
+        private Action<string, int, int, long>? _releaseHostLock;
 
         public string ApiVersion => ApiVersionValue;
 
@@ -87,6 +89,22 @@ namespace LivingRoots.Services
             {
                 if (_disposed) return;
                 _applyMulch = applyMulch;
+            }
+        }
+
+        /// <summary>
+        /// Binds dev/CI host-lock seams (authorized). Deterministic contention testing only.
+        /// </summary>
+        public void BindHostLockSeams(Func<string, int, int, long, bool> acquire, Action<string, int, int, long> release)
+        {
+            if (acquire == null) throw new ArgumentNullException(nameof(acquire));
+            if (release == null) throw new ArgumentNullException(nameof(release));
+
+            lock (_lock)
+            {
+                if (_disposed) return;
+                _acquireHostLock = acquire;
+                _releaseHostLock = release;
             }
         }
 
@@ -301,6 +319,66 @@ namespace LivingRoots.Services
             catch
             {
                 return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public bool TryAcquireHostLock(string locationName, int tileX, int tileY, long holderFarmerId)
+        {
+            if (string.IsNullOrWhiteSpace(locationName))
+            {
+                return false;
+            }
+
+            Func<string, int, int, long, bool>? acquire;
+            lock (_lock)
+            {
+                if (_disposed) return false;
+                acquire = _acquireHostLock;
+            }
+
+            if (acquire == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return acquire(locationName, tileX, tileY, holderFarmerId);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public void ReleaseHostLock(string locationName, int tileX, int tileY, long holderFarmerId)
+        {
+            if (string.IsNullOrWhiteSpace(locationName))
+            {
+                return;
+            }
+
+            Action<string, int, int, long>? release;
+            lock (_lock)
+            {
+                if (_disposed) return;
+                release = _releaseHostLock;
+            }
+
+            if (release == null)
+            {
+                return;
+            }
+
+            try
+            {
+                release(locationName, tileX, tileY, holderFarmerId);
+            }
+            catch
+            {
+                // dev/CI seam: swallow
             }
         }
 

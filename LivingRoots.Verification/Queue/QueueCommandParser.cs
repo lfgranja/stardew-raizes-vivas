@@ -96,6 +96,8 @@ namespace LivingRoots.Verification.Queue
             {
                 case "lr_set_soil_health":
                 case "lr_plant_crop":
+                case "lr_acquire_host_lock":
+                case "lr_release_host_lock":
                     min = 3;
                     max = 4;
                     return true;
@@ -119,6 +121,7 @@ namespace LivingRoots.Verification.Queue
                     min = 1;
                     max = 1;
                     return true;
+                case "lr_split_screen":
                 case "lr_quit":
                     min = 0;
                     max = 0;
@@ -160,6 +163,21 @@ namespace LivingRoots.Verification.Queue
                     }
 
                     if (args.Count == 3 && !IsSafeLabel(args[2]))
+                    {
+                        error = "bad-location";
+                        return false;
+                    }
+
+                    return true;
+                case "lr_acquire_host_lock":
+                case "lr_release_host_lock":
+                    if (!IsInt(args[0]) || !IsInt(args[1]) || !IsInt(args[2]))
+                    {
+                        error = "bad-number";
+                        return false;
+                    }
+
+                    if (args.Count == 4 && !IsSafeLabel(args[3]))
                     {
                         error = "bad-location";
                         return false;
@@ -246,6 +264,7 @@ namespace LivingRoots.Verification.Queue
                     }
 
                     return true;
+                case "lr_split_screen":
                 case "lr_quit":
                     return true;
                 default:

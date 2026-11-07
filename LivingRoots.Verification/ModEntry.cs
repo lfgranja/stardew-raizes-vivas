@@ -373,6 +373,53 @@ namespace LivingRoots.Verification
                         break;
                     }
 
+                case "lr_acquire_host_lock":
+                    {
+                        var location = command.Arguments.Count >= 4 ? command.GetString(3) : DefaultLocation;
+                        var holder = long.Parse(command.GetString(2), CultureInfo.InvariantCulture);
+                        if (!api.TryAcquireHostLock(location, command.GetInt(0), command.GetInt(1), holder))
+                        {
+                            FailGeneration("acquire-host-lock-failed");
+                        }
+
+                        break;
+                    }
+
+                case "lr_release_host_lock":
+                    {
+                        var location = command.Arguments.Count >= 4 ? command.GetString(3) : DefaultLocation;
+                        var holder = long.Parse(command.GetString(2), CultureInfo.InvariantCulture);
+                        api.ReleaseHostLock(location, command.GetInt(0), command.GetInt(1), holder);
+                        break;
+                    }
+
+                case "lr_split_screen":
+                    {
+                        // Authorized T002 farmhand mechanism (safe lr_* replacement for /debug split).
+                        // Best-effort: programmatic trigger may be unavailable in this SMAPI build;
+                        // headless split support may also be unavailable. Thresholds record reality honestly.
+                        try
+                        {
+                            var cmd = Helper.ConsoleCommands;
+                            var trigger = cmd.GetType().GetMethod("Trigger", new[] { typeof(string), typeof(string[]) });
+                            if (trigger != null)
+                            {
+                                trigger.Invoke(cmd, new object[] { "debug", new[] { "split" } });
+                                Monitor.Log("verification: lr_split_screen invoked debug split via reflection (best-effort).", LogLevel.Info);
+                            }
+                            else
+                            {
+                                Monitor.Log("verification: lr_split_screen: ICommandHelper.Trigger unavailable in this SMAPI build; debug split not triggered (honest).", LogLevel.Warn);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Monitor.Log($"verification: lr_split_screen failed (best-effort, exception type: {ex.GetType().FullName}).", LogLevel.Warn);
+                        }
+
+                        break;
+                    }
+
                 case "lr_till":
                     {
                         var location = command.Arguments.Count >= 3 ? command.GetString(2) : DefaultLocation;

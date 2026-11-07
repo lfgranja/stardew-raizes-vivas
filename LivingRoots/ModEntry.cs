@@ -304,6 +304,11 @@ namespace LivingRoots
 
                     return mulchApplicationService.TryApplyMulch(player, location, new Vector2(x, y), out _);
                 });
+
+                // Authorized dev/CI contention seam (017 RefusedConflict/action-conflict).
+                _modApi.BindHostLockSeams(
+                    (loc, x, y, farmerId) => hostAtomicLockService.TryAcquireLock(loc, new Vector2(x, y), farmerId),
+                    (loc, x, y, farmerId) => hostAtomicLockService.ReleaseLock(loc, new Vector2(x, y), farmerId));
             }
             catch (Exception ex)
             {
