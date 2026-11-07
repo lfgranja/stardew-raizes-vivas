@@ -45,6 +45,7 @@ Player-facing text introduced/changed for 017 MUST be localized for supported la
 - Mandatory new PNG/SFX assets.
 - Vanilla fertilizer category behavior or Harmony hook integration.
 - Data/recipe/shop additions unrelated to this single controlled MVP input.
+
 ## Icon strategy (017 convergence) — Decision 2026-11-06
 
 **Decision:** The 017 Joja/agrochemical input ships **WITHOUT a dedicated 017 texture**. The item is registered as an untextured `Type="Basic"` object and explicitly accepts the **vanilla `springobjects` fallback sprite (`SpriteIndex 0`)** for rendering at MVP. No 017-specific PNG is introduced.
