@@ -10,25 +10,29 @@ namespace LivingRoots.Domain.Interfaces
         Success,
 
         /// <remarks>
-        /// Reserved (T074): synthesized by the controller for the unsupported-authority
-        /// path (farmhand on the host-authoritative MVP); never produced by the service.
-        /// Farmhand refusals occur before the service is called, in controller orchestration.
+        /// Reserved (T074): never produced by the service or the controller; reserved for the
+        /// unsupported-authority path (farmhand on the host-authoritative MVP) should a future
+        /// in-controller outcome ever be needed. Farmhand refusals occur before the service is
+        /// called, in controller orchestration (`return false` + key), never as an enum outcome.
         /// </remarks>
         RefusedUnsupportedAuthority,
 
         RefusedInvalidTarget,
 
         /// <remarks>
-        /// Reserved (T074): synthesized by the controller for the missing/invalid held-input
-        /// path; never produced by the service. Input refusals occur before the service is
-        /// called, in controller orchestration.
+        /// Reserved (T074): never produced by the service or the controller; reserved for the
+        /// missing/invalid held-input path should a future in-controller outcome ever be needed.
+        /// Input refusals occur before the service is called, in controller orchestration
+        /// (`return false` + key), never as an enum outcome.
         /// </remarks>
         RefusedMissingInput,
 
         /// <remarks>
-        /// Reserved for the controller-synthesized first-wins per-tile lock-contention class.
-        /// The service no longer reports this outcome for a commit-drop refusal: seam commit
-        /// failures are reported as <see cref="AgrochemicalApplicationOutcome.RefusedCommitFailed"/>.
+        /// Reserved per T074: never produced by the service or the controller; reserved for the
+        /// first-wins per-tile lock-contention class should a future in-controller outcome or
+        /// service-mediated refusal ever need one. Lock-contention refusals occur in controller
+        /// orchestration (`return false` + key); the service reports seam commit failures as
+        /// <see cref="AgrochemicalApplicationOutcome.RefusedCommitFailed"/>.
         /// </remarks>
         RefusedConflict,
 
