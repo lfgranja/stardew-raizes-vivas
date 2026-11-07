@@ -132,6 +132,25 @@ public class AgrochemicalContentParityTests
         "cuidado"
     };
 
+    private static readonly string[] EnglishBoundedRecoverableTokens =
+    {
+        "recover",
+        "care",
+        "compost",
+        "bounce back",
+        "bounded",
+        "temporary"
+    };
+
+    private static readonly string[] PortugueseBoundedRecoverableTokens =
+    {
+        "recuper",
+        "cuidado",
+        "compost",
+        "limitad",
+        "tempor"
+    };
+
     private static readonly string[] ShamingTokens =
     {
         "stupid",
@@ -351,6 +370,37 @@ public class AgrochemicalContentParityTests
             value,
             "a next-step implication for the player",
             portuguese ? PortugueseRefusalNextStepTokens : EnglishRefusalNextStepTokens);
+    }
+
+    /// <summary>
+    /// T068 (contract bounded/recoverable player legibility): every locale must communicate that
+    /// the soil-health consequence is bounded and recoverable through existing soil-care systems,
+    /// in either the item description or the applied-success message. Wave B may change either
+    /// key; at least one must carry the element per locale.
+    /// </summary>
+    /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
+    [Theory]
+    [InlineData("default.json")]
+    [InlineData("en.json")]
+    [InlineData("pt.json")]
+    public void BoundedRecoverableElement_AppearsInDescriptionOrAppliedMessage(string localeFileName)
+    {
+        var locale = LoadLocale(localeFileName);
+        var tokens = IsPortuguese(localeFileName)
+            ? PortugueseBoundedRecoverableTokens
+            : EnglishBoundedRecoverableTokens;
+
+        var descriptionKey = ModConstants.AgrochemicalItemDescriptionKey;
+        var appliedKey = ModConstants.TranslationKeyAgrochemicalApplied;
+        var description = RequireNonEmptyString(locale, localeFileName, descriptionKey);
+        var applied = RequireNonEmptyString(locale, localeFileName, appliedKey);
+
+        Assert.True(
+            ContainsAnyToken(description, tokens) || ContainsAnyToken(applied, tokens),
+            $"017 i18n ({localeFileName}): either '{descriptionKey}' or '{appliedKey}' must communicate " +
+            "that the consequence is bounded and recoverable through existing soil-care systems; " +
+            $"expected at least one of [{string.Join(", ", tokens)}] in one of those values, but " +
+            $"'{descriptionKey}' was \"{description}\" and '{appliedKey}' was \"{applied}\".");
     }
 
     /// <summary>
