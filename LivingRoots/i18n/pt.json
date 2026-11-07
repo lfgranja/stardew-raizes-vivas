@@ -5,13 +5,13 @@
   "message.harvest.inventory-full": "Seu inventário está cheio!",
   "message.accessibility.patterns-hidden": "Padrões de acessibilidade ocultos: há muitos tiles visíveis ao mesmo tempo.",
   "item.agrochemical.name": "Agroquímico Joja",
-  "item.agrochemical.description": "Um atalho industrial da Joja. Funciona rápido, mas custa 10 de saúde do solo.",
-  "message.agrochemical.applied": "Agroquímico aplicado. A saúde do solo agora está menor.",
-  "message.agrochemical.applied-clamped": "Agroquímico aplicado parcialmente: o solo tinha pouca saúde disponível.",
+  "item.agrochemical.description": "Um atalho industrial da Joja. Funciona rápido, mas custa 10 de saúde do solo. A consequência para a saúde do solo é limitada e o solo se recupera com cuidado.",
+  "message.agrochemical.applied": "Agroquímico aplicado. A saúde do solo agora está 10 pontos menor.",
+  "message.agrochemical.applied-clamped": "Agroquímico aplicado parcialmente: a perda de saúde do solo foi menor do que a penalidade completa desta aplicação, pois o solo tinha pouca saúde disponível.",
   "message.agrochemical.applied-unknown-baseline": "Agroquímico aplicado. O solo estava sem leitura de saúde, então a saúde inicial foi tratada como 100.",
-  "message.agrochemical.invalid-target": "O agroquímico só pode ser aplicado em solo arado.",
-  "message.agrochemical.missing-input": "Segure um agroquímico Joja para aplicá-lo no solo.",
-  "message.agrochemical.action-conflict": "Outro jogador já está trabalhando neste tile.",
-  "message.agrochemical.unsupported-authority": "Apenas o anfitrião pode aplicar agroquímicos no multiplayer.",
-  "message.agrochemical.soil-at-minimum": "Este solo já está com a saúde mínima; o agroquímico não teria efeito."
+  "message.agrochemical.invalid-target": "O agroquímico só pode ser aplicado em solo arado, então não foi aplicado. Are este solo primeiro e tente novamente.",
+  "message.agrochemical.missing-input": "Segure um agroquímico Joja para aplicá-lo no solo; ele não foi aplicado. Tente novamente com um na mão.",
+  "message.agrochemical.action-conflict": "Outro jogador já está trabalhando neste tile, então o agroquímico não foi aplicado. Aguarde o tile liberar e tente novamente.",
+  "message.agrochemical.unsupported-authority": "Apenas o anfitrião pode aplicar agroquímicos no multiplayer, então ele não foi aplicado. Peça ao anfitrião para aplicá-lo por você.",
+  "message.agrochemical.soil-at-minimum": "Este solo já está com a saúde mínima, então o agroquímico não foi aplicado. Deixe o solo se regenerar com um pouco de cuidado e tente novamente."
 }
