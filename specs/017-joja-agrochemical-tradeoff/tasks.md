@@ -39,13 +39,13 @@ description: "Task list for 017 Joja / Agrochemical Tradeoff (MVP)"
 
 **Purpose**: Create compile-safe scaffolds and test shells before writing behavior. Scaffolds must not satisfy behavior tests.
 
-- [ ] T001 Verify feature context and read `specs/017-joja-agrochemical-tradeoff/{spec.md,plan.md,research.md,data-model.md,quickstart.md,contracts/*.md}`; confirm target names/paths follow `LivingRoots/` DDD structure and `ModEntry.cs` composition-root rule.
-- [ ] T002 [P] Scaffold domain contract `LivingRoots/Domain/Interfaces/IAgrochemicalApplicationService.cs` with minimal interface/result shape per `contracts/agrochemical-application-service.md` (no behavior); use file template/LSP-assisted creation if available.
-- [ ] T003 [P] Scaffold service class `LivingRoots/Services/AgrochemicalApplicationService.cs` implementing `IAgrochemicalApplicationService` with minimal constructor/dependency stubs and `NotImplementedException`/safe placeholder behavior (no domain logic) per `contracts/agrochemical-application-service.md`.
-- [ ] T004 [P] Scaffold unit test file `LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs` (xUnit class, Moq/FsCheck usings as needed, no passing behavior assertions yet).
-- [ ] T005 [P] Scaffold controller test file `LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs` (xUnit class, Moq, existing controller test seams/patterns, no passing behavior assertions yet).
-- [ ] T006 [P] Scaffold content/i18n parity test file `LivingRoots.Tests/AgrochemicalContentParityTests.cs` for 017 key/item framing checks (no passing assertions yet beyond compile-safe skeleton).
-- [ ] T007 Add provisional 017 constant/key placeholders in `LivingRoots/Constants.cs` under `ModConstants` only where needed for scaffolds (stable names, explicit provisional/TODO values or safe defaults documented by spec; no gameplay behavior yet): e.g. agrochemical penalty `10f` (0–100, C3), item/translation key names, and message key constants referenced by contracts.
+- [x] T001 Verify feature context and read `specs/017-joja-agrochemical-tradeoff/{spec.md,plan.md,research.md,data-model.md,quickstart.md,contracts/*.md}`; confirm target names/paths follow `LivingRoots/` DDD structure and `ModEntry.cs` composition-root rule.
+- [x] T002 [P] Scaffold domain contract `LivingRoots/Domain/Interfaces/IAgrochemicalApplicationService.cs` with minimal interface/result shape per `contracts/agrochemical-application-service.md` (no behavior); use file template/LSP-assisted creation if available.
+- [x] T003 [P] Scaffold service class `LivingRoots/Services/AgrochemicalApplicationService.cs` implementing `IAgrochemicalApplicationService` with minimal constructor/dependency stubs and `NotImplementedException`/safe placeholder behavior (no domain logic) per `contracts/agrochemical-application-service.md`.
+- [x] T004 [P] Scaffold unit test file `LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs` (xUnit class, Moq/FsCheck usings as needed, no passing behavior assertions yet).
+- [x] T005 [P] Scaffold controller test file `LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs` (xUnit class, Moq, existing controller test seams/patterns, no passing behavior assertions yet).
+- [x] T006 [P] Scaffold content/i18n parity test file `LivingRoots.Tests/AgrochemicalContentParityTests.cs` for 017 key/item framing checks (no passing assertions yet beyond compile-safe skeleton).
+- [x] T007 Add provisional 017 constant/key placeholders in `LivingRoots/Constants.cs` under `ModConstants` only where needed for scaffolds (stable names, explicit provisional/TODO values or safe defaults documented by spec; no gameplay behavior yet): e.g. agrochemical penalty `10f` (0–100, C3), item/translation key names, and message key constants referenced by contracts.
 
 **Checkpoint**: Scaffolds compile conceptually; no 017 behavior implemented.
 
