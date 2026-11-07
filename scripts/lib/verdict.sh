@@ -404,6 +404,8 @@ poor = harvest_record("poor")
 moderate = harvest_record("moderate")
 healthy_quality = harvest_record("healthy-quality")
 healthy_extra = harvest_record("healthy-extra")
+unknown_probe = harvest_record("unknown")
+zero_probe = harvest_record("zero")
 
 actual.update({
     "isMainPlayer": after_dump.get("isMainPlayer", False),
@@ -422,6 +424,14 @@ actual.update({
     "healthyVanillaQuality": harvest_value(healthy_quality, "vanillaQuality"),
     "healthyQualityRoll": harvest_value(healthy_quality, "qualityRoll"),
     "healthyExtraRoll": harvest_value(healthy_extra, "extraRoll"),
+    "unknownHarvestQuality": harvest_value(unknown_probe, "mainQuality"),
+    "unknownVanillaQuality": harvest_value(unknown_probe, "vanillaQuality"),
+    "unknownExtraCount": harvest_value(unknown_probe, "extraCount"),
+    "unknownHealthTier": harvest_value(unknown_probe, "healthTier"),
+    "zeroHarvestQuality": harvest_value(zero_probe, "mainQuality"),
+    "zeroVanillaQuality": harvest_value(zero_probe, "vanillaQuality"),
+    "zeroExtraCount": harvest_value(zero_probe, "extraCount"),
+    "zeroHealthTier": harvest_value(zero_probe, "healthTier"),
 })
 pre = build(before_dump, True)
 

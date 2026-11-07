@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace LivingRoots.Verification.Evidence
@@ -46,7 +47,11 @@ namespace LivingRoots.Verification.Evidence
                 }
 
                 dump.Done = true;
-                var json = JsonSerializer.Serialize(dump, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(dump, new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals,
+                });
                 var tmp = jsonPath + ".tmp";
 
                 // 2-3. Temp write, then fsync the file.

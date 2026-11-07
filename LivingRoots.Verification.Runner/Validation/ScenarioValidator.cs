@@ -358,6 +358,14 @@ namespace LivingRoots.Verification.Runner.Validation
                     "healthyVanillaQuality",
                     "healthyQualityRoll",
                     "healthyExtraRoll",
+                    "unknownHarvestQuality",
+                    "unknownVanillaQuality",
+                    "unknownExtraCount",
+                    "unknownHealthTier",
+                    "zeroHarvestQuality",
+                    "zeroVanillaQuality",
+                    "zeroExtraCount",
+                    "zeroHealthTier",
                 };
             }
             if (signal == "smapiLog")

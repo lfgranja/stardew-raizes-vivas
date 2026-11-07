@@ -101,6 +101,7 @@ namespace LivingRoots.Verification.Queue
                     return true;
                 case "lr_place_bin":
                 case "lr_apply_agrochemical":
+                case "lr_harvest_matrix":
                     min = 2;
                     max = 3;
                     return true;
@@ -114,10 +115,6 @@ namespace LivingRoots.Verification.Queue
                 case "lr_dump_soil_health":
                     min = 1;
                     max = 1;
-                    return true;
-                case "lr_harvest_matrix":
-                    min = 2;
-                    max = 2;
                     return true;
                 case "lr_quit":
                     min = 0;
@@ -196,6 +193,12 @@ namespace LivingRoots.Verification.Queue
                     if (!IsInt(args[0]) || !IsInt(args[1]))
                     {
                         error = "bad-number";
+                        return false;
+                    }
+
+                    if (args.Count == 3 && !IsSafeLabel(args[2]))
+                    {
+                        error = "bad-probe";
                         return false;
                     }
 

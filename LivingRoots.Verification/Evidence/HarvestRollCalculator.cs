@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace LivingRoots.Verification.Evidence
 {
@@ -87,12 +88,30 @@ namespace LivingRoots.Verification.Evidence
         public const string ModerateProbe = "moderate";
         public const string HealthyQualityProbe = "healthy-quality";
         public const string HealthyExtraProbe = "healthy-extra";
+        public const string UnknownProbe = "unknown";
+        public const string ZeroProbe = "zero";
 
         public static bool TrySelect(
             IReadOnlyList<HarvestProbeCandidate> candidates,
             double qualityProbability,
             double qualityBoost,
             double extraChance,
+            out IReadOnlyList<HarvestProbe> probes)
+        {
+            return TrySelectWithExtras(candidates, qualityProbability, qualityBoost, extraChance, null, out probes);
+        }
+
+        /// <summary>
+        /// Selects the four standard probes, then appends any requested extras
+        /// (e.g. unknown/zero soil-health edge probes). Standard behavior is
+        /// unchanged when <paramref name="extraProbes"/> is null/empty.
+        /// </summary>
+        public static bool TrySelectWithExtras(
+            IReadOnlyList<HarvestProbeCandidate> candidates,
+            double qualityProbability,
+            double qualityBoost,
+            double extraChance,
+            IReadOnlyCollection<string>? extraProbes,
             out IReadOnlyList<HarvestProbe> probes)
         {
             probes = Array.Empty<HarvestProbe>();
@@ -102,7 +121,7 @@ namespace LivingRoots.Verification.Evidence
             }
 
             var used = new HashSet<string>(StringComparer.Ordinal);
-            var selected = new List<HarvestProbe>(4);
+            var selected = new List<HarvestProbe>(4 + (extraProbes?.Count ?? 0));
 
             if (!TryAdd(PoorProbe, candidates, used, selected, candidate =>
                 candidate.VanillaQuality == 1
@@ -135,7 +154,38 @@ namespace LivingRoots.Verification.Evidence
                 return false;
             }
 
+            if ((extraProbes ?? Array.Empty<string>()).Any(extra => !TryAddExtraProbe(extra, candidates, used, selected, extraChance)))
+            {
+                return false;
+            }
+
             probes = selected;
+            return true;
+        }
+
+        private static bool TryAddExtraProbe(
+            string extra,
+            IReadOnlyList<HarvestProbeCandidate> candidates,
+            ISet<string> used,
+            IList<HarvestProbe> selected,
+            double extraChance)
+        {
+            if (string.Equals(extra, UnknownProbe, StringComparison.Ordinal))
+            {
+                // NaN soil => vanilla (014 A7): pick VanillaQuality==1, no extra, so vanilla main quality 1 is attestable.
+                return TryAdd(UnknownProbe, candidates, used, selected, candidate =>
+                    candidate.VanillaQuality == 1
+                    && !HarvestRollCalculator.IsExtraTriggered(candidate.ExtraRoll, extraChance));
+            }
+
+            if (string.Equals(extra, ZeroProbe, StringComparison.Ordinal))
+            {
+                // Measured 0 => Poor (014 A7/T166): force quality 0. Pick VanillaQuality==1, no extra.
+                return TryAdd(ZeroProbe, candidates, used, selected, candidate =>
+                    candidate.VanillaQuality == 1
+                    && !HarvestRollCalculator.IsExtraTriggered(candidate.ExtraRoll, extraChance));
+            }
+
             return true;
         }
 

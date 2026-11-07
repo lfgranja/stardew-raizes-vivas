@@ -128,7 +128,7 @@ if isinstance(steps, list):
 # thresholds
 AllowedFields = {
     "soilHealthStateDelta": {"soilHealth", "healthTier", "soilHealthState"},
-    "cropPhaseDelta": {"phaseDays", "currentPhase", "dayOfCurrentPhase", "fullyGrown", "dead", "indexOfHarvest", "healthTier", "soilHealthState", "poorHarvestQuality", "moderateHarvestQuality", "healthyHarvestQuality", "poorExtraCount", "moderateExtraCount", "healthyExtraCount", "healthyExtraQuality", "poorVanillaQuality", "moderateVanillaQuality", "healthyVanillaQuality", "healthyQualityRoll", "healthyExtraRoll"},
+    "cropPhaseDelta": {"phaseDays", "currentPhase", "dayOfCurrentPhase", "fullyGrown", "dead", "indexOfHarvest", "healthTier", "soilHealthState", "poorHarvestQuality", "moderateHarvestQuality", "healthyHarvestQuality", "poorExtraCount", "moderateExtraCount", "healthyExtraCount", "healthyExtraQuality", "poorVanillaQuality", "moderateVanillaQuality", "healthyVanillaQuality", "healthyQualityRoll", "healthyExtraRoll", "unknownHarvestQuality", "unknownVanillaQuality", "unknownExtraCount", "unknownHealthTier", "zeroHarvestQuality", "zeroVanillaQuality", "zeroExtraCount", "zeroHealthTier"},
     "smapiLog": {"elapsedMilliseconds", "eventName", "locationsProcessed", "isMainPlayer"},
 }
 def sentinel_ok(sentinel, field):

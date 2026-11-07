@@ -360,7 +360,8 @@ namespace LivingRoots.Verification
 
                 case "lr_harvest_matrix":
                     {
-                        if (!RunHarvestMatrix(command.GetInt(0), command.GetInt(1)))
+                        var extra = command.Arguments.Count >= 3 ? command.GetString(2) : null;
+                        if (!RunHarvestMatrix(command.GetInt(0), command.GetInt(1), extra))
                         {
                             FailGeneration("harvest-matrix-failed");
                         }
@@ -658,7 +659,7 @@ namespace LivingRoots.Verification
             }
         }
 
-        private bool RunHarvestMatrix(int baseX, int baseY)
+        private bool RunHarvestMatrix(int baseX, int baseY, string? extraProbe = null)
         {
             var player = Game1.player;
             var api = _api;
@@ -676,11 +677,14 @@ namespace LivingRoots.Verification
             var originalInventory = new List<Item>(player.Items);
             int originalFarmingLevel = player.farmingLevel.Value;
             var records = new List<HarvestRecord>();
+            var extras = string.IsNullOrWhiteSpace(extraProbe)
+                ? null
+                : extraProbe.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
             try
             {
                 player.farmingLevel.Value = 10;
-                if (!TryBuildHarvestProbes(location, baseX, baseY, out var probes))
+                if (!TryBuildHarvestProbes(location, baseX, baseY, extras, out var probes))
                 {
                     return false;
                 }
@@ -713,16 +717,17 @@ namespace LivingRoots.Verification
             return true;
         }
 
-        private bool TryBuildHarvestProbes(GameLocation location, int baseX, int baseY, out IReadOnlyList<HarvestProbe> probes)
+        private bool TryBuildHarvestProbes(GameLocation location, int baseX, int baseY, IReadOnlyCollection<string>? extras, out IReadOnlyList<HarvestProbe> probes)
         {
             probes = Array.Empty<HarvestProbe>();
             var candidates = ScanHarvestCandidates(location, baseX, baseY);
             double qualityProbability = HarvestRollCalculator.VanillaQualityProbability(Game1.player.FarmingLevel, 0);
-            if (!HarvestMatrixPlanner.TrySelect(
+            if (!HarvestMatrixPlanner.TrySelectWithExtras(
                 candidates,
                 qualityProbability,
                 ModConstants.SoilQualityHealthyBoost,
                 ModConstants.SoilExtraHarvestHealthyBoost,
+                extras,
                 out probes))
             {
                 Monitor.Log(
@@ -928,14 +933,29 @@ namespace LivingRoots.Verification
                 return 50f;
             }
 
+            if (probe == HarvestMatrixPlanner.UnknownProbe)
+            {
+                return float.NaN;
+            }
+
+            if (probe == HarvestMatrixPlanner.ZeroProbe)
+            {
+                return 0f;
+            }
+
             return 90f;
         }
 
         private static string ProbeHealthTier(float health)
         {
+            if (float.IsNaN(health) || float.IsInfinity(health))
+            {
+                return HealthTierClassifier.Unknown;
+            }
+
             if (health <= ModConstants.MinSoilHealth)
             {
-                return HealthTierClassifier.NonParticipant;
+                return HealthTierClassifier.Poor;
             }
 
             if (health < ModConstants.PoorModerateBandEdge)

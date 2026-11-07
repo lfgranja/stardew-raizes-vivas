@@ -145,7 +145,13 @@ namespace LivingRoots.Verification.Runner.Evaluation
                 or "moderateVanillaQuality"
                 or "healthyVanillaQuality"
                 or "healthyQualityRoll"
-                or "healthyExtraRoll";
+                or "healthyExtraRoll"
+                or "unknownHarvestQuality"
+                or "unknownVanillaQuality"
+                or "unknownExtraCount"
+                or "zeroHarvestQuality"
+                or "zeroVanillaQuality"
+                or "zeroExtraCount";
         }
 
         private static bool IsBooleanField(string field)
