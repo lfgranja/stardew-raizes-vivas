@@ -3,7 +3,7 @@
   "scenarioId": "soil-health-growth-healthy-soil",
   "featureSlug": "005-soil-health-to-crop-growth",
   "testMdPath": "specs/005-soil-health-to-crop-growth/test.md",
-  "summary": "Soil health to crop growth scenario (healthy soil, feature 005).",
+  "summary": "Soil health to crop growth scenario (healthy soil 80, feature 005): 0.85x phaseDays on 60,15.",
   "playerRole": "host",
   "minimumGameVersion": "1.6.14",
   "environment": {
@@ -22,18 +22,28 @@
   "initCommands": [
     {
       "kind": "console",
-      "command": "lr_set_soil_health -10 5 80",
+      "command": "lr_plant_crop 60 15 LivingRoots.Verification.LongPhaseCrop",
+      "description": "plant a verification-only crop on the target tile"
+    },
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health 60 15 80",
       "description": "seed healthy soil on the target tile"
     }
   ],
   "steps": [
+    {
+      "action": "sleep",
+      "target": "farm",
+      "days": 5
+    },
     {
       "action": "dumpCropPhase",
       "target": "farm"
     },
     {
       "action": "observe",
-      "target": "-10,5"
+      "target": "60,15"
     }
   ],
   "thresholds": [
