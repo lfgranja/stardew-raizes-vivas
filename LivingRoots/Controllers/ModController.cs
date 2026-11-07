@@ -3324,15 +3324,16 @@ namespace LivingRoots.Controllers
         private static readonly Dictionary<string, string> AgrochemicalEnglishFallbacks = new(StringComparer.Ordinal)
         {
             [ModConstants.AgrochemicalItemNameKey] = "Joja Agrochemical",
-            [ModConstants.AgrochemicalItemDescriptionKey] = "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health.",
+            [ModConstants.AgrochemicalItemDescriptionKey] = "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health. The soil consequence is bounded and recoverable through your usual soil care.",
             [ModConstants.TranslationKeyAgrochemicalApplied] = "Agrochemical applied.",
             [ModConstants.TranslationKeyAgrochemicalAppliedClamped] = "Agrochemical applied only partially: the soil had less health available than the full penalty.",
             [ModConstants.TranslationKeyAgrochemicalAppliedUnknownBaseline] = "Agrochemical applied. There was no prior soil health reading, so the starting health was treated as 100.",
             [ModConstants.TranslationKeyAgrochemicalInvalidTarget] = "The agrochemical can only be applied to tilled soil.",
-            [ModConstants.TranslationKeyAgrochemicalMissingInput] = "Hold a Joja agrochemical to apply it to the soil.",
+            [ModConstants.TranslationKeyAgrochemicalMissingInput] = "You need to be holding a Joja agrochemical when you apply it to the soil — you are not holding one, so nothing happened. Hold one in your hand, then try again.",
             [ModConstants.TranslationKeyAgrochemicalActionConflict] = "Another player is already working this tile.",
             [ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority] = "Only the host can apply agrochemicals in multiplayer.",
-            [ModConstants.TranslationKeyAgrochemicalSoilAtMinimum] = "This soil is already at the lowest health; the agrochemical would have no effect."
+            [ModConstants.TranslationKeyAgrochemicalSoilAtMinimum] = "This soil is already at the lowest health; the agrochemical would have no effect.",
+            [ModConstants.TranslationKeyAgrochemicalCommitFailed] = "The agrochemical could not be committed to the soil, so nothing changed. Your agrochemical was not consumed. Apply it to a tile with existing soil data, or try again later."
         };
 
         private string TranslateAgrochemicalMessage(string messageKey)
