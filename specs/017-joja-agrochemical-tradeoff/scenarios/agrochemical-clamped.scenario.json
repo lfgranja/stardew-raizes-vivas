@@ -71,10 +71,10 @@
         "op": "multiplier",
         "field": "phaseDays",
         "base": "pre.phaseDays",
-        "factor": 1.0,
+        "factor": 1.15,
         "tolerance": 0.0001
       },
-      "description": "no 014/015 growth double-counting from the Joja/agrochemical confirmation"
+      "description": "post-clamp soil 0 is poor (005 1.15x); no agrochemical double-counting beyond soil-health-driven growth"
     },
     {
       "signal": "smapiLog",

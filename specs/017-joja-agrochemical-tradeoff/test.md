@@ -14,7 +14,7 @@
   - SMAPI log: `evidence-bundle-run-20261107T040235Z-589a/artifacts/smapi-log.txt`
 - **Bundle**: `evidence-bundle-run-20261107T040235Z-589a/`
 - **Honesty level**: R
-- **Claim**: machine-pass by automated headless run + multi-signal evidence
+- **Claim**: machine-pass (host, runner-promoted, 3 signals). Primary measured-50: run-20261107T040235Z-589a. Additional applicable host paths (sequential, 2026-11-07): unknown-baseline pass run-20261107T113702Z-240d, clamped pass run-20261107T113959Z-430a. Refused-at-minimum: partial run-20261107T114124Z-3854 (signals incomplete: missing soil-health delta artifact on no-mutation refusal; thresholds pred0/pred2 pass, pred1 mismatch vs observed phaseDays behavior — runner/attestation gap, not promoted). Bundles gitignored.
 - **Reviewer**: —
 - **Review date**: —
 - **Session ID**: —

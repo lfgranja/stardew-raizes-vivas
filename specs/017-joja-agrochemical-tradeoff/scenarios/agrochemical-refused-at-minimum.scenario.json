@@ -74,7 +74,7 @@
         "factor": 1.0,
         "tolerance": 0.0001
       },
-      "description": "no 014/015 growth double-counting from the Joja/agrochemical confirmation"
+      "description": "refused at minimum; no soil mutation and observed phaseDays unchanged in this init/capture flow (run-20261107T114124Z-3854 evidence)"
     },
     {
       "signal": "smapiLog",

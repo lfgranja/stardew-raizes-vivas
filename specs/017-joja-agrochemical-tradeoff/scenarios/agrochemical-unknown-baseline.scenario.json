@@ -57,13 +57,13 @@
     {
       "signal": "soilHealthStateDelta",
       "predicate": {
-        "op": "multiplier",
-        "field": "soilHealth",
-        "base": "pre.soilHealth",
-        "factor": 0.9,
+        "op": "cmp",
+        "left": "soilHealth",
+        "operator": "eq",
+        "right": 90,
         "tolerance": 0.0001
       },
-      "description": "unknown baseline treated as 100; P=10 gives 90 (0.9 x 100)"
+      "description": "unknown (NaN) baseline resolves to 100; P=10 gives 90"
     },
     {
       "signal": "cropPhaseDelta",
@@ -71,10 +71,10 @@
         "op": "multiplier",
         "field": "phaseDays",
         "base": "pre.phaseDays",
-        "factor": 1.0,
+        "factor": 0.85,
         "tolerance": 0.0001
       },
-      "description": "no 014/015 growth double-counting from the Joja/agrochemical confirmation"
+      "description": "post-application soil 90 is healthy (005 0.85x); no agrochemical double-counting beyond soil-health-driven growth"
     },
     {
       "signal": "smapiLog",
