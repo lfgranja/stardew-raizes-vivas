@@ -22,6 +22,7 @@ namespace LivingRoots.Services
         private ISoilHealthService? _soilHealthService;
         private ICompostingBinService? _compostingBinService;
         private ILocationProvider? _locationProvider;
+        private Func<string, int, int, bool>? _applyAgrochemical;
 
         public string ApiVersion => ApiVersionValue;
 
@@ -41,6 +42,25 @@ namespace LivingRoots.Services
                 _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
                 _compostingBinService = compostingBinService ?? throw new ArgumentNullException(nameof(compostingBinService));
                 _locationProvider = locationProvider;
+            }
+        }
+
+        /// <summary>
+        /// Binds the dev/CI verification application delegate for the 017 Joja/agrochemical input.
+        /// Called once from the composition root after the controller exists, so a partially
+        /// wired composition root fails closed (returns false) instead of mutating exposed state.
+        /// </summary>
+        public void BindAgrochemicalApplication(Func<string, int, int, bool> applyAgrochemical)
+        {
+            if (applyAgrochemical == null)
+            {
+                throw new ArgumentNullException(nameof(applyAgrochemical));
+            }
+
+            lock (_lock)
+            {
+                if (_disposed) return;
+                _applyAgrochemical = applyAgrochemical;
             }
         }
 
@@ -183,6 +203,35 @@ namespace LivingRoots.Services
 
             bins.AddWaste(locationName, tile, item);
             return bins.GetBinState(locationName, tile) == CompostingBinState.Processing;
+        }
+
+        public bool ApplyAgrochemical(string locationName, int tileX, int tileY)
+        {
+            if (string.IsNullOrWhiteSpace(locationName))
+            {
+                return false;
+            }
+
+            Func<string, int, int, bool>? apply;
+            lock (_lock)
+            {
+                if (_disposed) return false;
+                apply = _applyAgrochemical;
+            }
+
+            if (apply == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return apply(locationName, tileX, tileY);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static bool IsGreenhouseLike(GameLocation location)

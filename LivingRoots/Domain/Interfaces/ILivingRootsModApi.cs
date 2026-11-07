@@ -50,6 +50,16 @@ namespace LivingRoots.Domain.Interfaces
         /// the item is not valid organic waste or the bin is not empty.
         /// </summary>
         bool InsertWaste(string locationName, int tileX, int tileY, string itemId, int count);
+
+        /// <summary>
+        /// Dev/CI-only host path for the 017 Joja/agrochemical input. Applies the
+        /// item through the same authoritative controller route as a right-click
+        /// interaction. The verification delegate is expected to be bound only on a
+        /// host/main-player context and to return false for anything else. Returns
+        /// false when the application delegate is not bound or the application is
+        /// refused or fails; the API performs no soil mutation itself.
+        /// </summary>
+        bool ApplyAgrochemical(string locationName, int tileX, int tileY);
     }
 
     /// <summary>

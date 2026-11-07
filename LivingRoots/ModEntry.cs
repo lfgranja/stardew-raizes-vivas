@@ -199,6 +199,68 @@ namespace LivingRoots
 
             _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider, modApi: _modApi, agrochemicalApplicationService: agrochemicalApplicationService);
 
+            // Spec 017 T059: bind the dev/CI verification apply delegate after
+            // the controller exists. The controller remains the single owner of
+            // authority, locking, consumption, feedback, and the FR-009
+            // broadcast; this wiring only forwards the Dev/CI queue command into
+            // that same route. The delegate refuses everything off-host.
+            try
+            {
+                _modApi.BindAgrochemicalApplication((loc, x, y) =>
+                {
+                    var controller = _controller;
+                    if (controller == null)
+                    {
+                        return false;
+                    }
+
+                    StardewValley.GameLocation? location = null;
+                    try
+                    {
+                        location = locationProvider?.GetLocationByName(loc);
+                    }
+                    catch
+                    {
+                        location = null;
+                    }
+
+                    if (location == null)
+                    {
+                        try
+                        {
+                            location = StardewValley.Game1.getLocationFromName(loc);
+                        }
+                        catch
+                        {
+                            location = null;
+                        }
+                    }
+
+                    if (location == null)
+                    {
+                        return false;
+                    }
+
+                    long farmerId = 0L;
+                    try
+                    {
+                        farmerId = StardewValley.Game1.player?.UniqueMultiplayerID ?? 0L;
+                    }
+                    catch
+                    {
+                        farmerId = 0L;
+                    }
+
+                    return controller.TryApplyAgrochemicalWithLock(location, new Vector2(x, y), farmerId);
+                });
+            }
+            catch (Exception ex)
+            {
+                this.Monitor?.Log(
+                    $"Agrochemical verification wiring failed (exception type: {ex.GetType().FullName}).",
+                    LogLevel.Trace);
+            }
+
             // T118 (FR-009/A8): host→client soil-health sync channel.
             try
             {
