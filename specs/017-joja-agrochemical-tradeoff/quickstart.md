@@ -30,6 +30,13 @@ GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --con
   --filter "FullyQualifiedName~Agrochemical|FullyQualifiedName~AgrochemicalPersistence|FullyQualifiedName~ModControllerAgrochemical|FullyQualifiedName~AgrochemicalContentParity"
 ```
 
+The post-Phase-10 targeted enumeration is **119** cases (0 failed); see the committed raw log
+[`verification/convergence-phase10-targeted.log`](verification/convergence-phase10-targeted.log)
+and [`verification/convergence-rerun.md`](verification/convergence-rerun.md) (Phase 10 corrective
+addendum) for the re-verification record. The per-class table below is **pre-Phase-10** (88 =
+16/4/20/45/3) and is kept for structure only — it is not the current count, and no per-class split
+of the 119 was re-enumerated to avoid inventing an unverified figure:
+
 | Test class | Cases | Covers |
 |---|---:|---|
 | `LivingRoots.Tests.AgrochemicalApplicationServiceTests` | 16 | Service baseline/penalty/clamp/refusal rules and FsCheck invariants (S1, S2, S5). |
@@ -38,9 +45,11 @@ GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --con
 | `LivingRoots.Tests.AgrochemicalContentParityTests` | 45 | Required 017 keys, locale parity, tone/boundary proxies (S6). |
 | `LivingRoots.Tests.AgrochemicalRegistrationTests` | 3 | Registration wiring for the `Data/Objects` item (FR-001/FR-003). |
 
-The targeted 017 enumeration is **88** cases (16/4/20/45/3) on the post-Phase-9 tree; see
-[`verification/convergence-rerun.md`](verification/convergence-rerun.md) for the re-verification
-record. T048 records the authoritative pass/fail counts in `verification/automated-tests.md`;
+The targeted 017 enumeration is **119** cases (0 failed) on the post-Phase-10 tree (pre-Phase-10
+table shown above as 88 = 16/4/20/45/3); see
+[`verification/convergence-phase10-targeted.log`](verification/convergence-phase10-targeted.log)
+and [`verification/convergence-rerun.md`](verification/convergence-rerun.md) for the
+re-verification record. T048 records the authoritative pass/fail counts in `verification/automated-tests.md`;
 do not cite this table as a passing result by itself.
 
 ### Verification artifacts and scope
@@ -55,7 +64,12 @@ do not cite this table as a passing result by itself.
 | `verification/provisioning-validation.md` | Validation-only item provisioning decision; no `Data/Shops`. |
 | `verification/host-only-gate3.md` | Historical 2026-11-06 infeasibility record (superseded by the Phase 8 run). |
 | `verification/host-only-gate3-run.md` | Host-only Gate 3 run record; links the tracked evidence bundle. |
-| `evidence-bundle-run-20261107T015936Z-7f35/` | Tracked host-only Gate 3 bundle (full log, three agreeing signals). |
+| `evidence-bundle-run-20261107T015936Z-7f35/` | Tracked host-only Gate 3 bundle (full log, three agreeing signals); Phase 8, commit e5882c1. |
+| `verification/host-only-gate3-phase10-run.md` | Phase-10 re-run record: host-only machine-pass on the post-Phase-9/10 tree (commit c9ff596). |
+| `evidence-bundle-run-20261107T040235Z-589a/` | Tracked host-only Gate 3 bundle for the Phase 10 run (commit c9ff596; three agreeing signals). |
+| `verification/convergence-phase10-targeted.log` | Phase-10 targeted 017 suite raw log (119/119, exit 0). |
+| `verification/convergence-phase10-full.log` | Phase-10 full regression raw log (1871 passed / 0 failed / 4 skipped, exit 0). |
+| `verification/convergence-phase10-red.log` | Phase-10 RED-wave failing-test log (21 expected pre-implementation failures). |
 | `verification/sc004-comprehension-protocol.md` | SC-004 protocol; execution stays `pending` unless a real run is appended. |
 
 If a host-only end-to-end run is infeasible or blocked, record it in
@@ -63,11 +77,16 @@ If a host-only end-to-end run is infeasible or blocked, record it in
 capability that is missing. Do not invent a scenario, log, bundle, or pass. Lower-level
 automated/persistence evidence remains separately claimable.
 
-**017 status (Phase 8):** run performed and passed; see
-[`verification/host-only-gate3-run.md`](verification/host-only-gate3-run.md) and
-`evidence-bundle-run-20261107T015936Z-7f35/` (`test.md` `machine-pass`, honesty `R`). The run
+**017 status (Phase 10):** run performed and passed on the post-Phase-10 tree (commit
+`c9ff596`); see
+[`verification/host-only-gate3-phase10-run.md`](verification/host-only-gate3-phase10-run.md) and
+`evidence-bundle-run-20261107T040235Z-589a/` (`test.md` `machine-pass`, honesty `R`). The run
 asserts only `host-only-machine-pass`, never `human-verified` or `d1-farmhand-convergence`, and
 does not cover the C2 unknown-`NaN` baseline path (covered by automated tests).
+*Superseded note (Phase 8 record retained as historical):* the earlier Phase 8 run
+([`verification/host-only-gate3-run.md`](verification/host-only-gate3-run.md), bundle
+`evidence-bundle-run-20261107T015936Z-7f35/`, commit `e5882c1`, 2026-11-06/07) attests the
+pre-Phase-9 tree only and is retained as historical context, not the current status.
 
 ## Validation scenarios
 
@@ -105,13 +124,18 @@ does not cover the C2 unknown-`NaN` baseline path (covered by automated tests).
 - **Expected:** parity for touched keys; before-use framing and after-use/refusal messages are clear and cozy/non-punitive.
 - **Evidence:** `AgrochemicalContentParityTests` covers key presence/parity and lexical tone/boundary proxies. It cannot prove semantic meaning; T052 manual review is separate.
 
-## Host-only Gate 3 (optional, if runner/scenario added later)
-If implementation adds a headless verification scenario, run via `scripts/verify-scenario.sh` following repo protocol and record 3 required signals. Record claims using the normalized schema canonical in `contracts/multiplayer-gate3.md`: `claim`, `evidence_class` (`automated` | `host-only-machine-pass` | `human-verified` | `d1-farmhand-convergence` | `qualitative-follow-up` | `planned-run-not-executed`), `source_artifact_path`, `status` (`pending` | `complete` | `blocked` | `infeasible`), and `scope_note`. A passing host-only end-to-end run is `host-only-machine-pass` only — never `human-verified` or `d1-farmhand-convergence`. If a host-only end-to-end run is **infeasible/unavailable**, do not fabricate a run: record a `planned-run-not-executed` claim with `status` `infeasible`/`blocked` plus reason, claim only completed lower-level evidence (e.g., `automated`) separately, and keep `human-verified`/`d1-farmhand-convergence` pending. `planned-run-not-executed` is not a pass. Preserve prior evidence provenance (no rewrites/retroactive promotion).
+## Host-only Gate 3
 
-**017 status:** a host-only Gate 3 run has been performed and passed. See
-[`verification/host-only-gate3-run.md`](verification/host-only-gate3-run.md) and the tracked
-bundle `evidence-bundle-run-20261107T015936Z-7f35/` (`test.md` `machine-pass`, honesty `R`). This
-is `host-only-machine-pass` only: not `human-verified`, not D1, and not SC-004. The earlier
+The headless scenario exists and has run (Phases 8 and 10; see below). To run it, invoke `scripts/verify-scenario.sh` following repo protocol and record 3 required signals. Record claims using the normalized schema canonical in `contracts/multiplayer-gate3.md`: `claim`, `evidence_class` (`automated` | `host-only-machine-pass` | `human-verified` | `d1-farmhand-convergence` | `qualitative-follow-up` | `planned-run-not-executed`), `source_artifact_path`, `status` (`pending` | `complete` | `blocked` | `infeasible`), and `scope_note`. A passing host-only end-to-end run is `host-only-machine-pass` only — never `human-verified` or `d1-farmhand-convergence`. If a host-only end-to-end run is **infeasible/unavailable**, do not fabricate a run: record a `planned-run-not-executed` claim with `status` `infeasible`/`blocked` plus reason, claim only completed lower-level evidence (e.g., `automated`) separately, and keep `human-verified`/`d1-farmhand-convergence` pending. `planned-run-not-executed` is not a pass. Preserve prior evidence provenance (no rewrites/retroactive promotion).
+
+**017 status:** two host-only Gate 3 runs have been performed and passed. The current run is
+the Phase 10 re-run on the post-Phase-9/10 tree (commit `c9ff596`): see
+[`verification/host-only-gate3-phase10-run.md`](verification/host-only-gate3-phase10-run.md) and
+the tracked bundle `evidence-bundle-run-20261107T040235Z-589a/` (`test.md` `machine-pass`, honesty
+`R`). The Phase 8 run (commit `e5882c1`, 2026-11-06/07) is retained as historical: see
+[`verification/host-only-gate3-run.md`](verification/host-only-gate3-run.md) and the tracked bundle
+`evidence-bundle-run-20261107T015936Z-7f35/` (`test.md` `machine-pass`, honesty `R`). Both are
+`host-only-machine-pass` only: not `human-verified`, not D1, and not SC-004. The earlier
 infeasibility record in [`verification/host-only-gate3.md`](verification/host-only-gate3.md) is
 kept as historical context and is not the current status.
 
