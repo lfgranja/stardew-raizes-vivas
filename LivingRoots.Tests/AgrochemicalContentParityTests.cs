@@ -8,14 +8,17 @@ using Xunit;
 namespace LivingRoots.Tests;
 
 /// <summary>
-/// 017 RED-phase i18n/content parity tests for the Joja/agrochemical tradeoff (T021-T022).
+/// 017 i18n/content parity tests for the Joja/agrochemical tradeoff (T021-T022, plus
+/// remediation RED coverage T065/T068/T081).
 /// </summary>
 /// <remarks>
 /// <para>
 /// Every assertion reads the three shipped locale files in <c>LivingRoots/i18n</c> and checks
-/// the exact key set exposed by <see cref="ModConstants"/>. At the time these tests are authored
-/// the 017 keys do not exist yet, so the suite is expected to fail RED until T031-T034 ship the
-/// copy; the test bodies are the executable specification.
+/// the exact key set exposed by <see cref="ModConstants"/>. The 017 keys shipped in T031-T034,
+/// so the original T021-T022 assertions are green regression guards. Assertions added during
+/// the 017 remediation (T065 refusal structure, T068 bounded/recoverable legibility, T081
+/// Portuguese magnitude/comparison copy) pin the updated copy contract and are expected RED
+/// until Wave B ships the new strings.
 /// </para>
 /// <para>
 /// T022 checks are contract-driven lexical proxies for the content contract: they prove the
