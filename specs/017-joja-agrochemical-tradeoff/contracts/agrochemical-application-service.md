@@ -72,6 +72,7 @@ Automated tests MUST cover:
 - host success lock acquire/release, item consumption only after authoritative measured commit, and FR-009 broadcast after commit;
 - lock contention explicit refusal;
 - i18n key/message contract for new player-facing text.
+
 ## Adjudication: soil-at-minimum refusal (017 convergence) — Decision 2026-11-06
 
 **Decision:** A measured soil health baseline of exactly `0` (`MinSoilHealth`) MUST produce an explicit `RefusedSoilAtMinimum` outcome. No soil write occurs, no item consumption occurs, no FR-009 broadcast occurs, and the player-facing refusal states the cause (soil already at minimum; the agrochemical would have no effect), that nothing was applied, and the no-success/non-application outcome with a next-step implication. A zero-delta `Success` is forbidden for this case.
