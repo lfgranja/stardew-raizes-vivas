@@ -27,8 +27,9 @@ namespace LivingRoots.Tests;
 /// feedback, then FR-009 broadcast. <c>ModController.TryApplyAgrochemicalWithLock</c>
 /// implements that contract and the suite is the evidence for it.
 /// <see cref="TryApplyAgrochemical_WithoutService_FailsClosedWithLocalizedRefusalAndLog"/>
-/// is the one RED test in this class: it is the T078 specification for the
-/// degenerate composition with a missing application service (FR-008, FR-013).
+/// pins the T078 specification for the degenerate composition with a
+/// missing application service (FR-008, FR-013) and holds green against the
+/// fail-closed branch.
 /// Tests marked <c>// characterization</c> pin behavior that already holds
 /// against the current implementation. No test expects or accepts a
 /// <see cref="NotImplementedException"/>.
@@ -241,8 +242,8 @@ public class ModControllerAgrochemicalTests
     /// held item, soil, or the FR-009 broadcast.
     /// </summary>
     /// <remarks>
-    /// RED until the T078 production branch lands: today the null-service path
-    /// returns <c>false</c> without logging or refusing. Uses the
+    /// Green against the current fail-closed branch: the null-service path
+    /// logs a Warn and refuses before any lock or service work happens. Uses the
     /// <see cref="ModConstants.TranslationKeyAgrochemicalActionConflict"/> key
     /// because the spec defines no dedicated composition-failure key and the
     /// no-lock-service fail-closed branch already uses it for an unavailable
