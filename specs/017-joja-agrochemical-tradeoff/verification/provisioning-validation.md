@@ -93,3 +93,18 @@ change its classification.
 - [x] No fertilizer-slot/Harmony behavior introduced by provisioning.
 - [x] Headless verification-queue grant implemented (`lr_give_agrochemical` + `lr_apply_agrochemical` in `LivingRoots.Verification`).
 - [ ] Manual/player-facing S1–S5 run recorded with build, save, locale, command, and scope (not done).
+
+## Decision (2026-11-06): Normal-play acquisition formally descoped for 017 MVP
+
+**Decision:** The Joja/agrochemical input (`LivingRoots.JojaAgrochemical`) remains **UNAVAILABLE in normal play at MVP**. There is no `Data/Shops` entry, no recipe, no shop, no mail, and no quest granting it. The only acquisition path is the validation-only `lr_give_agrochemical` verification-queue grant (`LivingRoots.Verification`), which is headless-runner-only and is not a player-facing path.
+
+**Formal descope:** Normal-play acquisition is **formally descoped to a follow-up** feature. This discharge is explicit, not implicit:
+
+- The spec Assumption stating acquisition/catalog details are "finalized during planning" is **discharged by this explicit descope**, not by a shipped acquisition route.
+- **US1's independent test** ("apply the Joja/agrochemical input once to eligible soil") is reproducible only via the verification queue / debug grant until a normal-play acquisition path is implemented and verified. It is not reproducible by a normal-play player at MVP.
+- `verification/summary.md` and any player-facing surface MUST NOT imply normal-play availability of the item at MVP.
+- This decision does not add `Data/Shops`, a Joja economy, a recipe, or any shipped acquisition behavior; those remain out of scope.
+
+**Claim register impact:** A matching `blocked` row for the normal-play acquisition claim was appended to `verification/claim-records.md` on 2026-11-06 (`qualitative-follow-up`, decision date 2026-11-06, do-not-promote scope note). Revisit only with a scoped acquisition implementation or real evidence; do not promote at MVP.
+
+**Provenance:** This section is append-only. Prior sections of this file (validation-only grant decision, rejected alternatives, Phase 8 status) are unchanged.
