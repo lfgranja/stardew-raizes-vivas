@@ -97,3 +97,25 @@ was followed by a fresh targeted run, a fresh persistence run, and a fresh full-
   `specs/017-joja-agrochemical-tradeoff/verification/persistence-roundtrip.md`.
 - Full-suite success means the repository's automated suite is green with 017 included; it does
   not prove real-game behavior or final balance.
+
+## Phase 8 reruns (T061)
+
+**Date:** 2026-11-06  
+**Scope:** full solution automated suite after the 017 verification-runner wiring (T058–T060). No real game process, real save/load, or Gate 3 attestation is claimed here.
+
+```bash
+GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --configuration Release --logger "console;verbosity=minimal"
+```
+
+| Measure | Value |
+|---|---:|
+| Total | 1816 |
+| Passed | 1812 |
+| Failed | 0 |
+| Skipped | 4 |
+| Exit code | 0 |
+
+The 4 skipped tests remain the pre-existing spec 009 deferred harvest-hook tests.
+
+**Source logs:** `/tmp/opencode/t061-full-test.log`, `/tmp/opencode/t061-format.log`
+**Runner-suite log:** the Phase 8 `test-017-agrochemical.sh` invocation above.

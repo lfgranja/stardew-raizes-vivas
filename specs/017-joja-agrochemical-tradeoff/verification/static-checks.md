@@ -36,3 +36,24 @@ No separate build command was needed to establish compilation for this verificat
 
 This record covers formatting and compilation only. It is not behavioral, real-game, Gate 3, D1,
 human, or SC-004 evidence.
+
+## Phase 8 reruns (T061)
+
+**Date:** 2026-11-06  
+**Evidence class:** `automated` (static/format gate) after 017 verification-runner support wiring (T056–T060).
+
+### Formatting gate
+
+```bash
+dotnet format Stardew-LivingRoots.sln --verify-no-changes
+```
+
+**Result:** exit code `0` (workspace-load warning only; no formatting changes required).
+
+### 017 runner shell suite
+
+```bash
+bash scripts/tests/test-017-agrochemical.sh
+```
+
+**Result:** 23 passed, 0 failed after the `runMacro` steps-phase mapping and the 017 scenario/`test.md` marker validation were in place.
