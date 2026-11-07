@@ -18,17 +18,20 @@ using Xunit;
 namespace LivingRoots.Tests;
 
 /// <summary>
-/// 017 RED-phase controller orchestration tests (T014-T020).
+/// 017 controller orchestration tests (T014-T020, T078, T082, T085).
 /// </summary>
 /// <remarks>
 /// <para>
 /// These tests pin the controller-owned ordering for the agrochemical path:
 /// authority, target, input, lock, service call, consume-after-commit,
 /// feedback, then FR-009 broadcast. <c>ModController.TryApplyAgrochemicalWithLock</c>
-/// is still a scaffold that throws <see cref="NotImplementedException"/>, so every
-/// test in this class is expected to fail today for that one reason. No test
-/// expects or accepts the scaffold exception; each one asserts the real contract
-/// and therefore goes red until T036-T038 implement the path.
+/// implements that contract and the suite is the evidence for it.
+/// <see cref="TryApplyAgrochemical_WithoutService_FailsClosedWithLocalizedRefusalAndLog"/>
+/// is the one RED test in this class: it is the T078 specification for the
+/// degenerate composition with a missing application service (FR-008, FR-013).
+/// Tests marked <c>// characterization</c> pin behavior that already holds
+/// against the current implementation. No test expects or accepts a
+/// <see cref="NotImplementedException"/>.
 /// </para>
 /// <para>
 /// The feedback seam is replaced with a capture delegate in every arrange block.
@@ -231,12 +234,22 @@ public class ModControllerAgrochemicalTests
     }
 
     /// <summary>
-    /// Frozen-contract guard: a controller with no agrochemical application
-    /// service fails closed before authority, target, input, lock, or feedback
-    /// work, so an unwired headless double cannot silently mutate state.
+    /// T078 (FR-008, FR-013): a controller with no agrochemical application
+    /// service fails closed with a warning log plus a localized refusal — the
+    /// same fail-closed refusal shape as the missing-lock-service branch —
+    /// instead of a silent <c>false</c>, and still cannot touch the lock, the
+    /// held item, soil, or the FR-009 broadcast.
     /// </summary>
+    /// <remarks>
+    /// RED until the T078 production branch lands: today the null-service path
+    /// returns <c>false</c> without logging or refusing. Uses the
+    /// <see cref="ModConstants.TranslationKeyAgrochemicalActionConflict"/> key
+    /// because the spec defines no dedicated composition-failure key and the
+    /// no-lock-service fail-closed branch already uses it for an unavailable
+    /// mechanism; introducing a new key is production/i18n scope.
+    /// </remarks>
     [Fact]
-    public void TryApplyAgrochemical_WithoutService_FailsClosedWithoutFeedback()
+    public void TryApplyAgrochemical_WithoutService_FailsClosedWithLocalizedRefusalAndLog()
     {
         var harness = new ControllerHarness(includeAgrochemicalService: false);
         Item heldItem = harness.Player.CurrentItem!;
@@ -252,7 +265,11 @@ public class ModControllerAgrochemicalTests
             Times.Never,
             "The null-service guard must short-circuit before any lock is acquired.");
         Assert.Equal(3, heldItem.Stack);
-        Assert.Empty(harness.Feedback);
+        AssertSingleRefusal(harness.Feedback, ModConstants.TranslationKeyAgrochemicalActionConflict);
+        harness.Monitor.Verify(
+            m => m.Log(It.IsAny<string>(), LogLevel.Warn),
+            Times.AtLeastOnce,
+            "A missing application service must be surfaced as a composition failure in the log, not swallowed.");
         AssertNoControllerSoilWrites(harness.Soil);
         AssertNoBroadcast(harness.Multiplayer);
     }
@@ -656,6 +673,102 @@ public class ModControllerAgrochemicalTests
         AssertNoBroadcast(harness.Multiplayer);
     }
 
+    /// <summary>
+    /// T082 (FR-007, FR-008): the service returns a refusal outcome and the
+    /// feedback presentation throws. No commit happened (the service refused),
+    /// so the controller must not consume, broadcast, or write soil, and the
+    /// exception must not escape. Mirrors the authority-refusal throwing case.
+    /// </summary>
+    // characterization — the current controller swallows the feedback exception
+    // on the refusal path; this test pins that fallback ordering.
+    [Fact]
+    public void TryApplyAgrochemical_WithThrowingFeedbackOnServiceRefusal_DoesNotMutateConsumeOrBroadcast()
+    {
+        var harness = new ControllerHarness();
+        var order = new List<string>();
+        harness.Agro
+            .Setup(x => x.Apply(It.IsAny<GameLocation>(), It.IsAny<Vector2>()))
+            .Callback(() => order.Add("service"))
+            .Returns(CreateRefusal(
+                AgrochemicalApplicationOutcome.RefusedSoilAtMinimum,
+                ModConstants.TranslationKeyAgrochemicalSoilAtMinimum));
+        harness.Controller.ShowAgrochemicalFeedback = (_, _) =>
+        {
+            order.Add("feedback");
+            throw new InvalidOperationException("hud down");
+        };
+        Item heldItem = harness.Player.CurrentItem!;
+        bool result = true;
+
+        Exception? escaped = Record.Exception(
+            () => result = harness.Controller.TryApplyAgrochemicalWithLock(
+                harness.Fixture.Location,
+                Tile,
+                FarmerId));
+
+        Assert.Null(escaped);
+        Assert.False(result, "A service refusal must not be reported as success.");
+        Assert.Equal(new[] { "service", "feedback" }, order);
+        harness.Agro.Verify(
+            x => x.Apply(It.IsAny<GameLocation>(), It.IsAny<Vector2>()),
+            Times.Once,
+            "The service was consulted exactly once; its refusal must end the path.");
+        Assert.Equal(3, heldItem.Stack);
+        AssertNoControllerSoilWrites(harness.Soil);
+        AssertNoBroadcast(harness.Multiplayer);
+    }
+
+    // ---------------------------------------------------------------------
+    // T085 - repeated applications on the same held stack
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// T085 (spec edge case: repeated applications; FR-005 partial): two
+    /// chained applications on the same held stack (4 → 3 → 2) consume two
+    /// items, run the service twice, release the lock twice, show success
+    /// feedback twice, and broadcast exactly twice — with no hidden one-shot
+    /// or cooldown state suppressing the second application.
+    /// </summary>
+    // characterization — repeated-application behavior already holds against
+    // the current controller; this test pins it against regressions.
+    [Fact]
+    public void TryApplyAgrochemical_ChainedTwoApplicationsOnSameStack_ConsumeTwiceBroadcastTwiceAndKeepWorking()
+    {
+        var harness = new ControllerHarness();
+        harness.Player.CurrentItem!.Stack = 4;
+        harness.Agro
+            .Setup(x => x.Apply(It.IsAny<GameLocation>(), It.IsAny<Vector2>()))
+            .Returns(CreateBaseline50Success());
+
+        bool first = harness.Controller.TryApplyAgrochemicalWithLock(
+            harness.Fixture.Location,
+            Tile,
+            FarmerId);
+        bool second = harness.Controller.TryApplyAgrochemicalWithLock(
+            harness.Fixture.Location,
+            Tile,
+            FarmerId);
+
+        Assert.True(first, "The first application on a stack of 4 must succeed.");
+        Assert.True(second, "The second application on the same held stack must not be blocked by hidden one-shot state.");
+        harness.Agro.Verify(
+            x => x.Apply(It.IsAny<GameLocation>(), It.IsAny<Vector2>()),
+            Times.Exactly(2));
+        harness.Lock.Verify(
+            x => x.TryAcquireLock("Farm", Tile, FarmerId),
+            Times.Exactly(2));
+        harness.Lock.Verify(
+            x => x.ReleaseLock("Farm", Tile, FarmerId),
+            Times.Exactly(2));
+        Assert.Equal(2, harness.Player.CurrentItem!.Stack);
+        Assert.Equal(2, harness.Feedback.Count);
+        Assert.All(
+            harness.Feedback,
+            entry => Assert.False(entry.IsRefusal, "Each successful application shows success feedback."));
+        AssertBroadcastCount(harness.Multiplayer, 2);
+        AssertNoControllerSoilWrites(harness.Soil);
+    }
+
     // ---------------------------------------------------------------------
     // T020 - refusal invariants for every service refusal class
     // ---------------------------------------------------------------------
@@ -895,14 +1008,19 @@ public class ModControllerAgrochemicalTests
 
     private static void AssertSingleBroadcast(Mock<IMultiplayerHelper> multiplayer)
     {
+        AssertBroadcastCount(multiplayer, 1);
+    }
+
+    private static void AssertBroadcastCount(Mock<IMultiplayerHelper> multiplayer, int expected)
+    {
         multiplayer.Verify(
             m => m.SendMessage(
                 It.IsAny<SoilHealthSyncMessage>(),
                 ModController.SoilHealthSyncMessageType,
                 It.IsAny<string[]>(),
                 It.IsAny<long[]>()),
-            Times.Once,
-            "FR-009: the host broadcasts the soil-health snapshot exactly once after a successful commit.");
+            Times.Exactly(expected),
+            "FR-009: the host broadcasts exactly one soil-health snapshot per successful commit.");
     }
 
     private static void AssertNoBroadcast(Mock<IMultiplayerHelper> multiplayer)
