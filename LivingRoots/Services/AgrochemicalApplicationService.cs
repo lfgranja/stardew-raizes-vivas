@@ -26,6 +26,16 @@ public class AgrochemicalApplicationService(ISoilHealthService soilHealthService
             return CreateInvalidTargetResult();
         }
 
+        // T075: an unmappable tile is an invalid target, never a malformed query that
+        // the soil service answers 0f for. That 0f sentinel is indistinguishable from a
+        // measured zero on the unknown-or-floor axis and would fall into the
+        // soil-at-minimum branch. Refuse before any soil read or write; the NaN-tile
+        // case must never reach the soil-at-minimum branch.
+        if (!TryMapTile(tile, out var tilePoint))
+        {
+            return CreateInvalidTargetResult();
+        }
+
         var currentHealth = _soilHealthService.GetSoilHealth(location.Name, tile);
         var baselineWasUnknown = float.IsNaN(currentHealth);
         var baselineUsed = ResolveBaseline(currentHealth, baselineWasUnknown);
@@ -62,6 +72,33 @@ public class AgrochemicalApplicationService(ISoilHealthService soilHealthService
             appliedPenalty,
             wasClamped,
             baselineWasUnknown);
+    }
+
+    private static bool TryMapTile(Vector2 tile, out Point tilePoint)
+    {
+        tilePoint = default;
+        if (!float.IsFinite(tile.X) || !float.IsFinite(tile.Y))
+        {
+            return false;
+        }
+
+        var floorX = MathF.Floor(tile.X);
+        var floorY = MathF.Floor(tile.Y);
+        if (floorX > int.MaxValue || floorX < int.MinValue || floorY > int.MaxValue || floorY < int.MinValue)
+        {
+            return false;
+        }
+
+        // The persisted grid is bounded (IsValidTile enforces the same magnitude limit);
+        // a finite tile outside it cannot be stored or synchronized.
+        if (MathF.Abs(floorX) > ModConstants.MaxAbsoluteTileCoordinate ||
+            MathF.Abs(floorY) > ModConstants.MaxAbsoluteTileCoordinate)
+        {
+            return false;
+        }
+
+        tilePoint = new Point((int)floorX, (int)floorY);
+        return true;
     }
 
     private static float ResolveBaseline(float currentHealth, bool baselineWasUnknown)
