@@ -21,8 +21,8 @@
   "milestoneSave": "farm-year1-day5",
   "initCommands": [
     {
-      "kind": "macro",
-      "file": "macros/place-bin.txt",
+      "kind": "console",
+      "command": "lr_place_bin -10 5 Farm",
       "description": "place the composting bin on the target tile"
     },
     {
