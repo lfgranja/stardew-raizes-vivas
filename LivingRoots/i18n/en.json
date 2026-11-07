@@ -14,8 +14,9 @@
   "message.agrochemical.applied-clamped": "Agrochemical applied only partially: the soil had less health available than the full penalty.",
   "message.agrochemical.applied-unknown-baseline": "Agrochemical applied. There was no prior soil health reading, so the starting health was treated as 100.",
   "message.agrochemical.invalid-target": "The agrochemical can only be applied to tilled soil, so it was not applied. Till that soil first, then try again.",
-  "message.agrochemical.missing-input": "Hold a Joja agrochemical to apply it to the soil; nothing happened. Try again with one in hand.",
+  "message.agrochemical.missing-input": "You need to be holding a Joja agrochemical when you apply it to the soil — you are not holding one, so nothing happened. Hold one in your hand, then try again.",
   "message.agrochemical.action-conflict": "Another player is already working this tile, so the agrochemical was not applied. Wait for the tile to free up, then try again.",
   "message.agrochemical.unsupported-authority": "Only the host can apply agrochemicals in multiplayer, so it was not applied. Ask the host to apply it for you.",
-  "message.agrochemical.soil-at-minimum": "This soil is already at the lowest health, so the agrochemical was not applied. Let the soil regenerate with some care, then try again."
+  "message.agrochemical.soil-at-minimum": "This soil is already at the lowest health, so the agrochemical was not applied. Let the soil regenerate with some care, then try again.",
+  "message.agrochemical.commit-failed": "The agrochemical could not be committed to the soil, so nothing changed. Your agrochemical was not consumed. Please wait for the farm data to free up and try again."
 }
