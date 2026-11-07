@@ -318,6 +318,24 @@ namespace LivingRoots
         /// <summary>Raised when an asset is requested from the content pipeline.</summary>
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event arguments.</param>
+        private string LocalizeOrFallback(string translationKey, string fallback)
+        {
+            var translation = _helper?.Translation;
+            if (translation == null)
+            {
+                return fallback;
+            }
+
+            var translated = translation.Get(translationKey);
+            if (string.IsNullOrWhiteSpace(translated)
+                || string.Equals(translated, translationKey, StringComparison.Ordinal))
+            {
+                return fallback;
+            }
+
+            return translated;
+        }
+
 #pragma warning disable S2325 // S2325: event handler registered as instance delegate; cannot be static
         internal void OnAssetRequested(object? sender, AssetRequestedEventArgs e)
         {
@@ -394,8 +412,10 @@ namespace LivingRoots
                     data[ModConstants.AgrochemicalItemId] = new StardewValley.GameData.Objects.ObjectData
                     {
                         Name = "Joja Agrochemical",
-                        DisplayName = "Joja Agrochemical",
-                        Description = "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health.",
+                        DisplayName = LocalizeOrFallback(ModConstants.AgrochemicalItemNameKey, "Joja Agrochemical"),
+                        Description = LocalizeOrFallback(
+                            ModConstants.AgrochemicalItemDescriptionKey,
+                            "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health."),
                         Type = "Basic",
                         Price = 50
                     };
