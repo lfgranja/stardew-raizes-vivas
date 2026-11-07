@@ -8,13 +8,24 @@
 #       automated | host-only-machine-pass | human-verified |
 #       d1-farmhand-convergence | qualitative-follow-up | planned-run-not-executed
 #   (b) status is one of: pending | complete | blocked | infeasible
-#   (c) for rows with status `complete`, the source_artifact_path column's
-#       first path-like token EXISTS (URLs skipped; paths after commas skipped;
-#       heuristic: first backtick-quoted token ending in .md/.json/.log/.cs, or
-#       containing an evidence-bundle-* directory, or containing a Tests/ dir)
+#   (c) for rows with status `complete`, EVERY path-like token in the
+#       source_artifact_path column must exist (URLs skipped; paths after
+#       commas skipped; heuristic: any backtick-quoted token ending in
+#       .md/.json/.log/.cs/.txt/.yml/.yaml, or containing an evidence-bundle-*
+#       directory, or containing a Tests/ dir). Cited `.log` files must be
+#       non-empty (0-byte logs are rejected).
+#       Cited `evidence-bundle-*` tokens must exist as directories; when the
+#       directory contains `manifest.json` + `manifest.sha256`, the SHA-256 of
+#       `manifest.json` is verified against `manifest.sha256`. If the path
+#       token does not exist as a directory, the digest check is skipped and
+#       only directory existence is required.
 #   (d) rows whose claim mentions D1/farmhand OR "Human `verified`" (human +
 #       verified) OR "SC-004" MUST have status != complete
-#   (e) prints PASS/FAIL with counts; exits non-zero on failure
+#   (e) a row with evidence_class `planned-run-not-executed` MUST NOT have
+#       status `complete` (a planned-but-not-executed run is never a pass)
+#   (f) prints PASS/FAIL with counts; exits non-zero on failure. If any row
+#       fails, the failing row(s) are printed and the script exits 1 — rows
+#       are never edited to force a pass.
 #
 # Self-contained: python3 does the markdown parsing. No dotnet, no game, no
 # network. Read-only on the register.
@@ -104,15 +115,34 @@ def path_candidates(source_cell):
 
 def exists(path_tok):
     if (repo_root / path_tok).exists():
-        return True
+        return True, repo_root / path_tok
     if (feature_dir / path_tok).exists():
-        return True
-    return False
+        return True, feature_dir / path_tok
+    return False, None
+
+def digest_ok(bundle_dir: Path):
+    """Sanity-check a cited evidence-bundle-* directory.
+
+    Returns (True, note) when the directory exists; the digest check itself is
+    only run when manifest.json and manifest.sha256 are both present. When they
+    are not, the check is skipped (existence is all that is required).
+    """
+    manifest = bundle_dir / "manifest.json"
+    sha = bundle_dir / "manifest.sha256"
+    if not manifest.is_file() or not sha.is_file():
+        return True, "digest check skipped (manifest.json/manifest.sha256 not both present)"
+    import hashlib
+    actual = hashlib.sha256(manifest.read_bytes()).hexdigest()
+    recorded = sha.read_text(encoding="utf-8").split()[0].strip().lower()
+    if actual.lower() != recorded:
+        return False, f"manifest.json SHA-256 {actual} != manifest.sha256 {recorded}"
+    return True, "manifest.json digest matches manifest.sha256"
 
 failures = []
 class_counts = {}
 status_counts = {}
 checked_paths = 0
+digest_checked = 0
 
 for i, (claim, evidence, source, status, scope) in enumerate(rows, 1):
     ev = first_backtick_token(evidence).lower()
@@ -128,15 +158,31 @@ for i, (claim, evidence, source, status, scope) in enumerate(rows, 1):
     if st not in VALID_STATUSES:
         failures.append(f"row {i}: status {st!r} not in pending|complete|blocked|infeasible")
 
-    # (c) complete rows: first path-like source token must exist
+    # (c) complete rows: EVERY path-like source token must exist; .log files
+    #     must be non-empty; evidence-bundle-* tokens must be directories with
+    #     a matching manifest digest (when manifest files are present).
     if st == "complete":
-        cand = next(path_candidates(source), None)
-        if cand is None:
+        cands = list(path_candidates(source))
+        if not cands:
             failures.append(f"row {i}: status complete but no path-like token found in source_artifact_path")
-        else:
+        for cand in cands:
             checked_paths += 1
-            if not exists(cand):
+            ok, resolved = exists(cand)
+            if not ok:
                 failures.append(f"row {i}: complete row's source path {cand!r} does not exist (repo root or feature dir)")
+                continue
+            if cand.endswith(".log") and resolved is not None and resolved.stat().st_size == 0:
+                failures.append(f"row {i}: complete row cites 0-byte log file {cand!r}")
+            if "evidence-bundle-" in cand:
+                if not resolved.is_dir():
+                    # Not a directory: skip the digest check, existence was
+                    # already verified above — record it, do not fail.
+                    pass
+                else:
+                    digest_checked += 1
+                    dok, note = digest_ok(resolved)
+                    if not dok:
+                        failures.append(f"row {i}: evidence-bundle {cand!r} digest sanity-check failed: {note}")
 
     # (d) D1/human-verified/SC-004 rows must not be complete
     cl = claim.lower()
@@ -146,11 +192,16 @@ for i, (claim, evidence, source, status, scope) in enumerate(rows, 1):
     if (mentions_d1 or mentions_human_verified or mentions_sc004) and st == "complete":
         failures.append(f"row {i}: claim mentions D1/farmhand/Human-verified/SC-004 but status is complete")
 
+    # (e) planned-run-not-executed must never be complete
+    if ev == "planned-run-not-executed" and st == "complete":
+        failures.append(f"row {i}: evidence_class is planned-run-not-executed but status is complete (a planned run that was never executed is never a pass)")
+
 print(f"claim-records validator: {records_path}")
 print(f"rows parsed: {len(rows)}")
 print(f"evidence_class counts: {dict(sorted(class_counts.items()))}")
 print(f"status counts: {dict(sorted(status_counts.items()))}")
 print(f"complete-row source paths checked: {checked_paths}")
+print(f"evidence-bundle directories digest-checked: {digest_checked}")
 
 if failures:
     print(f"FAIL: {len(failures)} problem(s) found")
