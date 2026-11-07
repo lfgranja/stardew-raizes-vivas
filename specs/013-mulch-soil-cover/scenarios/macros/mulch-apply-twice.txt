@@ -1,0 +1,4 @@
+/lr_give_mulch 2
+/lr_apply_mulch 60 15 Farm
+/lr_apply_mulch 60 15 Farm
+/sleep
