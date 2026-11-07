@@ -1,1 +1,42 @@
-[]
+[
+ {
+  "Description": "Uncovered a GitHub Personal Access Token, potentially leading to unauthorized repository access and sensitive content exposure.",
+  "StartLine": 5,
+  "EndLine": 5,
+  "StartColumn": 9,
+  "EndColumn": 48,
+  "Match": "REDACTED",
+  "Secret": "REDACTED",
+  "File": "scripts/tests/test-redaction.sh",
+  "SymlinkFile": "",
+  "Commit": "6cbc550d09e67cf3af2bfd070b1b51f5e387bdd1",
+  "Entropy": 5.171928,
+  "Author": "Luís Felipe Mesquita Granja",
+  "Email": "730643+lfgranja@users.noreply.github.com",
+  "Date": "2026-11-03T01:29:46Z",
+  "Message": "feat(010): final convergence — T179-T184 complete, build/test green — LivingRoots*, scripts/, specs/010",
+  "Tags": [],
+  "RuleID": "github-pat",
+  "Fingerprint": "6cbc550d09e67cf3af2bfd070b1b51f5e387bdd1:scripts/tests/test-redaction.sh:github-pat:5"
+ },
+ {
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 5,
+  "EndLine": 5,
+  "StartColumn": 2,
+  "EndColumn": 55,
+  "Match": "token=\"REDACTED\"",
+  "Secret": "REDACTED",
+  "File": "scripts/tests/test-redaction.sh",
+  "SymlinkFile": "",
+  "Commit": "6cbc550d09e67cf3af2bfd070b1b51f5e387bdd1",
+  "Entropy": 5.393127,
+  "Author": "Luís Felipe Mesquita Granja",
+  "Email": "730643+lfgranja@users.noreply.github.com",
+  "Date": "2026-11-03T01:29:46Z",
+  "Message": "feat(010): final convergence — T179-T184 complete, build/test green — LivingRoots*, scripts/, specs/010",
+  "Tags": [],
+  "RuleID": "generic-api-key",
+  "Fingerprint": "6cbc550d09e67cf3af2bfd070b1b51f5e387bdd1:scripts/tests/test-redaction.sh:generic-api-key:5"
+ }
+]
