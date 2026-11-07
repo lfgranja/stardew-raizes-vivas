@@ -38,4 +38,10 @@ dotnet format Stardew-LivingRoots.sln --verify-no-changes
 
 ## Recommendation
 
-Hold for Gate 3/manual in-game verification before closing the bug as fully verified. Run a real SMAPI session with tooltips enabled and confirm: (1) non-tilled/non-applicable tiles show no soil-health tooltip; (2) applicable HoeDirt with unavailable data shows a stable `Soil Health: Unknown` tooltip without flashing; (3) tiles with measured health show stable percentage/category; (4) FR-015 throttle does not cause visible flicker. If behavior matches, upgrade to `verified` with evidence. If HoeDrit baseline remains confusing, address assessment open questions and follow up with a separate change.
+Hold for Gate 3/manual in-game verification before closing the bug as fully verified. Run a real SMAPI session with tooltips enabled and confirm: (1) non-tilled/non-applicable tiles show no soil-health tooltip; (2) applicable HoeDirt with unavailable data shows a stable `Soil Health: Unknown` tooltip without flashing; (3) tiles with measured health show stable percentage/category; (4) FR-015 throttle does not cause visible flicker. If behavior matches, upgrade to `verified` with evidence. If HoeDirt baseline remains confusing, address assessment open questions and follow up with a separate change.
+
+## Append-only evidence (2026-11-07, MDMV 80/20; real signals where feasible)
+
+- **Targeted tests re-run (fresh):** `GamePath=/home/luis/stardew-assemblies dotnet test --configuration Release --filter "FullyQualifiedName~TooltipRendererTests|FullyQualifiedName~VisualizationServiceTooltipTests" --nologo` → **11 passed, 0 failed, 0 skipped** (707 ms). Confirms scope/throttle/caching logic fixes (B2/B3) hold.
+- **Real-signal constraint (honest):** tooltip flashing is a **render-path/UI** symptom; the headless verification runner captures `soilHealthStateDelta`/`cropPhaseDelta`/`smapiLog`, not rendered tooltip frames/visual stability. No runner `machine-pass` claim is made for this bug. Gate 3 manual/in-game visual confirmation remains required for `verified`. Soil-state signals are separate from tooltip rendering.
+- **Status remains `partial`** (unit logic evidenced; in-game visual Gate 3 pending).
