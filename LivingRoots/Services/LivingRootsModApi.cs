@@ -23,6 +23,7 @@ namespace LivingRoots.Services
         private ICompostingBinService? _compostingBinService;
         private ILocationProvider? _locationProvider;
         private Func<string, int, int, bool>? _applyAgrochemical;
+        private Func<string, int, int, bool>? _applyMulch;
 
         public string ApiVersion => ApiVersionValue;
 
@@ -68,6 +69,24 @@ namespace LivingRoots.Services
             {
                 if (_disposed) return;
                 _applyAgrochemical = applyAgrochemical;
+            }
+        }
+
+        /// <summary>
+        /// Binds the dev/CI verification mulch application delegate (013).
+        /// Host authority and eligibility are enforced by the bound path/service.
+        /// </summary>
+        public void BindMulchApplication(Func<string, int, int, bool> applyMulch)
+        {
+            if (applyMulch == null)
+            {
+                throw new ArgumentNullException(nameof(applyMulch));
+            }
+
+            lock (_lock)
+            {
+                if (_disposed) return;
+                _applyMulch = applyMulch;
             }
         }
 
@@ -238,6 +257,36 @@ namespace LivingRoots.Services
             {
                 if (_disposed) return false;
                 apply = _applyAgrochemical;
+            }
+
+            if (apply == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return apply(locationName, tileX, tileY);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public bool ApplyMulch(string locationName, int tileX, int tileY)
+        {
+            if (string.IsNullOrWhiteSpace(locationName))
+            {
+                return false;
+            }
+
+            Func<string, int, int, bool>? apply;
+            lock (_lock)
+            {
+                if (_disposed) return false;
+                apply = _applyMulch;
             }
 
             if (apply == null)

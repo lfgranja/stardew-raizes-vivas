@@ -341,7 +341,33 @@ namespace LivingRoots.Verification
                         var location = command.Arguments.Count >= 3 ? command.GetString(2) : DefaultLocation;
                         if (!api.ApplyAgrochemical(location, command.GetInt(0), command.GetInt(1)))
                         {
-                            FailGeneration("apply-agrochemical-failed");
+                            // Refusal (e.g. soil at minimum) is an attestable outcome:
+                            // do not fail generation; soil/crop signal thresholds prove no-mutation.
+                            Monitor.Log($"verification: lr_apply_agrochemical refused at {command.GetInt(0)},{command.GetInt(1)} ({location}); no mutation asserted by signals.", LogLevel.Trace);
+                        }
+
+                        break;
+                    }
+
+                case "lr_give_mulch":
+                    {
+                        var count = command.GetInt(0);
+                        if (!GrantMulch(count))
+                        {
+                            FailGeneration("give-mulch-failed");
+                        }
+
+                        break;
+                    }
+
+                case "lr_apply_mulch":
+                    {
+                        var location = command.Arguments.Count >= 3 ? command.GetString(2) : DefaultLocation;
+                        if (!api.ApplyMulch(location, command.GetInt(0), command.GetInt(1)))
+                        {
+                            // Refusal on ineligible target is attestable (018 T027):
+                            // do not fail generation; signal thresholds prove no-mutation.
+                            Monitor.Log($"verification: lr_apply_mulch refused at {command.GetInt(0)},{command.GetInt(1)} ({location}); no mutation asserted by signals.", LogLevel.Trace);
                         }
 
                         break;
@@ -485,6 +511,54 @@ namespace LivingRoots.Verification
             catch (Exception ex)
             {
                 Monitor.Log($"lr_give_agrochemical failed (exception type: {ex.GetType().FullName}).", LogLevel.Trace);
+                return false;
+            }
+        }
+
+        private bool GrantMulch(int count)
+        {
+            if (count <= 0 || !Context.IsMainPlayer)
+            {
+                return false;
+            }
+
+            try
+            {
+                var items = Game1.player.Items;
+                if (items == null)
+                {
+                    return false;
+                }
+
+                int slot = -1;
+                int max = Math.Max(0, Math.Min(items.Count, Game1.player.MaxItems));
+                for (int i = 0; i < max; i++)
+                {
+                    if (items[i] == null)
+                    {
+                        slot = i;
+                        break;
+                    }
+                }
+
+                if (slot < 0)
+                {
+                    return false;
+                }
+
+                var item = ItemRegistry.Create(ModConstants.QualifiedMulchItemId, count);
+                if (item == null)
+                {
+                    return false;
+                }
+
+                items[slot] = item;
+                Game1.player.CurrentToolIndex = slot;
+                return string.Equals(Game1.player.CurrentItem?.QualifiedItemId, ModConstants.QualifiedMulchItemId, StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                Monitor.Log($"lr_give_mulch failed (exception type: {ex.GetType().FullName}).", LogLevel.Trace);
                 return false;
             }
         }

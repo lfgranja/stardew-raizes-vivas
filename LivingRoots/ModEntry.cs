@@ -261,6 +261,57 @@ namespace LivingRoots
                     LogLevel.Trace);
             }
 
+            // 013/Wave 4: dev/CI verification mulch apply delegate. Delegates to
+            // IMulchApplicationService (held mulch item required; lr_give_mulch
+            // grants it). Host-authoritative gameplay rules remain in the service/
+            // controller paths; this is a headless verification seam.
+            try
+            {
+                _modApi.BindMulchApplication((loc, x, y) =>
+                {
+                    StardewValley.GameLocation? location = null;
+                    try
+                    {
+                        location = locationProvider?.GetLocationByName(loc);
+                    }
+                    catch
+                    {
+                        location = null;
+                    }
+
+                    if (location == null)
+                    {
+                        try
+                        {
+                            location = StardewValley.Game1.getLocationFromName(loc);
+                        }
+                        catch
+                        {
+                            location = null;
+                        }
+                    }
+
+                    if (location == null)
+                    {
+                        return false;
+                    }
+
+                    var player = StardewValley.Game1.player;
+                    if (player == null)
+                    {
+                        return false;
+                    }
+
+                    return mulchApplicationService.TryApplyMulch(player, location, new Vector2(x, y), out _);
+                });
+            }
+            catch (Exception ex)
+            {
+                this.Monitor?.Log(
+                    $"Mulch verification wiring failed (exception type: {ex.GetType().FullName}).",
+                    LogLevel.Trace);
+            }
+
             // T118 (FR-009/A8): host→client soil-health sync channel.
             try
             {

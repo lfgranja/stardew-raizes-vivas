@@ -68,6 +68,16 @@ namespace LivingRoots.Domain.Interfaces
         /// performs no soil mutation itself.
         /// </summary>
         bool ApplyAgrochemical(string locationName, int tileX, int tileY);
+
+        /// <summary>
+        /// Dev/CI-only host path for 013 mulch application. The delegate is bound
+        /// at wiring time and delegates to <see cref="IMulchApplicationService.TryApplyMulch"/>.
+        /// Host authority and eligibility (tilled/valid location, not already mulched,
+        /// held mulch item) are enforced by the service/delegate path; the API
+        /// performs no mutation itself. Returns false when unbound, refused, or
+        /// failed. Intended for headless verification; not a gameplay privilege boundary.
+        /// </summary>
+        bool ApplyMulch(string locationName, int tileX, int tileY);
     }
 
     /// <summary>

@@ -101,6 +101,7 @@ namespace LivingRoots.Verification.Queue
                     return true;
                 case "lr_place_bin":
                 case "lr_apply_agrochemical":
+                case "lr_apply_mulch":
                 case "lr_harvest_matrix":
                     min = 2;
                     max = 3;
@@ -110,6 +111,7 @@ namespace LivingRoots.Verification.Queue
                     max = 5;
                     return true;
                 case "lr_give_agrochemical":
+                case "lr_give_mulch":
                 case "lr_advance_days":
                 case "lr_dump_crop_phase":
                 case "lr_dump_soil_health":
@@ -148,6 +150,7 @@ namespace LivingRoots.Verification.Queue
                     return true;
                 case "lr_place_bin":
                 case "lr_apply_agrochemical":
+                case "lr_apply_mulch":
                     if (!IsInt(args[0]) || !IsInt(args[1]))
                     {
                         error = "bad-number";
@@ -182,6 +185,7 @@ namespace LivingRoots.Verification.Queue
 
                     return true;
                 case "lr_give_agrochemical":
+                case "lr_give_mulch":
                     if (!IsInt(args[0]) || int.Parse(args[0], CultureInfo.InvariantCulture) <= 0)
                     {
                         error = "bad-count";
