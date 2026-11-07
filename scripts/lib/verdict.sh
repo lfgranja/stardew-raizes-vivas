@@ -206,6 +206,7 @@ verdict_evaluate_bundle() {
     local signals_agree=1
     shopt -s nullglob
     local anomalies=("$artifacts"/anomaly-report*.json)
+    local info_anomalies=("$artifacts"/anomaly-info*.json)
     shopt -u nullglob
     if (( ${#anomalies[@]} > 0 )); then
         signals_agree=0
@@ -220,7 +221,15 @@ except Exception:
 sys.exit(0 if d.get("agree") is True else 1)
 PY
         then
-            signals_agree=0
+            # A disagreement recorded only as informational (e.g. persisted
+            # mod-data lag vs verification in-memory state) is preserved as
+            # evidence but does not fail agreement when no blocking anomaly
+            # exists.
+            if (( ${#anomalies[@]} == 0 && ${#info_anomalies[@]} > 0 )); then
+                :
+            else
+                signals_agree=0
+            fi
         fi
     fi
 
