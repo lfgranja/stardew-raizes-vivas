@@ -49,8 +49,9 @@ namespace LivingRoots.Tests.Visualization
 
         /// <summary>
         /// Verifies that <c>UpdateCursorTile</c> actually feeds the tracked tile into
-        /// <c>TooltipRenderer</c>: with the cursor on a real tile that has no health data,
-        /// the renderer takes its unknown-state branch (FR-014) and logs that tile.
+        /// <c>TooltipRenderer</c>: with the cursor on an applicable tile whose snapshot
+        /// value is unavailable (NaN), the renderer takes its unknown-state branch
+        /// (FR-014) and logs that tile.
         /// </summary>
         /// <remarks>
         /// Known unit-test limitation: rendering then reaches <c>DrawTooltip</c>, which reads
@@ -62,6 +63,7 @@ namespace LivingRoots.Tests.Visualization
         [Fact]
         public void UpdateCursorTile_SetsPosition()
         {
+            _service.SetTileHealthData(new Dictionary<Point, float> { { TrackedTile, float.NaN } });
             _service.UpdateCursorTile(TrackedTile);
 
             var exception = Record.Exception(() => _service.RenderTooltip(null!, CursorPosition, new GameTime()));
@@ -73,13 +75,13 @@ namespace LivingRoots.Tests.Visualization
         /// <summary>
         /// <c>ClearCursorTile</c> resets the tracked tile to (-1, -1), which
         /// <c>TooltipRenderer</c> reads as "cursor outside the world". The renderer returns
-        /// before logging or drawing, so the frame completes cleanly even though tooltips are
-        /// enabled and the hovered tile still has no health data — the direct contrast with
-        /// <see cref="UpdateCursorTile_SetsPosition"/>.
+        /// before logging or drawing, so the frame completes cleanly — the direct contrast
+        /// with <see cref="UpdateCursorTile_SetsPosition"/>.
         /// </summary>
         [Fact]
         public void ClearCursorTile_ClearsPosition()
         {
+            _service.SetTileHealthData(new Dictionary<Point, float> { { TrackedTile, float.NaN } });
             _service.UpdateCursorTile(TrackedTile);
             var withTrackedTile = Record.Exception(() => _service.RenderTooltip(null!, CursorPosition, new GameTime()));
             Assert.IsType<NullReferenceException>(withTrackedTile);
@@ -90,6 +92,22 @@ namespace LivingRoots.Tests.Visualization
             var afterClear = Record.Exception(() => _service.RenderTooltip(null!, CursorPosition, new GameTime()));
 
             Assert.Null(afterClear);
+            _mockMonitor.Verify(m => m.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.Never);
+        }
+
+        /// <summary>
+        /// Non-applicable tiles are absent from the visualization snapshot and must
+        /// not produce a tooltip or renderer log (FR-002 scope). This is the path
+        /// that previously produced "Soil Health: Unknown" everywhere.
+        /// </summary>
+        [Fact]
+        public void RenderTooltip_TileAbsentFromSnapshot_DoesNotRenderOrLog()
+        {
+            _service.UpdateCursorTile(TrackedTile);
+
+            var exception = Record.Exception(() => _service.RenderTooltip(null!, CursorPosition, new GameTime()));
+
+            Assert.Null(exception);
             _mockMonitor.Verify(m => m.Log(It.IsAny<string>(), It.IsAny<LogLevel>()), Times.Never);
         }
     }
