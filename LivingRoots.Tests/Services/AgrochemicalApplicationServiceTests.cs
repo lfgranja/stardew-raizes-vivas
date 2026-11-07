@@ -9,6 +9,7 @@ using LivingRoots.Services;
 using LivingRoots.Tests.Fixtures;
 using Microsoft.Xna.Framework;
 using Moq;
+using StardewModdingAPI;
 using Xunit;
 
 namespace LivingRoots.Tests;
@@ -749,6 +750,48 @@ public class AgrochemicalApplicationServiceTests
     {
         Assert.True(ModConstants.AgrochemicalSoilPenalty > 0f);
         Assert.True(ModConstants.AgrochemicalSoilPenalty <= 100f);
+    }
+
+    // ------------------------------------------------------------------
+    // T100: real-seam coverage (bound guard); capacity fill deliberately skipped
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// T100 characterization (FR-005): the real <see cref="SoilHealthService"/> rejects
+    /// a tile outside the persisted-grid magnitude bound
+    /// (<see cref="ModConstants.MaxAbsoluteTileCoordinate"/>) from
+    /// <c>TrySetSoilHealth</c> — returns <c>false</c> and leaves the cache untouched.
+    /// The 500-tile capacity fill is intentionally not simulated (allocation cost);
+    /// the capacity signal is covered at the seam by the T064/T097 mocked-seam tests.
+    /// Sub-1e-4 postPenalty storage semantics (store explicit 0f vs keep the
+    /// sparse-cache drop) are pending the Wave B decision and are not pinned here.
+    /// </summary>
+    [Fact]
+    public void RealSeam_TrySetSoilHealth_OutOfBoundTile_ReturnsFalse_WithoutCacheMutation()
+    {
+        // Arrange: real service over a mocked persistence seam (no disk, no save).
+        var mockModDataService = new Mock<IModDataService>();
+        var mockMonitor = new Mock<IMonitor>();
+        var mockFileNameSanitization = new Mock<IFileNameSanitizationService>();
+        mockFileNameSanitization
+            .Setup(x => x.Sanitize(It.IsAny<string>()))
+            .Returns((string value) => value);
+        var soilService = new SoilHealthService(
+            mockModDataService.Object,
+            mockMonitor.Object,
+            mockFileNameSanitization.Object);
+        var outOfBoundTile = new Point(ModConstants.MaxAbsoluteTileCoordinate + 1, 10);
+
+        // Act
+        var accepted = soilService.TrySetSoilHealth("Farm", outOfBoundTile, 40f);
+
+        // Assert
+        Assert.False(accepted);
+        Assert.Empty(soilService.Snapshot());
+        Assert.False(soilService.TryGetSoilHealth(
+            "Farm",
+            new Vector2(outOfBoundTile.X, outOfBoundTile.Y),
+            out _));
     }
 
     private static Mock<ISoilHealthService> CreateSoilMock(float currentHealth)
