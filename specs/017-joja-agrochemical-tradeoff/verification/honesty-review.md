@@ -107,3 +107,47 @@ cited as passing evidence. No prior verification artifact was rewritten or retro
   not SC-004, and not the C2 unknown-baseline path. The C1 claim remains a dependency-boundary
   check plus lexical proxies (`double-counting-risk.md`); the measured-zero outcome does not
   survive save/load (`measured-zero-persistence.md`).
+
+## Phase 10 addendum (2026-11-07) — post-Phase-9/10 tree re-verification
+
+**Append-only; the review above is unchanged.** Phase 10 (T090–T104) was implemented and
+re-verified; the append-only evidence lives in [`convergence-rerun.md`](convergence-rerun.md),
+[`host-only-gate3-phase10-run.md`](host-only-gate3-phase10-run.md), and
+`evidence-bundle-run-20261107T040235Z-589a/`. What this addendum reaffirms and corrects:
+
+- **T090 clean host-only pass @ c9ff596.** The 016-hardened host-only Gate 3 was re-run on the
+  post-Phase-9/10 tree and produced a clean host pass: bundle `run-20261107T040235Z-589a`,
+  `test.md` promoted by the runner itself to `machine-pass` (honesty `R`), `verdict: pass`,
+  `signalsComplete/signalsAgree: true`, **3/3 thresholds passed**, `farmhandBreach: false`,
+  measured 50 → 40 (delta −10), `phaseDays` unchanged, host `isMainPlayer` true. The Phase-9
+  addendum's line that the host-only `machine-pass` was **"not re-run on the post-Phase-9
+  tree"** is superseded by this addendum — a re-run occurred and passed (commit `c9ff596`).
+  This supersedes nothing else: the e5882c1-era bundle remains retained, and the C2
+  unknown/`NaN` baseline path remains automated-coverage only.
+- **T091 landed — V-01 superseded by exit-code attestation.** The Phase 9 addendum above
+  recorded that the cited `/tmp/opencode/bundle-check.log` was 0 bytes and carried an outstanding
+  expectation that the "empty log citation is superseded by the T091 re-run once committed (a
+  fresh offline bundle check with its full stdout retained as a committed artifact)". That
+  expectation — **full stdout retained as a committed artifact** — was not met: the
+  hardened runner's `--verify-bundle` mode **emits no stdout by design**; its attestation is
+  the exit code. Observed exit code **0** on 2026-11-06 (twice) and again on 2026-11-07 after
+  Phase 10. This addendum corrects the expectation here rather than leaving it silently pending:
+  no stdout artifact was or will be retained for that check, and future citations of
+  `--verify-bundle` must attest the exit code, not a captured log. V-01 is superseded
+  accordingly; the bundle's own integrity files (16/16 `manifest.json` digest spot-audit OK,
+  `manifest.sha256` match, `verdict.json` pass, `claims.json` honestyLevel `R`) remain the
+  bundle-level evidence.
+- **No promotions.** No claim in the register was promoted by the Phase 10 re-run or by this
+  addendum. **D1** (`d1-farmhand-convergence`), **human `verified`**, and **SC-004** remain
+  `pending`. The two `blocked` rows (normal-play acquisition; measured-zero save/load) remain
+  `blocked`. The host-only `machine-pass` claim is host-only, measured 50 → 40 path only, and
+  is not D1, not human `verified`, and not SC-004.
+- **Phase-8 check #9 note unchanged.** Check #9 above ("no 017 scenario, bundle, or SHA-256
+  anchor exists") remains stale-as-written for the pre-Phase-8 tree; its "Pass" verdict applies
+  to the pre-Phase-8 tree only and is mitigated by the Phase 8 addendum (which documents the
+  bundle and runner-owned anchor) and now by the Phase 10 row in `claim-records.md`. No edit to
+  check #9 is made by this addendum; this note merely re-anchors the mitigation chain.
+- The Phase 9 addendum's remaining content stands unchanged apart from the two supersessions
+  above (the "not re-run" line and the V-01 stdout expectation). Bundle provenance, no-rewrite
+  discipline, and the boundary reaffirmations (machine-pass ≠ human/D1/SC-004; C1 =
+  dependency-boundary check plus lexical proxies, no behavioral composition proof) all hold.
