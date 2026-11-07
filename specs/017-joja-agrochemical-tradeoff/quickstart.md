@@ -30,12 +30,17 @@ GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --con
   --filter "FullyQualifiedName~Agrochemical|FullyQualifiedName~AgrochemicalPersistence|FullyQualifiedName~ModControllerAgrochemical|FullyQualifiedName~AgrochemicalContentParity"
 ```
 
-The post-Phase-10 targeted enumeration is **119** cases (0 failed); see the committed raw log
-[`verification/convergence-phase10-targeted.log`](verification/convergence-phase10-targeted.log)
-and [`verification/convergence-rerun.md`](verification/convergence-rerun.md) (Phase 10 corrective
-addendum) for the re-verification record. The per-class table below is **pre-Phase-10** (88 =
+The post-Phase-10 targeted enumeration was **119** cases (0 failed) — post-Phase-10 state, not the
+current count. Phase 11 moved the current targeted figure to **123** cases (0 failed) on the current
+tree; see the committed raw log
+[`verification/convergence-phase11-targeted.log`](verification/convergence-phase11-targeted.log)
+(exit 0) and the "Residual recording — Phase-11 closure evidence" addendum in
+[`verification/convergence-rerun.md`](verification/convergence-rerun.md) (Phase 10 corrective
+addendum and Phase-11 residual recording). The Phase-10 re-verification record is
+[`verification/convergence-phase10-targeted.log`](verification/convergence-phase10-targeted.log).
+The per-class table below is **pre-Phase-10** (88 =
 16/4/20/45/3) and is kept for structure only — it is not the current count, and no per-class split
-of the 119 was re-enumerated to avoid inventing an unverified figure:
+of the 119/123 was re-enumerated to avoid inventing an unverified figure:
 
 | Test class | Cases | Covers |
 |---|---:|---|
@@ -45,11 +50,18 @@ of the 119 was re-enumerated to avoid inventing an unverified figure:
 | `LivingRoots.Tests.AgrochemicalContentParityTests` | 45 | Required 017 keys, locale parity, tone/boundary proxies (S6). |
 | `LivingRoots.Tests.AgrochemicalRegistrationTests` | 3 | Registration wiring for the `Data/Objects` item (FR-001/FR-003). |
 
-The targeted 017 enumeration is **119** cases (0 failed) on the post-Phase-10 tree (pre-Phase-10
-table shown above as 88 = 16/4/20/45/3); see
+The targeted 017 enumeration was **119** cases (0 failed) on the post-Phase-10 tree — post-Phase-10
+state, not the current count. Phase 11 moved this to **123** cases (0 failed) on the current tree
+(four Phase-11 additions over 119: the three `AgrochemicalCapacityTests` capacity-seam pins and the
+`ConstantsFile_DeclaresAllFiveRefusalKeysPlusCommitFailedBoundToMessages` constants-binding pin,
+per the "Residual recording — Phase-11 closure evidence" addendum in
+[`verification/convergence-rerun.md`](verification/convergence-rerun.md)). See the committed raw log
+[`verification/convergence-phase11-targeted.log`](verification/convergence-phase11-targeted.log)
+(exit 0) for the current figure; the Phase-10 record is
 [`verification/convergence-phase10-targeted.log`](verification/convergence-phase10-targeted.log)
-and [`verification/convergence-rerun.md`](verification/convergence-rerun.md) for the
-re-verification record. T048 records the authoritative pass/fail counts in `verification/automated-tests.md`;
+and [`verification/convergence-rerun.md`](verification/convergence-rerun.md). The pre-Phase-10
+table shown above is 88 = 16/4/20/45/3. T048 records the authoritative pass/fail counts in
+`verification/automated-tests.md`;
 do not cite this table as a passing result by itself.
 
 ### Verification artifacts and scope
@@ -70,6 +82,12 @@ do not cite this table as a passing result by itself.
 | `verification/convergence-phase10-targeted.log` | Phase-10 targeted 017 suite raw log (119/119, exit 0). |
 | `verification/convergence-phase10-full.log` | Phase-10 full regression raw log (1871 passed / 0 failed / 4 skipped, exit 0). |
 | `verification/convergence-phase10-red.log` | Phase-10 RED-wave failing-test log (21 expected pre-implementation failures). |
+| `verification/convergence-rerun.md` | Phase 9–11 closure record (Phase-10 corrective addendum; Phase-11 scenario-honesty, residual-gap, and residual-recording addenda). |
+| `verification/summary.md` | Phase-7/8 attestation + Phase-9/10 addenda. |
+| `verification/honesty-review.md` | Phase-9/10 addenda; T091 supersession. |
+| `verification/convergence-assessment-017.md` | F1–F26 → T064–T089 mapping. |
+| `verification/measured-zero-persistence.md` | Sparse-cache zero omission; measured-zero save/load blocked claim. |
+| `verification/double-counting-risk.md` | C1 boundary-only scope (no behavioral composition proof). |
 | `verification/sc004-comprehension-protocol.md` | SC-004 protocol; execution stays `pending` unless a real run is appended. |
 
 If a host-only end-to-end run is infeasible or blocked, record it in
@@ -149,3 +167,34 @@ kept as historical context and is not the current status.
 - SC-004 comprehension playtest (`qualitative-follow-up`; protocol if run: participant/context scope, before/immediately-after-first-use timing, identify shortcut + soil-health cost, binary pass requiring both, evidence note with sample size/pass count; `pending` if not run).
 
 Claims for the items above remain `pending` — or `planned-run-not-executed` with reason if a planned run was skipped — and are not passes.
+
+## Re-scope addendum (2026-11-07, Phase 11) — scope boundary
+
+This guide is a living document; the entries above are retained with their labeled scope. Phase 11
+(post-release 0.1.0 converge, T105–T118; closure commit `c6c4e7a`, 118/118 tasks) was
+documentation/evidence hygiene plus English fallback-literal sync and four added targeted pins —
+no claims were promoted, and no Gate 3 re-run was performed. Scope boundaries as of 2026-11-07:
+
+- **Targeted suite:** 123/123 (0 failed) on the current tree; four Phase-11 additions over the
+  post-Phase-10 119/119. Committed raw log: `verification/convergence-phase11-targeted.log`
+  (exit 0); recorded in the "Residual recording — Phase-11 closure evidence" addendum of
+  `verification/convergence-rerun.md`. Full suite on the current tree: 1875 passed / 0 failed /
+  4 skipped (`verification/convergence-phase11-full.log`); the 1871/0/4 figure remains the
+  Phase-10/c9ff596 figure cited by the validate/release chain.
+- **Claims:** no promotions. D1 (`d1-farmhand-convergence`), `human-verified`, and SC-004 remain
+  `pending`. The two `blocked` rows remain blocked: normal-play acquisition of the Joja
+  agrochemical input (`qualitative-follow-up`; descoped 2026-11-06; `lr_give_agrochemical` is
+  verification-only) and the measured-zero save/load outcome (`automated`, blocked; sparse-cache
+  zero omission — see `verification/measured-zero-persistence.md`).
+- **T079 zero-stack slot-clear:** headless pins only; no live SMAPI session has ever exercised or
+  observed this path (see the "Residual verification gap" addendum in
+  `verification/convergence-rerun.md`).
+- **Gate 3:** the Phase-8 (`e5882c1`) and Phase-10 (`c9ff596`) host-only runs keep their labeled
+  scope; Phase 11 did not re-run Gate 3. The bundles' `mod-version: 0.4.0` field is
+  declared-not-observed (see the "Scenario declaration honesty" addendum in
+  `verification/convergence-rerun.md`) and predates the 0.1.0 release (`d3ada42`).
+- `scenarios/agrochemical-tradeoff.scenario.json` now records `environment.modVersion: "0.1.0"`
+  (declared-not-observed); the two historic bundles remain `0.4.0` artifacts and are not
+  rewritten.
+- Remaining work (D1 farmhand convergence, human attestation, SC-004 playtest) is a follow-up
+  outside this feature's MVP closure.
