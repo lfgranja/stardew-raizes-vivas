@@ -231,7 +231,7 @@ jobs:
           # update the lfgranja/stardew-raizes-vivas-builddeps gamepath asset.
           if [ ! -f "${GamePath}/smapi-internal/0Harmony.dll" ]; then
             harmony_nupkg="$(mktemp /tmp/lib.harmony.XXXXXX.nupkg)"
-            curl -fsSL "https://api.nuget.org/v3-flatcontainer/lib.harmony/2.2.2/lib.harmony.2.2.2.nupkg" -o "${harmony_nupkg}"
+            curl --proto '=https' --tlsv1.2 -fsSL "https://api.nuget.org/v3-flatcontainer/lib.harmony/2.2.2/lib.harmony.2.2.2.nupkg" -o "${harmony_nupkg}"
             extracted=0
             for tfm in net6.0 net5.0 netcoreapp3.1 net48; do
               if unzip -p "${harmony_nupkg}" "lib/${tfm}/0Harmony.dll" > "${GamePath}/smapi-internal/0Harmony.dll" 2>/dev/null && [ -s "${GamePath}/smapi-internal/0Harmony.dll" ]; then
