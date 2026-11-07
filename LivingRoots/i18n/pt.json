@@ -14,5 +14,5 @@
   "message.agrochemical.action-conflict": "Outro jogador já está trabalhando neste tile, então o agroquímico não foi aplicado. Aguarde o tile liberar e tente novamente.",
   "message.agrochemical.unsupported-authority": "Apenas o anfitrião pode aplicar agroquímicos no multiplayer, então ele não foi aplicado. Peça ao anfitrião para aplicá-lo por você.",
   "message.agrochemical.soil-at-minimum": "Este solo já está com a saúde mínima, então o agroquímico não foi aplicado. Deixe o solo se regenerar com um pouco de cuidado e tente novamente.",
-  "message.agrochemical.commit-failed": "Não foi possível aplicar o agroquímico ao solo, então ele não foi aplicado. Seu agroquímico não foi consumido. Aguarde os dados da fazenda liberarem e tente novamente."
+  "message.agrochemical.commit-failed": "Não foi possível gravar no solo, então nada mudou. Seu agroquímico não foi consumido. Os dados da fazenda estão no limite; aplique em um tile que já tenha leitura de solo e tente novamente mais tarde."
 }
