@@ -27,6 +27,8 @@ jobs:
       BUILDDEPS_REPO: lfgranja/stardew-raizes-vivas-builddeps
       BUILDDEPS_TAG: gamepath-v1
       BUILDDEPS_ASSET: gamepath.zip
+      # secrets context is not available in step if: conditionals; expose presence via env.
+      HAS_BUILDDEPS: ${{ secrets.BUILDDEPS_TOKEN != '' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -47,7 +49,7 @@ jobs:
             libgl1 libglib2.0-0 libxrandr2 libxcursor1 libxi6 libxinerama1
 
       - name: Fetch game assemblies (private builddeps)
-        if: ${{ secrets.BUILDDEPS_TOKEN != '' }}
+        if: env.HAS_BUILDDEPS == 'true'
         env:
           GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
         run: |
@@ -91,7 +93,7 @@ jobs:
           fi
 
       - name: Build and deploy mods (best-effort)
-        if: ${{ secrets.BUILDDEPS_TOKEN != '' }}
+        if: env.HAS_BUILDDEPS == 'true'
         env:
           GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
         run: |
@@ -106,7 +108,7 @@ jobs:
             echo "::warning::LivingRoots.Verification build/deploy failed; verification may be limited."
 
       - name: Run headless verification (GitHub-hosted, best-effort)
-        if: ${{ secrets.BUILDDEPS_TOKEN != '' }}
+        if: env.HAS_BUILDDEPS == 'true'
         env:
           STARDEW_GAME_PATH: ${{ github.workspace }}/.gamepath
           RUNNER_GAME_PATH: ${{ github.workspace }}/.gamepath
@@ -124,5 +126,5 @@ jobs:
           bash scripts/verify-scenario.sh --ci --scenario specs/010-headless-verification-runner/fixtures --game-path "${STARDEW_GAME_PATH}" --no-acquire --skip-build 2>&1 || true
 
       - name: Verification status (when builddeps unavailable)
-        if: ${{ secrets.BUILDDEPS_TOKEN == '' }}
+        if: env.HAS_BUILDDEPS != 'true'
         run: echo "::notice::Verify Scenario ran on GitHub-hosted infra but builddeps were unavailable; only workflow-level migration applied."
