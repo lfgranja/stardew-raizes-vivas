@@ -162,3 +162,19 @@ its raw logs committed, and one observation was not recorded anywhere:
 - **Scope note:** `1871/0/4` remains the Phase-10/c9ff596 figure cited by the validate/release
   chain (their scope, not the current tree); the current tree is `1875 passed / 4 skipped` per
   `convergence-phase11-full.log`.
+
+## T124 — Phase 12 final verification (2026-11-07)
+
+Executed after T119-T122 (T123 maintainer-decision pending; see tasks.md). Commands and results:
+
+- Full suite: `GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --configuration Release`
+  → exit 0 · **Aprovado: 1875 passed / 0 failed / 4 skipped / 1879 total** (three consecutive green runs on this tree,
+  flanking the one recorded transient 1/1879 from 2026-11-07, see the previous section).
+- Targeted 017 filter: exit 0 · 123/123 (see `verification/convergence-phase11-targeted.log`).
+- `dotnet format Stardew-LivingRoots.sln --verify-no-changes` → exit 0.
+- `bash scripts/tests/test-017-claims.sh` → exit 0 (12 rows; schemas valid; both tracked bundles digest-checked; D1/human-verified/SC-004 non-complete; acquisition + measured-zero rows blocked).
+- Offline bundle check: `./scripts/verify-scenario.sh --verify-bundle evidence-bundle-run-20261107T040235Z-589a` → exit 0.
+
+Artifacts appended this wave: `convergence-phase11-targeted.log`, `convergence-phase11-full.log`, `convergence-phase11-addendum.md`,
+manual-review T120 corrective addendum (T116 superseded), quickstart Phase-11 re-scope (`a2ff6ae`), this note. No claim is promoted;
+D1, human-verified, SC-004 remain `pending`; acquisition and measured-zero rows remain `blocked`; GATE3 markers untouched; `test.md` untouched.
