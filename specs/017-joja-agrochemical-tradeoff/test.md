@@ -14,7 +14,7 @@
   - SMAPI log: `evidence-bundle-run-20261107T040235Z-589a/artifacts/smapi-log.txt`
 - **Bundle**: `evidence-bundle-run-20261107T040235Z-589a/`
 - **Honesty level**: R
-- **Claim**: machine-pass (host, runner-promoted, 3 signals). Primary measured-50: run-20261107T040235Z-589a. Additional applicable host paths (sequential, 2026-11-07): unknown-baseline pass run-20261107T113702Z-240d, clamped pass run-20261107T113959Z-430a. Refused-at-minimum: partial run-20261107T114124Z-3854 (signals incomplete: missing soil-health delta artifact on no-mutation refusal; thresholds pred0/pred2 pass, pred1 mismatch vs observed phaseDays behavior — runner/attestation gap, not promoted). Bundles gitignored.
+- **Claim**: machine-pass (host, runner-promoted, 3 signals). Primary measured-50: run-20261107T040235Z-589a. Additional applicable host paths (sequential): unknown-baseline pass run-20261107T113702Z-240d, clamped pass run-20261107T113959Z-430a; refused-at-minimum (no-mutation, soil unchanged 0→0, phaseDays 1.0x) pass run-20261107T135531Z-7c4e after honest harness fixes (signals: synthesize soil after-delta from captured crop-dump soil state when dedicated dump missing; verdict/signals: dump-vs-persisted mod-data cross-check recorded as informational `anomaly-info`/non-blocking for verification in-memory state lag). Prior refused attempts partial (run-20261107T114124Z-3854, run-20261107T132341Z-28df: missing soil delta artifact; run-20261107T133324Z-1063/133740Z/134346Z/135109Z: harness-gap iterations) — not promoted. `RefusedConflict` exercisability unconfirmed (lock contention/controller-reserved; not machine-passed). Bundles gitignored.
 - **Reviewer**: —
 - **Review date**: —
 - **Session ID**: —
