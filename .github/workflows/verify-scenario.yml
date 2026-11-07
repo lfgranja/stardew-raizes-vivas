@@ -11,12 +11,120 @@ permissions:
 jobs:
   verify:
     if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
-    runs-on: [self-hosted, linux]
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Best-effort headless verification on GitHub-hosted infra: requires private
+    # builddeps (proprietary Stardew/SMAPI assemblies) and a runnable SMAPI/game
+    # stack under Xvfb. Missing secrets/deps skip with a clear message rather than
+    # silently claiming success; execution failures are reported but non-blocking
+    # until the hosted game stack is proven stable (see 022/025/026 follow-up).
+    continue-on-error: true
+
+    env:
+      GamePath: ${{ github.workspace }}/.gamepath
+      STARDEW_GAME_PATH: ${{ github.workspace }}/.gamepath
+      BUILDDEPS_REPO: lfgranja/stardew-raizes-vivas-builddeps
+      BUILDDEPS_TAG: gamepath-v1
+      BUILDDEPS_ASSET: gamepath.zip
+      # secrets context is not available in step if: conditionals; expose presence via env.
+      HAS_BUILDDEPS: ${{ secrets.BUILDDEPS_TOKEN != '' }}
+
     steps:
       - uses: actions/checkout@v7
-      - name: Run verification
-        env:
-          STARDEW_GAME_PATH: ${{ secrets.STARDEW_GAME_PATH }}
-          BUILDDEPS_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            6.0.x
+            10.0.x
+
+      - name: Install host dependencies
         run: |
-          bash scripts/verify-scenario.sh --ci --scenario specs/010-headless-verification-runner/fixtures 2>&1 || true
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            xvfb jq unzip curl python3 ca-certificates \
+            libgl1 libglib2.0-0 libxrandr2 libxcursor1 libxi6 libxinerama1
+
+      - name: Fetch game assemblies (private builddeps)
+        if: env.HAS_BUILDDEPS == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::warning::BUILDDEPS_TOKEN is not set; cannot download private build-deps release for headless verification."
+            exit 0
+          fi
+          mkdir -p "${GamePath}"
+          gh release download "${BUILDDEPS_TAG}" \
+              --repo "${BUILDDEPS_REPO}" \
+              --pattern "${BUILDDEPS_ASSET}" \
+              --dir "${GamePath}"
+          unzip -o "${GamePath}/${BUILDDEPS_ASSET}" -d "${GamePath}"
+          rm -f "${GamePath}/${BUILDDEPS_ASSET}"
+          mkdir -p "${GamePath}/smapi-internal"
+          if [ -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" ]; then
+            mv -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" "${GamePath}/smapi-internal/"
+          fi
+          if [ -f "${GamePath}/SMAPI.Toolkit.dll" ]; then
+            mv -f "${GamePath}/SMAPI.Toolkit.dll" "${GamePath}/smapi-internal/"
+          fi
+          if [ -f "${GamePath}/0Harmony.dll" ]; then
+            mv -f "${GamePath}/0Harmony.dll" "${GamePath}/smapi-internal/"
+          fi
+          # Fallback: private builddeps asset may omit 0Harmony.dll (compilation/reference only).
+          if [ ! -f "${GamePath}/smapi-internal/0Harmony.dll" ]; then
+            harmony_nupkg="$(mktemp /tmp/lib.harmony.XXXXXX.nupkg)"
+            curl --proto '=https' --tlsv1.2 -fsSL "https://api.nuget.org/v3-flatcontainer/lib.harmony/2.2.2/lib.harmony.2.2.2.nupkg" -o "${harmony_nupkg}"
+            extracted=0
+            for tfm in net6.0 net5.0 netcoreapp3.1 net48; do
+              if unzip -p "${harmony_nupkg}" "lib/${tfm}/0Harmony.dll" > "${GamePath}/smapi-internal/0Harmony.dll" 2>/dev/null && [ -s "${GamePath}/smapi-internal/0Harmony.dll" ]; then
+                extracted=1
+                break
+              fi
+            done
+            rm -f "${harmony_nupkg}"
+            if [ "${extracted}" -ne 1 ]; then
+              echo "::warning::failed to obtain 0Harmony.dll fallback; continuing best-effort."
+            fi
+          fi
+
+      - name: Build and deploy mods (best-effort)
+        if: env.HAS_BUILDDEPS == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ ! -d "${GamePath}" ] || [ -z "$(ls -A "${GamePath}" 2>/dev/null || true)" ]; then
+            echo "::warning::GamePath is not provisioned; skipping mod build/deploy for headless verification."
+            exit 0
+          fi
+          dotnet restore --locked-mode
+          dotnet build LivingRoots/LivingRoots.csproj -c Release -p:GamePath="${GamePath}" -p:ModFolderName=LivingRoots
+          dotnet build LivingRoots.Verification/LivingRoots.Verification.csproj -c Release -p:GamePath="${GamePath}" -p:ModFolderName=LivingRoots.Verification || \
+            echo "::warning::LivingRoots.Verification build/deploy failed; verification may be limited."
+
+      - name: Run headless verification (GitHub-hosted, best-effort)
+        if: env.HAS_BUILDDEPS == 'true'
+        env:
+          STARDEW_GAME_PATH: ${{ github.workspace }}/.gamepath
+          RUNNER_GAME_PATH: ${{ github.workspace }}/.gamepath
+          CI: "true"
+        run: |
+          set -euo pipefail
+          if [ ! -d "${STARDEW_GAME_PATH}" ] || [ -z "$(ls -A "${STARDEW_GAME_PATH}" 2>/dev/null || true)" ]; then
+            echo "::notice::Headless verification skipped: game path not provisioned."
+            exit 0
+          fi
+          # Launch-free fixture validation runs without a full SMAPI game session.
+          bash scripts/verify-scenario.sh --ci --check-docs || true
+          # Full scenario execution requires a runnable Stardew+SMAPI stack in .gamepath;
+          # best-effort on hosted infra (may be limited by builddeps contents/runtime).
+          bash scripts/verify-scenario.sh --ci --scenario specs/010-headless-verification-runner/fixtures --game-path "${STARDEW_GAME_PATH}" --no-acquire --skip-build 2>&1 || true
+
+      - name: Verification status (when builddeps unavailable)
+        if: env.HAS_BUILDDEPS != 'true'
+        run: echo "::notice::Verify Scenario ran on GitHub-hosted infra but builddeps were unavailable; only workflow-level migration applied."
