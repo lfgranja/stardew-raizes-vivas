@@ -118,11 +118,11 @@ description: "Task list for 017 Joja / Agrochemical Tradeoff (MVP)"
 
 ### Implementation (i18n files parallelizable; controller wiring shares context)
 
-- [ ] T031 [P] [US2] Add 017 before-use framing keys/values in `LivingRoots/i18n/default.json` (industrial shortcut + soil-health cost, cozy/non-punitive factual tone) per `contracts/content-registration.md` and FR-002.
-- [ ] T032 [P] [US2] Add equivalent-meaning/tone 017 keys in `LivingRoots/i18n/en.json` (parity with `default.json` touched keys) per FR-012.
-- [ ] T033 [P] [US2] Add equivalent-meaning/tone 017 keys in `LivingRoots/i18n/pt.json` (parity with `default.json`/`en.json` touched keys, including refusal/attribution/next-step implication where relevant) per FR-012.
-- [ ] T034 [US2] Serialized consolidation pass after T031–T033: add success confirmation/attribution and refusal message keys for all refusal classes in `LivingRoots/i18n/default.json`, `LivingRoots/i18n/en.json`, and `LivingRoots/i18n/pt.json`; include C2 no prior-history implication and boundary-honest clamp wording where applicable. Waits for T031–T033; do not parallelize.
-- [ ] T035 [US2] Run targeted US2 i18n/content parity tests for `LivingRoots.Tests/AgrochemicalContentParityTests.cs` and fix only `LivingRoots/i18n/*.json` and `LivingRoots/Constants.cs` key names to satisfy FR-002/FR-012. Do not edit `LivingRoots/Controllers/ModController.cs` here; controller feedback fixes are T041/T042 after the controller path exists.
+- [x] T031 [P] [US2] Add 017 before-use framing keys/values in `LivingRoots/i18n/default.json` (industrial shortcut + soil-health cost, cozy/non-punitive factual tone) per `contracts/content-registration.md` and FR-002.
+- [x] T032 [P] [US2] Add equivalent-meaning/tone 017 keys in `LivingRoots/i18n/en.json` (parity with `default.json` touched keys) per FR-012.
+- [x] T033 [P] [US2] Add equivalent-meaning/tone 017 keys in `LivingRoots/i18n/pt.json` (parity with `default.json`/`en.json` touched keys, including refusal/attribution/next-step implication where relevant) per FR-012.
+- [x] T034 [US2] Serialized consolidation pass after T031–T033: add success confirmation/attribution and refusal message keys for all refusal classes in `LivingRoots/i18n/default.json`, `LivingRoots/i18n/en.json`, and `LivingRoots/i18n/pt.json`; include C2 no prior-history implication and boundary-honest clamp wording where applicable. Waits for T031–T033; do not parallelize.
+- [x] T035 [US2] Run targeted US2 i18n/content parity tests for `LivingRoots.Tests/AgrochemicalContentParityTests.cs` and fix only `LivingRoots/i18n/*.json` and `LivingRoots/Constants.cs` key names to satisfy FR-002/FR-012. Do not edit `LivingRoots/Controllers/ModController.cs` here; controller feedback fixes are T041/T042 after the controller path exists.
 
 **Checkpoint**: Telegraphed tradeoff, attribution, and refusal key/text parity are test-covered and localized; runtime controller display is sequenced in Phase 5.
 
