@@ -3240,6 +3240,14 @@ namespace LivingRoots.Controllers
                 var feedback = ShowAgrochemicalFeedback;
                 if (feedback == null)
                 {
+                    // T076 (FR-007, FR-013): the outcome is committed or refused
+                    // but the player gets no on-screen confirmation. Name only
+                    // the agrochemical feedback context so the gap is
+                    // diagnosable — no player data, no stack traces. Control
+                    // flow is unchanged.
+                    _monitor.Log(
+                        "Agrochemical feedback path is not registered; the outcome will not be shown on the HUD.",
+                        LogLevel.Warn);
                     return;
                 }
 
