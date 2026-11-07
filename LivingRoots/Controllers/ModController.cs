@@ -3213,7 +3213,17 @@ namespace LivingRoots.Controllers
                 || string.Equals(item.QualifiedItemId, ModConstants.QualifiedAgrochemicalItemId, StringComparison.Ordinal);
         }
 
-        private static void ConsumeHeldAgrochemical(StardewValley.Item? heldItem)
+        // T079: when the last unit of the held agrochemical is consumed (the
+        // stack reaches zero), the matching inventory slot must be cleared so
+        // no zero-stack ghost remains. No repo site uses SDV's
+        // Farmer.reduceActiveItemByOne (grep: no matches), so this mirrors the
+        // compost/bin consumption pattern (TryPlaceBin): decrement, then find
+        // the slot by reference and set it to null. Stack > 1 semantics are
+        // unchanged — exactly one unit per application. The slot clear is
+        // best-effort: a headless/test composition has no live player, and a
+        // slot that cannot be located is a diagnostic Trace, never a blocker
+        // for an already-committed outcome.
+        private void ConsumeHeldAgrochemical(StardewValley.Item? heldItem)
         {
             if (heldItem == null || heldItem.Stack <= 0)
             {
@@ -3221,6 +3231,47 @@ namespace LivingRoots.Controllers
             }
 
             heldItem.Stack--;
+            if (heldItem.Stack > 0)
+            {
+                return;
+            }
+
+            try
+            {
+                IList<StardewValley.Item?>? inventory = _playerProvider?.CurrentPlayer?.Items;
+                if (inventory == null && StardewValley.Game1.player != null)
+                {
+                    inventory = StardewValley.Game1.player.Items;
+                }
+
+                if (inventory == null)
+                {
+                    _monitor.Log(
+                        "Agrochemical zero-stack slot clear skipped: no player inventory is available.",
+                        LogLevel.Trace);
+                    return;
+                }
+
+                int index = inventory.IndexOf(heldItem);
+                if (index >= 0)
+                {
+                    inventory[index] = null;
+                    return;
+                }
+
+                _monitor.Log(
+                    "Agrochemical zero-stack slot clear skipped: the held item was not found in the player inventory.",
+                    LogLevel.Trace);
+            }
+            catch (Exception ex)
+            {
+                // The outcome is already committed; a slot-clear failure must
+                // never turn it into a false refusal or throw across the seam.
+                _monitor.Log("Agrochemical zero-stack slot clear failed.", LogLevel.Trace);
+                _monitor.Log(
+                    $"Slot clear exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace);
+            }
         }
 
         private void ShowAgrochemicalRefusal(string messageKey)
