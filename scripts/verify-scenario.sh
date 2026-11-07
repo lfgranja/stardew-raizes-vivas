@@ -354,13 +354,12 @@ if (( sigcap_rc != 0 )); then
     RUN_EXIT="$EXIT_ERRORED"
 fi
 
-# verdict gate: the three mandatory signals ARE the evidence. When any is
-# missing the verdict is `partial` (exit 19) and is never promoted to pass
-# (FR-011). This is what stops a launched-but-uncaptured run exiting 0 with an
-# empty artifacts/ directory. `--ignore-exit-code` is deliberately not applied:
-# demoting an incomplete signal set would recreate the false pass.
+# verdict gate: declared expected signals ARE the evidence. When any declared
+# signal is missing the verdict is `partial` (exit 19) and is never promoted to pass
+# (FR-011). v4: cropPhaseDelta may be explicitly not-applicable via signalPolicy.
+# `--ignore-exit-code` is deliberately not applied.
 sig_rc=0
-signals_require_expected_signals "$BUNDLE_DIR" "$RUN_ID" "${RUNNER_QUARANTINE_OWNER:-runner}" >/dev/null 2>&1 || sig_rc=$?
+signals_require_expected_signals "$BUNDLE_DIR" "$RUN_ID" "${RUNNER_QUARANTINE_OWNER:-runner}" "${SCENARIO_LIST[0]:-}" >/dev/null 2>&1 || sig_rc=$?
 if (( sig_rc != 0 )); then
     RUN_EXIT="$EXIT_ERRORED"
 fi
