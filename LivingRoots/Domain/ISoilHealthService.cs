@@ -46,8 +46,12 @@ namespace LivingRoots.Domain
         /// The health value. Clamped to <c>[ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth]</c>
         /// with the same NaN/Infinity mapping as <see cref="SetSoilHealth"/>: NaN clamps to
         /// <c>MinSoilHealth</c>, positive infinity to <c>MaxSoilHealth</c>, negative infinity to
-        /// <c>MinSoilHealth</c>. An explicit <c>0f</c> is a measured floor reading and round-trips;
-        /// a near-zero result reached only through clamping of a non-zero input follows the
+        /// <c>MinSoilHealth</c>. An explicit <c>0f</c> is a measured floor reading: it is stored
+        /// within a session, but across save/load entries with magnitude ≤ 1e-4 (including
+        /// explicit zeros) are omitted by the sparse persistence layer — see
+        /// specs/017-joja-agrochemical-tradeoff/verification/measured-zero-persistence.md.
+        /// A near-zero result reached only
+        /// through clamping of a non-zero input follows the
         /// sparse-cache drop rule of the measured-write path.
         /// </param>
         /// <returns>
