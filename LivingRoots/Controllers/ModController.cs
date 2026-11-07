@@ -3333,7 +3333,7 @@ namespace LivingRoots.Controllers
             [ModConstants.TranslationKeyAgrochemicalActionConflict] = "Another player is already working this tile.",
             [ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority] = "Only the host can apply agrochemicals in multiplayer.",
             [ModConstants.TranslationKeyAgrochemicalSoilAtMinimum] = "This soil is already at the lowest health; the agrochemical would have no effect.",
-            [ModConstants.TranslationKeyAgrochemicalCommitFailed] = "The agrochemical could not be committed to the soil, so nothing changed. Your agrochemical was not consumed. Apply it to a tile with existing soil data, or try again later."
+            [ModConstants.TranslationKeyAgrochemicalCommitFailed] = "The agrochemical could not be committed to the soil, so nothing changed. Your agrochemical was not consumed. The farm data is at capacity; apply the agrochemical to a tile that already has soil data, then try again later."
         };
 
         private string TranslateAgrochemicalMessage(string messageKey)
