@@ -217,8 +217,12 @@ jobs:
           unzip -o "${GamePath}/${BUILDDEPS_ASSET}" -d "${GamePath}"
           rm -f "${GamePath}/${BUILDDEPS_ASSET}"
           mkdir -p "${GamePath}/smapi-internal"
-          mv -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" \
-                "${GamePath}/smapi-internal/"
+          if [ -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" ]; then
+            mv -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" "${GamePath}/smapi-internal/"
+          fi
+          if [ -f "${GamePath}/0Harmony.dll" ]; then
+            mv -f "${GamePath}/0Harmony.dll" "${GamePath}/smapi-internal/"
+          fi
 
       - name: Preflight - game assemblies
         run: |
@@ -230,7 +234,8 @@ jobs:
               "StardewValley.GameData.dll" \
               "MonoGame.Framework.dll" \
               "xTile.dll" \
-              "smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll"
+              "smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" \
+              "smapi-internal/0Harmony.dll"
           do
             if [ ! -f "${GamePath}/${required}" ]; then
               echo "::error::missing ${required} under GamePath (${GamePath})"
