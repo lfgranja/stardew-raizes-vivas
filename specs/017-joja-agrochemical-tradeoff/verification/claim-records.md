@@ -93,3 +93,21 @@ persistence) remain `blocked`. The host-only `machine-pass` claim is unchanged i
 re-run. Notes: T079 (zero-stack slot clear) and T069 (icon strategy) are not observable in a live
 session from this re-run; the C1 double-counting claim remains a boundary/proxy check
 (`double-counting-risk.md`); normal-play acquisition remains descoped.
+
+## Addendum (2026-11-06, Phase 10) — Phase-7/8 tree scope annotation for rows 48–50 and 53
+
+**Append-only annotation; no row above is modified.** Rows 48 (automated service/controller,
+60/60 targeted), 49 (content parity, 25/25), 50 (full suite, 1816/1812 passed/4 skipped), and 53
+(host-only machine-pass at `e5882c1`) describe the **Phase-7/8 tree**. They must not be read as
+attesting the post-Phase-9 tree: Phase 9 (T064–T089) changed the commit path
+(`TrySetSoilHealth`), refusal-result semantics, i18n copy, and registration wiring, and the full
+suite/targeted enumeration counts moved (source-enumerated 88 targeted cases; 1844 full-suite
+pass with 4 skips). The current state lives in this addendum plus
+[`convergence-rerun.md`](convergence-rerun.md); the 92/92 vs 88 targeted-count reconciliation is
+recorded append-only under T091. Absent a committed Phase-10 re-run (T090), the host-only
+machine-pass claim remains **`e5882c1`-scoped** and covers only the measured 50 → 40 path on
+that tree — it is not a post-Phase-9 attestation. Rows 51 (persistence, 3/3) and 52 (copy
+review) are also Phase-7/8-era artifacts; row 52 is re-anchored to the post-Phase-9 copy re-review
+in `manual-review.md` (2026-11-06 addendum) without editing the row. No status is changed by
+this addendum; D1, human `verified`, and SC-004 remain `pending`; the two `blocked` rows remain
+`blocked`.

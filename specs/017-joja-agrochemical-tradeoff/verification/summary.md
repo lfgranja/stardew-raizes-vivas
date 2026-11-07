@@ -64,3 +64,36 @@ not upgrade any claim beyond its recorded evidence class.
 2. Obtain an explicit human `verified` attestation.
 3. Execute the `sc004-v1` protocol with at least the recorded denominator and append the evidence note.
 4. If a player-facing manual S1–S5 playtest is desired, add a scoped player-visible provisioning path (or record the ad hoc grant as a deviation); the verification-queue grant is not a player-facing path.
+
+## Phase 9 addendum (2026-11-06) — scope and counts for the convergence tree
+
+**Append-only; the summary above is unchanged.** This summary remains the Phase-7/8
+attestation. The host-only Gate 3 row above is **scoped to commit `e5882c1`** (the Phase-8
+runner-wiring tree; `test.md` records the machine-pass at that commit). Phase 9 (T064–T089)
+changed the commit path (`TrySetSoilHealth` seam, refusal-result honesty, i18n copy,
+registration wiring), so the Phase-7/8 counts and the e5882c1-era machine-pass must not be read
+as attesting the post-Phase-9 tree. The current-tree attestation lives in
+[`convergence-rerun.md`](convergence-rerun.md) and the T091/T090 updates (targeted-log retention
+repair and, once run, the post-Phase-9 host-only re-run record).
+
+Re-stated counts for the post-Phase-9 tree (per `convergence-rerun.md` and the Phase 9
+closure): targeted 017 source-enumerated **88** cases (AgrochemicalApplicationServiceTests 16,
+AgrochemicalPersistenceTests 4, ModControllerAgrochemicalTests 20, AgrochemicalContentParityTests
+45, AgrochemicalRegistrationTests 3) — the 2026-11-06 re-run reported 92/92 and the reconciliation
+of that figure is recorded append-only under T091; full suite **1844** passed / 0 failed / **4
+skipped** (pre-existing spec-009 harvest-hook deferrals). Neither re-stated figure promotes any
+claim above its evidence class.
+
+Further scope caveats, unchanged in substance but re-flagged against the current tree:
+
+- C1 no-double-counting remains a dependency-boundary check plus lexical proxies; no
+  behavioral composition proof is claimed ([`double-counting-risk.md`](double-counting-risk.md)).
+- The measured-zero outcome does not survive save/load (sparse-cache zero omission); see
+  [`measured-zero-persistence.md`](measured-zero-persistence.md).
+- T079 (zero-stack inventory slot clear) and T069 (icon strategy) remain unobserved in a live
+  session; the item ships with the vanilla springobjects fallback sprite (explicit acceptance
+  in `contracts/content-registration.md`).
+- Normal-play acquisition remains formally descoped; `lr_give_agrochemical` is verification-only.
+- D1, human `verified`, SC-004 remain `pending`. Nothing in this addendum promotes them.
+
+Prior rows and the "Remaining work" list are unchanged; items 1–4 there remain open.

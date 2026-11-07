@@ -68,3 +68,42 @@ unknown/`NaN` baseline path is exercised by automated tests, not by the Gate 3 s
 three failed attempts that preceded the passing run are disclosed in the run record and are not
 cited as passing evidence. No prior verification artifact was rewritten or retroactively promoted;
 `host-only-gate3.md` keeps the infeasibility record as historical context.
+
+## Phase 9 addendum (2026-11-06) — convergence re-audit
+
+**Append-only; the review above is unchanged.** The Phase 9 convergence remediation
+(T064–T089) was implemented and re-verified; the append-only closure record is
+[`convergence-rerun.md`](convergence-rerun.md). What this addendum reaffirms and discloses:
+
+- **No promotions reaffirmed.** No claim in the register was promoted by the Phase 9
+  re-run or by this addendum. D1 (`d1-farmhand-convergence`), human `verified`, and SC-004
+  remain `pending`. The host-only `machine-pass` claim is unchanged in scope (host, measured
+  50 → 40 path only) and was **not** re-run on the post-Phase-9 tree. `planned-run-not-executed`
+  remains non-passing everywhere it appears. Acquisition remains descoped/`blocked`; the
+  measured-zero persistence row remains `blocked`.
+- **V-01 empty-log acknowledgement.** The 2026-11-06 offline Gate 3 bundle-check stdout was
+  cited as `/tmp/opencode/bundle-check.log`, which was **0 bytes** — the exit-0 attestation for
+  the offline bundle check therefore rested on the session, not on retained output. The bundle
+  itself was verified independently in the parent session on 2026-11-06: `manifest.json`
+  16/16 SHA-256 digest spot-audit OK, `claims.json` honestyLevel `R`, verdict `pass`. The
+  empty-log citation is superseded by the T091 re-run once committed (a fresh offline bundle
+  check with its full stdout retained as a committed artifact); until then, the attestation
+  gap for that single cited log is acknowledged here rather than papered over.
+- **Stale check #9 supersession.** Check #9 above states "no 017 scenario, bundle, or SHA-256
+  anchor exists". That statement was true when this review was written (2026-11-06, pre-Phase-8)
+  and became stale once the Phase 8 host-only run produced the tracked bundle
+  `evidence-bundle-run-20261107T015936Z-7f35/` (`test.md` `machine-pass`, honesty `R`). No
+  scenario/bundle/anchor claim that was already false pre-Phase-8 is silently carried forward:
+  the infeasibility record in `host-only-gate3.md` is retained as historical provenance, check
+  #9's "Pass" verdict applies to the pre-Phase-8 tree only, and the current bundle/anchor facts
+  live in `host-only-gate3-run.md`, `test.md`, and `convergence-rerun.md`. This is a
+  supersession note, not a retroactive edit of the check.
+- **Bundle digest audit.** The tracked bundle's `manifest.json` digest matches
+  `manifest.sha256` and the 16/16 spot-audit was reported OK by the parent session on
+  2026-11-06. The register's offline-bundle citation remains supported by the bundle's own
+  integrity files; the empty cited stdout log (V-01) does not affect the bundle's integrity,
+  only the retained-output attestation for the check.
+- The Phase 8 addendum's boundaries still hold: machine-pass is not `human-verified`, not D1,
+  not SC-004, and not the C2 unknown-baseline path. The C1 claim remains a dependency-boundary
+  check plus lexical proxies (`double-counting-risk.md`); the measured-zero outcome does not
+  survive save/load (`measured-zero-persistence.md`).
