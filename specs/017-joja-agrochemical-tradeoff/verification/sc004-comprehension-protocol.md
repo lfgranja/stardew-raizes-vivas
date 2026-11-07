@@ -14,17 +14,30 @@
 **Protocol/execution status:** `pending`  
 *Allowed values: `pending | complete | blocked | infeasible`.* **Do not mark `complete` without a recorded run.** Default is `pending` until the protocol is executed and evidence is recorded.
 
+**Finalization note:** T045 finalized the target scope, timing, prompt, scoring, and evidence fields on
+2026-11-06. No participant run has been executed. The status remains `pending`; this document is a
+protocol, not SC-004 evidence.
+
 ## Participant and context scope
 
-**Target scope (define before run):**
-- **Participant profile:** _[Define target participants, e.g., Stardew Valley players unfamiliar with spec 017 internals; include experience level if relevant.]_
-- **Context:** _[Define play context, e.g., host-controlled MVP scenario with supported Joja/agrochemical interaction available; language/locale; platform/build constraints if relevant.]_
-- **Inclusion criteria:** _[Record who qualifies.]_
-- **Exclusion criteria:** _[Record who is excluded, e.g., maintainers who authored the feature/spec, participants already briefed on SC-004 scoring.]_
+**Target scope (defined before run):**
+- **Participant profile:** Adults (18+) who have played Stardew Valley before, using any mix of
+  modded/unmodded experience. They must not have prior knowledge of spec 017, its implementation,
+  or this protocol.
+- **Context:** A host-controlled validation save (single-player, or the host in a multiplayer
+  session) with at least one supported tilled farm or greenhouse tile and the Joja/agrochemical
+  input available through the validation-only provisioning path. Use the participant's preferred
+  supported locale (`default`/`en`/`pt`); record the actual locale. Use a release build with the
+  017 MVP behavior enabled.
+- **Inclusion criteria:** Can read the selected locale; consents to a short comprehension check;
+  is seeing the Joja/agrochemical option for the first time in this session.
+- **Exclusion criteria:** Maintainers/authors of the 017 feature or spec; anyone previously briefed
+  on SC-004 scoring or the expected tradeoff; anyone who already used the item in an earlier
+  session; anyone who cannot answer independently.
 
 **Actual scope (record when run):**
 - **Participants recruited:** _[actual count and brief profile summary]_
-- **Actual context/build/scenario:** _[actual values]_
+- **Actual context/build/scenario:** _[actual values, including locale]_
 - **Deviations from target scope:** _[none / describe]_
 
 ## First-use timing
@@ -42,7 +55,8 @@ Ask the participant to identify **both** elements of the tradeoff:
 1. **Short-term shortcut:** What short-term benefit/shortcut does the Joja/agrochemical choice provide right now?
 2. **Soil-health cost:** What soil-health cost/consequence does that same choice cause?
 
-**Prompt version:** _[e.g., `sc004-v1`, record exact wording used when run]_
+**Prompt version:** `sc004-v1` — use the wording below. If the facilitator changes wording, record the
+deviation and the exact final wording with the run evidence.
 
 **Suggested neutral prompt text (adapt only if needed; record final wording):**
 > “After seeing/using this Joja/agrochemical option for the first time, please tell me: (1) what short-term shortcut or immediate benefit it gives you, and (2) what cost it has for soil health.”
