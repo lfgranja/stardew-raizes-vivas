@@ -3108,6 +3108,13 @@ namespace LivingRoots.Controllers
         {
             if (_agrochemicalApplicationService == null)
             {
+                // T078 (FR-008, FR-013): a missing composition is a wiring
+                // failure, not a silent no-op — log it and refuse through the
+                // localized fail-closed path instead of returning quietly.
+                _monitor.Log(
+                    "Agrochemical application service is not configured; refusing application.",
+                    LogLevel.Warn);
+                ShowAgrochemicalRefusal(ModConstants.TranslationKeyAgrochemicalActionConflict);
                 return false;
             }
 
