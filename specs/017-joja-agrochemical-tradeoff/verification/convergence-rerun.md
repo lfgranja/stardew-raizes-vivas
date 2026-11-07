@@ -89,3 +89,29 @@ Phase 10 converge re-audit; prior text above is retained unmodified.
   21 pre-implementation failures recorded in `verification/convergence-phase10-red.log`; the
   per-class breakdown is derivable from the test sources and was not re-enumerated here to avoid
   inventing another unverified count.
+
+## Scenario declaration honesty addendum (2026-11-07, Phase 11 / T110)
+
+**Append-only; prior text above is retained unmodified.** The tracked scenario
+`scenarios/agrochemical-tradeoff.scenario.json` declared `environment.modVersion: "0.4.0"`
+until 2026-11-07. Dispositions:
+
+- **Both tracked bundles record `0.4.0`** as their `observed`/copied mod-version field:
+  `evidence-bundle-run-20261107T015936Z-7f35/` (Phase 8, e5882c1-era) and
+  `evidence-bundle-run-20261107T040235Z-589a/` (Phase 10, c9ff596-era). The runner copies the
+  scenario's declared `environment.modVersion` verbatim into the bundle's mod-version field; it
+  is **declared-not-observed** — no check anywhere compares it against the actually-deployed
+  mod build. The two historic bundles therefore state `0.4.0` regardless of which LivingRoots
+  build was loaded; the field was never validated. This is disclosed, not papered over: future
+  citations must not read the bundle's mod-version field as evidence of which build ran.
+- The in-scenario `time` field (`2026-11-06T12:00:00Z`) is **not** the run wall-clock; actual
+  run timestamps live in the bundles/run records (e.g. Phase 10: `2026-11-07T04:03:17Z`). The
+  `time` field is schema-legal declared context and is not a chronology attestation.
+- `rngSeed` (`123456789`) is **schema-legal declared context**; nothing in the 017 agrochemical
+  path consumes it (the path is deterministic given the seeded soil state), and no claim is
+  made from it.
+- On 2026-11-07 the scenario's `environment.modVersion` was corrected to **`0.1.0`** (SemVer-valid,
+  matching the released manifest at `d3ada42`). Bundles produced from this point (Phase 12+ runs)
+  will record `0.1.0` in the same declared-not-observed verbatim-copy manner. The two historic
+  bundles are not rewritten and remain `0.4.0`-recording artifacts. `test-017-agrochemical.sh`
+  re-run after the edit: **23/23 passed**.
