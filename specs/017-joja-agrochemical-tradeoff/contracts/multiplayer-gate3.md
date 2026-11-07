@@ -7,7 +7,7 @@
 ### Required behavior
 | Scenario | Contract |
 |---|---|
-| Host, eligible target, no conflict | Acquire per-tile lock (first-wins), apply service, commit explicit measured soil change, consume item on success, emit confirmation, broadcast FR-009 snapshot after success, release lock. |
+| Host, eligible target, no conflict | Acquire per-tile lock (first-wins), apply service, commit authoritative measured soil change, release lock, consume item on success, emit confirmation, broadcast FR-009 snapshot after success. |
 | Host, contention/conflict | Fail first-wins with explicit refusal; no soil mutation/item consumption/false success for losing attempt. |
 | Farmhand / unsupported MVP path | **Refuse before any soil mutation, item consumption, or false-success feedback** (C4:A). Clear localized message. No local authoritative soil change. |
 | Missing authority/lock safety | Fail closed for authoritative operations where required; never perform unsafe uncoordinated shared mutation. |
