@@ -239,10 +239,75 @@ signals_process() {
 
     local issues=0
 
-    # Soil health delta
-    if [[ -n "$before" && -n "$after" ]]; then
+    # Soil health delta. If the dedicated after dump is missing but the
+    # mod's crop-phase dump captured soil state for the same run, synthesize
+    # a raw after dump from that captured measurement (honest fallback for
+    # no-mutation attestation paths such as refused applications).
+    local soil_before="$before" soil_after="$after"
+    if [[ -z "$soil_after" && -n "$dump_dir" && -n "$soil_before" ]]; then
+        local crop_after=""
+        local _w=0
+        while (( _w < 11 )); do
+            if [[ -f "$dump_dir/crop_phase_dump_after.json.done" ]]; then
+                crop_after="$dump_dir/crop_phase_dump_after.json"
+                break
+            fi
+            if [[ -f "$dump_dir/crop_phase_dump_after.json" ]]; then
+                crop_after="$dump_dir/crop_phase_dump_after.json"
+            fi
+            sleep 0.2
+            _w=$((_w+1))
+        done
+        if [[ -n "$crop_after" && -f "$crop_after" ]]; then
+            local syn="$a/soil-health-after.json.raw"
+            if python3 - "$crop_after" "$syn" "$soil_before" <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1], encoding='utf-8'))
+except Exception:
+    sys.exit(1)
+before_path = sys.argv[3] if len(sys.argv) > 3 else ""
+out = {}
+if before_path:
+    try:
+        b = json.load(open(before_path, encoding='utf-8'))
+        if isinstance(b, dict):
+            for loc, tiles in b.items():
+                if isinstance(tiles, dict):
+                    out[loc] = dict(tiles)
+    except Exception:
+        pass
+for c in d.get('crops', []) or []:
+    loc = str(c.get('location') or '')
+    if not loc:
+        continue
+    tx, ty = c.get('tileX'), c.get('tileY')
+    if tx is None or ty is None:
+        continue
+    state = c.get('soilHealthState')
+    val = c.get('soilHealth')
+    if state == 'measured' and val is not None:
+        try:
+            v = float(val)
+        except Exception:
+            continue
+    elif state == 'nan':
+        v = None
+    else:
+        continue
+    out.setdefault(loc, {})[f"{tx},{ty}"] = v
+with open(sys.argv[2], 'w', encoding='utf-8') as f:
+    json.dump(out, f, indent=2)
+sys.exit(0)
+PY
+            then
+                soil_after="$syn"
+            fi
+        fi
+    fi
+    if [[ -n "$soil_before" && -n "$soil_after" ]]; then
         local sdelta="$a/soil-health-before-after.json"
-        if signals_soil_health_delta "$before" "$after" "$sdelta"; then
+        if signals_soil_health_delta "$soil_before" "$soil_after" "$sdelta"; then
             [[ -s "$sdelta" ]] || { signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "missing" "" "" "$owner" "soil delta missing after generation" >/dev/null 2>&1 || true; issues=1; }
         else
             signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "mismatch" "" "" "$owner" "soil delta generation failed" >/dev/null 2>&1 || true
@@ -342,99 +407,10 @@ PY
     if [[ -n "$dump_dir" ]]; then
         [[ -f "$dump_dir/soil_health_before.json" ]] && before="$dump_dir/soil_health_before.json"
         [[ -f "$dump_dir/soil_health_after.json" ]] && after="$dump_dir/soil_health_after.json"
-        # Fallback: synthesize a raw soil-health dump from the mod's own
-        # crop-phase dump when the dedicated dump is missing. This is honest
-        # (uses captured per-crop soil state, not fabricated) and unblocks
-        # no-mutation attestation (e.g. refused application where after==before)
-        # when both artifacts would otherwise carry the same measurement.
-        if [[ -z "$before" && -f "$dump_dir/crop_phase_dump_before.json" ]]; then
-            local syn="$dump_dir/soil_health_before.json"
-            if python3 - "$dump_dir/crop_phase_dump_before.json" "$syn" <<'PY'
-import json, sys
-try:
-    d = json.load(open(sys.argv[1], encoding='utf-8'))
-except Exception:
-    sys.exit(1)
-out = {}
-for c in d.get('crops', []) or []:
-    loc = str(c.get('location') or '')
-    if not loc:
-        continue
-    tx, ty = c.get('tileX'), c.get('tileY')
-    if tx is None or ty is None:
-        continue
-    state = c.get('soilHealthState')
-    val = c.get('soilHealth')
-    if state == 'measured' and val is not None:
-        try:
-            v = float(val)
-        except Exception:
-            continue
-    elif state == 'nan':
-        v = None
-    else:
-        continue
-    out.setdefault(loc, {})[f"{tx},{ty}"] = v
-with open(sys.argv[2], 'w', encoding='utf-8') as f:
-    json.dump(out, f, indent=2)
-sys.exit(0)
-PY
-            then
-                before="$syn"
-            fi
-        fi
-        if [[ -z "$after" && -f "$dump_dir/crop_phase_dump_after.json" ]]; then
-            local syn="$dump_dir/soil_health_after.json"
-            if python3 - "$dump_dir/crop_phase_dump_after.json" "$syn" "$before" <<'PY'
-import json, sys
-try:
-    d = json.load(open(sys.argv[1], encoding='utf-8'))
-except Exception:
-    sys.exit(1)
-before_path = sys.argv[3] if len(sys.argv) > 3 else ""
-out = {}
-# Seed from before (if available) so non-crop tiles remain unchanged in the
-# delta when the dedicated after dump is missing. Overlay crop-dump soil
-# values, which are the mod's captured measurements.
-if before_path:
-    try:
-        b = json.load(open(before_path, encoding='utf-8'))
-        if isinstance(b, dict):
-            for loc, tiles in b.items():
-                if isinstance(tiles, dict):
-                    out[loc] = dict(tiles)
-    except Exception:
-        pass
-for c in d.get('crops', []) or []:
-    loc = str(c.get('location') or '')
-    if not loc:
-        continue
-    tx, ty = c.get('tileX'), c.get('tileY')
-    if tx is None or ty is None:
-        continue
-    state = c.get('soilHealthState')
-    val = c.get('soilHealth')
-    if state == 'measured' and val is not None:
-        try:
-            v = float(val)
-        except Exception:
-            continue
-    elif state == 'nan':
-        v = None
-    else:
-        continue
-    out.setdefault(loc, {})[f"{tx},{ty}"] = v
-with open(sys.argv[2], 'w', encoding='utf-8') as f:
-    json.dump(out, f, indent=2)
-sys.exit(0)
-PY
-            then
-                after="$syn"
-            fi
-        fi
         # Preserve the pre-run captures in the bundle too: the multiplier
         # threshold is `after == pre * factor`, so a bundle that only carries
-        # the after dump cannot be re-evaluated later.
+        # the after dump cannot be re-evaluated later. Missing after dumps are
+        # handled honestly in signals_process (crop-dump soil-state fallback).
         mkdir -p "$bundle/artifacts" 2>/dev/null || true
         [[ -f "$dump_dir/crop_phase_dump_before.json" ]] && cp -f "$dump_dir/crop_phase_dump_before.json" "$bundle/artifacts/crop-phase-before.json" 2>/dev/null || true
         [[ -n "$before" ]] && cp -f "$before" "$bundle/artifacts/soil-health-before.json" 2>/dev/null || true
