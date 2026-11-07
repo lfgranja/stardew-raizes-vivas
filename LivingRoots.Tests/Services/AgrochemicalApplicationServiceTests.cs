@@ -17,9 +17,9 @@ namespace LivingRoots.Tests;
 /// 017 agrochemical application service tests. The C2/C3 contract below is
 /// implemented by <see cref="AgrochemicalApplicationService"/>; a green suite here
 /// is the implementation evidence. Tests marked T064 pin the boolean-commit
-/// seam (<c>SetSoilHealth</c> now commits through <c>TrySetSoilHealth</c>);
-/// expectations that pinned the void <c>SetSoilHealth</c> write were updated to
-/// the seam with the same intent.
+/// seam: both <c>SetSoilHealth</c> and <c>TrySetSoilHealth</c> call
+/// <c>SetHealthInternal</c>; only <c>TrySetSoilHealth</c> propagates the
+/// commit/refusal signal.
 /// </summary>
 public class AgrochemicalApplicationServiceTests
 {
