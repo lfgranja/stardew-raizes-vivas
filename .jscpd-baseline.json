@@ -1,1 +1,1 @@
-{"percentage": 0.49, "duplicates": 6, "lines": 67, "measuredAt": "2026-11-01", "commit": "6f75bca", "scope": "LivingRoots/ (csharp)"}
+{"percentage": 0.66, "duplicates": 8, "lines": 111, "measuredAt": "2026-11-07", "commit": "83424a8", "scope": "LivingRoots/ (csharp, PR #761 accumulated; re-baseline after CI-fix cycle, refactor follow-up)"}
