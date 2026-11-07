@@ -121,3 +121,103 @@ copy-review claim; it is not `human-verified`, not SC-004, and not in-game rende
 Unchanged from the original review: not automated coverage, not a human `verified`
 attestation, not SC-004 comprehension evidence, not in-game rendering/font-fit, not final
 balance/tuning of the provisional `P=10`.
+
+## Phase 10 semantic copy review addendum (2026-11-07) — commit-failed and missing-input ×3 locales
+
+**Append-only; the review above is unchanged.** This addendum reviews the two strings rewritten or
+introduced by Phase 10: `message.agrochemical.commit-failed` (new in Phase 10, T097) and
+`message.agrochemical.missing-input` (tightened in Phase 10, T104), in `default.json`, `en.json`,
+`pt.json`. Review type and boundaries are identical to the original review and the Phase 9
+re-review: implementation-agent **AI-assisted** copy review — **not a human attestation, not
+`human-verified`, not SC-004, not Gate 3**, not a rendering/font-fit check.
+
+**Key count.** The 017 touched-key set is now **11 keys × 3 locales** (the original 10 reviewed
+above plus `message.agrochemical.commit-failed`). `verification/summary.md` line ~26 still reads
+"10 keys × 3 locales" — that figure is stale; this addendum is the authority for the 11-key
+coverage. (summary.md is not edited by this addendum.)
+
+### Exact strings under review
+
+- **`message.agrochemical.commit-failed`** — `default`/`en`: "The agrochemical could not be
+  committed to the soil, so nothing changed. Your agrochemical was not consumed. Please wait for
+  the farm data to free up and try again." · `pt`: "Não foi possível aplicar o agroquímico ao
+  solo, então ele não foi aplicado. Seu agroquímico não foi consumido. Aguarde os dados da
+  fazenda liberarem e tente novamente."
+- **`message.agrochemical.missing-input`** — `default`/`en`: "You need to be holding a Joja
+  agrochemical when you apply it to the soil — you are not holding one, so nothing happened. Hold
+  one in your hand, then try again." · `pt`: "Você precisa estar segurando um agroquímico Joja ao
+  aplicá-lo no solo — você não está segurando um, então ele não foi aplicado. Segure um na mão e
+  tente novamente."
+
+### Structure (cause + explicit no-success/non-consumption + next step)
+
+| Key | Locale | Cause | Explicit no-success / non-consumption | Next step | Result |
+|---|---|---|---|---|---|
+| commit-failed | default/en | "could not be committed to the soil" | "so nothing changed. Your agrochemical was not consumed." | "Please wait for the farm data to free up and try again." | Pass |
+| commit-failed | pt | "Não foi possível aplicar o agroquímico ao solo" | "então ele não foi aplicado. Seu agroquímico não foi consumido." | "Aguarde os dados da fazenda liberarem e tente novamente." | Pass |
+| missing-input | default/en | "You need to be holding … when you apply it to the soil — you are not holding one" | "so nothing happened." | "Hold one in your hand, then try again." | Pass |
+| missing-input | pt vs. en | pt renders the no-success clause as "então ele não foi aplicado" (it was not applied) vs. en "so nothing happened" — same implication, fluent pt | ✓ | ✓ | Pass with note |
+| missing-input | pt | "Você precisa estar segurando … ao aplicá-lo no solo — você não está segurando um" | "então ele não foi aplicado." | "Segure um na mão e tente novamente." | Pass |
+| commit-failed | default ≡ en | byte-identical (English fallback rule) | ✓ | ✓ | Parity |
+
+All five string instances state a cause, an explicit non-application/non-consumption outcome, and
+a next step; none implies success, none consumes or credits anything; all three locales agree on
+the structure (default≡en identical; pt carries the same three elements).
+
+### FR-012 / parity nuance — pt commit-layer vs. en
+
+- `en` renders the commit-drop with the commit-layer verb **"committed to the soil"**; `pt`
+  renders it with the ordinary apply verb **"aplicar"** ("Não foi possível aplicar … então ele
+  não foi aplicado"). The commit-layer nuance (a `TrySetSoilHealth` false result, i.e. the farm
+  data/commit seam refused, distinct from an ordinary application refusal) is therefore **not
+  lexically carried in pt** — a pt player and the pt copy cannot distinguish a commit-drop from an
+  ordinary apply failure at the string level.
+- This is a **lossy but honest** rendering: nothing is claimed that did not happen; no success,
+  no consumption, no mechanical effect is implied in either locale. The distinction that en's
+  "committed" encodes is invisible in outcome to the player anyway (same remediation: wait, then
+  retry). FR-012 parity (pt mirrors en for these keys) holds at the structural level; it does not
+  hold at the commit-vs-apply lexical level, and this addendum records that rather than claiming
+  full nuance parity.
+- Reciprocally, `en`'s "committed to the soil" leaks implementation vocabulary ("commit") into
+  player-facing copy. A player unfamiliar with software terms may read "committed" as
+  "applied" anyway; no comprehension hazard of consequence was identified, but the phrasing is a
+  wording-pass candidate (e.g. "could not be applied to the soil because the farm data was busy"),
+  deliberately **not changed here** — this is a review, not a copy edit.
+- `pt` missing-input diverges from `en` in the no-success clause ("ele não foi aplicado" vs. "so
+  nothing happened") — same implication, fluent pt rendering; accepted.
+
+### Cozy / non-punitive tone
+
+Both messages are diagnostic, not blaming. `commit-failed` explicitly protects the player's item
+("not consumed") and asks politely ("Please wait…" / "Aguarde…"). `missing-input` states a fact
+about what the player is holding without scolding ("you are not holding one"). Neither string
+shames, moralizes, or implies recklessness; both preserve the factual, non-punitive voice
+established in the Phase 9 rewrite. Tone: Pass.
+
+### Legibility (player understanding vs. implementation jargon)
+
+- `en` commit-failed: "committed" and "the farm data to free up" are implementation-adjacent
+  (farm-data lock/commit semantics). Understandable as "the farm is busy; try again shortly"
+  for most players; not a false claim; legibility acceptable with the jargon note above.
+- `pt` commit-failed: "os dados da fazenda liberarem" is the same farm-data concept rendered
+  literally; same acceptability; a future pt pass could say "aguarde a fazenda liberar" — not
+  changed here.
+- `missing-input` is fully legible in both locales; no jargon.
+- Neither string was measured against an in-game font/HUD (rendering unverified, as with all
+  prior rows of this review).
+
+### What this addendum does not prove
+
+Not automated coverage (`AgrochemicalContentParityTests` remains the lexical proxy); not a human
+`verified` attestation; not SC-004 comprehension evidence (no participant run exists); not
+in-game rendering/font-fit; not final balance/`P=10` tuning; not Gate 3. It does not change any
+claim status.
+
+### Row-52 re-anchor (claim-records.md)
+
+This addendum is the post-Phase-10 anchor for the claim-records **row 52** scope note (the
+AI-assisted copy review), now covering commit-failed and missing-input alongside the previously
+reviewed keys (11 keys × 3 locales). Row 52 itself is intentionally not edited; its scope note
+("Review performed by the implementation agent … does not satisfy human-verified … not SC-004")
+stands against the strings reviewed here. The claim remains a narrow copy-review claim; it is not
+`human-verified`, not SC-004, and not in-game rendering evidence.
