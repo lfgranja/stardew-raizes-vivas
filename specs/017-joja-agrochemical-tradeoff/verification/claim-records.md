@@ -79,3 +79,17 @@ the related row stays `pending` (or `infeasible`/`blocked` with a reason).
 2. Change status only after the artifact exists; cite the artifact in `Source artifact/path`.
 3. Keep scope notes honest about what the artifact does **not** prove.
 4. Append new rows for new claims instead of broadening an existing claim's scope.
+
+## Addendum (2026-11-06, Phase 9 convergence re-verification)
+
+The Phase 9 remediation (T064–T089) was implemented and re-verified; see
+`verification/convergence-rerun.md` for the append-only closure record. **No claim in the register
+above was promoted by this re-run.** The targeted 017 suite is 92/92 and the full suite is
+1844/0/4 on the post-convergence tree; formatting exits 0; the shell smoke suite is 49/0 (1
+environment skip); the offline Gate 3 bundle check exits 0; this register passes the new
+`scripts/tests/test-017-claims.sh` schema validator (11 rows, D1/human-verified/SC-004 remain
+non-`complete`). Two new `blocked` rows added during convergence (acquisition descope; measured-zero
+persistence) remain `blocked`. The host-only `machine-pass` claim is unchanged in scope and was not
+re-run. Notes: T079 (zero-stack slot clear) and T069 (icon strategy) are not observable in a live
+session from this re-run; the C1 double-counting claim remains a boundary/proxy check
+(`double-counting-risk.md`); normal-play acquisition remains descoped.
