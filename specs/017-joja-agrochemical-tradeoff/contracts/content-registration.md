@@ -45,3 +45,16 @@ Player-facing text introduced/changed for 017 MUST be localized for supported la
 - Mandatory new PNG/SFX assets.
 - Vanilla fertilizer category behavior or Harmony hook integration.
 - Data/recipe/shop additions unrelated to this single controlled MVP input.
+## Icon strategy (017 convergence) — Decision 2026-11-06
+
+**Decision:** The 017 Joja/agrochemical input ships **WITHOUT a dedicated 017 texture**. The item is registered as an untextured `Type="Basic"` object and explicitly accepts the **vanilla `springobjects` fallback sprite (`SpriteIndex 0`)** for rendering at MVP. No 017-specific PNG is introduced.
+
+**Rationale:**
+- **FR-013 forbids required new art.** A mandatory 16×16 icon would contradict the no-mandatory-assets constraint; a disposable one-off asset would add asset-pipeline risk (csproj copy rules, content-pipeline load path, fallback-failure modes) for zero gameplay value at MVP.
+- **No player-facing hex claim is made.** The item is not a fertilizer-slot item, not compostable, and not promoted on any visual identity; its telegraphing is entirely textual/procedural (item name/description keys and feedback messages), so the placeholder sprite carries no balance, quality, or trust claim.
+- **Registration is honest as-is.** The vanilla fallback is the same pattern already documented inline in `LivingRoots/ModEntry.cs` for untextured `Data/Objects` entries (see the compost registration note describing the `springobjects`/`SpriteIndex 0` fallback); the 017 item deliberately takes that path rather than fork a new texture asset.
+- **Pipeline stays minimal.** Shipping without the PNG avoids a second source of truth for item identity and avoids a texture-registration test/asset-pairing obligation the MVP does not need.
+
+**Verification status (honest):** Render legibility of the fallback sprite **in-game is UNVERIFIED at decision time**. 016/017 verification did not screenshot or assert the 017 item's inventory/shop-tooltip presentation. Critical meaning is **text-only** (FR-002/FR-013): before-use framing, attribution, and refusal meaning do not depend on the sprite. **Revisit with playtest** (or a host-only session observation) before promoting any claim about the item's visual presentation; if the fallback reads poorly, the revisit task is to add one 16×16 icon through the existing asset pipeline, not to change the gameplay contract.
+
+**Provenance:** This section is append-only and dated 2026-11-06. It records a decision; it does not modify the registration boundaries above. `LivingRoots/ModEntry.cs` already documents the `springobjects` fallback inline (see the `Data/Objects` edit branch); no code change is implied by this decision.
