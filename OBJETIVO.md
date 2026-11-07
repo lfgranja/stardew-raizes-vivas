@@ -1,7 +1,7 @@
 # OBJETIVO.md — Living Roots / Raízes Vivas
 
 > **Fontes:** `docs/GDD-living-roots.md` (v1.1), `ROADMAP.md` (atualizado 2026-11-06), `.specify/memory/constitution.md` v2.0.0, `README.md`, `AGENTS.md`, `VERIFICATION_PROTOCOL.md`, assessments/specs/bugs, `research/2026-10-roadmap-feasibility-and-agronomy.md`, `specs/014-soil-health-crop-quality/gate3-evidence.md`.
-> **Status do projeto:** v0.0.1 · .NET 6 / SMAPI 4.5.2 · Stardew Valley 1.6.14+ · branch local `dev` (`a5293d7`) — **98 commits à frente de `origin/dev`** no snapshot 2026-11-06 (push/PR hygiene pendente; sem PRs abertos).
+> **Status do projeto:** v0.0.1 · .NET 6 / SMAPI 4.5.2 · Stardew Valley 1.6.14+ · branch `dev` em `0260fed`, **sincronizado com `origin/dev`** no snapshot 2026-11-05 (higiene local/remota concluída: apenas `dev`/`main`; sem PRs abertos para `dev`).
 > **Owner:** maintainer (lfgranja) · **Audiência primária:** jogadores cozy 25–45 + casais em co-op + educadores/ativistas agroecológicos.
 
 ---
@@ -55,7 +55,7 @@ Diferencial vs. concorrentes próximos (ex.: ReGen Valley, Nexus #39740): não �
 | Spec 010 runner | **150/203** tarefas | `specs/010-headless-verification-runner/tasks.md` |
 | Spec 016 | **43/43** tarefas | `specs/016-gate3-runner-hardening/tasks.md` |
 | Gate 3 spec 014 | **machine-pass** (host-only), `verdict: pass`, `signalsComplete/Agree/thresholdsOk: true`, bundle verifier exit 0 | bundles `evidence-bundle-run-20261106T014215Z-759d`, `evidence-bundle-run-20261106T014750Z-14b6`; `specs/014-soil-health-crop-quality/gate3-evidence.md` |
-| Repo/git | `dev` `a5293d7` local, **98 à frente de `origin/dev`**; sem PRs abertos; branches `dev`/`main` | `git status`, `gh pr list --state open`, `git branch -vv/-r` |
+| Repo/git | `dev` `0260fed` (local = `origin/dev`), árvore limpa; sem PRs abertos para `dev`; apenas `dev`/`main` local/remoto | `git status`, `gh pr list --state open --base dev`, `git branch -vv/-r`, `git ls-remote --heads origin` |
 
 > **Honestidade de verificação:** `machine-pass` ≠ `verified`. **Não existe atestado humano/E** para Gate 3 neste snapshot. Evidência automatizada headless é forte para os sinais cobertos, mas não substitui confirmação humana nem multiplayer real.
 
@@ -63,13 +63,14 @@ Diferencial vs. concorrentes próximos (ex.: ReGen Valley, Nexus #39740): não �
 - **T109 D1 (spec 014):** bloqueado — teste ao vivo com **segundo jogador/farmhand real** não executado pelo runner headless atual. FR-009/A8 foi implementada e testada por unidade/regressão; **convergência ao vivo não atestada**.
 - **T110:** deferido — migração histórica de contrato 34/67→31/71 para bundle/spec 004/contrato histórico spec 010. Código vivo/spec 014 alinhados a 31/71; desvio registrado.
 
-### 4.2 Contexto competitivo/ecossistema (fontes primárias, 2026)
-- **SMAPI 4.5.2** para Stardew Valley **1.6.14+** (Linux/macOS/Windows); loader oficial/modding API. Fonte: https://smapi.io/
-- **Padrões de teste headless/E2E:** JunimoServer documenta E2E com containers/Testcontainers, X11/VNC/noVNC e automação cliente+servidor — útil como referência de arquitetura de verificação automatizada, não como prova do nosso mod. Fonte: https://docs.junimoserver.com/developers/testing/e2e-testing.html. Padrão comunitário relacionado: SMAPI dedicated server + Xvfb (ex.: `SMAPIDedicatedServerMod`).
-- **ReGen Valley** (Nexus #39740, robertsvalley, v0.51, upload 2025-11-28; consultado 2026): overhaul regenerativo com soil health/cover crops/grazing/ferramentas e thresholds de crescimento/colheita ligados à saúde média do solo da fazenda (mecânica distinta do nosso foco per-tile determinístico + feedback/cenários). Fonte: https://www.nexusmods.com/stardewvalley/mods/39740
-- **Ecossistema de qualidade/colheita (adjacente, não idêntico):** ex. *Crop Quality* (Nexus #47141), *Abundant Harvest Fertilizers* (Nexus #51999), *Quality Multi-Harvest* (Nexus #54375). Usar como referência de demanda/soluções parciais, não como evidência de paridade com o design Living Roots.
+### 4.2 Contexto competitivo/ecossistema (fontes primárias, verificado/atualizado 2026-11-05)
+- **SMAPI 4.5.2** (atual) para Stardew Valley **1.6.14+** (Linux/macOS/Windows/Steam Deck); loader oficial/modding API. Fontes: https://smapi.io/ ; https://github.com/Pathoschild/SMAPI/releases/tag/4.5.2
+- **Caveat de ecossistema:** a lista de compatibilidade de mods em smapi.io não é mais atualizada de forma abrangente mensalmente (“sunset”); cruzar com Nexus/GitHub/wiki do mod quando necessário. Fonte: https://smapi.io/mods
+- **Padrões de teste headless/E2E/dedicado:** JunimoServer (Docker, always-on/headless, clientes vanilla, SMAPI mods no servidor; site indica latest release instável/recomenda preview) é referência útil para automação/multi-cliente futura, **não** prova do Living Roots nem cobre o runner host-only atual. Fonte: https://docs.junimoserver.com/. Referência comunitária relacionada: `SMAPIDedicatedServerMod` + `xvfb-run` (https://github.com/ObjectManagerManager/SMAPIDedicatedServerMod).
+- **ReGen Valley** (Nexus #39740, robertsvalley): overhaul regenerativo com soil health/efeitos ligados à saúde média da fazenda (mecânica distinta do foco per-tile determinístico + feedback/cenários do Living Roots). **Acesso direto ao Nexus retornou 403 nesta sessão** — manter como contexto já registrado no repo, sem revalidar detalhes ao vivo aqui. Fonte registrada: https://www.nexusmods.com/stardewvalley/mods/39740 ; ver `research/2026-11-05-web-research-ecosystem-status.md`.
+- **Ecossistema de qualidade/colheita (adjacente, não idêntico):** ex. *Crop Quality* (#47141), *Abundant Harvest Fertilizers* (#51999), *Quality Multi-Harvest* (#54375). Demanda/soluções parciais; não evidência de paridade com o design Living Roots.
 
-**Implicação:** o diferencial defensável continua sendo a combinação coerente (solo por tile + compost/mulch/crescimento/qualidade + framing educativo + MP host-authoritative/FR-009/A8 + evidência automatizada reproduzível) — desde que comunicado com honestidade sobre o que é machine-pass vs. verificado humano.
+**Implicação:** o diferencial defensável continua sendo a combinação coerente (solo por tile + compost/mulch/crescimento/qualidade + framing educativo + MP host-authoritative/FR-009/A8 + evidência automatizada reproduzível) — comunicado com honestidade: `machine-pass` ≠ `verified`; D1/humano pendentes.
 
 ---
 
@@ -108,10 +109,10 @@ Diferencial vs. concorrentes próximos (ex.: ReGen Valley, Nexus #39740): não �
 
 ## 8. Próximo passo 80/20 (recomendado)
 
-1. **Fechar decisão operacional de git/PRs:** confirmar commit/push dos 4 arquivos pendentes (ou tratá-los) e definir PRs revisáveis contra `origin/dev` — sem reescrever histórico.
-2. **Planejar/viabilizar D1 real (T109)** quando houver ambiente com farmhand; manter FR-009/A8 e registrar evidência honesta.
-3. **Ataque de produto após verificação MP:** escolher próximo slice de maior impacto (ex.: integração/fechamento de pendências de harvest/spec 015 onde aplicável, ou mecânica destrutiva/loop de decisão como Joja/monocultura) com TDD + Gate 3 + honesty.
-4. **Reconciliação documental contínua:** manter `ROADMAP.md`/`OBJETIVO.md`/evidências alinhados ao estado verificado (esta atualização).
+1. **Reconciliação 014↔015 (baixo custo, alto valor):** `/speckit.analyze`/convergência baseada em evidência para mapear tarefas de spec 015 já satisfeitas por 014, duplicidades (ex.: Junimo) e bloqueios reais (D1/humano) — sem reimplementar nem reescrever histórico.
+2. **Planejar/viabilizar D1 real (T109)** quando houver ambiente com farmhand; manter FR-009/A8 e registrar evidência honesta. Avaliar referências headless multi-cliente (JunimoServer/`xvfb`+dedicated patterns) apenas como investigação futura, não como evidência.
+3. **Após reconciliação:** `/speckit.specify` do próximo slice de gameplay de maior impacto (candidato: tradeoff destrutivo/decisão, ex. Joja/monocultura em escopo controlado) com TDD + Gate 3 + honesty.
+4. **Reconciliação documental contínua:** manter `ROADMAP.md`/`OBJETIVO.md`/evidências alinhados ao estado verificado.
 
 ---
 
@@ -122,7 +123,8 @@ Diferencial vs. concorrentes próximos (ex.: ReGen Valley, Nexus #39740): não �
 - `.specify/memory/constitution.md` (v2.0.0)
 - `VERIFICATION_PROTOCOL.md`
 - `research/2026-10-roadmap-feasibility-and-agronomy.md`
+- `research/2026-11-05-web-research-ecosystem-status.md`
 - `specs/014-soil-health-crop-quality/gate3-evidence.md`
-- https://smapi.io/ · https://docs.junimoserver.com/developers/testing/e2e-testing.html · https://www.nexusmods.com/stardewvalley/mods/39740
+- https://smapi.io/ · https://github.com/Pathoschild/SMAPI/releases/tag/4.5.2 · https://smapi.io/mods · https://docs.junimoserver.com/ · https://www.nexusmods.com/stardewvalley/mods/39740
 
-*Última atualização: 2026-11-06 (spec 014 T131–T133 machine-pass host-only 759d/14b6; testes 1747/0/4; D1/T110 pendentes; snapshot git local).*
+*Última atualização: 2026-11-05 (refresh web/estado repo: SMAPI 4.5.2 verificado, `dev`=origin/dev `0260fed`, hygiene concluída; spec 014 machine-pass host-only 759d/14b6, testes 1747/0/4; D1/T110/humano E pendentes).*

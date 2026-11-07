@@ -42,6 +42,13 @@ namespace LivingRoots.Services.Visualization
         private readonly PerScreen<Dictionary<Point, TimeSpan>> _lastUpdateTimeByTile = new(() => new Dictionary<Point, TimeSpan>());
 
         /// <summary>
+        /// Caches the last rendered tooltip for the current screen so throttled
+        /// frames keep showing a stable tooltip instead of flickering (FR-015
+        /// limits recomputation; it must not hide an already-valid tooltip).
+        /// </summary>
+        private readonly PerScreen<(Point Tile, TooltipData Data)?> _cachedTooltip = new();
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="TooltipRenderer"/> class.
         /// </summary>
         /// <param name="configService">Visualization configuration service.</param>
@@ -61,7 +68,9 @@ namespace LivingRoots.Services.Visualization
         /// <summary>
         /// Gets the tooltip data for the current cursor position, or null if no tooltip should be shown.
         /// Returns null when tooltips are disabled, cursor is outside tile bounds,
-        /// no health data exists for the tile, or the update is throttled per FR-015.
+        /// or the cursor tile is not present in the visualization snapshot (not applicable).
+        /// When FR-015 throttling applies to the same tile, returns the cached tooltip so the
+        /// tooltip remains stable instead of flashing; throttling limits recomputation only.
         /// </summary>
         /// <param name="cursorTile">Tile under cursor from SMAPI cursor-to-tile API (GrabTile).</param>
         /// <param name="tileHealthData">Dictionary mapping tile coordinates to health values.</param>
@@ -74,11 +83,23 @@ namespace LivingRoots.Services.Visualization
 
             if (!_configService.GetConfiguration().TooltipsEnabled)
             {
+                _cachedTooltip.Value = null;
                 return null;
             }
 
             if (cursorTile.X < 0 || cursorTile.Y < 0)
             {
+                _cachedTooltip.Value = null;
+                return null;
+            }
+
+            // Only tiles present in the visualization snapshot are applicable.
+            // Missing keys are out of scope (e.g. non-tilled/non-HoeDirt tiles),
+            // not "unknown soil data"; unknown data is represented by a present
+            // NaN/Infinity entry for an applicable tile (FR-014).
+            if (!tileHealthData.TryGetValue(cursorTile, out var healthValue))
+            {
+                _cachedTooltip.Value = null;
                 return null;
             }
 
@@ -88,25 +109,31 @@ namespace LivingRoots.Services.Visualization
             // previously visited tile inside that tile's own
             // window is a suppressed redraw on the same tile,
             // independent of the cursor's path between visits.
+            // Throttling must not hide an already-valid tooltip.
             if (_lastUpdateTimeByTile.Value.TryGetValue(cursorTile, out var lastUpdateTime)
                 && gameTime.TotalGameTime - lastUpdateTime < MinUpdateInterval)
             {
+                var cached = _cachedTooltip.Value;
+                if (cached.HasValue && cached.Value.Tile == cursorTile)
+                {
+                    cached.Value.Data.Position = cursorPosition;
+                    return cached.Value.Data;
+                }
+
                 return null;
             }
 
             _lastUpdateTimeByTile.Value[cursorTile] = gameTime.TotalGameTime;
 
-            float healthValue = tileHealthData.ContainsKey(cursorTile) ? tileHealthData[cursorTile] : float.NaN;
-
             if (float.IsNaN(healthValue) || float.IsInfinity(healthValue))
             {
-                return CreateUnknownTooltip(cursorPosition, cursorTile);
+                return CacheAndReturn(CreateUnknownTooltip(cursorPosition, cursorTile), cursorTile);
             }
 
             var category = _colorService.GetCategoryForHealth(healthValue);
             if (category == HealthCategory.Unknown)
             {
-                return CreateUnknownTooltip(cursorPosition, cursorTile);
+                return CacheAndReturn(CreateUnknownTooltip(cursorPosition, cursorTile), cursorTile);
             }
 
             var percentage = Math.Clamp(healthValue, 0f, 100f);
@@ -127,6 +154,12 @@ namespace LivingRoots.Services.Visualization
 
             _monitor.Log($"Tooltip generated for tile ({cursorTile.X}, {cursorTile.Y}): {tooltip.Text}", LogLevel.Trace);
 
+            return CacheAndReturn(tooltip, cursorTile);
+        }
+
+        private TooltipData CacheAndReturn(TooltipData tooltip, Point cursorTile)
+        {
+            _cachedTooltip.Value = (cursorTile, tooltip);
             return tooltip;
         }
 

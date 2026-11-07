@@ -50,6 +50,45 @@ namespace LivingRoots.Domain.Interfaces
         /// the item is not valid organic waste or the bin is not empty.
         /// </summary>
         bool InsertWaste(string locationName, int tileX, int tileY, string itemId, int count);
+
+        /// <summary>
+        /// Dev/CI-only host path for the 017 Joja/agrochemical input. Applies the
+        /// item through the same authoritative controller route as a right-click
+        /// interaction. The application delegate is bound unconditionally at
+        /// wiring time and binding is not host-restricted at that point. Host
+        /// authority, target eligibility, held-item and lock gates are enforced
+        /// downstream by ModController (the <c>IsMainPlayerCheck</c> authority
+        /// gate and the application route), not by this API. Any in-process mod
+        /// may call <c>ApplyAgrochemical</c>, but no call can produce an unsafe
+        /// local mutation or bypass host authority: a non-host caller is refused
+        /// by the controller before any service, lock, soil, or consumption
+        /// effect. Dev/CI-only usage is the expected consumption of this member;
+        /// it is not a privilege boundary. Returns false when the application
+        /// delegate is not bound or the application is refused or fails; the API
+        /// performs no soil mutation itself.
+        /// </summary>
+        bool ApplyAgrochemical(string locationName, int tileX, int tileY);
+
+        /// <summary>
+        /// Dev/CI-only host path for 013 mulch application. The delegate is bound
+        /// at wiring time and delegates to <see cref="IMulchApplicationService.TryApplyMulch"/>.
+        /// Host authority and eligibility (tilled/valid location, not already mulched,
+        /// held mulch item) are enforced by the service/delegate path; the API
+        /// performs no mutation itself. Returns false when unbound, refused, or
+        /// failed. Intended for headless verification; not a gameplay privilege boundary.
+        /// </summary>
+        bool ApplyMulch(string locationName, int tileX, int tileY);
+
+        /// <summary>
+        /// Dev/CI-only seam (authorized): acquire a host atomic tile lock as <paramref name="holderFarmerId"/>.
+        /// Deterministic contention testing (e.g. 017 action-conflict/RefusedConflict path). Not for gameplay.
+        /// </summary>
+        bool TryAcquireHostLock(string locationName, int tileX, int tileY, long holderFarmerId);
+
+        /// <summary>
+        /// Dev/CI-only seam (authorized): release a host atomic tile lock held by <paramref name="holderFarmerId"/>.
+        /// </summary>
+        void ReleaseHostLock(string locationName, int tileX, int tileY, long holderFarmerId);
     }
 
     /// <summary>

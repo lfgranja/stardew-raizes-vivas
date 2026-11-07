@@ -216,5 +216,23 @@ namespace LivingRoots
         // drop-in — vanilla audio cancel cue plus machine shake. Applies
         // worldObject.shakeTimer directly so no second shake path exists.
         public const int BinInvalidDropInShakeTimerMs = 750;
+
+        // Spec 017: Joja / Agrochemical Tradeoff (MVP, provisional/tunable).
+        public const string AgrochemicalItemId = "LivingRoots.JojaAgrochemical";
+        public const string QualifiedAgrochemicalItemId = "(O)LivingRoots.JojaAgrochemical";
+        public const float AgrochemicalSoilPenalty = 10f; // C3 provisional, 0-100 scale — TUNING THIS CONSTANT REQUIRES SYNCING: i18n/default.json + en.json + pt.json "applied"/"description" strings and the English fallbacks in ModController.TranslateAgrochemicalMessage (tests hardcode the magnitude token).
+        public const string AgrochemicalItemNameKey = "item.agrochemical.name";
+        public const string AgrochemicalItemDescriptionKey = "item.agrochemical.description";
+        public const string TranslationKeyAgrochemicalApplied = "message.agrochemical.applied";
+        public const string TranslationKeyAgrochemicalAppliedClamped = "message.agrochemical.applied-clamped";
+        public const string TranslationKeyAgrochemicalAppliedUnknownBaseline = "message.agrochemical.applied-unknown-baseline";
+        public const string TranslationKeyAgrochemicalInvalidTarget = "message.agrochemical.invalid-target";
+        public const string TranslationKeyAgrochemicalMissingInput = "message.agrochemical.missing-input";
+        public const string TranslationKeyAgrochemicalActionConflict = "message.agrochemical.action-conflict";
+        public const string TranslationKeyAgrochemicalUnsupportedAuthority = "message.agrochemical.unsupported-authority";
+        public const string TranslationKeyAgrochemicalSoilAtMinimum = "message.agrochemical.soil-at-minimum";
+
+        // T097: commit-failure refusal key (added in Wave A scaffold; wired in Wave B)
+        public const string TranslationKeyAgrochemicalCommitFailed = "message.agrochemical.commit-failed";
     }
 }

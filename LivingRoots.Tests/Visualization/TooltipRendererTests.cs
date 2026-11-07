@@ -71,15 +71,34 @@ namespace LivingRoots.Tests.Visualization
         }
 
         /// <summary>
-        /// FR-014: a hovered tile with no health data must render the unknown-state
-        /// tooltip, which deliberately omits any percentage.
+        /// Non-applicable tiles are absent from the visualization snapshot and must
+        /// not produce a soil-health tooltip (FR-002 scope). Unknown soil data is a
+        /// different case: an applicable tile present with NaN (FR-014).
         /// </summary>
         [Fact]
-        public void GetTooltip_TileAbsentFromData_ReturnsUnknownTextWithoutPercentage()
+        public void GetTooltip_TileAbsentFromData_ReturnsNull()
         {
             // Arrange
             var cursorTile = new Point(7, 8);
             var tileHealthData = new Dictionary<Point, float> { { new Point(9, 9), 60f } };
+
+            // Act
+            var tooltip = _renderer.GetTooltip(new Vector2(50, 60), cursorTile, tileHealthData, BuildGameTime(0));
+
+            // Assert
+            Assert.Null(tooltip);
+        }
+
+        /// <summary>
+        /// FR-014: an applicable hovered tile with unavailable health data (NaN in
+        /// the snapshot) must render the unknown-state tooltip without a percentage.
+        /// </summary>
+        [Fact]
+        public void GetTooltip_TilePresentWithNaN_ReturnsUnknownTextWithoutPercentage()
+        {
+            // Arrange
+            var cursorTile = new Point(7, 8);
+            var tileHealthData = new Dictionary<Point, float> { { cursorTile, float.NaN } };
 
             // Act
             var tooltip = _renderer.GetTooltip(new Vector2(50, 60), cursorTile, tileHealthData, BuildGameTime(0));
@@ -91,29 +110,33 @@ namespace LivingRoots.Tests.Visualization
         }
 
         /// <summary>
-        /// FR-015: repeating the same tile inside the debounce window is suppressed.
-        /// Game time is driven from a negative origin because the renderer's initial
-        /// sentinel timestamp is <c>TimeSpan.MinValue</c>, which cannot be subtracted
-        /// from a non-negative total game time.
+        /// FR-015: throttling limits recomputation for the same tile, but it must
+        /// not hide an already-valid tooltip (that caused visible flashing). Within
+        /// the debounce window the cached tooltip is returned with the current
+        /// cursor position.
         /// </summary>
         [Fact]
-        public void GetTooltip_SameTileWithinDebounceWindow_ReturnsNull()
+        public void GetTooltip_SameTileWithinDebounceWindow_ReturnsCachedTooltip()
         {
             // Arrange
             var cursorTile = new Point(2, 2);
             var tileHealthData = new Dictionary<Point, float> { { cursorTile, 80f } };
+            var throttledPosition = new Vector2(12, 10);
 
             // Act
             var first = _renderer.GetTooltip(new Vector2(10, 10), cursorTile, tileHealthData, BuildGameTime(0));
             var throttled = _renderer.GetTooltip(
-                new Vector2(12, 10),
+                throttledPosition,
                 cursorTile,
                 tileHealthData,
                 BuildGameTime(ModConstants.TooltipDebounceMs - 1));
 
             // Assert
             Assert.NotNull(first);
-            Assert.Null(throttled);
+            Assert.NotNull(throttled);
+            Assert.Same(first, throttled);
+            Assert.Equal(throttledPosition, throttled!.Position);
+            Assert.Contains("80%", throttled.Text);
         }
 
         /// <summary>

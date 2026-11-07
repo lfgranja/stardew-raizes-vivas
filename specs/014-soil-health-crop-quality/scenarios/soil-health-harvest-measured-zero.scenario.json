@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 3,
+  "scenarioId": "soil-health-harvest-measured-zero",
+  "featureSlug": "014-soil-health-crop-quality",
+  "testMdPath": "specs/014-soil-health-crop-quality/test.md",
+  "summary": "014: measured 0 is Poor (014 A7/T166) — harvest forces quality 0; zero probe attests poor-tier outcome.",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.1.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": true
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health 60 15 0",
+      "description": "pin target context; matrix zero probe uses measured 0/Poor (014 A7)"
+    }
+  ],
+  "steps": [
+    {
+      "action": "runMacro",
+      "target": "60,15",
+      "inputs": {
+        "macroFile": "macros/harvest-matrix-zero.txt"
+      }
+    },
+    {
+      "action": "observe",
+      "target": "60,15"
+    }
+  ],
+  "thresholds": [
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "zeroHealthTier",
+        "operator": "eq",
+        "right": "poor"
+      },
+      "description": "measured-zero probe recorded with poor soil tier"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "zeroVanillaQuality",
+        "operator": "eq",
+        "right": 1
+      },
+      "description": "zero probe selected with vanilla quality 1 (attestable baseline)"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "zeroHarvestQuality",
+        "operator": "eq",
+        "right": 0
+      },
+      "description": "measured 0 is Poor (014 A7/T166): harvest forces main quality to 0"
+    },
+    {
+      "signal": "smapiLog",
+      "predicate": {
+        "op": "cmp",
+        "left": "isMainPlayer",
+        "operator": "eq",
+        "right": true
+      },
+      "description": "host/main-player only"
+    }
+  ],
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "cropPhaseDelta",
+    "smapiLog"
+  ],
+  "timeoutSeconds": 300,
+  "inputs": {
+    "season": "spring",
+    "day": 5,
+    "weather": "sunny",
+    "money": 500
+  },
+  "rngSeed": 123456789,
+  "time": "2026-11-07T12:00:00Z",
+  "scenarioKind": "positive",
+  "expectedVerdict": "pass",
+  "determinism": {
+    "idempotent": true,
+    "declaredSources": []
+  }
+}

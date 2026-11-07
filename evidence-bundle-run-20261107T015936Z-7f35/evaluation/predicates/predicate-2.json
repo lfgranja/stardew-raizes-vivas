@@ -1,0 +1,1 @@
+{"op": "cmp", "left": "isMainPlayer", "operator": "eq", "right": true, "tolerance": 0}

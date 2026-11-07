@@ -695,7 +695,13 @@
         "moderateVanillaQuality",
         "healthyVanillaQuality",
         "healthyQualityRoll",
-        "healthyExtraRoll"
+        "healthyExtraRoll",
+        "unknownHarvestQuality",
+        "unknownVanillaQuality",
+        "unknownExtraCount",
+        "zeroHarvestQuality",
+        "zeroVanillaQuality",
+        "zeroExtraCount"
       ],
       "title": "Numeric signal field",
       "description": "A signal field with numeric semantics.",
@@ -743,10 +749,18 @@
         "moderateVanillaQuality",
         "healthyVanillaQuality",
         "healthyQualityRoll",
-        "healthyExtraRoll"
+        "healthyExtraRoll",
+        "unknownHarvestQuality",
+        "unknownVanillaQuality",
+        "unknownExtraCount",
+        "unknownHealthTier",
+        "zeroHarvestQuality",
+        "zeroVanillaQuality",
+        "zeroExtraCount",
+        "zeroHealthTier"
       ],
       "title": "Signal field",
-      "description": "Closed vocabulary of fields that thresholds may evaluate. Numeric fields accept numbers; boolean fields accept booleans; string fields accept strings. New fields require a schema version bump.",
+      "description": "Closed vocabulary of fields that thresholds may evaluate. Numeric fields accept numbers; boolean fields accept booleans; string fields accept strings. Additive harvest-probe fields (014 NaN/zero attestation) extend the vocabulary.",
       "examples": [
         "phaseDays"
       ]

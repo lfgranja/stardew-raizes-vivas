@@ -255,7 +255,7 @@
 
 - [ ] T057 Execute Gate 3 in-game SMAPI session capturing 3 signals (observation + save diff + SMAPI log) with second player for multiplayer verification (D1) (missing, SC-004). Source: F1, SC-004.
 - [ ] T058 Verify extra-harvest single-harvest guarantee: extra harvest spawns exactly once per harvest (no duplicate on re-harvest) (partial, FR-004/A8/SC-004). Source: F2.
-- [ ] T059 Apply Poor (force Quality=0) and Healthy (boost) quality outcomes on Junimo/forced-scythe harvest path instead of skipping when `who == null` (partial, FR-001/FR-004). Source: F3.
+- [x] T059 Apply Poor (force Quality=0) and Healthy (boost) quality outcomes on Junimo/forced-scythe harvest path instead of skipping when `who == null` (partial, FR-001/FR-004). Source: F3. — **Resolved by T061 (2026-11-06):** `HarvestPatches` routes junimo target inventory (`GetTargetInventory`/`TryAddToTarget`) and applies Poor/Healthy via target/primary slot; `HarvestInventoryTargetingTests.SelectTargetInventory_PrefersJunimoThenPlayer` covers target selection. **Residual:** no in-game/Gate 3 Junimo runtime spot-check recorded (not claimed `verified`).
 - [ ] T060 Verify audio-only acceptance in Gate 3: confirm audio cue sufficiency vs. need for sprite broadcast (partial, contract §6/T035). Source: F4.
 
 ## Phase 11: Convergence
@@ -278,3 +278,22 @@
 - **T065 (FR-009/A8 cross-spec reconciliation):** Spec 015 deterministic/hash-roll language reconciled to spec 014 implementation: **host→client soil-health sync** (`ModController`: `BroadcastSoilHealthSnapshotIfHost` called after DayStarted/compost-apply paths, `OnModMessageReceived` handles `SoilHealthSyncMessageType = "SoilHealthSync"`, `SendMessage(... modIDs: [manifest])`; evidence lines ~91/1967/3056/3062-3111 in `ModController.cs`) and **client-local deterministic harvest reads synced value**; no double extra roll per 014/FR-009/A8 evidence. Patch reflection/broadcast (`HarvestPatches` `broadcastSprites`) is feedback transport, not harvest-state authority. **Status:** reconciliation record complete (append-only); D1 live convergence still blocked; T050 pest clamp remains deferred.
 
 **Honesty:** `machine-pass` ≠ `verified`. No human E. No D1 farmhand convergence attested.
+
+## Phase 12: 014↔015 Reconciliation Addendum (2026-11-07, append-only)
+
+**Purpose**: MDMV 80/20 cycle — explicit reconciliation of spec 015 open tasks against spec 014 implementation/evidence (read-only assessment; no gameplay/spec/plan rewrites). Baseline: spec 014 131/133 (T109 D1 blocked, T110 deferred for historical 31/71 runner-contract reasons), Gate 3 host-only machine-pass bundles `759d`/`14b6` (014) and `67f1` marker (repo-level, honesty R), `e969bb5`. **`machine-pass` ≠ `verified`/human E.** D1 live farmhand convergence not attested.
+
+| 015 task | Status (reconciled) | Evidence / blocker | Honest residual |
+|---|---|---|---|
+| T047 | **Host evidence present; runtime/D1/human open** | Spec 014 host-only machine-pass (759d/14b6) + single extra path in `Harvest_Postfix` (per T063). | Regrow/re-harvest edge cases, all runtime contexts, D1, human E not verified. Keep `[ ]` until runtime/Gate 3 spot-check or explicit waiver recorded. |
+| T049 | **Blocked (environment) — consolidated with T057/T062/014 T109** | Headless runner host-only; FR-009/A8 unit/regression-tested; live farmhand not attested. | Requires real D1/farmhand session or supported MP harness. Do not claim `verified`. |
+| T050 | **Deferred (dependency)** | Pest system does not ship; `PestQualityPenalty` null-safe path exists by design. | Implement only when pest system exists (A5). |
+| T052 | **Human E pending — consolidated with T060/T064** | Audio cue + procedural textures + `TemporaryAnimatedSprite` + host-scoped `broadcastSprites` reflection implemented; 014 host machine-pass covers scenario signals. | Human/E UX acceptance (sprite/sound sufficiency, client perception) pending. |
+| T057 | **Blocked (environment) — duplicate of T049** | Same D1 blocker as T049/T062/014 T109. | Keep `[ ]`; close only with real D1 evidence. |
+| T058 | **Host evidence present; runtime/D1/human open — overlaps T047/T063** | Same evidence as T047/T063 (single extra path, 014 host machine-pass). | Same residuals as T047. |
+| T059 | **Resolved (impl+tests) — T061** | `HarvestPatches` junimo target routing + Poor/Healthy applied; `HarvestInventoryTargetingTests`. Marked `[x]` 2026-11-07 with honesty note. | Runtime Junimo spot-check not recorded; not claimed `verified`. |
+| T060 | **Human E pending — overlaps T052/T064** | Same implementation/evidence as T052/T064. | Human/E UX acceptance pending. |
+
+**Open tasks remaining in 015 (honest):** 7 (`T047, T049, T050, T052, T057, T058, T060`) — 2 blocked by environment/D1, 1 deferred by dependency, 2 pending human E, 2 have host machine-pass evidence but retain runtime/D1/human residuals. **No fabricated runs. No claim promotion.**
+
+**Next 80/20 (when environment/human available):** (1) real D1 farmhand session closes T049/T057 cluster (and 014 T109 evidence gap) — requires explicit environment/human; (2) human E spot-check for audio/sprite UX closes T052/T060 residuals; (3) optional runtime extra-harvest/regrow spot-check can close T047/T058 residuals with evidence. Pest clamp (T050) waits for pest system.

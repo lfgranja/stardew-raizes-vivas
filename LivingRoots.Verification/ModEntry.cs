@@ -325,6 +325,112 @@ namespace LivingRoots.Verification
                         break;
                     }
 
+                case "lr_give_agrochemical":
+                    {
+                        var count = command.GetInt(0);
+                        if (!GrantAgrochemical(count))
+                        {
+                            FailGeneration("give-agrochemical-failed");
+                        }
+
+                        break;
+                    }
+
+                case "lr_apply_agrochemical":
+                    {
+                        var location = command.Arguments.Count >= 3 ? command.GetString(2) : DefaultLocation;
+                        if (!api.ApplyAgrochemical(location, command.GetInt(0), command.GetInt(1)))
+                        {
+                            // Refusal (e.g. soil at minimum) is an attestable outcome:
+                            // do not fail generation; soil/crop signal thresholds prove no-mutation.
+                            Monitor.Log($"verification: lr_apply_agrochemical refused at {command.GetInt(0)},{command.GetInt(1)} ({location}); no mutation asserted by signals.", LogLevel.Trace);
+                        }
+
+                        break;
+                    }
+
+                case "lr_give_mulch":
+                    {
+                        var count = command.GetInt(0);
+                        if (!GrantMulch(count))
+                        {
+                            FailGeneration("give-mulch-failed");
+                        }
+
+                        break;
+                    }
+
+                case "lr_apply_mulch":
+                    {
+                        var location = command.Arguments.Count >= 3 ? command.GetString(2) : DefaultLocation;
+                        if (!api.ApplyMulch(location, command.GetInt(0), command.GetInt(1)))
+                        {
+                            // Refusal on ineligible target is attestable (018 T027):
+                            // do not fail generation; signal thresholds prove no-mutation.
+                            Monitor.Log($"verification: lr_apply_mulch refused at {command.GetInt(0)},{command.GetInt(1)} ({location}); no mutation asserted by signals.", LogLevel.Trace);
+                        }
+
+                        break;
+                    }
+
+                case "lr_acquire_host_lock":
+                    {
+                        var location = command.Arguments.Count >= 4 ? command.GetString(3) : DefaultLocation;
+                        var holder = long.Parse(command.GetString(2), CultureInfo.InvariantCulture);
+                        if (!api.TryAcquireHostLock(location, command.GetInt(0), command.GetInt(1), holder))
+                        {
+                            FailGeneration("acquire-host-lock-failed");
+                        }
+
+                        break;
+                    }
+
+                case "lr_release_host_lock":
+                    {
+                        var location = command.Arguments.Count >= 4 ? command.GetString(3) : DefaultLocation;
+                        var holder = long.Parse(command.GetString(2), CultureInfo.InvariantCulture);
+                        api.ReleaseHostLock(location, command.GetInt(0), command.GetInt(1), holder);
+                        break;
+                    }
+
+                case "lr_split_screen":
+                    {
+                        // Authorized T002 farmhand mechanism (safe lr_* replacement for /debug split).
+                        // Best-effort: programmatic trigger may be unavailable in this SMAPI build;
+                        // headless split support may also be unavailable. Thresholds record reality honestly.
+                        try
+                        {
+                            var cmd = Helper.ConsoleCommands;
+                            var trigger = cmd.GetType().GetMethod("Trigger", new[] { typeof(string), typeof(string[]) });
+                            if (trigger != null)
+                            {
+                                trigger.Invoke(cmd, new object[] { "debug", new[] { "split" } });
+                                Monitor.Log("verification: lr_split_screen invoked debug split via reflection (best-effort).", LogLevel.Info);
+                            }
+                            else
+                            {
+                                Monitor.Log("verification: lr_split_screen: ICommandHelper.Trigger unavailable in this SMAPI build; debug split not triggered (honest).", LogLevel.Warn);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Monitor.Log($"verification: lr_split_screen failed (best-effort, exception type: {ex.GetType().FullName}).", LogLevel.Warn);
+                        }
+
+                        break;
+                    }
+
+                case "lr_till":
+                    {
+                        var location = command.Arguments.Count >= 3 ? command.GetString(2) : DefaultLocation;
+                        if (!TillTile(location, command.GetInt(0), command.GetInt(1)))
+                        {
+                            FailGeneration("till-failed");
+                        }
+
+                        break;
+                    }
+
                 case "lr_plant_crop":
                     {
                         var location = command.Arguments.Count >= 4 ? command.GetString(3) : DefaultLocation;
@@ -338,7 +444,8 @@ namespace LivingRoots.Verification
 
                 case "lr_harvest_matrix":
                     {
-                        if (!RunHarvestMatrix(command.GetInt(0), command.GetInt(1)))
+                        var extra = command.Arguments.Count >= 3 ? command.GetString(2) : null;
+                        if (!RunHarvestMatrix(command.GetInt(0), command.GetInt(1), extra))
                         {
                             FailGeneration("harvest-matrix-failed");
                         }
@@ -418,6 +525,102 @@ namespace LivingRoots.Verification
             }
         }
 
+        private bool GrantAgrochemical(int count)
+        {
+            if (count <= 0 || !Context.IsMainPlayer)
+            {
+                return false;
+            }
+
+            try
+            {
+                var items = Game1.player.Items;
+                if (items == null)
+                {
+                    return false;
+                }
+
+                int slot = -1;
+                int max = Math.Max(0, Math.Min(items.Count, Game1.player.MaxItems));
+                for (int i = 0; i < max; i++)
+                {
+                    if (items[i] == null)
+                    {
+                        slot = i;
+                        break;
+                    }
+                }
+
+                if (slot < 0)
+                {
+                    return false;
+                }
+
+                var item = ItemRegistry.Create(ModConstants.QualifiedAgrochemicalItemId, count);
+                if (item == null)
+                {
+                    return false;
+                }
+
+                items[slot] = item;
+                Game1.player.CurrentToolIndex = slot;
+                return string.Equals(Game1.player.CurrentItem?.QualifiedItemId, ModConstants.QualifiedAgrochemicalItemId, StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                Monitor.Log($"lr_give_agrochemical failed (exception type: {ex.GetType().FullName}).", LogLevel.Trace);
+                return false;
+            }
+        }
+
+        private bool GrantMulch(int count)
+        {
+            if (count <= 0 || !Context.IsMainPlayer)
+            {
+                return false;
+            }
+
+            try
+            {
+                var items = Game1.player.Items;
+                if (items == null)
+                {
+                    return false;
+                }
+
+                int slot = -1;
+                int max = Math.Max(0, Math.Min(items.Count, Game1.player.MaxItems));
+                for (int i = 0; i < max; i++)
+                {
+                    if (items[i] == null)
+                    {
+                        slot = i;
+                        break;
+                    }
+                }
+
+                if (slot < 0)
+                {
+                    return false;
+                }
+
+                var item = ItemRegistry.Create(ModConstants.QualifiedMulchItemId, count);
+                if (item == null)
+                {
+                    return false;
+                }
+
+                items[slot] = item;
+                Game1.player.CurrentToolIndex = slot;
+                return string.Equals(Game1.player.CurrentItem?.QualifiedItemId, ModConstants.QualifiedMulchItemId, StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                Monitor.Log($"lr_give_mulch failed (exception type: {ex.GetType().FullName}).", LogLevel.Trace);
+                return false;
+            }
+        }
+
         private bool AllWritesComplete(out bool allSucceeded)
         {
             allSucceeded = true;
@@ -478,6 +681,45 @@ namespace LivingRoots.Verification
                 _advanceInProgress = false;
                 FailGeneration("advance-days-failed");
             }
+        }
+
+        private static bool TillTile(string locationName, int tileX, int tileY)
+        {
+            GameLocation? location;
+            try
+            {
+                location = Game1.getLocationFromName(locationName);
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (location == null)
+            {
+                return false;
+            }
+
+            var tile = new Vector2(tileX, tileY);
+            if (!location.isTileOnMap(tile) || location.isWaterTile(tileX, tileY))
+            {
+                return false;
+            }
+
+            if (location.buildings != null && location.buildings.Any(building => building != null && building.occupiesTile(tile)))
+            {
+                return false;
+            }
+
+            if (location.terrainFeatures.TryGetValue(tile, out var existing)
+                && existing is HoeDirt existingDirt
+                && existingDirt.crop != null)
+            {
+                return false;
+            }
+
+            location.terrainFeatures[tile] = new HoeDirt(0, location);
+            return true;
         }
 
         private bool PlantCrop(string locationName, int tileX, int tileY, string seedId)
@@ -588,7 +830,7 @@ namespace LivingRoots.Verification
             }
         }
 
-        private bool RunHarvestMatrix(int baseX, int baseY)
+        private bool RunHarvestMatrix(int baseX, int baseY, string? extraProbe = null)
         {
             var player = Game1.player;
             var api = _api;
@@ -606,11 +848,14 @@ namespace LivingRoots.Verification
             var originalInventory = new List<Item>(player.Items);
             int originalFarmingLevel = player.farmingLevel.Value;
             var records = new List<HarvestRecord>();
+            var extras = string.IsNullOrWhiteSpace(extraProbe)
+                ? null
+                : extraProbe.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
             try
             {
                 player.farmingLevel.Value = 10;
-                if (!TryBuildHarvestProbes(location, baseX, baseY, out var probes))
+                if (!TryBuildHarvestProbes(location, baseX, baseY, extras, out var probes))
                 {
                     return false;
                 }
@@ -643,16 +888,17 @@ namespace LivingRoots.Verification
             return true;
         }
 
-        private bool TryBuildHarvestProbes(GameLocation location, int baseX, int baseY, out IReadOnlyList<HarvestProbe> probes)
+        private bool TryBuildHarvestProbes(GameLocation location, int baseX, int baseY, IReadOnlyCollection<string>? extras, out IReadOnlyList<HarvestProbe> probes)
         {
             probes = Array.Empty<HarvestProbe>();
             var candidates = ScanHarvestCandidates(location, baseX, baseY);
             double qualityProbability = HarvestRollCalculator.VanillaQualityProbability(Game1.player.FarmingLevel, 0);
-            if (!HarvestMatrixPlanner.TrySelect(
+            if (!HarvestMatrixPlanner.TrySelectWithExtras(
                 candidates,
                 qualityProbability,
                 ModConstants.SoilQualityHealthyBoost,
                 ModConstants.SoilExtraHarvestHealthyBoost,
+                extras,
                 out probes))
             {
                 Monitor.Log(
@@ -858,14 +1104,29 @@ namespace LivingRoots.Verification
                 return 50f;
             }
 
+            if (probe == HarvestMatrixPlanner.UnknownProbe)
+            {
+                return float.NaN;
+            }
+
+            if (probe == HarvestMatrixPlanner.ZeroProbe)
+            {
+                return 0f;
+            }
+
             return 90f;
         }
 
         private static string ProbeHealthTier(float health)
         {
+            if (float.IsNaN(health) || float.IsInfinity(health))
+            {
+                return HealthTierClassifier.Unknown;
+            }
+
             if (health <= ModConstants.MinSoilHealth)
             {
-                return HealthTierClassifier.NonParticipant;
+                return HealthTierClassifier.Poor;
             }
 
             if (health < ModConstants.PoorModerateBandEdge)

@@ -29,7 +29,8 @@ namespace LivingRoots.Controllers
         ILocationProvider? locationProvider = null,
         ISeasonProvider? seasonProvider = null,
         IMulchApplicationService? mulchApplicationService = null,
-        LivingRoots.Domain.Interfaces.ILivingRootsModApi? modApi = null) : IDisposable
+        LivingRoots.Domain.Interfaces.ILivingRootsModApi? modApi = null,
+        IAgrochemicalApplicationService? agrochemicalApplicationService = null) : IDisposable
     {
         // State flags for thread safety using atomic operations
         internal const int EventsRegisteredFlag = 1 << 0;
@@ -56,6 +57,23 @@ namespace LivingRoots.Controllers
         private readonly ISoilDecayService _soilDecayService = soilDecayService ?? throw new ArgumentNullException(nameof(soilDecayService));
         private readonly ICompostApplicationService? _compostApplicationService = compostApplicationService;
         private readonly IMulchApplicationService? _mulchApplicationService = mulchApplicationService;
+        private readonly IAgrochemicalApplicationService? _agrochemicalApplicationService = agrochemicalApplicationService;
+
+        // Spec 017: player-facing feedback seam. The production default uses the
+        // game HUD; tests can replace it to simulate unavailable/throwing feedback.
+        internal Action<string, bool>? ShowAgrochemicalFeedback { get; set; } = ShowAgrochemicalFeedbackDefault;
+
+        private static void ShowAgrochemicalFeedbackDefault(string message, bool isRefusal)
+        {
+            if (isRefusal)
+            {
+                StardewValley.Game1.showRedMessage(message);
+            }
+            else
+            {
+                StardewValley.Game1.addHUDMessage(new StardewValley.HUDMessage(message));
+            }
+        }
         private readonly IVisualizationService? _visualizationService = visualizationService;
         private readonly IVisualizationConfigurationService? _visualizationConfigService = visualizationConfigService;
 
@@ -2166,6 +2184,17 @@ namespace LivingRoots.Controllers
                 var heldItem = _playerProvider?.CurrentItem;
                 var farmerId = _playerProvider?.CurrentPlayer?.UniqueMultiplayerID ?? 0L;
 
+                // Spec 017: the Joja/agrochemical input is mod-intercepted on
+                // right-click. The controller owns authority, locking,
+                // consumption, feedback, and the FR-009 broadcast, so the input
+                // never reaches vanilla fertilizer handling and never writes
+                // HoeDirt.fertilizer.
+                if (IsAgrochemicalItem(heldItem))
+                {
+                    TryApplyAgrochemicalWithLock(location, binTile, farmerId);
+                    return;
+                }
+
                 if (heldItem != null &&
                     (heldItem.QualifiedItemId == ModConstants.CompostItemId ||
                      heldItem.QualifiedItemId == ModConstants.QualifiedCompostItemId ||
@@ -3057,6 +3086,286 @@ namespace LivingRoots.Controllers
             }
 
             return applied;
+        }
+
+        /// <summary>
+        /// Applies the 017 Joja/agrochemical input with host-authoritative
+        /// ordering and atomic per-tile locking (FR-008, FR-009, FR-010).
+        /// </summary>
+        /// <remarks>
+        /// The controller owns the authority gate, target/input validation,
+        /// first-wins locking, held-item consumption after the service commit,
+        /// player feedback, and the FR-009 broadcast. The service owns only the
+        /// measured soil-health mutation; this method never writes soil health.
+        /// Feedback failures are logged and swallowed so a committed outcome is
+        /// still consumed and broadcast, while refusal feedback failures cannot
+        /// mutate or consume anything.
+        /// </remarks>
+        public bool TryApplyAgrochemicalWithLock(
+            StardewValley.GameLocation location,
+            Microsoft.Xna.Framework.Vector2 tile,
+            long farmerId)
+        {
+            if (_agrochemicalApplicationService == null)
+            {
+                // T078 (FR-008, FR-013): a missing composition is a wiring
+                // failure, not a silent no-op — log it and refuse through the
+                // localized fail-closed path instead of returning quietly.
+                _monitor.Log(
+                    "Agrochemical application service is not configured; refusing application.",
+                    LogLevel.Warn);
+                ShowAgrochemicalRefusal(ModConstants.TranslationKeyAgrochemicalActionConflict);
+                return false;
+            }
+
+            if (!IsMainPlayerCheck())
+            {
+                ShowAgrochemicalRefusal(ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority);
+                return false;
+            }
+
+            if (!IsEligibleAgrochemicalTarget(location, tile))
+            {
+                ShowAgrochemicalRefusal(ModConstants.TranslationKeyAgrochemicalInvalidTarget);
+                return false;
+            }
+
+            var heldItem = _playerProvider?.CurrentItem;
+            if (!IsAgrochemicalItem(heldItem))
+            {
+                ShowAgrochemicalRefusal(ModConstants.TranslationKeyAgrochemicalMissingInput);
+                return false;
+            }
+
+            if (_hostAtomicLockService == null)
+            {
+                _monitor.Log(
+                    "Agrochemical application refused: no host atomic lock service is injected, so tile contention cannot be resolved (FR-010).",
+                    LogLevel.Warn);
+                ShowAgrochemicalRefusal(ModConstants.TranslationKeyAgrochemicalActionConflict);
+                return false;
+            }
+
+            if (!_hostAtomicLockService.TryAcquireLock(location.Name, tile, farmerId))
+            {
+                ShowAgrochemicalRefusal(ModConstants.TranslationKeyAgrochemicalActionConflict);
+                return false;
+            }
+
+            AgrochemicalApplicationResult? result;
+            try
+            {
+                result = _agrochemicalApplicationService.Apply(location, tile);
+            }
+            finally
+            {
+                _hostAtomicLockService.ReleaseLock(location.Name, tile, farmerId);
+            }
+
+            if (result == null || !result.Succeeded)
+            {
+                var refusalKey = result?.MessageKey;
+                if (string.IsNullOrWhiteSpace(refusalKey))
+                {
+                    refusalKey = ModConstants.TranslationKeyAgrochemicalActionConflict;
+                }
+
+                ShowAgrochemicalRefusal(refusalKey);
+                return false;
+            }
+
+            ConsumeHeldAgrochemical(heldItem);
+            ShowAgrochemicalSuccess(result.MessageKey);
+            BroadcastSoilHealthSnapshotIfHost();
+            return true;
+        }
+
+        private static bool IsEligibleAgrochemicalTarget(
+            StardewValley.GameLocation location,
+            Microsoft.Xna.Framework.Vector2 tile)
+        {
+            if (location == null)
+            {
+                return false;
+            }
+
+            var isFarmOrGreenhouse = location.IsFarm
+                || string.Equals(location.Name, "Greenhouse", StringComparison.OrdinalIgnoreCase);
+            if (!isFarmOrGreenhouse)
+            {
+                return false;
+            }
+
+            return location.terrainFeatures.TryGetValue(tile, out var terrainFeature)
+                && terrainFeature is StardewValley.TerrainFeatures.HoeDirt;
+        }
+
+        private static bool IsAgrochemicalItem(StardewValley.Item? item)
+        {
+            if (item == null)
+            {
+                return false;
+            }
+
+            return string.Equals(item.ItemId, ModConstants.AgrochemicalItemId, StringComparison.Ordinal)
+                || string.Equals(item.ItemId, ModConstants.QualifiedAgrochemicalItemId, StringComparison.Ordinal)
+                || string.Equals(item.QualifiedItemId, ModConstants.AgrochemicalItemId, StringComparison.Ordinal)
+                || string.Equals(item.QualifiedItemId, ModConstants.QualifiedAgrochemicalItemId, StringComparison.Ordinal);
+        }
+
+        // T079: when the last unit of the held agrochemical is consumed (the
+        // stack reaches zero), the matching inventory slot must be cleared so
+        // no zero-stack ghost remains. No repo site uses SDV's
+        // Farmer.reduceActiveItemByOne (grep: no matches), so this mirrors the
+        // compost/bin consumption pattern (TryPlaceBin): decrement, then find
+        // the slot by reference and set it to null. Stack > 1 semantics are
+        // unchanged — exactly one unit per application. The slot clear is
+        // best-effort: a headless/test composition has no live player, and a
+        // slot that cannot be located is a diagnostic Trace, never a blocker
+        // for an already-committed outcome.
+        private void ConsumeHeldAgrochemical(StardewValley.Item? heldItem)
+        {
+            if (heldItem == null || heldItem.Stack <= 0)
+            {
+                return;
+            }
+
+            heldItem.Stack--;
+            if (heldItem.Stack > 0)
+            {
+                return;
+            }
+
+            try
+            {
+                IList<StardewValley.Item?>? inventory = _playerProvider?.CurrentPlayer?.Items;
+                if (inventory == null && StardewValley.Game1.player != null)
+                {
+                    inventory = StardewValley.Game1.player.Items;
+                }
+
+                if (inventory == null)
+                {
+                    _monitor.Log(
+                        "Agrochemical zero-stack slot clear skipped: no player inventory is available.",
+                        LogLevel.Trace);
+                    return;
+                }
+
+                int index = inventory.IndexOf(heldItem);
+                if (index >= 0)
+                {
+                    inventory[index] = null;
+                    return;
+                }
+
+                _monitor.Log(
+                    "Agrochemical zero-stack slot clear skipped: the held item was not found in the player inventory.",
+                    LogLevel.Trace);
+            }
+            catch (Exception ex)
+            {
+                // The outcome is already committed; a slot-clear failure must
+                // never turn it into a false refusal or throw across the seam.
+                _monitor.Log("Agrochemical zero-stack slot clear failed.", LogLevel.Trace);
+                _monitor.Log(
+                    $"Slot clear exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace);
+            }
+        }
+
+        private void ShowAgrochemicalRefusal(string messageKey)
+        {
+            ShowAgrochemicalFeedbackSafely(messageKey, true);
+        }
+
+        private void ShowAgrochemicalSuccess(string messageKey)
+        {
+            ShowAgrochemicalFeedbackSafely(messageKey, false);
+        }
+
+        private void ShowAgrochemicalFeedbackSafely(string messageKey, bool isRefusal)
+        {
+            try
+            {
+                var feedback = ShowAgrochemicalFeedback;
+                if (feedback == null)
+                {
+                    // T076 (FR-007, FR-013): the outcome is committed or refused
+                    // but the player gets no on-screen confirmation. Name only
+                    // the agrochemical feedback context so the gap is
+                    // diagnosable — no player data, no stack traces. Control
+                    // flow is unchanged.
+                    _monitor.Log(
+                        "Agrochemical feedback path is not registered; the outcome will not be shown on the HUD.",
+                        LogLevel.Warn);
+                    return;
+                }
+
+                feedback(TranslateAgrochemicalMessage(messageKey), isRefusal);
+            }
+            catch (Exception ex)
+            {
+                // FR-013 fallback: the outcome remains committed or refused as
+                // already decided; a failed HUD path never becomes false success.
+                _monitor.Log("Agrochemical feedback could not be displayed.", LogLevel.Warn);
+                _monitor.Log(
+                    $"Agrochemical feedback exception type: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                    LogLevel.Trace);
+            }
+        }
+
+        // T088 (FR-013): built-in English fallbacks for the 017 keys, used when
+        // the translation subsystem is present but yields a missing/blank entry
+        // (or the untranslated raw key SMAPI returns for absent keys) — mirrors
+        // ModEntry.LocalizeOrFallback's raw-key detection. No translation may
+        // surface the raw i18n key to the player. Key names are logged by name
+        // only; no player data, no stack traces.
+        private static readonly Dictionary<string, string> AgrochemicalEnglishFallbacks = new(StringComparer.Ordinal)
+        {
+            [ModConstants.AgrochemicalItemNameKey] = "Joja Agrochemical",
+            [ModConstants.AgrochemicalItemDescriptionKey] = "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health. The soil consequence is bounded and recoverable through your usual soil care.",
+            [ModConstants.TranslationKeyAgrochemicalApplied] = "Agrochemical applied.",
+            [ModConstants.TranslationKeyAgrochemicalAppliedClamped] = "Agrochemical applied only partially: the soil had less health available than the full penalty.",
+            [ModConstants.TranslationKeyAgrochemicalAppliedUnknownBaseline] = "Agrochemical applied. There was no prior soil health reading, so the starting health was treated as 100.",
+            [ModConstants.TranslationKeyAgrochemicalInvalidTarget] = "The agrochemical can only be applied to tilled soil.",
+            [ModConstants.TranslationKeyAgrochemicalMissingInput] = "You need to be holding a Joja agrochemical when you apply it to the soil — you are not holding one, so nothing happened. Hold one in your hand, then try again.",
+            [ModConstants.TranslationKeyAgrochemicalActionConflict] = "Another player is already working this tile.",
+            [ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority] = "Only the host can apply agrochemicals in multiplayer.",
+            [ModConstants.TranslationKeyAgrochemicalSoilAtMinimum] = "This soil is already at the lowest health; the agrochemical would have no effect.",
+            [ModConstants.TranslationKeyAgrochemicalCommitFailed] = "The agrochemical could not be committed to the soil, so nothing changed. Your agrochemical was not consumed. The farm data is at capacity; apply the agrochemical to a tile that already has soil data, then try again later."
+        };
+
+        private string TranslateAgrochemicalMessage(string messageKey)
+        {
+            var translation = _helper?.Translation;
+            if (translation == null)
+            {
+                // Headless/test compositions have no translation subsystem; the
+                // key selection stays observable via the raw key (characterization
+                // contract pinned by the test suite). Production always has one.
+                _monitor.Log(
+                    $"Agrochemical translation subsystem unavailable for key '{messageKey}'.",
+                    LogLevel.Trace);
+                return messageKey;
+            }
+
+            var translated = translation.Get(messageKey);
+            if (string.IsNullOrWhiteSpace(translated)
+                || string.Equals(translated, messageKey, StringComparison.Ordinal))
+            {
+                // T088: a missing/blank (or untranslated raw-key) entry must never
+                // reach the player. Log the key name only and return a
+                // non-misleading English literal from the 017 fallback map.
+                _monitor.Log(
+                    $"Agrochemical translation missing or blank for key '{messageKey}'; using the built-in English fallback.",
+                    LogLevel.Warn);
+                return AgrochemicalEnglishFallbacks.TryGetValue(messageKey, out var fallback)
+                    ? fallback
+                    : "The agrochemical could not be applied.";
+            }
+
+            return translated;
         }
 
         internal void OnModMessageReceived(object? sender, ModMessageReceivedEventArgs e)

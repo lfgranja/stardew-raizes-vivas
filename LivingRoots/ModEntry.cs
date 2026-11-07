@@ -143,6 +143,10 @@ namespace LivingRoots
             _modApi.BindVerificationServices(soilHealthService, compostingBinService, locationProvider);
             var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
             var mulchApplicationService = new MulchApplicationService(modDataService, playerProvider, this.Monitor);
+            // Spec 017: the agrochemical service owns only the bounded
+            // measured soil-health mutation. The controller owns authority,
+            // locking, consumption, feedback, and the FR-009 broadcast.
+            var agrochemicalApplicationService = new AgrochemicalApplicationService(soilHealthService);
 
             // Create soil decay service
             var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
@@ -193,7 +197,125 @@ namespace LivingRoots
                 // Ignore in test environment
             }
 
-            _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider, modApi: _modApi);
+            _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider, modApi: _modApi, agrochemicalApplicationService: agrochemicalApplicationService);
+
+            // Spec 017 T059: bind the dev/CI verification apply delegate after
+            // the controller exists. The controller remains the single owner of
+            // authority, locking, consumption, feedback, and the FR-009
+            // broadcast; this wiring only forwards the Dev/CI queue command into
+            // that same route. The delegate refuses everything off-host.
+            try
+            {
+                _modApi.BindAgrochemicalApplication((loc, x, y) =>
+                {
+                    var controller = _controller;
+                    if (controller == null)
+                    {
+                        return false;
+                    }
+
+                    StardewValley.GameLocation? location = null;
+                    try
+                    {
+                        location = locationProvider?.GetLocationByName(loc);
+                    }
+                    catch
+                    {
+                        location = null;
+                    }
+
+                    if (location == null)
+                    {
+                        try
+                        {
+                            location = StardewValley.Game1.getLocationFromName(loc);
+                        }
+                        catch
+                        {
+                            location = null;
+                        }
+                    }
+
+                    if (location == null)
+                    {
+                        return false;
+                    }
+
+                    long farmerId = 0L;
+                    try
+                    {
+                        farmerId = StardewValley.Game1.player?.UniqueMultiplayerID ?? 0L;
+                    }
+                    catch
+                    {
+                        farmerId = 0L;
+                    }
+
+                    return controller.TryApplyAgrochemicalWithLock(location, new Vector2(x, y), farmerId);
+                });
+            }
+            catch (Exception ex)
+            {
+                this.Monitor?.Log(
+                    $"Agrochemical verification wiring failed (exception type: {ex.GetType().FullName}).",
+                    LogLevel.Trace);
+            }
+
+            // 013/Wave 4: dev/CI verification mulch apply delegate. Delegates to
+            // IMulchApplicationService (held mulch item required; lr_give_mulch
+            // grants it). Host-authoritative gameplay rules remain in the service/
+            // controller paths; this is a headless verification seam.
+            try
+            {
+                _modApi.BindMulchApplication((loc, x, y) =>
+                {
+                    StardewValley.GameLocation? location = null;
+                    try
+                    {
+                        location = locationProvider?.GetLocationByName(loc);
+                    }
+                    catch
+                    {
+                        location = null;
+                    }
+
+                    if (location == null)
+                    {
+                        try
+                        {
+                            location = StardewValley.Game1.getLocationFromName(loc);
+                        }
+                        catch
+                        {
+                            location = null;
+                        }
+                    }
+
+                    if (location == null)
+                    {
+                        return false;
+                    }
+
+                    var player = StardewValley.Game1.player;
+                    if (player == null)
+                    {
+                        return false;
+                    }
+
+                    return mulchApplicationService.TryApplyMulch(player, location, new Vector2(x, y), out _);
+                });
+
+                // Authorized dev/CI contention seam (017 RefusedConflict/action-conflict).
+                _modApi.BindHostLockSeams(
+                    (loc, x, y, farmerId) => hostAtomicLockService.TryAcquireLock(loc, new Vector2(x, y), farmerId),
+                    (loc, x, y, farmerId) => hostAtomicLockService.ReleaseLock(loc, new Vector2(x, y), farmerId));
+            }
+            catch (Exception ex)
+            {
+                this.Monitor?.Log(
+                    $"Mulch verification wiring failed (exception type: {ex.GetType().FullName}).",
+                    LogLevel.Trace);
+            }
 
             // T118 (FR-009/A8): host→client soil-health sync channel.
             try
@@ -314,6 +436,24 @@ namespace LivingRoots
         /// <summary>Raised when an asset is requested from the content pipeline.</summary>
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event arguments.</param>
+        private string LocalizeOrFallback(string translationKey, string fallback)
+        {
+            var translation = _helper?.Translation;
+            if (translation == null)
+            {
+                return fallback;
+            }
+
+            var translated = translation.Get(translationKey);
+            if (string.IsNullOrWhiteSpace(translated)
+                || string.Equals(translated, translationKey, StringComparison.Ordinal))
+            {
+                return fallback;
+            }
+
+            return translated;
+        }
+
 #pragma warning disable S2325 // S2325: event handler registered as instance delegate; cannot be static
         internal void OnAssetRequested(object? sender, AssetRequestedEventArgs e)
         {
@@ -381,6 +521,21 @@ namespace LivingRoots
                         Texture = "Mods/lfgranja.LivingRoots/Mulch",
                         SpriteIndex = 0,
                         ContextTags = new List<string> { ModConstants.MulchTag, "compostable_item" }
+                    };
+                    // Spec 017: the single Joja/agrochemical input. It is
+                    // deliberately Category 0 with no context tags: it must not
+                    // enter the fertilizer slot, the organic-waste/composting
+                    // validator, or any vanilla regenerative path. The mod
+                    // intercepts right-click for its only supported use.
+                    data[ModConstants.AgrochemicalItemId] = new StardewValley.GameData.Objects.ObjectData
+                    {
+                        Name = "Joja Agrochemical",
+                        DisplayName = LocalizeOrFallback(ModConstants.AgrochemicalItemNameKey, "Joja Agrochemical"),
+                        Description = LocalizeOrFallback(
+                            ModConstants.AgrochemicalItemDescriptionKey,
+                            "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health. The soil consequence is bounded and recoverable through your usual soil care."),
+                        Type = "Basic",
+                        Price = 50
                     };
                 });
             }

@@ -151,7 +151,18 @@ if os.path.isfile(list_path):
                     attempts.append(entry)
 
 expected_signals = scenario.get("expectedSignals")
-if not isinstance(expected_signals, list) or len(expected_signals) != 3:
+if not isinstance(expected_signals, list):
+    expected_signals = ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"]
+# v2/v3: exactly 3; v4: 2 or 3 (soilHealthStateDelta+smapiLog always required).
+_valid = {"soilHealthStateDelta", "cropPhaseDelta", "smapiLog"}
+if not expected_signals or not all(isinstance(x, str) and x in _valid for x in expected_signals):
+    expected_signals = ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"]
+_eset = set(expected_signals)
+if "soilHealthStateDelta" not in _eset or "smapiLog" not in _eset:
+    expected_signals = ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"]
+if "cropPhaseDelta" not in _eset and scenario.get("schemaVersion") != 4:
+    expected_signals = ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"]
+if len(expected_signals) < 2 or len(expected_signals) > 3:
     expected_signals = ["soilHealthStateDelta", "cropPhaseDelta", "smapiLog"]
 
 env_cfg = {}

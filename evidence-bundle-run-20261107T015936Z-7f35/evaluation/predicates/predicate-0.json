@@ -1,0 +1,1 @@
+{"op": "multiplier", "field": "soilHealth", "base": "pre.soilHealth", "factor": 0.8, "tolerance": 0.0001}

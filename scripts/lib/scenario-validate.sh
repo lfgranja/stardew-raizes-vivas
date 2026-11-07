@@ -64,7 +64,12 @@ if not isinstance(data, dict):
 
 # Schema validation (Draft 2020-12) if available.
 schema_version = data.get("schemaVersion", 2)
-schema_file = "scenario-v3.schema.json" if schema_version == 3 else "scenario.schema.json"
+if schema_version == 4:
+    schema_file = "scenario-v4.schema.json"
+elif schema_version == 3:
+    schema_file = "scenario-v3.schema.json"
+else:
+    schema_file = "scenario.schema.json"
 schema_candidates = []
 d = os.path.dirname(os.path.abspath(scenario))
 while True:
@@ -128,7 +133,7 @@ if isinstance(steps, list):
 # thresholds
 AllowedFields = {
     "soilHealthStateDelta": {"soilHealth", "healthTier", "soilHealthState"},
-    "cropPhaseDelta": {"phaseDays", "currentPhase", "dayOfCurrentPhase", "fullyGrown", "dead", "indexOfHarvest", "healthTier", "soilHealthState", "poorHarvestQuality", "moderateHarvestQuality", "healthyHarvestQuality", "poorExtraCount", "moderateExtraCount", "healthyExtraCount", "healthyExtraQuality", "poorVanillaQuality", "moderateVanillaQuality", "healthyVanillaQuality", "healthyQualityRoll", "healthyExtraRoll"},
+    "cropPhaseDelta": {"phaseDays", "currentPhase", "dayOfCurrentPhase", "fullyGrown", "dead", "indexOfHarvest", "healthTier", "soilHealthState", "poorHarvestQuality", "moderateHarvestQuality", "healthyHarvestQuality", "poorExtraCount", "moderateExtraCount", "healthyExtraCount", "healthyExtraQuality", "poorVanillaQuality", "moderateVanillaQuality", "healthyVanillaQuality", "healthyQualityRoll", "healthyExtraRoll", "unknownHarvestQuality", "unknownVanillaQuality", "unknownExtraCount", "unknownHealthTier", "zeroHarvestQuality", "zeroVanillaQuality", "zeroExtraCount", "zeroHealthTier"},
     "smapiLog": {"elapsedMilliseconds", "eventName", "locationsProcessed", "isMainPlayer"},
 }
 def sentinel_ok(sentinel, field):
@@ -181,6 +186,33 @@ if isinstance(thresholds, list):
                 fail(f"/thresholds/{t}/predicate/sentinel")
         if signal == "smapiLog" and "subject" in thr:
             fail(f"/thresholds/{t}/subject")
+
+# v4 signal policy / declared-signal consistency (trust root; cross-field)
+exp_signals = data.get("expectedSignals")
+policy = data.get("signalPolicy")
+if isinstance(exp_signals, list):
+    sigset = set(s for s in exp_signals if isinstance(s, str))
+    has_crop = "cropPhaseDelta" in sigset
+    if schema_version == 4:
+        # soilHealthStateDelta and smapiLog always required
+        if "soilHealthStateDelta" not in sigset or "smapiLog" not in sigset:
+            fail("/expectedSignals")
+        if not has_crop:
+            if not isinstance(policy, dict):
+                fail("/signalPolicy")
+            if policy.get("cropPhaseDelta") != "not-applicable":
+                fail("/signalPolicy/cropPhaseDelta")
+            reason = policy.get("not-applicableReason")
+            if not isinstance(reason, str) or len(reason.strip()) < 10:
+                fail("/signalPolicy/not-applicableReason")
+        else:
+            if isinstance(policy, dict) and policy.get("cropPhaseDelta") not in (None, "required"):
+                fail("/signalPolicy/cropPhaseDelta")
+    # reject cropPhaseDelta thresholds when crop not declared (all versions; defensive honesty)
+    if not has_crop and isinstance(thresholds, list):
+        for t, thr in enumerate(thresholds):
+            if isinstance(thr, dict) and thr.get("signal") == "cropPhaseDelta":
+                fail(f"/thresholds/{t}/signal")
 
 # playerRole / hostGuard
 role = data.get("playerRole")

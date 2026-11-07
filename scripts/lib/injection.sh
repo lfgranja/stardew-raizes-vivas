@@ -119,21 +119,33 @@ def tile_args(target):
     except ValueError:
         return None
 
+def flatten_macro(base, rel):
+    if not isinstance(rel, str) or not rel.strip():
+        sys.exit(14)
+    if not rel.lower().endswith(".txt"):
+        sys.exit(14)
+    path = rel if os.path.isabs(rel) else os.path.join(base, rel)
+    try:
+        real = os.path.realpath(path)
+        root = os.path.realpath(base)
+        if os.path.commonpath([real, root]) != root:
+            sys.exit(14)
+    except (ValueError, OSError):
+        sys.exit(14)
+    if not os.path.isfile(path):
+        sys.stderr.write(f"macro file not found: {path}\n")
+        sys.exit(19)
+    with open(path, encoding="utf-8-sig") as mf:
+        for raw in mf:
+            emit(raw)
+
 for c in (d.get("initCommands", []) or []) if phase in ("all", "init") else []:
     if not isinstance(c, dict):
         continue
     kind = c.get("kind")
     if kind == "macro":
         rel = c.get("file") or c.get("path") or c.get("macro") or ""
-        if not rel:
-            continue
-        path = rel if os.path.isabs(rel) else os.path.join(base, rel)
-        if not os.path.isfile(path):
-            sys.stderr.write(f"macro file not found: {path}\n")
-            sys.exit(19)
-        with open(path, encoding="utf-8-sig") as mf:
-            for raw in mf:
-                emit(raw)
+        flatten_macro(base, rel)
     elif kind == "console":
         emit(str(c.get("command") or c.get("cmd") or ""))
 
@@ -144,7 +156,10 @@ for step in (d.get("steps", []) or []) if phase in ("all", "steps") else []:
     target = step.get("target")
     xy = tile_args(target) if isinstance(target, str) and "," in target else None
     inputs = step.get("inputs") or {}
-    if action == "insertWaste" and xy:
+    if action == "runMacro":
+        rel = inputs.get("macroFile")
+        flatten_macro(base, rel)
+    elif action == "insertWaste" and xy:
         item_id = str(inputs.get("itemId", "771"))
         count = str(inputs.get("count", "1"))
         lines.append(f"lr_insert_waste {xy[0]} {xy[1]} {item_id} {count}")

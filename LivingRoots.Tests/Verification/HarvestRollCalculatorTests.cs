@@ -198,5 +198,63 @@ namespace LivingRoots.Tests.Verification
                     return distinct && valid;
                 });
         }
+
+        [Fact]
+        public void TrySelectWithExtras_NullExtras_PreservesFourProbeBehavior()
+        {
+            var candidates = new List<HarvestProbeCandidate>
+            {
+                new HarvestProbeCandidate(1, 1, 0.50, 0.50, 1),
+                new HarvestProbeCandidate(2, 2, 0.25, 0.50, 1),
+                new HarvestProbeCandidate(3, 3, 0.25, 0.50, 0),
+                new HarvestProbeCandidate(4, 4, 0.50, 0.05, 0),
+            };
+
+            var selected = HarvestMatrixPlanner.TrySelectWithExtras(candidates, 0.21, 0.08, 0.10, null, out var probes);
+
+            Assert.True(selected);
+            Assert.Equal(4, probes.Count);
+            Assert.Equal(HarvestMatrixPlanner.PoorProbe, probes[0].Name);
+        }
+
+        [Fact]
+        public void TrySelectWithExtras_Unknown_AppendsDistinctVanillaQualityOneProbe()
+        {
+            var candidates = new List<HarvestProbeCandidate>
+            {
+                new HarvestProbeCandidate(1, 1, 0.50, 0.50, 1),
+                new HarvestProbeCandidate(2, 2, 0.25, 0.50, 1),
+                new HarvestProbeCandidate(3, 3, 0.25, 0.50, 0),
+                new HarvestProbeCandidate(4, 4, 0.50, 0.05, 0),
+                new HarvestProbeCandidate(5, 5, 0.50, 0.50, 1),
+            };
+
+            var selected = HarvestMatrixPlanner.TrySelectWithExtras(
+                candidates, 0.21, 0.08, 0.10, new[] { HarvestMatrixPlanner.UnknownProbe }, out var probes);
+
+            Assert.True(selected);
+            Assert.Equal(5, probes.Count);
+            Assert.Equal(HarvestMatrixPlanner.UnknownProbe, probes[4].Name);
+            Assert.Equal(1, probes[4].Candidate!.VanillaQuality);
+            Assert.Equal(5, probes.Select(p => p.Candidate!.TileX + "," + p.Candidate.TileY).Distinct().Count());
+        }
+
+        [Fact]
+        public void TrySelectWithExtras_Unknown_WhenNoDistinctTile_ReturnsFalse()
+        {
+            var candidates = new List<HarvestProbeCandidate>
+            {
+                new HarvestProbeCandidate(1, 1, 0.50, 0.50, 1),
+                new HarvestProbeCandidate(2, 2, 0.25, 0.50, 1),
+                new HarvestProbeCandidate(3, 3, 0.25, 0.50, 0),
+                new HarvestProbeCandidate(4, 4, 0.50, 0.05, 0),
+            };
+
+            var selected = HarvestMatrixPlanner.TrySelectWithExtras(
+                candidates, 0.21, 0.08, 0.10, new[] { HarvestMatrixPlanner.UnknownProbe }, out var probes);
+
+            Assert.False(selected);
+            Assert.Empty(probes);
+        }
     }
 }

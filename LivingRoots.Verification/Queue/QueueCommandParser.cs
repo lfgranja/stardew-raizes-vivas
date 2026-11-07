@@ -96,10 +96,16 @@ namespace LivingRoots.Verification.Queue
             {
                 case "lr_set_soil_health":
                 case "lr_plant_crop":
+                case "lr_acquire_host_lock":
+                case "lr_release_host_lock":
                     min = 3;
                     max = 4;
                     return true;
+                case "lr_till":
                 case "lr_place_bin":
+                case "lr_apply_agrochemical":
+                case "lr_apply_mulch":
+                case "lr_harvest_matrix":
                     min = 2;
                     max = 3;
                     return true;
@@ -107,16 +113,15 @@ namespace LivingRoots.Verification.Queue
                     min = 4;
                     max = 5;
                     return true;
-                case "lr_harvest_matrix":
-                    min = 2;
-                    max = 2;
-                    return true;
+                case "lr_give_agrochemical":
+                case "lr_give_mulch":
                 case "lr_advance_days":
                 case "lr_dump_crop_phase":
                 case "lr_dump_soil_health":
                     min = 1;
                     max = 1;
                     return true;
+                case "lr_split_screen":
                 case "lr_quit":
                     min = 0;
                     max = 0;
@@ -147,7 +152,10 @@ namespace LivingRoots.Verification.Queue
                     }
 
                     return true;
+                case "lr_till":
                 case "lr_place_bin":
+                case "lr_apply_agrochemical":
+                case "lr_apply_mulch":
                     if (!IsInt(args[0]) || !IsInt(args[1]))
                     {
                         error = "bad-number";
@@ -155,6 +163,21 @@ namespace LivingRoots.Verification.Queue
                     }
 
                     if (args.Count == 3 && !IsSafeLabel(args[2]))
+                    {
+                        error = "bad-location";
+                        return false;
+                    }
+
+                    return true;
+                case "lr_acquire_host_lock":
+                case "lr_release_host_lock":
+                    if (!IsInt(args[0]) || !IsInt(args[1]) || !IsInt(args[2]))
+                    {
+                        error = "bad-number";
+                        return false;
+                    }
+
+                    if (args.Count == 4 && !IsSafeLabel(args[3]))
                     {
                         error = "bad-location";
                         return false;
@@ -181,10 +204,25 @@ namespace LivingRoots.Verification.Queue
                     }
 
                     return true;
+                case "lr_give_agrochemical":
+                case "lr_give_mulch":
+                    if (!IsInt(args[0]) || int.Parse(args[0], CultureInfo.InvariantCulture) <= 0)
+                    {
+                        error = "bad-count";
+                        return false;
+                    }
+
+                    return true;
                 case "lr_harvest_matrix":
                     if (!IsInt(args[0]) || !IsInt(args[1]))
                     {
                         error = "bad-number";
+                        return false;
+                    }
+
+                    if (args.Count == 3 && !IsSafeLabel(args[2]))
+                    {
+                        error = "bad-probe";
                         return false;
                     }
 
@@ -226,6 +264,7 @@ namespace LivingRoots.Verification.Queue
                     }
 
                     return true;
+                case "lr_split_screen":
                 case "lr_quit":
                     return true;
                 default:

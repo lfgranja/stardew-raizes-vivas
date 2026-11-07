@@ -22,6 +22,10 @@ namespace LivingRoots.Services
         private ISoilHealthService? _soilHealthService;
         private ICompostingBinService? _compostingBinService;
         private ILocationProvider? _locationProvider;
+        private Func<string, int, int, bool>? _applyAgrochemical;
+        private Func<string, int, int, bool>? _applyMulch;
+        private Func<string, int, int, long, bool>? _acquireHostLock;
+        private Action<string, int, int, long>? _releaseHostLock;
 
         public string ApiVersion => ApiVersionValue;
 
@@ -41,6 +45,66 @@ namespace LivingRoots.Services
                 _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
                 _compostingBinService = compostingBinService ?? throw new ArgumentNullException(nameof(compostingBinService));
                 _locationProvider = locationProvider;
+            }
+        }
+
+        /// <summary>
+        /// Binds the dev/CI verification application delegate for the 017 Joja/agrochemical input.
+        /// Called from the composition root after the controller exists, unconditionally at
+        /// wiring time; binding completeness is not enforced here and binding is not
+        /// host-restricted at this point. A partially wired composition root (or a missing
+        /// controller delegate) fails closed by returning false instead of mutating exposed
+        /// state. Host authority, target eligibility, held-item and lock gates are enforced
+        /// downstream by ModController (<c>IsMainPlayerCheck</c> and the application route),
+        /// so any in-process mod may call <see cref="ApplyAgrochemical"/> yet cannot produce
+        /// an unsafe local mutation or bypass host authority. Dev/CI-only usage is the
+        /// expected consumption of this member; it is not a privilege boundary.
+        /// </summary>
+        public void BindAgrochemicalApplication(Func<string, int, int, bool> applyAgrochemical)
+        {
+            if (applyAgrochemical == null)
+            {
+                throw new ArgumentNullException(nameof(applyAgrochemical));
+            }
+
+            lock (_lock)
+            {
+                if (_disposed) return;
+                _applyAgrochemical = applyAgrochemical;
+            }
+        }
+
+        /// <summary>
+        /// Binds the dev/CI verification mulch application delegate (013).
+        /// Host authority and eligibility are enforced by the bound path/service.
+        /// </summary>
+        public void BindMulchApplication(Func<string, int, int, bool> applyMulch)
+        {
+            if (applyMulch == null)
+            {
+                throw new ArgumentNullException(nameof(applyMulch));
+            }
+
+            lock (_lock)
+            {
+                if (_disposed) return;
+                _applyMulch = applyMulch;
+            }
+        }
+
+        /// <summary>
+        /// Binds dev/CI host-lock seams (authorized). Deterministic contention testing only.
+        /// </summary>
+        public void BindHostLockSeams(Func<string, int, int, long, bool> acquire, Action<string, int, int, long> release)
+        {
+            if (acquire == null) throw new ArgumentNullException(nameof(acquire));
+            if (release == null) throw new ArgumentNullException(nameof(release));
+
+            lock (_lock)
+            {
+                if (_disposed) return;
+                _acquireHostLock = acquire;
+                _releaseHostLock = release;
             }
         }
 
@@ -183,6 +247,139 @@ namespace LivingRoots.Services
 
             bins.AddWaste(locationName, tile, item);
             return bins.GetBinState(locationName, tile) == CompostingBinState.Processing;
+        }
+
+        /// <summary>
+        /// Dev/CI-only host path for the 017 Joja/agrochemical input. The delegate
+        /// is bound unconditionally at wiring time and binding is not
+        /// host-restricted at this point. Host authority, target eligibility,
+        /// held-item and lock gates are enforced downstream by ModController
+        /// (the <c>IsMainPlayerCheck</c> authority gate and the application
+        /// route). Any in-process mod may call this method, but no call can
+        /// produce an unsafe local mutation or bypass host authority: a
+        /// non-host caller is refused by the controller before any service,
+        /// lock, soil, or consumption effect. Dev/CI-only usage is the
+        /// expected consumption of this member; it is not a privilege boundary.
+        /// Returns false when the delegate is not bound or the application is
+        /// refused or fails; the API performs no soil mutation itself.
+        /// </summary>
+        public bool ApplyAgrochemical(string locationName, int tileX, int tileY)
+        {
+            if (string.IsNullOrWhiteSpace(locationName))
+            {
+                return false;
+            }
+
+            Func<string, int, int, bool>? apply;
+            lock (_lock)
+            {
+                if (_disposed) return false;
+                apply = _applyAgrochemical;
+            }
+
+            if (apply == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return apply(locationName, tileX, tileY);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public bool ApplyMulch(string locationName, int tileX, int tileY)
+        {
+            if (string.IsNullOrWhiteSpace(locationName))
+            {
+                return false;
+            }
+
+            Func<string, int, int, bool>? apply;
+            lock (_lock)
+            {
+                if (_disposed) return false;
+                apply = _applyMulch;
+            }
+
+            if (apply == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return apply(locationName, tileX, tileY);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public bool TryAcquireHostLock(string locationName, int tileX, int tileY, long holderFarmerId)
+        {
+            if (string.IsNullOrWhiteSpace(locationName))
+            {
+                return false;
+            }
+
+            Func<string, int, int, long, bool>? acquire;
+            lock (_lock)
+            {
+                if (_disposed) return false;
+                acquire = _acquireHostLock;
+            }
+
+            if (acquire == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return acquire(locationName, tileX, tileY, holderFarmerId);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public void ReleaseHostLock(string locationName, int tileX, int tileY, long holderFarmerId)
+        {
+            if (string.IsNullOrWhiteSpace(locationName))
+            {
+                return;
+            }
+
+            Action<string, int, int, long>? release;
+            lock (_lock)
+            {
+                if (_disposed) return;
+                release = _releaseHostLock;
+            }
+
+            if (release == null)
+            {
+                return;
+            }
+
+            try
+            {
+                release(locationName, tileX, tileY, holderFarmerId);
+            }
+            catch
+            {
+                // dev/CI seam: swallow
+            }
         }
 
         private static bool IsGreenhouseLike(GameLocation location)

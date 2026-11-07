@@ -140,15 +140,23 @@
       "items": {
         "$ref": "#/$defs/signalName"
       },
-      "minItems": 3,
+      "minItems": 2,
       "maxItems": 3,
       "uniqueItems": true,
+      "allOf": [
+        {"contains": {"const": "soilHealthStateDelta"}},
+        {"contains": {"const": "smapiLog"}}
+      ],
       "title": "Expected signals",
-      "description": "Copied from the scenario. Exactly the three unique values soilHealthStateDelta, cropPhaseDelta, smapiLog.",
+      "description": "Copied from the scenario. soilHealthStateDelta and smapiLog are always required. cropPhaseDelta is required by default (3-signal) and may be omitted only when scenario v4 declares signalPolicy.cropPhaseDelta=not-applicable with a required reason (defensible bare-tile/no-crop proof).",
       "examples": [
         [
           "soilHealthStateDelta",
           "cropPhaseDelta",
+          "smapiLog"
+        ],
+        [
+          "soilHealthStateDelta",
           "smapiLog"
         ]
       ]

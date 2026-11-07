@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 3,
+  "scenarioId": "mulch-decay-exemption",
+  "featureSlug": "013-mulch-soil-cover",
+  "testMdPath": "specs/013-mulch-soil-cover/test.md",
+  "summary": "013 host: mulch applies on cropped tilled tile; soil health unchanged (no corruption). Decay exemption (FR-009/SC-004) is implemented via MulchDecayMultiplier=0; SoilDecayService skips decay on cropped HoeDirt, so this scenario attests apply+no-mutation and stable capture (LongPhaseCrop, 1-day) rather than bare-tile decay delta.",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.1.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": true
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {
+      "kind": "console",
+      "command": "lr_plant_crop 60 15 LivingRoots.Verification.LongPhaseCrop",
+      "description": "plant a verification-only crop on tilled target tile"
+    },
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health 60 15 50",
+      "description": "seed measured moderate soil health on the target tile"
+    }
+  ],
+  "steps": [
+    {
+      "action": "runMacro",
+      "target": "60,15",
+      "inputs": {
+        "macroFile": "macros/mulch-apply.txt"
+      }
+    },
+    {
+      "action": "sleep",
+      "target": "farm",
+      "days": 1
+    },
+    {
+      "action": "dumpCropPhase",
+      "target": "farm"
+    },
+    {
+      "action": "observe",
+      "target": "60,15"
+    }
+  ],
+  "thresholds": [
+    {
+      "signal": "soilHealthStateDelta",
+      "predicate": {
+        "op": "multiplier",
+        "field": "soilHealth",
+        "base": "pre.soilHealth",
+        "factor": 1.0,
+        "tolerance": 0.0001
+      },
+      "description": "mulch application causes no soil health mutation; soil remains 50 (decay exemption implemented; cropped tile not in bare-tile decay path)"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "multiplier",
+        "field": "phaseDays",
+        "base": "pre.phaseDays",
+        "factor": 1.0,
+        "tolerance": 0.0001
+      },
+      "description": "LongPhaseCrop phaseDays unchanged in 1-day capture flow (consistent with 017 evidence); attests stable state, not growth acceleration"
+    },
+    {
+      "signal": "smapiLog",
+      "predicate": {
+        "op": "cmp",
+        "left": "isMainPlayer",
+        "operator": "eq",
+        "right": true,
+        "tolerance": 0
+      },
+      "description": "host/main-player application"
+    }
+  ],
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "cropPhaseDelta",
+    "smapiLog"
+  ],
+  "timeoutSeconds": 300,
+  "inputs": {
+    "season": "spring",
+    "day": 5,
+    "weather": "sunny",
+    "money": 500
+  },
+  "rngSeed": 123456789,
+  "time": "2026-11-07T12:00:00Z",
+  "scenarioKind": "positive",
+  "expectedVerdict": "pass",
+  "determinism": {
+    "idempotent": true,
+    "declaredSources": []
+  }
+}

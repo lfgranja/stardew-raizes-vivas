@@ -6,7 +6,7 @@
         <Configuration>
           <Format>cobertura</Format>
           <ExcludeByFile>**/*.g.cs,**/*.designer.cs,**/obj/**</ExcludeByFile>
-          <Exclude>[LivingRoots]*.MulchTileEntry,[LivingRoots]*.MulchState,[LivingRoots]*.MulchTileState,[LivingRoots]*.SeasonProvider,[LivingRoots]*.PlayerProvider,[LivingRoots]*.PlayerInventory,[LivingRoots]*.LocationProvider,[LivingRoots]*.HudNotifier,[LivingRoots]*.GreenhouseLocationRule,[LivingRoots]*.ProgressCarryingBinItem,[LivingRoots]*.ReservedNameHandler,[LivingRoots]*.VisualizationConfigurationService,[LivingRoots]*.ModDataService,[LivingRoots]*.ModController</Exclude>
+          <Exclude>[LivingRoots]*.MulchTileEntry,[LivingRoots]*.MulchState,[LivingRoots]*.MulchTileState,[LivingRoots]*.SeasonProvider,[LivingRoots]*.PlayerProvider,[LivingRoots]*.PlayerInventory,[LivingRoots]*.LocationProvider,[LivingRoots]*.HudNotifier,[LivingRoots]*.GreenhouseLocationRule,[LivingRoots]*.ProgressCarryingBinItem,[LivingRoots]*.ReservedNameHandler,[LivingRoots]*.VisualizationConfigurationService,[LivingRoots]*.ModDataService,[LivingRoots]*.ModController,[LivingRoots]*.TimeProvider,[LivingRoots]*.VisualizationTextures,[LivingRoots]*.HarvestPatches,[LivingRoots.Verification]*,[LivingRoots.Verification.Runner]*</Exclude>
         </Configuration>
       </DataCollector>
     </DataCollectors>

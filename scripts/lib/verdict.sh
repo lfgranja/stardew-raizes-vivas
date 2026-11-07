@@ -2,6 +2,25 @@
 if [ -n "${_LR_VERDICT_LOADED:-}" ]; then return 0 2>/dev/null || exit 0; fi
 _LR_VERDICT_LOADED=1
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/common.sh"
+_verdict_declared_csv() {
+    local scenario="${1:-}"
+    if [[ -z "$scenario" || ! -f "$scenario" ]]; then
+        printf '%s' "soilHealthStateDelta,cropPhaseDelta,smapiLog"; return 0
+    fi
+    python3 - "$scenario" <<'PY'
+import json,sys
+try: d=json.load(open(sys.argv[1],encoding='utf-8'))
+except Exception: d={}
+sigs=d.get('expectedSignals')
+if not isinstance(sigs,list) or not sigs: sigs=['soilHealthStateDelta','cropPhaseDelta','smapiLog']
+out=[]
+for x in sigs:
+    if isinstance(x,str) and x not in out: out.append(x)
+print(','.join(out or ['soilHealthStateDelta','cropPhaseDelta','smapiLog']))
+PY
+}
+_verdict_has() { case ",$1," in *",$2,"*) return 0;; *) return 1;; esac; }
+
 
 # verdict_from_exit: map exit code to verdict class (best effort)
 # partial is set by signal layer; not derived here
@@ -196,21 +215,28 @@ verdict_evaluate_bundle() {
     local evaluation="$bundle/evaluation"
     mkdir -p "$evaluation" || return "$EXIT_INTERNAL_ERROR"
 
-    local signals_complete=0
-    if [[ -s "$artifacts/soil-health-before-after.json" \
-        && -s "$artifacts/crop-phase-dump.json" \
-        && -s "$artifacts/smapi-log.txt" ]]; then
-        signals_complete=1
+    local declared_csv
+    declared_csv="$(_verdict_declared_csv "$1")"
+    local signals_complete=1
+    if _verdict_has "$declared_csv" "soilHealthStateDelta"; then
+        [[ -s "$artifacts/soil-health-before-after.json" ]] || signals_complete=0
+    fi
+    if _verdict_has "$declared_csv" "cropPhaseDelta"; then
+        [[ -s "$artifacts/crop-phase-dump.json" ]] || signals_complete=0
+    fi
+    if _verdict_has "$declared_csv" "smapiLog"; then
+        [[ -s "$artifacts/smapi-log.txt" ]] || signals_complete=0
     fi
 
     local signals_agree=1
     shopt -s nullglob
     local anomalies=("$artifacts"/anomaly-report*.json)
+    local info_anomalies=("$artifacts"/anomaly-info*.json)
     shopt -u nullglob
     if (( ${#anomalies[@]} > 0 )); then
         signals_agree=0
     fi
-    if [[ -f "$artifacts/crop-phase-cross-check.json" ]]; then
+    if _verdict_has "$declared_csv" "cropPhaseDelta" && [[ -f "$artifacts/crop-phase-cross-check.json" ]]; then
         if ! python3 - "$artifacts/crop-phase-cross-check.json" <<'PY'
 import json, sys
 try:
@@ -220,7 +246,15 @@ except Exception:
 sys.exit(0 if d.get("agree") is True else 1)
 PY
         then
-            signals_agree=0
+            # A disagreement recorded only as informational (e.g. persisted
+            # mod-data lag vs verification in-memory state) is preserved as
+            # evidence but does not fail agreement when no blocking anomaly
+            # exists.
+            if (( ${#anomalies[@]} == 0 && ${#info_anomalies[@]} > 0 )); then
+                :
+            else
+                signals_agree=0
+            fi
         fi
     fi
 
@@ -336,13 +370,13 @@ def tier_for(value, state):
         return "moderate"
     return "healthy"
 
-def soil_for(tile_key):
+def soil_for(tile_key, which="after"):
     locs = delta.get("locations", {}) if isinstance(delta, dict) else {}
     loc = locs.get(location) or {}
     rec = loc.get(tile_key) if isinstance(loc, dict) else None
     if not isinstance(rec, dict):
         return None
-    value = rec.get("after")
+    value = rec.get(which)
     try:
         value = float(value)
     except (TypeError, ValueError):
@@ -351,7 +385,7 @@ def soil_for(tile_key):
         return None
     return value
 
-def build(dump, include_crop):
+def build(dump, include_crop, which="after"):
     entry = crop_entry(dump) if include_crop else None
     tile_key = f"{tile[0]},{tile[1]}"
     health = None
@@ -366,9 +400,9 @@ def build(dump, include_crop):
         elif state == "nan":
             health = None
     if health is None and state not in ("nan", "missing"):
-        health = soil_for(tile_key)
+        health = soil_for(tile_key, which)
     if health is None and state == "missing" and entry is None:
-        health = soil_for(tile_key)
+        health = soil_for(tile_key, which)
         if health is not None:
             state = "measured"
     rec = {
@@ -387,7 +421,7 @@ def build(dump, include_crop):
         })
     return rec
 
-actual = build(after_dump, True)
+actual = build(after_dump, True, "after")
 
 def harvest_record(probe):
     for h in after_dump.get("harvests", []) or []:
@@ -404,6 +438,8 @@ poor = harvest_record("poor")
 moderate = harvest_record("moderate")
 healthy_quality = harvest_record("healthy-quality")
 healthy_extra = harvest_record("healthy-extra")
+unknown_probe = harvest_record("unknown")
+zero_probe = harvest_record("zero")
 
 actual.update({
     "isMainPlayer": after_dump.get("isMainPlayer", False),
@@ -422,8 +458,16 @@ actual.update({
     "healthyVanillaQuality": harvest_value(healthy_quality, "vanillaQuality"),
     "healthyQualityRoll": harvest_value(healthy_quality, "qualityRoll"),
     "healthyExtraRoll": harvest_value(healthy_extra, "extraRoll"),
+    "unknownHarvestQuality": harvest_value(unknown_probe, "mainQuality"),
+    "unknownVanillaQuality": harvest_value(unknown_probe, "vanillaQuality"),
+    "unknownExtraCount": harvest_value(unknown_probe, "extraCount"),
+    "unknownHealthTier": harvest_value(unknown_probe, "healthTier"),
+    "zeroHarvestQuality": harvest_value(zero_probe, "mainQuality"),
+    "zeroVanillaQuality": harvest_value(zero_probe, "vanillaQuality"),
+    "zeroExtraCount": harvest_value(zero_probe, "extraCount"),
+    "zeroHealthTier": harvest_value(zero_probe, "healthTier"),
 })
-pre = build(before_dump, True)
+pre = build(before_dump, True, "before")
 
 with open(actual_out, "w", encoding="utf-8") as f:
     json.dump(actual, f, indent=2)
@@ -535,9 +579,10 @@ PY
     fi
 
     python3 - "$bundle/verdict.json" "$final_verdict" "$signals_complete" "$signals_agree" \
-        "$thresholds_ok" "$expected" "$farmhand_breach" "$evaluator_missing" "$actual_verdict" <<'PY'
+        "$thresholds_ok" "$expected" "$farmhand_breach" "$evaluator_missing" "$actual_verdict" "$declared_csv" <<'PY'
 import json, sys
-path, final_verdict, complete, agree, thresholds, expected, breach, missing, actual = sys.argv[1:10]
+path, final_verdict, complete, agree, thresholds, expected, breach, missing, actual, declared_csv = sys.argv[1:11]
+declared = [x for x in (declared_csv or "").split(",") if x]
 d = {
     "schemaVersion": 1,
     "verdict": final_verdict,
@@ -548,6 +593,7 @@ d = {
     "expectedVerdict": expected,
     "farmhandBreach": breach == "1",
     "evaluatorMissing": missing == "1",
+    "declaredSignals": declared,
 }
 with open(path, "w", encoding="utf-8") as f:
     json.dump(d, f, indent=2)

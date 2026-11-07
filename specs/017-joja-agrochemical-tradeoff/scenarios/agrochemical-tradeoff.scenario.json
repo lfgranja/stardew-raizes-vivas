@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 3,
+  "scenarioId": "agrochemical-measured-50",
+  "featureSlug": "017-joja-agrochemical-tradeoff",
+  "testMdPath": "specs/017-joja-agrochemical-tradeoff/test.md",
+  "summary": "017 Joja/agrochemical MVP: one host application on measured 50 soil drops it to 40 (P=10), with no 014/015 growth double-counting.",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.1.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": false
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {
+      "kind": "console",
+      "command": "lr_plant_crop 60 15 LivingRoots.Verification.LongPhaseCrop",
+      "description": "plant a verification-only dry crop on the target tile"
+    },
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health 60 15 50",
+      "description": "seed measured 50 soil health on the target tile"
+    }
+  ],
+  "steps": [
+    {
+      "action": "runMacro",
+      "target": "60,15",
+      "inputs": {
+        "macroFile": "macros/agrochemical-apply.txt"
+      }
+    },
+    {
+      "action": "sleep",
+      "target": "farm",
+      "days": 1
+    },
+    {
+      "action": "dumpCropPhase",
+      "target": "farm"
+    },
+    {
+      "action": "observe",
+      "target": "60,15"
+    }
+  ],
+  "thresholds": [
+    {
+      "signal": "soilHealthStateDelta",
+      "predicate": {
+        "op": "multiplier",
+        "field": "soilHealth",
+        "base": "pre.soilHealth",
+        "factor": 0.8,
+        "tolerance": 0.0001
+      },
+      "description": "measured 50 soil after one bounded P=10 application is 40 (0.8 x 50)"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "multiplier",
+        "field": "phaseDays",
+        "base": "pre.phaseDays",
+        "factor": 1.0,
+        "tolerance": 0.0001
+      },
+      "description": "no 014/015 growth double-counting from the Joja/agrochemical confirmation"
+    },
+    {
+      "signal": "smapiLog",
+      "predicate": {
+        "op": "cmp",
+        "left": "isMainPlayer",
+        "operator": "eq",
+        "right": true,
+        "tolerance": 0
+      },
+      "description": "host/main-player application only (no unsafe local-only state)"
+    }
+  ],
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "cropPhaseDelta",
+    "smapiLog"
+  ],
+  "timeoutSeconds": 300,
+  "inputs": {
+    "season": "spring",
+    "day": 5,
+    "weather": "sunny",
+    "money": 500
+  },
+  "rngSeed": 123456789,
+  "time": "2026-11-06T12:00:00Z",
+  "scenarioKind": "positive",
+  "expectedVerdict": "pass",
+  "determinism": {
+    "idempotent": true,
+    "declaredSources": []
+  }
+}

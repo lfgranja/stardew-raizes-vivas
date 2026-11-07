@@ -7,5 +7,16 @@
   "mulch.name": "Mulch",
   "mulch.description": "Dry cover that keeps tilled soil alive. Blocks decay and weeds.",
   "message.mulch.invalid-tile": "Mulch can only be applied to tilled soil.",
-  "message.mulch.already": "This tile is already mulched."
+  "message.mulch.already": "This tile is already mulched.",
+  "item.agrochemical.name": "Joja Agrochemical",
+  "item.agrochemical.description": "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health. The soil consequence is bounded and recoverable through your usual soil care.",
+  "message.agrochemical.applied": "Agrochemical applied. The soil is now 10 health lower.",
+  "message.agrochemical.applied-clamped": "Agrochemical applied only partially: the soil had less health available than the full penalty.",
+  "message.agrochemical.applied-unknown-baseline": "Agrochemical applied. There was no prior soil health reading, so the starting health was treated as 100.",
+  "message.agrochemical.invalid-target": "The agrochemical can only be applied to tilled soil, so it was not applied. Till that soil first, then try again.",
+  "message.agrochemical.missing-input": "You need to be holding a Joja agrochemical when you apply it to the soil — you are not holding one, so nothing happened. Hold one in your hand, then try again.",
+  "message.agrochemical.action-conflict": "Another player is already working this tile, so the agrochemical was not applied. Wait for the tile to free up, then try again.",
+  "message.agrochemical.unsupported-authority": "Only the host can apply agrochemicals in multiplayer, so it was not applied. Ask the host to apply it for you.",
+  "message.agrochemical.soil-at-minimum": "This soil is already at the lowest health, so the agrochemical was not applied. Let the soil regenerate with some care, then try again.",
+  "message.agrochemical.commit-failed": "The agrochemical could not be committed to the soil, so nothing changed. Your agrochemical was not consumed. The farm data is at capacity; apply the agrochemical to a tile that already has soil data, then try again later."
 }

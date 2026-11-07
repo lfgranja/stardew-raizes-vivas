@@ -617,6 +617,51 @@ namespace LivingRoots.Services
             }
         }
 
+        public bool TrySetSoilHealth(string locationName, Point tile, float value)
+        {
+            // 017 T064: measured-write mirror of SetSoilHealth that reports whether
+            // the commit landed. Location and point-tile validation happens before
+            // the lock; Point cannot carry NaN/Infinity, so only the coordinate
+            // magnitude bound is checked (matching IsValidTile's persisted-grid limit).
+            if (!IsValidLocationAndPointTile(locationName, tile))
+            {
+                _monitor.Log("Refusing soil health write: invalid location or tile.", LogLevel.Warn);
+                return false;
+            }
+
+            var operationResult = SoilHealthOperationResult.Success;
+            float finalHealth = 0f;
+
+            lock (_lock)
+            {
+                // Same internal measured-write path as SetSoilHealth (ClampHealthValue,
+                // sparse-cache drop rule, capacity guards). The only difference is the
+                // commit/refusal signal propagated to the caller.
+                operationResult = SetHealthInternal(locationName, tile, value);
+                if (operationResult == SoilHealthOperationResult.Success)
+                {
+                    if (_runtimeCache.TryGetValue(locationName, out var tiles) && tiles.TryGetValue(tile, out var health))
+                    {
+                        finalHealth = health;
+                    }
+                    else
+                    {
+                        finalHealth = 0f;
+                    }
+                }
+            }
+
+            LogOperationResult(operationResult, locationName);
+
+            if (operationResult != SoilHealthOperationResult.Success)
+            {
+                return false;
+            }
+
+            OnTileHealthChanged?.Invoke(locationName, new Vector2(tile.X, tile.Y), finalHealth);
+            return true;
+        }
+
         public void UpdateHealth(string locationName, Vector2 tile, float delta)
         {
             // Validation for the delta value to prevent invalid updates.
@@ -966,6 +1011,31 @@ namespace LivingRoots.Services
             }
 
             tilePoint = new Point(ix, iy);
+            return true;
+        }
+
+        /// <summary>
+        /// Validates a location name and an integer grid tile for the 017 T064
+        /// measured-write commit seam. <see cref="Point"/> coordinates are already
+        /// integers, so unlike <see cref="IsValidTile"/> there is no NaN/Infinity or
+        /// floor-overflow case; only the persisted-grid magnitude bound is enforced.
+        /// </summary>
+        /// <param name="locationName">The location name to validate</param>
+        /// <param name="tile">The tile coordinates to validate</param>
+        /// <returns>True if the location name and tile coordinates are valid, otherwise false</returns>
+        private static bool IsValidLocationAndPointTile(string locationName, Point tile)
+        {
+            if (string.IsNullOrWhiteSpace(locationName) || locationName.Length > ModConstants.MaxLocationNameLength)
+            {
+                return false;
+            }
+
+            if (tile.X < -ModConstants.MaxAbsoluteTileCoordinate || tile.X > ModConstants.MaxAbsoluteTileCoordinate ||
+                tile.Y < -ModConstants.MaxAbsoluteTileCoordinate || tile.Y > ModConstants.MaxAbsoluteTileCoordinate)
+            {
+                return false;
+            }
+
             return true;
         }
     }

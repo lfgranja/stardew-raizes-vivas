@@ -1,0 +1,5 @@
+/lr_acquire_host_lock 60 15 999999 Farm
+/lr_give_agrochemical 1
+/lr_apply_agrochemical 60 15 Farm
+/lr_release_host_lock 60 15 999999 Farm
+/sleep
