@@ -359,7 +359,7 @@ namespace LivingRoots.Verification.Runner.Evaluation
             }
 
             double computed;
-            if (field == "phaseDays" && !preUnmeasured && preVal == 99999)
+            if (field == "phaseDays" && !preUnmeasured && Math.Abs(preVal - 99999d) < 0.5d)
             {
                 computed = 99999;
             }
@@ -437,7 +437,7 @@ namespace LivingRoots.Verification.Runner.Evaluation
                     {
                         return false;
                     }
-                    return v == 99999;
+                    return Math.Abs(v - 99999d) < 0.5d;
                 case "NAN_HEALTH":
                     if (!dict.TryGetValue("healthTier", out var ht) || ht?.ToString() != "unknown")
                     {
@@ -467,7 +467,7 @@ namespace LivingRoots.Verification.Runner.Evaluation
                     {
                         return false;
                     }
-                    return cp == -1;
+                    return Math.Abs(cp - (-1d)) < 0.5d;
                 default:
                     return false;
             }
