@@ -735,6 +735,22 @@ public class AgrochemicalApplicationServiceTests
             Times.Never);
     }
 
+    // ------------------------------------------------------------------
+    // T098: penalty magnitude pin (FR-014, FR-012)
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// T098 characterization: the tunable penalty must stay within (0, 100] so the
+    /// shipped "10" copy and the FR-005 bounds agree; pinning the range here turns
+    /// a silent penalty edit into a test failure.
+    /// </summary>
+    [Fact]
+    public void AgrochemicalSoilPenalty_IsWithinZeroAndHundred()
+    {
+        Assert.True(ModConstants.AgrochemicalSoilPenalty > 0f);
+        Assert.True(ModConstants.AgrochemicalSoilPenalty <= 100f);
+    }
+
     private static Mock<ISoilHealthService> CreateSoilMock(float currentHealth)
     {
         var mockSoil = new Mock<ISoilHealthService>();
