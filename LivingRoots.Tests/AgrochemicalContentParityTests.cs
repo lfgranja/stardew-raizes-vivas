@@ -151,6 +151,15 @@ public class AgrochemicalContentParityTests
         "tempor"
     };
 
+    private static readonly string[] PortugueseComparisonBoundTokens =
+    {
+        "menor",
+        "que a penalidade",
+        "completo",
+        "inteira",
+        "máxima"
+    };
+
     private static readonly string[] ShamingTokens =
     {
         "stupid",
@@ -401,6 +410,43 @@ public class AgrochemicalContentParityTests
             "that the consequence is bounded and recoverable through existing soil-care systems; " +
             $"expected at least one of [{string.Join(", ", tokens)}] in one of those values, but " +
             $"'{descriptionKey}' was \"{description}\" and '{appliedKey}' was \"{applied}\".");
+    }
+
+    /// <summary>
+    /// T081 (FR-004/FR-012, pt parity with en/default magnitude): the Portuguese applied message
+    /// must state the applied magnitude ('10') so the soil consequence is legible, mirroring the
+    /// en/default copy.
+    /// </summary>
+    [Fact]
+    public void PortugueseAppliedMessage_IncludesMagnitudeToken()
+    {
+        const string localeFileName = "pt.json";
+        var key = ModConstants.TranslationKeyAgrochemicalApplied;
+        var value = RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, key);
+
+        Assert.True(
+            ContainsToken(value, "10"),
+            $"017 i18n ({localeFileName}, '{key}'): the applied message must state the applied " +
+            $"magnitude ('10'); got \"{value}\".");
+    }
+
+    /// <summary>
+    /// T081 (FR-004/FR-006, boundary honesty): the Portuguese clamped-success message must bound
+    /// the applied delta against the full penalty in comparison terms, not only in absolute terms.
+    /// </summary>
+    [Fact]
+    public void PortugueseAppliedClampedMessage_ComparesAgainstFullPenalty()
+    {
+        const string localeFileName = "pt.json";
+        var key = ModConstants.TranslationKeyAgrochemicalAppliedClamped;
+        var value = RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, key);
+
+        AssertContainsAny(
+            localeFileName,
+            key,
+            value,
+            "a comparison bound against the full penalty",
+            PortugueseComparisonBoundTokens);
     }
 
     /// <summary>
