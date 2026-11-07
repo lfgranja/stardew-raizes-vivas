@@ -52,3 +52,72 @@
 - It is not SC-004 comprehension evidence; no participant run exists.
 - It does not prove in-game rendering, localization loading, font fit, or controller/HUD behavior.
 - It does not validate final balance or the provisional `P=10` tuning.
+
+## Post-Phase-9 re-review (2026-11-06) — rewritten copy after T065/T068/T081
+
+**Append-only; the review above is unchanged.** Re-review of the touched 017 keys after the
+Phase 9 rewrite (refusal structure per FR-008, bounded/recoverable description clause per
+FR-002, pt magnitude/comparison per FR-012/FR-014). Same review type and boundaries as above:
+implementation-agent AI-assisted review, not a human attestation; not SC-004; not a rendering
+check.
+
+### Rewritten refusals (cause + explicit non-application + next step, ×3 locales)
+
+| # | Key | `default` / `en` (pt mirrors, see below) | Cause stated | Explicit non-application | Next step | Result |
+|---:|---|---|---|---|---|---|
+| 6 | `message.agrochemical.invalid-target` | "The agrochemical can only be applied to tilled soil, so it was not applied. Till that soil first, then try again." | Tilled-soil-only target rule | "so it was not applied" | "Till that soil first, then try again." | Pass |
+| 7 | `message.agrochemical.missing-input` | "Hold a Joja agrochemical to apply it to the soil; nothing happened. Try again with one in hand." | Not holding the input | "nothing happened" | "Try again with one in hand." | Pass |
+| 8 | `message.agrochemical.action-conflict` | "Another player is already working this tile, so the agrochemical was not applied. Wait for the tile to free up, then try again." | First-wins lock contention | "so the agrochemical was not applied" | "Wait for the tile to free up, then try again." | Pass |
+| 9 | `message.agrochemical.unsupported-authority` | "Only the host can apply agrochemicals in multiplayer, so it was not applied. Ask the host to apply it for you." | Host-authority rule (C4) | "so it was not applied" | "Ask the host to apply it for you." | Pass |
+| 10 | `message.agrochemical.soil-at-minimum` | "This soil is already at the lowest health, so the agrochemical was not applied. Let the soil regenerate with some care, then try again." | Minimum-health boundary | "so the agrochemical was not applied" | "Let the soil regenerate … then try again." | Pass |
+
+`pt` carries the same three elements in each of the five refusals (e.g. `soil-at-minimum`:
+"…então o agroquímico não foi aplicado. Deixe o solo se regenerar com um pouco de cuidado e
+tente novamente."). All five refusals now state the cause, an explicit no-success/non-application
+outcome, and a next-step implication in all three locales — the structure the Phase 9 parity
+tests assert. No refusal implies an application occurred; none is punitive or blaming.
+
+### item.agrochemical.description — bounded/recoverable clause
+
+`default`/`en`: "An industrial Joja shortcut. It works fast, but applying it costs 10 soil
+health. **The soil consequence is bounded and recoverable through your usual soil care.**"
+`pt`: "Um atalho industrial da Joja. Funciona rápido, mas custa 10 de saúde do solo. A
+consequência para a saúde do solo é limitada e o solo se recupera com cuidado."
+The new clause names the consequence as bounded and recoverable through ordinary soil care.
+It does not claim invulnerability, does not claim a final balance value, and does not imply a
+fertilizer-tier/quality buff. Honest before-use framing, non-punitive. Pass.
+
+### pt applied magnitude and clamped full-penalty comparison
+
+- `message.agrochemical.applied` (pt) now carries the magnitude: "Agroquímico aplicado. A
+  saúde do solo agora está **10 pontos** menor." — parity with the `default`/`en` "10 health
+  lower" wording. Pass.
+- `message.agrochemical.applied-clamped` (pt) now states the full-penalty comparison
+  explicitly: "Agroquímico aplicado parcialmente: a perda de saúde do solo foi **menor do que
+  a penalidade completa** desta aplicação, pois o solo tinha pouca saúde disponível." — the
+  earlier "pouca saúde" ellipsis is resolved; the comparative against the full penalty is now
+  legible. Pass.
+
+### Tone re-affirmation (cozy / non-punitive)
+
+The rewritten strings keep the cost factual, not punishing: refusals explain why nothing
+happened and what to do next; the description bounds the consequence and points at ordinary
+soil care as recovery; the clamped message discloses the partial outcome without scolding. No
+string shames, threatens, or implies recklessness. The 10-point magnitude is stated as a fact
+in before-use and after-use framing. Conclusion reaffirmed for the new strings:
+cozy/non-punitive, legible in all three locales, no overclaim of success, no false
+full-penalty claim, no balance claim.
+
+### Row-52 scope re-anchor (claim-records.md)
+
+This addendum is the post-Phase-9 anchor for the claim-records **row 52** scope note (the
+AI-assisted copy review). Row 52 itself is intentionally not edited; its scope note
+("Review performed by the implementation agent … does not satisfy human-verified … not
+SC-004") now stands against the rewritten strings reviewed here. The claim remains a narrow
+copy-review claim; it is not `human-verified`, not SC-004, and not in-game rendering evidence.
+
+### What this addendum does not prove
+
+Unchanged from the original review: not automated coverage, not a human `verified`
+attestation, not SC-004 comprehension evidence, not in-game rendering/font-fit, not final
+balance/tuning of the provisional `P=10`.
