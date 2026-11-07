@@ -29,7 +29,8 @@ namespace LivingRoots.Controllers
         ILocationProvider? locationProvider = null,
         ISeasonProvider? seasonProvider = null,
         IMulchApplicationService? mulchApplicationService = null,
-        LivingRoots.Domain.Interfaces.ILivingRootsModApi? modApi = null) : IDisposable
+        LivingRoots.Domain.Interfaces.ILivingRootsModApi? modApi = null,
+        IAgrochemicalApplicationService? agrochemicalApplicationService = null) : IDisposable
     {
         // State flags for thread safety using atomic operations
         internal const int EventsRegisteredFlag = 1 << 0;
@@ -56,6 +57,23 @@ namespace LivingRoots.Controllers
         private readonly ISoilDecayService _soilDecayService = soilDecayService ?? throw new ArgumentNullException(nameof(soilDecayService));
         private readonly ICompostApplicationService? _compostApplicationService = compostApplicationService;
         private readonly IMulchApplicationService? _mulchApplicationService = mulchApplicationService;
+        private readonly IAgrochemicalApplicationService? _agrochemicalApplicationService = agrochemicalApplicationService;
+
+        // Spec 017: player-facing feedback seam. The production default uses the
+        // game HUD; tests can replace it to simulate unavailable/throwing feedback.
+        internal Action<string, bool>? ShowAgrochemicalFeedback { get; set; } = ShowAgrochemicalFeedbackDefault;
+
+        private static void ShowAgrochemicalFeedbackDefault(string message, bool isRefusal)
+        {
+            if (isRefusal)
+            {
+                StardewValley.Game1.showRedMessage(message);
+            }
+            else
+            {
+                StardewValley.Game1.addHUDMessage(new StardewValley.HUDMessage(message));
+            }
+        }
         private readonly IVisualizationService? _visualizationService = visualizationService;
         private readonly IVisualizationConfigurationService? _visualizationConfigService = visualizationConfigService;
 
@@ -3057,6 +3075,24 @@ namespace LivingRoots.Controllers
             }
 
             return applied;
+        }
+
+        /// <summary>
+        /// 017 RED-phase scaffold: controller orchestration seam. Behavior is
+        /// implemented in T036-T038 (authority gate, lock, service call,
+        /// consume-after-commit, feedback, FR-009 broadcast).
+        /// </summary>
+        public bool TryApplyAgrochemicalWithLock(
+            StardewValley.GameLocation location,
+            Microsoft.Xna.Framework.Vector2 tile,
+            long farmerId)
+        {
+            if (_agrochemicalApplicationService == null)
+            {
+                throw new NotImplementedException("017 RED scaffold: agrochemical service is not wired.");
+            }
+
+            throw new NotImplementedException("017 RED scaffold: agrochemical controller orchestration is not implemented.");
         }
 
         internal void OnModMessageReceived(object? sender, ModMessageReceivedEventArgs e)
