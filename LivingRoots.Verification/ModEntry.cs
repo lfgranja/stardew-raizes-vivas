@@ -325,6 +325,28 @@ namespace LivingRoots.Verification
                         break;
                     }
 
+                case "lr_give_agrochemical":
+                    {
+                        var count = command.GetInt(0);
+                        if (!GrantAgrochemical(count))
+                        {
+                            FailGeneration("give-agrochemical-failed");
+                        }
+
+                        break;
+                    }
+
+                case "lr_apply_agrochemical":
+                    {
+                        var location = command.Arguments.Count >= 3 ? command.GetString(2) : DefaultLocation;
+                        if (!api.ApplyAgrochemical(location, command.GetInt(0), command.GetInt(1)))
+                        {
+                            FailGeneration("apply-agrochemical-failed");
+                        }
+
+                        break;
+                    }
+
                 case "lr_plant_crop":
                     {
                         var location = command.Arguments.Count >= 4 ? command.GetString(3) : DefaultLocation;
@@ -415,6 +437,54 @@ namespace LivingRoots.Verification
 #pragma warning disable S2696
                 Game1.quit = true;
 #pragma warning restore S2696
+            }
+        }
+
+        private bool GrantAgrochemical(int count)
+        {
+            if (count <= 0 || !Context.IsMainPlayer)
+            {
+                return false;
+            }
+
+            try
+            {
+                var items = Game1.player.Items;
+                if (items == null)
+                {
+                    return false;
+                }
+
+                int slot = -1;
+                int max = Math.Max(0, Math.Min(items.Count, Game1.player.MaxItems));
+                for (int i = 0; i < max; i++)
+                {
+                    if (items[i] == null)
+                    {
+                        slot = i;
+                        break;
+                    }
+                }
+
+                if (slot < 0)
+                {
+                    return false;
+                }
+
+                var item = ItemRegistry.Create(ModConstants.QualifiedAgrochemicalItemId, count);
+                if (item == null)
+                {
+                    return false;
+                }
+
+                items[slot] = item;
+                Game1.player.CurrentToolIndex = slot;
+                return string.Equals(Game1.player.CurrentItem?.QualifiedItemId, ModConstants.QualifiedAgrochemicalItemId, StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                Monitor.Log($"lr_give_agrochemical failed (exception type: {ex.GetType().FullName}).", LogLevel.Trace);
+                return false;
             }
         }
 
