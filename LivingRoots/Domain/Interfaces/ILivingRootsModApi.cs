@@ -54,10 +54,18 @@ namespace LivingRoots.Domain.Interfaces
         /// <summary>
         /// Dev/CI-only host path for the 017 Joja/agrochemical input. Applies the
         /// item through the same authoritative controller route as a right-click
-        /// interaction. The verification delegate is expected to be bound only on a
-        /// host/main-player context and to return false for anything else. Returns
-        /// false when the application delegate is not bound or the application is
-        /// refused or fails; the API performs no soil mutation itself.
+        /// interaction. The application delegate is bound unconditionally at
+        /// wiring time and binding is not host-restricted at that point. Host
+        /// authority, target eligibility, held-item and lock gates are enforced
+        /// downstream by ModController (the <c>IsMainPlayerCheck</c> authority
+        /// gate and the application route), not by this API. Any in-process mod
+        /// may call <c>ApplyAgrochemical</c>, but no call can produce an unsafe
+        /// local mutation or bypass host authority: a non-host caller is refused
+        /// by the controller before any service, lock, soil, or consumption
+        /// effect. Dev/CI-only usage is the expected consumption of this member;
+        /// it is not a privilege boundary. Returns false when the application
+        /// delegate is not bound or the application is refused or fails; the API
+        /// performs no soil mutation itself.
         /// </summary>
         bool ApplyAgrochemical(string locationName, int tileX, int tileY);
     }

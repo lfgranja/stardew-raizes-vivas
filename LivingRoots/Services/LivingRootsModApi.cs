@@ -47,8 +47,15 @@ namespace LivingRoots.Services
 
         /// <summary>
         /// Binds the dev/CI verification application delegate for the 017 Joja/agrochemical input.
-        /// Called once from the composition root after the controller exists, so a partially
-        /// wired composition root fails closed (returns false) instead of mutating exposed state.
+        /// Called from the composition root after the controller exists, unconditionally at
+        /// wiring time; binding completeness is not enforced here and binding is not
+        /// host-restricted at this point. A partially wired composition root (or a missing
+        /// controller delegate) fails closed by returning false instead of mutating exposed
+        /// state. Host authority, target eligibility, held-item and lock gates are enforced
+        /// downstream by ModController (<c>IsMainPlayerCheck</c> and the application route),
+        /// so any in-process mod may call <see cref="ApplyAgrochemical"/> yet cannot produce
+        /// an unsafe local mutation or bypass host authority. Dev/CI-only usage is the
+        /// expected consumption of this member; it is not a privilege boundary.
         /// </summary>
         public void BindAgrochemicalApplication(Func<string, int, int, bool> applyAgrochemical)
         {
@@ -205,6 +212,20 @@ namespace LivingRoots.Services
             return bins.GetBinState(locationName, tile) == CompostingBinState.Processing;
         }
 
+        /// <summary>
+        /// Dev/CI-only host path for the 017 Joja/agrochemical input. The delegate
+        /// is bound unconditionally at wiring time and binding is not
+        /// host-restricted at this point. Host authority, target eligibility,
+        /// held-item and lock gates are enforced downstream by ModController
+        /// (the <c>IsMainPlayerCheck</c> authority gate and the application
+        /// route). Any in-process mod may call this method, but no call can
+        /// produce an unsafe local mutation or bypass host authority: a
+        /// non-host caller is refused by the controller before any service,
+        /// lock, soil, or consumption effect. Dev/CI-only usage is the
+        /// expected consumption of this member; it is not a privilege boundary.
+        /// Returns false when the delegate is not bound or the application is
+        /// refused or fails; the API performs no soil mutation itself.
+        /// </summary>
         public bool ApplyAgrochemical(string locationName, int tileX, int tileY)
         {
             if (string.IsNullOrWhiteSpace(locationName))
