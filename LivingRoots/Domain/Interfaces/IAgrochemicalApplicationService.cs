@@ -27,18 +27,18 @@ namespace LivingRoots.Domain.Interfaces
 
         /// <remarks>
         /// Reserved for the controller-synthesized first-wins per-tile lock-contention class.
-        /// The service also reports this outcome for a commit-drop refusal: when
-        /// <c>ISoilHealthService.TrySetSoilHealth</c> declines the measured write (capacity
-        /// limit or a tile the soil service cannot persist), the application fails with this
-        /// outcome and the action-conflict message key. The capacity mapping is provisional
-        /// (017 T064) until a dedicated refusal class exists.
+        /// The service no longer reports this outcome for a commit-drop refusal: seam commit
+        /// failures are reported as <see cref="AgrochemicalApplicationOutcome.RefusedCommitFailed"/>.
         /// </remarks>
         RefusedConflict,
 
         RefusedSoilAtMinimum,
 
         /// <summary>
-        /// Reserved: seam commit failed (capacity); wired in implementation wave.
+        /// Seam commit failed: the measured write was declined (capacity limit or a tile
+        /// the soil service cannot persist). Result carries the computed baseline/penalty
+        /// data with <c>RefusedCommitFailed</c> and
+        /// <c>TranslationKeyAgrochemicalCommitFailed</c>; never reported as success.
         /// </summary>
         RefusedCommitFailed
     }
@@ -100,7 +100,8 @@ namespace LivingRoots.Domain.Interfaces
         /// of truth; single-player is the degenerate host case; farmhand paths are refused
         /// before this call by the controller. On a commit-drop refusal (the soil-health seam
         /// returned <c>false</c>), the result carries the computed baseline/penalty data with
-        /// the action-conflict key and is never reported as success. Refusal outcomes that never
+        /// the <see cref="AgrochemicalApplicationOutcome.RefusedCommitFailed"/> outcome and the
+        /// commit-failed message key, and is never reported as success. Refusal outcomes that never
         /// read the soil carry NaN sentinels for <see cref="AgrochemicalApplicationResult.BaselineUsed"/>,
         /// <see cref="AgrochemicalApplicationResult.PostPenalty"/>, and
         /// <see cref="AgrochemicalApplicationResult.AppliedPenalty"/>.
