@@ -83,7 +83,7 @@ Phase 10 converge re-audit; prior text above is retained unmodified.
   session).
 - **Runner re-run (T090):** executed on 2026-11-07 after this correction; outcome recorded as a
   NEW append-only claim-record row (e5882c1-era row untouched). See
-  `verification/host-only-gate3-phase10-run.md` (if present) and the claim-records addendum.
+  `verification/host-only-gate3-phase10-run.md` and the claim-records addendum.
 - **Enumeration**: the Phase-9 "92/92" figure was a miscount; the honest source enumeration at
   that tree was 88. After Phase-10 changes the targeted run totals **119** (0 failed), with the
   21 pre-implementation failures recorded in `verification/convergence-phase10-red.log`; the
