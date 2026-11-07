@@ -16,8 +16,10 @@ namespace LivingRoots.Tests;
 /// <summary>
 /// 017 agrochemical application service tests. The C2/C3 contract below is
 /// implemented by <see cref="AgrochemicalApplicationService"/>; a green suite here
-/// is the implementation evidence. Tests marked T064-RED pin the boolean-commit
-/// seam and fail until that wave lands; everything else passes today.
+/// is the implementation evidence. Tests marked T064 pin the boolean-commit
+/// seam (<c>SetSoilHealth</c> now commits through <c>TrySetSoilHealth</c>);
+/// expectations that pinned the void <c>SetSoilHealth</c> write were updated to
+/// the seam with the same intent.
 /// </summary>
 public class AgrochemicalApplicationServiceTests
 {
@@ -57,7 +59,7 @@ public class AgrochemicalApplicationServiceTests
         Assert.False(result.BaselineWasUnknown);
 
         mockSoil.Verify(
-            x => x.SetSoilHealth("Farm", Tile, expectedPostPenalty),
+            x => x.TrySetSoilHealth("Farm", new Point((int)Tile.X, (int)Tile.Y), expectedPostPenalty),
             Times.Once);
         mockSoil.Verify(
             x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
@@ -79,8 +81,9 @@ public class AgrochemicalApplicationServiceTests
             .Setup(x => x.GetSoilHealth("Farm", Tile))
             .Returns(() => currentHealth);
         mockSoil
-            .Setup(x => x.SetSoilHealth("Farm", Tile, It.IsAny<float>()))
-            .Callback<string, Vector2, float>((_, _, value) => currentHealth = value);
+            .Setup(x => x.TrySetSoilHealth("Farm", It.IsAny<Point>(), It.IsAny<float>()))
+            .Callback<string, Point, float>((_, _, value) => currentHealth = value)
+            .Returns(true);
 
         var service = new AgrochemicalApplicationService(mockSoil.Object);
 
@@ -104,13 +107,13 @@ public class AgrochemicalApplicationServiceTests
         Assert.Equal(ModConstants.TranslationKeyAgrochemicalApplied, second.MessageKey);
 
         mockSoil.Verify(
-            x => x.SetSoilHealth("Farm", Tile, 40f),
+            x => x.TrySetSoilHealth("Farm", new Point((int)Tile.X, (int)Tile.Y), 40f),
             Times.Once);
         mockSoil.Verify(
-            x => x.SetSoilHealth("Farm", Tile, 30f),
+            x => x.TrySetSoilHealth("Farm", new Point((int)Tile.X, (int)Tile.Y), 30f),
             Times.Once);
         mockSoil.Verify(
-            x => x.SetSoilHealth("Farm", Tile, It.IsAny<float>()),
+            x => x.TrySetSoilHealth("Farm", It.IsAny<Point>(), It.IsAny<float>()),
             Times.Exactly(2));
         mockSoil.Verify(
             x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
@@ -149,7 +152,7 @@ public class AgrochemicalApplicationServiceTests
         Assert.True(result.BaselineWasUnknown);
 
         mockSoil.Verify(
-            x => x.SetSoilHealth("Farm", Tile, 90f),
+            x => x.TrySetSoilHealth("Farm", new Point((int)Tile.X, (int)Tile.Y), 90f),
             Times.Once);
         mockSoil.Verify(
             x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
@@ -185,7 +188,7 @@ public class AgrochemicalApplicationServiceTests
         if (baseline == 0f)
         {
             mockSoil.Verify(
-                x => x.SetSoilHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
+                x => x.TrySetSoilHealth(It.IsAny<string>(), It.IsAny<Point>(), It.IsAny<float>()),
                 Times.Never);
 
             return result.Outcome == AgrochemicalApplicationOutcome.RefusedSoilAtMinimum
@@ -206,9 +209,9 @@ public class AgrochemicalApplicationServiceTests
         var expectedAppliedPenalty = baseline - expectedPostPenalty;
 
         mockSoil.Verify(
-            x => x.SetSoilHealth(
+            x => x.TrySetSoilHealth(
                 "Farm",
-                Tile,
+                new Point((int)Tile.X, (int)Tile.Y),
                 It.Is<float>(value => Math.Abs(value - expectedPostPenalty) < 0.0001f)),
             Times.Once);
 
@@ -241,7 +244,7 @@ public class AgrochemicalApplicationServiceTests
         var result = service.Apply(_fixture.Location, Tile);
 
         mockSoil.Verify(
-            x => x.SetSoilHealth("Farm", Tile, 90f),
+            x => x.TrySetSoilHealth("Farm", new Point((int)Tile.X, (int)Tile.Y), 90f),
             Times.Once);
         mockSoil.Verify(
             x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
@@ -316,7 +319,7 @@ public class AgrochemicalApplicationServiceTests
         // Assert: the successful path is soil-health-only.
         Assert.True(result.Succeeded);
         mockSoil.Verify(
-            x => x.SetSoilHealth("Farm", Tile, 40f),
+            x => x.TrySetSoilHealth("Farm", new Point((int)Tile.X, (int)Tile.Y), 40f),
             Times.Once);
         mockSoil.Verify(
             x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
@@ -354,7 +357,7 @@ public class AgrochemicalApplicationServiceTests
         Assert.False(result.BaselineWasUnknown);
 
         mockSoil.Verify(
-            x => x.SetSoilHealth("Farm", Tile, 0f),
+            x => x.TrySetSoilHealth("Farm", new Point((int)Tile.X, (int)Tile.Y), 0f),
             Times.Once);
         mockSoil.Verify(
             x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
@@ -391,6 +394,9 @@ public class AgrochemicalApplicationServiceTests
             x => x.SetSoilHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
             Times.Never);
         mockSoil.Verify(
+            x => x.TrySetSoilHealth(It.IsAny<string>(), It.IsAny<Point>(), It.IsAny<float>()),
+            Times.Never);
+        mockSoil.Verify(
             x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
             Times.Never);
     }
@@ -411,9 +417,9 @@ public class AgrochemicalApplicationServiceTests
         var result = service.Apply(_fixture.Location, Tile);
 
         mockSoil.Verify(
-            x => x.SetSoilHealth(
+            x => x.TrySetSoilHealth(
                 "Farm",
-                Tile,
+                new Point((int)Tile.X, (int)Tile.Y),
                 It.Is<float>(value => Math.Abs(value) < 0.0001f)),
             Times.Once);
         mockSoil.Verify(
@@ -476,20 +482,16 @@ public class AgrochemicalApplicationServiceTests
     }
 
     // ------------------------------------------------------------------
-    // T064-RED: boolean-commit seam (ISoilHealthService.TrySetSoilHealth)
+    // T064: boolean-commit seam (ISoilHealthService.TrySetSoilHealth)
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// T064-RED (FR-008/FR-010): when the commit seam reports the tile was
+    /// T064 (FR-008/FR-010): when the commit seam reports the tile was
     /// rejected (e.g. capacity limit or an unmappable tile), the service must
     /// fail the application — never report Success — and must not continue as
-    /// if the write landed. Against the current service this fails because the
-    /// implementation still calls the void <c>SetSoilHealth</c> and reports
-    /// Success unconditionally. Requires the <c>TrySetSoilHealth</c> scaffold
-    /// member on <c>ISoilHealthService</c> (throws NotImplementedException);
-    /// with Moq the seam is mocked, so no game state is involved. Item
-    /// consumption, feedback, and broadcast stay controller-owned paths and are
-    /// asserted by the controller tests, not here.
+    /// if the write landed. With Moq the seam is mocked, so no game state is
+    /// involved. Item consumption, feedback, and broadcast stay controller-owned
+    /// paths and are asserted by the controller tests, not here.
     /// </summary>
     [Fact]
     public void TrySetSoilHealth_ReturnsFalse_ApplicationFailsInsteadOfSuccess()
@@ -513,10 +515,9 @@ public class AgrochemicalApplicationServiceTests
     }
 
     /// <summary>
-    /// T064-RED: when the commit seam reports the measured write landed, the
+    /// T064: when the commit seam reports the measured write landed, the
     /// service reports the committed outcome and routes the commit through
-    /// <c>TrySetSoilHealth</c> exactly once. Against the current service this
-    /// fails at the Verify: the implementation never calls the seam.
+    /// <c>TrySetSoilHealth</c> exactly once.
     /// </summary>
     [Fact]
     public void TrySetSoilHealth_ReturnsTrue_CommitsThroughSeamAndReportsSuccess()
@@ -541,7 +542,7 @@ public class AgrochemicalApplicationServiceTests
     }
 
     /// <summary>
-    /// T064-RED capacity rejection: <see cref="ModConstants.MaxTilesPerLocation"/>
+    /// T064 capacity rejection: <see cref="ModConstants.MaxTilesPerLocation"/>
     /// is 500 tiles per location (DoS guard). Simulating the real overflow here
     /// would require allocating 500 tiles into the cache, so the capacity-refusal
     /// signal is mocked at the seam: the real service returns <c>false</c> from
@@ -571,13 +572,13 @@ public class AgrochemicalApplicationServiceTests
     }
 
     // ------------------------------------------------------------------
-    // T074-RED: refusal result honesty (FR-005, FR-008)
+    // T074: refusal result honesty (FR-005, FR-008)
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// T074-RED: an invalid-target refusal never read the soil, so it must not
-    /// claim a clamped outcome. Against the current service this fails because
-    /// <c>CreateInvalidTargetResult</c> reports <c>WasClamped = true</c>.
+    /// T074: an invalid-target refusal never read the soil, so it must not
+    /// claim a clamped outcome; <c>CreateInvalidTargetResult</c> reports
+    /// <c>WasClamped = false</c>.
     /// </summary>
     [Fact]
     public void InvalidTarget_Refusal_DoesNotClaimWasClamped()
@@ -593,10 +594,9 @@ public class AgrochemicalApplicationServiceTests
     }
 
     /// <summary>
-    /// T074-RED: <c>BaselineUsed</c> on the invalid-target refusal is the
+    /// T074: <c>BaselineUsed</c> on the invalid-target refusal is the
     /// documented NaN sentinel ("no baseline was resolved"), not a fabricated
-    /// 0f reading. Against the current service this fails because
-    /// <c>CreateInvalidTargetResult</c> passes 0f. The RefusedSoilAtMinimum
+    /// 0f reading. The RefusedSoilAtMinimum
     /// path keeps its real measured 0f baseline and is covered separately.
     /// </summary>
     [Fact]
@@ -613,16 +613,14 @@ public class AgrochemicalApplicationServiceTests
     }
 
     // ------------------------------------------------------------------
-    // T075-RED: unmappable tile is RefusedInvalidTarget, not RefusedSoilAtMinimum
+    // T075: unmappable tile is RefusedInvalidTarget, not RefusedSoilAtMinimum
     // ------------------------------------------------------------------
 
     /// <summary>
-    /// T075-RED (FR-008/FR-010): a tile that cannot be mapped (NaN coordinates)
+    /// T075 (FR-008/FR-010): a tile that cannot be mapped (NaN coordinates)
     /// is an invalid target, not a floor reading. The real <c>SoilHealthService</c>
-    /// reports 0f for a malformed query, which the current service mistakes for a
-    /// measured zero and answers <see cref="AgrochemicalApplicationOutcome.RefusedSoilAtMinimum"/>.
-    /// It must answer <see cref="AgrochemicalApplicationOutcome.RefusedInvalidTarget"/>
-    /// instead, without writing to the soil.
+    /// reports 0f for a malformed query; the service refuses this case before
+    /// any soil read or write and answers <see cref="AgrochemicalApplicationOutcome.RefusedInvalidTarget"/>.
     /// </summary>
     [Fact]
     public void Apply_UnmappableTile_ReturnsRefusedInvalidTarget_NotRefusedSoilAtMinimum()
@@ -644,6 +642,9 @@ public class AgrochemicalApplicationServiceTests
         mockSoil.Verify(
             x => x.SetSoilHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
             Times.Never);
+        mockSoil.Verify(
+            x => x.TrySetSoilHealth(It.IsAny<string>(), It.IsAny<Point>(), It.IsAny<float>()),
+            Times.Never);
     }
 
     private static Mock<ISoilHealthService> CreateSoilMock(float currentHealth)
@@ -652,21 +653,29 @@ public class AgrochemicalApplicationServiceTests
         mockSoil
             .Setup(x => x.GetSoilHealth("Farm", Tile))
             .Returns(currentHealth);
+
+        // 017 T064: the commit now flows through the boolean-commit seam. Default it
+        // to "committed" so success-path tests measure the domain rule, not Moq's
+        // default(bool) = false. Refusal tests override this setup after returning.
+        mockSoil
+            .Setup(x => x.TrySetSoilHealth(It.IsAny<string>(), It.IsAny<Point>(), It.IsAny<float>()))
+            .Returns(true);
         return mockSoil;
     }
 
     private static void AssertInvalidTargetResult(AgrochemicalApplicationResult result)
     {
-        // T074-RED: a refusal that never read the soil carries no baseline and must
-        // not claim a clamped outcome. BaselineUsed uses the documented NaN sentinel
-        // ("no baseline was resolved"), and WasClamped stays false.
+        // T074: a refusal that never read the soil carries no baseline and must
+        // not claim a clamped outcome. BaselineUsed/PostPenalty/AppliedPenalty use
+        // the documented NaN sentinels ("no value was resolved"), and WasClamped
+        // stays false.
         Assert.False(result.Succeeded);
         Assert.Equal(AgrochemicalApplicationOutcome.RefusedInvalidTarget, result.Outcome);
         Assert.Equal(ModConstants.TranslationKeyAgrochemicalInvalidTarget, result.MessageKey);
         Assert.True(float.IsNaN(result.BaselineUsed), "refusal on the invalid-target path must carry the NaN BaselineUsed sentinel");
-        Assert.Equal(0f, result.PostPenalty, 4);
+        Assert.True(float.IsNaN(result.PostPenalty), "refusal on the invalid-target path must carry the NaN PostPenalty sentinel");
         Assert.Equal(ModConstants.AgrochemicalSoilPenalty, result.RequestedPenalty, 4);
-        Assert.Equal(0f, result.AppliedPenalty, 4);
+        Assert.True(float.IsNaN(result.AppliedPenalty), "refusal on the invalid-target path must carry the NaN AppliedPenalty sentinel");
         Assert.False(result.WasClamped);
         Assert.False(result.BaselineWasUnknown);
     }
@@ -678,6 +687,9 @@ public class AgrochemicalApplicationServiceTests
             Times.Never);
         mockSoil.Verify(
             x => x.SetSoilHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
+            Times.Never);
+        mockSoil.Verify(
+            x => x.TrySetSoilHealth(It.IsAny<string>(), It.IsAny<Point>(), It.IsAny<float>()),
             Times.Never);
         mockSoil.Verify(
             x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()),
