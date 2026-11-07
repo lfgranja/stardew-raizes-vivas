@@ -102,7 +102,7 @@
   },
   "rngSeed": 123456789,
   "time": "2026-11-07T12:00:00Z",
-  "scenarioKind": "negative",
+  "scenarioKind": "positive",
   "expectedVerdict": "pass",
   "determinism": {
     "idempotent": true,
