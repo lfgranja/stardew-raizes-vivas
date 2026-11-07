@@ -239,25 +239,41 @@ signals_process() {
 
     local issues=0
 
+    # Crop phase dump + cross-check with save (collected first so soil-delta
+    # synthesis can read the authoritative crop dump if the dedicated soil
+    # after dump is missing).
+    if [[ -n "$dump_dir" ]]; then
+        local cdump="$a/crop-phase-dump.json"
+        if signals_crop_phase_dump "$dump_dir" "$cdump" 5; then
+            [[ -s "$cdump" ]] || { signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "crop dump missing after copy" >/dev/null 2>&1 || true; issues=1; }
+            if [[ -n "$save" && -f "$save" ]]; then
+                local cchk="$a/crop-phase-cross-check.json"
+                if ! signals_cross_check "$cdump" "$save" "$cchk"; then
+                    signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "divergence" "$(cat "$cchk" 2>/dev/null | tr -d '\n' | head -c 200)" "" "$owner" "dump vs save divergence" >/dev/null 2>&1 || true
+                    issues=1
+                fi
+            fi
+        else
+            signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "crop phase dump not found/completed" >/dev/null 2>&1 || true
+            issues=1
+        fi
+    else
+        signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "missing crop phase dump dir" >/dev/null 2>&1 || true
+        issues=1
+    fi
+
     # Soil health delta. If the dedicated after dump is missing but the
     # mod's crop-phase dump captured soil state for the same run, synthesize
     # a raw after dump from that captured measurement (honest fallback for
     # no-mutation attestation paths such as refused applications).
     local soil_before="$before" soil_after="$after"
-    if [[ -z "$soil_after" && -n "$dump_dir" && -n "$soil_before" ]]; then
+    if [[ -z "$soil_after" && -n "$soil_before" ]]; then
         local crop_after=""
-        local _w=0
-        while (( _w < 11 )); do
-            if [[ -f "$dump_dir/crop_phase_dump_after.json.done" ]]; then
-                crop_after="$dump_dir/crop_phase_dump_after.json"
-                break
-            fi
-            if [[ -f "$dump_dir/crop_phase_dump_after.json" ]]; then
-                crop_after="$dump_dir/crop_phase_dump_after.json"
-            fi
-            sleep 0.2
-            _w=$((_w+1))
-        done
+        if [[ -s "$a/crop-phase-dump.json" ]]; then
+            crop_after="$a/crop-phase-dump.json"
+        elif [[ -n "$dump_dir" && -f "$dump_dir/crop_phase_dump_after.json" ]]; then
+            crop_after="$dump_dir/crop_phase_dump_after.json"
+        fi
         if [[ -n "$crop_after" && -f "$crop_after" ]]; then
             local syn="$a/soil-health-after.json.raw"
             if python3 - "$crop_after" "$syn" "$soil_before" <<'PY'
@@ -315,27 +331,6 @@ PY
         fi
     else
         signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "missing" "" "" "$owner" "missing before/after for soil health delta" >/dev/null 2>&1 || true
-        issues=1
-    fi
-
-    # Crop phase dump + cross-check with save
-    if [[ -n "$dump_dir" ]]; then
-        local cdump="$a/crop-phase-dump.json"
-        if signals_crop_phase_dump "$dump_dir" "$cdump" 5; then
-            [[ -s "$cdump" ]] || { signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "crop dump missing after copy" >/dev/null 2>&1 || true; issues=1; }
-            if [[ -n "$save" && -f "$save" ]]; then
-                local cchk="$a/crop-phase-cross-check.json"
-                if ! signals_cross_check "$cdump" "$save" "$cchk"; then
-                    signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "divergence" "$(cat "$cchk" 2>/dev/null | tr -d '\n' | head -c 200)" "" "$owner" "dump vs save divergence" >/dev/null 2>&1 || true
-                    issues=1
-                fi
-            fi
-        else
-            signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "crop phase dump not found/completed" >/dev/null 2>&1 || true
-            issues=1
-        fi
-    else
-        signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "missing crop phase dump dir" >/dev/null 2>&1 || true
         issues=1
     fi
 
