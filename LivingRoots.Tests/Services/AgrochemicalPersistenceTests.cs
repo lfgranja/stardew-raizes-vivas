@@ -3,6 +3,7 @@ using LivingRoots;
 using LivingRoots.Domain;
 using LivingRoots.Services;
 using LivingRoots.Tests.Fixtures;
+using LivingRoots.Tests.Stubs;
 using Microsoft.Xna.Framework;
 using Moq;
 using StardewModdingAPI;
@@ -11,10 +12,11 @@ using Xunit;
 namespace LivingRoots.Tests;
 
 /// <summary>
-/// 017 RED-phase persistence tests (T011). These exercise the existing
+/// 017 persistence tests (T011). These exercise the existing
 /// <see cref="ISoilHealthService.SaveData"/>/<see cref="ISoilHealthService.LoadData"/>
 /// seam with a mocked <see cref="IModDataService"/> capture, mirroring
-/// <see cref="SaveReloadConsistencyTests"/>. This is mocked-seam evidence only:
+/// <see cref="SaveReloadConsistencyTests"/>. The implementation passes and a green
+/// suite here is the evidence. This is mocked-seam evidence only:
 /// it does not touch disk, a real save file, or a running game.
 /// </summary>
 public class AgrochemicalPersistenceTests
@@ -187,6 +189,60 @@ public class AgrochemicalPersistenceTests
         // The sparse seam cannot distinguish a dropped zero from never-measured.
         Assert.True(float.IsNaN(reloadedService.GetSoilHealth("Farm", Tile)));
         Assert.False(reloadedService.TryGetSoilHealth("Farm", Tile, out _));
+    }
+
+    // ------------------------------------------------------------------
+    // T071: recovery after agrochemical harm stays bounded and valid
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// T071 (US1/AC3, edge case "Compost/regenerative recovery after agrochemical
+    /// harm"): a never-measured tile is penalized by the agrochemical to a measured
+    /// 90, then the existing regenerative path (<see cref="CompostApplicationService"/>)
+    /// heals it. The recovered value must stay within the soil bounds, must not be
+    /// NaN, must equal what the regenerative path computes
+    /// (<c>min(MaxSoilHealth, current + RestorationAmount)</c>) — i.e. the recovery
+    /// does not bypass normal soil validation — and must survive the save/load seam
+    /// as a measured value.
+    /// </summary>
+    [Fact]
+    public void UnknownBaseline_ApplyThenCompost_RecoveryStaysWithinBounds()
+    {
+        // characterization: already green
+        // Arrange
+        var getCapturedState = SetupSaveLoadCapture();
+        var service = CreateSoilHealthService();
+        var fixture = new GameLocationFixture("Farm", isFarm: true);
+        fixture.AddHoeDirtTile(10, 10);
+        var playerStub = new PlayerProviderStub
+        {
+            CurrentItem = ItemFactory.CreateItem(ModConstants.CompostItemId)
+        };
+        var compost = new CompostApplicationService(service, playerStub, _mockMonitor.Object);
+        var agrochemical = new AgrochemicalApplicationService(service);
+
+        // Act 1: apply the agrochemical to the never-measured tile.
+        var applyResult = agrochemical.Apply(fixture.Location, Tile);
+        Assert.True(applyResult.Succeeded);
+        Assert.Equal(90f, applyResult.PostPenalty, 4);
+
+        // Act 2: the regenerative path heals the same tile.
+        var compostApplied = compost.TryApplyCompost(fixture.Location, Tile);
+
+        // Assert: recovery remains possible and stays within validity rules.
+        Assert.True(compostApplied);
+        var expected = Math.Min(90f + ModConstants.RestorationAmount, ModConstants.MaxSoilHealth);
+        var recovered = service.GetSoilHealth("Farm", Tile);
+        Assert.InRange(recovered, ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth);
+        Assert.Equal(expected, recovered, 4);
+        Assert.False(float.IsNaN(recovered));
+        Assert.True(recovered >= applyResult.PostPenalty, "recovery must move soil back toward the bound, never below the measured post-penalty value");
+
+        // The save/load seam round-trips the recovered measured value.
+        service.SaveData(SaveId);
+        var capturedState = getCapturedState();
+        Assert.NotNull(capturedState);
+        Assert.Equal(expected, capturedState!.LocationHealthData["Farm"]["10,10"], 4);
     }
 
     // ------------------------------------------------------------------
