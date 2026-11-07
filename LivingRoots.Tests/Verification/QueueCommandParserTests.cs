@@ -7,6 +7,8 @@ namespace LivingRoots.Tests.Verification
     {
         [Theory]
         [InlineData("lr_set_soil_health -10 5 10", "lr_set_soil_health")]
+        [InlineData("lr_till 60 15", "lr_till")]
+        [InlineData("lr_till 60 15 Farm", "lr_till")]
         [InlineData("lr_place_bin -10 5", "lr_place_bin")]
         [InlineData("lr_insert_waste -10 5 24 5", "lr_insert_waste")]
         [InlineData("lr_plant_crop -10 5 LivingRoots.Verification.LongPhaseCrop", "lr_plant_crop")]
@@ -43,6 +45,9 @@ namespace LivingRoots.Tests.Verification
         [InlineData("lr_give_mulch 0")]
         [InlineData("lr_give_mulch")]
         [InlineData("lr_give_mulch nope")]
+        [InlineData("lr_till 1")]
+        [InlineData("lr_till a 2")]
+        [InlineData("lr_till 1 2 bad/location")]
         [InlineData("lr_apply_mulch 1")]
         [InlineData("lr_apply_mulch a 2")]
         [InlineData("lr_apply_mulch 1 2 3 4")]

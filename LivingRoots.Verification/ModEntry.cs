@@ -373,6 +373,17 @@ namespace LivingRoots.Verification
                         break;
                     }
 
+                case "lr_till":
+                    {
+                        var location = command.Arguments.Count >= 3 ? command.GetString(2) : DefaultLocation;
+                        if (!TillTile(location, command.GetInt(0), command.GetInt(1)))
+                        {
+                            FailGeneration("till-failed");
+                        }
+
+                        break;
+                    }
+
                 case "lr_plant_crop":
                     {
                         var location = command.Arguments.Count >= 4 ? command.GetString(3) : DefaultLocation;
@@ -623,6 +634,45 @@ namespace LivingRoots.Verification
                 _advanceInProgress = false;
                 FailGeneration("advance-days-failed");
             }
+        }
+
+        private static bool TillTile(string locationName, int tileX, int tileY)
+        {
+            GameLocation? location;
+            try
+            {
+                location = Game1.getLocationFromName(locationName);
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (location == null)
+            {
+                return false;
+            }
+
+            var tile = new Vector2(tileX, tileY);
+            if (!location.isTileOnMap(tile) || location.isWaterTile(tileX, tileY))
+            {
+                return false;
+            }
+
+            if (location.buildings != null && location.buildings.Any(building => building != null && building.occupiesTile(tile)))
+            {
+                return false;
+            }
+
+            if (location.terrainFeatures.TryGetValue(tile, out var existing)
+                && existing is HoeDirt existingDirt
+                && existingDirt.crop != null)
+            {
+                return false;
+            }
+
+            location.terrainFeatures[tile] = new HoeDirt(0, location);
+            return true;
         }
 
         private bool PlantCrop(string locationName, int tileX, int tileY, string seedId)

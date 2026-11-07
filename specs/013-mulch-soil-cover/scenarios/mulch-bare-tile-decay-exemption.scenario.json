@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 3,
+  "scenarioId": "mulch-bare-tile-decay-exemption",
+  "featureSlug": "013-mulch-soil-cover",
+  "testMdPath": "specs/013-mulch-soil-cover/test.md",
+  "summary": "013 host (SC-004/FR-009): mulch on bare tilled HoeDirt (no crop) exempts spring soil decay; 50 over 2 days stays 50 (factor 1.0). Spring DailyDecayRate*0.5=1/day would yield 48 without mulch.",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.1.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": true
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {
+      "kind": "console",
+      "command": "lr_till 60 15 Farm",
+      "description": "create bare tilled HoeDirt (no crop) so SoilDecayService applies decay path"
+    },
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health 60 15 50",
+      "description": "seed measured moderate soil health on the target tile"
+    }
+  ],
+  "steps": [
+    {
+      "action": "runMacro",
+      "target": "60,15",
+      "inputs": {
+        "macroFile": "macros/mulch-apply.txt"
+      }
+    },
+    {
+      "action": "sleep",
+      "target": "farm",
+      "days": 2
+    },
+    {
+      "action": "observe",
+      "target": "60,15"
+    }
+  ],
+  "thresholds": [
+    {
+      "signal": "soilHealthStateDelta",
+      "predicate": {
+        "op": "multiplier",
+        "field": "soilHealth",
+        "base": "pre.soilHealth",
+        "factor": 1.0,
+        "tolerance": 0.0001
+      },
+      "description": "mulch exempts bare-tile spring decay (MulchDecayMultiplier=0); soil remains 50 over 2 days (would be ~48 without mulch)"
+    },
+    {
+      "signal": "smapiLog",
+      "predicate": {
+        "op": "cmp",
+        "left": "isMainPlayer",
+        "operator": "eq",
+        "right": true,
+        "tolerance": 0
+      },
+      "description": "host/main-player application"
+    }
+  ],
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "smapiLog"
+  ],
+  "timeoutSeconds": 300,
+  "inputs": {
+    "season": "spring",
+    "day": 5,
+    "weather": "sunny",
+    "money": 500
+  },
+  "rngSeed": 123456789,
+  "time": "2026-11-07T12:00:00Z",
+  "scenarioKind": "positive",
+  "expectedVerdict": "pass",
+  "determinism": {
+    "idempotent": true,
+    "declaredSources": []
+  }
+}

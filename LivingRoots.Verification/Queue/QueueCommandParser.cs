@@ -99,6 +99,7 @@ namespace LivingRoots.Verification.Queue
                     min = 3;
                     max = 4;
                     return true;
+                case "lr_till":
                 case "lr_place_bin":
                 case "lr_apply_agrochemical":
                 case "lr_apply_mulch":
@@ -148,6 +149,7 @@ namespace LivingRoots.Verification.Queue
                     }
 
                     return true;
+                case "lr_till":
                 case "lr_place_bin":
                 case "lr_apply_agrochemical":
                 case "lr_apply_mulch":
