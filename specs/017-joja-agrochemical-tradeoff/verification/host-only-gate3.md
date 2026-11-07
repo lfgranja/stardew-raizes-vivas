@@ -1,9 +1,16 @@
 # Host-Only Gate 3 Record — Spec 017 (Joja / Agrochemical MVP)
 
+> **Phase 8 status (2026-11-06/07): superseded for the current 017 result.** The 016-hardened
+> runner now supports the 017 interaction via validation-only queue commands (`lr_give_agrochemical`,
+> `lr_apply_agrochemical`) and a `runMacro` step. A real host-only run passed and is recorded in
+> [`host-only-gate3-run.md`](host-only-gate3-run.md) and in `../test.md` (`machine-pass`, honesty `R`).
+> The historical infeasibility record below is kept as provenance; it is **not** the current status
+> and it remains explicitly not a pass.
+
 **Claim class:** `planned-run-not-executed`  
 **Status:** `infeasible` — no 017 host-only scenario can be expressed by the current runner  
 **Date:** 2026-11-06  
-**Recorder:** implementation agent (record only; no run was executed)
+**Recorder:** implementation agent (record only; no run was performed)
 
 **This record is not a pass.** It is not `host-only-machine-pass`, not `human-verified`, and not
 `d1-farmhand-convergence`. No log, bundle, or scenario was fabricated.

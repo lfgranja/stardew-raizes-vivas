@@ -55,15 +55,18 @@ The chosen manual path is a **verification-only console command**, registered in
 - **Where it belongs:** `LivingRoots.Verification/ModEntry.cs` console registration, alongside the
   existing validation-only commands. It must not be added to `Data/Shops` or to normal
   `LivingRoots` content registration.
-- **Scope:** manual host validation/playtest only, on a disposable validation save. Record the
-  build, save ID, locale, command, and item ID with the run. Remove the command from any build
-  used for normal play or distribution.
-- **Why this path:** it is deterministic, repeatable, does not add acquisition gameplay, and keeps
-  the item out of the economy. It also makes the provisioning step explicit in the run record.
+- **Scope:** headless verification-only use through the injected queue. Manual/player-facing
+  provisioning is a separate gap and is not claimed by this path.
+- **017 status (Phase 8):** **implemented.** `lr_give_agrochemical` and `lr_apply_agrochemical` are
+  validation-only queue commands consumed by `LivingRoots.Verification` (they are not player-facing
+  SMAPI console commands). The hardened runner uses them for the host-only Gate 3 record in
+  [`host-only-gate3-run.md`](host-only-gate3-run.md). The intended use in this document (a
+  disposable validation save via a manual console path) has **not** been performed for S1–S5 and is
+  still not a supported normal-play path.
 
-**Current status:** `blocked` — the command is not implemented in the current tree. No manual
-S1–S5/playtest run has been performed. A manual run must not be recorded from an ad hoc grant
-without documenting the exact mechanism as a deviation.
+**Current status:** validation-only headless grant implemented (Phase 8); no manual/player-facing
+S1–S5 run exists. A manual run must not be recorded from the headless grant without documenting the
+exact mechanism as a deviation.
 
 ### Rejected alternatives
 
@@ -85,10 +88,8 @@ change its classification.
 
 ## Validation-only checklist
 
-- [x] Provisioning mechanism chosen and scoped (automated fixture now; verification-only console
-      grant for manual runs).
+- [x] Provisioning mechanism chosen and scoped (automated fixture, then validation-only headless queue grant for Gate 3).
 - [x] `Data/Shops` and Joja economy explicitly excluded.
 - [x] No fertilizer-slot/Harmony behavior introduced by provisioning.
-- [ ] Manual console grant implemented in `LivingRoots.Verification` (not done; manual runs
-      remain blocked).
-- [ ] Manual/playtest run recorded with build, save, locale, command, and scope (not done).
+- [x] Headless verification-queue grant implemented (`lr_give_agrochemical` + `lr_apply_agrochemical` in `LivingRoots.Verification`).
+- [ ] Manual/player-facing S1–S5 run recorded with build, save, locale, command, and scope (not done).

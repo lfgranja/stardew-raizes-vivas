@@ -13,7 +13,7 @@ not upgrade any claim beyond its recorded evidence class.
 - [`manual-review.md`](manual-review.md) (T052)
 - [`claim-records.md`](claim-records.md) (T053)
 - [`honesty-review.md`](honesty-review.md) (T054)
-- [`provisioning-validation.md`](provisioning-validation.md), [`host-only-gate3.md`](host-only-gate3.md), [`sc004-comprehension-protocol.md`](sc004-comprehension-protocol.md) (Phase 6 context)
+- [`provisioning-validation.md`](provisioning-validation.md), [`host-only-gate3.md`](host-only-gate3.md), [`host-only-gate3-run.md`](host-only-gate3-run.md), `../evidence-bundle-run-20261107T015936Z-7f35/`, [`sc004-comprehension-protocol.md`](sc004-comprehension-protocol.md) (Phase 6/8 context and run evidence)
 
 ## Status by claim
 
@@ -25,11 +25,11 @@ not upgrade any claim beyond its recorded evidence class.
 | Persistence round-trip through `ISoilHealthService.SaveData`/`LoadData` (mocked `IModDataService`) | `automated` (mocked seam) | **complete** | 3/3 cases pass. C2 unknown baseline applies as measured `90` for `P=10`; measured `50` reloads as `40`. A clamped-to-zero tile is omitted by the existing sparse cache and reloads as unknown. |
 | Structured copy review of touched 017 keys | `qualitative-follow-up` (AI-assisted) | **complete** | 10 keys × 3 locales reviewed for shortcut/cost/attribution/refusal meaning and cozy/non-punitive tone. Not human attestation; does not prove in-game rendering. |
 | Formatting gate | `automated` (static) | **complete** | `dotnet format Stardew-LivingRoots.sln --verify-no-changes` exits 0. Build is exercised by the passing test runs. |
-| Host-only Gate 3 machine-pass | `planned-run-not-executed` | **infeasible** | No 017 scenario can be expressed: the runner has no agrochemical action, item-grant path, or right-click simulation. No log/bundle/verdict exists. Not a pass. |
+| Host-only Gate 3 machine-pass | `host-only-machine-pass` | **complete** | A clean, non-flaky **host** run passed the 016-hardened runner: measured 50 → 40 after one provisional `P=10`, `phaseDays` unchanged, host `isMainPlayer` true; three signals present and agreeing; 3/3 thresholds pass; offline verifier exit 0 (`verification/host-only-gate3-run.md`, `evidence-bundle-run-20261107T015936Z-7f35/`, `test.md` `machine-pass`, honesty `R`). Not D1/human/SC-004; does not cover the C2 unknown-`NaN` baseline path. |
 | D1 farmhand convergence | `d1-farmhand-convergence` | **pending** | No real farmhand session was recorded. |
 | Human `verified` attestation | `human-verified` | **pending** | No human attestation exists. Automated, AI-assisted copy review, and any host-only machine evidence do not satisfy it. |
 | SC-004 comprehension (≥90% identify shortcut and cost) | `qualitative-follow-up` | **pending** | Protocol finalized (`sc004-v1`) but no participant run exists. Protocol text is not evidence. |
-| Manual/playtest S1–S5 provisioning | n/a (prerequisite) | **blocked** | The scoped `lr_give_agrochemical` console grant is documented but not implemented; no manual run was performed. |
+| Manual/playtest S1–S5 provisioning | n/a (prerequisite) | **blocked** | The validation-only grant is implemented for the verification queue (`lr_give_agrochemical`), not as a player-facing spawn/shop/grant. No manual S1–S5 run was performed. |
 
 ## Implemented behavior covered by the automated claims
 
@@ -48,26 +48,19 @@ not upgrade any claim beyond its recorded evidence class.
 
 ## Honesty boundaries
 
-- **No host-only machine pass, human verification, D1, or SC-004 completion is claimed.**
-- Host-only Gate 3 is `infeasible` and recorded as `planned-run-not-executed`, not a pass.
-- The persistence claim is limited to the mocked save/load seam. Real disk persistence, save-file
-  compatibility, and real-game behavior are not proven.
+- **No human verification, D1, or SC-004 completion is claimed.**
+- The host-only Gate 3 run is recorded as `host-only-machine-pass` only (not `verified`/D1/SC-004), and only covers the measured 50 → 40 path; the C2 unknown-`NaN` baseline path is covered by automated tests, not by this run.
+- The persistence claim is limited to the mocked save/load seam. Real disk persistence beyond the runner's isolated save copy is not proven outside the Gate 3 run.
 - The copy review was performed by the implementation agent, not an independent human.
 - `P=10` remains provisional and tunable; no final balance claim is made.
 - The C1 test is a service-dependency boundary check, not a full harvest/growth composition proof.
 - Fallback-only tests cannot promote FR-007, FR-013, or SC-002 to satisfied.
-- The RED gate (`red-phase.md` + `red-phase-run.log`) is historical failing-run evidence, not a
-  passing result. An interim full-suite failure (unreferenced translation-key constants, fixed in
-  `5dd838d`) is disclosed in `automated-tests.md`; the final-tree run is the recorded evidence.
-- Prior verification artifacts were not rewritten or retroactively promoted.
+- The RED gate (`red-phase.md` + `red-phase-run.log`) is historical failing-run evidence, not a passing result. An interim full-suite failure (unreferenced translation-key constants, fixed in `5dd838d`) is disclosed in `automated-tests.md`; the final-tree run is the recorded evidence.
+- Prior verification artifacts were not rewritten or retroactively promoted; the Phase 8 run supersedes the 2026-11-06 infeasibility record but does not rewrite it. The three failed attempts are recorded in `host-only-gate3-run.md` and are not cited as passing evidence.
 
 ## Remaining work to close the open claims
 
-1. Implement the scoped `lr_give_agrochemical` verification-only console command (or record a
-   different documented mechanism) to unblock manual S1–S5 runs.
-2. Run a real host-only session once the runner can express the interaction; record a new bundle
-   and classify it as `host-only-machine-pass` only.
-3. Run a real farmhand session for D1 convergence.
-4. Obtain an explicit human `verified` attestation.
-5. Execute the `sc004-v1` protocol with at least the recorded denominator and append the evidence
-   note.
+1. Run a real farmhand session for D1 convergence.
+2. Obtain an explicit human `verified` attestation.
+3. Execute the `sc004-v1` protocol with at least the recorded denominator and append the evidence note.
+4. If a player-facing manual S1–S5 playtest is desired, add a scoped player-visible provisioning path (or record the ad hoc grant as a deviation); the verification-queue grant is not a player-facing path.

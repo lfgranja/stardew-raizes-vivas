@@ -49,13 +49,21 @@ in `verification/automated-tests.md`; do not cite this table as a passing result
 | `verification/static-checks.md` | T051 formatting/build gate. |
 | `verification/manual-review.md` | Manual copy semantics/tone review; not feature verification. |
 | `verification/provisioning-validation.md` | Validation-only item provisioning decision; no `Data/Shops`. |
-| `verification/host-only-gate3.md` | Host-only Gate 3 feasibility or `planned-run-not-executed` record. |
+| `verification/host-only-gate3.md` | Historical 2026-11-06 infeasibility record (superseded by the Phase 8 run). |
+| `verification/host-only-gate3-run.md` | Host-only Gate 3 run record; links the tracked evidence bundle. |
+| `evidence-bundle-run-20261107T015936Z-7f35/` | Tracked host-only Gate 3 bundle (full log, three agreeing signals). |
 | `verification/sc004-comprehension-protocol.md` | SC-004 protocol; execution stays `pending` unless a real run is appended. |
 
 If a host-only end-to-end run is infeasible or blocked, record it in
 `verification/host-only-gate3.md` as `planned-run-not-executed` with the reason and the exact
 capability that is missing. Do not invent a scenario, log, bundle, or pass. Lower-level
 automated/persistence evidence remains separately claimable.
+
+**017 status (Phase 8):** run performed and passed; see
+[`verification/host-only-gate3-run.md`](verification/host-only-gate3-run.md) and
+`evidence-bundle-run-20261107T015936Z-7f35/` (`test.md` `machine-pass`, honesty `R`). The run
+asserts only `host-only-machine-pass`, never `human-verified` or `d1-farmhand-convergence`, and
+does not cover the C2 unknown-`NaN` baseline path (covered by automated tests).
 
 ## Validation scenarios
 
@@ -96,16 +104,17 @@ automated/persistence evidence remains separately claimable.
 ## Host-only Gate 3 (optional, if runner/scenario added later)
 If implementation adds a headless verification scenario, run via `scripts/verify-scenario.sh` following repo protocol and record 3 required signals. Record claims using the normalized schema canonical in `contracts/multiplayer-gate3.md`: `claim`, `evidence_class` (`automated` | `host-only-machine-pass` | `human-verified` | `d1-farmhand-convergence` | `qualitative-follow-up` | `planned-run-not-executed`), `source_artifact_path`, `status` (`pending` | `complete` | `blocked` | `infeasible`), and `scope_note`. A passing host-only end-to-end run is `host-only-machine-pass` only — never `human-verified` or `d1-farmhand-convergence`. If a host-only end-to-end run is **infeasible/unavailable**, do not fabricate a run: record a `planned-run-not-executed` claim with `status` `infeasible`/`blocked` plus reason, claim only completed lower-level evidence (e.g., `automated`) separately, and keep `human-verified`/`d1-farmhand-convergence` pending. `planned-run-not-executed` is not a pass. Preserve prior evidence provenance (no rewrites/retroactive promotion).
 
-**017 status:** no 017 scenario exists, and the current runner cannot express the
-right-click/agrochemical interaction or grant the item. The infeasibility record and the exact
-missing capabilities are in `verification/host-only-gate3.md`; it is classified
-`planned-run-not-executed` and is **not** a host-only machine pass. The provisioning decision is
-recorded in `verification/provisioning-validation.md`.
+**017 status:** a host-only Gate 3 run has been performed and passed. See
+[`verification/host-only-gate3-run.md`](verification/host-only-gate3-run.md) and the tracked
+bundle `evidence-bundle-run-20261107T015936Z-7f35/` (`test.md` `machine-pass`, honesty `R`). This
+is `host-only-machine-pass` only: not `human-verified`, not D1, and not SC-004. The earlier
+infeasibility record in [`verification/host-only-gate3.md`](verification/host-only-gate3.md) is
+kept as historical context and is not the current status.
 
 ## Not validated by this MVP quickstart
-- `host-only-machine-pass` (no 017 Gate 3 scenario; see `verification/host-only-gate3.md`).
 - `d1-farmhand-convergence` (real-farmhand D1 convergence).
 - `human-verified` attestation.
+- SC-004 playtest comprehension.
 - Vanilla fertilizer-hook/Harmony behavior (explicitly out of MVP).
 - Monoculture.
 - Final balance/tuning (`P=10` provisional).

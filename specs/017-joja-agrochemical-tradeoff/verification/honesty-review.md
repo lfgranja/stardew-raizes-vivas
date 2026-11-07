@@ -55,3 +55,16 @@ These are expected pending/follow-up items, not overclaims:
   `automated-tests.md`.
 - No prior verification artifact was edited, overwritten, or retroactively promoted by this
   review.
+
+## Phase 8 addendum (2026-11-06/07)
+
+After this review was written, the 016-hardened runner was used to verify the 017 path end-to-end.
+A real host-only run passed and is recorded in [`host-only-gate3-run.md`](host-only-gate3-run.md) and
+the tracked bundle `evidence-bundle-run-20261107T015936Z-7f35/` (`test.md` `machine-pass`, honesty `R`).
+
+The addendum preserves the original review's boundaries: the machine-pass is host-only machine
+evidence; it is not `human-verified`, not `d1-farmhand-convergence`, and not SC-004. The C2
+unknown/`NaN` baseline path is exercised by automated tests, not by the Gate 3 scenario. The
+three failed attempts that preceded the passing run are disclosed in the run record and are not
+cited as passing evidence. No prior verification artifact was rewritten or retroactively promoted;
+`host-only-gate3.md` keeps the infeasibility record as historical context.
