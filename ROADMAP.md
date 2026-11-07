@@ -2,6 +2,9 @@
 
 This document outlines the development roadmap for the "Living Roots" mod, detailing the progression of features from early to late game, based on agroecological principles.
 
+> **STATUS ANNOTATION — 2026-11-07 (spec 017 Joja/Agrochemical MVP — release 0.1.0; Phase 11 converge in progress)**
+> Spec 017 has shipped to the repo at release **0.1.0** (`d3ada42`; manifest `0.0.1`→`0.1.0`; MDMV release gate; repo-scoped on `dev` — **no public channel, no tag**; human attestation ausente por desenho). **validate.md: aprovado** (2026-11-07, commit `c9ff596`; suíte 1871 passed / 0 failed / 4 skipped, targeted 119/119, format exit 0; claims validator PASS) recorded in `.specify/validations/017-joja-agrochemical-tradeoff/validate.md`. **Gate 3 (017 scenario): machine-pass host-only** — runner-promoted markers untouched; bundle `evidence-bundle-run-20261107T040235Z-589a/`, honesty `R`, commit `c9ff596`. **Machine-pass ≠ verified**: D1 (real farmhand), `human-verified` and SC-004 remain `pending`. **Phase 11 converge is in progress** (T105–T118); the next converge pass is expected to report converged or near-converged, with remaining items being human attestations/SC-004 follow-ups. The 0.1.0 build was **not Gate-3-run in isolation** — the delta vs. the attested `c9ff596` tree is the manifest `Version` string only (disclosed in `.specify/releases/017-joja-agrochemical-tradeoff/release.md`). The 2026-11-06 annotation below remains the 014-specific attestation; this block adds 017. No claim is promoted by this annotation.
+
 > **STATUS ANNOTATION — verified 2026-11-06 (spec 014 T131–T133, machine-pass host-only, tests 1747/0/4)**
 > Previous annotations (2026-11-05, 2026-11-04, 2026-11-03, 2026-11-02) are preserved below; newest verified state is this block. Legend: ✅ implemented & verified (build + tests green) · 🟡 partial/inert · ❌ not implemented · ⚠️ has caveats / not verified in-game-human. Original design text preserved; annotations added.
 > **Verified now:** build Release 0 errors (`GamePath=/home/luis/stardew-assemblies`); tests **1747 passed / 0 failed / 4 skipped** (1751); band-scale 31/71 gate PASS. Spec 014 **131/133** (`tasks.md`) — T131–T133 complete; FR-009/A8 soil-health sync + procedural harvest feedback wired/tested; `/speckit.converge` found no new actionable findings (no Phase 11). Gate 3 spec 014 scenario **machine-pass** (host-only), `verdict: pass`, `signalsComplete/Agree/thresholdsOk: true`, verifier exit 0 — bundles `evidence-bundle-run-20261106T014215Z-759d`, `evidence-bundle-run-20261106T014750Z-14b6` (`specs/014-soil-health-crop-quality/gate3-evidence.md`). **Machine-pass ≠ verified** (no human E attestation). **T109 D1 blocked** (real farmhand). **T110 deferred** (historical 34/67 contract migration). Specs: 010 **150/203**, 016 **43/43**.
@@ -395,7 +398,7 @@ Before building any of the above, the roadmap's promises were checked against th
 
 ---
 
-## Gate 3 Verification (atualizado 2026-11-04 — máquina via spec 010 antes de manual)
+## Gate 3 Verification (atualizado 2026-11-07 — máquina via spec 010 antes de manual)
 
 <!-- GATE3:BEGIN -->
 - **Status**: machine-pass
