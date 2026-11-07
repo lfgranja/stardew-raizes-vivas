@@ -11,7 +11,7 @@
     <RollForward>Major</RollForward>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <EnableHarmony>true</EnableHarmony>
-    <GamePath>/home/luis/.steam/steam/steamapps/common/Stardew Valley</GamePath>
+    <GamePath Condition="'$(GamePath)' == ''">/home/luis/.steam/steam/steamapps/common/Stardew Valley</GamePath>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
