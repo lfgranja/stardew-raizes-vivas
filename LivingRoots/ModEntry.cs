@@ -477,7 +477,7 @@ namespace LivingRoots
                         DisplayName = LocalizeOrFallback(ModConstants.AgrochemicalItemNameKey, "Joja Agrochemical"),
                         Description = LocalizeOrFallback(
                             ModConstants.AgrochemicalItemDescriptionKey,
-                            "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health."),
+                            "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health. The soil consequence is bounded and recoverable through your usual soil care."),
                         Type = "Basic",
                         Price = 50
                     };
