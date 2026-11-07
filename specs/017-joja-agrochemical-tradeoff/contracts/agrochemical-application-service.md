@@ -87,3 +87,24 @@ Automated tests MUST cover:
 **Interaction with other records:** The refusal does not mutate, does not consume, and does not broadcast; FR-009 shared-state synchronization is unaffected. The clamped-to-zero-with-nonzero-baseline case (e.g. baseline 5, penalty 10 → `PostPenalty=0`, `WasClamped=true`, `AppliedPenalty=5`) remains a **bounded Success** per FR-005's explicit clamp reporting, distinct from the soil-at-minimum refusal (baseline exactly 0). The sparse-cache persistence caveat for measured zeros is recorded separately in `verification/measured-zero-persistence.md` (2026-11-06).
 
 **Provenance:** Append-only adjudication record. Prior sections of this contract are unchanged.
+
+## Corrective amendment (2026-11-06, Phase 10 hygiene) — measured-write seam naming
+
+**Append-only correction; prior sections unchanged.** The measured soil commit for the 017
+path goes through **`ISoilHealthService.TrySetSoilHealth`** (the equivalent measured write
+seam): a boolean-commit that mirrors the measured-write path (clamp, sparse cache, location/tile
+capacity guards) and reports `false` instead of silently dropping the write. A `false` result
+MUST surface as a non-success outcome (no item consumption, no confirmation feedback, no FR-009
+broadcast). `ISoilHealthService.SetSoilHealth` remains the **legacy void seam** — it shares the
+same measured-write internals but cannot report rejection, so it is not the commit seam for the
+017 path. Any earlier wording in this document that names bare `SetSoilHealth` as the commit
+mechanism refers to the same measured-write semantics now exposed as `TrySetSoilHealth`; the
+"equivalent measured write" phrasing above and in `multiplayer-gate3.md` is the accurate name.
+
+**Adjudicated refusal classes (append-only table amendment; the table above is unchanged):**
+
+| Class | Cause | Ordering |
+|---|---|---|
+| `RefusedSoilAtMinimum` | Measured baseline of exactly `MinSoilHealth` (0); the penalty would have zero effect | Before commit; no soil write, no item consumption, no false-success feedback, no FR-009 broadcast. Player-facing copy states the cause (soil already at minimum), the non-application outcome, and a next-step implication. This class was adjudicated 2026-11-06 (see "Adjudication: soil-at-minimum refusal" section above) and replaces any implied zero-delta `Success` reading for the at-minimum case. |
+
+Prior sections of this contract are unchanged.

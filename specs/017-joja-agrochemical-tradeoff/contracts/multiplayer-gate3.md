@@ -57,3 +57,19 @@ Claims MUST NOT be promoted above their `evidence_class`. A `planned-run-not-exe
 - Do not claim vanilla fertilizer-hook behavior or Harmony fertilizer MVP support.
 - Do not claim final balance.
 - Do not rewrite/retroactively promote historical verification evidence.
+
+## Corrective amendment (2026-11-06, Phase 10 hygiene) — measured-write seam naming
+
+**Append-only correction; prior sections unchanged.** Wherever this document (or its mirrored
+copies in `agrochemical-application-service.md` and the claim register) names a bare
+`SetSoilHealth` as the mechanism for the 017 measured soil commit, the accurate seam is
+**`ISoilHealthService.TrySetSoilHealth`** — the equivalent measured write: a boolean-commit that
+mirrors the measured-write path (clamp, sparse cache, location/tile capacity guards) and reports
+`false` instead of silently dropping the write. A `false` result MUST surface as a non-success
+outcome (no item consumption, no confirmation feedback, no FR-009 broadcast).
+`ISoilHealthService.SetSoilHealth` remains the **legacy void seam** and is not the commit seam
+for the 017 path. Claims that cite "absolute `SetSoilHealth` measured write" (e.g. in the 017
+MVP verification targets above) refer to this same measured-write semantics; the seam name is
+`TrySetSoilHealth`.
+
+Prior sections of this contract are unchanged.
