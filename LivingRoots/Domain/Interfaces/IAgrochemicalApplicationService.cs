@@ -35,7 +35,12 @@ namespace LivingRoots.Domain.Interfaces
         /// </remarks>
         RefusedConflict,
 
-        RefusedSoilAtMinimum
+        RefusedSoilAtMinimum,
+
+        /// <summary>
+        /// Reserved: seam commit failed (capacity); wired in implementation wave.
+        /// </summary>
+        RefusedCommitFailed
     }
 
     /// <summary>
