@@ -72,3 +72,17 @@ Automated tests MUST cover:
 - host success lock acquire/release, item consumption only after authoritative measured commit, and FR-009 broadcast after commit;
 - lock contention explicit refusal;
 - i18n key/message contract for new player-facing text.
+## Adjudication: soil-at-minimum refusal (017 convergence) — Decision 2026-11-06
+
+**Decision:** A measured soil health baseline of exactly `0` (`MinSoilHealth`) MUST produce an explicit `RefusedSoilAtMinimum` outcome. No soil write occurs, no item consumption occurs, no FR-009 broadcast occurs, and the player-facing refusal states the cause (soil already at minimum; the agrochemical would have no effect), that nothing was applied, and the no-success/non-application outcome with a next-step implication. A zero-delta `Success` is forbidden for this case.
+
+**Rationale:**
+- **Spec edge-case honesty.** The spec's edge case for bounds-reduced outcomes requires an honest, non-misleading outcome when clamping reduces or eliminates the observed effect; a `Success` with `applied_penalty=0` would present "the agrochemical was applied" feedback for a no-op, which is exactly the misleading-success pattern FR-008 forbids on the refusal path.
+- **FR-005 bounds.** FR-005 permits bounds to reduce the observed effect; it does not require a success label when the reduction is total. FR-008 requires explicit refusal when the action cannot be completed under MVP rules. At the hard floor, the action cannot produce any effect, so refusal is the spec-faithful reading.
+- **Avoids a misleading "success" for a no-op.** Consuming the item, emitting confirmation feedback, and broadcasting a snapshot for a zero-delta write would spend the player's input and sync state while delivering nothing — a worse outcome than an honest refusal that states the cause.
+
+**Classification:** This refusal is the **spec-faithful reading of FR-005/FR-008 for the at-minimum case — NOT a violation, NOT a divergence to be "fixed" toward zero-delta success.** It is effective with this adjudication (2026-11-06). The `soil-at-minimum` localized refusal keys (`message.agrochemical.soil-at-minimum`) and the pinned tests (T013/T018) already encode this behavior; no code change is implied by this record.
+
+**Interaction with other records:** The refusal does not mutate, does not consume, and does not broadcast; FR-009 shared-state synchronization is unaffected. The clamped-to-zero-with-nonzero-baseline case (e.g. baseline 5, penalty 10 → `PostPenalty=0`, `WasClamped=true`, `AppliedPenalty=5`) remains a **bounded Success** per FR-005's explicit clamp reporting, distinct from the soil-at-minimum refusal (baseline exactly 0). The sparse-cache persistence caveat for measured zeros is recorded separately in `verification/measured-zero-persistence.md` (2026-11-06).
+
+**Provenance:** Append-only adjudication record. Prior sections of this contract are unchanged.
