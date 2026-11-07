@@ -520,3 +520,6 @@ Thumbs.db
 
 # Archify generated diagrams (local)
 .archify/
+
+# Keep spec 017 closure-verification logs tracked despite the *.log* rule
+!specs/017-joja-agrochemical-tradeoff/verification/*.log

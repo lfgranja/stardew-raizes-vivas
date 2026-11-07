@@ -53,3 +53,39 @@ Wave commits: Wave A `1cd0265` `fbbad22` `20f380b` `e79100b` `f8d0061` `16ed2ad`
 `e7cf687` `fdf4b7e` `c3f7297`. Unrelated working-tree files (`TooltipRenderer.cs`, tooltip
 tests, `.specify/bugs/soil-health-unknown-tooltip-flashing/`) were not part of this feature and
 were not modified.
+
+## Corrective addendum (2026-11-07, Phase 10 / T091)
+
+This addendum corrects the attestation-integrity gaps recorded as findings V-01/V-02 in the
+Phase 10 converge re-audit; prior text above is retained unmodified.
+
+- **V-02 ("92/92 targeted" not reproducible):** The source enumeration for the
+  `FullyQualifiedName~Agrochemical` filter at the Phase 9 closure tree was **88** (five classes:
+  45 parity + 16 service + 4 persistence + 20 controller + 3 registration); the RED log printed
+  "Total: 92" because it counted the previously-inverted T078 row and pre-Phase-10 additions
+  differently across revisions. The "92/92" figure in this file's summary table and the
+  claim-records addendum is **not valid evidence for the post-Phase-10 tree**. After Phase 10
+  (T090–T104) the targeted run is **119/119 (0 failed)** and is retained as
+  `verification/convergence-phase10-targeted.log` (exit 0). The Phase-10 RED log showing the 21
+  expected pre-implementation failures is retained as `verification/convergence-phase10-red.log`,
+  and the matching full-suite log (**1871 passed, 0 failed, 4 skipped**, exit 0) as
+  `verification/convergence-phase10-full.log`. `dotnet format --verify-no-changes` exits 0 on the
+  same tree.
+- **V-01 (cited bundle-check output was 0 bytes):** The previously cited
+  `/tmp/opencode/bundle-check.log` was 0 bytes. The 016-hardened runner's
+  `--verify-bundle` mode **emits no stdout**; its attestation is the exit code. Exit code **0**
+  was observed on 2026-11-06 (twice) and again on 2026-11-07 after Phase 10. The cited-file
+  discipline is corrected by this addendum: future citations point to committed artifacts, not
+  `/tmp`. The bundle itself (`evidence-bundle-run-20261107T015936Z-7f35/`) was additionally
+  digest-audited on 2026-11-06 (16/16 `manifest.json` subject digests verify; `manifest.sha256`
+  matches; `verdict.json` pass; `claims.json` honestyLevel `R`); the hardened
+  `scripts/tests/test-017-claims.sh` also digest-checks cited bundle directories (exit 0 in this
+  session).
+- **Runner re-run (T090):** executed on 2026-11-07 after this correction; outcome recorded as a
+  NEW append-only claim-record row (e5882c1-era row untouched). See
+  `verification/host-only-gate3-phase10-run.md` (if present) and the claim-records addendum.
+- **Enumeration**: the Phase-9 "92/92" figure was a miscount; the honest source enumeration at
+  that tree was 88. After Phase-10 changes the targeted run totals **119** (0 failed), with the
+  21 pre-implementation failures recorded in `verification/convergence-phase10-red.log`; the
+  per-class breakdown is derivable from the test sources and was not re-enumerated here to avoid
+  inventing another unverified count.
