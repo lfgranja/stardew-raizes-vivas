@@ -115,3 +115,30 @@ until 2026-11-07. Dispositions:
   will record `0.1.0` in the same declared-not-observed verbatim-copy manner. The two historic
   bundles are not rewritten and remain `0.4.0`-recording artifacts. `test-017-agrochemical.sh`
   re-run after the edit: **23/23 passed**.
+
+## Residual verification gap — registered, not blocking (2026-11-07, Phase 11 / T118)
+
+**Append-only traceability record; no promotion is claimed and nothing is accepted here.**
+
+- **T079 zero-stack slot-clear has no live-session observation.** The zero-stack inventory slot
+  clear path of `ConsumeHeldAgrochemical` is covered only by the headless pin introduced in
+  Phase 10 (T096: uninitialized `StardewValley.Farmer` + `netItems` reflection, asserting the
+  inventory slot becomes null at stack 0, `Stack` decrement otherwise, and the headless skip
+  path never throws). No live/real SMAPI session has ever exercised or observed this path — the
+  016-hardened runner runs are headless and the slot clear is not one of the three Gate 3
+  signals. The Phase 9 re-verification already recorded T079/T069 as not observable in a live
+  session from this re-run; Phase 10 did not add a live observation; Phase 11 records the same.
+- **The two `blocked` claim rows remain blocked.** (1) Normal-play acquisition path for the
+  Joja agrochemical input (`qualitative-follow-up`) — formally descoped 2026-11-06;
+  verification-queue grant (`lr_give_agrochemical`) only; no `Data/Shops` path; not promotable
+  without a real implementation and/or scoped evidence. (2) Measured-zero outcome persists as
+  measured across save/load (`automated`, blocked) — sparse-cache zero omission reloads
+  clamped-to-zero as Unknown/`NaN`; pre-existing behavior, not a 017 regression, but the spec
+  save/load edge case does not hold for clamped-to-zero outcomes. Both remain `blocked` until
+  **observed** (real run / test) **or explicitly accepted** (recorded acceptance with scope) —
+  neither has occurred.
+- **Disposition:** neither item is observable from automated or headless evidence as of
+  2026-11-07; both are tracked here and in the claim register for traceability. If a host-only
+  SMAPI observation of the slot-clear (or of a measured-zero save/load round trip) is ever
+  demanded, it must be executed and recorded as new evidence; absent that, the rows stay
+  `blocked`. This section changes no claim status and attests nothing.
