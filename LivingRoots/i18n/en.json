@@ -18,5 +18,5 @@
   "message.agrochemical.action-conflict": "Another player is already working this tile, so the agrochemical was not applied. Wait for the tile to free up, then try again.",
   "message.agrochemical.unsupported-authority": "Only the host can apply agrochemicals in multiplayer, so it was not applied. Ask the host to apply it for you.",
   "message.agrochemical.soil-at-minimum": "This soil is already at the lowest health, so the agrochemical was not applied. Let the soil regenerate with some care, then try again.",
-  "message.agrochemical.commit-failed": "The agrochemical could not be committed to the soil, so nothing changed. Your agrochemical was not consumed. Please wait for the farm data to free up and try again."
+  "message.agrochemical.commit-failed": "The agrochemical could not be committed to the soil, so nothing changed. Your agrochemical was not consumed. The farm data is at capacity; apply the agrochemical to a tile that already has soil data, then try again later."
 }
