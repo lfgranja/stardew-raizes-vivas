@@ -4,11 +4,12 @@
 source in [`../contracts/multiplayer-gate3.md`](../contracts/multiplayer-gate3.md) (FR-015,
 SC-005).
 
-**Current state:** implementation is in place and the targeted 017 test suite is green, but this
-register only records claims supported by **linked artifacts**. The Phase 7 verification tasks
-(T048–T052) produce those artifacts; T053 links them and changes statuses. Until then every row
-below stays `pending`. The RED gate record at `verification/red-phase.md` is historical gate
-evidence (a failing run), not passing behavior evidence.
+**Current state:** implementation is in place and the Phase 7 artifacts are recorded. The
+`automated` and mocked-persistence claims below are `complete` for their stated scope. The
+host-only end-to-end run is `infeasible` (recorded, not a pass). D1, human `verified`, and SC-004
+remain `pending` because no real farmhand, human-attestation, or playtest run exists. The RED gate
+record at `verification/red-phase.md` is historical gate evidence (a failing run), not passing
+behavior evidence.
 
 ## Status vocabulary
 
@@ -21,8 +22,8 @@ evidence (a failing run), not passing behavior evidence.
 
 ## Verification artifacts
 
-These are the artifacts this register may cite once they exist. A missing artifact means the
-related row stays `pending` (or `infeasible`/`blocked` with a reason).
+These are the artifacts this register cites (or will cite once produced). A missing artifact means
+the related row stays `pending` (or `infeasible`/`blocked` with a reason).
 
 | Artifact | Purpose | Produced by |
 |---|---|---|
@@ -30,23 +31,26 @@ related row stays `pending` (or `infeasible`/`blocked` with a reason).
 | `verification/automated-tests.md` | Targeted 017 suite results and full-regression results with exact counts. | T048, T050 |
 | `verification/persistence-roundtrip.md` | Mocked `ISoilHealthService.SaveData`/`LoadData` seam evidence for the C2 measured result and sparse-zero scope. | T049 |
 | `verification/static-checks.md` | Formatting/build gate result. | T051 |
-| `verification/manual-review.md` | Manual FR-002/FR-012 semantic tone/meaning/legibility checklist for touched keys. | T052 |
+| `verification/manual-review.md` | Structured (AI-assisted) FR-002/FR-012 semantic tone/meaning/legibility review for touched keys. | T052 |
 | `verification/provisioning-validation.md` | Validation-only item provisioning decision (test fixture + scoped manual/Gate 3 decision); no `Data/Shops`. | T046 |
 | `verification/host-only-gate3.md` | Host-only Gate 3 feasibility or `planned-run-not-executed` record. | T047 |
 | `verification/sc004-comprehension-protocol.md` | SC-004 protocol; execution evidence only if a real run is appended. | T045 |
+| `verification/honesty-review.md` | Gate 3 honesty/provenance review of the claim set and 017 source boundaries. | T054 |
+| `verification/summary.md` | Evidence-derived final implementation/verification summary. | T055 |
 
 ## Claim register
 
 | Claim | Evidence class | Source artifact/path | Status | Scope note |
 |---|---|---|---|---|
-| Automated service/controller contract and invariant tests pass for 017 MVP behavior (FR-004–FR-010, SC-001–SC-003, SC-006). | `automated` (unit/property) | `LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs`; `LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs`; run record in `verification/automated-tests.md` | `pending` | Mocked dependencies; no real game process. Does not by itself cover real-game behavior, human attestation, D1, or SC-004. Fallback-only tests cannot promote FR-007/FR-013/SC-002. |
-| Automated content key/parity and tone-proxy tests pass for touched 017 keys (FR-002, FR-012). | `automated` (unit) | `LivingRoots.Tests/AgrochemicalContentParityTests.cs`; run record in `verification/automated-tests.md` | `pending` | Lexical proxy only. Cannot prove semantic meaning, nuance, or tone; T052 manual review remains separate. |
-| Persistence round-trip through the existing `ISoilHealthService.SaveData`/`LoadData` seam with a mocked `IModDataService` capture preserves the measured C2 post-penalty value. | `automated` (integration-style, mocked seam) | `LivingRoots.Tests/Services/AgrochemicalPersistenceTests.cs`; run record in `verification/persistence-roundtrip.md` | `pending` | Proves the save/load seam only, not real disk persistence and not Gate 3. Must not be described as a real save/load or end-to-end result. |
-| Manual FR-002/FR-012 semantic review of touched 017 keys is legible, meaning-equivalent across `default`/`en`/`pt`, and cozy/non-punitive. | `qualitative-follow-up` (manual copy review) | `verification/manual-review.md` | `pending` | Copy review only. Not human `verified` attestation of the feature, not automated coverage, and not SC-004. |
-| Host-only real-game Gate 3 machine-pass (3 required signals) for the 017 MVP path. | `host-only-machine-pass` (host-only machine evidence) | `verification/host-only-gate3.md` (feasibility/infeasibility record; no bundle exists) | `pending` | Host-only machine evidence only. Not human `verified` and not D1. If the run is infeasible, record `planned-run-not-executed` with status `infeasible` and a reason; never fabricate logs, bundles, or a pass. |
+| Automated service/controller contract and invariant tests pass for 017 MVP behavior (FR-004–FR-010, SC-001–SC-003; C1 boundary only). | `automated` (unit/property) | `LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs`; `LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs`; `verification/automated-tests.md`; `verification/automated-tests-targeted.log` | `complete` | 60/60 targeted cases passed on the final tree. Mocked dependencies; no real game process. The C1 test is a service-dependency boundary check; it is not a full harvest/growth composition proof. Does not cover real-game behavior, human attestation, D1, or SC-004. Fallback-only tests cannot promote FR-007/FR-013/SC-002. |
+| Automated content key/parity and tone-proxy tests pass for touched 017 keys (FR-002, FR-012). | `automated` (unit) | `LivingRoots.Tests/AgrochemicalContentParityTests.cs`; `verification/automated-tests.md`; `verification/automated-tests-targeted.log` | `complete` | 25/25 targeted cases passed. Lexical proxy only; cannot prove semantic meaning, nuance, or tone. The T052 copy review is separate and is not human attestation. |
+| Full solution automated regression suite passes with 017 included. | `automated` (full suite) | `verification/automated-tests.md`; `verification/automated-tests-full.log` | `complete` | 1816 total: 1812 passed, 0 failed, 4 skipped. The 4 skips are pre-existing spec 009 deferred harvest-hook tests, unrelated to 017. Does not prove real-game behavior or final balance. |
+| Persistence round-trip through the existing `ISoilHealthService.SaveData`/`LoadData` seam with a mocked `IModDataService` capture preserves the measured C2 post-penalty value. | `automated` (integration-style, mocked seam) | `LivingRoots.Tests/Services/AgrochemicalPersistenceTests.cs`; `verification/persistence-roundtrip.md`; `verification/persistence-roundtrip.log` | `complete` | 3/3 cases passed. C2 unknown-baseline applies and reloads as measured `90` for `P=10`; measured `50` reloads as `40`. A clamped-to-zero result is omitted by the existing sparse cache and reloads as unknown. Proves the seam only, not real disk persistence or Gate 3. |
+| Structured semantic copy review of touched 017 keys is legible, meaning-equivalent across `default`/`en`/`pt`, and cozy/non-punitive. | `qualitative-follow-up` (AI-assisted copy review) | `verification/manual-review.md` | `complete` | Review performed by the implementation agent, not an independent human. Supports a narrow copy-review claim only; does not satisfy `human-verified`, does not prove in-game rendering, and is not SC-004. |
+| Host-only real-game Gate 3 machine-pass (3 required signals) for the 017 MVP path. | `planned-run-not-executed` | `verification/host-only-gate3.md` (no scenario, log, or bundle exists) | `infeasible` | The current runner has no agrochemical action/item-grant path, so no 017 scenario can be expressed. This is **not** a pass, not `host-only-machine-pass`, not `human-verified`, and not D1. |
 | D1 farmhand convergence on a shared farm. | `d1-farmhand-convergence` (multiplayer runtime) | To be recorded from a real farmhand session | `pending` | Requires real farmhand evidence. Controller mocks, host-only machine runs, and automated tests do not satisfy D1. |
-| Human `verified` attestation for the 017 MVP. | `human-verified` (human review/playtest) | To be recorded from the human attestation | `pending` | Requires an explicit recorded human attestation. Automated and host-only machine evidence do not satisfy it. |
-| SC-004 qualitative comprehension follow-up: participants identify both the short-term shortcut and the soil-health cost at first supported use (target ≥90%). | `qualitative-follow-up` (human protocol run) | `verification/sc004-comprehension-protocol.md` (protocol only; no run recorded) | `pending` | Protocol exists, no run recorded. Protocol text alone is not evidence; SC-004 must not be claimed complete until a run and its evidence note exist. |
+| Human `verified` attestation for the 017 MVP. | `human-verified` (human review/playtest) | To be recorded from the human attestation | `pending` | Requires an explicit recorded human attestation. Automated, AI-assisted copy review, and host-only machine evidence do not satisfy it. |
+| SC-004 qualitative comprehension follow-up: participants identify both the short-term shortcut and the soil-health cost at first supported use (target ≥90%). | `qualitative-follow-up` (human protocol run) | `verification/sc004-comprehension-protocol.md` (protocol only; no run recorded) | `pending` | Protocol finalized but no participant run recorded. Protocol text alone is not evidence; SC-004 must not be claimed complete until a run and its evidence note exist. |
 
 ## Rules
 
