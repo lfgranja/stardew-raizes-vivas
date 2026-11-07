@@ -8,7 +8,7 @@ description: "Task list for 017 Joja / Agrochemical Tradeoff (MVP)"
 **Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`  
 **Tests**: **Required (TDD, Principle IV)**. Write tests first, use property-based testing (FsCheck) where applicable, assert invariants, and complete the **RED phase** (all 017 tests written and failing for the right reasons) before any implementation task begins.  
 **Organization**: Tasks are grouped by user story for traceability, with a global RED gate because core implementation touches shared files (`ModController.cs`, `AgrochemicalApplicationService.cs`, `ModEntry.cs`, `Constants.cs`, i18n). `[P]` means different files and no dependency on incomplete tasks.  
-**Task count**: 124 tasks (T001–T124).
+**Task count**: 127 tasks (T001–T127).
 
 ## Execution Rules (must follow)
 
@@ -372,3 +372,13 @@ Phase 5 controller work T036–T042 is a single writer sequence; no [P].
 - [x] T124 Final verification of the T119–T123 wave at the end: rebuild + full `dotnet test Stardew-LivingRoots.sln --configuration Release` (expect 1875/0/4, 1879 total), `dotnet format Stardew-LivingRoots.sln --verify-no-changes` (exit 0), `bash scripts/tests/test-017-claims.sh` (PASS), claims/marker/validator consistency re-check; record the outcome append-only in `verification/convergence-rerun.md`; ONLY this task attests to the wave's success. per Constitution IV, FR-015 (missing)
 
 **Phase 12 notes**: T119 first (unblocks T122's evidence references); T120/T121 may share one agent (both touch `manual-review.md`/verification notes — same context); T122 touches quickstart only; T123 NEVER runs without maintainer sign-off. No code/behavior changes in this phase unless T124 reveals a regression. If T119 commits logs, prefer the `!specs/017-joja-agrochemical-tradeoff/verification/*.log` .gitignore negation; never overwrite or rewrite prior verification artifacts. After T119–T124, converge should report converged or near-converged; remaining items stay D1/human-verified/SC-004.
+
+## Phase 13: Convergence
+
+**Purpose**: Close the wording/attribution nits in the Phase-11/12 closure annotations found by the post-implementation spot audit — no claim promotions, append-only annotations, GATE3 markers untouched. All LOW severity; ordered as listed.
+
+- [ ] T125 Align the Phase-12 range in the two annotations: `ROADMAP.md` and `COMPLETION_SUMMARY.md` — the new "2026-11-07 (later same day)" blocks say "Phase 12 (T119–T123)"; `tasks.md` and `release.md` correctly say T119–T124 (T124 closed at `1ff107b`). Edit exactly those two range strings. per FR-015, Constitution IV (contradicts)
+- [ ] T126 Disentangle evidence attribution in the same two annotations and `release.md`'s fechamento addendum: the "123/123 targeted, 1875/0/4 full" re-run figures must be attributed to the committed `verification/convergence-phase11-targeted.log` / `-full.log` (T119/T124), not to `validate.md` (which attests 119/119 and 1871/0/4 @ c9ff596). Word the attribution so no reader binds current counts to the 2026-11-06-scoped validation artifact. per FR-015 (partial)
+- [ ] T127 Resolve the unsupported heading "CONVERGED"/"CONVERGIDA" in the two annotations: either qualify it (e.g. "CLOSED"/"fechada — closure recorded in tasks.md/T124; post-Phase-11 converge passes are in-session records, not committed artifacts") or commit a short converge-closure artifact under `verification/` recording the post-Phase-11/12 converge-pass outcome (what was checked, verdict, date, session) and reference it from the annotations; do NOT rewrite any GATE3 marker; maintainer decision on phrasing. per FR-015, Constitution IV (partial)
+
+**Phase 13 notes**: doc-only; touches exactly the three annotation sites from `da93b0c`. T125/T126 are mechanical; T127 needs maintainer phrasing preference but either branch satisfies the task. After T125–T127, the next converge pass should report converged; D1/human-verified/SC-004 remain pending and out of scope.
