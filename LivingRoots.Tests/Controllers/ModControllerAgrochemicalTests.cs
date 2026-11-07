@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
 using FsCheck;
 using FsCheck.Xunit;
 using LivingRoots.Controllers;
@@ -18,7 +20,7 @@ using Xunit;
 namespace LivingRoots.Tests;
 
 /// <summary>
-/// 017 controller orchestration tests (T014-T020, T078, T082, T085).
+/// 017 controller orchestration tests (T014-T020, T078, T082, T085, T096, T102).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -720,6 +722,141 @@ public class ModControllerAgrochemicalTests
     }
 
     // ---------------------------------------------------------------------
+    // T096 / T102 - zero-stack slot clear and null-feedback diagnostic
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// T096 (FR-013, zero-stack cleanup): consuming the last unit of the held
+    /// agrochemical clears the matching inventory slot so no zero-stack ghost
+    /// remains. The farmer is the uninitialized <see cref="StardewValley.Farmer"/>
+    /// fixture with its <c>netItems</c> NetRef loaded with a real
+    /// <see cref="StardewValley.Inventories.Inventory"/> (the BinPickupTests
+    /// pattern), so the slot clear is observable in the headless host.
+    /// </summary>
+    // characterization — the zero-stack slot-clear branch in
+    // ConsumeHeldAgrochemical already exists against the current controller;
+    // this test pins it against regressions.
+    [Fact]
+    public void TryApplyAgrochemical_WithLastHeldUnitConsumed_ClearsPlayerInventorySlot()
+    {
+        var harness = new ControllerHarness();
+        StardewValley.Farmer farmer = CreateHeadlessFarmer();
+        Item heldItem = harness.Player.CurrentItem!;
+        heldItem.Stack = 1;
+        farmer.Items.Add(heldItem);
+        harness.Player.CurrentPlayer = farmer;
+        harness.Agro
+            .Setup(x => x.Apply(It.IsAny<GameLocation>(), It.IsAny<Vector2>()))
+            .Returns(CreateBaseline50Success());
+
+        bool result = harness.Controller.TryApplyAgrochemicalWithLock(
+            harness.Fixture.Location,
+            Tile,
+            FarmerId);
+
+        Assert.True(result, "The committed outcome must be preserved when the slot clear succeeds.");
+        Assert.Equal(0, heldItem.Stack);
+        Assert.Null(farmer.Items[0]);
+        AssertSingleSuccess(harness.Feedback, ModConstants.TranslationKeyAgrochemicalApplied);
+        AssertSingleBroadcast(harness.Multiplayer);
+    }
+
+    /// <summary>
+    /// T096 (FR-013): a held stack larger than one keeps its inventory slot —
+    /// only the held item's stack is decremented, exactly one unit per application.
+    /// </summary>
+    // characterization — the Stack &gt; 1 passthrough branch in
+    // ConsumeHeldAgrochemical already exists against the current controller;
+    // this test pins it against regressions.
+    [Fact]
+    public void TryApplyAgrochemical_WithStackedHeldItem_RetainsSlotWithDecrementedStack()
+    {
+        var harness = new ControllerHarness();
+        StardewValley.Farmer farmer = CreateHeadlessFarmer();
+        Item heldItem = harness.Player.CurrentItem!;
+        heldItem.Stack = 2;
+        farmer.Items.Add(heldItem);
+        harness.Player.CurrentPlayer = farmer;
+        harness.Agro
+            .Setup(x => x.Apply(It.IsAny<GameLocation>(), It.IsAny<Vector2>()))
+            .Returns(CreateBaseline50Success());
+
+        bool result = harness.Controller.TryApplyAgrochemicalWithLock(
+            harness.Fixture.Location,
+            Tile,
+            FarmerId);
+
+        Assert.True(result, "A successful application on a multi-item stack must report success.");
+        Assert.Equal(1, heldItem.Stack);
+        Assert.Same(heldItem, farmer.Items[0]);
+        AssertSingleBroadcast(harness.Multiplayer);
+    }
+
+    /// <summary>
+    /// T096 (FR-013): with no reachable player inventory (CurrentPlayer is
+    /// null, the headless-skip path), the zero-stack clear is skipped and
+    /// never throws — the committed outcome is preserved.
+    /// </summary>
+    // characterization — the headless-skip branch in ConsumeHeldAgrochemical
+    // already exists against the current controller; this test pins it against
+    // regressions.
+    [Fact]
+    public void TryApplyAgrochemical_WithNoPlayerInventory_CommitsWithoutThrowing()
+    {
+        var harness = new ControllerHarness();
+        harness.Player.CurrentItem!.Stack = 1;
+        harness.Agro
+            .Setup(x => x.Apply(It.IsAny<GameLocation>(), It.IsAny<Vector2>()))
+            .Returns(CreateBaseline50Success());
+        bool result = false;
+
+        Exception? escaped = Record.Exception(
+            () => result = harness.Controller.TryApplyAgrochemicalWithLock(
+                harness.Fixture.Location,
+                Tile,
+                FarmerId));
+
+        Assert.Null(escaped);
+        Assert.True(result, "A missing player inventory must not undo the committed outcome.");
+        Assert.Equal(0, harness.Player.CurrentItem!.Stack);
+        harness.Agro.Verify(
+            x => x.Apply(It.IsAny<GameLocation>(), It.IsAny<Vector2>()),
+            Times.Once);
+        AssertSingleBroadcast(harness.Multiplayer);
+    }
+
+    /// <summary>
+    /// T102 (FR-007, FR-013): on the committed outcome with the feedback
+    /// delegate unset, the monitor receives at least one Warn naming the
+    /// agrochemical feedback context so the missing-HUD gap is diagnosable.
+    /// </summary>
+    // characterization — the null-feedback Warn path in
+    // ShowAgrochemicalFeedbackSafely already exists against the current
+    // controller; this test pins the diagnostic contract.
+    [Fact]
+    public void TryApplyAgrochemical_WithNullFeedback_LogsAgrochemicalFeedbackContextAtWarn()
+    {
+        var harness = new ControllerHarness();
+        harness.Agro
+            .Setup(x => x.Apply(It.IsAny<GameLocation>(), It.IsAny<Vector2>()))
+            .Returns(CreateBaseline50Success());
+        harness.Controller.ShowAgrochemicalFeedback = null;
+
+        bool result = harness.Controller.TryApplyAgrochemicalWithLock(
+            harness.Fixture.Location,
+            Tile,
+            FarmerId);
+
+        Assert.True(result, "The committed outcome must not depend on the HUD path.");
+        harness.Monitor.Verify(
+            m => m.Log(
+                It.Is<string>(message => message.Contains("Agrochemical feedback", StringComparison.Ordinal)),
+                LogLevel.Warn),
+            Times.AtLeastOnce,
+            "A missing feedback registration must surface as a Warn naming the agrochemical feedback context.");
+    }
+
+    // ---------------------------------------------------------------------
     // T085 - repeated applications on the same held stack
     // ---------------------------------------------------------------------
 
@@ -889,6 +1026,30 @@ public class ModControllerAgrochemicalTests
             item.Stack = 3;
             return item;
         }
+    }
+
+    private static StardewValley.Farmer CreateHeadlessFarmer()
+    {
+        // BinPickupTests pattern: the Farmer's identity and inventory fields
+        // are readonly and initialised inline — allocations
+        // GetUninitializedObject skips — so they are installed through
+        // reflection, the same constructor-bypass the GameStateFixture
+        // applies to Game1.game1.
+        var farmer = (StardewValley.Farmer)FormatterServices.GetUninitializedObject(typeof(StardewValley.Farmer));
+        var playerId = new Netcode.NetLong();
+        playerId.Value = 1L;
+        typeof(StardewValley.Farmer)
+            .GetField("uniqueMultiplayerID", BindingFlags.Public | BindingFlags.Instance)!
+            .SetValue(farmer, playerId);
+        typeof(StardewValley.Farmer)
+            .GetField("netItems", BindingFlags.Public | BindingFlags.Instance)!
+            .SetValue(
+                farmer,
+                new Netcode.NetRef<StardewValley.Inventories.Inventory>
+                {
+                    Value = new StardewValley.Inventories.Inventory()
+                });
+        return farmer;
     }
 
     private static AgrochemicalApplicationResult CreateBaseline50Success()
