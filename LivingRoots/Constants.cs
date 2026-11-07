@@ -231,5 +231,8 @@ namespace LivingRoots
         public const string TranslationKeyAgrochemicalActionConflict = "message.agrochemical.action-conflict";
         public const string TranslationKeyAgrochemicalUnsupportedAuthority = "message.agrochemical.unsupported-authority";
         public const string TranslationKeyAgrochemicalSoilAtMinimum = "message.agrochemical.soil-at-minimum";
+
+        // T097: commit-failure refusal key (added in Wave A scaffold; wired in Wave B)
+        public const string TranslationKeyAgrochemicalCommitFailed = "message.agrochemical.commit-failed";
     }
 }
