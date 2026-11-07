@@ -9,8 +9,8 @@ namespace LivingRoots.Tests;
 
 /// <summary>
 /// 017 i18n/content parity tests for the Joja/agrochemical tradeoff (T021-T022, plus
-/// remediation coverage T065/T068/T081 and the Phase 10 convergence RED coverage
-/// T097/T104).
+/// remediation coverage T065/T068/T081 and the Phase 10 convergence coverage
+/// T097/T104, plus the T107 constants-file pin).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -20,8 +20,8 @@ namespace LivingRoots.Tests;
 /// T081 Portuguese magnitude/comparison copy) shipped in Phase 9; those assertions are green
 /// regression guards. Assertions added in Phase 10 (T097 commit-failure refusal structure,
 /// tone, no-consume/no-success/no-buff claims, and the <c>TranslationKeyAgrochemicalCommitFailed</c>
-/// constants-file binding; T104 missing-input explicit-diagnosis phrasing) pin the new copy
-/// contract and are expected RED until Wave B ships the new strings.
+/// constants-file binding; T104 missing-input explicit-diagnosis phrasing) pin the copy contract
+/// as green regression guards; Wave B shipped the strings.
 /// </para>
 /// <para>
 /// T022 checks are contract-driven lexical proxies for the content contract: they prove the
@@ -163,10 +163,9 @@ public class AgrochemicalContentParityTests
         "máxima"
     };
 
-    // T097: Wave B introduces ModConstants.TranslationKeyAgrochemicalCommitFailed alongside the
-    // key. It is deliberately referenced only through the constants-file token check below so
-    // this file compiles (and the suite runs) before the constant exists; a direct reference
-    // would break compilation of the whole test project ahead of Wave B.
+    // T097: the commit-failure refusal key. It is deliberately referenced as a literal so the
+    // constants-file token check below stays decoupled from the ModConstants value; the
+    // constant itself ships in Constants.cs (TranslationKeyAgrochemicalCommitFailed).
     private const string CommitFailedTranslationKey = "message.agrochemical.commit-failed";
 
     private static readonly string[] EnglishCommitFailedNoSuccessTokens =
@@ -487,8 +486,8 @@ public class AgrochemicalContentParityTests
     /// <summary>
     /// T068 (contract bounded/recoverable player legibility): every locale must communicate that
     /// the soil-health consequence is bounded and recoverable through existing soil-care systems,
-    /// in either the item description or the applied-success message. Wave B may change either
-    /// key; at least one must carry the element per locale.
+    /// in either the item description or the applied-success message; either key may carry the
+    /// element, but at least one must per locale.
     /// </summary>
     /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
     [Theory]
@@ -790,10 +789,9 @@ public class AgrochemicalContentParityTests
 
     /// <summary>
     /// T097 (FR-008, commit-failure honesty): the dedicated commit-failure refusal key must ship
-    /// in every locale as a non-empty string. Wave B introduces
-    /// <c>ModConstants.TranslationKeyAgrochemicalCommitFailed</c> and the
-    /// <c>message.agrochemical.commit-failed</c> locale entries; this assertion is expected RED
-    /// until then.
+    /// in every locale as a non-empty string. <c>ModConstants.TranslationKeyAgrochemicalCommitFailed</c>
+    /// and the <c>message.agrochemical.commit-failed</c> locale entries shipped in Wave B; this
+    /// assertion is a green regression guard.
     /// </summary>
     /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
     [Theory]
@@ -809,7 +807,7 @@ public class AgrochemicalContentParityTests
     /// T097 (FR-008, refusal minimum structure): the commit-failure refusal must state (1) an
     /// explicit cause reference to a commit/apply failure, (2) that the application did not
     /// happen / no success occurred, and (3) a next-step implication (try again, wait, or ask the
-    /// host). Expected RED until Wave B ships the copy.
+    /// host). Green regression guard (Wave B shipped the copy).
     /// </summary>
     /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
     [Theory]
@@ -846,7 +844,7 @@ public class AgrochemicalContentParityTests
     /// consumed the input or applied successfully. Claim-of-success/claim-of-consumption tokens
     /// are chosen so they cannot occur inside a negated denial; the required no-success phrasing
     /// in <see cref="CommitFailedRefusal_StatesCause_NoSuccessAndNextStep"/> is the primary
-    /// guard. Expected RED until Wave B ships the copy.
+    /// guard; green regression guard (Wave B shipped the copy).
     /// </summary>
     /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
     [Theory]
@@ -869,7 +867,7 @@ public class AgrochemicalContentParityTests
     /// T097 (C1-style, FR-003/FR-004/SC-006): the commit-failure refusal must not claim a
     /// quality, growth, extra-harvest, or fertilizer-tier mechanical buff; it is a refusal, not a
     /// confirmation. Mirrors <see cref="SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly"/>.
-    /// Expected RED until Wave B ships the copy.
+    /// Green regression guard (Wave B shipped the copy).
     /// </summary>
     /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
     [Theory]
@@ -892,8 +890,8 @@ public class AgrochemicalContentParityTests
     /// T097 (FR-002/FR-012): the commit-failure refusal must stay cozy and non-punitive; no
     /// shaming, insulting, or moralizing vocabulary. Mirrors the
     /// <see cref="AllAgrochemicalCopy_UsesCozyNonPunitiveTone"/> tone sweep (which iterates
-    /// <see cref="RequiredAgrochemicalKeys"/> and therefore does not cover the new key). Expected
-    /// RED until Wave B ships the copy.
+    /// <see cref="RequiredAgrochemicalKeys"/> and therefore does not cover the new key). Green
+    /// regression guard (Wave B shipped the copy).
     /// </summary>
     /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
     [Theory]
@@ -917,8 +915,8 @@ public class AgrochemicalContentParityTests
     /// <c>TranslationKeyAgrochemicalCommitFailed</c> bound to
     /// <c>message.agrochemical.commit-failed</c> so the key is part of <see cref="ModConstants"/>.
     /// Written as a constants-file token check (like the production-source guards in
-    /// <c>ProductionSourceGuardTests</c>) so the suite compiles before Wave B lands the constant.
-    /// Expected RED until Wave B extends <c>Constants.cs</c>.
+    /// <c>ProductionSourceGuardTests</c>) to stay decoupled from the ModConstants value.
+    /// Green regression guard (Wave B extended <c>Constants.cs</c>).
     /// </summary>
     [Fact]
     public void ConstantsFile_DeclaresCommitFailedTranslationKeyBoundToMessageKey()
@@ -938,11 +936,56 @@ public class AgrochemicalContentParityTests
     }
 
     /// <summary>
+    /// T107 (optional pin, constants-file token check): every refusal key constant in
+    /// <c>LivingRoots/Constants.cs</c> — the five refusal keys plus
+    /// <c>TranslationKeyAgrochemicalCommitFailed</c> — must bind to a <c>message.agrochemical.*</c>
+    /// JSON key that ships as a non-empty string in every locale. Mirrors
+    /// <see cref="ConstantsFile_DeclaresCommitFailedTranslationKeyBoundToMessageKey"/>; it does not
+    /// depend on the <c>ModConstants</c> values being compile-time literals at the call site and
+    /// does not inspect the controller fallback map.
+    /// </summary>
+    [Fact]
+    public void ConstantsFile_DeclaresAllFiveRefusalKeysPlusCommitFailedBoundToMessages()
+    {
+        var constantsPath = Path.Combine(LocateRepoRoot(), "LivingRoots", "Constants.cs");
+        Assert.True(File.Exists(constantsPath), $"Constants.cs not found at {constantsPath}.");
+        var content = File.ReadAllText(constantsPath);
+
+        var bindings = new (string ConstantName, string MessageKey)[]
+        {
+            ("TranslationKeyAgrochemicalInvalidTarget", ModConstants.TranslationKeyAgrochemicalInvalidTarget),
+            ("TranslationKeyAgrochemicalMissingInput", ModConstants.TranslationKeyAgrochemicalMissingInput),
+            ("TranslationKeyAgrochemicalActionConflict", ModConstants.TranslationKeyAgrochemicalActionConflict),
+            ("TranslationKeyAgrochemicalUnsupportedAuthority", ModConstants.TranslationKeyAgrochemicalUnsupportedAuthority),
+            ("TranslationKeyAgrochemicalSoilAtMinimum", ModConstants.TranslationKeyAgrochemicalSoilAtMinimum),
+            ("TranslationKeyAgrochemicalCommitFailed", CommitFailedTranslationKey),
+        };
+
+        foreach (var (constantName, messageKey) in bindings)
+        {
+            Assert.True(
+                messageKey.StartsWith("message.agrochemical.", StringComparison.Ordinal),
+                $"'{constantName}' must bind to a 'message.agrochemical.*' key, but was '{messageKey}'.");
+            Assert.True(
+                content.Contains(constantName, StringComparison.Ordinal),
+                $"LivingRoots/Constants.cs must declare {constantName}.");
+            Assert.True(
+                content.Contains(messageKey, StringComparison.Ordinal),
+                $"LivingRoots/Constants.cs must bind {constantName} to '{messageKey}'.");
+
+            foreach (var localeFileName in LocaleFileNames)
+            {
+                RequireNonEmptyString(LoadLocale(localeFileName), localeFileName, messageKey);
+            }
+        }
+    }
+
+    /// <summary>
     /// T104 (FR-002/FR-008, explicit-diagnosis phrasing): the <c>missing-input</c> refusal must
     /// diagnose the holding condition addressed to the player, not issue a bare instruction.
     /// Requiring the player-addressed pronoun (<c>you</c>/<c>você</c>) distinguishes an explicit
     /// diagnosis ("You need to be holding…") from the current requirement-style copy ("Hold a
-    /// Joja agrochemical…"), which lacks it. Expected RED until Wave B tightens the copy.
+    /// Joja agrochemical…"), which lacks it. Green regression guard (Wave B tightened the copy).
     /// Existing missing-input assertions are intentionally unchanged.
     /// </summary>
     /// <param name="localeFileName">Locale file name relative to <c>LivingRoots/i18n</c>.</param>
