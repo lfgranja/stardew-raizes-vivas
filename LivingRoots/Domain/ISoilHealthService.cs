@@ -30,21 +30,43 @@ namespace LivingRoots.Domain
         void Reset();
 
         /// <summary>
-        /// 017 T064 scaffold (RED phase): atomic bounded write that reports
-        /// whether the value was committed. Returns <c>false</c> when the tile
-        /// is rejected (invalid tile or capacity limit) instead of silently
-        /// dropping the write.
+        /// Atomic bounded write of an explicit measured health value for one tile
+        /// (017 T064). Mirrors <see cref="SetSoilHealth"/>'s measured-write path but
+        /// reports whether the value was committed instead of silently dropping the
+        /// write.
         /// </summary>
+        /// <param name="locationName">The location name to validate and key the write by.</param>
+        /// <param name="tile">
+        /// The tile as integer grid coordinates. Values must be finite integers within
+        /// <c>ModConstants.MaxAbsoluteTileCoordinate</c>; <see cref="Point"/> carries no
+        /// NaN/Infinity, so callers must floor and bound-check <see cref="Vector2"/>
+        /// coordinates before calling.
+        /// </param>
+        /// <param name="value">
+        /// The health value. Clamped to <c>[ModConstants.MinSoilHealth, ModConstants.MaxSoilHealth]</c>
+        /// with the same NaN/Infinity mapping as <see cref="SetSoilHealth"/>: NaN clamps to
+        /// <c>MinSoilHealth</c>, positive infinity to <c>MaxSoilHealth</c>, negative infinity to
+        /// <c>MinSoilHealth</c>. An explicit <c>0f</c> is a measured floor reading and round-trips;
+        /// a near-zero result reached only through clamping of a non-zero input follows the
+        /// sparse-cache drop rule of the measured-write path.
+        /// </param>
+        /// <returns>
+        /// <c>true</c> when the measured value was handled as a committed write (a near-zero
+        /// clamped result reached only through clamping of a non-zero input follows the
+        /// sparse-cache drop rule and counts as committed, mirroring the
+        /// <see cref="SetSoilHealth"/> measured-write path). <c>false</c> when the write was
+        /// refused — invalid location name, tile coordinate outside
+        /// <c>ModConstants.MaxAbsoluteTileCoordinate</c>, or the
+        /// <c>MaxLocationsPerSave</c>/<c>MaxTilesPerLocation</c> capacity guards — in which
+        /// case nothing is persisted. Callers that need to know the commit landed MUST use
+        /// this member instead of <see cref="SetSoilHealth"/>.
+        /// </returns>
         /// <remarks>
-        /// Default interface member that throws so the 017 RED tests compile
-        /// before the real implementation lands. No <c>SoilHealthService</c>
-        /// implementation exists in this scaffold; the member is expected to be
-        /// replaced by a concrete implementation in the T064 wave. Callers must
-        /// not invoke it on production paths until then.
+        /// On a successful commit the implementation raises
+        /// <see cref="OnTileHealthChanged"/> with the floored tile as a
+        /// <see cref="Vector2"/>, mirroring the measured-write path of
+        /// <see cref="SetSoilHealth"/>. The event fires outside the internal cache lock.
         /// </remarks>
-        bool TrySetSoilHealth(string locationName, Point tile, float value)
-        {
-            throw new NotImplementedException();
-        }
+        bool TrySetSoilHealth(string locationName, Point tile, float value);
     }
 }
