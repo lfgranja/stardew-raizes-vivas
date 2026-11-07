@@ -40,6 +40,11 @@
       }
     },
     {
+      "action": "sleep",
+      "target": "farm",
+      "days": 1
+    },
+    {
       "action": "dumpCropPhase",
       "target": "farm"
     },
