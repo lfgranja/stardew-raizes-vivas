@@ -32,3 +32,7 @@ The runner promoted the GATE3 block in `specs/004-playable-compost-loop/test.md`
 ## T148 (human E attestation)
 
 Not performed. `verified` requires a maintainer's honesty-level E review of this bundle, the (blocked) second-host 3/3 result, and this evidence directory. T138 (second host) and T145 (farmhand path) remain BLOCKED in this environment.
+
+## Compatibility note (append-only, 2026-11-07, 018 pass 5)
+
+- `scripts/verify-scenario.sh --verify-bundle evidence-bundle-run-20261105T024756Z-07ba` returned **exit 19**: `bundle file not in subject: retention-receipt.json` (current 016-hardened verifier). This is a **verifier/subject-contract compatibility finding** on the historical local bundle; it does **not** rewrite the 2026-11-05 observation above. If this bundle is cited as current evidence, treat as **legacy/incompatible with current verifier** until reconciled under an explicit, append-only process. No deletion. See `specs/018-machine-pass-full-coverage/verification/cycle-2026-11-07-80-20-pass5.md`.
