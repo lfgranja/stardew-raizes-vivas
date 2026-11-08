@@ -1,0 +1,133 @@
+name: Release
+
+# Spec-like status (hub-first 022): local-only, NOT verified on hosted infra.
+# Enables publishing the mod zip when a tag `v*.*.*` is pushed — this file does NOT
+# create tags, does NOT enable itself, and does NOT publish to SMAPI/mod sites.
+# Its only effect is: a tag pushed by a human (or by authorized automation) is
+# gated by `scripts/release-gate.sh`; a green gate produces one release asset.
+# Required repo knobs before this can ever run: `vars.BUILDDEPS_ENABLED=true`
+# (else job skipped by design) and the `BUILDDEPS_TOKEN` secret (private read).
+# No tag push, no host-side setting, and no publishing happens when this file is
+# merged. Merging it is safe; exercising it is a host-side decision.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Gate, package, draft release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    # Fail-closed by design: when builddeps is not provisioned, this job never
+    # runs — mirroring build_and_test.yml. It is never a false-green.
+    if: ${{ vars.BUILDDEPS_ENABLED == 'true' }}
+
+    env:
+      GamePath: ${{ github.workspace }}/.gamepath
+      BUILDDEPS_REPO: lfgranja/stardew-raizes-vivas-builddeps
+      BUILDDEPS_TAG: gamepath-v1
+      BUILDDEPS_ASSET: gamepath.zip
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Fetch game assemblies (private builddeps)
+        env:
+          GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p "${GamePath}"
+          gh release download "${BUILDDEPS_TAG}" \
+            --repo "${BUILDDEPS_REPO}" \
+            --pattern "${BUILDDEPS_ASSET}" \
+            --dir "${GamePath}"
+          unzip -o "${GamePath}/${BUILDDEPS_ASSET}" -d "${GamePath}"
+          rm -f "${GamePath}/${BUILDDEPS_ASSET}"
+          mkdir -p "${GamePath}/smapi-internal"
+          if [ -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" ]; then
+            mv -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" "${GamePath}/smapi-internal/"
+          fi
+          if [ -f "${GamePath}/0Harmony.dll" ]; then
+            mv -f "${GamePath}/0Harmony.dll" "${GamePath}/smapi-internal/"
+          fi
+
+      - name: Preflight — game assemblies present
+        run: |
+          set -euo pipefail
+          missing=0
+          for required in \
+            "Stardew Valley.dll" \
+            "StardewModdingAPI.dll" \
+            "StardewValley.GameData.dll" \
+            "MonoGame.Framework.dll" \
+            "xTile.dll" \
+            "smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" \
+            "smapi-internal/0Harmony.dll"; do
+            if [ ! -f "${GamePath}/${required}" ]; then
+              echo "::error::missing ${required} under ${GamePath}"
+              missing=1
+            fi
+          done
+          [ "${missing}" -eq 0 ] || exit 1
+
+      - name: Release gate (same contract as local scripts/release-gate.sh)
+        run: GamePath="${GamePath}" scripts/release-gate.sh
+
+      - name: Package release zip
+        id: pkg
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          src=$(ls "LivingRoots/bin/LivingRoots ${version}.zip")
+          dest="LivingRoots-${version}.zip"
+          cp "${src}" "${dest}"
+          sha256sum "${dest}" | tee "${dest}.sha256"
+          echo "asset=${dest}" >> "$GITHUB_OUTPUT"
+
+      - name: Create draft release with artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "::error::gh CLI is unavailable on this runner; create the release manually from the artifact uploaded above, or run on a runner that ships gh."
+            exit 1
+          fi
+          prev_tag="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
+          if [ -n "${prev_tag}" ]; then
+            range="${prev_tag}..${GITHUB_REF_NAME}"
+          else
+            range="${GITHUB_REF_NAME}"
+          fi
+          git log --pretty=format:'- %s (%h)' "${range}" > release-notes.md
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --draft \
+            --notes-file release-notes.md \
+            "${{ steps.pkg.outputs.asset }}" \
+            "${{ steps.pkg.outputs.asset }}.sha256"
+
+      - name: Always upload the zip as an artifact (even if the release step failed)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: livingroots-release
+          path: |
+            LivingRoots-*.zip
+            LivingRoots-*.zip.sha256
+          if-no-files-found: warn
