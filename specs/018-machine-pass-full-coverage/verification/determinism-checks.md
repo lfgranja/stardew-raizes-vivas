@@ -83,3 +83,28 @@ Semantic comparison (same method as pass 11): all seven compared JSON files iden
 Post-restore runs corroborate the baseline (bundled with the mutation ledger): 005 `20261108T173619Z-070e` and 017 `20261108T173759Z-7c21` restate the same actual values.
 
 Coverage: **4 of 19** scenario files now carry 2× determinism evidence (004, 013 from pass 11; 005 and 017 from pass 13). The rest remain residual.
+
+## Pass 15 addition (2026-11-08) — 013 bare-tile and 014 (coverage now 6 of 19)
+
+Command shape:
+
+```bash
+./scripts/verify-scenario.sh --scenario <scenario.json> --no-acquire \
+  --game-path "/home/luis/.local/share/Steam/steamapps/common/Stardew Valley" --skip-build --timeout 420
+```
+
+| Scenario | Run 1 | Run 2 | Verdicts |
+|---|---|---|---|
+| 013 `mulch-bare-tile-decay-exemption` (v4, 2-signal, seed 123456789) | `evidence-bundle-run-20261108T211743Z-62f5` | `evidence-bundle-run-20261108T211930Z-69c9` | pass / pass |
+| 014 `soil-health-harvest-quality` (v3, 12 predicates, seed 1) | `evidence-bundle-run-20261108T212204Z-79e7` | `evidence-bundle-run-20261108T212407Z-6576` | pass / pass |
+
+Semantic comparison (same method as pass 11/13): all compared JSON files identical per pair; `evaluation/thresholds.jsonl` identical.
+
+| Scenario | `actual` values (both runs) | Threshold outcomes (both runs) | SMAPI log (normalized) |
+|---|---|---|---|
+| 013 | `soilHealth` 50, tier moderate | predicate-0 (×1.0) pass; predicate-1 (`isMainPlayer`) pass | filtered 93/93 lines, **0 differences** after timestamp/ms stripping |
+| 014 | `soilHealth` 90, tier healthy; `poorHarvestQuality` 0, `moderateHarvestQuality` 1, `healthyHarvestQuality` 1; `healthyExtraCount` 1 | all 12 predicates pass | filtered 34/34 lines, **0 differences** after stripping |
+
+Post-restore runs corroborate the baseline (bundled with the mutation ledger): 013 `20261108T213615Z-51b4` and 014 `20261108T213820Z-4874` restate the same actual values.
+
+Coverage: **6 of 19** scenario files now carry 2× determinism evidence (004, 013-expiry, 005, 017, 013-bare-tile, 014). The rest remain residual.

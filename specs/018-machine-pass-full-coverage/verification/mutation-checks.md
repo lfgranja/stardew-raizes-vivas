@@ -125,3 +125,52 @@ All eight bundles produced in pass 13 pass `./scripts/verify-scenario.sh --verif
 The `errored` bundles `173204Z-08a0` and `173425Z-7088` are negative controls; they are never promoted or cited as machine-pass.
 
 Coverage: **4 of 19** scenario files (004, 013, 005-healthy, 017-tradeoff). The remaining 15 host/farmhand scenario files are still residual.
+
+## Pass 15 addition (2026-11-08) — 013 bare-tile and 014 (coverage now 6 of 19)
+
+### 013 — mutant killed (`MulchDecayMultiplier 0f → 1f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:177` `MulchDecayMultiplier = 0f` → `1f`.
+- **Scenario:** `specs/013-mulch-soil-cover/scenarios/mulch-bare-tile-decay-exemption.scenario.json` (v4, bare HoeDirt, seed 123456789).
+- **Build/deploy:** exit 0.
+- **Run:** `TMPDIR=/home/luis/.runner-tmp ./scripts/verify-scenario.sh --scenario … --skip-build --timeout 420`
+- **Bundle:** `evidence-bundle-run-20261108T212701Z-0ce2`
+- **Runner exit:** `19` (`ERRORED`; expected pass, actual fail).
+- **Observed:** `evaluation/actual.json`: soil 50 → **44** (one unprotected spring decay per tick ×6), tier moderate. `evaluation/thresholds.jsonl`: predicate-0 (`multiplier factor 1.0`) → **`passed: false`**; predicate-1 (`isMainPlayer`) → `true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`, `grep` confirms `0f`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261108T213615Z-51b4`, soil 50, **pass**.
+
+### 014 — mutant killed (decision seam: Poor branch `ForceQualityZero` `true → false`)
+
+- **Mutation:** `LivingRoots/Domain/Services/HarvestQualityService.cs` Poor branch (`soilHealth < PoorModerateBandEdge`): `ForceQualityZero = true` → `false`.
+- **Scenario:** `specs/014-soil-health-crop-quality/scenarios/soil-health-harvest-quality.scenario.json` (12 predicates, seed 1).
+- **Build/deploy:** exit 0.
+- **Bundle:** `evidence-bundle-run-20261108T213324Z-3925`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** poor probe `poorHarvestQuality` = **1** (scenario requires 0; the Poor-tier forced quality penalty was removed). `evaluation/thresholds.jsonl`: predicate-1 → **`passed: false`**; **all other 11 predicates `passed: true`** — a single-assertion kill. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Domain/Services/HarvestQualityService.cs`, `git diff` clean; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261108T213820Z-4874`, **pass**.
+
+### 014 — discarded mutant (`SoilQualityHealthyBoost 0.08f → 0f`), recorded for honesty
+
+- Bundle `evidence-bundle-run-20261108T212933Z-7976`: `verification: harvest matrix could not fill every probe from 4188 candidate tiles around 60,15.` The planner's band is `[vanillaP, vanillaP + SoilQualityHealthyBoost)`; with the mutant it became empty, so no probes were selected and **every predicate returned `unmeasured-actual`**.
+- This run detects the broken mutation (scenario fails), but **not at the intended assertion**: SC-MP-6 requires the failing check to be the asserted contract. The mutation was therefore discarded as evidence and replaced by the decision-seam mutant above. `--verify-bundle` exit 0 (bundle is structurally sound); it remains a negative control but is **never cited** as machine-pass/kill evidence.
+- Lesson: mutation selection must respect harness-witnessed preconditions; constants shared with probe selection are not valid negative controls for this scenario.
+
+### Integrity (pass 15)
+
+`--verify-bundle` exit 0 for all nine bundles in this pass:
+
+```
+0 evidence-bundle-run-20261108T211743Z-62f5
+0 evidence-bundle-run-20261108T211930Z-69c9
+0 evidence-bundle-run-20261108T212204Z-79e7
+0 evidence-bundle-run-20261108T212407Z-6576
+0 evidence-bundle-run-20261108T212701Z-0ce2
+0 evidence-bundle-run-20261108T212933Z-7976
+0 evidence-bundle-run-20261108T213324Z-3925
+0 evidence-bundle-run-20261108T213615Z-51b4
+0 evidence-bundle-run-20261108T213820Z-4874
+```
+
+Coverage: **6 of 19** scenario files (004, 013-expiry, 005, 017, 013-bare-tile, 014). The remaining 13 host/farmhand scenario files are still residual.
