@@ -1,14 +1,16 @@
 # 018 — Verification Summary (honest status)
 
-**Last updated:** 2026-11-08 (pass 11, ciclo 80/20 MDMV adaptado)
+**Last updated:** 2026-11-08 (pass 12, ciclo 80/20 MDMV adaptado)
 **Scope:** aggregate status only. `machine-pass` means the runner promoted a host run with complete, agreeing declared signals and honesty level R. It is **not** human verification, **not** D1, and **not** SC-004.
 
-## Deterministic gates (fresh, pass 10)
+## Deterministic gates (pass 10 baseline + pass 12 additions)
 
 | Gate | Command | Result |
 |---|---|---|
-| Formatting | `GamePath=/home/luis/stardew-assemblies dotnet format Stardew-LivingRoots.sln --verify-no-changes` | **exit 0** |
-| Docs markers | `./scripts/verify-scenario.sh --check-docs` | **exit 0** |
+| Formatting (pass 12) | `GamePath=/home/luis/stardew-assemblies dotnet format Stardew-LivingRoots.sln --verify-no-changes` | **exit 0** |
+| Full test suite (pass 12) | `GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln -c Release --no-restore` | **1937 passed / 4 skipped / 0 failed** (1941 total, 2m36s) |
+| Targeted mulch tests (pass 12) | `dotnet test ... --filter "MulchApplicationServiceTests\|MulchVerificationRulesTests\|LivingRootsModApiTests"` | **37/37 passed** (33 new) |
+| Docs markers (pass 12) | `./scripts/verify-scenario.sh --check-docs` | **exit 0** |
 | Doc links | `bash scripts/tests/test-doc-links.sh` | **PASS** |
 | Full smoke suite | `SMOKE_SKIP_INTEGRATION=1 ./scripts/tests/run-all.sh` | **50 files, 49 passed, 0 failed, 1 skipped, exit 0** |
 | Mutation checks (pass 11) | 004 `SoilGrowthPoorMultiplier` and 013 `MulchDurationDays` mutants, real headless runs (2 of 19 scenarios) | **2/2 mutants killed** at the expected predicate; exit 19; source restored and rebuilt |
@@ -36,12 +38,13 @@ The single smoke skip is `test-integration.sh`, intentionally skipped by `SMOKE_
 ## Residual work
 
 - **T034/T035 advanced in pass 11** with real game runs on a representative pair (004/013): 2/2 mutants killed and semantic determinism confirmed. This covers **2 of 19** scenario files; the full per-scenario coverage required by SC-MP-6/SC-MP-7 remains residual. See `verification/mutation-checks.md` and `verification/determinism-checks.md`. Log-level bit-identity is not claimed.
-- **T006/T007** mulch unit tests require extracting a seam from static `Game1`/`GameLocation` coupling; current coverage is parser-unit + 013 Gate 3 integration.
+- **T006/T007 closed in pass 12.** 33 new unit cases cover `MulchApplicationService` eligibility/refusal/lifetime/persistence, the pure `MulchVerificationRules` host/count gate and bounded slot placement, and `ILivingRootsModApi.ApplyMulch` bound/unbound/throwing/disposed behavior. RED was demonstrated (`CS0103` before the rule existed); targeted 37/37 and full suite 1937/4/0 are GREEN. Honest limit: `GrantMulch`'s item-creation success path is Gate-3-attested, not unit-tested, and farmhand gating is pure-rule-only.
 - **12 legacy bundles** remain as historical artifacts under a retain-only policy; no regeneration was attempted.
 - **94 partial attempts** are not bundles and are not cited as evidence.
 
 ## Pointers
 
+- `verification/cycle-2026-11-08-80-20-pass12.md` — pass 12 detailed record (T006/T007 closed, 33 new tests, 013 expiry + refusal Gate 3).
 - `verification/cycle-2026-11-08-80-20-pass11.md` — pass 11 detailed record (T034/T035 partial advance, 2/19 scenarios).
 - `verification/mutation-checks.md` — mutation negative controls (004/013).
 - `verification/determinism-checks.md` — determinism 2× evidence (004/013).
