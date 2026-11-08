@@ -575,7 +575,7 @@ namespace LivingRoots.Verification
 
         private bool GrantMulch(int count)
         {
-            if (count <= 0 || !Context.IsMainPlayer)
+            if (!MulchVerificationRules.CanGrant(count, Context.IsMainPlayer))
             {
                 return false;
             }
@@ -588,17 +588,10 @@ namespace LivingRoots.Verification
                     return false;
                 }
 
-                int slot = -1;
-                int max = Math.Max(0, Math.Min(items.Count, Game1.player.MaxItems));
-                for (int i = 0; i < max; i++)
-                {
-                    if (items[i] == null)
-                    {
-                        slot = i;
-                        break;
-                    }
-                }
-
+                var slot = MulchVerificationRules.FindEmptySlot(
+                    items.Count,
+                    Game1.player.MaxItems,
+                    inventorySlot => items[inventorySlot] != null);
                 if (slot < 0)
                 {
                     return false;
