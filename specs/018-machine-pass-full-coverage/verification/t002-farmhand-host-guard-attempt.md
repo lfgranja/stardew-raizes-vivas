@@ -32,3 +32,19 @@
 - **Evidence (code/assembly):** `strings` on referenced `/home/luis/stardew-assemblies/StardewModdingAPI.dll` shows `TriggerActionManager`/gamepad triggers but **no console-command `Trigger` on `ICommandHelper`**; handler will log `ICommandHelper.Trigger unavailable in this SMAPI build; debug split not triggered (honest)`. Therefore `isMainPlayer` will not flip via this path in the referenced SMAPI build.
 - **No run executed against feature test.md files** to avoid runner promotion corrupting 004/014/017 GATE3 records. The 010 fixture (`farmhand-host-guard.scenario.json`, targets `004-playable-compost-loop/test.md`, expects `expectedVerdict: pass` + `isMainPlayer eq false`) is **unlikely to pass** in this headless/SMAPI environment; running it now would risk an unhelpful promotion.
 - **Honest status:** mechanism is **feasible as a safe `lr_*` replacement** (parser blocker removed) but **blocked/partial-feasible by SMAPI console-trigger API availability and/or headless split capability** in this environment. Headless split not demonstrated. Farmhand/split-screen **never `machine-pass`** (010/GOVERNANCE-ANNEX). Class: **partial/blocked-feasible, not promoted**. D1 transport remains blocked/pending.
+
+## 2026-11-08 — research addendum (no code change, no claim promotion)
+
+**Finding (SMAPI/game assembly, local + upstream source):** the current `lr_split_screen` handler reflects a
+non-existent `ICommandHelper.Trigger(string,string[])`; SMAPI 4.4's `ICommandHelper` only exposes `Add`
+(`StardewModdingAPI.Framework.ModHelpers.CommandHelper`). The SMAPI ConsoleCommands mod's `debug` command
+instead calls `StardewValley.DebugCommands.TryHandle(args.Values)` (`src/SMAPI.Mods.ConsoleCommands/Framework/Commands/Other/DebugCommand.cs`,
+upstream `develop`). Decompiling the local `Stardew Valley.dll` confirms `DebugCommands.TryHandle(string[], IGameLogger)`
+is **public static**, and `DebugCommands.Split` with a player index calls
+`GameRunner.instance.AddGameInstance((PlayerIndex)value)` (no-arg shows the local-coop join menu).
+
+**Implication:** a future cycle can replace the dead reflection with a direct
+`StardewValley.DebugCommands.TryHandle(new[] { "split", "0" })` call (or equivalent), then re-probe headless.
+This is a **feasibility lead, not a demonstrated flip**: headless second-instance support, queue ownership across
+instances, and `Context.IsMainPlayer` behavior remain unverified. Farmhand/split-screen stays `blocked/partial` and
+never `machine-pass` until a real run proves otherwise (010 GOVERNANCE-ANNEX).
