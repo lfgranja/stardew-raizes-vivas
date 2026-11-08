@@ -76,3 +76,52 @@ After restoring and rebuilding the baseline, both scenarios pass again with the 
 - The `errored` / honesty `W` bundles are deliberately retained as negative-control evidence; they must never be promoted or cited as machine-pass.
 - A passing post-restore run proves the restored source and deployed binaries agree on these scenarios; it does not prove every other scenario is unaffected.
 - No human verification, D1/farmhand, SC-004, render, or balance claim is implied.
+
+## Pass 13 addition (2026-11-08) — 005 and 017 (coverage now 4 of 19)
+
+### 005 — mutant killed (`SoilGrowthHealthyMultiplier 0.85f → 1.00f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:15` `SoilGrowthHealthyMultiplier = 0.85f` → `1.00f`.
+- **Scenario:** `specs/005-soil-health-to-crop-growth/scenarios/soil-health-growth.scenario.json` (healthy tier, 5 day-start ticks, seed 987654321).
+- **Build/deploy:** same command, exit 0.
+- **Run:** `TMPDIR=/home/luis/.runner-tmp ./scripts/verify-scenario.sh --scenario … --skip-build --timeout 420`
+- **Bundle:** `evidence-bundle-run-20261108T173204Z-08a0`
+- **Runner exit:** `19` (`ERRORED`; expected pass, actual fail).
+- **Observed:** `evaluation/actual.json`: `soilHealth` 80, `healthTier` healthy, `phaseDays` 4 (baseline healthy multiplier produces 3). `evaluation/thresholds.jsonl`: predicate-0 (`multiplier`, `field=phaseDays`, `base=pre.phaseDays`, `factor=0.85`) → **`passed: false`**; predicate-1 (healthy soil band `[67,100)`) → `passed: true`. `verdict.json`: `actualVerdict: fail`, `thresholdsOk: false`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control, not a claim.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`, `grep` confirms `0.85f`; rebuild → exit 0.
+
+### 017 — mutant killed (`AgrochemicalSoilPenalty 10f → 20f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:223` `AgrochemicalSoilPenalty = 10f` → `20f`.
+- **Scenario:** `specs/017-joja-agrochemical-tradeoff/scenarios/agrochemical-tradeoff.scenario.json` (measured 50, one Joja application, factor 0.8).
+- **Build/deploy:** exit 0.
+- **Bundle:** `evidence-bundle-run-20261108T173425Z-7088`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `evaluation/actual.json`: `soilHealth` 30 (expected 40; delta −20), `healthTier` poor, `phaseDays` 5 (grown slower than the 1.0× predicate). `evaluation/thresholds.jsonl`: predicate-0 (`multiplier`, `field=soilHealth`, `base=pre.soilHealth`, `factor=0.8`) → **`passed: false`**; predicate-1 (`multiplier`, `field=phaseDays`, `factor=1.0`) → **`passed: false`**; predicate-2 (`isMainPlayer eq true`) → `passed: true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`, `grep` confirms `10f`; rebuild → exit 0.
+
+### Post-restore revalidation
+
+| Scenario | Bundle | Verdict | Key values | `--verify-bundle` |
+|---|---|---|---|---|
+| 005 | `evidence-bundle-run-20261108T173619Z-070e` | pass | `soilHealth` 80 healthy, `phaseDays` 3 | exit 0 |
+| 017 | `evidence-bundle-run-20261108T173759Z-7c21` | pass | `soilHealth` 40 moderate, `phaseDays` 4 | exit 0 |
+
+### Integrity (pass 13)
+
+All eight bundles produced in pass 13 pass `./scripts/verify-scenario.sh --verify-bundle` exit 0:
+
+```
+0 evidence-bundle-run-20261108T172115Z-060e
+0 evidence-bundle-run-20261108T172354Z-5b8c
+0 evidence-bundle-run-20261108T172717Z-31c7
+0 evidence-bundle-run-20261108T172927Z-5f08
+0 evidence-bundle-run-20261108T173204Z-08a0
+0 evidence-bundle-run-20261108T173425Z-7088
+0 evidence-bundle-run-20261108T173619Z-070e
+0 evidence-bundle-run-20261108T173759Z-7c21
+```
+
+The `errored` bundles `173204Z-08a0` and `173425Z-7088` are negative controls; they are never promoted or cited as machine-pass.
+
+Coverage: **4 of 19** scenario files (004, 013, 005-healthy, 017-tradeoff). The remaining 15 host/farmhand scenario files are still residual.

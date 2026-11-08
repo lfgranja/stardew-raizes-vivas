@@ -57,3 +57,29 @@ Both residual differences are **startup/load-order and save-pruning timing artif
 - Log-level determinism: **not claimed**; residual variance is documented above.
 - Both scenario pairs pass `./scripts/verify-scenario.sh --verify-bundle` with exit 0 (see `mutation-checks.md` integrity list).
 - No claim is promoted above `machine-pass`; this is host-only evidence and says nothing about farmhand/D1, SC-004, human review, render legibility, or balance.
+
+## Pass 13 addition (2026-11-08) — 005 and 017 (coverage now 4 of 19)
+
+Command shape:
+
+```bash
+./scripts/verify-scenario.sh --scenario <scenario.json> --no-acquire \
+  --game-path "/home/luis/.local/share/Steam/steamapps/common/Stardew Valley" \
+  --skip-build --timeout 420
+```
+
+| Scenario | Run 1 | Run 2 | Verdicts |
+|---|---|---|---|
+| 005 `soil-health-growth` (healthy 80, seed 987654321) | `evidence-bundle-run-20261108T172115Z-060e` | `evidence-bundle-run-20261108T172354Z-5b8c` | pass / pass |
+| 017 `agrochemical-tradeoff` (seed 123456789) | `evidence-bundle-run-20261108T172717Z-31c7` | `evidence-bundle-run-20261108T172927Z-5f08` | pass / pass |
+
+Semantic comparison (same method as pass 11): all seven compared JSON files identical per pair (`soil-health-before-after`, `soil-health-before`, `crop-phase-before`, `crop-phase-dump`, `evaluation/actual`, `evaluation/pre`, `verdict`), and `evaluation/thresholds.jsonl` differs only by the absolute bundle path inside the predicate field.
+
+| Scenario | `actual` values (both runs) | Threshold outcomes (both runs) | SMAPI log (normalized) |
+|---|---|---|---|
+| 005 | `soilHealth` 80, `healthTier` healthy, `phaseDays` 3 | predicate-0 (×0.85) pass; predicate-1 (healthy band) pass; predicate-2-adjacent smapiLog isMainPlayer pass | filtered 80/80 lines, **0 differences** after timestamp/`elapsed ms` stripping |
+| 017 | `soilHealth` 40, `healthTier` moderate, `phaseDays` 4 | predicate-0 (×0.8 soil) pass; predicate-1 (×1.0 phaseDays) pass; predicate-2 (isMainPlayer) pass | filtered 37/37 lines; only one identical `Saved data for key 'visualization_config_modfolder'` TRACE line swapped position (load-order artifact), no content change |
+
+Post-restore runs corroborate the baseline (bundled with the mutation ledger): 005 `20261108T173619Z-070e` and 017 `20261108T173759Z-7c21` restate the same actual values.
+
+Coverage: **4 of 19** scenario files now carry 2× determinism evidence (004, 013 from pass 11; 005 and 017 from pass 13). The rest remain residual.

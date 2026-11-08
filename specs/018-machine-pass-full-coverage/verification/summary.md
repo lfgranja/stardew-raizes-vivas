@@ -1,6 +1,6 @@
 # 018 — Verification Summary (honest status)
 
-**Last updated:** 2026-11-08 (pass 12, ciclo 80/20 MDMV adaptado)
+**Last updated:** 2026-11-08 (pass 13, ciclo 80/20 MDMV adaptado)
 **Scope:** aggregate status only. `machine-pass` means the runner promoted a host run with complete, agreeing declared signals and honesty level R. It is **not** human verification, **not** D1, and **not** SC-004.
 
 ## Deterministic gates (pass 10 baseline + pass 12 additions)
@@ -15,7 +15,9 @@
 | Full smoke suite (pass 10 baseline) | `SMOKE_SKIP_INTEGRATION=1 ./scripts/tests/run-all.sh` | **pass 10: 50 files, 49 passed, 0 failed, 1 skipped, exit 0** (`/tmp/opencode/smoke-run-all-pass10.txt`) |
 | Full smoke suite (pass 12) | same, `TMPDIR` repo-relative first, then `test-preflight.sh` with `TMPDIR` outside the repo | **exit 1 — 48 passed / 1 failed (`test-preflight` T060 ×2, artifact of `TMPDIR` inside repo) / 1 skipped**; `test-logparse` PASS (167/167 standalone); `test-preflight` rerun with `TMPDIR=/home/luis/.smoke-tmp-lrv`: **379/380** (only `T081` `/proc`-exe fork/exec race; passed in the full run). No code regression; smoke not re-certified green from one clean full run on this host — rerun before pre-push |
 | Mutation checks (pass 11) | 004 `SoilGrowthPoorMultiplier` and 013 `MulchDurationDays` mutants, real headless runs (2 of 19 scenarios) | **2/2 mutants killed** at the expected predicate; exit 19; source restored and rebuilt |
+| Mutation checks (pass 13) | 005 `SoilGrowthHealthyMultiplier 0.85→1.00`, 017 `AgrochemicalSoilPenalty 10→20` (2 of 19 more) | **2/2 mutants killed**; exit 19; source restored, post-restore reruns pass |
 | Determinism 2× (pass 11) | 004 and 013 rerun on the same seed (2 of 19 scenarios) | **semantic PASS** both; raw logs not byte-identical (documented variance) |
+| Determinism 2× (pass 13) | 005 healthy and 017 tradeoff rerun on the same seed (2 of 19 more) | **semantic PASS** both; filtered logs: 005 identical, 017 one TRACE line swapped position |
 | 017 scenarios | `bash scripts/tests/test-017-agrochemical.sh` | **23/23 passed** |
 | 017 claims | `bash scripts/tests/test-017-claims.sh` | **PASS** (12 rows, 19 paths, 2 digests) |
 | Scenario `modVersion` | `specs/**/*.scenario.json` sweep | **69 declarations, all `0.1.0`** |
@@ -38,7 +40,7 @@ The single smoke skip is `test-integration.sh`, intentionally skipped by `SMOKE_
 
 ## Residual work
 
-- **T034/T035 advanced in pass 11** with real game runs on a representative pair (004/013): 2/2 mutants killed and semantic determinism confirmed. This covers **2 of 19** scenario files; the full per-scenario coverage required by SC-MP-6/SC-MP-7 remains residual. See `verification/mutation-checks.md` and `verification/determinism-checks.md`. Log-level bit-identity is not claimed.
+- **T034/T035 advanced in pass 11 and pass 13.** Pass 11 covered 004/013; pass 13 covered 005 `soil-health-growth` (healthy 80) and 017 `agrochemical-tradeoff`. Coverage is now **4 of 19** scenario files; the full per-scenario coverage required by SC-MP-6/SC-MP-7 remains residual. See `verification/mutation-checks.md` and `verification/determinism-checks.md`. Log-level bit-identity is not claimed.
 - **T006/T007 closed in pass 12.** 33 new unit cases cover `MulchApplicationService` eligibility/refusal/lifetime/persistence, the pure `MulchVerificationRules` host/count gate and bounded slot placement, and `ILivingRootsModApi.ApplyMulch` bound/unbound/throwing/disposed behavior. RED was demonstrated (`CS0103` before the rule existed); targeted 37/37 and full suite 1937/4/0 are GREEN. Honest limit: `GrantMulch`'s item-creation success path is Gate-3-attested, not unit-tested, and farmhand gating is pure-rule-only.
 - **12 legacy bundles** remain as historical artifacts under a retain-only policy; no regeneration was attempted.
 - **94 partial attempts** are not bundles and are not cited as evidence.
@@ -46,6 +48,7 @@ The single smoke skip is `test-integration.sh`, intentionally skipped by `SMOKE_
 
 ## Pointers
 
+- `verification/cycle-2026-11-08-80-20-pass13.md` — pass 13 detailed record (T034/T035 extended to 005/017; coverage 4/19).
 - `verification/cycle-2026-11-08-80-20-pass12.md` — pass 12 detailed record (T006/T007 closed, 33 new tests, 013 expiry + refusal Gate 3).
 - `verification/cycle-2026-11-08-80-20-pass11.md` — pass 11 detailed record (T034/T035 partial advance, 2/19 scenarios).
 - `verification/mutation-checks.md` — mutation negative controls (004/013).
