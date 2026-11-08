@@ -1,6 +1,6 @@
 # 018 — Verification Summary (honest status)
 
-**Last updated:** 2026-11-08 (pass 10, ciclo 80/20 MDMV adaptado)
+**Last updated:** 2026-11-08 (pass 11, ciclo 80/20 MDMV adaptado)
 **Scope:** aggregate status only. `machine-pass` means the runner promoted a host run with complete, agreeing declared signals and honesty level R. It is **not** human verification, **not** D1, and **not** SC-004.
 
 ## Deterministic gates (fresh, pass 10)
@@ -11,6 +11,8 @@
 | Docs markers | `./scripts/verify-scenario.sh --check-docs` | **exit 0** |
 | Doc links | `bash scripts/tests/test-doc-links.sh` | **PASS** |
 | Full smoke suite | `SMOKE_SKIP_INTEGRATION=1 ./scripts/tests/run-all.sh` | **50 files, 49 passed, 0 failed, 1 skipped, exit 0** |
+| Mutation checks (pass 11) | 004 `SoilGrowthPoorMultiplier` and 013 `MulchDurationDays` mutants, real headless runs (2 of 19 scenarios) | **2/2 mutants killed** at the expected predicate; exit 19; source restored and rebuilt |
+| Determinism 2× (pass 11) | 004 and 013 rerun on the same seed (2 of 19 scenarios) | **semantic PASS** both; raw logs not byte-identical (documented variance) |
 | 017 scenarios | `bash scripts/tests/test-017-agrochemical.sh` | **23/23 passed** |
 | 017 claims | `bash scripts/tests/test-017-claims.sh` | **PASS** (12 rows, 19 paths, 2 digests) |
 | Scenario `modVersion` | `specs/**/*.scenario.json` sweep | **69 declarations, all `0.1.0`** |
@@ -23,6 +25,7 @@ The single smoke skip is `test-integration.sh`, intentionally skipped by `SMOKE_
 - **74** real local bundles (with `manifest.json`): **62 OK, 12 legacy failures** (7 missing `schemaVersion`; 5 `retention-receipt.json` outside the subject; era 2026-11-04/05).
 - **94** additional `evidence-bundle-run-*` directories contain only `artifacts/` + `attempts/` (partial attempts without manifest; not evidence bundles).
 - Of the 3 failing bundles still referenced anywhere in `specs/`, provenance is historical only: `4acd`/`0a6b` are past promotion transitions superseded by the current 004 GATE3 pointer `535d` (verify OK); `07ba` is a 010 observation pointer already annotated as legacy/incompatible in pass 5. None is cited by a current claim-record or feature GATE3. Decision: retain as historical, never delete, rewrite, or re-promote.
+- **Pass 11:** all **8/8** bundles produced in this cycle pass `--verify-bundle` (exit 0): four determinism bundles, two mutation negative controls, two post-restore revalidations. Mutation bundles carry `honestyLevel: W` / `verdict: errored` by design and are never cited as machine-pass.
 
 ## Claim population
 
@@ -32,13 +35,16 @@ The single smoke skip is `test-integration.sh`, intentionally skipped by `SMOKE_
 
 ## Residual work
 
-- **T034** mutation checks and **T035** determinism 2× require real game runs.
+- **T034/T035 advanced in pass 11** with real game runs on a representative pair (004/013): 2/2 mutants killed and semantic determinism confirmed. This covers **2 of 19** scenario files; the full per-scenario coverage required by SC-MP-6/SC-MP-7 remains residual. See `verification/mutation-checks.md` and `verification/determinism-checks.md`. Log-level bit-identity is not claimed.
 - **T006/T007** mulch unit tests require extracting a seam from static `Game1`/`GameLocation` coupling; current coverage is parser-unit + 013 Gate 3 integration.
 - **12 legacy bundles** remain as historical artifacts under a retain-only policy; no regeneration was attempted.
 - **94 partial attempts** are not bundles and are not cited as evidence.
 
 ## Pointers
 
+- `verification/cycle-2026-11-08-80-20-pass11.md` — pass 11 detailed record (T034/T035 partial advance, 2/19 scenarios).
+- `verification/mutation-checks.md` — mutation negative controls (004/013).
+- `verification/determinism-checks.md` — determinism 2× evidence (004/013).
 - `verification/cycle-2026-11-07-80-20-pass10.md` — pass 10 detailed record.
 - `verification/final-inventory.md` — feature × path inventory and addenda.
 - `verification/t002-farmhand-host-guard-attempt.md` — farmhand/split-screen evidence and `DebugCommands.TryHandle` lead.
