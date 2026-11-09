@@ -96,6 +96,7 @@ namespace LivingRoots.Verification.Queue
             {
                 case "lr_set_soil_health":
                 case "lr_plant_crop":
+                case "lr_sow_heirloom":
                 case "lr_acquire_host_lock":
                 case "lr_release_host_lock":
                     min = 3;
@@ -115,6 +116,7 @@ namespace LivingRoots.Verification.Queue
                     return true;
                 case "lr_give_agrochemical":
                 case "lr_give_mulch":
+                case "lr_give_heirloom_seed":
                 case "lr_advance_days":
                 case "lr_dump_crop_phase":
                 case "lr_dump_soil_health":
@@ -206,6 +208,7 @@ namespace LivingRoots.Verification.Queue
                     return true;
                 case "lr_give_agrochemical":
                 case "lr_give_mulch":
+                case "lr_give_heirloom_seed":
                     if (!IsInt(args[0]) || int.Parse(args[0], CultureInfo.InvariantCulture) <= 0)
                     {
                         error = "bad-count";
@@ -228,6 +231,7 @@ namespace LivingRoots.Verification.Queue
 
                     return true;
                 case "lr_plant_crop":
+                case "lr_sow_heirloom":
                     if (!IsInt(args[0]) || !IsInt(args[1]))
                     {
                         error = "bad-number";
