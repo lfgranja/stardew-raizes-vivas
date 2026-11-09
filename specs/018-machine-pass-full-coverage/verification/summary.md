@@ -1,6 +1,6 @@
 # 018 — Verification Summary (honest status)
 
-**Last updated:** 2026-11-08 (pass 20, ciclo 80/20 MDMV adaptado)
+**Last updated:** 2026-11-09 (pass 21, ciclo 80/20 MDMV adaptado)
 **Scope:** aggregate status only. `machine-pass` means the runner promoted a host run with complete, agreeing declared signals and honesty level R. It is **not** human verification, **not** D1, and **not** SC-004.
 
 ## Deterministic gates (pass 10 baseline + pass 12 additions)
@@ -59,7 +59,8 @@ The single smoke skip is `test-integration.sh`, intentionally skipped by `SMOKE_
 
 ## Pointers
 
-- `verification/cycle-2026-11-08-80-20-pass20.md` — pass 20 detailed record (T034/T035 extended to 013-decay-exemption/013-refused-on-ineligible/014-unknown/017-refused-contention; determinism 18/19, kill 15/19).
+- `verification/cycle-2026-11-08-80-20-pass20.md` — pass 20 detailed record (T034/T035 extended to 013-decay-exemption/013-refused-on-ineligible/014-unknown/017-refused-contention; determinism 18/19, kills 15/19).
+- `converge.md` — pass 21 honest audit: evidence inventory, claim boundaries, residual work (017-refused-at-minimum stale assertion; farmhand T002; push authority).
 - `verification/cycle-2026-11-08-80-20-pass19.md` — pass 19 detailed record (T034/T035 extended to 017-unknown-baseline; coverage 14/19; refused-at-minimum deterministic fail).
 - `verification/cycle-2026-11-08-80-20-pass18.md` — pass 18 detailed record (T034/T035 extended to 004/005-moderate; coverage 13/19).
 - `verification/cycle-2026-11-08-80-20-pass17.md` — pass 17 detailed record (T034/T035 extended to 015/014-zero/004-healthy; coverage 11/19).
