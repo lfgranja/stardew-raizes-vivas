@@ -5,14 +5,16 @@ SMAPI mod for Stardew Valley (.NET 6, C# latest). Layered DDD: `Domain/` (contra
 ## Commands
 
 ```bash
-# Build — requires GamePath (see Prerequisite; check is unconditional)
-GamePath=/home/luis/stardew-assemblies dotnet build Stardew-LivingRoots.sln --configuration Release
+# Build — -m:1 avoids a host SIGABRT under memory pressure (.specify/bugs/msbuild-release-build-sigabrt)
+dotnet build Stardew-LivingRoots.sln --configuration Release -m:1
+# GamePath: csproj defaults to /home/luis/.steam/... on this host; on another machine use
+# GamePath=/path/to/assemblies dotnet build ... (e.g. /home/luis/stardew-assemblies).
 
 # Tests — only LivingRoots.Tests is a test project; Verification/Runner ship no test SDK (build-only)
-GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --configuration Release
+dotnet test Stardew-LivingRoots.sln --configuration Release -m:1
 
 # Single test subject
-GamePath=/home/luis/stardew-assemblies dotnet test Stardew-LivingRoots.sln --configuration Release \
+dotnet test Stardew-LivingRoots.sln --configuration Release -m:1 \
   --filter "FullyQualifiedName~SoilHealthServiceTests"
 
 # Format (pre-commit gate)
@@ -44,17 +46,18 @@ semgrep scan --config p/csharp --error --severity ERROR --metrics off LivingRoot
 # baselines ratchet only in the improving direction: `python -m quality_gate ratchet-coverage|ratchet-duplication ...`
 ```
 
-lefthook: `pre-commit` runs `dotnet format --verify-no-changes` + `bash -n`/`shellcheck` on staged `scripts/**/*.sh`; `pre-push` runs `dotnet test` (no config, no `GamePath` — fails unless `GamePath` is in your env) + the smoke suite. This clone's `.git/hooks/` may contain only samples — run `lefthook install` if hooks don't fire.
+lefthook: `pre-commit` runs `dotnet format --verify-no-changes` + `bash -n`/`shellcheck` on staged `scripts/**/*.sh`; `pre-push` runs `dotnet test` (Debug config; uses the csproj default `GamePath` on this host) + the smoke suite. This clone's `.git/hooks/` may contain only samples — run `lefthook install` if hooks don't fire.
 
 ## Prerequisite: game assemblies
 
-`Pathoschild.Stardew.ModBuildConfig` refuses to build without `GamePath` holding Stardew's managed assemblies; the check is unconditional, so `dotnet test`/`build`/`format` all need it. Point `GamePath` at assemblies (e.g. `/home/luis/stardew-assemblies` or the Steam install) or set `<GamePath>` in `LivingRoots.csproj`. `.gamepath/` is gitignored — never commit assemblies. CI `Build and Test` stays dormant unless `BUILDDEPS_ENABLED=true` + `BUILDDEPS_TOKEN` (private builddeps repo); do not promote `Check Formatting` to a required status check — it is formatting-only and the only always-on workflow. `Verify Scenario` CI is `continue-on-error` best-effort.
+`Pathoschild.Stardew.ModBuildConfig` refuses to build without `GamePath` holding Stardew's managed assemblies. `LivingRoots.csproj` sets a machine-specific default (`/home/luis/.steam/steam/steamapps/common/Stardew Valley`), so `dotnet build`/`test`/`format` work without env vars on this host; on another machine set `GamePath` (env or csproj) to an assembly folder (e.g. `/home/luis/stardew-assemblies`) or restore the builddeps zip into `.gamepath/`. `.gamepath/` is gitignored — never commit assemblies. CI `Build and Test` stays dormant unless `BUILDDEPS_ENABLED=true` + `BUILDDEPS_TOKEN` (private builddeps repo); do not promote `Check Formatting` to a required status check — it is formatting-only and the only always-on workflow. `Verify Scenario` CI is `continue-on-error` best-effort; `release.yml` is tag-triggered (`v*.*.*`) and gated by `scripts/release-gate.sh`.
 
 ## Repo layout & generated artifacts
 
 - Solution: `LivingRoots`, `LivingRoots.Tests`, `LivingRoots.Verification`, `LivingRoots.Verification.Runner` (last two are build-only, no test SDK).
 - Repo root is full of gitignored verification artifacts (`evidence-bundle-run-*/`, `.venv-quality-gate/`, `coverage-report/`, `jscpd-report/`, `TestResults/`, most `*.log`). Use targeted `git add <file>` — never `git add -A`.
-- `.specify/` holds specs, constitution, and the speckit toolchain; specs live in `specs/`.
+- `.specify/` holds specs, constitution, and the speckit toolchain; specs live in `specs/`. Speckit slash commands: `.opencode/commands/speckit.*.md` (local) and `.agents/skills/speckit-*/` (tracked).
+- Mod content: `LivingRoots/manifest.json`, `LivingRoots/i18n/{default,en,pt}.json`, `LivingRoots/Assets/`. New player-facing strings must ship in all three locales (parity asserted by tests).
 
 ## Architecture (non-obvious)
 
@@ -63,6 +66,7 @@ lefthook: `pre-commit` runs `dotnet format --verify-no-changes` + `bash -n`/`she
 - `LivingRoots/Services/` — application services implementing domain interfaces; persistence via `ModDataService` + `SanitizePathSegments()`.
 - `LivingRoots/Controllers/ModController.cs` — SMAPI event orchestrator; atomic bit-flag state machine; `ExecuteWithConcurrencyGuard` for re-entrancy; snapshot data outside locks, then do I/O. Also owns FR-009/A8 soil-health MP sync: host broadcasts on `DayStarted` and after successful compost apply; farmhands apply via `ModMessageReceived` (`SoilHealthSyncMessage`).
 - `LivingRoots/Patches/HarvestPatches.cs` + seam `Domain/IHarvestQualityService.cs` — Harmony harvest patches (static, try/catch fallback); feedback via `Services/Visualization/HarvestFeedbackTextures.cs`.
+- Spec 020 heirloom/crioulo seams: `Patches/HeirloomPatches.cs` (`HoeDirt.plant` postfix; host applies `+HeirloomPlantBonus`, farmhand sends `HeirloomPlantBonusRequest`), `ModController.HandleHeirloomBonusRequest` (host-side plant+harvest request handler, deduped), pure rules in `Domain/HeirloomIdentity.cs` + `Domain/Services/HeirloomSoilMath.cs`, deterministic saved-seed grant in `Services/HeirloomSeedSaveService.cs`; `Data/Objects`+`Data/Crops`+`Data/Shops` registration in `ModEntry.OnAssetRequested`.
 - `LivingRoots.Tests/` — xUnit + Moq + FsCheck + Microsoft.Coyote; one file per subject `{Subject}Tests.cs`.
 - `scripts/verify-scenario.sh` + `scripts/lib/` — headless verification runner (spec 010): launches SMAPI under Xvfb, injects a file queue into `LivingRoots.Verification`, captures 3 signals (soil-health delta, crop phase/phaseDays delta, SMAPI log), evaluates verdict, assembles a schema-valid evidence bundle with detached SHA-256 anchor, and promotes `machine-pass` via `scripts/lib/promotion.sh`.
 
@@ -76,6 +80,7 @@ lefthook: `pre-commit` runs `dotnet format --verify-no-changes` + `bash -n`/`she
 - Security: never log raw exception messages; validate soil health 0–100 via `ModConstants`; sanitize all user-influenced paths.
 - Verification runner quirk: `save_prepare` rewrites `HOME`/`XDG_*` for the game process; `RUNNER_ORIGINAL_HOME` preserves the original home so Python helpers keep working. `RUNNER_SMAPI_CAPTURE=full|excerpt` (default `full`) controls log capture level.
 - Constructor injection only; `ModEntry.cs` is the sole composition root.
+- i18n: player-facing strings ship in `default`, `en`, and `pt`; parity is asserted by tests (e.g. `HeirloomI18nTests`). No other locales.
 
 ## Process
 
@@ -97,6 +102,11 @@ Gate 3 (end-to-end) applies to any change touching runnable code: real SMAPI ses
 | New render effect | `Services/Visualization/` via `IVisualizationService` (+ `Domain/Visualization/`) |
 | Security validation | `ModDataService.SanitizePathSegments()` |
 | Harmony harvest seam / feedback | `Patches/HarvestPatches.cs`, `Domain/IHarvestQualityService.cs`, `Services/Visualization/HarvestFeedbackTextures.cs` |
+| Heirloom seams (spec 020) | `Patches/HeirloomPatches.cs`, `ModController.HandleHeirloomBonusRequest`, `Domain/Services/HeirloomSoilMath.cs`, `Services/HeirloomSeedSaveService.cs` |
+| Heirloom IDs / bonuses / i18n keys | `Constants.cs` (`ModConstants` Heirloom block) |
+| Locale strings | `LivingRoots/i18n/{default,en,pt}.json` |
+| Release gate (spec 019) | `scripts/release-gate.sh` |
+| Protected paths / secrets | `scripts/check-protected-paths.sh` |
 | Soil-health MP sync (FR-009/A8) | `Controllers/ModController.cs` |
 | Composition / wiring | `ModEntry.cs` |
 | Verification runner | `scripts/verify-scenario.sh` + `scripts/lib/` (evidence, save, signals, verdict, promotion) |
