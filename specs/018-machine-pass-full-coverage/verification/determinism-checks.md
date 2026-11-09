@@ -178,3 +178,29 @@ Semantic comparison (same method): all compared JSON files identical per pair. T
 Post-restore runs corroborate the baselines (bundled with the mutation ledger): 004-moderate `20261109T034318Z-7374`, 005-moderate `20261109T034443Z-4cc1`.
 
 Coverage: **13 of 19** scenario files now carry 2× determinism evidence (004/013-expiry/005/017/013-bare-tile/014/005-poor/017-clamped/015/014-zero/004-healthy + 004-moderate/005-moderate). The rest remain residual.
+
+## Pass 19 addition (2026-11-08) — 017-unknown-baseline (coverage now 14 of 19) + 017-refused-at-minimum (deterministic fail)
+
+### 017-unknown-baseline (coverage +1)
+
+| Scenario | Run 1 | Run 2 | Verdicts |
+|---|---|---|---|
+| 017 `agrochemical-unknown-baseline` (NaN → 100 → one apply → 90, seed 123456789) | `evidence-bundle-run-20261109T034720Z-49c5` | `evidence-bundle-run-20261109T034828Z-12e6` | pass / pass |
+
+Semantic comparison (same method): all compared JSON files identical per pair; `evaluation/thresholds.jsonl` identical.
+
+| Scenario | `actual` values (both runs) | SMAPI log (normalized) |
+|---|---|---|
+| 017-unknown-baseline | `soilHealth` 90 healthy, `phaseDays` 3 | filtered 37/37 lines, **0 differences** after stripping |
+
+### 017-refused-at-minimum — deterministic failure (documented, not coverage)
+
+| Scenario | Run 1 | Run 2 | Verdicts |
+|---|---|---|---|
+| 017 `agrochemical-refused-at-minimum` (soil 0, seed 123456789) | `run-20261109T034940Z-036e` | `run-20261109T035049Z-5ac1` | **false / false** (both) |
+
+Semantic evidence identical per pair (both failed the same predicate). Clean deterministic failure: `soilHealth` 0 unchanged (predicate-0 `soilHealth multiplier 1.0` → pass), `cropPhaseDelta` pre `phaseDays` 4 → actual **5** (predicate-1 ×1.0 → **fail**) — soil 0 is poor, so `SoilGrowthPoorMultiplier 1.15` applies to the displayed phaseDays; `isMainPlayer` passes. The machine-pass promoted once as `run-20261107T135531Z-7c4e` (post dump captured before the DayEnding growth modifier applied — capture-order flake); the environment on 2026-11-09 consistently captures after it. `--verify-bundle` exit 0 (schema is fine; the assertion is what fails).
+
+This pair is **deliberately not added as green coverage**; it is recorded as a deterministic failure against a stale assertion. The 8 remaining residual scenarios are unchanged in scope, plus refused-at-minimum is flagged `partial/broken-assertion`, not green.
+
+Coverage: **14 of 19** scenario files carry 2× green determinism evidence. The rest: 4 residual green-eligible files, plus refused-at-minimum (deterministic fail at a stale assertion).

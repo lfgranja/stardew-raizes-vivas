@@ -295,3 +295,35 @@ Coverage: **11 of 19** scenario files (004/013-expiry/005/017/013-bare-tile/014/
 ```
 
 Coverage: **13 of 19** scenario files (004-hardening/004-healthy/004-moderate, 005-healthy/005-poor/005-moderate, 013-expiry/013-bare-tile, 014-quality/014-zero, 015, 017-tradeoff/017-clamped). The remaining 6 are still residual.
+
+## Pass 19 addition (2026-11-08) — 017-unknown-baseline (coverage now 14 of 19); 017-refused-at-minimum recorded honestly
+
+### 017-unknown-baseline — mutant killed (`AgrochemicalSoilPenalty 10f → 20f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:223` `AgrochemicalSoilPenalty = 10f` → `20f`.
+- **Scenario:** `specs/017-joja-agrochemical-tradeoff/scenarios/agrochemical-unknown-baseline.scenario.json` (NaN baseline → 100 → one @ P=10 → 90, seed 123456789).
+- **Bundle:** `evidence-bundle-run-20261109T035309Z-4cbc`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `evaluation/actual.json`: `soilHealth` **80** (expected 90), tier healthy. `evaluation/thresholds.jsonl`: predicate-0 (`soilHealth eq 90`) → **`passed: false`**; predicate-1 (×0.85, healthy growth) → `true`; predicate-2 (`isMainPlayer`) → `true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T035430Z-76c0`, `soilHealth` 90, **pass**.
+
+### 017-refused-at-minimum — recorded as deterministic failure (not "killed-by-mutant" nor "covered")
+
+- 2026-11-09 refused-at-minimum failed twice, identically, at predicate-1 (cropPhaseDelta ×1.0): pre `phaseDays` 4 → actual 5. The refusal works (soil 0 unchanged, predicate-0 pass). No mutation was needed to demonstrate the stale assertion; the observed healthy/poor growth modifier triggers the fail unaided. Decision-seam mutants were not run on this file; the failure is recorded instead, because a green receipt would be dishonest evidence.
+- Mutant capability of the service seam (`AgrochemicalSoilPenalty`) exists but the predicate failure is independent of it; the assertion is wrong for poor soil in the capture path.
+
+### Integrity (pass 19)
+
+`--verify-bundle` exit 0 for all six bundles in this pass:
+
+```
+0 evidence-bundle-run-20261109T034720Z-49c5
+0 evidence-bundle-run-20261109T034828Z-12e6
+0 evidence-bundle-run-20261109T034940Z-036e
+0 evidence-bundle-run-20261109T035049Z-5ac1
+0 evidence-bundle-run-20261109T035309Z-4cbc
+0 evidence-bundle-run-20261109T035430Z-76c0
+```
+
+Coverage: **14 of 19** scenario files (004, 005, 013, 014, 015, 017 families) carry ≥1 killed-mutation + 2× reruns evidence. The rest: 4 residual green-eligible files, plus refused-at-minimum (deterministic fail at a stale assertion — not covered; see above).

@@ -4,15 +4,15 @@
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261109T030553Z-391b
-- **Commit**: edaa167af2defae4b4a1fbb7a37f4bf204dc419d
-- **Date**: 2026-11-09T03:06:35Z
+- **Run ID**: run-20261109T035430Z-76c0
+- **Commit**: 31b587d6ac93ed1a782b6f9a9242c598a1eba389
+- **Date**: 2026-11-09T03:55:08Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261109T030553Z-391b/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261109T030553Z-391b/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261109T030553Z-391b/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261109T030553Z-391b/`
+  - SoilHealthState delta: `evidence-bundle-run-20261109T035430Z-76c0/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T035430Z-76c0/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T035430Z-76c0/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T035430Z-76c0/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
@@ -38,3 +38,12 @@
 - `agrochemical-clamped` (measured 5, factor `soil cmp eq 0`) rerun twice on seed 123456789: `run-20261109T025730Z-1080` / `run-20261109T025841Z-2be9` — both **pass**; bundles verify exit 0; semantic evidence identical (`soilHealth` 0 poor, `phaseDays` 5). Logs: 37/37 filtered lines identical after stripping.
 - Mutation negative control: `AgrochemicalSoilPenalty 10f → 0f` → `run-20261109T030225Z-2cb3`, soil stays 5 (clamp never triggers), predicate-0 (`soil cmp eq 0`) **false**; exit 19; source restored, post-restore `run-20261109T030553Z-391b` **pass** (`soilHealth` 0). See `verification/mutation-checks.md`.
 - GATE3 block is runner-promoted to the post-restore run `run-20261109T030553Z-391b` (commit `edaa167`); not hand-edited.
+
+## Append-only run notes (pass 19, 2026-11-08)
+
+- `agrochemical-unknown-baseline` (NaN → 100 → one apply → 90) rerun twice on seed 123456789: `run-20261109T034720Z-49c5` / `run-20261109T034828Z-12e6` — both **pass**; bundles verify exit 0; semantic evidence identical (`soilHealth` 90 healthy, `phaseDays` 3; predicates `soilHealth eq 90`, ×0.85, isMainPlayer all pass). Logs: 37/37 filtered lines identical after stripping.
+- Mutation negative control: `AgrochemicalSoilPenalty 10f → 20f` → `run-20261109T035309Z-4cbc`, soil 80 (expected 90), predicate-0 `soilHealth eq 90` **false**, exit 19; source restored, post-restore `run-20261109T035430Z-76c0` **pass** (`soilHealth` 90). See `verification/mutation-checks.md`.
+- **`agrochemical-refused-at-minimum` — regression finding, not green:** both runs of pass 19 failed: `run-20261109T034940Z-036e` and `run-20261109T035049Z-5ac1`, **identical** predicate-1 failure (`farmer_seed` same): `soilHealth` 0 unchanged (predicate-0 pass — the refusal itself works), crop-phase predicate `×1.0` **false** (pre `phaseDays` 4 → actual 5; soil 0 → poor → `SoilGrowthPoorMultiplier` applies). The promoted machine-pass `run-20261107T135531Z-7c4e` read phaseDays 4→4 and was a one-time lucky capture (post-dump captured before the DayEnding growth modifier applied; today the dump runs after it). The earlier `run-20261107T114124Z-3854` also failed at this same predicate. Both of today's bundles verify `--verify-bundle` exit 0, so this is a **scenario-assertion failure, not an infrastructure defect**. Honest status: the scenario as written (refuses apply; `SoilHealth unchanged`; `phaseDays` unchanged) does not hold under the current modifier pipeline — predicates 0 and 2 pass, predicate-1 fails deterministically.
+  - **Do not read this as "the feature broke."** The agrochemical refusal at minimum works (soil at 0 is refused, no mutation is applied); only the crop-phase assertion is unsatisfiable for poor soil in this capture path. A silent flake produced a one-time green; two honest repeats expose a stale assertion.
+  - **Reviewers to decide:** the scenario predicate (`phaseDays ×1.0`) would have to change for a green today (e.g., only for soil in a non-poor tier), or the capture dump must be ordered before the growth modifier for this scenario. No fix is applied in this pass; the record is append-only and honest.
+- GATE3 block above is runner-promoted to the post-restore run `run-20261109T035430Z-76c0` (commit `31b587d`); not hand-edited.
