@@ -2,7 +2,7 @@
 
 - **Slug**: heirloom-seeds-pipeline
 - **Created**: 2026-11-09
-- **Evidence confidence (overall)**: medium–high for market/technical lenses (primary sources + decompiled assemblies; Nexus stats snippet-derived labeled) ; agronomic lens being consolidated from dedicated multilingual stream (see Gaps)
+- **Evidence confidence (overall)**: medium–high (primary sources + decompiled assemblies + multilingual agronomic review; Nexus stats snippet-derived labeled)
 
 Full raw report with citations lives in-repo at `research/2026-11-09-heirloom-seeds-pipeline.md` (commit `31924e5`); this file is the assessment-stage synthesis.
 
@@ -45,6 +45,13 @@ Full raw report with citations lives in-repo at `research/2026-11-09-heirloom-se
 - MP verification: JunimoServer (sdvd-server-v1.4.0, preview recommended; E2E harness `:5123`) exists but needs Steam account + is never PR-gate; D1 remains environment/human-blocked regardless; farmhand C# paths can be unit-tested with stubs only (honesty: stubs ≠ live proof). [JunimoServer repo/docs] (confidence: high)
 - Save compatibility: additive items only; no format changes; no migration needed; sparse-cache zero-persistence limitation known/pre-existing. [source: repo notes; measured-zero-persistence.md] (confidence: high)
 
+## Agronomy Verdict (consolidated 2026-11-09)
+
+- **Landraces/crioulas are real, legally recognized (Lei 10.711/2003, Art. 2º XVI), policy-subsidized (CONAB PAA-Sementes relaunched 2026-04; PLANAPO 2024–2027; PNAPO retomada 2023), genetically diverse (FAO 1996/99: ~75% genetic diversity lost), and agronomically distinct** — stability under low-input/organic conditions (Korpetis 2023: organic-environment yield penalty ~halved; parity with best modern cultivar yr 2) + equal-or-better grain protein in cereals (Zeibig 2024; Korpetis +~1%). — (confidence: high)
+- **Yield gap is real, not uniform, not universal**: ~50% yr 1, parity for best landraces yr 2, 33–85% below for the rest; Brazilian maize 'BR da Várzea' tied hybrids (+62% municipal avg) but 'Argentino' lost. Teach via variance/stability, never as guaranteed win. — (confidence: high)
+- **Seed-saving is agronomically real**: OP/landrace true-to-type under selection; F1 hybrids segregate in F2 (~−29% grain, Iowa State); ~80–90% of seed in developing countries is informal systems (FAO) — the mechanic is the accurate one. — (confidence: high)
+- **Framing mandate for in-game text**: nitrogen fixation = legumes only; no "crioulo always outperforms"; no "always more nutritious" (cereal-specific protein evidence only); label +2/+1 as game abstractions; keep Pierre valid (USDA AMS: certified seed = real gains for high-input systems); crioulas = autonomy/diversity/stability, hybrids = uniformity/yield-ceiling — both true. — (confidence: high)
+
 ## Evidence Against the Idea
 
 - **Y1 content bloat risk.** The briefing asks for 3 crops + 3 seeds + 3 produce + 1 crop sheet + Elena shop — a week of someone's content work hidden inside a "small slice" framing. Honest appetite says 1 crop template proves the pipeline. [source: briefing; ASSESSMENT of costs] (confidence: high)
@@ -57,7 +64,6 @@ Full raw report with citations lives in-repo at `research/2026-11-09-heirloom-se
 
 ## Gaps & Open Questions
 
-- [NEEDS CLARIFICATION: agronomic stream verdict on crioulo nutritional/yield/stability evidence — which claims are defensible for in-game text (see research §6/§7)? Stream was in flight at time of writing; the assessment synthesis above will be finalized with it in this file.]
 - [NEEDS CLARIFICATION: exact slice — 1 vs 3 crops; seed-saving as built-in seam vs documented follow-up.]
 - [NEEDS CLARIFICATION: distribution — Traveler-only vs Traveler + SeedShop condition entry vs pure seed-saving with no shop at all (initial seeds source problem).]
 - [NEEDS CLARIFICATION: release scope — repo-scoped 0.2.0 (precedent 017) or no release/mmanifest bump this cycle; tag remains maintainer-only.]
