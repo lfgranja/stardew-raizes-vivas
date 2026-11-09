@@ -360,6 +360,17 @@ namespace LivingRoots.Verification
                         break;
                     }
 
+                case "lr_give_heirloom_seed":
+                    {
+                        var count = command.GetInt(0);
+                        if (!GrantHeirloomSeed(count))
+                        {
+                            FailGeneration("give-heirloom-seed-failed");
+                        }
+
+                        break;
+                    }
+
                 case "lr_apply_mulch":
                     {
                         var location = command.Arguments.Count >= 3 ? command.GetString(2) : DefaultLocation;
@@ -437,6 +448,23 @@ namespace LivingRoots.Verification
                         if (!PlantCrop(location, command.GetInt(0), command.GetInt(1), command.GetString(2)))
                         {
                             FailGeneration("plant-crop-failed");
+                        }
+
+                        break;
+                    }
+
+                case "lr_sow_heirloom":
+                    {
+                        var location = command.Arguments.Count >= 4 ? command.GetString(3) : DefaultLocation;
+
+                        // The sow goes through the real game path so the production
+                        // HoeDirt.plant Harmony postfix fires (direct-Crop bypass
+                        // would measure nothing). Refusal by the game (wrong season,
+                        // occupied tile) is an attestable outcome, not a runner
+                        // failure — signals prove no-mutation.
+                        if (!SowHeirloom(location, command.GetInt(0), command.GetInt(1), command.GetString(2)))
+                        {
+                            Monitor.Log($"verification: lr_sow_heirloom refused at {command.GetInt(0)},{command.GetInt(1)} ({location}); no mutation asserted by signals.", LogLevel.Trace);
                         }
 
                         break;
@@ -610,6 +638,88 @@ namespace LivingRoots.Verification
             catch (Exception ex)
             {
                 Monitor.Log($"lr_give_mulch failed (exception type: {ex.GetType().FullName}).", LogLevel.Trace);
+                return false;
+            }
+        }
+
+        private bool GrantHeirloomSeed(int count)
+        {
+            if (count <= 0 || !Context.IsMainPlayer)
+            {
+                return false;
+            }
+
+            try
+            {
+                var items = Game1.player.Items;
+                if (items == null)
+                {
+                    return false;
+                }
+
+                var max = Math.Max(0, Math.Min(items.Count, Game1.player.MaxItems));
+                var slot = -1;
+                for (int i = 0; i < max; i++)
+                {
+                    if (items[i] == null)
+                    {
+                        slot = i;
+                        break;
+                    }
+                }
+
+                if (slot < 0)
+                {
+                    return false;
+                }
+
+                var item = ItemRegistry.Create(ModConstants.QualifiedHeirloomItemId, count);
+                if (item == null)
+                {
+                    return false;
+                }
+
+                items[slot] = item;
+                Game1.player.CurrentToolIndex = slot;
+                return string.Equals(Game1.player.CurrentItem?.QualifiedItemId, ModConstants.QualifiedHeirloomItemId, StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                Monitor.Log($"lr_give_heirloom_seed failed (exception type: {ex.GetType().FullName}).", LogLevel.Trace);
+                return false;
+            }
+        }
+
+        private bool SowHeirloom(string locationName, int tileX, int tileY, string seedId)
+        {
+            GameLocation? location;
+            try
+            {
+                location = Game1.getLocationFromName(locationName);
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (location == null)
+            {
+                return false;
+            }
+
+            var tile = new Vector2(tileX, tileY);
+            if (!location.terrainFeatures.TryGetValue(tile, out var feature) || feature is not HoeDirt dirt)
+            {
+                return false;
+            }
+
+            try
+            {
+                return dirt.plant(seedId, Game1.player, false);
+            }
+            catch (Exception ex)
+            {
+                Monitor.Log($"verification: lr_sow_heirloom failed (exception type: {ex.GetType().FullName}).", LogLevel.Trace);
                 return false;
             }
         }
