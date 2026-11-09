@@ -18,6 +18,14 @@ namespace LivingRoots.Patches
         private static IMonitor? monitor;
         private static IHarvestQualityService? service;
         private static ISoilHealthService? soilHealthService;
+        // Spec 020: crioulo harvest-time rules. Optional — when null the seam is
+        // inert (e.g., test doubles). Initialized via InitializeHeirloomRules.
+        private static LivingRoots.Domain.Interfaces.IHostAtomicLockService? heirloomHostLock;
+        private static Func<Farmer?, Domain.IPlayerInventory?>? heirloomInventoryFactory;
+        private static Func<string>? heirloomDayKeyProvider;
+        private static Action? heirloomBroadcastSync;
+        private static IModHelper? heirloomHelper;
+        private static IManifest? heirloomManifest;
 
         private sealed class HarvestState
         {
@@ -37,6 +45,23 @@ namespace LivingRoots.Patches
             monitor = modMonitor ?? throw new ArgumentNullException(nameof(modMonitor));
             service = harvestService ?? throw new ArgumentNullException(nameof(harvestService));
             soilHealthService = soilService;
+        }
+
+        /// <summary>Spec 020: wires the crioulo harvest-time seam (seed-save + Healthy-band bonus).</summary>
+        public static void InitializeHeirloomRules(
+            LivingRoots.Domain.Interfaces.IHostAtomicLockService? hostLock,
+            Func<Farmer?, Domain.IPlayerInventory?>? inventoryFactory,
+            Func<string>? dayKeyProvider,
+            Action? broadcastSync,
+            IModHelper? modHelper,
+            IManifest? modManifest)
+        {
+            heirloomHostLock = hostLock;
+            heirloomInventoryFactory = inventoryFactory;
+            heirloomDayKeyProvider = dayKeyProvider;
+            heirloomBroadcastSync = broadcastSync;
+            heirloomHelper = modHelper;
+            heirloomManifest = modManifest;
         }
 
         public static bool Harvest_Prefix(int xTile, int yTile, HoeDirt soil, JunimoHarvester junimoHarvester, bool isForcedScytheHarvest, ref object __state)
@@ -316,6 +341,9 @@ namespace LivingRoots.Patches
 
                 var plan = service.BuildFeedbackPlan(decision, enhancedQualityOccurred, extraHarvestOccurred, IsMainPlayerSafe());
                 DoFeedbackBroadcast(soil, xTile, yTile, plan);
+
+                // Spec 020: crioulo rules ride the same seam (014 outcome untouched).
+                ApplyHeirloomRules(soil, xTile, yTile, junimoHarvester, __result);
             }
             catch (Exception ex)
             {
@@ -323,6 +351,171 @@ namespace LivingRoots.Patches
                 {
                     monitor.Log(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Living Roots harvest postfix patch failed; skipping modification. Type: {0} (HResult: 0x{1:X8})", ex.GetType().FullName, ex.HResult), LogLevel.Trace);
                 }
+            }
+        }
+
+        /// <summary>Spec 020: heirloom harvest arm — deterministic seed save (exactly one) + Flat Healthy-band soil bonus (host-authoritative). Never throws.</summary>
+        private static void ApplyHeirloomRules(HoeDirt? soil, int xTile, int yTile, JunimoHarvester junimoHarvester, bool harvestSucceeded)
+        {
+            try
+            {
+                if (soil == null || !harvestSucceeded)
+                {
+                    return;
+                }
+
+                var crop = soil.crop;
+                var seedId = crop?.netSeedIndex?.Value;
+                if (!HeirloomIdentity.IsHeirloomSeedId(seedId))
+                {
+                    return;
+                }
+
+                var locationName = soil.Location?.Name;
+                var isJunimo = junimoHarvester != null;
+
+                // (a) Deterministic seed save — FE-009. Junimos never grant (no player inventory).
+                if (!isJunimo)
+                {
+                    try
+                    {
+                        Farmer? who = Game1.player;
+                        var inventory = heirloomInventoryFactory?.Invoke(who);
+                        var seedItem = ItemRegistry.Create(ModConstants.QualifiedHeirloomItemId, ModConstants.HeirloomSavedSeedYield);
+                        var granted = LivingRoots.Services.HeirloomSeedSaveService.TryGrantSavedSeed(seedItem, inventory, null);
+                        if (granted)
+                        {
+                            ShowLocalizedHeirloomMessage(ModConstants.TranslationKeyHeirloomSeedSaved);
+                        }
+                        else if (who != null)
+                        {
+                            ShowLocalizedHeirloomMessage(ModConstants.TranslationKeyHeirloomSeedSavedInventoryFull);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        TraceLog("heirloom seed save failed", ex);
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(locationName))
+                {
+                    return;
+                }
+
+                var tile = new Vector2(xTile, yTile);
+
+                // (b) Flat +HeirloomHarvestBonus, Healthy band only — HE-2.
+                if (IsMainPlayerSafe())
+                {
+                    ApplyHostHarvestBonus(locationName, tile, Game1.player?.UniqueMultiplayerID ?? 0L);
+                }
+                else
+                {
+                    SendHarvestBonusRequest(locationName, tile, seedId!);
+                }
+            }
+            catch (Exception ex)
+            {
+                TraceLog("heirloom harvest rules failed", ex);
+            }
+        }
+
+        private static void ApplyHostHarvestBonus(string locationName, Vector2 tile, long farmerId)
+        {
+            if (soilHealthService == null || heirloomHostLock == null)
+            {
+                TraceLog("heirloom harvest bonus skipped: soil service or host lock missing", null);
+                return;
+            }
+
+            if (!heirloomHostLock.TryAcquireLock(locationName, tile, farmerId))
+            {
+                return; // first-wins; a concurrent actor already serviced the tile
+            }
+
+            try
+            {
+                var before = soilHealthService.GetSoilHealth(locationName, tile);
+                if (!float.IsNaN(before) && before >= ModConstants.ModerateHealthyBandEdge)
+                {
+                    var applied = HeirloomSoilMath.Harvest(before, out float after);
+                    if (!applied)
+                    {
+                        return;
+                    }
+
+                    soilHealthService.TrySetSoilHealth(locationName, new Point((int)tile.X, (int)tile.Y), after);
+                }
+            }
+            finally
+            {
+                heirloomHostLock.ReleaseLock(locationName, tile, farmerId);
+            }
+
+            try
+            {
+                heirloomBroadcastSync?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                TraceLog("heirloom harvest bonus: sync broadcast failed", ex);
+            }
+        }
+
+        private static void SendHarvestBonusRequest(string locationName, Vector2 tile, string itemId)
+        {
+            var multiplayer = heirloomHelper?.Multiplayer;
+            if (multiplayer == null || heirloomManifest == null)
+            {
+                return; // farmhand messaging unavailable: bonus not applied, plant happened as usual
+            }
+
+            var dayKey = heirloomDayKeyProvider?.Invoke() ?? string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}:{1}:{2}", Game1.currentSeason, Game1.dayOfMonth, Game1.year);
+            var request = new HeirloomHarvestBonusRequest(locationName, (int)tile.X, (int)tile.Y, dayKey, itemId);
+            try
+            {
+                multiplayer.SendMessage(request, ModConstants.HeirloomHarvestBonusRequestMessageType, modIDs: new[] { heirloomManifest.UniqueID });
+            }
+            catch (Exception ex)
+            {
+                TraceLog("heirloom harvest bonus request send failed", ex);
+            }
+        }
+
+        private static void ShowLocalizedHeirloomMessage(string key)
+        {
+            try
+            {
+                var translation = heirloomHelper?.Translation?.Get(key);
+                var text = translation != null ? translation.ToString() : key;
+                Game1.showRedMessage(text);
+            }
+            catch
+            {
+                // Never throw from feedback.
+            }
+        }
+
+        private static void TraceLog(string message, Exception? ex)
+        {
+            try
+            {
+                if (monitor != null)
+                {
+                    if (ex != null)
+                    {
+                        monitor.Log($"{message}: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                    }
+                    else
+                    {
+                        monitor.Log(message, LogLevel.Trace);
+                    }
+                }
+            }
+            catch
+            {
+                // never throw from logging
             }
         }
 
