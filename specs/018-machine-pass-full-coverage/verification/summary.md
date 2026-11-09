@@ -1,6 +1,6 @@
 # 018 — Verification Summary (honest status)
 
-**Last updated:** 2026-11-08 (pass 16, ciclo 80/20 MDMV adaptado)
+**Last updated:** 2026-11-08 (pass 17, ciclo 80/20 MDMV adaptado)
 **Scope:** aggregate status only. `machine-pass` means the runner promoted a host run with complete, agreeing declared signals and honesty level R. It is **not** human verification, **not** D1, and **not** SC-004.
 
 ## Deterministic gates (pass 10 baseline + pass 12 additions)
@@ -18,10 +18,12 @@
 | Mutation checks (pass 13) | 005 `SoilGrowthHealthyMultiplier 0.85→1.00`, 017 `AgrochemicalSoilPenalty 10→20` (2 of 19 more) | **2/2 mutants killed**; exit 19; source restored, post-restore reruns pass |
 | Mutation checks (pass 15) | 013 `MulchDecayMultiplier 0→1`, 014 `HarvestQualityService` Poor `ForceQualityZero` (decision seam); 1 selection-layer mutant discarded (`SoilQualityHealthyBoost=0`, 12× unmeasured-actual) | **2 clean kills** (single-assertion for 014); exit 19; sources restored, post-restore reruns pass |
 | Mutation checks (pass 16) | 005-poor `SoilGrowthPoorMultiplier 1.15→1.00`, 017-clamped `AgrochemicalSoilPenalty 10→0` (2 of 19 more) | **2/2 mutants killed**; exit 19; source restored, post-restore reruns pass |
+| Mutation checks (pass 17) | 015-harmony & 014-zero (`HarvestQualityService` Poor `ForceQualityZero`, single-assertion each), 004-healthy `SoilGrowthHealthyMultiplier 0.85→1.00` (3 of 19 more) | **3/3 mutants killed**; exit 19; sources restored, post-restore reruns pass |
 | Determinism 2× (pass 11) | 004 and 013 rerun on the same seed (2 of 19 scenarios) | **semantic PASS** both; raw logs not byte-identical (documented variance) |
 | Determinism 2× (pass 13) | 005 healthy and 017 tradeoff rerun on the same seed (2 of 19 more) | **semantic PASS** both; filtered logs: 005 identical, 017 one TRACE line swapped position |
 | Determinism 2× (pass 15) | 013 bare-tile and 014 harvest rerun on the same seed (2 of 19 more) | **semantic PASS** both; filtered logs identical (93/93, 34/34 lines), **0 diffs** |
 | Determinism 2× (pass 16) | 005-poor and 017-clamped rerun on the same seed (2 of 19 more) | **semantic PASS** both; 005 filtered 80/80 with 2 diff lines (1 identical Overlay-renderer line swapped, load-order); 017 filtered 37/37, **0 diffs** |
+| Determinism 2× (pass 17) | 015, 014-zero, 004-healthy rerun on the same seed (3 of 19 more) | **semantic PASS** all; 015 filtered 34/34 **0 diffs**; 014-zero 36/36, 4 diff lines (identical lines swapped, load-order); 004-healthy 82/83, 1 identical `Pruned orphan bin record` extra |
 | 017 scenarios | `bash scripts/tests/test-017-agrochemical.sh` | **23/23 passed** |
 | 017 claims | `bash scripts/tests/test-017-claims.sh` | **PASS** (12 rows, 19 paths, 2 digests) |
 | Scenario `modVersion` | `specs/**/*.scenario.json` sweep | **69 declarations, all `0.1.0`** |
@@ -44,7 +46,7 @@ The single smoke skip is `test-integration.sh`, intentionally skipped by `SMOKE_
 
 ## Residual work
 
-- **T034/T035 advanced in pass 11, pass 13, pass 15 and pass 16.** Pass 11 covered 004/013-expiry; pass 13 covered 005-healthy and 017-tradeoff; pass 15 covered 013-bare-tile and 014 (including a discarded selection-layer mutant, recorded); pass 16 covered 005-poor and 017-clamped. Coverage is now **8 of 19** scenario files; the full per-scenario coverage required by SC-MP-6/SC-MP-7 remains residual. See `verification/mutation-checks.md` and `verification/determinism-checks.md`. Log-level bit-identity is not claimed.
+- **T034/T035 advanced in pass 11, pass 13, pass 15, pass 16 and pass 17.** Pass 11 covered 004/013-expiry; pass 13 covered 005-healthy and 017-tradeoff; pass 15 covered 013-bare-tile and 014; pass 16 covered 005-poor and 017-clamped; pass 17 covered 015-harmony, 014-zero and 004-healthy. Coverage is now **11 of 19** scenario files; the full per-scenario coverage required by SC-MP-6/SC-MP-7 remains residual. See `verification/mutation-checks.md` and `verification/determinism-checks.md`. Log-level bit-identity is not claimed.
 - **T006/T007 closed in pass 12.** 33 new unit cases cover `MulchApplicationService` eligibility/refusal/lifetime/persistence, the pure `MulchVerificationRules` host/count gate and bounded slot placement, and `ILivingRootsModApi.ApplyMulch` bound/unbound/throwing/disposed behavior. RED was demonstrated (`CS0103` before the rule existed); targeted 37/37 and full suite 1937/4/0 are GREEN. Honest limit: `GrantMulch`'s item-creation success path is Gate-3-attested, not unit-tested, and farmhand gating is pure-rule-only.
 - **12 legacy bundles** remain as historical artifacts under a retain-only policy; no regeneration was attempted.
 - **94 partial attempts** are not bundles and are not cited as evidence.
@@ -52,6 +54,7 @@ The single smoke skip is `test-integration.sh`, intentionally skipped by `SMOKE_
 
 ## Pointers
 
+- `verification/cycle-2026-11-08-80-20-pass17.md` — pass 17 detailed record (T034/T035 extended to 015/014-zero/004-healthy; coverage 11/19).
 - `verification/cycle-2026-11-08-80-20-pass16.md` — pass 16 detailed record (T034/T035 extended to 005-poor/017-clamped; coverage 8/19).
 - `verification/cycle-2026-11-08-80-20-pass15.md` — pass 15 detailed record (T034/T035 extended to 013-bare-tile/014; coverage 6/19; one discard).
 - `verification/cycle-2026-11-08-80-20-pass13.md` — pass 13 detailed record (T034/T035 extended to 005/017; coverage 4/19).

@@ -133,3 +133,30 @@ Semantic comparison (same method): all compared JSON files identical per pair; `
 Post-restore runs corroborate the baseline (bundled with the mutation ledger): 005-poor `20261109T030410Z-4cd0` and 017-clamped `20261109T030553Z-391b` restate the same actual values.
 
 Coverage: **8 of 19** scenario files now carry 2× determinism evidence (004, 013-expiry, 005-healthy, 017-tradeoff, 013-bare-tile, 014, 005-poor, 017-clamped). The rest remain residual.
+
+## Pass 17 addition (2026-11-08) — 015-harmony, 014-zero, 004-healthy (coverage now 11 of 19)
+
+Command shape:
+
+```bash
+./scripts/verify-scenario.sh --scenario <scenario.json> --no-acquire \
+  --game-path "/home/luis/.local/share/Steam/steamapps/common/Stardew Valley" --skip-build --timeout 420
+```
+
+| Scenario | Run 1 | Run 2 | Verdicts |
+|---|---|---|---|
+| 015 `harmony-harvest-quality-host` (v3, 12 predicates, seed 1) | `evidence-bundle-run-20261109T031507Z-702d` | `evidence-bundle-run-20261109T031644Z-755d` | pass / pass |
+| 014 `soil-health-harvest-measured-zero` (seed 123456789) | `evidence-bundle-run-20261109T031831Z-3838` | `evidence-bundle-run-20261109T032001Z-77c0` | pass / pass |
+| 004 `compost-growth-healthy` (healthy 80, seed 123456789) | `evidence-bundle-run-20261109T032111Z-4e06` | `evidence-bundle-run-20261109T032235Z-3b83` | pass / pass |
+
+Semantic comparison (same method): all compared JSON files identical per pair; `evaluation/thresholds.jsonl` identical.
+
+| Scenario | `actual` values (both runs) | Threshold outcomes | SMAPI log (normalized) |
+|---|---|---|---|
+| 015 | `soilHealth` 90, tier healthy; `poorHarvestQuality` 0, `moderateHarvestQuality` 1, `healthyHarvestQuality` 1; `healthyExtraCount` 1 | all 12 predicates pass | filtered 34/34 lines, **0 differences** |
+| 014-zero | `soilHealth` 0, tier poor; `zeroHealthTier` poor, `zeroVanillaQuality` 1, `zeroHarvestQuality` 0 | predicates 0–3 pass | filtered 36/36 lines; 4 diff lines (identical `Saved data …` / `Overlay renderer cache invalidated.` lines swapped position — load-order artifact), no content change |
+| 004-healthy | `soilHealth` 80, tier healthy, `phaseDays` 3 | predicate-0 (×0.85) pass; predicate-1 (healthy band) pass | filtered 82/83 lines; 1 extra identical `Pruned orphan bin record at Farm:60,15` line in run 2 |
+
+Post-restore runs corroborate the baselines (bundled with the mutation ledger): 015 `20261109T032903Z-29cf`, 014-zero `20261109T033015Z-0e1b`, 004-healthy `20261109T033119Z-6fda`.
+
+Coverage: **11 of 19** scenario files now carry 2× determinism evidence (004/013-expiry/005/017/013-bare-tile/014/005-poor/017-clamped + 015/014-zero/004-healthy). The rest remain residual.

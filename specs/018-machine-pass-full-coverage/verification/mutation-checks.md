@@ -213,3 +213,56 @@ Coverage: **6 of 19** scenario files (004, 013-expiry, 005, 017, 013-bare-tile, 
 ```
 
 Coverage: **8 of 19** scenario files (004, 013-expiry, 005-healthy, 017-tradeoff, 013-bare-tile, 014, 005-poor, 017-clamped). The remaining 11 host/farmhand scenario files are still residual.
+
+## Pass 17 addition (2026-11-08) — 015-harmony, 014-zero, 004-healthy (coverage now 11 of 19)
+
+### 015-harmony — mutant killed (decision seam: Poor `ForceQualityZero` `true → false`)
+
+- **Mutation:** `LivingRoots/Domain/Services/HarvestQualityService.cs` Poor branch: `ForceQualityZero = true` → `false`.
+- **Scenario:** `specs/015-harmony-harvest-seam/scenarios/harmony-harvest-quality-host.scenario.json` (seed 1).
+- **Bundle:** `evidence-bundle-run-20261109T032436Z-61fb`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `poorHarvestQuality` = **1** (scenario requires 0); predicates 0, 2–11 `passed: true`; predicate-1 `false`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Domain/Services/HarvestQualityService.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T032903Z-29cf`, **pass**.
+
+### 014-zero — mutant killed (same decision seam)
+
+- **Mutation:** identical to 015 above.
+- **Scenario:** `specs/014-soil-health-crop-quality/scenarios/soil-health-harvest-measured-zero.scenario.json` (measured 0/Poor).
+- **Bundle:** `evidence-bundle-run-20261109T032550Z-1e3b`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `zeroHarvestQuality` = **1** (scenario requires 0), `zeroHealthTier` poor; predicates 0–1, 3 `passed: true`; predicate-2 (`zeroHarvestQuality eq 0`) → **`false`**. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** same as 015; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T033015Z-0e1b`, **pass** (`zeroHarvestQuality` 0).
+
+### 004-healthy — mutant killed (`SoilGrowthHealthyMultiplier 0.85f → 1.00f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:15` `SoilGrowthHealthyMultiplier = 0.85f` → `1.00f`.
+- **Scenario:** `specs/004-playable-compost-loop/scenarios/compost-growth-healthy.scenario.json` (healthy 80, seed 123456789).
+- **Bundle:** `evidence-bundle-run-20261109T032724Z-2b7d`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `phaseDays` **4** (scenario expects healthy growth → 3); predicate-0 (×0.85) → **`passed: false`**; predicate-1 (healthy band) → `true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T033119Z-6fda`, `phaseDays` 3, **pass**.
+
+### Integrity (pass 17)
+
+`--verify-bundle` exit 0 for all twelve bundles in this pass:
+
+```
+0 evidence-bundle-run-20261109T031507Z-702d
+0 evidence-bundle-run-20261109T031644Z-755d
+0 evidence-bundle-run-20261109T031831Z-3838
+0 evidence-bundle-run-20261109T032001Z-77c0
+0 evidence-bundle-run-20261109T032111Z-4e06
+0 evidence-bundle-run-20261109T032235Z-3b83
+0 evidence-bundle-run-20261109T032436Z-61fb
+0 evidence-bundle-run-20261109T032550Z-1e3b
+0 evidence-bundle-run-20261109T032724Z-2b7d
+0 evidence-bundle-run-20261109T032903Z-29cf
+0 evidence-bundle-run-20261109T033015Z-0e1b
+0 evidence-bundle-run-20261109T033119Z-6fda
+```
+
+Coverage: **11 of 19** scenario files (004/013-expiry/005/017/013-bare-tile/014/005-poor/017-clamped/015/014-zero/004-healthy). The remaining 8 are still residual.
