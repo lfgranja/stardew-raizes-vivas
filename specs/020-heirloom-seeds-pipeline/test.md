@@ -7,20 +7,20 @@
 ## GATE3
 
 <!-- GATE3:BEGIN -->
-- **Status**: pending (first run not yet executed at time of writing)
-- **Verdict**: —
-- **Flaky**: —
-- **Run ID**: —
-- **Commit**: —
-- **Date**: —
+- **Status**: machine-pass
+- **Verdict**: pass
+- **Flaky**: false
+- **Run ID**: run-20261109T155608Z-6021
+- **Commit**: 3bd84952b4a86e9a1ccd1330af934620b1c932e0
+- **Date**: 2026-11-09T15:56:51Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-<id>/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-<id>/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-<id>/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-<id>/`
-- **Honesty level**: —
-- **Claim**: —
+  - SoilHealthState delta: `evidence-bundle-run-20261109T155608Z-6021/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T155608Z-6021/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T155608Z-6021/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T155608Z-6021/`
+- **Honesty level**: R
+- **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
 - **Review date**: —
 - **Session ID**: —
