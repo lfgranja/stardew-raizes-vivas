@@ -26,14 +26,17 @@ namespace LivingRoots.Tests
                 "Visual indicators show soil health status",
                 "Health degrades over time when soil is left bare",
                 "Health improves with compost application",
-                "Composting bin: craft, place, load with organic waste, harvest compost after 2 in-game days"
+                "Composting bin: craft, place, load with organic waste, harvest compost after 2 in-game days",
+                "Mulch soil cover: reduces/prevents soil decay on mulched tilled tiles",
+                "Soil health influences crop growth speed",
+                "Harvest quality scales with soil health tiers (Cornell CSHA 0–30 / 31–70 / 71–100)",
+                "Joja agrochemical tradeoff item: bounded, recoverable soil-health cost with explicit feedback"
             };
 
             // Arrange — capabilities with no in-game behaviour must carry the label.
             var expectedUnbuiltFeatures = new[]
             {
-                "Learn about real-world soil management (Planned)",
-                "Enhance your farming experience with educational elements (Planned)"
+                "Educational elements and broader agroecological arcs (Planned)"
             };
 
             // Read README.md from embedded resource for reliable test access across all environments
@@ -105,7 +108,11 @@ namespace LivingRoots.Tests
                 "Health improves with compost application",
                 "Create compost from organic materials",
                 "Composting bin: craft, place, load with organic waste, harvest compost after 2 in-game days",
-                "Apply compost to improve soil health"
+                "Apply compost to improve soil health",
+                "Mulch soil cover: reduces/prevents soil decay on mulched tilled tiles",
+                "Soil health influences crop growth speed",
+                "Harvest quality scales with soil health tiers (Cornell CSHA 0–30 / 31–70 / 71–100)",
+                "Joja agrochemical tradeoff item: bounded, recoverable soil-health cost with explicit feedback"
             };
 
             // The curated set must describe the document, not drift from it.
