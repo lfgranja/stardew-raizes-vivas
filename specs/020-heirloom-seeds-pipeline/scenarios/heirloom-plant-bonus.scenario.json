@@ -68,13 +68,32 @@
     {
       "signal": "cropPhaseDelta",
       "predicate": {
-        "op": "multiplier",
-        "field": "phaseDays",
-        "base": "pre.phaseDays",
-        "factor": 1.0,
-        "tolerance": 0.0001
+        "op": "allOf",
+        "predicates": [
+          {
+            "op": "cmp",
+            "left": "phaseDays",
+            "operator": "eq",
+            "right": 1,
+            "tolerance": 0.0001
+          },
+          {
+            "op": "cmp",
+            "left": "currentPhase",
+            "operator": "eq",
+            "right": 0,
+            "tolerance": 0.0001
+          },
+          {
+            "op": "cmp",
+            "left": "fullyGrown",
+            "operator": "eq",
+            "right": false,
+            "tolerance": 0
+          }
+        ]
       },
-      "description": "planting does not advance growth (no 014/015 double-count)"
+      "description": "planting advances nothing: phase 0 with the declared 1-day phase budget, not fully grown (no 014/015 double-count)"
     },
     {
       "signal": "smapiLog",
