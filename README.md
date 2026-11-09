@@ -17,9 +17,13 @@ A Stardew Valley mod that introduces sustainable farming practices through soil 
 - Apply compost to improve soil health
 
 ### Agroecological Practices
-- Implement sustainable farming techniques (Planned)
-- Learn about real-world soil management (Planned)
-- Enhance your farming experience with educational elements (Planned)
+- Mulch soil cover: reduces/prevents soil decay on mulched tilled tiles
+- Soil health influences crop growth speed
+- Harvest quality scales with soil health tiers (Cornell CSHA 0–30 / 31–70 / 71–100)
+- Joja agrochemical tradeoff item: bounded, recoverable soil-health cost with explicit feedback
+- Educational elements and broader agroecological arcs (Planned)
+
+> **Status (2026-11-09):** features above are implemented and covered by automated tests; end-to-end gameplay verification is `machine-pass` (headless, host-only), **not** human-verified. Live multiplayer convergence (D1) is not yet attested. No public release is published yet — the repository ships v0.1.0 internally; install from source.
 
 ## Installation
 
