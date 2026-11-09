@@ -4,7 +4,7 @@
 
 **Honesty**: `machine-pass` ≠ `verified`. External facts cited with URL + date + confidence. Local facts verified from files/commands this session (2026-11-09). Nexus direct fetches are largely HTTP 403/Cloudflare-blocked — Nexus figures come from search-engine snippets and are labeled; missing data is reported as missing, never invented.
 
-**Method**: 3 parallel background research streams (technical SDV/SMAPI surface; competitive/market landscape incl. Brazilian communities; agronomic grounding — see §6). Streams 1–2 complete; stream 3 (agronomic) was in flight at time of writing and is appended as its own section before this cycle's artifacts are finalized. Primary verification done directly by the parent session (decompiled `Stardew Valley.dll` / `StardewValley.GameData.dll` @ `/home/luis/stardew-assemblies`, commit `0862408` of this repo, smapi.io live).
+**Method**: 3 parallel background research streams (technical SDV/SMAPI surface; competitive/market landscape incl. Brazilian communities; agronomic grounding, multilingual EN/PT/ES/DE) — all complete 2026-11-09; §7 carries the consolidated agronomic report. Primary verification done directly by the parent session (decompiled `Stardew Valley.dll` / `StardewValley.GameData.dll` @ `/home/luis/stardew-assemblies`, smapi.io live).
 
 ---
 
@@ -71,7 +71,7 @@ Closest neighbors:
 
 ## 6) Agronomic & sociopolitical grounding (PT/EN/ES)
 
-*(In place as of 2026-11-09 with the agronomy subagent report below; claims live-cited.)*
+*(Consolidated 2026-11-09; claims live-cited in §7.)*
 
 See §7 "Agronomic grounding — landrace/crioulo (2026-11-09)" for the consolidated report. Headline claims (verified in-stream):
 
@@ -84,7 +84,143 @@ See §7 "Agronomic grounding — landrace/crioulo (2026-11-09)" for the consolid
 
 (Stream 3 completed after v1 of this note; incorporated verbatim below.)
 
-<!-- AGRONOMY-STREAM-PLACEHOLDER -->
+## 7) Agronomic grounding — landrace/crioulo (2026-11-09) [stream complete]
+
+> Stream 3 report (verbatim from subagent `ses_e3f489986ffe8fsfAcOCoeUCZx`, all URLs accessed 2026-11-09). Tags: [peer-reviewed] [government/official] [intergovernmental/FAO] [NGO/advocacy] [university extension] [encyclopedia/aggregated]. **Nothing here should be pasted into in-game text as fact without respecting the confidence levels.**
+
+### Method note / honesty preface
+The proposed query "Cavatassi et al." returned no matching landrace paper — likely a garbled reference. Canonical anchors: **Camacho Villa, Maxted, Scholten & Ford-Lloyd (2005)** and **Casañas et al. (2017)**. Most quantified landrace trials involve wheat and maize; vegetable-heirloom economics is mostly qualitative + non-Brazilian consumer studies. Brazilian programs are well documented officially (Planalto, Embrapa, CONAB, IPEA) — the strongest leg of the brief.
+
+### 1. Landrace vs. hybrid vs. modern cultivar — the science
+
+**1.1 Definitions (high confidence)**
+- Working scholarly definition (FAO/ECPGR-endorsed): a landrace is *"a dynamic population(s) of a cultivated plant that has historical origin, distinct identity and lacks formal crop improvement, as well as often being genetically diverse, locally adapted and associated with traditional cultivation systems"* — Camacho Villa TC, Maxted N, Scholten MA, Ford-Lloyd BV. "Defining and identifying crop landraces." *Plant Genetic Resources* 3(3), 2005. — [WUR publication record](https://research.wur.nl/en/publications/defining-and-identifying-crop-landraces/) / [FAO ResourceBook §B.1](https://www.fao.org/fileadmin/templates/agphome/documents/PGR/PubPGR/ResourceBook/B.1.pdf) — **peer-reviewed / intergovernmental** — Confidence: **high**.
+- Evolved concept (Casañas F et al. "Toward an Evolved Concept of Landrace." *Frontiers in Plant Science* 8:145, 2017). [PMC5296298](https://pmc.ncbi.nlm.nih.gov/articles/PMC5296298/) — **peer-reviewed** — Confidence: **high**.
+- Portuguese parallel: crioulo / "cultivar local, tradicional ou crioula" in Lei 10.711/2003 Art. 2º XVI (see §3.1).
+
+**1.2 Yield: the honest gap is real, not uniform (high confidence)**
+- **Greek field trial (bread wheat, 2 years)**: Year 1 landraces ~**1.55 t/ha** vs ~**3.24 t/ha** commercial (~half). Year 2: best commercial 'Yecora E' 2.57 t/ha vs best landrace 'Xilokastro Lamias' 2.52 t/ha (**statistically indistinguishable**); remaining landraces **33–85% below** commercial in conventional plots. Yield loss conventional→organic: **~45% for commercial cultivars vs ≈22% for landraces** — direct evidence that landraces **degrade less under low-input/organic conditions**; best landraces had **~1.0% higher protein content**; wide inter-plot variance. — Korpetis E et al. "Bread Wheat Landraces Adaptability to Low-Input Agriculture." *Plants (Basel)* 12(13):2561, 2023. [PMC10347258](https://pmc.ncbi.nlm.nih.gov/articles/PMC10347258/) — **peer-reviewed** — Confidence: **high**.
+- **Scottish spring wheat landraces**: landrace ≈2.8 t/ha vs modern ≈3.0 t/ha (**not significant**), protein/nutrient content equal-or-greater particularly at **low N availability** — SRUC [research PDF](https://pure.sruc.ac.uk/files/111250133/Landraces_of_spring_wheat_deliver_multiple_functions_under_low-input_conditions.pdf) — **medium** (snippet-level; PDF blocked for automated fetch).
+- **Wheat–legume mixtures 2025 (organic/low-input)**: ~2.8 vs ~3.0 t/ha, not significant — [Scopus/ResearchGate record](https://www.researchgate.net/publication/388651076) — **medium**.
+- **Brazilian maize, MG**: crioulo **'BR da Várzea' yielded statistically equal to hybrids and +62% above the municipal average**; crioulo 'Argentino' produced well below hybrids (but above Montes Claros municipal mean). Landraces **more N-efficient under low-N soil** (Machado et al. 2003, Embrapa/UFV low-N trials, cited within). — Araujo AV et al. "Desempenho agronômico de variedades crioulas e híbridos de milho…" *Rev. Ciênc. Agron.* 44(4):2013, DOI 10.1590/S1806-66902013000400027. [SciELO](http://www.scielo.br/j/rca/a/JYbqyLrhjkBz6kQF76fkMGy/?lang=pt) — **peer-reviewed** — Confidence: **high** (parity finding for 'BR da Várzea'; **low** generalizability).
+- **General pattern**: under high inputs modern cultivars usually win; under **low-input/organic/stress the gap narrows, disappears, or inverts** — trend, not law; crop-, input- and site-dependent. No defensible single "typical yield gap %" exists (see §8 gaps).
+
+**1.3 Genetic diversity & erosion (high confidence)**
+- FAO (1996/1999, still anchor): **~75% of plant genetic diversity lost since the 1900s**; **>90% of crop varieties disappeared from farmers' fields**; **75% of world food from 12 plant + 5 animal species**; rice/maize/wheat ≈60% of plant-derived calories & protein. — FAO "What is happening to agrobiodiversity?" [fao.org/4/y5609e/y5609e02.htm](https://www.fao.org/4/y5609e/y5609e02.htm) — **intergovernmental** — Confidence: **high** (canonical but dated; label "FAO estimate 1996/1999" if quoted).
+- Landraces carry far wider genetic variability than elite cultivars; reservoir for climate-adaptation alleles — Korpetis 2023; Casañas 2017 — Confidence: **high**.
+
+**1.4 Quality / nutrition (medium confidence — nuanced!)**
+- Landrace wheats tend to show **equal-or-better protein/micronutrients**: "GPC is higher in wild and domesticated landrace wheats than in modern cultivars" — Zeibig F et al. "Grain quality traits within the wheat (Triticum spp.) genepool." *J Sci Food Agric*, 2024. [Wiley](https://scijournals.onlinelibrary.wiley.com/doi/10.1002/jsfa.13328) — **peer-reviewed** — Confidence: **high** (wheat).
+- Ficiciyan A et al. 2018 "More than Yield: Ecosystem Services of Traditional versus Modern Crop Varieties Revisited," *Sustainability* 10(8):2834 — landraces often lower yield at optimum, more services; gap in yields is main trade-off. [MDPI](https://www.mdpi.com/2071-1050/10/8/2834) — Confidence: **medium-high**.
+- **Do NOT claim "heirloom = always more nutritious"** — crop-specific; vegetables unproven; only cereals/wheat strong. Confidence for blanket claim: **low**.
+
+**1.5 Yield stability under stress**
+- Heterogeneity → stable performance across environments (widely replicated); organic-environment yield penalty **halved** for landraces (Korpetis 2023); low-input landrace first in lowest-fertility field — Confidence: **high** (wheat).
+- Barley landraces drought-response variation (Shrestha 2026) — **low-medium** (single study).
+- Ethiopian preprint: 66.7% decline in traditional wheat landrace cultivation after improved-variety introduction — **low** (preprint; illustrative only).
+
+**Net defensible claims**: (a) landraces = dynamic, heterogeneous, locally adapted; (b) genetic-diversity reservoirs; (c) smaller low-input/organic yield penalties; (d) roughly equal-or-better protein in cereals. "Typical yield gap" **% is crop-, input- and site-dependent** — avoid a single magic number in-game (see §7 design mapping).
+
+### 2. Seed saving — economics, agronomy, risks
+
+**2.1 Why farmers save seed (high confidence)**
+- Cashlessness/access: farm-saved seed "requires no cash outlay" — GRAIN "The real seed producers" (2013) [grain.org](https://grain.org/en/article/6035-the-real-seeds-producers-small-scale-farmers-save-use-share-and-enhance-the-seed-diversity-of-the-crops-that-feed-africa) — **NGO/movement** — Confidence: **medium** (corroborated).
+- **~80–90%** of seed used by farmers in developing countries comes from **informal/local systems** (FAO compendium) — [fao.org What are seed systems](https://www.fao.org/agriculture/crops/thematic-sitemap/theme/compendium/tools-guidelines/what-are-seed-systems/en/) — **intergovernmental** — Confidence: **high**. FAO also states small-scale farmers "feed 70% of the world's population" (agroecology in action) — Confidence: **medium-high**.
+- Local adaptation & resilience: Hlatshwayo et al. 2021 (~60% vegetable farmers save own seed) [PMC7616262](https://pmc.ncbi.nlm.nih.gov/articles/PMC7616262/) — **peer-reviewed** — Confidence: **medium**. Coomes et al. 2015 *World Development* 69:207–222 (farmer seed networks) — [ScienceDirect](https://www.sciencedirect.com/science/article/pii/S030691921500086X) — **peer-reviewed** — Confidence: **high**. McGuire & Sperling 2016, *Food Security* 8:401–411 — [Springer](https://link.springer.com/article/10.1007/s12571-015-0528-8) — Confidence: **high**.
+- **Brazil specifically**: crioulas are policy-supported — Conab "PAA Sementes" buys crioulas at premium (~30% above market for transgenic-free maize — "Fubá da Paixão") [AS-PTA 2021](https://aspta.org.br/2021/03/30/sementes-da-paixao-acao-coletiva-na-defesa-da-agrobiodiversidade-no-territorio-da-borborema-na-paraiba/) — **NGO** — Confidence: **high**.
+
+**2.2 Replanting F1 hybrids vs OP/landrace (high confidence — extension consensus)**
+- Replanted F1 → **F2 segregation**: progeny "tend to revert back to the parents", "extremely variable" — Missouri IPM "Why Not Save Hybrid Seed?" [ipm.missouri.edu/mpg/index.cfm?ID=19](https://ipm.missouri.edu/mpg/index.cfm?ID=19) — **university extension** — Confidence: **high**.
+- Quantified: F1/F2 maize comparison found **F2 saved seed produced ~29% less grain than F1** — Iowa State University Extension "F1/F2 Corn Variety Study" [iastatedigitalpress.com](https://iastatedigitalpress.com/farmreports/article/4962/galley/4828/download/) — **university research** — Confidence: **medium-high**.
+- OP/landrace varieties come **true-to-type when selected** — farmer massal selection documented (>10 yrs for 'BR da Várzea') — AS-PTA/Embrapa materials — Confidence: **high**.
+
+**2.3 Risks of saved seed (high confidence)**
+- **Seed-borne pathogens travel with the seed** (14 pathogens × 9 crops, Brodal 2021 [PMC8539852](https://pmc.ncbi.nlm.nih.gov/articles/PMC8539852/)) — Colo. State Extension; Kentucky PPFS-VG-09; UVM organic guidance — **peer-reviewed + university extension** — Confidence: **high**.
+- **Cross-pollination / contamination**: Borborema documented transgenic contamination of community maize (2012–2016) → campaign "Não Planto Transgênico para não Apagar minha História" — Qualcomm AS-PTA 2021 — Confidence: **high** (as documented event), **low** for general rates.
+- **Varietal drift**: crioula seed loses germination vigor with rudimentary storage — Embrapa PIBIC Alice 1106014; Embrapa Circular Técnica 99 (2025) prescribes drying/storage/ear selection — **government research** — Confidence: **high**.
+
+**2.4 Best practices (extension-grade)** — select best plants; harvest at full maturity; dry <13% moisture; clean/grade; store cool, dark, dry, rodent-proof; label by variety & year; test germination pre-plant; isolate outcrossers (maize/squash); rotate germplasm periodically; swap/buy in networks (bancos de sementes) — synthesized from [Embrapa Circular Técnica 99 (2025)](https://www.embrapa.br/busca-de-publicacoes/-/publicacao/1172471/sementes-crioulas-procedimentos-rotineiros-da-colheita-ao-armazenamento) and Kentucky PPFS-VG-09. Confidence: **high**.
+
+### 3. Brazilian context (PT) — sementes crioulas
+
+**3.1 Legal status (high confidence — primary government sources)**
+- **Lei nº 10.711/2003** (Sistema Nacional de Sementes e Mudas, "nova lei de sementes") [planalto.gov.br](https://www.planalto.gov.br/ccivil_03/leis/2003/l10.711.htm) — key provisions:
+  - **Art. 2º, XVI** — *cultivar local, tradicional ou crioula*: variedade desenvolvida/adaptada/produzida por agricultores familiares, assentados ou indígenas, com "características fenotípicas bem determinadas e reconhecidas pelas respectivas comunidades" e que "**não se caracterizem como substancialmente semelhantes às cultivares comerciais**".
+  - **Art. 2º, XLIII** — *semente para uso próprio*: saved by the farmer each season for own next-year/on-property use.
+  - **Art. 8º, §3º** — family farmers / settlers / indigenous multiplying for self-distribution/exchange/commercialization among themselves are **exempt from RENARSEM registration**.
+  - **Art. 11, §6º** — **RNC inscription NOT mandatory** for local/traditional/crioula cultivars used by these groups.
+  - **Art. 48** — "é vedado o estabelecimento de restrições à inclusão de sementes e mudas de cultivar local, tradicional ou crioula em programas de financiamento ou em programas públicos de distribuição ou troca de sementes".
+  - Regulated by **Decreto 5.153/2004** ([ABRASEM copy](http://www.abrasem.com.br/wp-content/uploads/2012/10/Decreto-n%C2%BA.-5.153-de-23-de-julho-de-2004-Regulamenta-a-Lei-de-Sementes-e-Mudas.pdf)); FAOLEX consolidates ([bra49379.pdf](https://faolex.fao.org/docs/pdf/bra49379.pdf)). UFSC 2016 review flags ongoing legal tensions — Confidence: **medium** on nuance.
+- **PNAPO**: **Decreto nº 7.794/2012** [planalto.gov.br](https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2012/decreto/d7794.htm) — creates Política Nacional de Agroecologia e Produção Orgânica (integrate/articulate/adapt policies for the agroecological transition + organic production). PLANAPO I (2013–2015), II (2016–2019), **PLANAPO 2024–2027** ([PLANAPO 2024-2027 PDF](https://agroecologia.org.br/wp-content/uploads/2024/03/PLANAPO-2024-2027-WEB-2.pdf)); seed flagship = **PNSMAF** (Programa Nacional de Sementes e Mudas da Agricultura Familiar; Portaria Interministerial nº 1/2012 — **medium** on numbering; existence/history **high**); **PNAPO officially retomada 2023** ([agroecologia.org.br 2023-06-29](https://agroecologia.org.br/2023/06/29/politica-nacional-de-agroecologia-e-producao-organica-e-oficialmente-retomada/)).
+
+**3.2 PAA Sementes (CONAB)** — Programa de Aquisição de Alimentos, modalidade PAA Sementes / Compra com Doação Simultânea; buys crioulas from family farmers/co-ops/associations, donates to food-insecure families/indigenous/quilombola — [CONAB chamada 2025](https://www.gov.br/conab/pt-br/atuacao/agricultura_familiar/execucao-do-paa/chamada-de-sementes-2025-criterios) ; [MDS PAA presentation](https://www.mds.gov.br/webarquivos/publicacao/seguranca_alimentar/Apresentacao_PAA.pdf) — **government** — Confidence: **high**. Up to **5% of PAA budget earmarked for seeds** ([AS-PTA 2020](https://aspta.org.br/2020/08/03/projeto-de-lei-735-e-um-pouco-da-historia-do-programa-de-aquisicao-de-alimentos-paa/), **medium-high**). **2026: own annual budget line — R$ 15,000/family cap** (Resolução GGPAA nº 38/2026, [jusrural.com.br](https://jusrural.com.br/artigos/paa-sementes-crioulas-resolucao-ggpaa-38-2026-limite-15-mil-familia-preco-referencia-conab/)) — Confidence: **medium**. Scale example: **44.4 t of crioulas** (maize/beans/rice/cassava) distributed to **~890 families in Pará** ([agrolink.com.br](https://www.agrolink.com.br/noticias/para---sementes-crioulas-chegam-a-agricultores-familiares-de-paragominas_511100.html)) — Confidence: **medium**. **April 2026: PAA-Sementes relaunched** (Broto/AgFeed 2026-04-13).
+
+**3.3 "Sementes da Paixão" & Casa da Semente (Borborema, Paraíba)** — crioulas called "sementes da paixão"; Casa da Semente / Bancos Comunitários de Sementes network; Festa das Sementes da Paixão (since ~2006); 2012–2016 transgenic contamination crisis → "Não Planto Transgênico" campaign; "devolve o gene de volta" seed exchange; "Fubá da Paixão" (transgene-free maize, **+30% price**); book "As Sementes da Paixão e as Políticas de Distribuição das Sementes na Paraíba" (AS-PTA/EUSC, cited 37×). [AS-PTA 2021](https://aspta.org.br/2021/03/30/sementes-da-paixao-acao-coletiva-na-defesa-da-agrobiodiversidade-no-territorio-da-borborema-na-paraiba/) ; [PDF](https://agroecologia.org.br/wp-content/uploads/2014/05/as-sementes-da-paixao-e-as-politicas-de-distribuicao-das-sementes-na-paraiba.pdf) — **NGO primary** — Confidence: **high**. ASA Brasil "Sementes do Semiárido" — [asabrasil.org.br](https://asabrasil.org.br/projeto/sementes-do-semiarido/) — Confidence: **high**.
+
+**3.4 Embrapa** — **Doc 490 "Agrobiodiversidade: sementes crioulas e seus guardiões"** (Recursos Genéticos e Biotecnologia) [infoteca PDF](https://www.infoteca.cnptia.embrapa.br/infoteca/bitstream/doc/1129536/1/Doc-490-Agrobiodiversidade.pdf) — **government research**. **Circular Técnica 99/2025** "Sementes crioulas: procedimentos rotineiros da colheita ao armazenamento" — *"O conhecimento tradicional das guardiãs e dos guardiões … e o conhecimento técnico de profissionais de ciências agrárias devem ser complementares"* [embrapa.br record 1172471](https://www.embrapa.br/busca-de-publicacoes/-/publicacao/1172471/sementes-crioulas-procedimentos-rotineiros-da-colheita-ao-armazenamento) — **the single best PT citation for extension framing**: traditional + technical knowledge are **complementary**, not scored "peasant vs science". **"Manejo comunitário da agrobiodiversidade"** [embrapa.br 1129395](https://www.embrapa.br/en/busca-de-publicacoes/-/publicacao/1129395/manejo-comunitario-da-agrobiodiversidade-producao-agroecologica-de-sementes-de-variedades-crioulas-por-agricultores-familiares) — Confidence: **high**. **Documentos 269** (Meio-Norte): Fazenda Vista Alegre crioulo amarela **5.4 t/ha** irrigated; sequeiro vermelho 4.2 t/ha — Confidence: **medium**. UFV-led crioulas vs hybrids trial (Araujo 2013, §1.2) — Confidence: **high**. Machado et al. 2003: commercial > crioulas except **under low-N soil where crioulas outyielded** — **medium** (cited within). **MST/Rede Bionatur** — movement seed company, +27 yrs — Confidence: **medium** (existence; figures unverified). **ANA** — [agroecologia.org.br 2023-10-31](https://agroecologia.org.br/2023/10/31/agroecologia-biodiversidade-e-sementes-crioulas-em-debate/) — Confidence: **high** (institutional fact).
+
+**3.5 University extension (PT)** — UFRGS theses frame crioulas as **"autonomia produtiva e segurança alimentar"** [lume.ufrgs.br](https://lume.ufrgs.br/bitstream/handle/10183/221642/00112203.pdf?sequence=1) (note: archived URL corrected); UFSM Extensão Rural; UNESP-FCT (guardiões e troca de sementes); UFV/UFMG participatory crioulo trials; IFPB (Casas da Semente). **UFMT**: no primary source verified 2026-11-09 — **GAP**.
+
+### 4. Seed sovereignty / food sovereignty — claims & counter-claims
+
+**4.1 Pro-sovereignty canon (high confidence)**
+- **La Via Campesina**: "Peasants' seeds are a heritage of peoples in the service of humanity" (2003 seed campaign) [LVC Training Module](https://viacampesina.org/en/wp-content/uploads/sites/2/2022/02/LVC-EN02-Training-Module.pdf) — **advocacy** (label in-game if cited).
+- **UNDROP** (UNGA res. 73/165, 2018-12-17): **Art. 19 – Right to seeds** — right to traditional knowledge, customary use/exchange/sale of farm-saved material, participation in seed decision-making. [LVC hosted text](https://viacampesina.org/en/wp-content/uploads/sites/2/2020/07/The-UN-Declaration-on-the-Rights-of-Peasants.pdf) ; analyses: Haugen 2020 ([resources.semencespaysannes.org](https://ressources.semencespaysannes.org/docs/undrop_article19.pdf)); Girard 2024 *IJGR* 32(2):344 ([Brill](https://brill.com/view/journals/ijgr/32/2/article-p344_009.pdf)) — **UN / peer-reviewed** — Confidence: **high**.
+- **ITPGRFA** (in force 2004): **Art. 9 – Farmers' Rights** (protection of traditional knowledge, benefit-sharing, participation; right to save/use/exchange/sell farm-saved seed "subject to national law") — [FAO Farmers' Rights](https://www.fao.org/plant-treaty/areas-of-work/farmers-rights/overview/en) / [treaty text](https://faolex.fao.org/treaty/docs/tre000005E.pdf) — Confidence: **high**.
+- Peschard K (2020) "'Keeping seeds in our hands': the rise of seed activism" *Third World Quarterly* — [T&F](https://www.tandfonline.com/doi/full/10.1080/03066150.2020.1753705) — Confidence: **high**.
+
+**4.2 Counter-position (intellectual honesty) (high confidence)**
+- **Certified/improved seed delivers real productivity gains**: USDA AMS "More and Better Choices for Farmers" — [USDA PDF](https://www.ams.usda.gov/sites/default/files/media/SeedsReport.pdf) — **government** — Confidence: **high**.
+- Farming First (Jan 2025): certification protects seed quality & food security — [farmingfirst.org](https://farmingfirst.org/2025/01/how-seed-certification-protects-both-farmers-and-food-security/) — **industry-side lobby** (flag provenance) — Confidence: **medium**.
+- **FAO nuance**: both systems coexist and complement — formal certified seed for commercial identity/quality; farmer-saved seed dominates smallholder fields; "neither alone feeds the world" — [FAO The state of the seed sector](https://www.fao.org/4/y2722e/y2722e0d.htm) — Confidence: **high**.
+- Coomes et al. 2015: community seed networks face scale/maintenance/quality limits; adoption effect limited vs improved seed under some metrics — Confidence: **high** (as position).
+- Green Revolution record (wheat 2–2.5× since 1950s) strongest pro-hybrid anchor — Confidence: **high**.
+- **Honest synthesis**: crioulas/peasant seeds are *differently excellent* (resilience, autonomy, diversity, cultural value) vs modern varieties (yield ceiling, uniformity, mechanizability). Any honest narrative keeps both true.
+
+**4.3 Seed treaty law tension (medium confidence)**
+- Brazil is party to ITPGRFA + WTO/TRIPs; Lei de Cultivares (9.279/96) recognizes farmer's privilege (saved own seed) but not general resale of saved protected varieties; crioulas sit in a distinct legal niche (Art. 48; §3º) — UFSC 2016 review — Confidence: **medium-high** on the outline; verify before citing as legal fact.
+
+### 5. Three Sisters × landrace interplay (brief)
+- **Milpa** (maize + beans + squash) is a **landrace-based** intercrop; beans supply N via fixation — **not** maize/squash. Vazeux-Blumental 2024 "The milpa…" *C. R. Biologies* ([CR Biologies](https://comptes-rendus.academie-sciences.fr/biologies/articles/10.5802/crbiol.164/)); Benrey 2024 *Trends in Plant Science*; USDA NAL [Three Sisters](https://www.nal.usda.gov/collections/stories/three-sisters) — Confidence: **high** (intercrop); implication: **nitrogen fixation belongs to the beans**. Heirloom *varieties* interplay is legitimate inspiration (Borborema crioulas maize+beans both documented).
+
+### 6. Extension framing & consumer preference
+- Official PT tone: **guardiãs/guardiões**, "autonomia", "segurança alimentar", "tradição + técnica complementares" — [Embrapa Circular Técnica 99](https://www.embrapa.br/busca-de-publicacoes/-/publicacao/1172471/sementes-crioulas-procedimentos-rotineiros-da-colheita-ao-armazenamento) — Confidence: **high**.
+- Tourist/gastronomy channels: "Fubá da Paixão" marketed transgene-free; Festa da Semente / Feira Agroecológica premium narrative — AS-PTA 2021 — **medium-high** (qualitative).
+- Germany/Austria: Demeter "samenfeste Sorten"; Tagesspiegel old-apple conservation (Oct 2026) — Confidence: **low**.
+- **Consumer WTP / price premium**: Meier & Oehen 2019 (Switzerland; EU DIVERSIFOOD; consumers show substantial WTP for farmers' varieties — value framing) *Sustainability* 11(24):7134 [MDPI](https://www.mdpi.com/2071-1050/11/24/7134) — **peer-reviewed** — **medium**. Meta: Maró 2023 *Renew. Agric. Food Syst.* ([Cambridge](https://www.cambridge.org/core/journals/renewable-agriculture-and-food-systems/article/profiling-the-consumers-of-farmers-markets-a-systematic-review-of-surveybased-empirical-evidence/98A468ED46F4A80777A3007DE2A82C99)) — **medium**. US: Bond 2006 Choices 21(4) ([choicesmagazine.org](https://www.choicesmagazine.org/2006-4/produce/2006-4-06.htm)) — **medium**; Carroll 2013 JARE (tomato local WTP) ([ageconsearch PDF](https://ageconsearch.umn.edu/record/165934/files/JARE_Dec2013__6_Carroll_pp379-396.pdf)) — **medium**. Mexico: Valero-Padilla 2024 (artisanal/traditional tortillas premium) ([SciELO MX](http://www.scielo.org.mx/scielo.php?script=sci_arttext&pid=S2007-09342024000200001)) — **medium**. **Brazil-specific quantitative WTP: GAP** — do not state a % as fact; AS-PTA fubá (+30%) is one case study, not a market law.
+
+### 7. Honest game-design mapping — defensible vs. not
+
+| In-game element | Verdict |
+|---|---|
+| "+2 soil health per heirloom planting" | **Fine as labeled abstraction** — no agronomic mechanism; document as abstraction; never tie to N logic. |
+| "Heirloom crops fix nitrogen" | **FALSE** (only legumes) — never as fact; if a bean is heirloom, mechanism = inoculation/legume N. |
+| "Heirlooms grow slower" | **Defensible as trend/variety trade-off** (landraces typically later — Korpetis; maize 'Argentino') — not universal. |
+| "Higher quality / extra harvest in living soil" | **Half true**: (a) protein ≥ hybrids (Zeibig; Korpetis +~1%); (b) yield **penalty shrinks ~50% low-input/organic vs conventional** (Korpetis); (c) "extra harvest" ≈ longer harvest window / indeterminate habit, not guaranteed yield boost → implement as **yield-stability + quality grade-up in high soil health** (hybrid's peak-yield advantage removed there). |
+| Seed-saving replanting loop (OP true-to-type; F1 F2 ~−29% yield) | **Accurate** — teach it: Pierre's hybrids do not come true-to-type (F2 segregates, −29% grain). — Iowa State F1/F2 study; Missouri IPM. |
+| Save-seed economics (cashless loop vs annual Pierre purchase; ~80–90% informal seed share [FAO]) | **Accurate** — crioulas = compounding autonomy vs hybrids = annual cash sink. Matches PAA/CONAB narrative. |
+| "Heirloom quality > hybrid quality" automatic | **NOT automatic** — cereal-specific protein/flavor evidence only; make crop-specific or omit. |
+| "Heirloom always out-performs in poor soil" | **FALSE as universal** — 'Argentino' lost; 'BR da Várzea' tied (+62% municipal). Teach via **chance/variance**, not guaranteed win. |
+| Contamination quest (Borborema) | **Documented** (Polo da Borborema 2012–16) — legitimate storyline; specific event, not destiny. |
+| "Living soil" synergy label | **Fine** — soil-health/integrated fertility is the experimentally-relevant axis; keep vague-but-labeled. |
+| Elena (agroecologist) vs Pierre (hybrid seller) | **Accurate archetype pairing** (EMATER/ASA/Embrapa extension vs agro-input dealership) — but Pierre is **not evil**: his seeds are excellent for high-input systems (USDA AMS). |
+| Terminology: "sementes crioulas", "guardiãs/guardiões", "sementes da paixão", "bancos de sementes comunitários" | **Accurate** — use PT terms with PT glossary. |
+| Numbers like "+10% quality when soil > 70" | Abstractions — **permitted** if labeled as abstractions (project already labels them); never "agronomic constants". |
+
+**Avoid teaching as fact**: "crioulas never need fertilizer", "crioulas are drought-proof", "crioulas carry zero disease risk", "saved hybrid seed is sterile" (F1 segregates, not sterile), "crioulas are pre-industrial" (actively selected today), "planting crioulas raises soil organic matter" — none survive the evidence.
+
+### 8. Gaps & verify-before-publish
+
+1. "Cavatassi et al." — not found; use Villa et al. 2005 / Casañas 2017 / FAO B.1.
+2. Quantified nutritional superiority of crioulas **vegetables** — absent; cereal/wheat evidence only.
+3. **Brazilian consumer price-premium quantification** — absent; treat AS-PTA +30% (fubá) as case study.
+4. **UFMT crioulas selection/extension program** — not verified 2026-11-09.
+5. **PNSMAF current Portaria vehicle** — verify at MAPA/MDA before citing in-game.
+6. **Yield gap "typical %"** — no single defensible figure; Korpetis: ~50% (yr 1), parity (yr 2 best-landrace), ~22% organic-environment penalty halving — state context, never a universal number.
+7. FAO 75%/90% erosion figures are **1996–99 vintage** — canonical but dated.
+8. GMO-contamination — community-reported (AS-PTA), not lab-certified generalizable.
+
+**One-line TL;DR**: heirloom/sementes crioulas are *real, legally recognized in Brazil, policy-subsidized, genetically diverse, autonomy-giving seeds whose honest agronomic selling points are yield stability under low-input/organic conditions and higher grain protein — not universally higher yields, not nitrogen fixation, not automatic nutrition wins; Pierre's hybrids remain the right choice for high-input systems; both statements should ship in the game.*
 
 ## 8) Design-relevant conclusions (for define/shape/decide)
 
