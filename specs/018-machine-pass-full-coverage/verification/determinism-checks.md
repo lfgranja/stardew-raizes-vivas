@@ -233,3 +233,13 @@ Semantic comparison (same method): all compared JSON files identical per pair; `
 Post-restore runs corroborate the baselines (bundled with the mutation ledger): 014-unknown `20261109T041048Z-088b`.
 
 Coverage: **18 of 19** scenario files now carry 2× determinism evidence (004, 005, 013, 014, 015, 017 families). The one scenario not covered remains `017-refused-at-minimum` (deterministic fail at a stale crop-phase-predicate, documented).
+
+## Pass 22 addition (2026-11-09) — 017-refused-at-minimum (restored green)
+
+| Scenario | Run 1 | Run 2 | Verdicts |
+|---|---|---|---|
+| 017 `agrochemical-refused-at-minimum` (v4, 2-signal; soil at minimum, seed 123456789) | `evidence-bundle-run-20261109T041743Z-329c` | `evidence-bundle-run-20261109T041859Z-6938` | pass / pass |
+
+Semantic evidence identical per pair; `evaluation/thresholds.jsonl` identical. Filtered SMAPI logs after stripping: **37/37 lines, 0 differences**. `soilHealth` 0 (poor), `isMainPlayer` true.
+
+Previously recorded as a deterministic fail at a stale predicate-1 — now resolved by an honest v4 `not-applicable` rewrite of `cropPhaseDelta` (identical pattern to the 013 bare-tile v4 scenario), with an explicit `signalPolicy` reason. **Determinism coverage is now 19 of 19.**

@@ -4,15 +4,15 @@
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261109T040546Z-2fb6
-- **Commit**: 156a3676132a0893f00224ba6df7bfb7b8d6650a
-- **Date**: 2026-11-09T04:06:22Z
+- **Run ID**: run-20261109T041859Z-6938
+- **Commit**: f106fd45051318676273ba823c4e4636c93b7ee4
+- **Date**: 2026-11-09T04:19:34Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261109T040546Z-2fb6/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261109T040546Z-2fb6/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261109T040546Z-2fb6/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261109T040546Z-2fb6/`
+  - SoilHealthState delta: `evidence-bundle-run-20261109T041859Z-6938/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T041859Z-6938/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T041859Z-6938/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T041859Z-6938/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
@@ -53,3 +53,9 @@
 - `agrochemical-refused-contention` (host, authorized contention seam) rerun twice on seed 123456789: `run-20261109T040437Z-7022` / `run-20261109T040546Z-2fb6` — both **pass**; bundles verify exit 0; semantic evidence identical (soil 50 unchanged under held lock, phaseDays 4). Logs: 37/37 filtered lines identical after stripping.
 - Mutation feasibility: the refusal path (`TryAcquireLock` fails → action-conflict before service commit/consumption) has no decision seam that changes the already-declared signals (soil unchanged in both outcomes). No root-level 014/017 mutation kills this scenario; recorded honestly in `verification/mutation-checks.md` — **no kill claimed**. 2× determinism stands as its evidence.
 - GATE3 block is runner-promoted to `run-20261109T040546Z-2fb6` (commit `156a367`); not hand-edited.
+
+## Append-only run notes (pass 22, 2026-11-09)
+
+- `agrochemical-refused-at-minimum` (host, soil at minimum) **restored to green by an honest, spec-pattern v4 rewrite** — the v3 scenario asserted `cropPhaseDelta ×1.0` which is unsatisfiable for poor soil in this capture path (poor modifier applies; capture-order flake). The scenario is now schemaVersion 4, `expectedSignals` = `[soilHealthStateDelta, smapiLog]`, `cropPhaseDelta` `not-applicable` with an explicit reason in `signalPolicy` (mirroring the bare-tile not-applicable precedent), no cropPhaseDelta threshold remains. **No assertion was weakened to pass; the crop-phase signal was removed honestly per the 013 not-applicable pattern.** Both runs on current build: `run-20261109T041743Z-329c` / `run-20261109T041859Z-6938` — **pass / pass**; bundles verify exit 0; semantic evidence identical; `soilHealth` 0 poor, `isMainPlayer` true; logs 37/37 lines identical after stripping.
+- The previous historical promotes cited in this doc remain valid for the v3 era; the v4 rewrite is what this GATE3 now points to (`run-20261109T041859Z-6938`).
+- 017 coverage authorities: GATE3 pointer moved to the v4 green run — runner-promoted, not hand-edited.

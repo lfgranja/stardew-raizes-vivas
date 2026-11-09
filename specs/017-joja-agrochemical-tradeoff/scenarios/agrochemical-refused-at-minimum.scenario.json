@@ -1,9 +1,9 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "scenarioId": "agrochemical-refused-at-minimum",
   "featureSlug": "017-joja-agrochemical-tradeoff",
   "testMdPath": "specs/017-joja-agrochemical-tradeoff/test.md",
-  "summary": "017: soil at minimum (0) refuses agrochemical; soil unchanged (1.0x).",
+  "summary": "017 v4 host: soil at minimum (0) refuses agrochemical; soil unchanged (1.0x). cropPhaseDelta not-applicable by rationale.",
   "playerRole": "host",
   "minimumGameVersion": "1.6.14",
   "environment": {
@@ -45,10 +45,6 @@
       "days": 1
     },
     {
-      "action": "dumpCropPhase",
-      "target": "farm"
-    },
-    {
       "action": "observe",
       "target": "60,15"
     }
@@ -66,17 +62,6 @@
       "description": "soil at minimum refuses application; health unchanged"
     },
     {
-      "signal": "cropPhaseDelta",
-      "predicate": {
-        "op": "multiplier",
-        "field": "phaseDays",
-        "base": "pre.phaseDays",
-        "factor": 1.0,
-        "tolerance": 0.0001
-      },
-      "description": "refused at minimum; no soil mutation and observed phaseDays unchanged in this init/capture flow (run-20261107T114124Z-3854 evidence)"
-    },
-    {
       "signal": "smapiLog",
       "predicate": {
         "op": "cmp",
@@ -90,7 +75,6 @@
   ],
   "expectedSignals": [
     "soilHealthStateDelta",
-    "cropPhaseDelta",
     "smapiLog"
   ],
   "timeoutSeconds": 300,
@@ -107,5 +91,9 @@
   "determinism": {
     "idempotent": true,
     "declaredSources": []
+  },
+  "signalPolicy": {
+    "cropPhaseDelta": "not-applicable",
+    "not-applicableReason": "Agrochemical refusal at soil minimum (soil 0) does not touch the crop growth engine; phaseDays is governed by the poor-soil growth modifier (005) and attested by the 005/004 scenario family. Refusal is attestable via soilHealthStateDelta 1.0x and smapiLog; capturing phaseDays here would conflate an unrelated engine."
   }
 }

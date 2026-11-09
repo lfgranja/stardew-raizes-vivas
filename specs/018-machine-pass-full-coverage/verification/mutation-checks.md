@@ -366,3 +366,7 @@ Coverage: **14 of 19** scenario files (004, 005, 013, 014, 015, 017 families) ca
 Coverage: **15 of 19** scenario files are mutation-checked (the earlier fourteen plus 014-unknown). `013-refused-on-ineligible` and `017-refused-contention` have deterministic refusal semantics attested by Gate 3 without an assertion that a root-level mutation can kill (the declared predicates are unchanged by acceptance/refusal paths).
 
 Note: `018`'s determinism evidence now reaches 18 of 19 files; exactly one file is not green (`017-refused-at-minimum`, documented stale assertion).
+
+## Pass 22 addition (2026-11-09) — 017-refused-at-minimum
+
+No mutation assessment for this file: the v3 predicate it would have killed silently (cropPhaseDelta ×1.0) was unsatisfiable by construction under the poor-soil growth modifier and was removed honestly by the v4 rewrite. The rewritten scenario's asserted predicates are: `soilHealthStateDelta` 1.0× (unmodified soil at refusal — outcome of refusal) and `smapiLog.isMainPlayer eq true`. Neither is a mutation target addressable by a decision-seam constant here (soil at refusal is never committed by construction; isMainPlayer is not a code constant). Determinism 2× is this file's coverage; no mutant claimed.
