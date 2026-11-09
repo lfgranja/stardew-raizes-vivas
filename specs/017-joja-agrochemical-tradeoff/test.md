@@ -4,15 +4,15 @@
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261109T035430Z-76c0
-- **Commit**: 31b587d6ac93ed1a782b6f9a9242c598a1eba389
-- **Date**: 2026-11-09T03:55:08Z
+- **Run ID**: run-20261109T040546Z-2fb6
+- **Commit**: 156a3676132a0893f00224ba6df7bfb7b8d6650a
+- **Date**: 2026-11-09T04:06:22Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261109T035430Z-76c0/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261109T035430Z-76c0/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261109T035430Z-76c0/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261109T035430Z-76c0/`
+  - SoilHealthState delta: `evidence-bundle-run-20261109T040546Z-2fb6/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T040546Z-2fb6/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T040546Z-2fb6/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T040546Z-2fb6/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
@@ -47,3 +47,9 @@
   - **Do not read this as "the feature broke."** The agrochemical refusal at minimum works (soil at 0 is refused, no mutation is applied); only the crop-phase assertion is unsatisfiable for poor soil in this capture path. A silent flake produced a one-time green; two honest repeats expose a stale assertion.
   - **Reviewers to decide:** the scenario predicate (`phaseDays ×1.0`) would have to change for a green today (e.g., only for soil in a non-poor tier), or the capture dump must be ordered before the growth modifier for this scenario. No fix is applied in this pass; the record is append-only and honest.
 - GATE3 block above is runner-promoted to the post-restore run `run-20261109T035430Z-76c0` (commit `31b587d`); not hand-edited.
+
+## Append-only run notes (pass 20, 2026-11-08)
+
+- `agrochemical-refused-contention` (host, authorized contention seam) rerun twice on seed 123456789: `run-20261109T040437Z-7022` / `run-20261109T040546Z-2fb6` — both **pass**; bundles verify exit 0; semantic evidence identical (soil 50 unchanged under held lock, phaseDays 4). Logs: 37/37 filtered lines identical after stripping.
+- Mutation feasibility: the refusal path (`TryAcquireLock` fails → action-conflict before service commit/consumption) has no decision seam that changes the already-declared signals (soil unchanged in both outcomes). No root-level 014/017 mutation kills this scenario; recorded honestly in `verification/mutation-checks.md` — **no kill claimed**. 2× determinism stands as its evidence.
+- GATE3 block is runner-promoted to `run-20261109T040546Z-2fb6` (commit `156a367`); not hand-edited.

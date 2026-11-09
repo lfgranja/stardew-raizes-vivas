@@ -204,3 +204,32 @@ Semantic evidence identical per pair (both failed the same predicate). Clean det
 This pair is **deliberately not added as green coverage**; it is recorded as a deterministic failure against a stale assertion. The 8 remaining residual scenarios are unchanged in scope, plus refused-at-minimum is flagged `partial/broken-assertion`, not green.
 
 Coverage: **14 of 19** scenario files carry 2× green determinism evidence. The rest: 4 residual green-eligible files, plus refused-at-minimum (deterministic fail at a stale assertion).
+
+## Pass 20 addition (2026-11-08) — 014-unknown, 013-decay-exemption, 013-refused-on-ineligible, 017-refused-contention (coverage now 18 of 19)
+
+Command shape:
+
+```bash
+./scripts/verify-scenario.sh --scenario <scenario.json> --no-acquire \
+  --game-path "/home/luis/.local/share/Steam/steamapps/common/Stardew Valley" --skip-build --timeout 420
+```
+
+| Scenario | Run 1 | Run 2 | Verdicts |
+|---|---|---|---|
+| 014 `soil-health-harvest-unknown` (NaN, seed 123456789) | `evidence-bundle-run-20261109T035748Z-1fc9` | `evidence-bundle-run-20261109T035851Z-759d` | pass / pass |
+| 013 `mulch-decay-exemption` (cropped, seed 123456789) | `evidence-bundle-run-20261109T035954Z-4aa8` | `evidence-bundle-run-20261109T040102Z-50fe` | pass / pass |
+| 013 `mulch-refused-on-ineligible` (already mulched, seed 123456789) | `evidence-bundle-run-20261109T040219Z-5080` | `evidence-bundle-run-20261109T040327Z-1ea4` | pass / pass |
+| 017 `agrochemical-refused-contention` (lock seam, seed 123456789) | `evidence-bundle-run-20261109T040437Z-7022` | `evidence-bundle-run-20261109T040546Z-2fb6` | pass / pass |
+
+Semantic comparison (same method): all compared JSON files identical per pair; `evaluation/thresholds.jsonl` identical.
+
+| Scenario | `actual` values (both runs) | Threshold outcomes | SMAPI log (normalized) |
+|---|---|---|---|
+| 014-unknown | tier unknown; `unknownVanillaQuality` 1; `unknownHarvestQuality` 1 | predicates 0–3 pass | filtered 36/36 lines, **0 differences** |
+| 013-decay-exemption | `soilHealth` 50, tier moderate, `phaseDays` 4 | predicate-0 ×1.0 pass; predicate-2 isMainPlayer pass | filtered 38/38 lines, **0 differences** |
+| 013-refused-on-ineligible | `soilHealth` 50, tier moderate, `phaseDays` 4 | predicates pass | filtered 40/40 lines, **0 differences** |
+| 017-refused-contention | `soilHealth` 50 (lock blocked mutation), tier moderate, `phaseDays` 4 | predicates pass | filtered 37/37 lines, **0 differences** |
+
+Post-restore runs corroborate the baselines (bundled with the mutation ledger): 014-unknown `20261109T041048Z-088b`.
+
+Coverage: **18 of 19** scenario files now carry 2× determinism evidence (004, 005, 013, 014, 015, 017 families). The one scenario not covered remains `017-refused-at-minimum` (deterministic fail at a stale crop-phase-predicate, documented).

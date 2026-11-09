@@ -4,15 +4,15 @@
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261109T033015Z-0e1b
-- **Commit**: 47bb56635b1687c4b3e5b11e57ac66a328ff1433
-- **Date**: 2026-11-09T03:30:46Z
+- **Run ID**: run-20261109T041048Z-088b
+- **Commit**: 156a3676132a0893f00224ba6df7bfb7b8d6650a
+- **Date**: 2026-11-09T04:11:22Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261109T033015Z-0e1b/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261109T033015Z-0e1b/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261109T033015Z-0e1b/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261109T033015Z-0e1b/`
+  - SoilHealthState delta: `evidence-bundle-run-20261109T041048Z-088b/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T041048Z-088b/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T041048Z-088b/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T041048Z-088b/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
@@ -32,3 +32,10 @@
 - `soil-health-harvest-measured-zero` (measured 0/Poor) rerun twice on seed 123456789: `run-20261109T031831Z-3838` / `run-20261109T032001Z-77c0` — both **pass**; bundles verify exit 0; semantic evidence identical (`zeroHealthTier` poor, `zeroVanillaQuality` 1, `zeroHarvestQuality` 0). Logs: 36/36 filtered lines; 4 diff lines (identical `Saved data …` / `Overlay renderer cache invalidated.` lines swapped position — load-order artifact).
 - Mutation negative control (same decision seam as the 014/015 quality probes): `HarvestQualityService` Poor branch `ForceQualityZero` true→false → `run-20261109T032550Z-1e3b`, `zeroHarvestQuality` 1 (expected 0), predicate-2 **false**; exit 19; source restored (`git checkout`), post-restore `run-20261109T033015Z-0e1b` **pass**. See `verification/mutation-checks.md`.
 - GATE3 block is runner-promoted to the post-restore run `run-20261109T033015Z-0e1b` (commit `47bb566`); not hand-edited.
+
+## Append-only run notes (pass 20, 2026-11-08)
+
+- `soil-health-harvest-unknown` (NaN, seed 123456789) rerun twice: `run-20261109T035748Z-1fc9` / `run-20261109T035851Z-759d` — both **pass**; bundles verify exit 0; semantic evidence identical (tier unknown, `unknownHarvestQuality` 1). Logs: 36/36 filtered lines identical after stripping.
+- Mutation negative control (composite NaN-branch flip): `Decide` NaN/Infinity branch → `Tier=Poor, IsInScope=true, ForceQualityZero=true` → `run-20261109T040926Z-67b5`, `unknownHarvestQuality` 0 (expected 1), predicate-2 **false**; exit 19; source restored (`git checkout`), post-restore `run-20261109T041048Z-088b` **pass**.
+- Discarded mutant attempt: `Tier=Poor, IsInScope=false` (bundle `run-20261109T040736Z-25da`) — all four predicates passed (the out-of-scope skip short-circuits); recorded honestly; **never cited as a kill**. The NaN-classification seam is local to `ProbeHealthTier`, not `Decide`, which is why the initial mutant was inert.
+- GATE3 block is runner-promoted to the post-restore run `run-20261109T041048Z-088b` (commit `156a367`); not hand-edited.

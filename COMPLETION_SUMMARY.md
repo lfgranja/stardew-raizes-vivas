@@ -101,15 +101,15 @@ The `compostable_item` trigger change improves one direction (items with the tag
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261109T035430Z-76c0
-- **Commit**: 31b587d6ac93ed1a782b6f9a9242c598a1eba389
-- **Date**: 2026-11-09T03:55:08Z
+- **Run ID**: run-20261109T041048Z-088b
+- **Commit**: 156a3676132a0893f00224ba6df7bfb7b8d6650a
+- **Date**: 2026-11-09T04:11:22Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261109T035430Z-76c0/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261109T035430Z-76c0/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261109T035430Z-76c0/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261109T035430Z-76c0/`
+  - SoilHealthState delta: `evidence-bundle-run-20261109T041048Z-088b/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T041048Z-088b/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T041048Z-088b/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T041048Z-088b/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —

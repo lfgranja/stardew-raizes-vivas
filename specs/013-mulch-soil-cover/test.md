@@ -4,15 +4,15 @@
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261108T213615Z-51b4
-- **Commit**: b945f81d31f3b498be263d6a0e78234f8e6d8654
-- **Date**: 2026-11-08T21:37:44Z
+- **Run ID**: run-20261109T040327Z-1ea4
+- **Commit**: 156a3676132a0893f00224ba6df7bfb7b8d6650a
+- **Date**: 2026-11-09T04:04:03Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261108T213615Z-51b4/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261108T213615Z-51b4/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261108T213615Z-51b4/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261108T213615Z-51b4/`
+  - SoilHealthState delta: `evidence-bundle-run-20261109T040327Z-1ea4/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T040327Z-1ea4/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T040327Z-1ea4/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T040327Z-1ea4/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
@@ -40,3 +40,10 @@
 - `mulch-bare-tile-decay-exemption` (host, SC-004) rerun twice on seed 123456789: `run-20261108T211743Z-62f5` / `run-20261108T211930Z-69c9` — both **pass**; bundles verify exit 0; semantic evidence identical (`soilHealth` 50, tier moderate, ×1.0). Logs: 93/93 filtered mod-relevant lines identical after timestamp/ms stripping.
 - Mutation negative control: `MulchDecayMultiplier 0f → 1f` → `run-20261108T212701Z-0ce2`, soil 50→44, predicate-0 (×1.0) **false**; exit 19; source restored (`git checkout`), post-restore `run-20261108T213615Z-51b4` **pass**. See `verification/mutation-checks.md`.
 - GATE3 block is runner-promoted to the post-restore run `run-20261108T213615Z-51b4` (commit `b945f81`); not hand-edited.
+
+## Append-only run notes (pass 20, 2026-11-08)
+
+- `mulch-decay-exemption` (host, cropped tilled) rerun twice on seed 123456789: `run-20261109T035954Z-4aa8` / `run-20261109T040102Z-50fe` — both **pass**; bundles verify exit 0; semantic evidence identical (`soilHealth` 50, moderate, `phaseDays` 4). Logs: 38/38 filtered lines identical after stripping.
+- `mulch-refused-on-ineligible` (host, already-mulched second apply) rerun twice on seed 123456789: `run-20261109T040219Z-5080` / `run-20261109T040327Z-1ea4` — both **pass**; bundles verify exit 0; semantic evidence identical (`soilHealth` 50, moderate, `phaseDays` 4). Logs: 40/40 filtered lines identical after stripping.
+- Mutation pass on these two files: **not feasible via a decision seam** — the refusal paths don't change the declared predicates (soil and phaseDays unchanged by either outcome); no root constant kills them. Recorded honestly in `verification/mutation-checks.md` — **no kill claimed**. 2× determinism stands as their evidence.
+- GATE3 block is runner-promoted to `run-20261109T040327Z-1ea4` (the last passing 013-eligible run from this pass; the runner promotes per-`testMdPath`). Not hand-edited.

@@ -327,3 +327,42 @@ Coverage: **13 of 19** scenario files (004-hardening/004-healthy/004-moderate, 0
 ```
 
 Coverage: **14 of 19** scenario files (004, 005, 013, 014, 015, 017 families) carry ≥1 killed-mutation + 2× reruns evidence. The rest: 4 residual green-eligible files, plus refused-at-minimum (deterministic fail at a stale assertion — not covered; see above).
+
+## Pass 20 addition (2026-11-08) — 014-unknown (coverage now 15 of 19 mutation-checked)
+
+### 014-unknown — mutant killed (decision seam: NaN branch → Poor chain `Tier=Poor, IsInScope=true, ForceQualityZero=true`)
+
+- **Mutation:** `LivingRoots/Domain/Services/HarvestQualityService.cs` NaN/Infinity branch of `Decide`: `Tier = HarvestTier.Poor, IsInScope = true, ForceQualityZero = true` (NaN routed to the Poor decision branch).
+- **Scenario:** `specs/014-soil-health-crop-quality/scenarios/soil-health-harvest-unknown.scenario.json` (NaN, seed 123456789).
+- **Bundle:** `evidence-bundle-run-20261109T040926Z-67b5`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `evaluation/actual.json`: `unknownHealthTier` "unknown" (from the independent NaN classifier), `unknownVanillaQuality` 1 (selected), **`unknownHarvestQuality` 0** (Poor-chain forced zero). `evaluation/thresholds.jsonl`: predicate-2 (`unknownHarvestQuality eq 1`) → **`passed: false`**; predicates 0, 1, 3 `passed: true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Domain/Services/HarvestQualityService.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T041048Z-088b`, `unknownHarvestQuality` 1 (vanilla), **pass**.
+
+### 014-unknown — discarded mutant attempt (missed cut, recorded for honesty)
+
+- Bundle `evidence-bundle-run-20261109T040736Z-25da`: `Tier = HarvestTier.Poor, IsInScope = false` only. **The mutant did not kill the scenario** — all four predicates passed. Root cause: the unknown probe classifies the tier from the raw soil value (NaN → "unknown") and `Decide` was only consulted for the mod behavior, where the Poor tier with `IsInScope=false` short-circuits to the out-of-scope skip (no patch execution). The NaN-branch mistake was invisible to this scenario until the composite flip above.
+- Compilation was fine; `--verify-bundle` exit 0 (bundle is structurally sound). This run is retained as evidence that a *plausible-looking but inert* mutation exists and does not count as a kill.
+
+### Integrity (pass 20)
+
+`--verify-bundle` exit 0 for all eleven bundles in this pass:
+
+```
+0 evidence-bundle-run-20261109T035748Z-1fc9
+0 evidence-bundle-run-20261109T035851Z-759d
+0 evidence-bundle-run-20261109T035954Z-4aa8
+0 evidence-bundle-run-20261109T040102Z-50fe
+0 evidence-bundle-run-20261109T040219Z-5080
+0 evidence-bundle-run-20261109T040327Z-1ea4
+0 evidence-bundle-run-20261109T040437Z-7022
+0 evidence-bundle-run-20261109T040546Z-2fb6
+0 evidence-bundle-run-20261109T040736Z-25da
+0 evidence-bundle-run-20261109T040926Z-67b5
+0 evidence-bundle-run-20261109T041048Z-088b
+```
+
+Coverage: **15 of 19** scenario files are mutation-checked (the earlier fourteen plus 014-unknown). `013-refused-on-ineligible` and `017-refused-contention` have deterministic refusal semantics attested by Gate 3 without an assertion that a root-level mutation can kill (the declared predicates are unchanged by acceptance/refusal paths).
+
+Note: `018`'s determinism evidence now reaches 18 of 19 files; exactly one file is not green (`017-refused-at-minimum`, documented stale assertion).
