@@ -266,3 +266,32 @@ Coverage: **8 of 19** scenario files (004, 013-expiry, 005-healthy, 017-tradeoff
 ```
 
 Coverage: **11 of 19** scenario files (004/013-expiry/005/017/013-bare-tile/014/005-poor/017-clamped/015/014-zero/004-healthy). The remaining 8 are still residual.
+
+## Pass 18 addition (2026-11-08) — 004-moderate and 005-moderate (coverage now 13 of 19)
+
+### 004-moderate and 005-moderate — mutant killed (shared edge: `ModerateHealthyBandEdge 71f → 0f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:51` `ModerateHealthyBandEdge = 71f` → `0f`. The edge now flips the Moderate branch of the growth decision to Healthy (health 50 ≥ 0 → healthy tier for the modifier), applying `SoilGrowthHealthyMultiplier 0.85f`.
+- **Scenarios:** 004 `compost-growth-moderate.scenario.json` and 005 `soil-health-growth-moderate.scenario.json` (both expect vanilla parity ×1.0 at moderate 50).
+- **Bundles:** 004 `evidence-bundle-run-20261109T034019Z-773e`; 005 `evidence-bundle-run-20261109T034143Z-2623`.
+- **Runner exit:** `19` (`ERRORED`) for both.
+- **Observed:** both runs `phaseDays` **3** (expected 4 with ×1.0); predicate-0 (multiplier 1.0 on phaseDays) → **`passed: false`**; predicate-1 (moderate `[31,71)` band) → `true` (soil 50 stays unmodified). `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative controls only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`; rebuild → exit 0.
+- **Post-restore:** 004 `evidence-bundle-run-20261109T034318Z-7374` pass; 005 `evidence-bundle-run-20261109T034443Z-4cc1` pass.
+
+### Integrity (pass 18)
+
+`--verify-bundle` exit 0 for all eight bundles in this pass:
+
+```
+0 evidence-bundle-run-20261109T033419Z-5316
+0 evidence-bundle-run-20261109T033540Z-40ca
+0 evidence-bundle-run-20261109T033704Z-21fe
+0 evidence-bundle-run-20261109T033828Z-11c4
+0 evidence-bundle-run-20261109T034019Z-773e
+0 evidence-bundle-run-20261109T034143Z-2623
+0 evidence-bundle-run-20261109T034318Z-7374
+0 evidence-bundle-run-20261109T034443Z-4cc1
+```
+
+Coverage: **13 of 19** scenario files (004-hardening/004-healthy/004-moderate, 005-healthy/005-poor/005-moderate, 013-expiry/013-bare-tile, 014-quality/014-zero, 015, 017-tradeoff/017-clamped). The remaining 6 are still residual.

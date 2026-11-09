@@ -160,3 +160,21 @@ Semantic comparison (same method): all compared JSON files identical per pair; `
 Post-restore runs corroborate the baselines (bundled with the mutation ledger): 015 `20261109T032903Z-29cf`, 014-zero `20261109T033015Z-0e1b`, 004-healthy `20261109T033119Z-6fda`.
 
 Coverage: **11 of 19** scenario files now carry 2× determinism evidence (004/013-expiry/005/017/013-bare-tile/014/005-poor/017-clamped + 015/014-zero/004-healthy). The rest remain residual.
+
+## Pass 18 addition (2026-11-08) — 004-moderate and 005-moderate (coverage now 13 of 19)
+
+| Scenario | Run 1 | Run 2 | Verdicts |
+|---|---|---|---|
+| 004 `compost-growth-moderate` (moderate 50, seed 123456789) | `evidence-bundle-run-20261109T033419Z-5316` | `evidence-bundle-run-20261109T033540Z-40ca` | pass / pass |
+| 005 `soil-health-growth-moderate` (moderate 50, seed 987654321) | `evidence-bundle-run-20261109T033704Z-21fe` | `evidence-bundle-run-20261109T033828Z-11c4` | pass / pass |
+
+Semantic comparison (same method): all compared JSON files identical per pair. Threshold outcomes identical (`phaseDays` 4, predicate-0 ×1.0 pass; predicate-1 moderate band `[31,71)` pass).
+
+| Scenario | `actual` values (both runs) | SMAPI log (normalized) |
+|---|---|---|
+| 004-moderate | `soilHealth` 50, tier moderate, `phaseDays` 4 | filtered 83/83 lines, **0 differences** after stripping |
+| 005-moderate | `soilHealth` 50, tier moderate, `phaseDays` 4 | filtered 81/80 lines; 1 extra identical `Pruned orphan bin record at Farm:60,15` in run 1 |
+
+Post-restore runs corroborate the baselines (bundled with the mutation ledger): 004-moderate `20261109T034318Z-7374`, 005-moderate `20261109T034443Z-4cc1`.
+
+Coverage: **13 of 19** scenario files now carry 2× determinism evidence (004/013-expiry/005/017/013-bare-tile/014/005-poor/017-clamped/015/014-zero/004-healthy + 004-moderate/005-moderate). The rest remain residual.
