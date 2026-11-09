@@ -61,6 +61,7 @@ The single smoke skip is `test-integration.sh`, intentionally skipped by `SMOKE_
 
 - `verification/cycle-2026-11-08-80-20-pass20.md` — pass 20 detailed record (T034/T035 extended to 013-decay-exemption/013-refused-on-ineligible/014-unknown/017-refused-contention; determinism 18/19, kills 15/19).
 - `converge.md` — pass 21 honest audit: evidence inventory, claim boundaries, residual work (017-refused-at-minimum stale assertion; farmhand T002; push authority).
+- `verification/validate-2026-11-09.md` — R4 validation: **parcial** (017-refused-at-minimum deterministic fail at stale predicate-1; farmhand blocked; no push authority). All cited claim-record bundles verify OK (90 of 93 cited; 3 documented legacy failures: `4acd`/`0a6b`/`07ba`, identical to prior passes).
 - `verification/cycle-2026-11-08-80-20-pass19.md` — pass 19 detailed record (T034/T035 extended to 017-unknown-baseline; coverage 14/19; refused-at-minimum deterministic fail).
 - `verification/cycle-2026-11-08-80-20-pass18.md` — pass 18 detailed record (T034/T035 extended to 004/005-moderate; coverage 13/19).
 - `verification/cycle-2026-11-08-80-20-pass17.md` — pass 17 detailed record (T034/T035 extended to 015/014-zero/004-healthy; coverage 11/19).
