@@ -108,3 +108,28 @@ Semantic comparison (same method as pass 11/13): all compared JSON files identic
 Post-restore runs corroborate the baseline (bundled with the mutation ledger): 013 `20261108T213615Z-51b4` and 014 `20261108T213820Z-4874` restate the same actual values.
 
 Coverage: **6 of 19** scenario files now carry 2× determinism evidence (004, 013-expiry, 005, 017, 013-bare-tile, 014). The rest remain residual.
+
+## Pass 16 addition (2026-11-08) — 005-poor and 017-clamped (coverage now 8 of 19)
+
+Command shape:
+
+```bash
+./scripts/verify-scenario.sh --scenario <scenario.json> --no-acquire \
+  --game-path "/home/luis/.local/share/Steam/steamapps/common/Stardew Valley" --skip-build --timeout 420
+```
+
+| Scenario | Run 1 | Run 2 | Verdicts |
+|---|---|---|---|
+| 005 `soil-health-growth-poor-soil` (poor 10, seed 987654321) | `evidence-bundle-run-20261109T025423Z-3865` | `evidence-bundle-run-20261109T025553Z-7ba7` | pass / pass |
+| 017 `agrochemical-clamped` (measured 5, seed 123456789) | `evidence-bundle-run-20261109T025730Z-1080` | `evidence-bundle-run-20261109T025841Z-2be9` | pass / pass |
+
+Semantic comparison (same method): all compared JSON files identical per pair; `evaluation/thresholds.jsonl` identical.
+
+| Scenario | `actual` values (both runs) | Threshold outcomes (both runs) | SMAPI log (normalized) |
+|---|---|---|---|
+| 005-poor | `soilHealth` 10, tier poor, `phaseDays` 5, `currentPhase` 0 | predicate-0 (×1.15) pass; predicate-1 (poor band) pass | filtered 80/80 lines; 2 diff lines: one identical `Overlay renderer cache invalidated.` line swapped position (load-order artifact) |
+| 017-clamped | `soilHealth` 0, tier poor, `phaseDays` 5 | predicate-0 (`soil cmp eq 0`) pass; predicate-1 (×1.15) pass; predicate-2 (`isMainPlayer`) pass | filtered 37/37 lines, **0 differences** after stripping |
+
+Post-restore runs corroborate the baseline (bundled with the mutation ledger): 005-poor `20261109T030410Z-4cd0` and 017-clamped `20261109T030553Z-391b` restate the same actual values.
+
+Coverage: **8 of 19** scenario files now carry 2× determinism evidence (004, 013-expiry, 005-healthy, 017-tradeoff, 013-bare-tile, 014, 005-poor, 017-clamped). The rest remain residual.

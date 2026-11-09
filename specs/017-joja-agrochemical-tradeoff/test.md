@@ -4,15 +4,15 @@
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261108T173759Z-7c21
-- **Commit**: 98bb69716fd5052e2b07485fd85e9871f322f5aa
-- **Date**: 2026-11-08T17:38:45Z
+- **Run ID**: run-20261109T030553Z-391b
+- **Commit**: edaa167af2defae4b4a1fbb7a37f4bf204dc419d
+- **Date**: 2026-11-09T03:06:35Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261108T173759Z-7c21/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261108T173759Z-7c21/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261108T173759Z-7c21/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261108T173759Z-7c21/`
+  - SoilHealthState delta: `evidence-bundle-run-20261109T030553Z-391b/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T030553Z-391b/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T030553Z-391b/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T030553Z-391b/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
@@ -32,3 +32,9 @@
 - Determinism artifacts identical; SMAPI log filtered to mod-relevant lines is identical after timestamp/ms stripping (37 lines both runs) except one identical `visualization_config_modfolder` TRACE line swapped position (load-order artifact). See `specs/018-machine-pass-full-coverage/verification/determinism-checks.md`.
 - Mutation negative control: `AgrochemicalSoilPenalty 10f → 20f` → `run-20261108T173425Z-7088`, soil 50→30, predicates ×0.8 (false) and ×1.0 (false); exit 19; source restored, post-restore `run-20261108T173759Z-7c21` **pass**. See `verification/mutation-checks.md`.
 - GATE3 block above is runner-promoted to the post-restore run `run-20261108T173759Z-7c21` (commit `98bb697`); not hand-edited.
+
+## Append-only run notes (pass 16, 2026-11-08)
+
+- `agrochemical-clamped` (measured 5, factor `soil cmp eq 0`) rerun twice on seed 123456789: `run-20261109T025730Z-1080` / `run-20261109T025841Z-2be9` — both **pass**; bundles verify exit 0; semantic evidence identical (`soilHealth` 0 poor, `phaseDays` 5). Logs: 37/37 filtered lines identical after stripping.
+- Mutation negative control: `AgrochemicalSoilPenalty 10f → 0f` → `run-20261109T030225Z-2cb3`, soil stays 5 (clamp never triggers), predicate-0 (`soil cmp eq 0`) **false**; exit 19; source restored, post-restore `run-20261109T030553Z-391b` **pass** (`soilHealth` 0). See `verification/mutation-checks.md`.
+- GATE3 block is runner-promoted to the post-restore run `run-20261109T030553Z-391b` (commit `edaa167`); not hand-edited.

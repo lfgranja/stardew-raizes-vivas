@@ -174,3 +174,42 @@ Coverage: **4 of 19** scenario files (004, 013, 005-healthy, 017-tradeoff). The 
 ```
 
 Coverage: **6 of 19** scenario files (004, 013-expiry, 005, 017, 013-bare-tile, 014). The remaining 13 host/farmhand scenario files are still residual.
+
+## Pass 16 addition (2026-11-08) — 005-poor and 017-clamped (coverage now 8 of 19)
+
+### 005-poor — mutant killed (`SoilGrowthPoorMultiplier 1.15f → 1.00f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:14` `SoilGrowthPoorMultiplier = 1.15f` → `1.00f`.
+- **Scenario:** `specs/005-soil-health-to-crop-growth/scenarios/soil-health-growth-poor.scenario.json` (poor 10, seed 987654321).
+- **Bundle:** `evidence-bundle-run-20261109T030033Z-4c21`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `evaluation/actual.json`: `phaseDays` 4 (expected 5), tier poor. `evaluation/thresholds.jsonl`: predicate-0 (×1.15) → **`passed: false`**; predicate-1 (poor band) → `passed: true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T030410Z-4cd0`, `phaseDays` 5, **pass**.
+
+### 017-clamped — mutant killed (`AgrochemicalSoilPenalty 10f → 0f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:223` `AgrochemicalSoilPenalty = 10f` → `0f`.
+- **Scenario:** `specs/017-joja-agrochemical-tradeoff/scenarios/agrochemical-clamped.scenario.json` (measured 5, factor `soil cmp eq 0`, seed 123456789).
+- **Bundle:** `evidence-bundle-run-20261109T030225Z-2cb3`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `evaluation/actual.json`: `soilHealth` 5 (expected 0 — no clamp), tier poor, `phaseDays` 5. `evaluation/thresholds.jsonl`: predicate-0 (`cmp eq 0`) → **`passed: false`**; predicate-1 (×1.15) → `true`; predicate-2 (`isMainPlayer`) → `true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T030553Z-391b`, `soilHealth` 0, **pass**.
+
+### Integrity (pass 16)
+
+`--verify-bundle` exit 0 for all eight bundles in this pass:
+
+```
+0 evidence-bundle-run-20261109T025423Z-3865
+0 evidence-bundle-run-20261109T025553Z-7ba7
+0 evidence-bundle-run-20261109T025730Z-1080
+0 evidence-bundle-run-20261109T025841Z-2be9
+0 evidence-bundle-run-20261109T030033Z-4c21
+0 evidence-bundle-run-20261109T030225Z-2cb3
+0 evidence-bundle-run-20261109T030410Z-4cd0
+0 evidence-bundle-run-20261109T030553Z-391b
+```
+
+Coverage: **8 of 19** scenario files (004, 013-expiry, 005-healthy, 017-tradeoff, 013-bare-tile, 014, 005-poor, 017-clamped). The remaining 11 host/farmhand scenario files are still residual.
