@@ -138,6 +138,8 @@ Diferencial vs. concorrentes próximos (ex.: ReGen Valley, Nexus #39740): não �
 6. **Próximo slice de gameplay:** pipeline de **heirloom seeds** (spec stub; consumido por Three Sisters, Green Manure, Rotation Journal, CSA) — maior impacto/80/20 do conteúdo restante; Joja/monocultura completa permanece fora de escopo controlado até decisão explícita.
 7. **Reconciliação documental contínua:** manter `OBJETIVO.md`/`ROADMAP.md`/evidências alinhados (esta atualização: 2026-11-09).
 
+**Append (2026-11-09, Cycle 020):** o slice heirloom foi **implementado e verificado em machine-pass host-only** (spec 020, run `20261109T155608Z-6021`, bundle `evidence-bundle-run-20261109T155608Z-6021/`, honesty R, suite 2001/0/4, format clean). `machine-pass` ≠ `verified`; D1/humano E/SC-comprehension permanecem `pending`. Nenhum bump de manifest/tag/publish foi feito (decisão do maintainer).
+
 ---
 
 ## 9. Referências-chave
