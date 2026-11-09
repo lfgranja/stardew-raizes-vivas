@@ -234,5 +234,40 @@ namespace LivingRoots
 
         // T097: commit-failure refusal key (added in Wave A scaffold; wired in Wave B)
         public const string TranslationKeyAgrochemicalCommitFailed = "message.agrochemical.commit-failed";
+
+        // Spec 020: Heirloom Seeds / Sementes Crioulas Pipeline (Crioulo Parsnip — one-crop template).
+        // All values are provisional first-pass tunables — TUNING THIS BLOCK REQUIRES SYNCING:
+        // i18n/default.json + i18n/en.json + i18n/pt.json (crioulo item/seed strings and the
+        // seed-saved / inventory-full / authority-unsupported messages), this file, and the
+        // heirloom tests (tests hardcode the magnitudes and the keys).
+        // Agronomic stance: crioulo advantage = stability under low-input/organic conditions,
+        // never a blanket superiority claim; no nitrogen language (not a legume); Pierre hybrids
+        // remain valid for high-input systems (USDA AMS) — they are never vilified in copy.
+        // Bonuses are labeled game abstractions only; never surfaced as agronomic constants.
+        public const string HeirloomItemId = "LivingRoots.HeirloomParsnipSeeds";
+        public const string QualifiedHeirloomItemId = "(O)LivingRoots.HeirloomParsnipSeeds";
+        public const string HeirloomProduceItemId = "LivingRoots.HeirloomParsnip";
+        public const string QualifiedHeirloomProduceItemId = "(O)LivingRoots.HeirloomParsnip";
+        public const int HeirloomSeedPrice = 35; // vs vanilla parsnip seeds 20g; provisional
+        public const int HeirloomProducePrice = 45; // vs vanilla parsnip 35g; provisional
+        // Plant/harvest soil bonuses, bounded 0-100, host-authoritative (Constitution VI).
+        public const float HeirloomPlantBonus = 2f; // +2 per heirloom planting (abstraction)
+        public const float HeirloomHarvestBonus = 1f; // +1 on Healthy-band (>=71) heirloom harvest (abstraction)
+        public const int HeirloomSavedSeedYield = 1; // exactly one saved seed per harvest (deterministic cap)
+        public const string HeirloomSeedTag = "heirloom_seed";
+        public const string HeirloomProduceTag = "heirloom_produce";
+        public const string HeirloomSeedsTextureAssetName = "Mods/lfgranja.LivingRoots/HeirloomSeeds";
+        public const string HeirloomProduceTextureAssetName = "Mods/lfgranja.LivingRoots/HeirloomProduce";
+        public const string HeirloomCropsTextureAssetName = "Mods/lfgranja.LivingRoots/HeirloomCrops";
+        // i18n keys — parity EN/PT/default enforced by HeirloomI18nTests.
+        public const string HeirloomSeedNameKey = "item.heirloom.parsnip-seed.name";
+        public const string HeirloomSeedDescriptionKey = "item.heirloom.parsnip-seed.description";
+        public const string HeirloomProduceNameKey = "item.heirloom.parsnip.name";
+        public const string HeirloomProduceDescriptionKey = "item.heirloom.parsnip.description";
+        public const string TranslationKeyHeirloomSeedSaved = "message.heirloom.seed-saved";
+        public const string TranslationKeyHeirloomSeedSavedInventoryFull = "message.heirloom.seed-saved-inventory-full";
+        public const string TranslationKeyHeirloomPlantBonusAuthorityUnsupported = "message.heirloom.plant-bonus-authority-unsupported";
+        // MP typed message farmhand -> host (reuse SoilHealthSyncMessage envelope; see SoilHealthSyncMessage).
+        public const string HeirloomPlantBonusRequestMessageType = "HeirloomPlantBonusRequest";
     }
 }
