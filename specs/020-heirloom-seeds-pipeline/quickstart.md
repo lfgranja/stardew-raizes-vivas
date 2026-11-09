@@ -29,7 +29,7 @@ Expected: `verdict: pass`, signals `soilHealthStateDelta` (measured +~2 after pl
 
 Manual spot-check (optional; never substitutes Gate 3)
 
-1. Load a save; visit the Traveler in Spring (Friday/Sunday, Cindersap Forest) — crioulo parsnip seeds should appear in the special stock (Player-limited; 35g), subject to cart odds (verify seed presence via debug grant if cart does not roll it).
+1. Load a save; visit the Traveler in Spring (Friday/Sunday, Cindersap Forest, Night Market or Desert Festival days also possible) — crioulo parsnip seeds may appear in the special stock (Player-limited; 35g), subject to cart odds. Never use absence of a cart roll as evidence against correctness. For verification use `lr_give_heirloom_seed` instead (debug grant).
 2. Plant on tilled soil; confirm soil-health tile increases by 2 (hover/hoe).
 3. Wait 7 days; harvest; expect crioulo produce (45g) + 1 saved heirloom seed (or full-inventory refusal copy).
 4. In a co-op save, plant/harvest as farmhand; confirm no local soil write — host snapshot sync wins (message pattern as HE-1/HE-2); refusal copy appears if host is unavailable/unsupported.
