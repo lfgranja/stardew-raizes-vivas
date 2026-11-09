@@ -22,6 +22,14 @@
 - Q: Release scope this slice → A: **No manifest bump, no tag, no public channel.** Evidence and docs only; release/tag stay maintainer actions (precedent and constitution). A SemVer 0.2.0 decision is a maintainer call recorded later.
 - Q: Growth speed → A: 7 days to harvest (`DaysInPhase = [1,2,2,2]`, 4 phases; sum 7), 1 phase behind vanilla parsnip pacing but with crioulo payoffs — mirrors Korpetis 2023 (landraces typically later); labeled as in-game abstraction in copy.
 
+### Session 2026-11-09 (autonomous clarify; resolved from repo patterns + decompiled 1.6 mechanics)
+
+- Q: Does the capped "saved seed" return fire on Junimo (automated) harvests, where there is no harvesting player inventory? → A: **No.** Saved seed is granted only to the harvesting player's inventory (Grab by `Farmer`, or via 014-supported Junimo path with a known harvester reference). Junimo harvests follow 014 junimo semantics; no seed refund is produced, and no workaround grafts seeds onto Junimo inventory (does not exist). A player-facing note is not required (Junimos do not surface heirloom-specific copy).
+- Q: May heirloom crops be planted in the Greenhouse (season-override location), and do they behave identically? → A: **Yes.** The slice does not restrict locations; `Seasons=["spring"]` planting legality is enforced by the base game via `Crop.IsInSeason`/greenhouse override as usual; soil bonus, seed-save, and harvest bonus apply identically. Decay/mulch greenhouse exemption semantics are unchanged.
+- Q: Does this slice add a debug/verification grant command for the heirloom seed (like `lr_give_mulch`/`lr_plant_crop` family)? → A: **Yes, verification-only:** `lr_give_heirloom_seed <x> <y>` is added to `LivingRoots.Verification` (queue parser + commands), additive only, never present in release builds' command routing outside verification, used by the new `heirloom-plant-bonus` scenario. This keeps headless Gate 3 possible without relying on cart RNG.
+- Q: If the `Traveler` `SEASON Spring` condition renders the seed unobtainable in the installed game state at runtime (e.g., cart week placement), is the acquisition path still considered verified? → A: **No unconditional claim.** Verification of obtainability uses (a) unit contract tests on the `Data/Shops` entry shape, and (b) `lr_give_heirloom_seed` for end-to-end Gate 3 (host-only machine-pass). Cart natural-acquisition remains an honest playtest observation item (P2 follow-up), never claimed from this cycle.
+- Q: Are French/Spanish/German or Portuguese-formal localization required for this slice? → A: **No.** Locales = `default` (EN), `en`, `pt` only, per repo norm; parity enforced by tests as in 014/017.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 — Acquire and Sow a Crioulo Seed (Priority: P1)
