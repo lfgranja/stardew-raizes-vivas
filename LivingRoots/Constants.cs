@@ -247,7 +247,6 @@ namespace LivingRoots
         public const string HeirloomItemId = "LivingRoots.HeirloomParsnipSeeds";
         public const string QualifiedHeirloomItemId = "(O)LivingRoots.HeirloomParsnipSeeds";
         public const string HeirloomProduceItemId = "LivingRoots.HeirloomParsnip";
-        public const string QualifiedHeirloomProduceItemId = "(O)LivingRoots.HeirloomParsnip";
         public const int HeirloomSeedPrice = 35; // vs vanilla parsnip seeds 20g; provisional
         public const int HeirloomProducePrice = 45; // vs vanilla parsnip 35g; provisional
         // Plant/harvest soil bonuses, bounded 0-100, host-authoritative (Constitution VI).
@@ -269,5 +268,6 @@ namespace LivingRoots
         public const string TranslationKeyHeirloomPlantBonusAuthorityUnsupported = "message.heirloom.plant-bonus-authority-unsupported";
         // MP typed message farmhand -> host (reuse SoilHealthSyncMessage envelope; see SoilHealthSyncMessage).
         public const string HeirloomPlantBonusRequestMessageType = "HeirloomPlantBonusRequest";
+        public const string HeirloomHarvestBonusRequestMessageType = "HeirloomHarvestBonusRequest";
     }
 }

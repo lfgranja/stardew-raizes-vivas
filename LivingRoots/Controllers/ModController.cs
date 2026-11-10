@@ -107,11 +107,16 @@ namespace LivingRoots.Controllers
         // strictly for replicated farm state sync (not scenario injection), so
         // CrossModCommunicationGuardTests allows it in LivingRoots.
         internal const string SoilHealthSyncMessageType = "SoilHealthSync";
+        internal const string HeirloomPlantBonusRequestMessageType = ModConstants.HeirloomPlantBonusRequestMessageType;
+        internal const string HeirloomHarvestBonusRequestMessageType = ModConstants.HeirloomHarvestBonusRequestMessageType;
         internal Func<bool> IsMainPlayerCheck { get; set; } = () => StardewModdingAPI.Context.IsMainPlayer;
         internal Func<int> GetCurrentDay { get; set; } = () => StardewValley.Game1.Date.TotalDays;
         // T008 (spec 009): idempotency storage for the growth modifier (reuse SoilDecayService pattern).
         private readonly Dictionary<string, string> _soilGrowthProcessedDays = new();
         private readonly object _soilGrowthLock = new();
+        // Spec 020: bounded dedupe for typed farmhand→host heirloom requests.
+        private readonly HashSet<string> _heirloomRequestDedupe = new(StringComparer.Ordinal);
+        private readonly object _heirloomRequestDedupeLock = new();
 
         // T069: the configuration instance the render frame
         // last applied. The configuration service swaps the
@@ -3370,7 +3375,34 @@ namespace LivingRoots.Controllers
 
         internal void OnModMessageReceived(object? sender, ModMessageReceivedEventArgs e)
         {
-            if (IsDisposed() || e == null || !string.Equals(e.Type, SoilHealthSyncMessageType, StringComparison.Ordinal))
+            if (IsDisposed() || e == null)
+            {
+                return;
+            }
+
+            if (string.Equals(e.Type, HeirloomPlantBonusRequestMessageType, StringComparison.Ordinal))
+            {
+                if (!IsMainPlayerCheck())
+                {
+                    return;
+                }
+
+                HandleHeirloomBonusRequest(e, isHarvest: false);
+                return;
+            }
+
+            if (string.Equals(e.Type, HeirloomHarvestBonusRequestMessageType, StringComparison.Ordinal))
+            {
+                if (!IsMainPlayerCheck())
+                {
+                    return;
+                }
+
+                HandleHeirloomBonusRequest(e, isHarvest: true);
+                return;
+            }
+
+            if (!string.Equals(e.Type, SoilHealthSyncMessageType, StringComparison.Ordinal))
             {
                 return;
             }
@@ -3397,6 +3429,174 @@ namespace LivingRoots.Controllers
             catch (Exception ex)
             {
                 _monitor.Log($"Soil health sync receive failed: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+        }
+
+        /// <summary>
+        /// Spec 020: host-side handler for typed farmhand crioulo soil-effect
+        /// requests. Fail-closed: validates location/save-shared session, tile,
+        /// dirt and crop identity, idempotency (bounded dedupe), and takes the
+        /// per-tile host lock before any write. Farmhands never mutate shared
+        /// soil state locally (Constitution VI).
+        /// </summary>
+        private void HandleHeirloomBonusRequest(ModMessageReceivedEventArgs e, bool isHarvest)
+        {
+            try
+            {
+                string location;
+                int tileX;
+                int tileY;
+                string dayKey;
+                string itemId;
+                if (isHarvest)
+                {
+                    var req = e.ReadAs<Domain.HeirloomHarvestBonusRequest>();
+                    if (req == null) return;
+                    location = req.Location;
+                    tileX = req.TileX;
+                    tileY = req.TileY;
+                    dayKey = req.DayKey;
+                    itemId = req.ItemId;
+                }
+                else
+                {
+                    var req = e.ReadAs<Domain.HeirloomPlantBonusRequest>();
+                    if (req == null) return;
+                    location = req.Location;
+                    tileX = req.TileX;
+                    tileY = req.TileY;
+                    dayKey = req.DayKey;
+                    itemId = req.ItemId;
+                }
+
+                if (string.IsNullOrWhiteSpace(location) || itemId != ModConstants.HeirloomItemId)
+                {
+                    return;
+                }
+
+                if (tileX < 0 || tileY < 0)
+                {
+                    return;
+                }
+
+                // Session-scope trust: the request came over this save's bus; the
+                // game still validates the tile/authority before writing anything.
+                StardewValley.GameLocation? loc = null;
+                try
+                {
+                    loc = _locationProvider?.GetLocationByName(location);
+                }
+                catch
+                {
+                    try
+                    {
+                        loc = StardewValley.Game1.getLocationFromName(location);
+                    }
+                    catch
+                    {
+                        loc = null;
+                    }
+                }
+
+                if (loc == null)
+                {
+                    return;
+                }
+
+                var isFarmOrGreenhouse = loc.IsFarm
+                    || string.Equals(loc.Name, "Greenhouse", StringComparison.OrdinalIgnoreCase);
+                if (!isFarmOrGreenhouse)
+                {
+                    return;
+                }
+
+                var tile = new Microsoft.Xna.Framework.Vector2(tileX, tileY);
+                if (!loc.terrainFeatures.TryGetValue(tile, out var terrain)
+                    || terrain is not StardewValley.TerrainFeatures.HoeDirt dirt)
+                {
+                    return;
+                }
+
+                // Validate dirt/crop identity so a farmhand cannot forge soil deltas.
+                var crop = dirt.crop;
+                var cropSeedId = crop?.netSeedIndex?.Value;
+                if (!string.Equals(cropSeedId, ModConstants.HeirloomItemId, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                if (isHarvest && !HeirloomIdentity.IsHeirloomSeedId(cropSeedId))
+                {
+                    return;
+                }
+
+                var type = isHarvest ? HeirloomHarvestBonusRequestMessageType : HeirloomPlantBonusRequestMessageType;
+                var dedupeKey = string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}|{1}|{2}|{3}|{4}", type, location, tileX, tileY, dayKey ?? string.Empty);
+                lock (_heirloomRequestDedupeLock)
+                {
+                    if (_heirloomRequestDedupe.Count >= 256)
+                    {
+                        _heirloomRequestDedupe.Clear();
+                    }
+
+                    if (!_heirloomRequestDedupe.Add(dedupeKey))
+                    {
+                        return; // duplicate delivery — idempotent no-op
+                    }
+                }
+
+                if (_hostAtomicLockService == null || _soilHealthService == null)
+                {
+                    return;
+                }
+
+                var farmerId = e.FromPlayerID;
+                if (!_hostAtomicLockService.TryAcquireLock(loc.Name, tile, farmerId))
+                {
+                    return;
+                }
+
+                try
+                {
+                    var before = _soilHealthService.GetSoilHealth(loc.Name, tile);
+                    if (isHarvest)
+                    {
+                        if (float.IsNaN(before))
+                        {
+                            return;
+                        }
+
+                        var applied = Domain.Services.HeirloomSoilMath.Harvest(before, out var after);
+                        if (!applied)
+                        {
+                            return;
+                        }
+
+                        _soilHealthService.TrySetSoilHealth(loc.Name, new Microsoft.Xna.Framework.Point(tileX, tileY), after);
+                    }
+                    else
+                    {
+                        var after = Domain.Services.HeirloomSoilMath.Plant(before);
+                        _soilHealthService.TrySetSoilHealth(loc.Name, new Microsoft.Xna.Framework.Point(tileX, tileY), after);
+                    }
+                }
+                finally
+                {
+                    _hostAtomicLockService.ReleaseLock(loc.Name, tile, farmerId);
+                }
+
+                try
+                {
+                    BroadcastSoilHealthSnapshotIfHost();
+                }
+                catch (Exception ex)
+                {
+                    _monitor.Log($"heirloom bonus: sync broadcast failed: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+                }
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"heirloom bonus request handling failed: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
             }
         }
 

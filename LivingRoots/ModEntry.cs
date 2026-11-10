@@ -186,6 +186,48 @@ namespace LivingRoots
             {
                 var harvestQualityService = new HarvestQualityService();
                 HarvestPatches.Initialize(this.Monitor, harvestQualityService, soilHealthService);
+                // Spec 020: crioulo harvest arm (deterministic seed save + Healthy-band bonus).
+                // Host applies the soil write via the shared lock; farmhands route typed
+                // requests to the host (Constitution VI) — inventory grant stays client-local.
+                HarvestPatches.InitializeHeirloomRules(
+                    hostAtomicLockService,
+                    who => who == null ? null : new FarmerInventoryAdapter(who),
+                    () =>
+                    {
+                        try
+                        {
+                            var season = StardewValley.Game1.currentSeason;
+                            return string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}:{1}:{2}", season, StardewValley.Game1.dayOfMonth, StardewValley.Game1.year);
+                        }
+                        catch
+                        {
+                            return "unknown";
+                        }
+                    },
+                    () => _controller?.BroadcastSoilHealthSnapshotIfHost(),
+                    helper,
+                    this.ModManifest);
+                // Spec 020: crioulo plant seam — +2 on heirloom plant (host-authoritative).
+                HeirloomPatches.Initialize(
+                    this.Monitor,
+                    soilHealthService,
+                    hostAtomicLockService,
+                    helper,
+                    this.ModManifest,
+                    key => LocalizeOrFallback(key, key),
+                    () => _controller?.BroadcastSoilHealthSnapshotIfHost(),
+                    () =>
+                    {
+                        try
+                        {
+                            var season = StardewValley.Game1.currentSeason;
+                            return string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}:{1}:{2}", season, StardewValley.Game1.dayOfMonth, StardewValley.Game1.year);
+                        }
+                        catch
+                        {
+                            return "unknown";
+                        }
+                    });
                 // Skip Harmony patching in test environments
                 if (this.ModManifest != null && !string.IsNullOrEmpty(this.ModManifest.UniqueID) && this.Monitor != null)
                 {
@@ -350,6 +392,15 @@ namespace LivingRoots
                         prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.Harvest_Prefix)),
                         postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.Harvest_Postfix)));
                     this.Monitor?.Log("Living Roots: Harvest Harmony patch registered.", LogLevel.Trace);
+                }
+
+                var plantMethod = AccessTools.Method(typeof(StardewValley.TerrainFeatures.HoeDirt), nameof(StardewValley.TerrainFeatures.HoeDirt.plant));
+                if (plantMethod != null)
+                {
+                    harmony.Patch(
+                        plantMethod,
+                        postfix: new HarmonyMethod(typeof(HeirloomPatches), nameof(HeirloomPatches.HeirloomPlant_Postfix)));
+                    this.Monitor?.Log("Living Roots: Heirloom plant Harmony patch registered.", LogLevel.Trace);
                 }
             }
             catch
