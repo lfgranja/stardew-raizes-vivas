@@ -5,7 +5,7 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 > **STATUS ANNOTATION — 2026-11-09 (snapshot final do dia; `dev` = `origin/dev`; spec 020; síntese em `research/2026-11-09-journey-balance-and-outlook.md`)**
 > **Verified now (2026-11-09, fresh re-run):** build Release **0 errors** (14 pre-existing warnings; `-m:1` on this host due to recorded `msbuild-release-build-sigabrt`); tests **1997 passed / 0 failed / 4 skipped** (2001). Specs closed with artifacts: **002** (38/0), **005** (146/0), **008** (184/0), **012** (11/0), **013** (46/0), **016** (43/0), **017** (127/0), **020** (35/0). Nearly closed: **004** 65/67 (open: T034 D1, T037 playtest), **014** 131/133 (open: T109 D1 blocked; T110 deferred). Partial: **015** 58/65; **018** 24/28 (farmhand-guards blocked-feasible); **019** 5/7 (owner actions); **009** 55/58 (manual). Legacy/open tracks: **001** 10/86, **003** 28/117, **010** 150/203, **011** 42/88. Totals: **1198 done / 284 open** (80.8%); active track (002 + 004–020): **968/988 = 98.0%**.
 > **Release 0.1.0 (2026-11-07, spec 017):** spec 017 Joja/Agrochemical MVP — repo/`dev` only; **no public channel, no git tag**; human attestation absent by design; validate.md **approved** (1871/0/4 @ `c9ff596`); Gate 3 host-only machine-pass (bundle `040235Z-589a`, honesty R). The 0.1.0 build was **not** Gate-3-run in isolation (delta = version string; disclosure in `.specify/releases/017-joja-agrochemical-tradeoff/release.md` remains valid).
-> **Git:** `dev` = `origin/dev` = `cd90f2f`; tree clean; **0 commits ahead**; 0 open PRs; 0 tags; 0 public releases. Publication remains the maintainer's decision.
+> **Git:** `dev` = `origin/dev`; tree clean; **0 commits ahead**; 0 open PRs; 0 tags; 0 public releases. Publication remains the maintainer's decision.
 > **Gate 3 (2026-11-09):** machine-pass host-only for 004 `run-20261109T034318Z-7374`, 005 `...-4cc1`, 013 `...-1ea4`, 014 `...-088b`, 015 `...-29cf`, 017 `...-6938`, 020 `...-6021`; all verdict `pass`, honesty R. **Machine-pass ≠ verified**: D1 (real farmhand), human-verified, SC-004 and 004 T034/T037 remain `pending`.
 > **Web research 2026-11-09:** synthesis + balance in `research/2026-11-09-journey-balance-and-outlook.md`; raw data in `research/2026-11-09-web-research-ecosystem-status.md`, `research/2026-11-09-ecosystem-market.md`, `research/2026-11-09-technical-verification.md`. SMAPI 4.5.2 stable / SDV 1.6.15 / 1.7 announced (probable 2027, no date) reconfirmed.
 > **Legend:** ✅ implemented & verified (build + tests green) · 🟡 partial/inert · ❌ not implemented · ⚠️ caveats / machine-pass only, not human-verified.
@@ -196,7 +196,7 @@ Justificativa (com pesquisa de mercado 2026):
 | Specs stale/abertas | 010 (53), 001 (76), 003 (89), 011 (46) | `specs/*/tasks.md` (total 1198 done / 284 open; trilha ativa 968/988) |
 | Gate 3 | **machine-pass host-only** em 7 specs: 004 `7374`, 005 `4cc1`, 013 `1ea4`, 014 `088b`, 015 `29cf`, 017 `6938`, 020 `6021`; todos `verdict: pass`, honesty R | `specs/*/test.md`; `specs/*/verification/host-only-gate3.md`; bundles gitignored |
 | Release | **0.1.0** (spec 017) no repo/`dev`; sem canal público, sem tag; validate.md aprovado (1871/0/4 @ c9ff596) | `.specify/releases/017-joja-agrochemical-tradeoff/release.md`; manifest |
-| Git | `dev` = `origin/dev` = `cd90f2f`; **0 commits à frente**; árvore limpa; sem PRs; 0 tags; 0 releases públicas | `git status -sb`; `git rev-list --count origin/dev..dev`; `git tag --list` |
+| Git | `dev` = `origin/dev`; **0 commits à frente**; árvore limpa; sem PRs; 0 tags; 0 releases públicas | `git status -sb`; `git rev-list --count origin/dev..dev`; `git tag --list` |
 | Multiplayer | não atestado (D1 T109 bloqueado; runner host-only; farmhand-guards blocked-feasible) | `specs/014/tasks.md`; `specs/018/tasks.md`; `specs/017/verification/claim-records.md` |
 | Humano/E | **nunca executado** — machine-pass ≠ verified | `VERIFICATION_PROTOCOL.md`; claims pendentes |
 
@@ -468,7 +468,7 @@ Before building any of the above, the roadmap's promises were checked against th
 
 ## Recommended next action (80/20, refreshed 2026-11-09)
 
-**1) Publicação (maintainer decision):** `dev` já está sincronizado com `origin/dev` (`cd90f2f`, 0 à frente) e sem PRs abertos; decidir tag `0.1.0` e eventual canal público (Nexus/CurseForge) ou registrar explicitamente “não publicar”. Sem reescrita de histórico. Não executado autonomamente.
+**1) Publicação (maintainer decision):** `dev` já está sincronizado com `origin/dev` (0 à frente) e sem PRs abertos; decidir tag `0.1.0` e eventual canal público (Nexus/CurseForge) ou registrar explicitamente “não publicar”. Sem reescrita de histórico. Não executado autonomamente.
 
 **2) D1 real (T109 / 015 T049/T057):** sessão host+farmhand com evidência honesta — caminho concreto (pesquisa 2026-11-09): **duas instâncias SMAPI sob Xvfb** (host+farmhand, localhost join) ou **JunimoServer** (repo `stardew-valley-dedicated-server/server`; stable `sdvd-server-v1.4.0`, docs recomendam preview `v1.5.0-preview.140`; JunimoTestClient HTTP :5123; manual/VPS, nunca PR-gate; contas Steam + jogo). Evidência ainda não executada; machine-pass host-only ≠ D1.
 
@@ -502,7 +502,7 @@ Before building any of the above, the roadmap's promises were checked against th
 
 ## Blockers that are not roadmap items (verificar antes de agir)
 
-* **Publicação pendente:** `dev` = `origin/dev` (`cd90f2f`, 0 à frente); sem PRs abertos; 0 tags e 0 releases públicas — tag/release/canal público são decisão do maintainer (sem reescrita de histórico).
+* **Publicação pendente:** `dev` = `origin/dev` (0 à frente); sem PRs abertos; 0 tags e 0 releases públicas — tag/release/canal público são decisão do maintainer (sem reescrita de histórico).
 * **Evidência ≠ verificação humana:** machine-pass não é `verified`; D1/T110/humano E/SC-004 pendentes.
 * **CI remoto dormente:** `Build and Test` exige `BUILDDEPS_ENABLED`+`BUILDDEPS_TOKEN`; `Verify Scenario` é `continue-on-error`; `Check Formatting` é o único check sempre-ativo (só formatação — não promover a required check sozinho).
 * **Licenciamento/assets:** manter vigilância — `.gitignore` protege game assemblies; verificar periodicamente `git ls-files` para DLLs proprietárias/assets indevidos.
