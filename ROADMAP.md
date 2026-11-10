@@ -2,12 +2,12 @@
 
 This document outlines the development roadmap for the "Living Roots" mod, detailing the progression of features from early to late game, based on agroecological principles.
 
-> **STATUS ANNOTATION — 2026-11-09 (fresh verification snapshot; spec 017 MVP released 0.1.0; web refresh in `research/2026-11-09-web-research-ecosystem-status.md`)**
-> **Verified now (2026-11-09):** build Release **0 errors** (14 pre-existing warnings; `-m:1` on this host due to recorded `msbuild-release-build-sigabrt`); tests **1937 passed / 0 failed / 4 skipped** (1941). Specs closed in code with artifacts: **002** (38/0), **005** (146/0), **008** (184/0), **012** (11/0), **013** (46/0), **016** (43/0), **017** (127/0). Nearly closed: **004** 57/59 (open: T034 D1 humano, T037 playtest), **014** 131/133 (open: T109 D1 bloqueado; T110 deferido). Partial: **015** 58/65; **018** 24/28 (farmhand-guards blocked-feasible); **019** 5/7 (owner actions); **009** 55/58 (manual). Open/stale tracks: **001** 10/86, **003** 28/117, **010** 150/203, **011** 42/88 (totais no repo hoje: **1155 done / 284 open**).
-> **Release 0.1.0 (2026-11-07):** spec 017 Joja/Agrochemical MVP — escopo repo/`dev`; **sem canal público, sem tag git**; attestation humana ausente por desenho; validate.md **aprovado** (1871/0/4 @ `c9ff596`); Gate 3 host-only machine-pass (bundle `040235Z-589a`, honesty R). O build 0.1.0 não foi Gate-3-run isoladamente (delta = string de versão; disclosure em `.specify/releases/017-joja-agrochemical-tradeoff/release.md` permanece válida).
-> **Git:** `dev` **41 commits à frente de `origin/dev`** em 2026-11-09; working tree limpo; sem PRs abertos; sem tag. Publicação continua decisão do maintainer.
-> **Runner marker 2026-11-09:** GATE3 block below shows `run-20261109T041859Z-6938` (honesty R, host-only). **Machine-pass ≠ verified**: D1 (real farmhand), human-verified e SC-004 permanecem `pending`. Spec 018 passou de 10→24 verificados; os 4 farmhand-guards seguem blocked-feasible (`test.md`/`tasks.md`).
-> **Web research 2026-11-09:** ver `research/2026-11-09-web-research-ecosystem-status.md` (+ `2026-11-09-ecosystem-market.md`, `2026-11-09-technical-verification.md`). SMAPI/SDV baseline reconfirmada; ecossistema de headless/MP e competitivo re-verificados — detalhes e limitações naquele arquivo.
+> **STATUS ANNOTATION — 2026-11-09 (snapshot final do dia; `dev` = `origin/dev`; spec 020; síntese em `research/2026-11-09-journey-balance-and-outlook.md`)**
+> **Verified now (2026-11-09, fresh re-run):** build Release **0 errors** (14 pre-existing warnings; `-m:1` on this host due to recorded `msbuild-release-build-sigabrt`); tests **1997 passed / 0 failed / 4 skipped** (2001). Specs closed with artifacts: **002** (38/0), **005** (146/0), **008** (184/0), **012** (11/0), **013** (46/0), **016** (43/0), **017** (127/0), **020** (35/0). Nearly closed: **004** 65/67 (open: T034 D1, T037 playtest), **014** 131/133 (open: T109 D1 blocked; T110 deferred). Partial: **015** 58/65; **018** 24/28 (farmhand-guards blocked-feasible); **019** 5/7 (owner actions); **009** 55/58 (manual). Legacy/open tracks: **001** 10/86, **003** 28/117, **010** 150/203, **011** 42/88. Totals: **1198 done / 284 open** (80.8%); active track (002 + 004–020): **968/988 = 98.0%**.
+> **Release 0.1.0 (2026-11-07, spec 017):** spec 017 Joja/Agrochemical MVP — repo/`dev` only; **no public channel, no git tag**; human attestation absent by design; validate.md **approved** (1871/0/4 @ `c9ff596`); Gate 3 host-only machine-pass (bundle `040235Z-589a`, honesty R). The 0.1.0 build was **not** Gate-3-run in isolation (delta = version string; disclosure in `.specify/releases/017-joja-agrochemical-tradeoff/release.md` remains valid).
+> **Git:** `dev` = `origin/dev` = `cd90f2f`; tree clean; **0 commits ahead**; 0 open PRs; 0 tags; 0 public releases. Publication remains the maintainer's decision.
+> **Gate 3 (2026-11-09):** machine-pass host-only for 004 `run-20261109T034318Z-7374`, 005 `...-4cc1`, 013 `...-1ea4`, 014 `...-088b`, 015 `...-29cf`, 017 `...-6938`, 020 `...-6021`; all verdict `pass`, honesty R. **Machine-pass ≠ verified**: D1 (real farmhand), human-verified, SC-004 and 004 T034/T037 remain `pending`.
+> **Web research 2026-11-09:** synthesis + balance in `research/2026-11-09-journey-balance-and-outlook.md`; raw data in `research/2026-11-09-web-research-ecosystem-status.md`, `research/2026-11-09-ecosystem-market.md`, `research/2026-11-09-technical-verification.md`. SMAPI 4.5.2 stable / SDV 1.6.15 / 1.7 announced (probable 2027, no date) reconfirmed.
 > **Legend:** ✅ implemented & verified (build + tests green) · 🟡 partial/inert · ❌ not implemented · ⚠️ caveats / machine-pass only, not human-verified.
 
 > **STATUS ANNOTATION — 2026-11-07 (later same day — spec 017 Joja/Agrochemical MVP — Phase 11 CLOSED; Phase 12 CLOSED)**
@@ -27,31 +27,63 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 
 ---
 
-## Progresso consolidado — 2026-11-09 (verificado: build 0 erros / testes 1937/0/4 / release 0.1.0 no repo)
+## Progresso consolidado — 2026-11-09 (snapshot final: build 0 erros / testes 1997/4/0 / `dev` = `origin/dev`)
 
 ### Quanto do caminho já percorremos (verificado em 2026-11-09)
 
-**Em código + testes (verificado nesta sessão e via artefatos commitados):**
-- ✅ Núcleo persistente de solo, decay sazonal, overlay/tooltip/hoe feedback.
-- ✅ Compost loop (spec 004) e mulch (spec 013, 46/46).
-- ✅ Crescimento (spec 005, 146/146) e qualidade de colheita (spec 014, 131/133; machine-pass host-only; D1/T110 pendentes).
-- ✅ **Spec 017 (Joja/Agrochemical MVP, 127/127) — released 0.1.0 no repo**; validate.md aprovado; Gate 3 host-only machine-pass; telegrafia + penalidade bounded + recusas + broadcast host-authoritative.
-- ✅ Specs 002/005/008/012/013/016/017 fechadas; 014/004 quase fechadas; 015/018/019/009 parciais; 010 funcional mas incompleto (150/203).
-- ✅ Suite **1937/0/4**; build **0 erros** (mitigação `-m:1` registrada); format/band-scale PASS.
+**Em código + testes (evidência determinística desta sessão + artefatos commitados):**
+- ✅ Núcleo persistente de solo 0–100 por tile, decay sazonal, overlay/tooltip/hoe feedback.
+- ✅ Compost loop (spec 004, 65/67; Gate 3 `7374`) e mulch (spec 013, 46/46; Gate 3 `1ea4`).
+- ✅ Crescimento dirigido por saúde (spec 005, 146/146; Gate 3 `4cc1`).
+- ✅ Qualidade/extra de colheita (spec 014, 131/133; Gate 3 `088b`; machine-pass host-only).
+- ✅ Seam Harmony de colheita (spec 015, 58/65; Gate 3 `29cf`).
+- ✅ **Spec 017 (Joja/Agrochemical MVP, 127/127) — release 0.1.0 no repo**; Gate 3 `6938`; telegrafia + penalidade bounded + recusas + broadcast host-authoritative.
+- ✅ **Spec 020 (heirloom seeds, 35/35)** — plantio +2, semente salva determinística, registro `Data/Objects`/`Data/Crops`/`Data/Shops`; Gate 3 `6021` (só plantio).
+- ✅ Sync MP FR-009/A8 implementado/testado por unidade/regressão; **D1 ao vivo não atestado**.
+- ✅ Suite **1997/0/4**; build **0 erros** (mitigação `-m:1` registrada); format exit 0.
 
-**Pendências críticas (attestation, não código):**
-- ⚠️ T109 D1 (real farmhand) e SC-004 (017) — bloqueados/pendentes.
-- ⚠️ Gate 3 humano/E — nunca executado.
-- ⚠️ Publicação: 41 commits locais não publicados; sem tag/release pública.
+**Cobertura por denominação (não misturar os números):**
 
-### O que ainda falta (prioridade prática, ver seção detalhada abaixo)
+| Métrica | Valor | % | Leitura |
+|---|---:|---:|---|
+| Tarefas da trilha ativa (002 + 004–020) | 968/988 | **98,0%** | escopo não-legado quase fechado |
+| Tarefas totais (todas as specs) | 1198/1482 | **80,8%** | denominador inclui 001/003/010/011 legados |
+| Specs fechadas | 8/20 | **40,0%** | 002, 005, 008, 012, 013, 016, 017, 020 |
+| Gate 3 machine-pass | 7/20 | **35,0%** | host-only, honesty R |
+| Gate 3 human-verified | 0/20 | **0%** | nenhum cenário promovido a `verified` |
+| D1 (farmhand real) | 0/1 | **0%** | bloqueia 014/015/018 |
+| Bugs com A+F+T | 30/40 | **75,0%** | 2 dirs vazios; 1 teste obsoleto |
+| Bugs com resultado positivo | 19/40 | **47,5%** | 17 `verified` + 1 `verified (bug-specific)` + 1 `pass` |
+| Features nomeadas | 6/21 | **28,6%** | compost, mulch, crescimento, qualidade, Joja MVP, heirloom |
+| Progressão early / mid / end | 2/7 · 0/6 · 0/6 | 28,6% · 0% · 0% | compost/mulch no early; resto não iniciado |
 
-1. **Decisão de publicação (maintainer):** push/PR + tag/release canal público?
-2. **D1 real** — sessão host+farmhand; destrava 014/015/018.
-3. **Atestado humano/E** — promover `machine-pass` → `verified`.
-4. **SC-004 (017)** — executar protocolo de compreensão.
-5. **Escopo de spec 010** — fechar ou declarar concluído formalmente (`/speckit.converge`).
-6. **Próxima feature:** heirloom pipeline (consumido por Three Sisters / Green Manure / Rotation Journal / CSA).
+**Pendências críticas (evidência e distribuição, não código):**
+- ⚠️ **D1 real** (T109/014, T049/T057/015, 4 farmhand-guards/018) — nunca executado.
+- ⚠️ **Atestação humana/E** — 0 de 7 cenários `machine-pass`.
+- ⚠️ **SC-004 (017)** — protocolo escrito, nenhuma execução.
+- ⚠️ **Publicação** — `0.1.0` é interno; 0 tags e 0 releases públicas; README agora aponta build from source.
+- ⚠️ **Spec 010** — funcional, mas 53 tarefas abertas de escopo/verificação.
+- ⚠️ **004 T034/T037** e **009 T039/T040/T052** — manual/playtest/D1.
+
+### O que ainda falta (por camada)
+
+1. **Evidência:** human E, D1, SC-004, T110, 004 T034/T037, 009 manual; 020 só cobre plantio (colheita, semente salva, aquisição natural e D1 sem Gate 3).
+2. **Distribuição:** decidir tag/release pública; sem Nexus/CurseForge; CI remoto de build/test dormente; `Verify Scenario` best-effort.
+3. **Gameplay core:** pest system, monocultura, rotação/policultura/adubo verde/animais, Joja/monocultura completa, “new interactions” de Living Soil.
+4. **Conteúdo/progressão:** Elena, Welcome Kit, Three Sisters, cisterna, farmácia viva, Adobe Shed/Green Roof, ICLF, greywater, feira, CSA, cozinha coletiva, soberania, mais heirloom crops; mid 0/6, end 0/6.
+5. **Infra/higiene:** 010 (53), 001 (76), 003 (89), 011 (46); 5 bugs A-only, 2 AF-only, 1 FT obsoleto, 2 diretórios vazios; 31 briefings, 0 implementados.
+
+### Próximo 80/20 (ordem recomendada)
+
+1. **Decidir publicação:** manter interno ou criar tag/release `0.1.0` com notas honestas. Custo S; destrava instalação/distribuição.
+2. **README/install:** build from source + status explícito (feito nesta atualização). Custo XS.
+3. **Atestação humana/E** de 4 cenários já `machine-pass` (004, 005/013, 014, 017/020). Custo M; promove `machine-pass` → `verified`.
+4. **D1 real:** duas instâncias SMAPI sob Xvfb ou JunimoServer (server + client + JunimoTestClient :5123). Custo M–L; destrava 014/015/018.
+5. **Fechar/documentar resíduos** 004/014/015/018/019 e decidir escopo de 010 via `/speckit.converge`. Custo S–M.
+6. **Próximo slice de gameplay:** rotação/policultura MVP (fecha “BUILDS”) **ou** Joja/monocultura completa (fecha “DESTROYS”). Custo M; 020 já entregou a base heirloom. Só depois de 3/4.
+7. **1.7:** não migrar agora; monitorar anúncio de data (janela provável 2027). Custo 0.
+
+**Honestidade:** `machine-pass` ≠ `verified`; 0 atestação humana, 0 D1, 0 tag/release pública. Nenhuma claim é promovida por esta consolidação.
 
 ## Progresso consolidado — 2026-11-06 (spec 014 harvest-quality machine-pass host-only + pesquisa atualizada)
 
@@ -89,7 +121,7 @@ This document outlines the development roadmap for the "Living Roots" mod, detai
 - ✅ Mulch (7 dias, decay skip, overlay tint, host-authoritative) — spec 013 (46/48).
 - ✅ Growth modifier (health → growth speed) — spec 005 (143/146).
 - ✅ Soil decay sazonal (greenhouse exempt).
-- ✅ Seam de qualidade (`HarvestQualityService`, 17 testes) + patch Harmony + wiring — specs 014/015 (infra apenas; patch **não executado em jogo**).
+- ✅ Seam de qualidade (`HarvestQualityService`, 17 testes) + patch Harmony + wiring — specs 014/015 (infra apenas; na ocasião o patch **não havia sido executado com atestação humana** — o runner headless viria a exercitá-lo nos Gate 3 `088b`/`29cf`, em 2026-11-09).
 - ✅ DDD, segurança, concorrência, quality gate local, smoke launch (mod carrega no SMAPI).
 - ✅ UI/visualização reativa (overlay/tooltip/hoe feedback).
 
@@ -157,18 +189,18 @@ Justificativa (com pesquisa de mercado 2026):
 | Metric | Value | How verified |
 |---|---|---|
 | Build | **0 erros** (14 warnings pré-existentes; `-m:1` no host) | `dotnet build Stardew-LivingRoots.sln -c Release -m:1` (re-verificado 2026-11-09) |
-| Test suite | **1937 passed / 0 failed / 4 skipped** (1941) | `dotnet test Stardew-LivingRoots.sln --no-build -c Release` (re-verificado 2026-11-09) |
-| Specs fechadas | 002, 005, 008, 012, 013, 016, **017 (0.1.0 released no repo)** | `specs/*/tasks.md` (0 abertas) |
+| Test suite | **1997 passed / 0 failed / 4 skipped** (2001) | `dotnet test Stardew-LivingRoots.sln -c Release -m:1` (re-verificado 2026-11-09) |
+| Specs fechadas | 002, 005, 008, 012, 013, 016, **017 (0.1.0 no repo)**, **020 (heirloom)** | `specs/*/tasks.md` (0 abertas) |
 | Specs quase fechadas | 004 (2: T034 D1, T037 playtest), 014 (2: T109 D1 bloqueado, T110 deferido) | `specs/*/tasks.md` |
 | Specs parciais | 015 (7), 018 (4 farmhand-guards blocked), 019 (2 owner), 009 (3 manuais) | `specs/*/tasks.md` |
-| Specs stale/abertas | 010 (53), 001 (76), 003 (89), 011 (46) | `specs/*/tasks.md` (total 1155 done / 284 open) |
-| Gate 3 | **machine-pass host-only** em cenários compost-growth / harvest-quality / agrochemical (honesty R); runner marker 2026-11-09 `run-20261109T041859Z-6938` | `ROADMAP.md` GATE3 block; `specs/*/test.md`; bundles gitignored |
+| Specs stale/abertas | 010 (53), 001 (76), 003 (89), 011 (46) | `specs/*/tasks.md` (total 1198 done / 284 open; trilha ativa 968/988) |
+| Gate 3 | **machine-pass host-only** em 7 specs: 004 `7374`, 005 `4cc1`, 013 `1ea4`, 014 `088b`, 015 `29cf`, 017 `6938`, 020 `6021`; todos `verdict: pass`, honesty R | `specs/*/test.md`; `specs/*/verification/host-only-gate3.md`; bundles gitignored |
 | Release | **0.1.0** (spec 017) no repo/`dev`; sem canal público, sem tag; validate.md aprovado (1871/0/4 @ c9ff596) | `.specify/releases/017-joja-agrochemical-tradeoff/release.md`; manifest |
-| Git | `dev` **41 commits à frente de `origin/dev`**; árvore limpa; sem PRs; sem tag | `git status -sb`; `git rev-list origin/dev..HEAD --count` |
+| Git | `dev` = `origin/dev` = `cd90f2f`; **0 commits à frente**; árvore limpa; sem PRs; 0 tags; 0 releases públicas | `git status -sb`; `git rev-list --count origin/dev..dev`; `git tag --list` |
 | Multiplayer | não atestado (D1 T109 bloqueado; runner host-only; farmhand-guards blocked-feasible) | `specs/014/tasks.md`; `specs/018/tasks.md`; `specs/017/verification/claim-records.md` |
 | Humano/E | **nunca executado** — machine-pass ≠ verified | `VERIFICATION_PROTOCOL.md`; claims pendentes |
 
-**One-sentence truth (2026-11-09):** Living Roots tem cinco loops de gameplay em código com evidência automatizada (compost, mulch, crescimento, colheita/qualidade, tradeoff Joja), uma release 0.1.0 no repo, suite 1937/0/4 — tudo **machine-pass host-only**, **sem atesto humano e sem D1 multiplayer ao vivo**, com 41 commits ainda não publicados.
+**One-sentence truth (2026-11-09):** Living Roots tem seis loops de gameplay em código com evidência automatizada (compost, mulch, crescimento, colheita/qualidade, tradeoff Joja, heirloom seeds), uma release 0.1.0 no repo, suite 1997/0/4 — tudo **machine-pass host-only**, **sem atesto humano e sem D1 multiplayer ao vivo**, com `dev` sincronizado com `origin/dev` mas sem tag/release pública.
 
 ## Where we actually are (histórico) — atualizado 2026-11-06
 
@@ -186,6 +218,8 @@ Justificativa (com pesquisa de mercado 2026):
 **One-sentence truth (2026-11-06):** Living Roots mede, persiste e muda soil health; solo afeta crescimento e, no código atual (spec 014, 131/133), também direciona qualidade/extra de colheita com guards, feedback procedural e sync FR-009/A8 — com **machine-pass headless host-only** (759d/14b6) e suíte 1747/0/4 — mas **sem atesto humano `verified`** e com **D1/T110** ainda pendentes.
 
 ## Where we actually are (histórico) — 2026-11-04
+
+> **Correção (2026-11-09):** duas frases abaixo estão incorretas/obsoletas mesmo para 2026-11-04 — “No live SMAPI session ever run” e “Harvest-quality patch not executed in game”. O runner headless já produzira `machine-pass` (spec 004, bundle `4acd`) e o patch Harmony é exercitado por execuções headless. O correto é: **nenhuma sessão humana/E** e **nenhuma atestação D1**; execuções automatizadas sob Xvfb existem desde 2026-11-04. `machine-pass` ≠ `verified`.
 
 ### Progress snapshot — 2026-11-04 (post-014/015 merge + pesquisa de mercado)
 
@@ -434,7 +468,7 @@ Before building any of the above, the roadmap's promises were checked against th
 
 ## Recommended next action (80/20, refreshed 2026-11-09)
 
-**1) Publicação (maintainer decision):** push de `dev` (41 commits) + PR revisável; decidir tag 0.1.0 e eventual canal público (Nexus). Sem reescrita de histórico. Não executado autonomamente.
+**1) Publicação (maintainer decision):** `dev` já está sincronizado com `origin/dev` (`cd90f2f`, 0 à frente) e sem PRs abertos; decidir tag `0.1.0` e eventual canal público (Nexus/CurseForge) ou registrar explicitamente “não publicar”. Sem reescrita de histórico. Não executado autonomamente.
 
 **2) D1 real (T109 / 015 T049/T057):** sessão host+farmhand com evidência honesta — caminho concreto (pesquisa 2026-11-09): **duas instâncias SMAPI sob Xvfb** (host+farmhand, localhost join) ou **JunimoServer** (repo `stardew-valley-dedicated-server/server`; stable `sdvd-server-v1.4.0`, docs recomendam preview `v1.5.0-preview.140`; JunimoTestClient HTTP :5123; manual/VPS, nunca PR-gate; contas Steam + jogo). Evidência ainda não executada; machine-pass host-only ≠ D1.
 
@@ -444,11 +478,11 @@ Before building any of the above, the roadmap's promises were checked against th
 
 **5) Decisão de escopo spec 010:** fechar as 53 tarefas abertas ou declarar o escopo atual completo (runner funcional; promoção `machine-pass` operacional) — registrar com `/speckit.converge` append-only.
 
-**6) Próximo slice de gameplay:** **heirloom pipeline** (Three Sisters, Green Manure, Rotation Journal, CSA consomem). Joja completo/monocultura permanece fora de escopo até decisão explícita.
+**6) Próximo slice de gameplay:** **rotação/policultura MVP** (fecha a promessa “BUILDS”) **ou** **Joja/monocultura completa** (fecha “DESTROYS”); o pipeline heirloom (020) já entregou a base para Three Sisters/Green Manure/Rotation Journal/CSA. Decidir com `/speckit.specify` + TDD + Gate 3.
 
 **7) Reconciliação documental contínua:** manter `OBJETIVO.md`/`ROADMAP.md`/evidências alinhados.
 
-**Pesquisa/mercado (honesta, refresh 2026-11-09):** ver `research/2026-11-09-web-research-ecosystem-status.md` (+ `2026-11-09-ecosystem-market.md`, `2026-11-09-technical-verification.md`). `machine-pass` ≠ `verified`; D1/humano pendentes.
+**Pesquisa/mercado (honesta, refresh 2026-11-09):** ver `research/2026-11-09-journey-balance-and-outlook.md` (síntese/balanço), `research/2026-11-09-web-research-ecosystem-status.md` (+ `2026-11-09-ecosystem-market.md`, `2026-11-09-technical-verification.md`). `machine-pass` ≠ `verified`; D1/humano pendentes.
 
 <details><summary>Histórico 2026-11-05 (refresh anterior)</summary>
 
@@ -468,7 +502,7 @@ Before building any of the above, the roadmap's promises were checked against th
 
 ## Blockers that are not roadmap items (verificar antes de agir)
 
-* **Push/publicação pendente:** `dev` 41 commits à frente de `origin/dev` (0260fed); sem PRs abertos — push/PR/tag/release são decisão do maintainer (sem reescrita de histórico).
+* **Publicação pendente:** `dev` = `origin/dev` (`cd90f2f`, 0 à frente); sem PRs abertos; 0 tags e 0 releases públicas — tag/release/canal público são decisão do maintainer (sem reescrita de histórico).
 * **Evidência ≠ verificação humana:** machine-pass não é `verified`; D1/T110/humano E/SC-004 pendentes.
 * **CI remoto dormente:** `Build and Test` exige `BUILDDEPS_ENABLED`+`BUILDDEPS_TOKEN`; `Verify Scenario` é `continue-on-error`; `Check Formatting` é o único check sempre-ativo (só formatação — não promover a required check sozinho).
 * **Licenciamento/assets:** manter vigilância — `.gitignore` protege game assemblies; verificar periodicamente `git ls-files` para DLLs proprietárias/assets indevidos.
@@ -479,7 +513,7 @@ Before building any of the above, the roadmap's promises were checked against th
 ## Cycle 020 — Heirloom Seeds / Sementes Crioulas Pipeline (append-only, 2026-11-09)
 
 **Outcome**: spec 020 `Crioulo Parsnip` (one-crop template slice) implemented, verified at
-`host-only machine-pass` (run `20261109T155608Z-6021`, verdict pass, honesty R; before 50 → after 52 = +2 on the real `HoeDirt.plant` path; crop phase unchanged; host/main-player log check true). Bundle `evidence-bundle-run-20261109T155608Z-6021/` (`--verify-bundle` exit 0). Suite: **2001 passed / 0 failed / 4 skipped** (baseline 1941 → +60, no regressions). Format clean. No manifest bump, no tag, no public channel — all remain maintainer actions.
+`host-only machine-pass` (run `20261109T155608Z-6021`, verdict pass, honesty R; before 50 → after 52 = +2 on the real `HoeDirt.plant` path; crop phase unchanged; host/main-player log check true). Bundle `evidence-bundle-run-20261109T155608Z-6021/` (`--verify-bundle` exit 0). Suite: **1997 passed / 0 failed / 4 skipped** (2001 total; baseline 1941 → +60, no regressions). Format clean. No manifest bump, no tag, no public channel — all remain maintainer actions.
 
 **Shipped (code)**: `LivingRoots/Domain/HeirloomIdentity.cs`, `Domain/HeirloomPlantBonusRequest.cs`, `Domain/HeirloomHarvestBonusRequest.cs`, `Domain/Services/HeirloomSoilMath.cs`, `Services/HeirloomSeedSaveService.cs`, `Patches/HeirloomPatches.cs` (`HoeDirt.plant` postfix), harvest-seam extension in `Patches/HarvestPatches.cs` (014 untouched), MP request handlers in `Controllers/ModController.cs`, `OnAssetRequested` registration (objects/crops/traveler-shop + texture branches), `ModConstants` heirloom block, `LivingRoots.Verification` `lr_give_heirloom_seed` + `lr_sow_heirloom`, 3 procedural placeholder PNGs, 7 i18n keys (default/en/pt), copy lint `scripts/tests/test-020-heirloom-copy.sh`, Gate 3 scenario + macro. Tests: HeirloomRegistration 16/16, HeirloomI18n 16/16, HeirloomSoilEffects 44/44, HeirloomSeedSave 5/5, HeirloomHarvestQualityParity 6/6.
 
