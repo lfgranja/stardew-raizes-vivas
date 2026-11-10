@@ -249,10 +249,11 @@ namespace LivingRoots.Tests
         }
 
         [Fact]
-        public void Readme_ContainsCorrectGitHubReleasesLink()
+        public void Readme_ContainsBuildFromSourceInstallInstructions()
         {
-            // Arrange
-            var expectedLink = "https://github.com/lfgranja/stardew-raizes-vivas/releases";
+            // Arrange - no public release exists; install must point to SMAPI + source build
+            var expectedSmapiLink = "https://smapi.io/";
+            var expectedBuildCommand = "dotnet build Stardew-LivingRoots.sln";
 
             // Read README.md from embedded resource for reliable test access across all environments
             var assembly = Assembly.GetExecutingAssembly();
@@ -268,8 +269,9 @@ namespace LivingRoots.Tests
             using var reader = new StreamReader(stream);
             var readmeContent = reader.ReadToEnd();
 
-            // Assert - Verify the README contains the correct GitHub releases link
-            Assert.Contains(expectedLink, readmeContent);
+            // Assert - README documents the SMAPI requirement and the source-build install path
+            Assert.Contains(expectedSmapiLink, readmeContent);
+            Assert.Contains(expectedBuildCommand, readmeContent);
         }
 
         [Fact]
