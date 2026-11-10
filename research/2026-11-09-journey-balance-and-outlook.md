@@ -2,7 +2,7 @@
 
 > **Escopo:** quanto do caminho já foi percorrido, com que tipo de evidência, e o que falta — combinando re-execução local fresca, artefatos commitados e refresh web multilíngue.
 > **Regra de honestidade:** `machine-pass` ≠ `verified`. Nenhuma claim neste arquivo promove `machine-pass` a atestação humana, D1 ou SC-004.
-> **Snapshot local:** `dev` = `origin/dev` = `cd90f2f`; árvore limpa; 0 commits à frente; 0 tags; 0 releases públicas; 20 cenários JSON; 31 briefings em `specs/future-roadmap/briefings/`.
+> **Snapshot local:** `dev` = `origin/dev`; árvore limpa; 0 commits à frente; 0 tags; 0 releases públicas; 20 cenários JSON; 31 briefings em `specs/future-roadmap/briefings/`.
 
 ---
 
@@ -21,7 +21,7 @@
 
 ### 2.1 Evidência local (determinística)
 
-Executada nesta sessão, no host, sobre `cd90f2f`:
+Executada nesta sessão, no host, sobre `cd90f2f` (base antes das atualizações documentais deste dia):
 
 | Verificação | Resultado |
 |---|---|
@@ -145,7 +145,7 @@ Limites específicos que não podem ser reinterpretados:
 
 ### 4.4 Git e distribuição
 
-- `dev` = `origin/dev` = `cd90f2f`; 0 commits à frente; árvore limpa.
+- `dev` = `origin/dev`; 0 commits à frente; árvore limpa.
 - 0 tags; 0 releases públicas; 0 PRs abertos.
 - Manifest `0.1.0`; `MinimumApiVersion` 4.4.0; `MinimumGameVersion` 1.6.14.
 - `LivingRoots/bin/` contém `LivingRoots 0.1.0.zip`, `manifest.json`, DLL, `i18n/` e `Assets/` (artefatos gitignored).
