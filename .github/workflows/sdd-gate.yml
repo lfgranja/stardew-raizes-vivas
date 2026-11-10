@@ -1,0 +1,16 @@
+name: SDD Gate
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+
+jobs:
+  sdd-gate:
+    name: sdd-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run SDD gate
+        run: python3 scripts/ci/sdd-gate.py
