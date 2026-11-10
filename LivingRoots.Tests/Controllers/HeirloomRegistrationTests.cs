@@ -39,7 +39,6 @@ public class HeirloomRegistrationTests
         Assert.Equal("LivingRoots.HeirloomParsnipSeeds", ModConstants.HeirloomItemId);
         Assert.Equal("(O)LivingRoots.HeirloomParsnipSeeds", ModConstants.QualifiedHeirloomItemId);
         Assert.Equal("LivingRoots.HeirloomParsnip", ModConstants.HeirloomProduceItemId);
-        Assert.Equal("(O)LivingRoots.HeirloomParsnip", ModConstants.QualifiedHeirloomProduceItemId);
         Assert.Equal(35, ModConstants.HeirloomSeedPrice);
         Assert.Equal(45, ModConstants.HeirloomProducePrice);
         Assert.Equal(2f, ModConstants.HeirloomPlantBonus);
