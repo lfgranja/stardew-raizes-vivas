@@ -109,6 +109,21 @@ if specs.exists():
         if not list(d.glob("clarify*.md")) and not (ROOT / ".specify" / "clarifications" / f"{slug}.md").exists():
             warn(f"{slug}: no clarify artifact persisted (R3)")
 
+# Telemetry JSONL (Fase 2) — if present, each line must parse as JSON
+telemetry_file = ROOT / "docs" / "telemetry" / "execution-record.jsonl"
+if telemetry_file.exists():
+    try:
+        for i, raw in enumerate(telemetry_file.read_text(encoding="utf-8").splitlines(), start=1):
+            if not raw.strip():
+                continue
+            json.loads(raw)
+    except json.JSONDecodeError as e:
+        errors.append(f"invalid JSONL {telemetry_file.relative_to(ROOT)} line {i}: {e.msg}")
+    except OSError as e:
+        errors.append(f"cannot read {telemetry_file.relative_to(ROOT)}: {e}")
+else:
+    warn("docs/telemetry/execution-record.jsonl not present (Fase 2 optional)")
+
 # Summary
 for w in warnings:
     print(f"WARN: {w}")

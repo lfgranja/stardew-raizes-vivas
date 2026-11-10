@@ -20,9 +20,10 @@ Status geral: **parcial** — ver `docs/adr/002-adocao-mdmv-dark-factory.md`.
 - [ ] Runner self-hosted seguro — N/A: usamos runners GitHub-hosted; reavaliar se migrarmos para self-hosted.
 
 ## Telemetria (G3/G5/035/039)
-- [ ] Emite JSONL 035.1.0 (`emit_telemetry.py`/`wrap_telemetry.py`) — Fase 2 (ADR 002).
-- [ ] Valida com `validate_telemetry.py` (sem segredos; custos rotulados NV billing) — Fase 2.
-- [ ] Publica retorno para ingestão do hub (path/release artifact acordado) — Fase 2.
+- [x] Emite JSONL 035.1.0 (`scripts/telemetry/emit_telemetry.py`) — Fase 2 concluída (`docs/telemetry/execution-record.jsonl`, 9 eventos seed).
+- [x] Valida com `validate_telemetry.py` (sem segredos; custos rotulados NV billing) — Fase 2 concluída; validação PASS (0 errors, 0 warnings, strict ok).
+- [x] Schema local (`docs/governance/execution-record.schema.json`, baseado em 035) publicado.
+- [ ] Publica retorno para ingestão do hub — pendente (hub ainda sem ingestão real, NV); padrão compatível (schema_version 035.1.0).
 
 ## Segurança (036/018)
 - [x] Sem segredos em prompts/logs/PR/artifacts (redação em `verify-scenario.sh`, quality gate).
@@ -30,15 +31,16 @@ Status geral: **parcial** — ver `docs/adr/002-adocao-mdmv-dark-factory.md`.
 - [x] Sem auto-merge cego sem CI+review+protections verificados (022/025) — nenhum auto-merge configurado.
 
 ## Drift (G4/026)
-- [ ] Avaliação periódica contra `hub-policy-manifest.json` — Fase 3 (ADR 002).
+- [ ] Avaliação periódica contra `hub-policy-manifest.json` — Fase 3.
 - [ ] Desalinhamento → SE decision request (conformidade ou ADR local) — Fase 3.
 
 ## Evidência por feature (R4/R7) — gap principal
 - [x] `.specify/validations/<slug>/validate.md` aprovado por feature — retroativo concluído para 17 specs (R4) (Fase 1).
 - [x] `.specify/releases/<slug>/release.md` por feature — retroativo concluído para 17 specs (R7) (Fase 1).
-- [x] Gate determinístico da cadeia SDD no CI (`scripts/ci/sdd-gate.py` + `.github/workflows/sdd-gate.yml`) — Fase 1. Required check a configurar no GitHub (NV).
+- [x] Gate determinístico da cadeia SDD no CI (`scripts/ci/sdd-gate.py` + `.github/workflows/sdd-gate.yml`) — Fase 1. Required check configurado (PR #780).
 
 ## Notas
 - `~` = parcialmente atendido.
-- Escalation registry (024) e execution record (035) são Fase 2/3 (ADR 002).
+- Escalation registry (024) e execution record (035) — Fase 2 concluída para telemetria; escalation registry é Fase 3.
 - Spec Kit local é 1.2.5 (opencode); hub é 1.3.2 (OMP). Upgrade avaliado como parte da Fase 0 (ver ADR 002).
+- Telemetria: `docs/telemetry/execution-record.jsonl` (9 eventos seed); validador adaptado de `validate_telemetry.py` do hub (stdlib, no network).

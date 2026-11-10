@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lfgranja/stardew-raizes-vivas/docs/governance/execution-record.schema.json",
+  "title": "StardewLivingRootsExecutionRecordEvent",
+  "description": "Append-only JSONL execution record (1 JSON object/line) for the Living Roots mod. Compatible with MDMV 035/039 telemetry (schema_version 035.x.y) for hub ingestion. Redacted; no secrets. Target repo: stardew-raizes-vivas.",
+  "type": "object",
+  "required": ["schema_version", "event_id", "ts", "run_id", "category", "action"],
+  "properties": {
+    "schema_version": { "type": "string", "pattern": "^035\\.[0-9]+\\.[0-9]+$" },
+    "event_id": { "type": "string", "minLength": 1 },
+    "ts": { "type": "string", "format": "date-time" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "seq": { "type": "integer", "minimum": 0 },
+    "corrects_event_id": { "type": "string", "description": "Append-only correction reference; never rewrite prior line." },
+    "job_class": { "type": "string" },
+    "target_repo": { "type": "string", "const": "stardew-raizes-vivas" },
+    "target_ref": { "type": "string", "description": "Git ref (branch/commit) the event applies to." },
+    "actor": { "type": "string", "enum": ["orchestrator", "executor", "checker", "human", "system"] },
+    "category": { "type": "string", "enum": ["run", "tool", "gate", "policy", "delivery", "state", "metrics", "sdd"] },
+    "action": { "type": "string", "minLength": 1 },
+    "state": { "type": "string" },
+    "gate_result": { "type": "string", "enum": ["pass", "fail", "error", "escalated", "budget_exceeded", "policy_blocked", "needs_human", "no-op"] },
+    "blast_radius_class": { "type": "string", "enum": ["low", "medium", "high", "critical", "unknown"] },
+    "step": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "command_redacted": { "type": "string", "description": "normalized/redacted; never secrets/tokens/credentials" },
+        "exit_code": { "type": ["integer", "null"] },
+        "status": { "type": "string" },
+        "summary_redacted": { "type": "string" },
+        "artifact_ref": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "gate": { "type": "object", "additionalProperties": true },
+    "delivery": { "type": "object", "additionalProperties": true },
+    "policy": { "type": "object", "additionalProperties": true },
+    "sdd": {
+      "type": "object",
+      "properties": {
+        "spec_ref": { "type": "string" },
+        "validation_ref": { "type": "string" },
+        "release_ref": { "type": "string" },
+        "stage": { "type": "string", "enum": ["intake", "research", "define", "shape", "decide", "specify", "clarify", "plan", "checklist", "analyze", "tasks", "implement", "converge", "validate", "release", "bug"] }
+      },
+      "additionalProperties": false
+    },
+    "metrics": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}
