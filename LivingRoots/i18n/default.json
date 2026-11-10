@@ -18,5 +18,12 @@
   "message.agrochemical.action-conflict": "Another player is already working this tile, so the agrochemical was not applied. Wait for the tile to free up, then try again.",
   "message.agrochemical.unsupported-authority": "Only the host can apply agrochemicals in multiplayer, so it was not applied. Ask the host to apply it for you.",
   "message.agrochemical.soil-at-minimum": "This soil is already at the lowest health, so the agrochemical was not applied. Let the soil regenerate with some care, then try again.",
-  "message.agrochemical.commit-failed": "The agrochemical could not be committed to the soil, so nothing changed. Your agrochemical was not consumed. The farm data is at capacity; apply the agrochemical to a tile that already has soil data, then try again later."
+  "message.agrochemical.commit-failed": "The agrochemical could not be committed to the soil, so nothing changed. Your agrochemical was not consumed. The farm data is at capacity; apply the agrochemical to a tile that already has soil data, then try again later.",
+  "item.heirloom.parsnip-seed.name": "Crioulo Parsnip Seeds",
+  "item.heirloom.parsnip-seed.description": "Open-pollinated crioulo seed, saved from farm-selected parsnips. It grows slower than hybrid seed, but it is kind to the living soil — save one seed from each harvest and the line renews itself.",
+  "item.heirloom.parsnip.name": "Crioulo Parsnip",
+  "item.heirloom.parsnip.description": "A torto crioulo parsnip — pale, sweet and full of character, selected for living-soil farms. Worth a little more at the shipping bin.",
+  "message.heirloom.seed-saved": "One crioulo seed saved! Your parsnip line keeps going.",
+  "message.heirloom.seed-saved-inventory-full": "Your inventory is full, so the crioulo seed was not saved. Free a slot — your next harvest will drop another one.",
+  "message.heirloom.plant-bonus-authority-unsupported": "Only the host can renew the soil for you in multiplayer, so the soil bonus was not applied. The seed was still planted — ask the host to care for the shared soil."
 }

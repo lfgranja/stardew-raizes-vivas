@@ -537,6 +537,111 @@ namespace LivingRoots
                         Type = "Basic",
                         Price = 50
                     };
+                    // Spec 020 (FR-001/FR-005): the crioulo parsnip seed.
+                    // Type Seeds / Category -74 is required for the game to
+                    // treat it as plantable. ContextTags carry heirloom_seed
+                    // (identity predicate) and never compostable_item — seeds
+                    // are NOT accepted by the fruit-tree/organic waste rule in
+                    // vanilla and we keep that boundary; the produce is the
+                    // compostable one (FR-010). DisplayName/Description route
+                    // through the 020 keys for locale parity (FR-011).
+                    data[ModConstants.HeirloomItemId] = new StardewValley.GameData.Objects.ObjectData
+                    {
+                        Name = "LivingRoots_HeirloomParsnipSeeds",
+                        DisplayName = LocalizeOrFallback(ModConstants.HeirloomSeedNameKey, "Crioulo Parsnip Seeds"),
+                        Description = LocalizeOrFallback(
+                            ModConstants.HeirloomSeedDescriptionKey,
+                            "Open-pollinated crioulo seed, saved from farm-selected parsnips. Slower than hybrid seed, but it respects the living soil and one seed comes back each harvest. Renews its own line when you save the seed."),
+                        Type = "Seeds",
+                        Category = -74,
+                        Price = ModConstants.HeirloomSeedPrice,
+                        Texture = ModConstants.HeirloomSeedsTextureAssetName,
+                        SpriteIndex = 0,
+                        ContextTags = new List<string> { ModConstants.HeirloomSeedTag, "seed_item" }
+                    };
+                    // Spec 020 (FR-001/FR-010): the crioulo produce. Category
+                    // -75 (vegetable), compostable_item so the waste path
+                    // accepts it, premium price (FR-018 tunable).
+                    data[ModConstants.HeirloomProduceItemId] = new StardewValley.GameData.Objects.ObjectData
+                    {
+                        Name = "LivingRoots_HeirloomParsnip",
+                        DisplayName = LocalizeOrFallback(ModConstants.HeirloomProduceNameKey, "Crioulo Parsnip"),
+                        Description = LocalizeOrFallback(
+                            ModConstants.HeirloomProduceDescriptionKey,
+                            "A torto crioulo parsnip, pale and sweet, saved and selected for living-soil systems. Worth a little more at the shipping bin for the care that went into it."),
+                        Type = "Basic",
+                        Category = -75,
+                        Price = ModConstants.HeirloomProducePrice,
+                        Texture = ModConstants.HeirloomProduceTextureAssetName,
+                        SpriteIndex = 0,
+                        ContextTags = new List<string> { ModConstants.HeirloomProduceTag, "compostable_item", "category_vegetable" }
+                    };
+                });
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Data/Crops"))
+            {
+                // Spec 020 (FR-001/FR-002): the crioulo parsnip crop entry.
+                // The asset is keyed by the SEED item id (1.6 contract). It
+                // grows in 7 days ([1,2,2,2]) vs vanilla parsnip's 4 — the
+                // crioulo tradeoff, mirroring landrace lateness (Korpetis
+                // 2023; see research). CountForMonoculture/Polyculture are
+                // true: crioulo crops are real food crops for the achievements.
+                e.Edit(asset =>
+                {
+                    var data = asset.AsDictionary<string, StardewValley.GameData.Crops.CropData>().Data;
+                    data[ModConstants.HeirloomItemId] = new StardewValley.GameData.Crops.CropData
+                    {
+                        Seasons = new System.Collections.Generic.List<StardewValley.Season> { StardewValley.Season.Spring },
+                        DaysInPhase = new System.Collections.Generic.List<int> { 1, 2, 2, 2 },
+                        RegrowDays = -1,
+                        IsRaised = false,
+                        IsPaddyCrop = false,
+                        NeedsWatering = true,
+                        HarvestItemId = ModConstants.HeirloomProduceItemId,
+                        HarvestMinStack = 1,
+                        HarvestMaxStack = 1,
+                        ExtraHarvestChance = 0.1,
+                        HarvestMethod = StardewValley.GameData.Crops.HarvestMethod.Grab,
+                        HarvestMinQuality = 0,
+                        TintColors = new System.Collections.Generic.List<string>(),
+                        Texture = ModConstants.HeirloomCropsTextureAssetName,
+                        SpriteIndex = 0,
+                        CountForMonoculture = true,
+                        CountForPolyculture = true
+                    };
+                });
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Data/Shops"))
+            {
+                // Spec 020 (FR-003/FR-004/FR-013): crioulo seeds travel. The
+                // Traveler (key "Traveler") sells working-capital seeds from
+                // farm to farm — no Elena/NPC required, Pierre/Joja untouched.
+                // Player-limited stock (co-op-safe) and SEASON Spring gating.
+                // Pierre ("SeedShop") and Joja are never edited. The edit is
+                // idempotent across re-requests: re-inserting an entry with an
+                // existing Id is skipped (vanilla spawns warn on duplicates).
+                e.Edit(asset =>
+                {
+                    var data = asset.AsDictionary<string, StardewValley.GameData.Shops.ShopData>().Data;
+                    if (!data.TryGetValue("Traveler", out var traveler) || traveler == null)
+                    {
+                        traveler = new StardewValley.GameData.Shops.ShopData();
+                        data["Traveler"] = traveler;
+                    }
+
+                    traveler.Items ??= new System.Collections.Generic.List<StardewValley.GameData.Shops.ShopItemData>();
+                    if (traveler.Items.All(item => !string.Equals(item.Id, ModConstants.HeirloomItemId, StringComparison.Ordinal)))
+                    {
+                        traveler.Items.Add(new StardewValley.GameData.Shops.ShopItemData
+                        {
+                            Id = ModConstants.HeirloomItemId,
+                            ItemId = ModConstants.QualifiedHeirloomItemId,
+                            Price = ModConstants.HeirloomSeedPrice,
+                            AvailableStock = 5,
+                            AvailableStockLimit = StardewValley.GameData.Shops.LimitedStockMode.Player,
+                            Condition = "SEASON Spring"
+                        });
+                    }
                 });
             }
             else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.CompostTextureAssetName))
@@ -613,6 +718,26 @@ namespace LivingRoots
                 // the 16×32 RGBA ready-state sprite
                 // the csproj copies to the mod folder.
                 e.LoadFromModFile<Texture2D>("Assets/composting_bin_ready.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.HeirloomSeedsTextureAssetName))
+            {
+                // Spec 020 (FR-017): serve the crioulo seed icon as a game asset.
+                // Placeholder procedural art (disclosed); final art is a
+                // maintainer deliverable. Mod-folder-relative path; the csproj
+                // copies Assets/** to the output folder.
+                e.LoadFromModFile<Texture2D>("Assets/heirloom_seeds.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.HeirloomProduceTextureAssetName))
+            {
+                // Spec 020 (FR-017): serve the crioulo produce icon as a game asset.
+                e.LoadFromModFile<Texture2D>("Assets/heirloom_produce.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.HeirloomCropsTextureAssetName))
+            {
+                // Spec 020 (FR-002/FR-017): serve the crioulo crop row spritesheet
+                // as a game asset. One row, 16×32 per frame (2 seed variants +
+                // 4 phases; sheet width 128px). Placeholder procedural art.
+                e.LoadFromModFile<Texture2D>("Assets/Crops/heirloom_crops.png", AssetLoadPriority.Medium);
             }
             else if (e.NameWithoutLocale.IsEquivalentTo("Data/BigCraftables"))
             {
