@@ -34,3 +34,7 @@
 ## Result
 
 Real-host run complete with `machine-pass`. The T137 real-host gate is now satisfied by a schema-valid, verifier-accepted bundle.
+
+## Compatibility note (append-only, 2026-11-07, 018 pass 5)
+
+- Current `--verify-bundle` on local `evidence-bundle-run-20261105T024756Z-07ba` returned **exit 19** (`bundle file not in subject: retention-receipt.json`). Historical 2026-11-05 result/observation unchanged; bundle is **legacy/incompatible with current verifier** as observed in pass 5. No deletion. See `specs/018-machine-pass-full-coverage/verification/cycle-2026-11-07-80-20-pass5.md`.

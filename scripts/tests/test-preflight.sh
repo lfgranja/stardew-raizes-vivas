@@ -2303,8 +2303,21 @@ else
 
     assert_file_exists "${ORPHAN_STUB}" \
         "T081: the orphan Xvfb double exists"
+
+    # The double is a fork of the shell that execs the Xvfb copy; a read of
+    # /proc/<pid>/exe immediately after the fork can still resolve to bash.
+    # Poll until it reports the copied binary (or a short deadline passes),
+    # keeping the same assertion.
+    ORPHAN_EXE=""
+    _t081_deadline=$((SECONDS + 5))
+    while (( SECONDS < _t081_deadline )); do
+        ORPHAN_EXE="$(readlink -f "/proc/${ORPHAN_PID}/exe" 2>/dev/null || printf '')"
+        [[ "$ORPHAN_EXE" == "${ORPHAN_STUB}" ]] && break
+        sleep 0.05
+    done
+
     assert_eq "${ORPHAN_STUB}" \
-        "$(readlink -f "/proc/${ORPHAN_PID}/exe" 2>/dev/null || printf '')" \
+        "$ORPHAN_EXE" \
         "T081: the double's /proc/<pid>/exe is the Xvfb copy"
 
     PIDOF_PATH="$(build_pidof_path)"

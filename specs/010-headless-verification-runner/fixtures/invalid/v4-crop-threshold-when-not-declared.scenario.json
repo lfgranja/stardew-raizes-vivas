@@ -9,7 +9,7 @@
   "environment": {
     "gameVersion": "1.6.14",
     "smapiVersion": "4.4.0",
-    "modVersion": "0.4.0",
+    "modVersion": "0.1.0",
     "apiVersion": "1.0.0",
     "saveId": "farm-year1-day5",
     "config": {"saveMode": "save", "headless": true, "skipBuild": false}
