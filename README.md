@@ -23,7 +23,7 @@ A Stardew Valley mod that introduces sustainable farming practices through soil 
 - Joja agrochemical tradeoff item: bounded, recoverable soil-health cost with explicit feedback
 - Educational elements and broader agroecological arcs (Planned)
 
-> **Status (2026-11-09):** features above are implemented and covered by automated tests (**1997 passed / 4 skipped / 0 failed**). End-to-end gameplay verification is `machine-pass` (headless, host-only) for seven scenarios — compost, growth, mulch, harvest quality, Harmony seam, Joja tradeoff, and heirloom planting — **not** human-verified. Live multiplayer convergence (D1) is not attested; heirloom harvest, seed-save, and natural acquisition are **not** covered by Gate 3. No public release or git tag is published yet — the repository ships v0.1.0 internally; build from source.
+> **Status (2026-11-10):** features above are implemented and covered by automated tests (**1997 passed / 4 skipped / 0 failed**). End-to-end gameplay verification is `machine-pass` (headless, host-only) for seven scenarios — compost, growth, mulch, harvest quality, Harmony seam, Joja tradeoff, and heirloom planting (**planting-only, not harvest/seed-save/natural acquisition**) — **not** human-verified. Live multiplayer convergence (D1) is not attested; no public release or git tag is published yet — the repository ships v0.1.0 internally; build from source. Release gate on HEAD `c07fbab` re-ran 2026-11-10T02:40Z (**ALL STEPS PASSED**). Status and 2026-11-10 freshness: `research/2026-11-10-progress-and-gaps.md`.
 
 ## Installation
 

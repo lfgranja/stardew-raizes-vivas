@@ -1,7 +1,7 @@
 # OBJETIVO.md — Living Roots / Raízes Vivas
 
-> **Fontes:** `docs/GDD-living-roots.md` (v1.1), `ROADMAP.md` (atualizado 2026-11-09), `.specify/memory/constitution.md` v2.0.0, `README.md`, `AGENTS.md`, `VERIFICATION_PROTOCOL.md`, assessments/specs/bugs, `research/2026-10-roadmap-feasibility-and-agronomy.md`, `research/2026-11-09-journey-balance-and-outlook.md`, `research/2026-11-09-web-research-ecosystem-status.md`, `specs/014-soil-health-crop-quality/gate3-evidence.md`, `specs/020-heirloom-seeds-pipeline/test.md`.
-> **Status do projeto:** **v0.1.0** (manifest; release de repositório em `dev` desde 2026-11-07 — sem canal público, sem tag git, sem attestation humana por desenho) · .NET 6 / SMAPI 4.5.2 · Stardew Valley 1.6.14+ · branch `dev` = `origin/dev` com **0 commits à frente**, working tree limpo em 2026-11-09 · sem PRs abertos · suíte **1997 passed / 4 skipped / 0 failed** (2001).
+> **Fontes:** `docs/GDD-living-roots.md` (v1.1), `ROADMAP.md` (anotação 2026-11-10 no topo), `.specify/memory/constitution.md` v2.0.0, `README.md`, `AGENTS.md`, `VERIFICATION_PROTOCOL.md`, assessments/specs/bugs, `research/2026-10-roadmap-feasibility-and-agronomy.md`, `research/2026-11-09-journey-balance-and-outlook.md`, `research/2026-11-09-web-research-ecosystem-status.md`, `research/2026-11-10-progress-and-gaps.md`, `specs/014-soil-health-crop-quality/gate3-evidence.md`, `specs/020-heirloom-seeds-pipeline/test.md`.
+> **Status do projeto:** **v0.1.0** (manifest; release de repositório em `dev` desde 2026-11-07 — sem canal público, sem tag git, sem attestation humana por desenho) · .NET 6 / SMAPI 4.5.2 · Stardew Valley 1.6.14+ · branch `dev` = `origin/dev` com **0 commits à frente**, working tree limpo em 2026-11-10 · sem PRs abertos · suíte **1997 passed / 4 skipped / 0 failed** (2001) · **`release-gate.sh` → ALL STEPS PASSED** (execução fresca 2026-11-10T02:40Z no HEAD `c07fbab`: format, restore locked, build Release, testes, smoke 50/51, docs markers, protected paths) · 0 tags, 0 releases públicas.
 > **Owner:** maintainer (lfgranja) · **Audiência primária:** jogadores cozy 25–45 + casais em co-op + educadores/ativistas agroecológicos.
 
 ---
@@ -61,6 +61,22 @@ Diferencial vs. concorrentes próximos (ex.: ReGen Valley, Nexus #39740): não �
 | Repo/git | `dev` = `origin/dev`; **0 commits à frente**; árvore limpa; sem tag; release só no repo; sem PRs abertos; 0 releases públicas | `git status -sb`, `git rev-list --count origin/dev..dev`, `git tag --list` (2026-11-09) |
 
 > **Honestidade de verificação:** `machine-pass` ≠ `verified`. **Não existe atestado humano/E** e **não existe confirmação multiplayer real (D1)** neste snapshot. Evidência automatizada headless é forte para os sinais cobertos, mas não substitui confirmação humana nem multiplayer real. **Nenhuma claim é promovida além de host-only machine-pass.**
+
+### 4.0 Snapshot 2026-11-10 (verificado, fresh)
+
+| Verificação | Resultado (nenhuma claim além de host-only é promovida) |
+|---|---|
+| `release-gate.sh` no HEAD `c07fbab` | **`ALL STEPS PASSED`** (2026-11-10T02:40Z) |
+| Testes / format / smoke | **1997 passed / 0 failed / 4 skipped (2001)**; format exit 0; smoke **50 pass / 0 fail / 1 skip** |
+| Trilha ativa / total / fechadas | **968/988 (98,0%)**; **1198/1482 (80,8%)**; **8/20 specs** |
+| Gate 3 | **7 machine-pass host-only** (004 `7374` … 020 `6021`); **0 human-verified; 0 D1; 0 SC-004** |
+| Proveniência | HEAD contém 020; manifest `0.1.0`; zip 0.1.0 contém assets 020; sem `release.md` da 020 |
+| Mercado 2026-11-10 | ReGen Valley **não verificável** (403 + zero web); **Wildroot Chronicles** (breeding, ZH nativo, ~85 endorsements) liderou atenção; **Harvest Ledger** (rotação, PT-BR, 15 endorsements); Joja **broken**; **nenhum mod standalone de solo/agroecologia com tradução não-inglesa** |
+| Ecossistema 2026-11-10 | SDV PC **1.6.15**; **1.7 sem data/RC**; 1.6.16 não verificado; SMAPI **4.5.2**; compat list **sunset confirmado**; update check **não descontinuado**; stats page nova |
+| Distribuição 2026-11-10 | Nexus **AI policy vigente desde 2026-11-03** (carência até 2027-01-02; uploads novos declaram já); **JunimoServer v1.4.0 (2026-01-17)**; D1 = duas instâncias; `UpdateKeys` `Nexus:<id>` + `GitHub:lfgranja/LivingRoots`; `lfgranja.LivingRoots` válido — **checar colisão antes de publicar**; ModDrop: ausência de proibição verificada |
+| Qualidade | `Quality Gate / static` vermelho (148 linhas jscpd vs baseline 111) — pré-existente; fora do `release-gate.sh` |
+
+> **Fontes primárias/completas:** `research/2026-11-10-progress-and-gaps.md` (síntese com URLs, datas e confiança H/M/L) · `research/2026-11-09-web-research-ecosystem-status.md` · baseline do gate em §2.1 do arquivo.
 
 ### 4.1 Bloqueios/deferimentos explícitos
 - **T109 D1 (spec 014):** bloqueado — teste ao vivo com **segundo jogador/farmhand real** não executado pelo runner headless atual. FR-009/A8 foi implementada e testada por unidade/regressão; **convergência ao vivo não atestada**. Mesmo bloqueio aplica-se a spec 015 (T049/T057) e aos 4 cenários farmhand-guard de spec 018 (`blocked-feasible`, T002).
