@@ -40,9 +40,10 @@ Antes de agentes autônomos tocarem o código:
 
 ## Spec Kit
 
-- Local: 1.2.5 (integração `opencode`, scripts `sh`, numeração sequencial).
+- Local (após upgrade): 1.3.2 (integração `opencode`, scripts `sh`, numeração sequencial) — upgrade de 1.2.5 → 1.3.2 executado (2026-11-10).
 - Hub: 1.3.2 (integração `omp`).
-- Upgrade para 1.3.2 é **avaliado**, não obrigatório: os artefatos (templates, scripts bash, extensions `assess`/`bug`/`github`) são compatíveis; a mudança principal é a integração (opencode → omp) e o versionamento. Decisão adiada para um PR dedicado de upgrade, para não misturar com a adoção de governança.
+- Integração mantida em `opencode` (não migrada para `omp`): o usuário roda OpenCode; migrar para OMP quebraria os comandos `.opencode/commands/`. Migração para OMP é uma decisão separada, condicionada à instalação do OMP, e não é necessária para alinhar a versão.
+- Upgrade executado: bump de `speckit_version`/`version` em `init-options.json`, `integration.json`, `opencode.manifest.json`, `speckit.manifest.json`. Comandos (`.opencode/commands/`) inalterados (templates idênticos entre 1.2.5 e 1.3.2).
 
 ## Consequências
 

@@ -106,7 +106,7 @@
   candidato_automacao: "PR dedicado de upgrade com validação de templates/comandos"
   precondicoes: ["revisão de breaking changes 1.2.5->1.3.2", "testes de comandos"]
   gatilho_reavaliacao: ["novo speckit release", "mudança de integração"]
-  status: triado
+  status: resolvido
   owner: "@lfgranja"
   refs: ["docs/adr/002-adocao-mdmv-dark-factory.md", ".specify/init-options.json"]
 
