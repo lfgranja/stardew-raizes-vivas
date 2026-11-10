@@ -23,14 +23,20 @@ A Stardew Valley mod that introduces sustainable farming practices through soil 
 - Joja agrochemical tradeoff item: bounded, recoverable soil-health cost with explicit feedback
 - Educational elements and broader agroecological arcs (Planned)
 
-> **Status (2026-11-09):** features above are implemented and covered by automated tests; end-to-end gameplay verification is `machine-pass` (headless, host-only), **not** human-verified. Live multiplayer convergence (D1) is not yet attested. No public release is published yet — the repository ships v0.1.0 internally; install from source.
+> **Status (2026-11-09):** features above are implemented and covered by automated tests (**1997 passed / 4 skipped / 0 failed**). End-to-end gameplay verification is `machine-pass` (headless, host-only) for seven scenarios — compost, growth, mulch, harvest quality, Harmony seam, Joja tradeoff, and heirloom planting — **not** human-verified. Live multiplayer convergence (D1) is not attested; heirloom harvest, seed-save, and natural acquisition are **not** covered by Gate 3. No public release or git tag is published yet — the repository ships v0.1.0 internally; build from source.
 
 ## Installation
 
-1. Install [SMAPI](https://smapi.io/)
-2. Download the latest version of LivingRoots from [GitHub Releases](https://github.com/lfgranja/stardew-raizes-vivas/releases) page
-3. Extract to your Stardew Valley `Mods` folder
-4. Start playing!
+> There is no public download yet. The `0.1.0` version lives in the repository only; build it from source.
+
+1. Install [SMAPI](https://smapi.io/) 4.5.2 or later (requires Stardew Valley **1.6.14+**).
+2. Clone this repository.
+3. Build the mod (set `GamePath` if your game is not at the csproj default):
+   ```bash
+   dotnet build Stardew-LivingRoots.sln --configuration Release -m:1
+   ```
+4. Copy `LivingRoots/bin/LivingRoots 0.1.0.zip` into your Stardew Valley `Mods` folder and extract it, **or** copy the unpacked contents of `LivingRoots/bin/` into `Stardew Valley/Mods/LivingRoots/`.
+5. Start the game through SMAPI.
 
 ## Development
 
