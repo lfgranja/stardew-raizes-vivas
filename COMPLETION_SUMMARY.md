@@ -102,18 +102,25 @@ The `compostable_item` trigger change improves one direction (items with the tag
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261109T041859Z-6938
-- **Commit**: f106fd45051318676273ba823c4e4636c93b7ee4
-- **Date**: 2026-11-09T04:19:34Z
+- **Run ID**: run-20261109T155608Z-6021
+- **Commit**: 3bd84952b4a86e9a1ccd1330af934620b1c932e0
+- **Date**: 2026-11-09T15:56:51Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261109T041859Z-6938/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261109T041859Z-6938/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261109T041859Z-6938/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261109T041859Z-6938/`
+  - SoilHealthState delta: `evidence-bundle-run-20261109T155608Z-6021/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T155608Z-6021/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T155608Z-6021/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T155608Z-6021/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
 - **Review date**: —
 - **Session ID**: —
 <!-- GATE3:END -->
+
+## Cycle 020 — Heirloom Seeds / Sementes Crioulas (append-only, 2026-11-09)
+
+- Spec 020 implemented: crioulo parsnip one-crop template, `host-only machine-pass` (run `20261109T155608Z-6021`, verdict pass, honesty R; before 50 → after 52 = +2 on the real `HoeDirt.plant` path; crop phase unchanged; host/main-player log check true).
+- Suite **2001 passed / 0 failed / 4 skipped** (baseline 1941 → +60, no regressions). Format clean. No manifest bump, tag, or public channel (maintainer actions).
+- D1 farmhand convergence, `human-verified`, SC-004-class comprehension remain `pending`; the Gate 3 scenario attests the plant-time soil write only.
+- Bundle: `evidence-bundle-run-20261109T155608Z-6021/` (`--verify-bundle` exit 0).

@@ -476,21 +476,34 @@ Before building any of the above, the roadmap's promises were checked against th
 
 ---
 
+## Cycle 020 — Heirloom Seeds / Sementes Crioulas Pipeline (append-only, 2026-11-09)
+
+**Outcome**: spec 020 `Crioulo Parsnip` (one-crop template slice) implemented, verified at
+`host-only machine-pass` (run `20261109T155608Z-6021`, verdict pass, honesty R; before 50 → after 52 = +2 on the real `HoeDirt.plant` path; crop phase unchanged; host/main-player log check true). Bundle `evidence-bundle-run-20261109T155608Z-6021/` (`--verify-bundle` exit 0). Suite: **2001 passed / 0 failed / 4 skipped** (baseline 1941 → +60, no regressions). Format clean. No manifest bump, no tag, no public channel — all remain maintainer actions.
+
+**Shipped (code)**: `LivingRoots/Domain/HeirloomIdentity.cs`, `Domain/HeirloomPlantBonusRequest.cs`, `Domain/HeirloomHarvestBonusRequest.cs`, `Domain/Services/HeirloomSoilMath.cs`, `Services/HeirloomSeedSaveService.cs`, `Patches/HeirloomPatches.cs` (`HoeDirt.plant` postfix), harvest-seam extension in `Patches/HarvestPatches.cs` (014 untouched), MP request handlers in `Controllers/ModController.cs`, `OnAssetRequested` registration (objects/crops/traveler-shop + texture branches), `ModConstants` heirloom block, `LivingRoots.Verification` `lr_give_heirloom_seed` + `lr_sow_heirloom`, 3 procedural placeholder PNGs, 7 i18n keys (default/en/pt), copy lint `scripts/tests/test-020-heirloom-copy.sh`, Gate 3 scenario + macro. Tests: HeirloomRegistration 16/16, HeirloomI18n 16/16, HeirloomSoilEffects 44/44, HeirloomSeedSave 5/5, HeirloomHarvestQualityParity 6/6.
+
+**Honesty (unchanged)**: D1 farmhand convergence, `human-verified`, and SC-004-class comprehension remain `pending`; the Gate 3 scenario attests the plant-time soil write only (it does not attest the harvest bonus, seed save, cart acquisition, or copy tone). `machine-pass` ≠ `verified`.
+
+**Docs**: assess (intake/research/problem/concept/decision — GO Option B), spec 020 (FR-001..FR-018, SC-001..SC-007), plan + Phase 0/1 (research/data-model/contracts/quickstart), checklist (requirements + multiplayer-honesty), tasks (35/35), analysis report (0 critical, 100% coverage), claim-records, validate.md, scenario + test.md (machine-pass marker auto-promoted by the runner).
+
+**Next 80/20** (per ROADMAP item 1–7): 1) maintainer publication decision; 2) D1 real; 3) human E attestation; 4) SC-004 protocol run (optional); 5) spec 010 scope decision (converge/append-only); 6) next gameplay slice (Green Manure / Three Sisters — both consume this seam); 7) documentation reconciliation. Items 1–4 require explicit human action and are deliberately left to the maintainer.
+
 ## Gate 3 Verification (atualizado 2026-11-07 — máquina via spec 010 antes de manual)
 
 <!-- GATE3:BEGIN -->
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261109T041859Z-6938
-- **Commit**: f106fd45051318676273ba823c4e4636c93b7ee4
-- **Date**: 2026-11-09T04:19:34Z
+- **Run ID**: run-20261109T155608Z-6021
+- **Commit**: 3bd84952b4a86e9a1ccd1330af934620b1c932e0
+- **Date**: 2026-11-09T15:56:51Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261109T041859Z-6938/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261109T041859Z-6938/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261109T041859Z-6938/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261109T041859Z-6938/`
+  - SoilHealthState delta: `evidence-bundle-run-20261109T155608Z-6021/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T155608Z-6021/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T155608Z-6021/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T155608Z-6021/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
