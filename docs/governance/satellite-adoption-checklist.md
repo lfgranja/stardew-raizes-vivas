@@ -16,7 +16,7 @@ Status geral: **parcial** — ver `docs/adr/002-adocao-mdmv-dark-factory.md`.
 
 ## Gates determinísticos (G2/G4)
 - [x] Workflow CI com gates determinísticos do stack (`quality-gate.yml`, `protected-paths.yml`, `code-style.yml`, `verify-scenario.yml`, `build_and_test.yml`).
-- [ ] Required status checks + branch protection configurados no GitHub (NV — verificar empiricamente; hoje não há evidência de required checks em `dev`/`main`).
+- [x] Required status checks + branch protection configurados no GitHub — `sdd-gate` (contexto `sdd-gate`) agora é required em `dev`/`main` (strict=true), configurado via `gh` CLI em 2026-11-10 (PR #780). Branch protection pré-existente (PR obrigatório, enforce_admins).
 - [ ] Runner self-hosted seguro — N/A: usamos runners GitHub-hosted; reavaliar se migrarmos para self-hosted.
 
 ## Telemetria (G3/G5/035/039)
