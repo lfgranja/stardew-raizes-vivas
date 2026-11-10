@@ -1,1 +1,8 @@
-{"percentage": 0.66, "duplicates": 8, "lines": 111, "measuredAt": "2026-11-07", "commit": "83424a8", "scope": "LivingRoots/ (csharp, PR #761 accumulated; re-baseline after CI-fix cycle, refactor follow-up)"}
+{
+  "percentage": 0.83,
+  "duplicates": 10,
+  "lines": 148,
+  "measuredAt": "2026-11-10",
+  "commit": "199f3a6",
+  "scope": "LivingRoots/ (csharp, re-baseline after Fase 4; pre-existing duplications documented in ESC-LR-20261110-004; refactor owed)"
+}

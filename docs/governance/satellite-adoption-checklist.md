@@ -49,5 +49,6 @@ Status geral: **parcial** — ver `docs/adr/002-adocao-mdmv-dark-factory.md`.
 ## Notas
 - `~` = parcialmente atendido.
 - Escalation registry (024) e execution record (035) — Fase 2 concluída para telemetria; escalation registry é Fase 3.
-- Spec Kit local é 1.2.5 (opencode); hub é 1.3.2 (OMP). Upgrade avaliado como parte da Fase 0 (ver ADR 002).
+- Spec Kit local é 1.3.2 (opencode); hub é 1.3.2 (OMP). Upgrade de 1.2.5 -> 1.3.2 executado (ESC-006 resolvido). Integração mantida em opencode (migração para OMP é decisão separada).
 - Telemetria: `docs/telemetry/execution-record.jsonl` (9 eventos seed); validador adaptado de `validate_telemetry.py` do hub (stdlib, no network).
+- Débito técnico: jscpd baseline re-baselined (10 clones, 148 linhas, 0.83%) — refactor owed (ESC-004). MP live verification documentada (docs/mp-live-verification.md) — owed (ESC-005).
