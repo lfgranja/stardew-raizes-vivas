@@ -109,6 +109,34 @@ if specs.exists():
         if not list(d.glob("clarify*.md")) and not (ROOT / ".specify" / "clarifications" / f"{slug}.md").exists():
             warn(f"{slug}: no clarify artifact persisted (R3)")
 
+# i18n parity (Fase 4 narrow lights-out) — if locale dir exists, key sets must match
+i18n_dir = ROOT / "LivingRoots" / "i18n"
+if i18n_dir.exists():
+    import json as _j
+    locs = {}
+    for name in ("default", "en", "pt"):
+        fp = i18n_dir / f"{name}.json"
+        if not fp.is_file():
+            errors.append(f"missing locale file: LivingRoots/i18n/{name}.json")
+            continue
+        try:
+            locs[name] = _j.loads(fp.read_text(encoding="utf-8"))
+        except Exception as e:
+            errors.append(f"invalid JSON LivingRoots/i18n/{name}.json: {e}")
+    if len(locs) == 3:
+        base = set(locs["default"].keys())
+        for name in ("en", "pt"):
+            missing = base - set(locs[name].keys())
+            extra = set(locs[name].keys()) - base
+            if missing:
+                errors.append(f"i18n parity: {name}.json missing keys vs default: {sorted(missing)}")
+            if extra:
+                errors.append(f"i18n parity: {name}.json extra keys vs default: {sorted(extra)}")
+        for name, d in locs.items():
+            for k, v in d.items():
+                if not isinstance(v, str) or not v.strip():
+                    errors.append(f"i18n parity: {name}.json empty/non-string value for {k!r}")
+
 # Telemetry JSONL (Fase 2) — if present, each line must parse as JSON
 telemetry_file = ROOT / "docs" / "telemetry" / "execution-record.jsonl"
 if telemetry_file.exists():

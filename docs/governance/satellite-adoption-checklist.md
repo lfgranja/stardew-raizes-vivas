@@ -19,6 +19,13 @@ Status geral: **parcial** — ver `docs/adr/002-adocao-mdmv-dark-factory.md`.
 - [x] Required status checks + branch protection configurados no GitHub — `sdd-gate` (contexto `sdd-gate`) agora é required em `dev`/`main` (strict=true), configurado via `gh` CLI em 2026-11-10 (PR #780). Branch protection pré-existente (PR obrigatório, enforce_admins).
 - [ ] Runner self-hosted seguro — N/A: usamos runners GitHub-hosted; reavaliar se migrarmos para self-hosted.
 
+## Fase 4 — Narrow lights-out (opcional)
+- [x] Classe de job inicial definida: paridade i18n (default/en/pt) — `scripts/ci/i18n-parity-check.py` + workflow `i18n-parity.yml`.
+- [x] Gates machine-checkable: i18n-parity, build, test, format, sdd-gate (documentados em `docs/governance/narrow-lights-out.md`).
+- [x] Exemplo executado: 4 chaves `mulch.*` adicionadas ao `pt.json` (paridade restaurada, 27/27/27).
+- [x] Sem auto-merge cego: PR obrigatório + humano aprova merge (políticas 022/025/042).
+- [ ] Classes futuras (bump deps patch, lint fix, novas chaves i18n) — não habilitadas.
+
 ## Telemetria (G3/G5/035/039)
 - [x] Emite JSONL 035.1.0 (`scripts/telemetry/emit_telemetry.py`) — Fase 2 concluída (`docs/telemetry/execution-record.jsonl`, 9 eventos seed).
 - [x] Valida com `validate_telemetry.py` (sem segredos; custos rotulados NV billing) — Fase 2 concluída; validação PASS (0 errors, 0 warnings, strict ok).
