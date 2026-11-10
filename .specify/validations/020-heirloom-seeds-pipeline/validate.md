@@ -49,3 +49,9 @@
 - Pierre untouched this slice; Elena-dependent features (Welcome Kit, shop) still blocked on the Elena NPC spec.
 - Seed Maker interop: expected to work (crop entry exists) — validate before any public release claim.
 - `lr_give_heirloom_seed` / `lr_sow_heirloom` are verification-only (not player-facing).
+
+---
+
+## Appendix — 2026-11-09 transcription correction (append-only)
+
+The Gate 1 line above transcribes the test summary as “2001 passed / 0 failed / 4 skipped”. The actual run was **1997 passed / 0 failed / 4 skipped / 2001 total** (Gate 2 above already states “1997+4 ignored = 2001 total”). No result changed; this is a transcription correction, appended rather than rewriting the original record.
