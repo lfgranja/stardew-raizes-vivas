@@ -1,0 +1,11 @@
+{
+  "schema_version": "026.1.0",
+  "hub": "mdmv-dark-factory",
+  "hub_sha": "044f153ef7eee8b6b3299b37fbfdb08075a2c480",
+  "required_policies": ["022", "023", "024", "025", "026", "031"],
+  "required_files": [
+    "scripts/ci/sdd-gate.py",
+    ".github/workflows/sdd-gate.yml"
+  ],
+  "notes": "Vendored snapshot of hub-policy-manifest.json (hub sha 044f153). 028 (casv-rust pilot) omitted: casv-rust-specific, not applicable to this satellite. required_files adapted to satellite equivalents (hub uses .forgejo/workflows/hub-docs-gate.yml + scripts/ci/hub_docs_gate.py). Satellites report adopted_policies/files_present/hub_sha via satellite-manifest.json."
+}

@@ -11,7 +11,7 @@ Status geral: **parcial** — ver `docs/adr/002-adocao-mdmv-dark-factory.md`.
 
 ## Políticas (022/026)
 - [x] Manifesto `satellite-manifest.json` (`docs/governance/satellite-manifest.json`, schema 026.1.0).
-- [~] `adopted_policies` inclui mínimas exigidas pelo hub manifest — parcial: `022`, `023` adotadas; `024`, `025`, `026`, `031` em fases (ADR 002).
+- [x] `adopted_policies` inclui mínimas exigidas pelo hub manifest — 022, 023, 024 adotadas; 025 pendente (Fase 4); 026 concluída (Fase 3); 031 concluído (Fase 1).
 - [x] Overrides marcados `local-only`/`proposta-pendente` com racional (022): host é GitHub, não Forgejo (manifest `notes`).
 
 ## Gates determinísticos (G2/G4)
@@ -31,8 +31,8 @@ Status geral: **parcial** — ver `docs/adr/002-adocao-mdmv-dark-factory.md`.
 - [x] Sem auto-merge cego sem CI+review+protections verificados (022/025) — nenhum auto-merge configurado.
 
 ## Drift (G4/026)
-- [ ] Avaliação periódica contra `hub-policy-manifest.json` — Fase 3.
-- [ ] Desalinhamento → SE decision request (conformidade ou ADR local) — Fase 3.
+- [x] Avaliação periódica contra `hub-policy-manifest.json` — Fase 3 concluída: `scripts/ci/check_policy_drift.py` + `.github/workflows/policy-drift.yml` (cron semanal + dispatch); drift check PASS (ALIGNED).
+- [x] Desalinhamento → SE decision request (conformidade ou ADR local) — Fase 3: registro de escalonamentos em `specs/024-pilha-escalonamentos-nivel5/registry/escalations.yaml` (7 itens).
 
 ## Evidência por feature (R4/R7) — gap principal
 - [x] `.specify/validations/<slug>/validate.md` aprovado por feature — retroativo concluído para 17 specs (R4) (Fase 1).
