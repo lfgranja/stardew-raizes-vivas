@@ -1,5 +1,6 @@
 # Phase 13 Completion Summary
 
+> **Atualização 2026-11-09 (verificada, fresca):** build Release **0 erros** (14 warnings pré-existentes; `-m:1` no host — mitigação registrada de `msbuild-release-build-sigabrt`), testes **1937 passed / 0 failed / 4 skipped** (1941) — re-run em 2026-11-09. Release **0.1.0** (spec 017) no repo; validate.md aprovado. Runner marker: `run-20261109T041859Z-6938` (honesty R, host-only). Git: `dev` **41 commits à frente de `origin/dev`**; árvore limpa; sem tag/PR/release pública. Totais de tasks hoje: **1155 done / 284 open** (`specs/*/tasks.md`). Pendências: D1 (014/015), humano/E, SC-004, publicação (decisão do maintainer), spec 010 escopo (53 abertas). `machine-pass` ≠ `verified` permanece. Blocos anteriores preservados abaixo verbatim.
 > **Atualização 2026-11-07 (tarde — spec 017 Joja/Agrochemical MVP — Phase 11 FECHADA; Phase 12 fechada):** Phase 11 (T105–T118) está **fechada e marcada como [x]** (`c6c4e7a`; último sub-item T117(b) em `d69168f`); Phase 12 (T119–T124) fechada (`4764aaa`–`2fa1a19`, `1ff107b`), com T123 executada por esta anotação. Os números citados abaixo (targeted **123/123**, suíte completa **1875/0/4**) vêm dos logs commitados da re-run de Phase 11 `verification/convergence-phase11-targeted.log` / `-full.log` (T119/T124), **não** do `validate.md` (que atesta 119/119 e 1871/0/4 na árvore c9ff596, 2026-11-07). "Phase 11 FECHADA" refere-se ao fechamento de tarefas com artefatos (todos T105–T118 `[x]`) e à verificação final T124 commitada, não a um artefato de converge commitado; passes de converge pós-Phase-11 são registros de sessão, não artefatos. **Gate 3 permanece machine-pass host-only** — markers promovidos pelo runner intocados; bundle `evidence-bundle-run-20261107T040235Z-589a/`, honesty `R`, commit `c9ff596`; **sem re-run de Gate 3 sobre o build 0.1.0** (disclosure em `release.md` permanece válida). **Machine-pass ≠ verified**: D1 (farmhand real), `human-verified` e SC-004 permanecem `pending`. O bloco 2026-11-07 abaixo (em andamento) e o bloco 2026-11-06 (014-específico) são preservados; este bloco supersede apenas a cláusula "em andamento". Nenhuma claim é promovida por esta anotação; as duas rows `blocked` permanecem `blocked`.
 > **Atualização 2026-11-07 (spec 017 Joja/Agrochemical MVP — release 0.1.0; Phase 11 converge em andamento):** 017 foi **released** no repositório em **0.1.0** (`d3ada42`; manifest `0.0.1`→`0.1.0`; escopo repo/`dev`; **sem canal público, sem tag**; attestation humana ausente por desenho). **validate.md: aprovado** (2026-11-07, commit `c9ff596`; suíte 1871 passed / 0 failed / 4 skipped; targeted 119/119; format exit 0; claims validator PASS) em `.specify/validations/017-joja-agrochemical-tradeoff/validate.md`. **Gate 3 do cenário 017: machine-pass host-only** — markers promovidos pelo runner, intocados; bundle `evidence-bundle-run-20261107T040235Z-589a/`, honesty `R`, commit `c9ff596`. **Machine-pass ≠ verified**: D1 (farmhand real), `human-verified` e SC-004 permanecem `pending`. **Phase 11 converge em andamento** (T105–T118). O build 0.1.0 **não** foi Gate-3-run isoladamente — o delta vs. a árvore atestada `c9ff596` é apenas a string `Version` do manifest (disclosure em `.specify/releases/017-joja-agrochemical-tradeoff/release.md`). O bloco 2026-11-06 abaixo permanece a attestation 014-específica; este bloco adiciona 017. Nenhuma claim é promovida por esta anotação.
 >
@@ -101,15 +102,15 @@ The `compostable_item` trigger change improves one direction (items with the tag
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261108T173759Z-7c21
-- **Commit**: 98bb69716fd5052e2b07485fd85e9871f322f5aa
-- **Date**: 2026-11-08T17:38:45Z
+- **Run ID**: run-20261109T041859Z-6938
+- **Commit**: f106fd45051318676273ba823c4e4636c93b7ee4
+- **Date**: 2026-11-09T04:19:34Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261108T173759Z-7c21/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261108T173759Z-7c21/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261108T173759Z-7c21/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261108T173759Z-7c21/`
+  - SoilHealthState delta: `evidence-bundle-run-20261109T041859Z-6938/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T041859Z-6938/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T041859Z-6938/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T041859Z-6938/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —

@@ -1,0 +1,92 @@
+# Web research — ecossistema e mercado Stardew Valley (2026-11-09)
+
+> **Escopo:** estado do ecossistema/mercado de mods Stardew Valley em Nov/2026 — versão do jogo, SMAPI, lista de compatibilidade, Nexus, concorrentes "soil health", co-op, sentimento sobre 1.6/Joja.
+> **Método:** `websearch`/`webfetch` (fontes primárias sempre que possível; EN + tentativas PT-BR), GitHub API via webfetch. Nexus/CurseForge bloqueados para fetch direto (HTTP 403) — dados de mods obtidos via snippets de busca (marcados como tal). Acesso direto aos números oficiais do Nexus NÃO foi possível.
+> **Convenção de confiança:** high = fonte primária oficial/API acessada hoje; medium = fonte primária acessível mas indireta/secundária ou número via snippet; low = especulação/teoria comunitária.
+
+## 1. Fatos verificados (tabela)
+
+| Tema | Fato verificado | Fonte (acesso 2026-11-09) | Conf. |
+|---|---|---|---|
+| SDV — versão PC atual | **1.6.15** (PC/Android/iOS, 2024-12-20). Console: **1.6.15.1** (Xbox/PS/Switch, 2025-02-12; Switch 2025-02-26). Sem 1.6.16+ no PC — nenhuma referência encontrada. | stardewvalley.net/blog (post 2025-02-12); dlcompare.com (2024-12-20); IGN/Wiki via buscas | high |
+| SDV — 10 anos | 10º aniversário em 2026-02-26; ConcernedApe: 50 mi de cópias vendidas até Fev/2026; jogo recebe novas atualizações gratuitas | stardewvalley.net/stardew-valley-10-year-anniversary; Wikipedia (artigo principal) | high |
+| SDV — 1.6 original | 1.6 lançado PC 2024-03-19; mobile/console 1.6.9 em 2024-11-04; 8 jogadores co-op no PC; consoles 4 (exceto Switch 2 = 8) | stardewvalley.net/blog; Cinelinx; Wikipedia | high |
+| SDV — Switch 2 | Edição Switch 2 lançada 2025-12-25 (NA) / 2026-03-06 (EU) | Wikipedia (citando release) | medium |
+| SDV — **1.7 anunciado** | ConcernedApe confirmou (Aug/2025, concerto Symphony of Seasons) "there will be a 1.7 update"; sem data/janela. Preferirá encurtar gap PC→console. Provável release **2027** (comentário no palco Red Rocks, Nov/2026, via GamesRadar+). Anúncios confirmados: **Clint e Sandy** como marriage candidates (Fev/2026), overhaul de crianças, nova farm type, possível farm map editor (ideação) | GamingBible (2026-10-07); n4g.com (2026-11-04, reportando GamesRadar+); dotEsports (2026-02-01); stardewvalley.net (blog 2026-02-26) | medium-high (anúncio oficial; data é especulação) |
+| SDV — riddle 1.7 | Set/2026, Discord: "Two paths will be extended / Three will become four / The mermaid's fruit will go free." Interpretação aberta; teoria popular: extensão das rotas **Community Center e JojaMart** ("two paths") — não confirmado | GamingBible (2026-10-07); ixbt.games (2026-09-25) | low (theory) |
+| SDV — endgame/Joja na 1.6 | 1.6 adicionou **Golden Joja Parrot** (Ginger Island; paga para achar walnuts restantes) e Desert Festival; **nada de soil-health**. Joja route permanece sem payoff narrativo; sentimento comunitário: "joja route makes no sense", pedidos por extensão das rotas | Stardew Wiki (Golden Walnut); stardewvalleywiki via busca; r/StardewValley; GamingBible | high (conteúdo) / medium (sentimento) |
+| SDV — vendas/mods | Wikipedia (2026): **>30.000 mods** criados; SVE ">4 mi downloads"; SVE oficialmente completo (2026) | en.wikipedia.org/wiki/Stardew_Valley | medium (Wikipedia cita secundárias) |
+| Popularidade | SteamCharts: ~50,3k jogadores médios (30d); pico all-time **236.614** (mar/2024, lançamento 1.6); outubro/2026: ~51,3k avg (+5,5%) | steamcharts.com/app/413150 | high (SteamCharts) |
+| SMAPI — última versão | **4.5.2** é a latest (criada 2026-03-14, **publicada 2026-03-22**, `releases/latest` confirma). Requer **SDV 1.6.14+** (Linux/macOS/Windows/Steam Deck). 4.5.0/4.5.1 em 2026-01-28; 4.4.0 em 2026-01-11. Nada mais novo encontrado (API GitHub). | GitHub API `releases/latest` + `releases/tags/4.5.2` (JSON, hoje); smapi.io | high |
+| SMAPI — downloads | Asset `SMAPI-4.5.2-installer.zip`: **349.857** downloads (API GitHub, ok — subconjunto, pois Nexus/CurseForge também distribuem) | GitHub API (hoje) | high |
+| SMAPI — compat list | smapi.io/mods: "This list is **no longer comprehensively updated** each month, and its future is in doubt." Patreon "Sunset on the mod compatibility list" **403/bloqueado**. Repo `SmapiCompatibilityList` aceita PRs (comunidade edita; publicação ~10 min após merge); 4 stars | smapi.io/mods (hoje); github.com/Pathoschild/SmapiCompatibilityList | high (fato do sunset) |
+| JunimoServer | Servidor dedicado always-on (Docker), SMAPI-friendly, badge pinned em **SDV 1.6.15**; **383 stars**, 51 forks; ativo; `latest` marcado "heavy development" — preview recomendado | GitHub stardew-valley-dedicated-server/server (hoje) | high |
+| Nexus — acesso | **HTTP 403** para qualquer página stardewvalley (mod, top, stats, section) e também CurseForge. Sem chave API (skip). Dados de mods abaixo vêm de snippets de busca (indexação pública) | webfetch hoje (múltiplas URLs) | high (fato do bloqueio) |
+| Nexus — tamanho | "Dezenas de milhares" de mods SDV (Technwz, blog secundário, 2026-06-04); Wikipedia: >30.000 mods; rede Nexus total: ~978k mods / 80,2 mi membros (footer Nexus) | technwz.com (sec.); en.wikipedia.org; snippet nexusmods.com | medium |
+| SVE (#3753) | Snippet Nexus: "Last Update: 30 Jun 2025… + 227.6k" (métrica ambígua — provavelmente total DLs). Wikipedia: >4 mi downloads (provavelmente multi-plataforma). "SVE officially complete as of 2026" | Nexus via busca; Wikipedia; Technwz | medium |
+| ReGen Valley (#39740) | v0.51, tag **"Version 1.6 Compatible"**, SMAPI-only, "Multiplayer-compatible (though early testing is ongoing)". Endorsements: **3**. DLs/views: "--" (ocultos). 1 file, 31 imagens, 12 posts, 0 bugs. Cover crops, pastoreio rotacionado, soil health por tile, 5 princípios da agricultura regenerativa. Última atualização/data original: não visível em snippets; repo registrou upload ~Nov/2025 | Nexus via busca (direta 403); ROADMAP/OBJETIVO do repo | medium |
+| Crop Quality (#47141) | v0.2.x, atualizado **2026-06-04**; "Displays harvest quality… tweak/modify quality chances". ~17 unique DLs / ~856 total DLs / ~3k views (snippet). Pequeno | Nexus via busca | medium |
+| Abundant Harvest Fertilizers (#51999) | v0.1.7, atualizado set/2026, **MIT**, 1 endorsement, ~80 unique / ~106 total DLs / 764 views. Fertilizantes craft-only (Basic/Quality/Deluxe) → rolls extras por colheita; single-yield crops; MP via `Crop.harvest` normal | Nexus via busca | medium |
+| Quality Multi-Harvest (#54375) | Atualizado **2026-10-22/23**; extra crops herdam qualidade do 1º item (blueberries, cranberries, café, potatoes+…). ~100 unique DLs (snippet) | Nexus via busca | medium |
+| Perfect Harvest (#51721) | Mod "cheat" — Iridium garantido (set/2026). Adjacente, não competitivo | Nexus via busca | medium |
+| Ultimate Fertilizer (#21318) | v1.3.0, **862 endorsements** — fertilizante-stacking; líder da categoria "boost" | Nexus via busca | medium |
+| Multi Yield Crops (#6069) | Bug: superprodução em 1.6 (nota do Pathoschild no fórum Nexus) | Nexus via busca | medium |
+| Compost Pests and Cultivation (#4446) | Última atualização **2019-12-08** (v1.2.0) — abandonado, pré-1.5; conceitualmente mais próximo de "solo vivo" (compost + pests + fallow), porém morto | Nexus via busca | medium |
+| Composter (#5085), Mulch (#7457) | Compostagem alternativa / mulch crop (retém dirt tilled) — permacultura; ativos/iterados, nicho | stardewmodding.wiki.gg (Permaculture Farming, ed. 2025-09-13) | medium |
+| SVE completo | "SVE officially complete as of 2026" (FlashShifter); evento marcante — maior mod da plataforma | Technwz (2026-06-04) | medium |
+| Co-op PC | 1.6: **8 jogadores** no PC; split-screen; mobile: MP experimental (1.6); consoles 4 (Switch 2: 8). Mods co-op existem mas nicho (Always On Server #20659, mod SDS/unattended server, Multiplayer Sell Price Fix, etc.); muitos stale | Cinelinx; Nexus; Reddit | medium-high |
+| Sentimento Joja | Comunidade vê rota Joja como rasa/sem payoff ("Joja route makes no sense"); coleção "Joja: The Final Achievement" (Nexus Collections) adiciona quests Joja; mods preenchem o vazio | r/StardewValley; Nexus Collections via busca; TheGamer | medium (sentimento) |
+| Demanda latente | Thread 2019 no r/StardewValley pedindo "a soil health meter, maximum return to nitrogen, and other regenerative practices… a mod" — demanda nomeada há anos | r/StardewValley (thread antiga) | medium (evidencia intenção, não mercado) |
+| Wiki modding | stardewmodding.wiki.gg (Stardew Modding Wiki, sucessor do Miraheze/DSV) — páginas "Permaculture Farming" (atualizada 2025-09-13) lista mods por tema; **não lista ReGen Valley** nem solo-health | stardewmodding.wiki.gg | high (conteúdo da página) |
+| Wikipedia: 1.6 (Mar/2024) | ~82k avg players em mar/2024 (update boost), pico 236.614 | SteamCharts (hoje) | high |
+
+## 2. Ecosystem metrics
+
+- **Installed base/vendas:** 50 mi cópias (oficial, Fev/2026). SteamCharts ~50k avg concurrent; pico histórico 236k no 1.6. Saldo: jogo saudável, comunidade estável, longe do pico de update.
+- **Modding:** >30.000 mods (Wikipedia, 2026). Nexus é o hub primário; CurseForge secundário ("nearly endless"). SVE (expansão) = maior mod, >4 mi downloads (multi-plataforma), completo em 2026.
+- **SMAPI:** 4.5.2 (2026-03-22) é produção; adoção forte (349.857 downloads só no asset GitHub). 4.5.0 (Jan/2026) adicionou config in-game do próprio SMAPI + builds atestados; 4.4.0 (Jan/2026) trouxe suporte a simular input, masks de transparência e tilesheets relativos. Nenhuma release nova desde março — cadência desacelerada, mas manutenção ativa.
+- **Compatibilidade:** lista oficial em **sunset** (sem atualização mensal); comunidade migra para (a) Nexus/GitHub/fóruns do mod, (b) `SmapiCompatibilityList` (PRs), (c) SMAPI unofficial-update system + alerta in-game. Para "soil mods", o caminho seguro é GitHub/Nexus do autor — não há entrada garantida na lista SMAPI.
+- **Nexus:** inacessível para métricas exatas (403). "Dezenas de milhares" de mods. Top-mods mostra SMAPI (#2400) "Last update 14 Mar 2026"; SVE ~227.6k (ambíguo); SMAPI no Nexus ≈ top do ecossistema por utilidade, não por endorsement público verificável.
+- **Co-op:** 8 jogadores PC é vanilla 1.6; JunimoServer (383★) é a referência headless; mods "always-on/unattended server" têm atividade contínua mas são nicho. Fração de mods verdadeiramente MP-first no ecossistema: pequena (maioria do conteúdo é singleplayer ou MP-agnóstico); poucos mods documentam comportamento host-authoritative.
+
+## 3. Competitive landscape (soil health / agricultura regenerativa / qualidade)
+
+| Mod | Foco | Números verificáveis | Overlap com Living Roots |
+|---|---|---|---|
+| **ReGen Valley** (#39740, robertsvalley) | Overhaul "regenerative": soil health por tile (organic matter, moisture, biological activity), cover crops (rye/clover/sorghum/buckwheat), grazing rotacional (vacas + canetas + beacons), no-till roller, growth/quality boost ligado à média **da fazenda** (75+/90+ avg) | v0.51; 3 endorsements; DLs ocultos; tag 1.6-compatible; MP "early testing"; upload ~Nov/2025 | **Concorrente direto mais próximo** — porém (i) foco máquina/animal, sem loop de compostagem composto; (ii) quality/yield farm-wide, não per-tile determinístico com feedback; (iii) MP "early testing", sem host-authoritative documentado; (iv) 3 endorsements = tração minúscula; (v) ausente do wiki de permacultura e de listas "must-have"; (vi) sem framework de verificação/teste |
+| **Compost Pests and Cultivation** (#4446) | Fallow → inatividade de solo exige compost; pests; seed traits | v1.2.0, **dead 2019** | Predecessor conceitual; morto; sem equivalente vivo para 1.6 |
+| **Crop Quality** (#47141) | Mostra qualidade da colheita + tweak de chances | Jun/2026; ~0,9k DLs Nexus | Adjacente (exibição/RNG); sem mecânica de solo |
+| **Abundant Harvest Fertilizers** (#51999) | Fertilizantes craft-only → rolls extras | v0.1.7; ~0,1k DLs; MIT | Adjacente; single-yield only; sem solo como sistema |
+| **Quality Multi-Harvest** (#54375) | Extra items herdam qualidade do 1º | Out/2026; ~0,1k DLs | Adjacente; pontual |
+| **Ultimate Fertilizer** (#21318) | Stacking fertilizer | v1.3.0; 862 endorsements | Categoria de boost popular; sem solo |
+| **Harvest Ledger** (repo-registrado) | Streak de rotação (+3%/+5% venda) | não revalidado hoje (403) | Valida demanda por rotação; não toca solo |
+| **Mulch (#7457) / Composter (#5085)** | Permacultura/mulching de cobertura; compost alternativo | ativos no wiki de permacultura | Building blocks, não sistema |
+| **Perfect Harvest** (#51721) | Iridium garantido (cheat) | Set/2026 | Fora do eixo |
+
+**Leitura competitiva:** não existe no ecossistema um mod com (a) per-tile deterministic soil health → growth/harvest/quality; (b) loop composto compost→mulch→growth→quality; (c) framing agroecológico educativo honesto; (d) multiplayer host-authoritative testado; (e) suíte de testes/verificação automatizada. ReGen Valley é o único com solo por tile, com tração de 3 endorsements e sem MP maduro. Demanda por boosts de qualidade existe (Ultimate Fertilizer, 862 endorsements, é o destaque), mas ninguém a liga ao solo per-tile. Espaço competitivo **permanece aberto** — porém o mercado para esse nicho é pequeno (poucos milhares de downloads no máximo para mods do eixo).
+
+## 4. Limitations & blocked sources
+
+1. **Nexus Mods — HTTP 403** em todas as páginas tentadas (mod 39740 & #47141/#51999/#54375, /top, /stats, /mods/motm, seção game). Números de endorsement/views/DLs acima vêm de **snippets de motor de busca** (índice público), não de fetch direto; podem estar desatualizados e métricas marcadas "--" (login-gated) não são recuperáveis sem conta/chave API. **Não confiar em decimais**; tratar como ordem de grandeza.
+2. **CurseForge — HTTP 403** (seção Stardew). Não verificado.
+3. **Patreon (sunset post da compat list) — 403**. Conteúdo do sunset reconhecido apenas via texto público em smapi.io/mods.
+4. **stardewvalleywiki.com — HTTP 403** (Version History, Multiplayer pages). Datas de patches verificadas via blog oficial + buscas.
+5. **Busca em português (PT-BR):** 3 tentativas sem resultados; cobertura noticiosa de 1.7/ecossistema é majoritariamente EN. Liveblog/wiki PT não consultado com sucesso — lacuna.
+6. **Total exato de mods na seção SDV do Nexus:** não verificável (403). Usado: "dezenas de milhares" (Technwz, secundário) / ">30.000" (Wikipedia, 2026).
+7. **Datas exatas de upload/atualização do ReGen Valley:** não visíveis nos snippets; "~Nov/2025, v0.51" vem do registro prévio do repo — não revalidado ao vivo.
+8. **JunimoServer "latest unstable":** badge e docs dizem heavy development; preview recomendado. Não é prova de nada para Living Roots.
+9. **Jogos/console:** dados de vendas por plataforma e de mods em console inexistentes (modding só PC/Steam Deck).
+10. **Steam store news:** página dinâmica (sem conteúdo útil sem JS); SteamCharts usado como proxy de saúde do jogo.
+
+## 5. Implications for Living Roots
+
+1. **Target técnico segue correto:** SDV 1.6.14+ / SMAPI 4.5.2 é exatamente o baseline publicado e estável; sem pressão para migração. A chegada provável do **1.7 em 2027** (com nova farm type e overhaul de crianças — nada anunciado de soil/farming core) é a próxima janela de risco de compatibilidade: mods terão de se revalidar no lançamento (SMAPI 4.6/1.7 provavel). Planejar janela de reteste pós-1.7 é obrigatório; não assumir que "1.6-compatible" sobrevive ao 1.7.
+2. **Janela competitiva permanece aberta, nicho pequeno:** nenhum concorrente vivo entrega o loop composto do Living Roots. ReGen Valley (3 endorsements) valida a tese conceitual mas não a execução de mercado; Crop Quality/Fertilizers mostram que o eixo "qualidade dirigida por sistema" tem demanda modesta porém real. Expectativa honesta de adoção: **centenas a poucos milhares de downloads**, não milhões — calibra prioridade de marketing para niche (educadores/agroecologistas, co-op couples, YouTube/streamers de cozy).
+3. **Multiplayer/co-op é diferencial defensável e subatendido:** vanilla 1.6 traz 8-player PC; mods MP-first são raros e ReGen declara "early testing". Host-authoritative correto (First-wins, FR-009/A8) continua sem equivalente verificado no ecossistema — vale manter Principle VI como eixo de comunicação e concluir D1 (farmhand real), único bloqueio de evidência que separa o projeto do resto do campo.
+4. **Compat list sumiu — posicionamento de distribuição muda:** como smapi.io não atualiza mais a compat list comprehensively, a reputação de compat do Living Roots dependerá de (a) GitHub release com tags SDV 1.6/1.7 + SMAPI, (b) página Nexus com requisitos explícitos, (c) submissão ao `SmapiCompatibilityList` (PRs), (d) menção no fórum "unofficial mod updates" só se necessário. Planejar publicação com isso em mente (OBJETIVO.md §4.1/§6 item 5).
+5. **Ecossistema em "long tail" pós-10º aniversário:** não há updates grandes do jogo previstos para 2026 (1.6.15.1 fev/2025; 1.7 em 2027); SteamCharts estável ~50k. Oportunidade: mods nichados bem polidos ganham visibilidade orgânica no vácuo de conteúdo oficial — janela favorável para lançamento quando a verificação humana (Gate 3) pousar.
+6. **Tema "Joja/soberania alimentar" ganhou timing:** a comunidade quer mais conteúdo de rotas CC/Joja (teoria do riddle 1.7 "two paths will be extended"; sentimento pró-Joja-story). O arco narrativo do Living Roots (libertar o vale da Joja via solo vivo) está alinhado ao desejo declarado da comunidade — vale capitalizar no framing de lançamento, sem prometer o que 1.7 pode ou não entregar.
+7. **Honestidade de mercado:** o diferencial real é coerência + verificação (testes, machine-pass, host-authoritative), não novidade de mecânica. Não comunicar "primeiro soil health mod" (ReGen Valley existe); comunicar "único loop agroecológico per-tile verificado, host-authoritative para co-op".
+8. **Watchlist para próximas atualizações de pesquisa:** (i) release do 1.7 (anunciar, betas, SMAPI compat), (ii) atualização de ReGen Valley (v0.6+/DLs públicos pós-403), (iii) SVE-style explosões de nicho (expansões agrícolas como "Simply Crops"?), (iv) qualquer mod "soil fertility" novo no Nexus (buscar por tag farming + 1.6 após 1.7), (v) status do sunset list (substituída por quê?).
+
+*Atualizado: 2026-11-09. Fontes acessadas nesta data salvo indicado. Números via snippet de busca marcados como tal; nenhum número foi inventado; lacunas estão em §4.*

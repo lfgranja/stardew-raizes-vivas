@@ -125,3 +125,248 @@ All eight bundles produced in pass 13 pass `./scripts/verify-scenario.sh --verif
 The `errored` bundles `173204Z-08a0` and `173425Z-7088` are negative controls; they are never promoted or cited as machine-pass.
 
 Coverage: **4 of 19** scenario files (004, 013, 005-healthy, 017-tradeoff). The remaining 15 host/farmhand scenario files are still residual.
+
+## Pass 15 addition (2026-11-08) — 013 bare-tile and 014 (coverage now 6 of 19)
+
+### 013 — mutant killed (`MulchDecayMultiplier 0f → 1f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:177` `MulchDecayMultiplier = 0f` → `1f`.
+- **Scenario:** `specs/013-mulch-soil-cover/scenarios/mulch-bare-tile-decay-exemption.scenario.json` (v4, bare HoeDirt, seed 123456789).
+- **Build/deploy:** exit 0.
+- **Run:** `TMPDIR=/home/luis/.runner-tmp ./scripts/verify-scenario.sh --scenario … --skip-build --timeout 420`
+- **Bundle:** `evidence-bundle-run-20261108T212701Z-0ce2`
+- **Runner exit:** `19` (`ERRORED`; expected pass, actual fail).
+- **Observed:** `evaluation/actual.json`: soil 50 → **44** (one unprotected spring decay per tick ×6), tier moderate. `evaluation/thresholds.jsonl`: predicate-0 (`multiplier factor 1.0`) → **`passed: false`**; predicate-1 (`isMainPlayer`) → `true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`, `grep` confirms `0f`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261108T213615Z-51b4`, soil 50, **pass**.
+
+### 014 — mutant killed (decision seam: Poor branch `ForceQualityZero` `true → false`)
+
+- **Mutation:** `LivingRoots/Domain/Services/HarvestQualityService.cs` Poor branch (`soilHealth < PoorModerateBandEdge`): `ForceQualityZero = true` → `false`.
+- **Scenario:** `specs/014-soil-health-crop-quality/scenarios/soil-health-harvest-quality.scenario.json` (12 predicates, seed 1).
+- **Build/deploy:** exit 0.
+- **Bundle:** `evidence-bundle-run-20261108T213324Z-3925`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** poor probe `poorHarvestQuality` = **1** (scenario requires 0; the Poor-tier forced quality penalty was removed). `evaluation/thresholds.jsonl`: predicate-1 → **`passed: false`**; **all other 11 predicates `passed: true`** — a single-assertion kill. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Domain/Services/HarvestQualityService.cs`, `git diff` clean; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261108T213820Z-4874`, **pass**.
+
+### 014 — discarded mutant (`SoilQualityHealthyBoost 0.08f → 0f`), recorded for honesty
+
+- Bundle `evidence-bundle-run-20261108T212933Z-7976`: `verification: harvest matrix could not fill every probe from 4188 candidate tiles around 60,15.` The planner's band is `[vanillaP, vanillaP + SoilQualityHealthyBoost)`; with the mutant it became empty, so no probes were selected and **every predicate returned `unmeasured-actual`**.
+- This run detects the broken mutation (scenario fails), but **not at the intended assertion**: SC-MP-6 requires the failing check to be the asserted contract. The mutation was therefore discarded as evidence and replaced by the decision-seam mutant above. `--verify-bundle` exit 0 (bundle is structurally sound); it remains a negative control but is **never cited** as machine-pass/kill evidence.
+- Lesson: mutation selection must respect harness-witnessed preconditions; constants shared with probe selection are not valid negative controls for this scenario.
+
+### Integrity (pass 15)
+
+`--verify-bundle` exit 0 for all nine bundles in this pass:
+
+```
+0 evidence-bundle-run-20261108T211743Z-62f5
+0 evidence-bundle-run-20261108T211930Z-69c9
+0 evidence-bundle-run-20261108T212204Z-79e7
+0 evidence-bundle-run-20261108T212407Z-6576
+0 evidence-bundle-run-20261108T212701Z-0ce2
+0 evidence-bundle-run-20261108T212933Z-7976
+0 evidence-bundle-run-20261108T213324Z-3925
+0 evidence-bundle-run-20261108T213615Z-51b4
+0 evidence-bundle-run-20261108T213820Z-4874
+```
+
+Coverage: **6 of 19** scenario files (004, 013-expiry, 005, 017, 013-bare-tile, 014). The remaining 13 host/farmhand scenario files are still residual.
+
+## Pass 16 addition (2026-11-08) — 005-poor and 017-clamped (coverage now 8 of 19)
+
+### 005-poor — mutant killed (`SoilGrowthPoorMultiplier 1.15f → 1.00f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:14` `SoilGrowthPoorMultiplier = 1.15f` → `1.00f`.
+- **Scenario:** `specs/005-soil-health-to-crop-growth/scenarios/soil-health-growth-poor.scenario.json` (poor 10, seed 987654321).
+- **Bundle:** `evidence-bundle-run-20261109T030033Z-4c21`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `evaluation/actual.json`: `phaseDays` 4 (expected 5), tier poor. `evaluation/thresholds.jsonl`: predicate-0 (×1.15) → **`passed: false`**; predicate-1 (poor band) → `passed: true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T030410Z-4cd0`, `phaseDays` 5, **pass**.
+
+### 017-clamped — mutant killed (`AgrochemicalSoilPenalty 10f → 0f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:223` `AgrochemicalSoilPenalty = 10f` → `0f`.
+- **Scenario:** `specs/017-joja-agrochemical-tradeoff/scenarios/agrochemical-clamped.scenario.json` (measured 5, factor `soil cmp eq 0`, seed 123456789).
+- **Bundle:** `evidence-bundle-run-20261109T030225Z-2cb3`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `evaluation/actual.json`: `soilHealth` 5 (expected 0 — no clamp), tier poor, `phaseDays` 5. `evaluation/thresholds.jsonl`: predicate-0 (`cmp eq 0`) → **`passed: false`**; predicate-1 (×1.15) → `true`; predicate-2 (`isMainPlayer`) → `true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T030553Z-391b`, `soilHealth` 0, **pass**.
+
+### Integrity (pass 16)
+
+`--verify-bundle` exit 0 for all eight bundles in this pass:
+
+```
+0 evidence-bundle-run-20261109T025423Z-3865
+0 evidence-bundle-run-20261109T025553Z-7ba7
+0 evidence-bundle-run-20261109T025730Z-1080
+0 evidence-bundle-run-20261109T025841Z-2be9
+0 evidence-bundle-run-20261109T030033Z-4c21
+0 evidence-bundle-run-20261109T030225Z-2cb3
+0 evidence-bundle-run-20261109T030410Z-4cd0
+0 evidence-bundle-run-20261109T030553Z-391b
+```
+
+Coverage: **8 of 19** scenario files (004, 013-expiry, 005-healthy, 017-tradeoff, 013-bare-tile, 014, 005-poor, 017-clamped). The remaining 11 host/farmhand scenario files are still residual.
+
+## Pass 17 addition (2026-11-08) — 015-harmony, 014-zero, 004-healthy (coverage now 11 of 19)
+
+### 015-harmony — mutant killed (decision seam: Poor `ForceQualityZero` `true → false`)
+
+- **Mutation:** `LivingRoots/Domain/Services/HarvestQualityService.cs` Poor branch: `ForceQualityZero = true` → `false`.
+- **Scenario:** `specs/015-harmony-harvest-seam/scenarios/harmony-harvest-quality-host.scenario.json` (seed 1).
+- **Bundle:** `evidence-bundle-run-20261109T032436Z-61fb`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `poorHarvestQuality` = **1** (scenario requires 0); predicates 0, 2–11 `passed: true`; predicate-1 `false`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Domain/Services/HarvestQualityService.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T032903Z-29cf`, **pass**.
+
+### 014-zero — mutant killed (same decision seam)
+
+- **Mutation:** identical to 015 above.
+- **Scenario:** `specs/014-soil-health-crop-quality/scenarios/soil-health-harvest-measured-zero.scenario.json` (measured 0/Poor).
+- **Bundle:** `evidence-bundle-run-20261109T032550Z-1e3b`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `zeroHarvestQuality` = **1** (scenario requires 0), `zeroHealthTier` poor; predicates 0–1, 3 `passed: true`; predicate-2 (`zeroHarvestQuality eq 0`) → **`false`**. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** same as 015; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T033015Z-0e1b`, **pass** (`zeroHarvestQuality` 0).
+
+### 004-healthy — mutant killed (`SoilGrowthHealthyMultiplier 0.85f → 1.00f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:15` `SoilGrowthHealthyMultiplier = 0.85f` → `1.00f`.
+- **Scenario:** `specs/004-playable-compost-loop/scenarios/compost-growth-healthy.scenario.json` (healthy 80, seed 123456789).
+- **Bundle:** `evidence-bundle-run-20261109T032724Z-2b7d`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `phaseDays` **4** (scenario expects healthy growth → 3); predicate-0 (×0.85) → **`passed: false`**; predicate-1 (healthy band) → `true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T033119Z-6fda`, `phaseDays` 3, **pass**.
+
+### Integrity (pass 17)
+
+`--verify-bundle` exit 0 for all twelve bundles in this pass:
+
+```
+0 evidence-bundle-run-20261109T031507Z-702d
+0 evidence-bundle-run-20261109T031644Z-755d
+0 evidence-bundle-run-20261109T031831Z-3838
+0 evidence-bundle-run-20261109T032001Z-77c0
+0 evidence-bundle-run-20261109T032111Z-4e06
+0 evidence-bundle-run-20261109T032235Z-3b83
+0 evidence-bundle-run-20261109T032436Z-61fb
+0 evidence-bundle-run-20261109T032550Z-1e3b
+0 evidence-bundle-run-20261109T032724Z-2b7d
+0 evidence-bundle-run-20261109T032903Z-29cf
+0 evidence-bundle-run-20261109T033015Z-0e1b
+0 evidence-bundle-run-20261109T033119Z-6fda
+```
+
+Coverage: **11 of 19** scenario files (004/013-expiry/005/017/013-bare-tile/014/005-poor/017-clamped/015/014-zero/004-healthy). The remaining 8 are still residual.
+
+## Pass 18 addition (2026-11-08) — 004-moderate and 005-moderate (coverage now 13 of 19)
+
+### 004-moderate and 005-moderate — mutant killed (shared edge: `ModerateHealthyBandEdge 71f → 0f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:51` `ModerateHealthyBandEdge = 71f` → `0f`. The edge now flips the Moderate branch of the growth decision to Healthy (health 50 ≥ 0 → healthy tier for the modifier), applying `SoilGrowthHealthyMultiplier 0.85f`.
+- **Scenarios:** 004 `compost-growth-moderate.scenario.json` and 005 `soil-health-growth-moderate.scenario.json` (both expect vanilla parity ×1.0 at moderate 50).
+- **Bundles:** 004 `evidence-bundle-run-20261109T034019Z-773e`; 005 `evidence-bundle-run-20261109T034143Z-2623`.
+- **Runner exit:** `19` (`ERRORED`) for both.
+- **Observed:** both runs `phaseDays` **3** (expected 4 with ×1.0); predicate-0 (multiplier 1.0 on phaseDays) → **`passed: false`**; predicate-1 (moderate `[31,71)` band) → `true` (soil 50 stays unmodified). `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative controls only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`; rebuild → exit 0.
+- **Post-restore:** 004 `evidence-bundle-run-20261109T034318Z-7374` pass; 005 `evidence-bundle-run-20261109T034443Z-4cc1` pass.
+
+### Integrity (pass 18)
+
+`--verify-bundle` exit 0 for all eight bundles in this pass:
+
+```
+0 evidence-bundle-run-20261109T033419Z-5316
+0 evidence-bundle-run-20261109T033540Z-40ca
+0 evidence-bundle-run-20261109T033704Z-21fe
+0 evidence-bundle-run-20261109T033828Z-11c4
+0 evidence-bundle-run-20261109T034019Z-773e
+0 evidence-bundle-run-20261109T034143Z-2623
+0 evidence-bundle-run-20261109T034318Z-7374
+0 evidence-bundle-run-20261109T034443Z-4cc1
+```
+
+Coverage: **13 of 19** scenario files (004-hardening/004-healthy/004-moderate, 005-healthy/005-poor/005-moderate, 013-expiry/013-bare-tile, 014-quality/014-zero, 015, 017-tradeoff/017-clamped). The remaining 6 are still residual.
+
+## Pass 19 addition (2026-11-08) — 017-unknown-baseline (coverage now 14 of 19); 017-refused-at-minimum recorded honestly
+
+### 017-unknown-baseline — mutant killed (`AgrochemicalSoilPenalty 10f → 20f`)
+
+- **Mutation:** `LivingRoots/Constants.cs:223` `AgrochemicalSoilPenalty = 10f` → `20f`.
+- **Scenario:** `specs/017-joja-agrochemical-tradeoff/scenarios/agrochemical-unknown-baseline.scenario.json` (NaN baseline → 100 → one @ P=10 → 90, seed 123456789).
+- **Bundle:** `evidence-bundle-run-20261109T035309Z-4cbc`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `evaluation/actual.json`: `soilHealth` **80** (expected 90), tier healthy. `evaluation/thresholds.jsonl`: predicate-0 (`soilHealth eq 90`) → **`passed: false`**; predicate-1 (×0.85, healthy growth) → `true`; predicate-2 (`isMainPlayer`) → `true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Constants.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T035430Z-76c0`, `soilHealth` 90, **pass**.
+
+### 017-refused-at-minimum — recorded as deterministic failure (not "killed-by-mutant" nor "covered")
+
+- 2026-11-09 refused-at-minimum failed twice, identically, at predicate-1 (cropPhaseDelta ×1.0): pre `phaseDays` 4 → actual 5. The refusal works (soil 0 unchanged, predicate-0 pass). No mutation was needed to demonstrate the stale assertion; the observed healthy/poor growth modifier triggers the fail unaided. Decision-seam mutants were not run on this file; the failure is recorded instead, because a green receipt would be dishonest evidence.
+- Mutant capability of the service seam (`AgrochemicalSoilPenalty`) exists but the predicate failure is independent of it; the assertion is wrong for poor soil in the capture path.
+
+### Integrity (pass 19)
+
+`--verify-bundle` exit 0 for all six bundles in this pass:
+
+```
+0 evidence-bundle-run-20261109T034720Z-49c5
+0 evidence-bundle-run-20261109T034828Z-12e6
+0 evidence-bundle-run-20261109T034940Z-036e
+0 evidence-bundle-run-20261109T035049Z-5ac1
+0 evidence-bundle-run-20261109T035309Z-4cbc
+0 evidence-bundle-run-20261109T035430Z-76c0
+```
+
+Coverage: **14 of 19** scenario files (004, 005, 013, 014, 015, 017 families) carry ≥1 killed-mutation + 2× reruns evidence. The rest: 4 residual green-eligible files, plus refused-at-minimum (deterministic fail at a stale assertion — not covered; see above).
+
+## Pass 20 addition (2026-11-08) — 014-unknown (coverage now 15 of 19 mutation-checked)
+
+### 014-unknown — mutant killed (decision seam: NaN branch → Poor chain `Tier=Poor, IsInScope=true, ForceQualityZero=true`)
+
+- **Mutation:** `LivingRoots/Domain/Services/HarvestQualityService.cs` NaN/Infinity branch of `Decide`: `Tier = HarvestTier.Poor, IsInScope = true, ForceQualityZero = true` (NaN routed to the Poor decision branch).
+- **Scenario:** `specs/014-soil-health-crop-quality/scenarios/soil-health-harvest-unknown.scenario.json` (NaN, seed 123456789).
+- **Bundle:** `evidence-bundle-run-20261109T040926Z-67b5`
+- **Runner exit:** `19` (`ERRORED`).
+- **Observed:** `evaluation/actual.json`: `unknownHealthTier` "unknown" (from the independent NaN classifier), `unknownVanillaQuality` 1 (selected), **`unknownHarvestQuality` 0** (Poor-chain forced zero). `evaluation/thresholds.jsonl`: predicate-2 (`unknownHarvestQuality eq 1`) → **`passed: false`**; predicates 0, 1, 3 `passed: true`. `manifest.json`: `honestyLevel: W`, `verdict: errored` — negative control only.
+- **Restore:** `git checkout -- LivingRoots/Domain/Services/HarvestQualityService.cs`; rebuild → exit 0.
+- **Post-restore:** `evidence-bundle-run-20261109T041048Z-088b`, `unknownHarvestQuality` 1 (vanilla), **pass**.
+
+### 014-unknown — discarded mutant attempt (missed cut, recorded for honesty)
+
+- Bundle `evidence-bundle-run-20261109T040736Z-25da`: `Tier = HarvestTier.Poor, IsInScope = false` only. **The mutant did not kill the scenario** — all four predicates passed. Root cause: the unknown probe classifies the tier from the raw soil value (NaN → "unknown") and `Decide` was only consulted for the mod behavior, where the Poor tier with `IsInScope=false` short-circuits to the out-of-scope skip (no patch execution). The NaN-branch mistake was invisible to this scenario until the composite flip above.
+- Compilation was fine; `--verify-bundle` exit 0 (bundle is structurally sound). This run is retained as evidence that a *plausible-looking but inert* mutation exists and does not count as a kill.
+
+### Integrity (pass 20)
+
+`--verify-bundle` exit 0 for all eleven bundles in this pass:
+
+```
+0 evidence-bundle-run-20261109T035748Z-1fc9
+0 evidence-bundle-run-20261109T035851Z-759d
+0 evidence-bundle-run-20261109T035954Z-4aa8
+0 evidence-bundle-run-20261109T040102Z-50fe
+0 evidence-bundle-run-20261109T040219Z-5080
+0 evidence-bundle-run-20261109T040327Z-1ea4
+0 evidence-bundle-run-20261109T040437Z-7022
+0 evidence-bundle-run-20261109T040546Z-2fb6
+0 evidence-bundle-run-20261109T040736Z-25da
+0 evidence-bundle-run-20261109T040926Z-67b5
+0 evidence-bundle-run-20261109T041048Z-088b
+```
+
+Coverage: **15 of 19** scenario files are mutation-checked (the earlier fourteen plus 014-unknown). `013-refused-on-ineligible` and `017-refused-contention` have deterministic refusal semantics attested by Gate 3 without an assertion that a root-level mutation can kill (the declared predicates are unchanged by acceptance/refusal paths).
+
+Note: `018`'s determinism evidence now reaches 18 of 19 files; exactly one file is not green (`017-refused-at-minimum`, documented stale assertion).
+
+## Pass 22 addition (2026-11-09) — 017-refused-at-minimum
+
+No mutation assessment for this file: the v3 predicate it would have killed silently (cropPhaseDelta ×1.0) was unsatisfiable by construction under the poor-soil growth modifier and was removed honestly by the v4 rewrite. The rewritten scenario's asserted predicates are: `soilHealthStateDelta` 1.0× (unmodified soil at refusal — outcome of refusal) and `smapiLog.isMainPlayer eq true`. Neither is a mutation target addressable by a decision-seam constant here (soil at refusal is never committed by construction; isMainPlayer is not a code constant). Determinism 2× is this file's coverage; no mutant claimed.

@@ -4,18 +4,29 @@
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261108T143604Z-0f8f
-- **Commit**: 37032ac3c03e5b4ca66d8c45415cd0f906d988ec
-- **Date**: 2026-11-08T14:37:16Z
+- **Run ID**: run-20261109T034318Z-7374
+- **Commit**: e6a3da14462c2b1673b824f9024eb48dc39437b6
+- **Date**: 2026-11-09T03:44:10Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261108T143604Z-0f8f/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261108T143604Z-0f8f/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261108T143604Z-0f8f/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261108T143604Z-0f8f/`
+  - SoilHealthState delta: `evidence-bundle-run-20261109T034318Z-7374/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261109T034318Z-7374/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261109T034318Z-7374/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261109T034318Z-7374/`
 - **Honesty level**: R
-- **Claim**: machine-pass (host, runner-promoted, 3 signals). All applicable host compost-growth tier paths (sequential, 2026-11-07): poor 10/1.15x primary run-20261105T053313Z-535d, moderate 50/1.0x parity pass run-20261107T120435Z-1ea9, healthy 80/0.85x pass run-20261107T120602Z-69ea. Scenarios mirror hardening structure (bin/place, insertWaste, 5-day sleep, 60,15 LongPhaseCrop). Bundles gitignored. Pass 11 determinism 2× (2026-11-08): run-20261108T141912Z-6948 / run-20261108T142058Z-4b8d; mutation negative control run-20261108T142806Z-67d7.
+- **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
 - **Review date**: —
 - **Session ID**: —
 <!-- GATE3:END -->
+## Append-only run notes (pass 17, 2026-11-08)
+
+- `compost-growth-healthy` (healthy 80) rerun twice on seed 123456789: `run-20261109T032111Z-4e06` / `run-20261109T032235Z-3b83` — both **pass**; bundles verify exit 0; semantic evidence identical (`soilHealth` 80 healthy, `phaseDays` 3). Logs: 82/83 filtered lines, one extra identical `Pruned orphan bin record at Farm:60,15` in run 2.
+- Mutation negative control: `SoilGrowthHealthyMultiplier 0.85f → 1.00f` → `run-20261109T032724Z-2b7d`, `phaseDays` 4 (expected 3), predicate-0 ×0.85 **false**, exit 19; source restored, post-restore `run-20261109T033119Z-6fda` **pass**. See `verification/mutation-checks.md`.
+- GATE3 block is runner-promoted to the post-restore run `run-20261109T033119Z-6fda` (commit `47bb566`); not hand-edited.
+
+## Append-only run notes (pass 18, 2026-11-08)
+
+- `compost-growth-moderate` (moderate 50) rerun twice on seed 123456789: `run-20261109T033419Z-5316` / `run-20261109T033540Z-40ca` — both **pass**; bundles verify exit 0; semantic evidence identical (`phaseDays` 4). Logs: 83/83 filtered lines, 0 diffs.
+- Mutation negative control (shared edge): `ModerateHealthyBandEdge 71f → 0f` → `run-20261109T034019Z-773e`, `phaseDays` 3 (expected 4), predicate-0 ×1.0 **false**, exit 19; post-restore `run-20261109T034318Z-7374` **pass**. See `verification/mutation-checks.md`.
+- GATE3 block is runner-promoted to the post-restore run `run-20261109T034318Z-7374` (commit `e6a3da1`); not hand-edited.
