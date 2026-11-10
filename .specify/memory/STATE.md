@@ -4,7 +4,7 @@
 
 ## Current verified state (2026-11-09, final snapshot)
 
-- Branch `dev` = `origin/dev` = `cd90f2f`; **0 commits ahead**; working tree clean; no PRs; 0 tags; 0 public releases; release **0.1.0** (spec 017) shipped repo-scoped only (no public channel).
+- Branch `dev` = `origin/dev`; **0 commits ahead**; working tree clean; no PRs; 0 tags; 0 public releases; release **0.1.0** (spec 017) shipped repo-scoped only (no public channel).
 - Build Release **0 errors** (`dotnet build Stardew-LivingRoots.sln -c Release -m:1`; 14 pre-existing warnings; `-m:1` is the recorded host mitigation for `msbuild-release-build-sigabrt`).
 - Tests: **1997 passed / 0 failed / 4 skipped** (2001).
 - Specs closed (0 open tasks, artifacts committed): 002, 005, 008, 012, 013, 016, **017**, **020**.
