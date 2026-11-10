@@ -34,9 +34,9 @@ Status geral: **parcial** — ver `docs/adr/002-adocao-mdmv-dark-factory.md`.
 - [ ] Desalinhamento → SE decision request (conformidade ou ADR local) — Fase 3.
 
 ## Evidência por feature (R4/R7) — gap principal
-- [~] `.specify/validations/<slug>/validate.md` aprovado por feature — hoje só `017` e `020` (de 17 specs).
-- [~] `.specify/releases/<slug>/release.md` por feature — hoje só `017`.
-- [ ] Gate determinístico da cadeia SDD no CI (`scripts/ci/sdd-gate.py`) — Fase 1.
+- [x] `.specify/validations/<slug>/validate.md` aprovado por feature — retroativo concluído para 17 specs (R4) (Fase 1).
+- [x] `.specify/releases/<slug>/release.md` por feature — retroativo concluído para 17 specs (R7) (Fase 1).
+- [x] Gate determinístico da cadeia SDD no CI (`scripts/ci/sdd-gate.py` + `.github/workflows/sdd-gate.yml`) — Fase 1. Required check a configurar no GitHub (NV).
 
 ## Notas
 - `~` = parcialmente atendido.
