@@ -1,0 +1,20 @@
+name: i18n Parity
+
+on:
+  pull_request:
+    paths:
+      - "LivingRoots/i18n/**"
+  push:
+    branches: [dev, main]
+    paths:
+      - "LivingRoots/i18n/**"
+  workflow_dispatch:
+
+jobs:
+  i18n-parity:
+    name: i18n-parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run i18n parity check
+        run: python3 scripts/ci/i18n-parity-check.py

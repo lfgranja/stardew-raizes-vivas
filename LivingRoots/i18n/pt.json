@@ -21,5 +21,9 @@
   "item.heirloom.parsnip.description": "Um parsnip crioulo torto — pálido, adocicado e cheio de personalidade, selecionado para fazendas de solo vivo. Vale um pouco mais na caixa de envio.",
   "message.heirloom.seed-saved": "Uma semente crioula guardada! Sua linhagem de parsnip continua.",
   "message.heirloom.seed-saved-inventory-full": "Seu inventário está cheio, então a semente crioula não foi guardada. Libere um espaço — a próxima colheita deixará outra.",
-  "message.heirloom.plant-bonus-authority-unsupported": "Apenas o anfitrião pode renovar o solo por você no multiplayer, então o bônus de solo não foi aplicado. A semente foi plantada mesmo assim — peça ao anfitrião para cuidar do solo da fazenda."
+  "message.heirloom.plant-bonus-authority-unsupported": "Apenas o anfitrião pode renovar o solo por você no multiplayer, então o bônus de solo não foi aplicado. A semente foi plantada mesmo assim — peça ao anfitrião para cuidar do solo da fazenda.",
+  "message.mulch.already": "Este tile já está coberto.",
+  "message.mulch.invalid-tile": "A cobertura morta só pode ser aplicada em solo arado.",
+  "mulch.description": "Cobertura seca que mantém o solo arado vivo. Bloqueia decadência e ervas daninhas.",
+  "mulch.name": "Cobertura Morta"
 }
