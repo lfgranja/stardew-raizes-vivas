@@ -1,7 +1,7 @@
 # OBJETIVO.md — Living Roots / Raízes Vivas
 
 > **Fontes:** `docs/GDD-living-roots.md` (v1.1), `ROADMAP.md` (atualizado 2026-11-09), `.specify/memory/constitution.md` v2.0.0, `README.md`, `AGENTS.md`, `VERIFICATION_PROTOCOL.md`, assessments/specs/bugs, `research/2026-10-roadmap-feasibility-and-agronomy.md`, `research/2026-11-09-journey-balance-and-outlook.md`, `research/2026-11-09-web-research-ecosystem-status.md`, `specs/014-soil-health-crop-quality/gate3-evidence.md`, `specs/020-heirloom-seeds-pipeline/test.md`.
-> **Status do projeto:** **v0.1.0** (manifest; release de repositório em `dev` desde 2026-11-07 — sem canal público, sem tag git, sem attestation humana por desenho) · .NET 6 / SMAPI 4.5.2 · Stardew Valley 1.6.14+ · branch `dev` = `origin/dev` (`cd90f2f`), **0 commits à frente**, working tree limpo em 2026-11-09 · sem PRs abertos · suíte **1997 passed / 4 skipped / 0 failed** (2001).
+> **Status do projeto:** **v0.1.0** (manifest; release de repositório em `dev` desde 2026-11-07 — sem canal público, sem tag git, sem attestation humana por desenho) · .NET 6 / SMAPI 4.5.2 · Stardew Valley 1.6.14+ · branch `dev` = `origin/dev` com **0 commits à frente**, working tree limpo em 2026-11-09 · sem PRs abertos · suíte **1997 passed / 4 skipped / 0 failed** (2001).
 > **Owner:** maintainer (lfgranja) · **Audiência primária:** jogadores cozy 25–45 + casais em co-op + educadores/ativistas agroecológicos.
 
 ---
@@ -58,7 +58,7 @@ Diferencial vs. concorrentes próximos (ex.: ReGen Valley, Nexus #39740): não �
 | Specs parciais/legadas | 004 (65/67), 014 (131/133), 015 (58/65), 018 (24/28), 019 (5/7), 009 (55/58), 010 (150/203), 001 (10/86), 003 (28/117), 011 (42/88) | `specs/*/tasks.md` — totais **1198 done / 284 open (1482)**; trilha ativa **968/988 = 98,0%** |
 | Gate 3 (7 specs) | **machine-pass host-only**: 004 `7374`, 005 `4cc1`, 013 `1ea4`, 014 `088b`, 015 `29cf`, 017 `6938`, 020 `6021`; todos `verdict: pass`, honesty R | `specs/*/test.md`, `specs/*/verification/host-only-gate3.md`; bundles gitignored |
 | Qualidade local | gate v4 "ALL STEPS PASSED" (format/restore/build+tests 1997/4/0/smoke 49-0/1-skip) | `.specify/bugs/msbuild-release-build-sigabrt/fix.md`, commit `b945f81` |
-| Repo/git | `dev` = `origin/dev` = `cd90f2f`; **0 commits à frente**; árvore limpa; sem tag; release só no repo; sem PRs abertos; 0 releases públicas | `git status -sb`, `git rev-list --count origin/dev..dev`, `git tag --list` (2026-11-09) |
+| Repo/git | `dev` = `origin/dev`; **0 commits à frente**; árvore limpa; sem tag; release só no repo; sem PRs abertos; 0 releases públicas | `git status -sb`, `git rev-list --count origin/dev..dev`, `git tag --list` (2026-11-09) |
 
 > **Honestidade de verificação:** `machine-pass` ≠ `verified`. **Não existe atestado humano/E** e **não existe confirmação multiplayer real (D1)** neste snapshot. Evidência automatizada headless é forte para os sinais cobertos, mas não substitui confirmação humana nem multiplayer real. **Nenhuma claim é promovida além de host-only machine-pass.**
 
@@ -129,7 +129,7 @@ Diferencial vs. concorrentes próximos (ex.: ReGen Valley, Nexus #39740): não �
 
 ## 8. Próximo passo 80/20 (recomendado, refresh 2026-11-09)
 
-**Contexto:** desde o snapshot anterior (2026-11-05), spec 017 (Joja/Agrochemical MVP) foi **implementada, verificada (host-only machine-pass) e lançada no repo como 0.1.0** (`d3ada42`; sem canal público/tag), e spec 020 (heirloom seeds) foi implementada e fechada (35/35; Gate 3 do plantio `6021`). Suite atual: **1997/0/4**; build 0 erros; format exit 0; `dev` = `origin/dev` (`cd90f2f`, 0 à frente).
+**Contexto:** desde o snapshot anterior (2026-11-05), spec 017 (Joja/Agrochemical MVP) foi **implementada, verificada (host-only machine-pass) e lançada no repo como 0.1.0** (`d3ada42`; sem canal público/tag), e spec 020 (heirloom seeds) foi implementada e fechada (35/35; Gate 3 do plantio `6021`). Suite atual: **1997/0/4**; build 0 erros; format exit 0; `dev` = `origin/dev` (0 à frente).
 
 **O que falta não é código novo — é evidência, decisão de publicação e fechamento documental:**
 
