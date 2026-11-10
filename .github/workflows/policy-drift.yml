@@ -1,0 +1,15 @@
+name: Policy Drift
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  policy-drift:
+    name: policy-drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run policy drift check
+        run: python3 scripts/ci/check_policy_drift.py docs/governance/hub-policy-manifest.json docs/governance/satellite-manifest.json
