@@ -93,7 +93,7 @@ public static class HeirloomPatches
         catch (Exception ex)
         {
             // Postfix must not crash the game; trace only.
-            TraceLog("heirloom plant postfix failed", ex);
+            PatchTraceLog.Log(monitor, "heirloom plant postfix failed", ex);
         }
     }
 
@@ -102,7 +102,7 @@ public static class HeirloomPatches
         if (soilHealthService == null || hostLockService == null)
         {
             // Fail closed: no host authority ⇒ no shared write (Constitution VI / FR-012).
-            TraceLog("heirloom plant bonus skipped: host lock or soil service missing", null);
+            PatchTraceLog.Log(monitor, "heirloom plant bonus skipped: host lock or soil service missing", null);
             return;
         }
 
@@ -131,7 +131,7 @@ public static class HeirloomPatches
         }
         catch (Exception ex)
         {
-            TraceLog("heirloom plant: sync broadcast failed", ex);
+            PatchTraceLog.Log(monitor, "heirloom plant: sync broadcast failed", ex);
         }
     }
 
@@ -158,7 +158,7 @@ public static class HeirloomPatches
         }
         catch (Exception ex)
         {
-            TraceLog("heirloom plant bonus request send failed", ex);
+            PatchTraceLog.Log(monitor, "heirloom plant bonus request send failed", ex);
             return false;
         }
     }
@@ -195,28 +195,6 @@ public static class HeirloomPatches
         catch
         {
             return "unknown";
-        }
-    }
-
-    private static void TraceLog(string message, Exception? ex)
-    {
-        try
-        {
-            if (monitor != null)
-            {
-                if (ex != null)
-                {
-                    monitor.Log($"{message}: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                }
-                else
-                {
-                    monitor.Log(message, LogLevel.Trace);
-                }
-            }
-        }
-        catch
-        {
-            // never throw from logging
         }
     }
 }

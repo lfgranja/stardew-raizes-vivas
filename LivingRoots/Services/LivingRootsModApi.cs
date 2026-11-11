@@ -263,20 +263,8 @@ namespace LivingRoots.Services
         /// Returns false when the delegate is not bound or the application is
         /// refused or fails; the API performs no soil mutation itself.
         /// </summary>
-        public bool ApplyAgrochemical(string locationName, int tileX, int tileY)
+        private static bool InvokeBoundDelegate(Func<string, int, int, bool>? apply, string locationName, int tileX, int tileY)
         {
-            if (string.IsNullOrWhiteSpace(locationName))
-            {
-                return false;
-            }
-
-            Func<string, int, int, bool>? apply;
-            lock (_lock)
-            {
-                if (_disposed) return false;
-                apply = _applyAgrochemical;
-            }
-
             if (apply == null)
             {
                 return false;
@@ -292,8 +280,7 @@ namespace LivingRoots.Services
             }
         }
 
-        /// <inheritdoc />
-        public bool ApplyMulch(string locationName, int tileX, int tileY)
+        private bool ApplyBound(string locationName, int tileX, int tileY, Func<Func<string, int, int, bool>?> getDelegate)
         {
             if (string.IsNullOrWhiteSpace(locationName))
             {
@@ -304,22 +291,22 @@ namespace LivingRoots.Services
             lock (_lock)
             {
                 if (_disposed) return false;
-                apply = _applyMulch;
+                apply = getDelegate();
             }
 
-            if (apply == null)
-            {
-                return false;
-            }
+            return InvokeBoundDelegate(apply, locationName, tileX, tileY);
+        }
 
-            try
-            {
-                return apply(locationName, tileX, tileY);
-            }
-            catch
-            {
-                return false;
-            }
+        /// <inheritdoc />
+        public bool ApplyAgrochemical(string locationName, int tileX, int tileY)
+        {
+            return ApplyBound(locationName, tileX, tileY, () => _applyAgrochemical);
+        }
+
+        /// <inheritdoc />
+        public bool ApplyMulch(string locationName, int tileX, int tileY)
+        {
+            return ApplyBound(locationName, tileX, tileY, () => _applyMulch);
         }
 
         /// <inheritdoc />

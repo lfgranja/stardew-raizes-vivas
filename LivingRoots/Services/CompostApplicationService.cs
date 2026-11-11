@@ -1,4 +1,5 @@
 using LivingRoots.Domain;
+using LivingRoots.Services.Visualization;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewValley;
@@ -79,20 +80,7 @@ public class CompostApplicationService(
 
         heldItem.Stack--;
 
-        var worldPosition = new Vector2(tile.X * (float)ModConstants.TileSize + 32f, tile.Y * (float)ModConstants.TileSize);
-        var sprite = new TemporaryAnimatedSprite(
-            null,
-            Rectangle.Empty,
-            1000f,
-            1,
-            1,
-            worldPosition,
-            false,
-            false);
-        sprite.text = $"+{ModConstants.RestorationAmount:F0}";
-        sprite.color = ModConstants.CompostSpriteColor;
-        sprite.alphaFade = 0.02f;
-        sprite.motion = new Vector2(0, -0.5f);
+        var sprite = FeedbackSpriteFactory.CreateTileSprite(tile, $"+{ModConstants.RestorationAmount:F0}", ModConstants.CompostSpriteColor);
         location.TemporarySprites.Add(sprite);
 
         _monitor.Log($"Compost applied at ({tile.X}, {tile.Y}) in {locationName}: " +

@@ -394,7 +394,7 @@ namespace LivingRoots.Patches
                     }
                     catch (Exception ex)
                     {
-                        TraceLog("heirloom seed save failed", ex);
+                        PatchTraceLog.Log(monitor, "heirloom seed save failed", ex);
                     }
                 }
 
@@ -417,7 +417,7 @@ namespace LivingRoots.Patches
             }
             catch (Exception ex)
             {
-                TraceLog("heirloom harvest rules failed", ex);
+                PatchTraceLog.Log(monitor, "heirloom harvest rules failed", ex);
             }
         }
 
@@ -425,7 +425,7 @@ namespace LivingRoots.Patches
         {
             if (soilHealthService == null || heirloomHostLock == null)
             {
-                TraceLog("heirloom harvest bonus skipped: soil service or host lock missing", null);
+                PatchTraceLog.Log(monitor, "heirloom harvest bonus skipped: soil service or host lock missing", null);
                 return;
             }
 
@@ -459,7 +459,7 @@ namespace LivingRoots.Patches
             }
             catch (Exception ex)
             {
-                TraceLog("heirloom harvest bonus: sync broadcast failed", ex);
+                PatchTraceLog.Log(monitor, "heirloom harvest bonus: sync broadcast failed", ex);
             }
         }
 
@@ -479,7 +479,7 @@ namespace LivingRoots.Patches
             }
             catch (Exception ex)
             {
-                TraceLog("heirloom harvest bonus request send failed", ex);
+                PatchTraceLog.Log(monitor, "heirloom harvest bonus request send failed", ex);
             }
         }
 
@@ -496,29 +496,6 @@ namespace LivingRoots.Patches
                 // Never throw from feedback.
             }
         }
-
-        private static void TraceLog(string message, Exception? ex)
-        {
-            try
-            {
-                if (monitor != null)
-                {
-                    if (ex != null)
-                    {
-                        monitor.Log($"{message}: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
-                    }
-                    else
-                    {
-                        monitor.Log(message, LogLevel.Trace);
-                    }
-                }
-            }
-            catch
-            {
-                // never throw from logging
-            }
-        }
-
         private static IReadOnlyList<Item?>? ToReadOnly(IList<Item?>? items)
         {
             if (items == null)

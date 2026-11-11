@@ -1,8 +1,8 @@
 {
-  "percentage": 0.83,
-  "duplicates": 10,
-  "lines": 148,
+  "percentage": 0.0,
+  "duplicates": 0,
+  "lines": 0,
   "measuredAt": "2026-11-10",
-  "commit": "199f3a6",
-  "scope": "LivingRoots/ (csharp, re-baseline after Fase 4; pre-existing duplications documented in ESC-LR-20261110-004; refactor owed)"
+  "commit": "refactor-esc004",
+  "scope": "LivingRoots/ (csharp, post-refactor ESC-004: 0 clones, 0 duplicated lines)"
 }

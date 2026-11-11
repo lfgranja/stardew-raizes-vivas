@@ -4,6 +4,7 @@ using System.Linq;
 using LivingRoots.Domain;
 using LivingRoots.Domain.Interfaces;
 using LivingRoots.Domain.Models;
+using LivingRoots.Services.Visualization;
 using Microsoft.Xna.Framework;
 using StardewModdingAPI;
 using StardewValley;
@@ -191,38 +192,48 @@ public class MulchApplicationService(
         _loadAbortedForLimits = false;
     }
 
-    public bool IsMulched(string locationName, Vector2 tile)
+    private bool TryGetMulchTileEntryNoLock(string locationName, Vector2 tile, out MulchTileEntry? state)
+    {
+        if (_runtimeCache.TryGetValue(locationName, out var tileDict))
+        {
+            var point = new Point((int)tile.X, (int)tile.Y);
+            if (tileDict.TryGetValue(point, out state))
+            {
+                return true;
+            }
+        }
+        state = null;
+        return false;
+    }
+
+    private bool TryGetMulchTileEntry(string locationName, Vector2 tile, out MulchTileEntry? state)
     {
         lock (_lock)
         {
-            if (_runtimeCache.TryGetValue(locationName, out var tileDict))
-            {
-                var point = new Point((int)tile.X, (int)tile.Y);
-                if (tileDict.TryGetValue(point, out var state))
-                {
-                    return state.HasMulch;
-                }
-            }
-            return false;
+            return TryGetMulchTileEntryNoLock(locationName, tile, out state);
         }
+    }
+
+    public bool IsMulched(string locationName, Vector2 tile)
+    {
+        return TryGetMulchTileEntry(locationName, tile, out var state) && state != null && state.HasMulch;
     }
 
     public void TickMulch(string locationName, Vector2 tile)
     {
         lock (_lock)
         {
-            if (_runtimeCache.TryGetValue(locationName, out var tileDict))
+            if (TryGetMulchTileEntryNoLock(locationName, tile, out var state) && state != null && state.HasMulch)
             {
-                var point = new Point((int)tile.X, (int)tile.Y);
-                if (tileDict.TryGetValue(point, out var state) && state.HasMulch)
+                state.DaysRemaining--;
+                _mulchVersion++;
+                if (state.DaysRemaining <= 0)
                 {
-                    state.DaysRemaining--;
-                    _mulchVersion++;
-                    if (state.DaysRemaining <= 0)
+                    state.HasMulch = false;
+                    state.DaysRemaining = 0;
+                    if (_runtimeCache.TryGetValue(locationName, out var tileDict))
                     {
-                        state.HasMulch = false;
-                        state.DaysRemaining = 0;
-                        tileDict.Remove(point);
+                        tileDict.Remove(new Point((int)tile.X, (int)tile.Y));
                     }
                 }
             }
@@ -290,21 +301,7 @@ public class MulchApplicationService(
 
         heldItem.Stack--;
 
-        // Visual feedback
-        var worldPosition = new Vector2(tile.X * (float)ModConstants.TileSize + 32f, tile.Y * (float)ModConstants.TileSize);
-        var sprite = new TemporaryAnimatedSprite(
-            null,
-            Rectangle.Empty,
-            1000f,
-            1,
-            1,
-            worldPosition,
-            false,
-            false);
-        sprite.text = "Mulch";
-        sprite.color = ModConstants.MulchColor;
-        sprite.alphaFade = 0.02f;
-        sprite.motion = new Vector2(0, -0.5f);
+        var sprite = FeedbackSpriteFactory.CreateTileSprite(tile, "Mulch", ModConstants.MulchColor);
         location.TemporarySprites.Add(sprite);
 
         Game1.playSound("hoeHit");
