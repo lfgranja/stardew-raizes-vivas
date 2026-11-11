@@ -36,13 +36,39 @@ Referência: `mdmv-dark-factory` research 07/11/12; ADR 002 (Fase 4).
 
 - PR #781 (Fase 2) incluiu a correção de paridade i18n: 4 chaves `mulch.*` adicionadas ao `pt.json` (`message.mulch.already`, `message.mulch.invalid-tile`, `mulch.description`, `mulch.name`). Verificação: `i18n-parity-check.py` → PASS.
 
-## Classes futuras (candidatas, não habilitadas)
+## Classes habilitadas (narrow lights-out)
 
-- Bump de dependências patch (SMAPI, tooling) — requer validação de build/test.
-- Correção de lint (`dotnet format`) — blast radius baixo, verificação trivial.
-- Atualização de `default.json`/`en.json` com novas chaves + tradução pt.
+### 1. Paridade i18n (default/en/pt) — HABILITADA
+- **Gates:** `i18n-parity-check.py` PASS, build, test, format, sdd-gate.
+- **Blast radius:** baixo (só strings).
+- **Exemplo:** PR #783 (4 chaves mulch.* adicionadas ao pt.json).
+- **Workflow:** `.github/workflows/i18n-parity.yml`.
 
-Cada nova classe exige: gates machine-checkable definidos, blast radius classificado, human approval, execution record.
+### 2. Correção de lint (`dotnet format`) — HABILITADA
+- **Gates:** `dotnet format --verify-no-changes` (deve falhar antes, passar depois), build, test, sdd-gate.
+- **Blast radius:** baixo (formatação, sem mudança de lógica).
+- **Fluxo:** agente roda `dotnet format`, verifica diff mínimo, abre PR com execution record.
+- **Workflow:** `.github/workflows/code-style.yml` (já existente) + sdd-gate.
+
+### 3. Novas chaves i18n (feature strings) — HABILITADA
+- **Gates:** `i18n-parity-check.py` PASS (key sets idênticos), build, test, format, sdd-gate.
+- **Blast radius:** baixo (só strings).
+- **Fluxo:** agente adiciona a chave nos 3 locales (default/en/pt), traduzindo para pt; verifica paridade; abre PR.
+- **Nota:** tradução para pt requer revisão humana (qualidade de idioma).
+
+### 4. Bump de dependências patch — HABILITADA (somente patch/minor)
+- **Gates:** `dotnet build`, `dotnet test`, `dotnet format --verify-no-changes`, sdd-gate, i18n-parity (se aplicável).
+- **Blast radius:** médio (pode afetar compilação/comportamento).
+- **Restrição:** apenas bumps de **patch** (x.y.Z → x.y.Z+1). Bumps de minor/major requerem revisão humana.
+- **Verificação:** `scripts/ci/dependency-outdated-check.py` reporta pacotes desatualizados; agente aplica apenas patch bumps.
+- **Workflow:** `.github/workflows/dependency-check.yml` (scheduled weekly + dispatch).
+
+## Classes NÃO habilitadas (zona vermelha / alto blast radius)
+
+- Mudanças em `Controllers/`, `Patches/`, segurança, persistência.
+- Bumps de minor/major de dependências.
+- Mudanças em multiplayer host-authoritative state.
+- Auto-merge cego (política 022/025/042).
 
 ## O que NÃO está habilitado
 
