@@ -36,6 +36,7 @@
     "docs/governance/execution-record.schema.json",
     "docs/governance/hub-policy-manifest.json",
     "docs/governance/narrow-lights-out.md",
+    "docs/governance/brownfield-zones.md",
     "docs/mp-live-verification.md",
     "docs/telemetry/execution-record.jsonl",
     "specs/024-pilha-escalonamentos-nivel5/registry/escalations.yaml",
