@@ -1,0 +1,24 @@
+name: Telemetry Ingest (self-check)
+
+on:
+  push:
+    branches: [dev, main]
+    paths:
+      - "docs/telemetry/**"
+  workflow_dispatch:
+
+jobs:
+  telemetry-ingest:
+    name: telemetry-ingest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate telemetry
+        run: python3 scripts/telemetry/validate_telemetry.py docs/telemetry/execution-record.jsonl --strict
+      - name: Ingest (self-check)
+        run: python3 scripts/telemetry/ingest_telemetry.py telemetry-ingest-report.json docs/telemetry/execution-record.jsonl
+      - name: Upload ingest report
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-ingest-report
+          path: telemetry-ingest-report.json

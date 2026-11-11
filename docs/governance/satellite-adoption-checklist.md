@@ -30,7 +30,9 @@ Status geral: **parcial** — ver `docs/adr/002-adocao-mdmv-dark-factory.md`.
 - [x] Emite JSONL 035.1.0 (`scripts/telemetry/emit_telemetry.py`) — Fase 2 concluída (`docs/telemetry/execution-record.jsonl`, 9 eventos seed).
 - [x] Valida com `validate_telemetry.py` (sem segredos; custos rotulados NV billing) — Fase 2 concluída; validação PASS (0 errors, 0 warnings, strict ok).
 - [x] Schema local (`docs/governance/execution-record.schema.json`, baseado em 035) publicado.
-- [ ] Publica retorno para ingestão do hub — pendente (hub ainda sem ingestão real, NV); padrão compatível (schema_version 035.1.0).
+- [x] Kit completo: `validate_telemetry.py`, `emit_telemetry.py`, `wrap_telemetry.py`, `telemetry_report.py`, `ingest_telemetry.py` (adaptados do hub, stdlib, no network).
+- [x] Self-check: workflow `telemetry-ingest.yml` (validate + ingest + artifact upload) — pronto para ingestão quando o hub habilitar.
+- [ ] Publica retorno para ingestão do hub — pendente (hub ainda sem ingestão real, NV); padrão compatível (schema_version 035.1.0); arquivo em `docs/telemetry/execution-record.jsonl`.
 
 ## Segurança (036/018)
 - [x] Sem segredos em prompts/logs/PR/artifacts (redação em `verify-scenario.sh`, quality gate).
