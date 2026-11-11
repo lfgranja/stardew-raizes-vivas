@@ -84,13 +84,13 @@
   risco: medio
   impacto: "Principle VI (multiplayer first-class) sem evidência live; risco de regressão MP"
   frequencia: pontual
-  controle_atual: "ThreadSafeGameLoopEventsStub + testes de mecanismo; constitution Principle VI"
-  candidato_automacao: "cenário headless multi-cliente no runner (futuro)"
-  precondicoes: ["runner com suporte multi-cliente", "cenário de teste"]
+  controle_atual: "ThreadSafeGameLoopEventsStub + testes de mecanismo; constitution Principle VI; cenários farmhand (agrochemical) cobrem recusa host-guard via runner (farmhand_breach detection)"
+  candidato_automacao: "cenário headless multi-cliente no runner (futuro); farmhand refusal já automatizado"
+  precondicoes: ["runner com suporte multi-cliente", "cenário de teste", "sessão live com 2 clientes"]
   gatilho_reavaliacao: ["roadmap D1", "mudança em ModController MP sync"]
   status: triado
   owner: "@lfgranja"
-  refs: ["LivingRoots/Controllers/ModController.cs (FR-009/A8)", "constitution Principle VI"]
+  refs: ["LivingRoots/Controllers/ModController.cs (FR-009/A8)", "constitution Principle VI", "docs/mp-live-verification.md", "specs/017-joja-agrochemical-tradeoff/scenarios/"]
 
 - id: ESC-LR-20261110-006
   data: 2026-11-10

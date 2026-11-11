@@ -34,9 +34,15 @@ Validar Principle VI (multiplayer first-class) com evidência live: host e farmh
 - SMAPI log de ambos (sem erros de sync).
 - (Opcional) evidence bundle via `verify-scenario.sh` com cenário multiplayer (futuro).
 
-## Status
+## Cobertura automatizada existente
 
-- **Owed** — requer sessão live com 2+ clientes; não automatizável no CI atual (hub Fase 3 NV).
+A recusa de ações host-only por farmhands **já é coberta** por testes automatizados:
+
+- `ModControllerAgrochemicalTests.*UnsupportedAuthority*` — farmhand recusado antes de mutação.
+- Cenário `specs/017-joja-agrochemical-tradeoff/scenarios/agrochemical-tradeoff.scenario.json` — runner headless com `PLAYER_ROLE=farmhand` detecta `farmhand_breach`.
+- `OnHostSuccess_*`, `OnLockContention_*`, `WithoutLockService_*` — host authority, lock, sync (FR-009).
+
+O que **não** é coberto automaticamente: observação simultânea de valores consistentes entre host e farmhand (requer 2 clientes live).
 - Stubs atestam mecanismo (`ModControllerAgrochemicalTests`, `OnHostSuccess_*`, `OnLockContention_*`).
 - Constitution Principle VI: "Live multi-client verification is owed to roadmap D1".
 
