@@ -70,7 +70,7 @@
   candidato_automacao: "refatoração incremental + atualização de baseline com evidência"
   precondicoes: ["testes verdes após refatoração", "revisão humana"]
   gatilho_reavaliacao: ["PR de refatoração", "mudança de threshold"]
-  status: triado
+  status: resolvido
   owner: "@lfgranja"
   refs: ["docs/quality-gate.md", ".jscpd-baseline.json"]
 

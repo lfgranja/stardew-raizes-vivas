@@ -526,6 +526,13 @@ namespace LivingRoots.Domain
             return SecurityConfusables.ContainsKey(c) && IsGreekLetter(c);
         }
 
+        private static bool IsCombiningMark(UnicodeCategory category)
+        {
+            return category == UnicodeCategory.NonSpacingMark ||
+                   category == UnicodeCategory.SpacingCombiningMark ||
+                   category == UnicodeCategory.EnclosingMark;
+        }
+
         /// <summary>
         /// Finds the previous non-combining mark character in the text.
         /// </summary>
@@ -536,10 +543,7 @@ namespace LivingRoots.Domain
         {
             for (var i = startIndex - 1; i >= 0; i--)
             {
-                var category = CharUnicodeInfo.GetUnicodeCategory(text[i]);
-                if (category != UnicodeCategory.NonSpacingMark &&
-                    category != UnicodeCategory.SpacingCombiningMark &&
-                    category != UnicodeCategory.EnclosingMark)
+                if (!IsCombiningMark(CharUnicodeInfo.GetUnicodeCategory(text[i])))
                 {
                     return i;
                 }
@@ -557,10 +561,7 @@ namespace LivingRoots.Domain
         {
             for (var i = startIndex + 1; i < text.Length; i++)
             {
-                var category = CharUnicodeInfo.GetUnicodeCategory(text[i]);
-                if (category != UnicodeCategory.NonSpacingMark &&
-                    category != UnicodeCategory.SpacingCombiningMark &&
-                    category != UnicodeCategory.EnclosingMark)
+                if (!IsCombiningMark(CharUnicodeInfo.GetUnicodeCategory(text[i])))
                 {
                     return i;
                 }

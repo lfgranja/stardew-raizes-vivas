@@ -71,7 +71,7 @@ public class CompostingBinService(
         ApplyAddWasteResult(locationName, tile, result);
     }
 
-    private AddWasteResult TryAddWasteInternal(string locationName, string key, Vector2 tile, Item item)
+    private CompostingBinStateModel GetOrCreateBin(string locationName, string key, Vector2 tile)
     {
         if (!_runtimeCache.ContainsKey(locationName))
             _runtimeCache[locationName] = new Dictionary<string, CompostingBinStateModel>();
@@ -82,6 +82,12 @@ public class CompostingBinService(
             bin = _factory.CreateBin((int)tile.X, (int)tile.Y);
             bins[key] = bin;
         }
+        return bin;
+    }
+
+    private AddWasteResult TryAddWasteInternal(string locationName, string key, Vector2 tile, Item item)
+    {
+        var bin = GetOrCreateBin(locationName, key, tile);
 
         if (bin.State != CompostingBinState.Empty)
             return AddWasteResult.Noop();
@@ -372,15 +378,7 @@ public class CompostingBinService(
 
         lock (_lock)
         {
-            if (!_runtimeCache.ContainsKey(locationName))
-                _runtimeCache[locationName] = new Dictionary<string, CompostingBinStateModel>();
-
-            var bins = _runtimeCache[locationName];
-            if (!bins.TryGetValue(key, out var bin))
-            {
-                bin = _factory.CreateBin((int)tile.X, (int)tile.Y);
-                bins[key] = bin;
-            }
+            var bin = GetOrCreateBin(locationName, key, tile);
 
             if (binItem.modData != null &&
                 binItem.modData.TryGetValue(ModConstants.ModDataInputIdKey, out string inputId) &&

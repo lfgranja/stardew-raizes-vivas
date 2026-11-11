@@ -1971,15 +1971,7 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                var farmLocationNames = new HashSet<string>();
-                var currentLocationName = StardewValley.Game1.currentLocation?.Name;
-                if (!string.IsNullOrEmpty(currentLocationName))
-                {
-                    farmLocationNames.Add(currentLocationName);
-                }
-
-                farmLocationNames.Add("Greenhouse");
-                farmLocationNames.Add("Farm");
+                var farmLocationNames = BuildFarmLocationNames();
 
                 foreach (var locationName in farmLocationNames)
                 {
@@ -1994,6 +1986,19 @@ namespace LivingRoots.Controllers
                 _monitor.Log("Error in day started handler.", LogLevel.Error);
                 _monitor.Log($"Day started exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
             }
+        }
+
+        private static HashSet<string> BuildFarmLocationNames()
+        {
+            var farmLocationNames = new HashSet<string>();
+            var currentLocationName = StardewValley.Game1.currentLocation?.Name;
+            if (!string.IsNullOrEmpty(currentLocationName))
+            {
+                farmLocationNames.Add(currentLocationName);
+            }
+            farmLocationNames.Add("Greenhouse");
+            farmLocationNames.Add("Farm");
+            return farmLocationNames;
         }
 
         private void OnDayEnding(object? sender, DayEndingEventArgs e)
@@ -2019,14 +2024,7 @@ namespace LivingRoots.Controllers
                     return;
                 }
 
-                var farmLocationNames = new HashSet<string>();
-                var currentLocationName = StardewValley.Game1.currentLocation?.Name;
-                if (!string.IsNullOrEmpty(currentLocationName))
-                {
-                    farmLocationNames.Add(currentLocationName);
-                }
-                farmLocationNames.Add("Greenhouse");
-                farmLocationNames.Add("Farm");
+                var farmLocationNames = BuildFarmLocationNames();
 
                 foreach (var locationName in farmLocationNames)
                 {

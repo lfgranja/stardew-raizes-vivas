@@ -192,18 +192,7 @@ namespace LivingRoots
                 HarvestPatches.InitializeHeirloomRules(
                     hostAtomicLockService,
                     who => who == null ? null : new FarmerInventoryAdapter(who),
-                    () =>
-                    {
-                        try
-                        {
-                            var season = StardewValley.Game1.currentSeason;
-                            return string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}:{1}:{2}", season, StardewValley.Game1.dayOfMonth, StardewValley.Game1.year);
-                        }
-                        catch
-                        {
-                            return "unknown";
-                        }
-                    },
+                    () => GetCurrentSeasonDayKey(),
                     () => _controller?.BroadcastSoilHealthSnapshotIfHost(),
                     helper,
                     this.ModManifest);
@@ -216,18 +205,7 @@ namespace LivingRoots
                     this.ModManifest,
                     key => LocalizeOrFallback(key, key),
                     () => _controller?.BroadcastSoilHealthSnapshotIfHost(),
-                    () =>
-                    {
-                        try
-                        {
-                            var season = StardewValley.Game1.currentSeason;
-                            return string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}:{1}:{2}", season, StardewValley.Game1.dayOfMonth, StardewValley.Game1.year);
-                        }
-                        catch
-                        {
-                            return "unknown";
-                        }
-                    });
+                    () => GetCurrentSeasonDayKey());
                 // Skip Harmony patching in test environments
                 if (this.ModManifest != null && !string.IsNullOrEmpty(this.ModManifest.UniqueID) && this.Monitor != null)
                 {
@@ -256,27 +234,7 @@ namespace LivingRoots
                         return false;
                     }
 
-                    StardewValley.GameLocation? location = null;
-                    try
-                    {
-                        location = locationProvider?.GetLocationByName(loc);
-                    }
-                    catch
-                    {
-                        location = null;
-                    }
-
-                    if (location == null)
-                    {
-                        try
-                        {
-                            location = StardewValley.Game1.getLocationFromName(loc);
-                        }
-                        catch
-                        {
-                            location = null;
-                        }
-                    }
+                    var location = ResolveLocation(loc, name => locationProvider?.GetLocationByName(name));
 
                     if (location == null)
                     {
@@ -311,27 +269,7 @@ namespace LivingRoots
             {
                 _modApi.BindMulchApplication((loc, x, y) =>
                 {
-                    StardewValley.GameLocation? location = null;
-                    try
-                    {
-                        location = locationProvider?.GetLocationByName(loc);
-                    }
-                    catch
-                    {
-                        location = null;
-                    }
-
-                    if (location == null)
-                    {
-                        try
-                        {
-                            location = StardewValley.Game1.getLocationFromName(loc);
-                        }
-                        catch
-                        {
-                            location = null;
-                        }
-                    }
+                    var location = ResolveLocation(loc, name => locationProvider?.GetLocationByName(name));
 
                     if (location == null)
                     {
@@ -893,6 +831,44 @@ namespace LivingRoots
                         }
                     };
                 });
+            }
+        }
+        private static StardewValley.GameLocation? ResolveLocation(string loc, Func<string, StardewValley.GameLocation?>? locationProvider)
+        {
+            StardewValley.GameLocation? location = null;
+            try
+            {
+                location = locationProvider?.Invoke(loc);
+            }
+            catch
+            {
+                location = null;
+            }
+
+            if (location == null)
+            {
+                try
+                {
+                    location = StardewValley.Game1.getLocationFromName(loc);
+                }
+                catch
+                {
+                    location = null;
+                }
+            }
+            return location;
+        }
+
+        private static string GetCurrentSeasonDayKey()
+        {
+            try
+            {
+                var season = StardewValley.Game1.currentSeason;
+                return string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}:{1}:{2}", season, StardewValley.Game1.dayOfMonth, StardewValley.Game1.year);
+            }
+            catch
+            {
+                return "unknown";
             }
         }
     }

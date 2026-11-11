@@ -177,20 +177,23 @@ namespace LivingRoots.Domain
         /// <param name="path">The directory path</param>
         /// <param name="separator">The path separator to use</param>
         /// <returns>The last path component</returns>
+        private static int FindLastSeparatorIndex(string path, char separator)
+        {
+            for (var i = path.Length - 1; i >= 0; i--)
+            {
+                if (path[i] == separator)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
         private static string ExtractLastPathComponent(string path, char separator)
         {
             if (string.IsNullOrEmpty(path)) return string.Empty;
 
             // Find the last separator in the path
-            var lastSeparatorIndex = -1;
-            for (var i = path.Length - 1; i >= 0; i--)
-            {
-                if (path[i] == separator)
-                {
-                    lastSeparatorIndex = i;
-                    break;
-                }
-            }
+            var lastSeparatorIndex = FindLastSeparatorIndex(path, separator);
 
             if (lastSeparatorIndex == -1)
             {
@@ -233,16 +236,8 @@ namespace LivingRoots.Domain
             // We need to replace the last component with lastComponent + "_"
             var modifiedComponent = ProcessFileNameInternal(lastComponent);
 
-            // Find the last occurrence of the component in the path
-            var lastSeparatorIndex = -1;
-            for (var i = path.Length - 1; i >= 0; i--)
-            {
-                if (path[i] == separator)
-                {
-                    lastSeparatorIndex = i;
-                    break;
-                }
-            }
+            // Find the last separator in the path
+            var lastSeparatorIndex = FindLastSeparatorIndex(path, separator);
 
             if (lastSeparatorIndex == -1)
             {
