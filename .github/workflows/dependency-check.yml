@@ -1,0 +1,19 @@
+name: Dependency Outdated Check
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  dependency-check:
+    name: dependency-outdated
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "6.0.x"
+      - name: Check outdated dependencies
+        run: python3 scripts/ci/dependency-outdated-check.py
