@@ -1,0 +1,30 @@
+# Changelog
+
+All notable changes to **Living Roots** (Stardew Valley SMAPI mod) should be documented in this file.
+
+> **Release status:** no public releases/tags published yet. Internal mod version in `manifest.json` is currently `0.1.0`; repository HEAD may include work beyond that manifest label. Any public `0.2.0-beta` release must reconcile version/provenance and state evidence boundaries honestly (`machine-pass` host-only ≠ human-verified; 0 D1; 0 SC-004).
+
+## [Unreleased / 0.2.0-beta draft]
+
+### Added
+- Heirloom seeds pipeline initial slice (Crioulo Parsnip template): data/content registration and planting bonus path (see spec 020). *Gate 3 machine-pass (host-only) covers planting only; harvest/seed-save/natural acquisition/D1 pending.*
+- Joja agrochemical tradeoff MVP (spec 017): bounded, recoverable soil-health tradeoff with explicit feedback. *SC-004 comprehension protocol not executed.*
+- Harmony harvest seam and related harvest-quality/growth/soil feedback integrations as implemented across recent specs (see `specs/` and release records).
+
+### Changed
+- [Reconcile and list user-facing changes since last public/internal baseline before release.]
+
+### Fixed
+- [List notable fixes with issue/PR/spec refs as appropriate.]
+
+### Verification notes (draft — update for tagged release commit)
+- Deterministic snapshot 2026-11-10T02:40Z (`c07fbab`): `release-gate.sh` ALL STEPS PASSED; 1997 passed / 0 failed / 4 skipped (2001); smoke 50/51.
+- End-to-end (headless, host-only): 7 scenarios `machine-pass` (004,005,013,014,015,017,020 plant-only). No human attestation, no live D1 farmhand attestation, no SC-004.
+- Replace this section with exact commit hash, UTC timestamp, gate/test results, and scenario evidence for the actual release candidate.
+
+### Known limitations
+- Beta: back up saves; multiplayer (D1 live convergence) not attested; Harmony may interact with other mods; heirloom flows beyond planting pending evidence.
+
+## [0.1.0] - internal (unreleased)
+
+- Initial internal baseline (soil health core, compost/mulch/growth/quality foundations and earlier specs as recorded in repository). No public tag/release.
