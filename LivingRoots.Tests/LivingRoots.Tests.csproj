@@ -54,7 +54,7 @@
     <!-- Override vulnerable transitive deps (CVE-2017-11770, CVE-2018-8292) -->
     <PackageReference Include="System.Net.Http" Version="4.3.4" PrivateAssets="all" />
     <PackageReference Include="System.Security.Cryptography.X509Certificates" Version="4.3.2" PrivateAssets="all" />
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" PrivateAssets="all" />
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.36.0.15337" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.403" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Coyote" Version="1.7.11" />
 
