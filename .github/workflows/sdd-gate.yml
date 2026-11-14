@@ -12,5 +12,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run SDD gate
-        run: python3 scripts/ci/sdd-gate.py
+      - name: Run aggregate CI gate (sdd + policy drift + protected paths + docs markers)
+        run: bash scripts/ci/aggregate-gate.sh
