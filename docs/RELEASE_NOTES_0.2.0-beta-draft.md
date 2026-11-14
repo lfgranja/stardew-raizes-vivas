@@ -42,8 +42,10 @@ Living Roots (Raízes Vivas) is an agroecological Stardew Valley mod focused on 
 ## Verification status (read before reporting as “verified”)
 
 - **Automated tests (snapshot 2026-11-10, HEAD `c07fbab`):** 1997 passed / 0 failed / 4 skipped; `release-gate.sh` **ALL STEPS PASSED** (format, locked restore, build Release, tests, smoke 50/51, docs markers, protected paths).
+- **Deterministic gate (RC-prep evidence, 2026-11-14T21:22:43Z UTC, commit `27ed81b5d49773cd679a04a43142e267359bd13c`):** `release-gate.sh` **ALL STEPS PASSED** (format, locked restore, build Release, tests, smoke launch-free **51 files / 50 passed / 0 failed / 1 skipped**, docs markers, protected paths). **Re-run and record on the exact tagged RC commit before publishing.**
 - **End-to-end (real game, headless, host-only):** 7 scenarios `machine-pass` (compost, growth, mulch, harvest quality, Harmony seam, Joja tradeoff, heirloom planting-only) with verdict pass/honesty R.
 - **Not yet:** human-verified playthroughs, **D1** live farmhand attestation, **SC-004** (017) execution, and 020 Gate 3 beyond planting (harvest/seed-save/natural acquisition). `machine-pass` ≠ `verified`.
+- **R4/R7 prep trail (not published):** `.specify/assessments/0.2.0-beta/decision.md`, `.specify/validations/0.2.0-beta/validate.md`, `.specify/releases/0.2.0-beta/release.md`.
 
 > If the release-gate/test snapshot differs for the tagged commit, update this section with the exact commit hash, date/time (UTC), and results.
 

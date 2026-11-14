@@ -19,8 +19,9 @@ All notable changes to **Living Roots** (Stardew Valley SMAPI mod) should be doc
 
 ### Verification notes (draft — update for tagged release commit)
 - Deterministic snapshot 2026-11-10T02:40Z (`c07fbab`): `release-gate.sh` ALL STEPS PASSED; 1997 passed / 0 failed / 4 skipped (2001); smoke 50/51.
+- Deterministic gate (RC-prep evidence): **2026-11-14T21:22:43Z (UTC)** commit **`27ed81b5d49773cd679a04a43142e267359bd13c`** — `release-gate.sh` **ALL STEPS PASSED** (format, locked restore, build Release, tests, smoke launch-free **51 files / 50 passed / 0 failed / 1 skipped**, docs markers, protected paths). Re-run on the exact tagged RC commit before publishing.
 - End-to-end (headless, host-only): 7 scenarios `machine-pass` (004,005,013,014,015,017,020 plant-only). No human attestation, no live D1 farmhand attestation, no SC-004.
-- Replace this section with exact commit hash, UTC timestamp, gate/test results, and scenario evidence for the actual release candidate.
+- R4/R7 trail (prep, not published): `.specify/assessments/0.2.0-beta/decision.md`, `.specify/validations/0.2.0-beta/validate.md`, `.specify/releases/0.2.0-beta/release.md`. Replace/update with exact commit hash, UTC, and evidence for the actual release candidate/tag.
 
 ### Known limitations
 - Beta: back up saves; multiplayer (D1 live convergence) not attested; Harmony may interact with other mods; heirloom flows beyond planting pending evidence.
