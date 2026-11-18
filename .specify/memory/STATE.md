@@ -20,7 +20,7 @@
 - **CHOSEN: C1 — "Make secret-dependent CI failures explicit"**, feature `025-ci-secret-guard-explicitness` (resolved by `.specify/scripts/bash/create-new-feature.sh --json --dry-run`, not by branch name). Rationale: (a) BLOCO 5 priority rule puts "elevar a CI" first when CI does not inspire merge confidence — 6 open dependabot PRs (#790–#796) are RED on Build and Test / Check Formatting / build-analysis / gate; (b) `code-style.yml:48-51` already fails fast with `::error::BUILDDEPS_TOKEN is not set` while `build_and_test.yml:73-112` and `quality-gate.yml:213-228` do not, so failures are ambiguous; (c) all touch paths are disjoint from the owner's 10 unpushed docs commits; (d) no runnable C# → Gate 3 real-game is N/A, only Gate 1/2 + SDD gates apply. Risk kept low by failing CLOSED (never `continue-on-error` on secret-dependent jobs) per `.specify/bugs/ci-skipped-job-false-green/assessment.md`.
 - **Evidence baseline**: local `docs/0.2.0-beta-prep.md:62` records `release-gate.sh ALL STEPS PASSED` on `27ed81b` (2026-11-14); today's run steps 1–3 OK and tests in progress. Mainline CI runs green on `origin/dev`; the 6 red PRs are dependency-bump/actor-scoped **[NV: remote logs not re-read here]**. Doc drift (OBJETIVO/ROADMAP/README/STATE pinned to `c07fbab`, "0 ahead") is recorded as DEBT, not edited in this PR — those files are owned by the unpushed local commits.
 - **Escalation not needed**: chosen candidate requires no tag, release, branch-protection, secrets, D1 session, or human attestation. These remain owner-only and are NOT simulated.
-- Recorded at 2026-11-18T10:56Z immediately before BLOCO 6 execution.
+- Recorded at ~2026-11-18T10:52Z immediately before BLOCO 6 execution.
 
 ## Current verified state (2026-11-10)
 
