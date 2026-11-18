@@ -38,3 +38,11 @@ PYTHONPATH=scripts/quality-gate python -m quality_gate ratchet-duplication --rep
 
 ## Suppression policy
 Targeted suppression requires a rule ID and a documented reason (`.editorconfig` override or `#pragma warning disable <rule> // <rule>: reason`). Blanket `NoWarn` and `nosemgrep`/`.semgrepignore`/`.trivyignore` are forbidden. Root `.editorconfig` must not disable any rule.
+
+## CI trust boundary (verified locally 2026-11-18)
+
+- **Local authority**: `scripts/release-gate.sh` is the authoritative production gate. Its seven steps are formatting, locked restore, Release build, full tests, launch-free smoke, docs markers, and protected paths. Gate 3 (real SMAPI session) is deliberately separate and is NOT implied by a green release gate.
+- **Hosted authority**: `sdd-gate` is the only branch-protection required check on `dev` (`strict: true`, zero approving reviews required). It runs `scripts/ci/aggregate-gate.sh` with no .NET toolchain and no secrets, so a green `sdd-gate` does NOT prove that build, test, or formatting passed. Hosted `Build and Test` and `Check Formatting` need the private `BUILDDEPS_TOKEN`; `Quality Gate / build-analysis` needs builddeps plus coverage baselines.
+- **Credential-dependent diagnostics**: `build_and_test.yml`, `code-style.yml`, and `quality-gate.yml` now emit `::error::BUILDDEPS_TOKEN is not set; cannot download the private build-deps release.` before first use when the secret is absent or empty. A red check with that message means provisioning, not a source regression. `release.yml` is tag-triggered and owner-gated and is intentionally outside this contract; `verify-scenario.yml` is best-effort (`continue-on-error: true`) and intentionally uses `::warning::`.
+- **Enforcement**: `PYTHONPATH=scripts/quality-gate python -m pytest scripts/quality-gate/tests/test_ci_secret_guards.py -q` fails if a future non-best-effort workflow step consumes the token without the guard.
+- **[NV] boundary**: the step-level root cause of the dependency-update PRs observed red on 2026-11-18 was not re-verified from remote logs in this cycle. Do not promote it to a verified claim; re-check with `gh run view --log-failed` when needed.

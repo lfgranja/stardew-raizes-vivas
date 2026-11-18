@@ -75,6 +75,10 @@ jobs:
                   GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
               run: |
                   set -euo pipefail
+                  if [ -z "${GH_TOKEN:-}" ]; then
+                    echo "::error::BUILDDEPS_TOKEN is not set; cannot download the private build-deps release."
+                    exit 1
+                  fi
                   mkdir -p "${GamePath}"
                   gh release download "${BUILDDEPS_TAG}" \
                       --repo "${BUILDDEPS_REPO}" \
