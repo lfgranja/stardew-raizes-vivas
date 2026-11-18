@@ -22,6 +22,17 @@
 - **Escalation not needed**: chosen candidate requires no tag, release, branch-protection, secrets, D1 session, or human attestation. These remain owner-only and are NOT simulated.
 - Recorded at ~2026-11-18T10:52Z immediately before BLOCO 6 execution.
 
+## Delivery record 2026-11-18 (autonomous cycle 025 — Bloco 8)
+
+- **Merge**: PR [#797](https://github.com/lfgranja/stardew-raizes-vivas/pull/797) `feat(ci): add explicit secret-guard diagnostics and contract test` merged into `dev/` at **2026-11-18T11:23:57Z**, merge commit `a3711dc`. 17 atomic commits, 137 reviewable code LOC. No auto-merge, no force-push, no history rewrite.
+- **CI observed live before merge**: `mergeStateStatus: CLEAN`; SUCCESS on `Build and Test`, `Check Formatting`, `Check Protected Paths`, `sdd-gate`, `verify`, `Quality Gate / {static,sca,build-analysis,gate}`; `codeql` SKIPPED by design; `Semgrep OSS` NEUTRAL. Branch protection on `dev`: only `sdd-gate` required, `strict: true`, 0 reviews, admin permission present — no approver was simulated.
+- **Local gates re-run in the feature worktree**: `dotnet format` / locked restore / Release build / docs markers / protected paths exit 0; `dotnet test -c Release --no-build` green on rerun **1999 passed / 0 failed / 4 skipped (2003)** after one flaky FsCheck property seed (isolated reruns 1 fail / 2 pass; no C# touched); `scripts/ci/sdd-gate.py` **PASS (0 errors, 28 warnings)**. New contract test RED `4 passed / 1 failed` (named `build_and_test.yml`) → GREEN `5 passed`.
+- **What changed**: fail-fast `::error::BUILDDEPS_TOKEN is not set` in `build_and_test.yml`; deterministic workflow-contract test excluding best-effort and owner-gated tag releases; CI trust-boundary section in `docs/quality-gate.md`; runtime `.specify/queue/` gitignore entry; full 025 SDD trail (assess → R1 go → specify → R3 → plan → 18/18 checklist → tasks → read-only analyze → implement → converge → R4 validate → R7 release).
+- **Debts carried (not silently fixed)**: 11 pre-existing failures in the local `scripts/quality-gate/tests` suite at `origin/dev` (stale pins/suppression-policy expectations; 0 new failures, 5 new tests pass); hosted `Quality Gate` runs the `quality_gate` CLI, not pytest. The FsCheck visualization-invalidation property is flaky. `OBJETIVO.md`/`ROADMAP.md`/`README.md` still pin `c07fbab` and "0 commits ahead" — those files are owned by the maintainer's 10 unpushed local docs commits and were deliberately left untouched.
+- **Owner-only, not simulated**: tag/public release, Nexus channel, branch protection, secrets, auto-merge, D1 live two-player session, human Gate 3 attestation, SC-004. See spec 019 T006/T007 and the pre-existing blockers block below.
+- **[NV]**: step-level root cause of dependabot PRs #790–#796 was not re-read from remote logs; their red status was observed live but is not promoted to a verified cause. The six dependabot branches and `stash@{0}` (owner, 2026-11-01, `ModEntry.cs`) were left intact.
+- **Next 80/20 (not executed here)**: (1) reconcile the 11 stale quality-gate pytest expectations (CI confidence, S–M, no owner auth); (2) re-audit `.trivyignore` expiry 2026-11-30 (S, owner auth only if a new suppression is needed); (3) maintainer decision on tag `0.2.0` (owner-only, escalate — do not self-authorize).
+
 ## Current verified state (2026-11-10)
 
 - Branch `dev` = `origin/dev` (HEAD `c07fbab`); **0 commits ahead**; working tree clean; no PRs; **0 tags; 0 public releases**.
