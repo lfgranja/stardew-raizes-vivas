@@ -37,7 +37,7 @@ PYTHONPATH=scripts/quality-gate python -m quality_gate ratchet-duplication --rep
 ```
 
 ## Suppression policy
-Targeted suppression requires a rule ID and a documented reason (`.editorconfig` override or `#pragma warning disable <rule> // <rule>: reason`). Blanket `NoWarn` and `nosemgrep`/`.semgrepignore`/`.trivyignore` are forbidden. Root `.editorconfig` must not disable any rule.
+Targeted suppression requires a rule ID and a documented reason (`.editorconfig` override or `#pragma warning disable <rule> // <rule>: reason`). Blanket `NoWarn`, `nosemgrep` and `.semgrepignore` are forbidden. Root `.editorconfig` must not disable any rule. `.trivyignore` is allowed **only** as a narrow, expiring register: every entry must be a `CVE-\d{4}-\d{4,}` ID and the file must carry `Owner:`, `Justification:` and `Expiry:` headers; an expired register fails the gate and must be re-audited (see `.specify/bugs/quality-gate-ci-failures/`).
 
 ## CI trust boundary (verified locally 2026-11-18)
 
