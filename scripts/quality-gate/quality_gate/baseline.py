@@ -58,6 +58,9 @@ def parse_coverage_baseline(text: str) -> CoverageBaseline:
         if key in values:
             raise BaselineError(f"duplicate key {key!r}")
         values[key] = value
+    unknown = set(values) - {"lines", "branches"}
+    if unknown:
+        raise BaselineError(f"unknown keys: {sorted(unknown)}")
     if set(values) != {"lines", "branches"}:
         raise BaselineError("coverage baseline requires 'lines' and 'branches'")
     try:

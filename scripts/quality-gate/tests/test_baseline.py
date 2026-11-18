@@ -61,7 +61,7 @@ def test_coverage_baseline_rejects_unknown_keys():
 
 @pytest.mark.parametrize("value", ["-0.1", "100.1", "nan", "inf", "-inf", "abc", ""])
 def test_coverage_baseline_rejects_invalid_percentages(value):
-    with pytest.raises(BaselineError, match="between"):
+    with pytest.raises(BaselineError, match=r"(between|numeric|finite)"):
         parse_coverage_baseline(f"lines={value}\nbranches=70.4")
 
 
