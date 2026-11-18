@@ -4,42 +4,42 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Confirm `.specify/feature.json` anchors `specs/025-ci-secret-guard-explicitness` and the worktree branch matches — `.specify/feature.json`
-- [ ] T002 [P] Add runtime queue/worktree entries (`.specify/queue/`) to `.gitignore` with an explicit diff — `.gitignore`
+- [X] T001 Confirm `.specify/feature.json` anchors `specs/025-ci-secret-guard-explicitness` and the worktree branch matches — `.specify/feature.json`
+- [X] T002 [P] Add runtime queue/worktree entries (`.specify/queue/`) to `.gitignore` with an explicit diff — `.gitignore`
 
 ## Phase 2: Foundational (blocking prerequisite — RED first)
 
-- [ ] T003 Write the failing credential-guard contract test that enumerates all workflow steps referencing `secrets.BUILDDEPS_TOKEN` and requires an `::error::` guard + `exit 1` for every non-best-effort consumer; it MUST fail naming `.github/workflows/build_and_test.yml` before the guard exists — `scripts/quality-gate/tests/test_ci_secret_guards.py`
+- [X] T003 Write the failing credential-guard contract test that enumerates all workflow steps referencing `secrets.BUILDDEPS_TOKEN` and requires an `::error::` guard + `exit 1` for every non-best-effort consumer; it MUST fail naming `.github/workflows/build_and_test.yml` before the guard exists — `scripts/quality-gate/tests/test_ci_secret_guards.py`
 
 ## Phase 3: User Story 1 — Diagnose a red check (Priority: P1)
 
 **Goal**: a missing credential produces an explicit error before any private download.
 **Independent Test**: run the contract test against the real workflow set; it passes only when the build job is guarded.
 
-- [ ] T004 [US1] Add the fail-fast `BUILDDEPS_TOKEN is not set` guard with `exit 1` to the `Fetch game assemblies` step before `mkdir`/`gh release download`, reusing the exact wording from `code-style.yml:49` — `.github/workflows/build_and_test.yml`
-- [ ] T005 [US1] Record the RED (before) and GREEN (after) command outputs with timestamps in `specs/025-ci-secret-guard-explicitness/test.md` — `specs/025-ci-secret-guard-explicitness/test.md`
+- [X] T004 [US1] Add the fail-fast `BUILDDEPS_TOKEN is not set` guard with `exit 1` to the `Fetch game assemblies` step before `mkdir`/`gh release download`, reusing the exact wording from `code-style.yml:49` — `.github/workflows/build_and_test.yml`
+- [X] T005 [US1] Record the RED (before) and GREEN (after) command outputs with timestamps in `specs/025-ci-secret-guard-explicitness/test.md` — `specs/025-ci-secret-guard-explicitness/test.md`
 
 ## Phase 4: User Story 2 — Keep the guard from rotting (Priority: P2)
 
 **Goal**: a future unguarded credential consumer fails a deterministic local check.
 **Independent Test**: full test module passes on the real set and detects a synthetic unguarded fixture.
 
-- [ ] T006 [P] [US2] Add fixture-based assertions for a synthetic unguarded consumer (must be detected), for the exempt best-effort job with `::warning::`/`continue-on-error: true` (must not be reported), and for the credential-present path (FR-003: guard emits no error and leaves the step body unchanged) — `scripts/quality-gate/tests/test_ci_secret_guards.py`
-- [ ] T007 [US2] Run the full quality-gate test module and paste the pass count — `scripts/quality-gate/tests/test_ci_secret_guards.py`
+- [X] T006 [P] [US2] Add fixture-based assertions for a synthetic unguarded consumer (must be detected), for the exempt best-effort job with `::warning::`/`continue-on-error: true` (must not be reported), and for the credential-present path (FR-003: guard emits no error and leaves the step body unchanged) — `scripts/quality-gate/tests/test_ci_secret_guards.py`
+- [X] T007 [US2] Run the full quality-gate test module and paste the pass count — `scripts/quality-gate/tests/test_ci_secret_guards.py`
 
 ## Phase 5: User Story 3 — Know what green CI proves (Priority: P3)
 
 **Goal**: the local gate guide states the local/hosted trust boundary and explicit [NV] markers.
 **Independent Test**: read the dedicated section and locate all four required statements.
 
-- [ ] T008 [US3] Add a CI trust-boundary section naming `scripts/release-gate.sh` as local authority, `sdd-gate` as the only hosted required check (blind to build/test), the credential-dependent job families, and the [NV] remote-root-cause boundary — `docs/quality-gate.md`
+- [X] T008 [US3] Add a CI trust-boundary section naming `scripts/release-gate.sh` as local authority, `sdd-gate` as the only hosted required check (blind to build/test), the credential-dependent job families, and the [NV] remote-root-cause boundary — `docs/quality-gate.md`
 
 ## Phase 6: Polish & cross-cutting
 
-- [ ] T009 [P] Run `python3 scripts/ci/sdd-gate.py` and paste stdout + exit code — `scripts/ci/sdd-gate.py`
-- [ ] T010 [P] Run `GamePath=/home/luis/stardew-assemblies ./scripts/release-gate.sh` and paste the final `ALL STEPS PASSED` line — `scripts/release-gate.sh`
-- [ ] T011 Verify no runnable C#, locale, or save-data file was touched and that Gate 3 is recorded as N/A, not claimed — `specs/025-ci-secret-guard-explicitness/test.md`
-- [ ] T012 Write append-only `converge.md` with requirement→artifact traceability after gates are green — `specs/025-ci-secret-guard-explicitness/converge.md`
+- [X] T009 [P] Run `python3 scripts/ci/sdd-gate.py` and paste stdout + exit code — `scripts/ci/sdd-gate.py`
+- [X] T010 [P] Run `GamePath=/home/luis/stardew-assemblies ./scripts/release-gate.sh` and paste the final `ALL STEPS PASSED` line — `scripts/release-gate.sh`
+- [X] T011 Verify no runnable C#, locale, or save-data file was touched and that Gate 3 is recorded as N/A, not claimed — `specs/025-ci-secret-guard-explicitness/test.md`
+- [X] T012 Write append-only `converge.md` with requirement→artifact traceability after gates are green — `specs/025-ci-secret-guard-explicitness/converge.md`
 
 ## Dependencies
 
