@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using FsCheck.Xunit;
 using LivingRoots;
@@ -201,9 +200,11 @@ public class VisualizationCacheInvalidationInvariantsTests
     /// configuration change, no rebuild occurs while
     /// overlays are disabled, and the first frame after
     /// re-enable rebuilds the overlay list from the
-    /// current data within the FR-009 frame budget
-    /// (<see cref="ModConstants.MaxRenderTimeMs"/>) —
-    /// FR-010. A frame that follows a state change
+    /// current data with bounded work (at most one color-service
+    /// consultation per visible tile) — FR-010. The wall-clock
+    /// frame budget is Gate 3 verification-runner evidence, not
+    /// unit-property evidence: a mocked frame under a loaded
+    /// runner cannot measure it honestly. A frame that follows a state change
     /// (mutation, configuration change, or re-enable)
     /// must recompute: the color service is consulted
     /// with the current tile health values. A frame
@@ -241,7 +242,7 @@ public class VisualizationCacheInvalidationInvariantsTests
         var enabled = true;
         var stateChangedSinceLastFrame = true;
         var allFramesConsistent = true;
-        var allFramesWithinBudget = true;
+        var allFramesWithinWorkBudget = true;
 
         // The warm frame: overlays enabled, initial data.
         service.SetTileHealthData(snapshot);
@@ -356,9 +357,7 @@ public class VisualizationCacheInvalidationInvariantsTests
             }
 
             var consultationCount = consultedHealths.Count;
-            var stopwatch = Stopwatch.StartNew();
             var exception = Record.Exception(() => service.RenderOverlays(null!, Viewport, new GameTime()));
-            stopwatch.Stop();
 
             // The frame reaches the draw stage (the seeded
             // tiles produce overlays in every enabled state).
@@ -377,12 +376,15 @@ public class VisualizationCacheInvalidationInvariantsTests
                 stateChangedSinceLastFrame = false;
             }
 
-            // The rebuild completes within the FR-009 frame
-            // budget.
-            allFramesWithinBudget &= stopwatch.Elapsed.TotalMilliseconds <= ModConstants.MaxRenderTimeMs;
+            // FR-009 bounded work, asserted deterministically:
+            // one rendered frame consults the color service at most
+            // once per visible tile. Wall-clock timing is excluded
+            // from this property's verdict — it is Gate 3 evidence.
+            var frameConsultations = consultedHealths.Count - consultationCount;
+            allFramesWithinWorkBudget &= frameConsultations <= VisibleTileCount;
         }
 
-        return allFramesConsistent && allFramesWithinBudget;
+        return allFramesConsistent && allFramesWithinWorkBudget;
     }
 
     /// <summary>
