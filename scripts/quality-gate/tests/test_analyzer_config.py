@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+from datetime import date
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -227,16 +228,42 @@ def scan_editorconfig(path: Path, text: str, root: bool = False) -> list[str]:
     return violations
 
 
-FORBIDDEN_SUPPRESSION_ARTIFACTS = (".semgrepignore", ".trivyignore")
+FORBIDDEN_SUPPRESSION_ARTIFACTS = (".semgrepignore",)
+CVE_ID = re.compile(r"^CVE-\d{4}-\d{4,}$")
+TRIVY_HEADERS = ("owner:", "justification:", "expiry:")
 
 
 def scan_forbidden_suppressions(path: Path, text: str) -> list[str]:
-    """Reject blanket scanner suppressions: findings must be fixed, not hidden."""
+    """Reject blanket suppressions; allow only documented, expiring CVE entries.
+
+    `.trivyignore` is permitted only as a narrowly scoped register for CVEs with no
+    compatible fix (see `.specify/bugs/quality-gate-ci-failures/`). Every entry must
+    be a CVE ID, the file must carry Owner/Justification/Expiry headers, and an
+    expired register is a violation — the finding must be re-audited, not hidden.
+    """
     violations: list[str] = []
     if path.name in FORBIDDEN_SUPPRESSION_ARTIFACTS:
         violations.append(
             f"{path}: {path.name} is forbidden; fix the finding instead of ignoring it"
         )
+    if path.name == ".trivyignore":
+        for index, line in enumerate(text.splitlines(), 1):
+            entry = line.strip()
+            if not entry or entry.startswith("#"):
+                continue
+            if not CVE_ID.fullmatch(entry):
+                violations.append(
+                    f"{path}:{index}: .trivyignore entries must be CVE IDs, got {entry!r}"
+                )
+        lowered = text.lower()
+        for header in TRIVY_HEADERS:
+            if header not in lowered:
+                violations.append(f"{path}: .trivyignore requires a documented {header} header")
+        expiry = re.search(r"expiry:\s*(\d{4}-\d{2}-\d{2})", text, re.IGNORECASE)
+        if expiry:
+            expiry_date = date.fromisoformat(expiry.group(1))
+            if expiry_date < date.today():
+                violations.append(f"{path}: .trivyignore suppression expired on {expiry.group(1)}")
     for index, line in enumerate(text.splitlines(), 1):
         if "nosemgrep" in line:
             violations.append(
@@ -462,11 +489,28 @@ def test_semgrepignore_is_forbidden(tmp_path):
     assert ".semgrepignore is forbidden" in violations[0]
 
 
-def test_trivyignore_is_forbidden(tmp_path):
+VALID_TRIVY = (
+    "# Owner: maintainer\n# Justification: no compatible fix\n"
+    "# Expiry: 2099-12-31\nCVE-2026-0001\n"
+)
+
+
+def test_trivyignore_accepts_documented_expiring_cve_entries(tmp_path):
     artifact = tmp_path / ".trivyignore"
-    violations = scan_forbidden_suppressions(artifact, "CVE-2026-0001\n")
-    assert len(violations) == 1
-    assert ".trivyignore is forbidden" in violations[0]
+    assert scan_forbidden_suppressions(artifact, VALID_TRIVY) == []
+
+
+def test_trivyignore_rejects_blanket_and_undocumented_entries(tmp_path):
+    artifact = tmp_path / ".trivyignore"
+    violations = scan_forbidden_suppressions(artifact, "*\n")
+    assert any("must be CVE IDs" in violation for violation in violations)
+    assert any("requires a documented" in violation for violation in violations)
+
+
+def test_trivyignore_rejects_expired_suppressions(tmp_path):
+    artifact = tmp_path / ".trivyignore"
+    text = VALID_TRIVY.replace("2099-12-31", "2020-01-01")
+    assert any("expired" in violation for violation in scan_forbidden_suppressions(artifact, text))
 
 
 def test_the_repository_has_no_blanket_scanner_suppressions():
@@ -475,6 +519,9 @@ def test_the_repository_has_no_blanket_scanner_suppressions():
         artifact = ROOT / name
         if artifact.exists():
             violations.append(f"{artifact}: {name} is forbidden; fix the finding instead of ignoring it")
+    trivy = ROOT / ".trivyignore"
+    if trivy.exists():
+        violations.extend(scan_forbidden_suppressions(trivy, trivy.read_text(encoding="utf-8")))
     for path in repository_sources():
         violations.extend(scan_forbidden_suppressions(path, path.read_text(encoding="utf-8")))
     assert violations == [], "\n".join(violations)
