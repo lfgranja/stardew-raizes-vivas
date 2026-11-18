@@ -24,7 +24,7 @@
 **Goal**: a future unguarded credential consumer fails a deterministic local check.
 **Independent Test**: full test module passes on the real set and detects a synthetic unguarded fixture.
 
-- [ ] T006 [P] [US2] Add fixture-based assertions for a synthetic unguarded consumer (must be detected) and for the exempt best-effort job with `::warning::`/`continue-on-error: true` (must not be reported) — `scripts/quality-gate/tests/test_ci_secret_guards.py`
+- [ ] T006 [P] [US2] Add fixture-based assertions for a synthetic unguarded consumer (must be detected), for the exempt best-effort job with `::warning::`/`continue-on-error: true` (must not be reported), and for the credential-present path (FR-003: guard emits no error and leaves the step body unchanged) — `scripts/quality-gate/tests/test_ci_secret_guards.py`
 - [ ] T007 [US2] Run the full quality-gate test module and paste the pass count — `scripts/quality-gate/tests/test_ci_secret_guards.py`
 
 ## Phase 5: User Story 3 — Know what green CI proves (Priority: P3)
