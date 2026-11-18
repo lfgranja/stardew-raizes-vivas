@@ -106,3 +106,22 @@
 - Releases: `.specify/releases/017-joja-agrochemical-tradeoff/release.md`; validation: `.specify/validations/017-joja-agrochemical-tradeoff/validate.md`.
 - Research: `research/2026-11-09-journey-balance-and-outlook.md` (balance/outlook), `research/2026-11-09-web-research-ecosystem-status.md` (+ raw outputs), `research/2026-11-07-mdmv-80-20-cycle-ecosystem-and-reconciliation.md`, `research/2026-11-05-web-research-ecosystem-status.md`.
 - Constitution: `.specify/memory/constitution.md` v2.0.0 (Principle VI non-negotiable).
+
+## Decision recorded 2026-11-18 (orchestration session c3f1 — BLOCO 5, before BLOCO 6)
+
+- **Anchor**: ALVO `/home/luis/development/stardew-raizes-vivas`; local `dev` `30ce5c9` (34 behind, READ-ONLY); base `origin/dev` `4b54c30`. FONTE_FACTORY `c81f0f8` (read-only; prior session recorded `ce3d421`). NNN resolved by `create-new-feature.sh --json --dry-run` on origin/dev state = **026** (specs 024 and 025 exist upstream).
+- **Authoritative gate (BLOCO 0.a)**: target `scripts/ci/aggregate-gate.sh` (sdd-gate + policy drift + protected paths + docs markers) and `scripts/release-gate.sh`; Gate 3 via `scripts/verify-scenario.sh`. Factory `check_production_gate.py` / `hub_docs_gate.py` are **absent in target → N/A**. CI provider GitHub Actions (`gh`); dev protection requires `sdd-gate` + `Build and Test`, 0 approving reviews, enforce_admins=true — no distinct approver pending, auto-merge stays OFF. The constitution's "human review and merge" clause governs constitutional amendments (Governance section), not ordinary PRs.
+- **Factory SDD scripts probed on target** (materialized from clean `c81f0f8` into a disposable worktree, then removed): `check_sdd_completeness.py` FAIL (20 gaps, baselined=0), `check_work_order_dag.py` FAIL (duplicate tasks), `check_task_id_uniqueness.py` FAIL (2 duplicate IDs), `check_converge_append_only.py` FAIL (2 unbaselined). All failures are factory-baseline/convention artifacts → **not target authority, not imported** (BLOCO 0.a).
+- **Ranking formula (denominator declared)**: `score = (Impacto × Evidência) / (Esforço × Risco)`, each 1–5, 1 = low effort/risk; max 25 → norm = score/25 × 100. Ordered by mission impact first, never by activity volume.
+
+| # | Candidate | I | E | Esf | Risco | score | norm |
+|---|-----------|---|---|-----|-------|-------|------|
+| C1 | Stabilize overlay cache invalidation under interleaved events (required `Build and Test` RED on dev) | 5 | 5 | 2 | 2 | **6.25** | **25%** |
+| C2 | Fix 2 of 5 invalid archify candidates (heirloom phase overlap; verification wrong schema) | 2 | 5 | 2 | 1 | 5.00 | 20% |
+| C3 | Reconcile stale docs pinned to `c07fbab` / "0 ahead" | 2 | 5 | 2 | 1 | 5.00 | 20% |
+| C4 | Import 4 factory SDD gate scripts into target CI | 4 | 4 | 3 | 2 | 2.67 | 11% |
+| C5 | Merge 7 open dependabot PRs | 3 | 3 | 5 | 5 | 0.36 | 1% |
+
+- **CHOSEN: C1**. Evidence: live CI run `44309131539` on `dev` push after PR 800 = 2003 tests / 1998 passed / **1 failed** / 4 skipped; sole failure `VisualizationCacheInvalidationInvariantsTests.RenderOverlays_ForAnyDisableEnableInterleaving_RebuildsOnFirstFrameAfterReEnableWithinBudget`, FsCheck StdGen `(1549256609,297700084)`. Local reproduction on `30ce5c9`: **4 of 5 runs failed** with distinct seeds and a concrete 23-event counterexample — input-dependent interleaving, not merely CI timing. `Build and Test` is a **required** check on `dev`, so a red mainline blocks every merge; BLOCO 5 priority rule puts CI elevation first. C5 is fail-closed by design (`BUILDDEPS_TOKEN` absent for dependabot) and owner-gated; C4's gates produce false RED on target conventions.
+- Owner-only items remain untouched and unsimulated: tag/public release, Nexus, branch protection, secrets, auto-merge, D1 live session, human Gate 3 attestation, SC-004. `stash@{0}` and 7 dependabot branches are not owned — not touched.
+- Recorded at 2026-11-18T~11:50Z immediately before BLOCO 6 execution.
