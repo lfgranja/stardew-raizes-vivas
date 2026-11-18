@@ -78,7 +78,7 @@ A maintainer reads the local quality-gate guide and can state which hosted check
 
 ### Key Entities
 
-- **Credential-dependent step**: a CI step that requires the private build credential to acquire game assemblies; attributes: declaring file, job name, guard present (yes/no), best-effort (yes/no).
+- **Credential-dependent step**: a CI step that requires the private build credential to acquire game assemblies; attributes: declaring file, job name, guard present (yes/no), best-effort (yes/no). In scope at decision time: `build-test` (unguarded), `code-style` (guarded), `quality-gate/build-analysis` (guarded). `verify-scenario` is best-effort and excluded; `release` is tag-triggered and owner-gated, therefore excluded.
 - **Local authoritative gate**: the repository's deterministic pre-release gate (`scripts/release-gate.sh`) with seven steps; distinct from hosted checks.
 - **Hosted required check**: the single branch-protection check that gates merges to the integration branch; currently blind to build and test results.
 
