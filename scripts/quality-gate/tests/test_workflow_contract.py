@@ -218,9 +218,12 @@ def test_codeql_is_scheduled_only_and_buildless():
     assert analyze_with.get("output") == "codeql-results.sarif", (
         "the analyze step must write a named SARIF file for the annotation step"
     )
-    uploads = [step for step in steps(codeql) if "upload-sarif" in str(step.get("uses", ""))]
-    assert uploads, "CodeQL SARIF must be uploaded"
-    assert uploads[0].get("with", {}).get("sarif_file") == "codeql-results.sarif"
+    # codeql-action/analyze uploads SARIF itself; a separate upload-sarif step is
+    # rejected by GitHub ("only one run of analyze/upload-sarif per category").
+    assert analyze_with.get("category") == "csharp", (
+        "analyze must declare a category so findings reach GitHub Security"
+    )
+    assert codeql.get("permissions", {}).get("security-events") == "write"
     annotation_steps = [
         step
         for step in steps(codeql)
