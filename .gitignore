@@ -527,3 +527,6 @@ Thumbs.db
 # Keep MDMV release records tracked (audit trail) despite the Release/ bin rule
 !.specify/releases/
 !.specify/releases/**
+
+# MDMV orchestration runtime — concurrency ledger and per-agent worktrees (never committed)
+.specify/queue/
