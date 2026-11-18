@@ -5,26 +5,8 @@ on:
         branches:
             - main
             - dev
-        paths-ignore:
-            - '**.md'
-            - 'docs/**'
-            - 'research/**'
-            - 'specs/**'
-            - '.specify/**'
-            - '.github/ISSUE_TEMPLATE/**'
-            - '.github/pull_request_template.md'
-            - 'lefthook.yml'
     pull_request:
         types: [opened, synchronize, reopened]
-        paths-ignore:
-            - '**.md'
-            - 'docs/**'
-            - 'research/**'
-            - 'specs/**'
-            - '.specify/**'
-            - '.github/ISSUE_TEMPLATE/**'
-            - '.github/pull_request_template.md'
-            - 'lefthook.yml'
 
 # This workflow runs the real build and the full test suite. It stays dormant until the
 # BUILDDEPS_TOKEN secret is set, so that there is no check named "Build and Test" anywhere
@@ -40,12 +22,13 @@ on:
 # BUILDDEPS_TOKEN must be a credential with read access to that private repo only. The
 # built-in GITHUB_TOKEN cannot be used: it is scoped to this repository.
 #
-# Two rules govern this workflow. First, do NOT add either this workflow or
-# "Check Formatting" to required_status_checks until this workflow has produced at least one
-# genuinely green run; promoting a formatting-only check satisfies branch protection while
-# executing zero tests. Second, the paths-ignore filter above means this workflow cannot
-# report on a documentation-only pull request, so if it is ever made required, drop the
-# filter first or documentation-only pull requests will block forever.
+# Two rules govern this workflow. First, do NOT add "Check Formatting" to
+# required_status_checks: it is formatting-only and would satisfy branch protection while
+# executing zero tests. This workflow itself may be required only after a genuinely green
+# hosted run — observed on PRs #797, #798 and #800 on 2026-11-18 (maintainer authorized).
+# Second, this workflow reports on EVERY pull request, including documentation-only ones:
+# the former paths-ignore filter was removed because a required check that never reports
+# would block those PRs forever under strict branch protection.
 permissions:
     contents: read
 jobs:
