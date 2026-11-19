@@ -28,7 +28,7 @@
 
 - [x] T010 [US3] Verify via isolated verifier subagent: `git diff --name-only origin/dev -- LivingRoots/` empty (`FR-006`, `SC-004`), zero `Stopwatch` timing checks remaining (`SC-001`), Release build 0 errors, and 5/5 consecutive passes of the updated tests (`SC-002`)
 - [x] T011 [US1] [US3] Run full local authoritative gates (`scripts/ci/aggregate-gate.sh`, `scripts/release-gate.sh`, `scripts/ci/i18n-parity-check.py`, `pytest scripts/quality-gate/tests`) and record outputs (`SC-003`)
-- [ ] T012 Complete `converge.md` (append-only), `test.md`, R4 `validate.md` (`APPROVED`), and R7 `release.md`, then deliver reviewable PR targeting `dev/` via `gh` (no merge)
+- [x] T012 Complete `converge.md` (append-only), `test.md`, R4 `validate.md` (`APPROVED`), and R7 `release.md`, then deliver reviewable PR targeting `dev/` via `gh` (no merge)
 
 ## Dependencies
 
