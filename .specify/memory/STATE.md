@@ -139,3 +139,25 @@
 - **Debts (not silently fixed)**: (1) 2 of 5 archify candidates invalid (`workflow-heirloom-pipeline` phase overlap; `workflow-verification-pipeline` wrong schema, unfinished delivery); (2) OBJETIVO/ROADMAP/README still pin `c07fbab` / "0 ahead" though `dev` moved; (3) 7 dependabot PRs fail-closed by design without `BUILDDEPS_TOKEN` — owner-gated; (4) separate wall-clock benchmark deferred; (5) local `scripts/quality-gate/tests` expectations still carry historical drift (hosted Quality Gate runs the CLI, not pytest). `docs/architecture/` absent; no `*.generated.md` to regenerate.
 - **[NV]**: no live second-player environment (D1), no human Gate 3 attestation, no SC-004, no tag/public release/Nexus channel; remote claims in OBJETIVO.md/ROADMAP.md (market, ecosystem, Nexus policy) were not re-verified in this session. No injection attempts found in target content; only defensive anti-injection guardrails.
 - **Next 80/20 (not executed here)**: (1) fix the 2 invalid archify candidates (docs-only, S–M, no owner auth); (2) reconcile stale docs pinned to `c07fbab` (docs-only); (3) maintainer decision on tag `0.2.0` (owner-only — escalate, do not self-authorize).
+
+## Decision recorded 2026-11-19 (autonomous orchestration — BLOCO 5, before BLOCO 6)
+
+- **Anchor**: ALVO `/home/luis/development/stardew-raizes-vivas` @ base `dev` `8bba3fe` (`8bba3feac314c20ac29196590764e2bf838e83a7`), branch `feature/027-stabilize-reactive-invalidation-tests`. FONTE_FACTORY `/home/luis/development/MDMV/projetos/mdmv-dark-factory` @ `b1deab1` (`b1deab15f482dd85871cd6c6a857ad710b89e2a6`, read-only). Feature identity resolved via `.specify/scripts/bash/create-new-feature.sh --json` and `.specify/feature.json` → `specs/027-stabilize-reactive-invalidation-tests` (`FEATURE_NUM = 027`).
+- **Authoritative target gates (BLOCO 0.a/0.b)**:
+  - `scripts/ci/aggregate-gate.sh` (mirrored by GitHub Actions required check `sdd-gate`) → **PASS** (`sdd-gate`: 0 errors, 30 warnings; `policy-drift`: ALIGNED; `protected-paths`: pass; `verify-scenario.sh --check-docs`: pass).
+  - `scripts/release-gate.sh` (mirrored by GitHub Actions required check `Build and Test` + `Code Style` + `Quality Gate`) → Steps 1–3 OK; **Step 4 FAILED (exit 14)** on `8bba3fe` (2026-11-19T19:50Z–20:12Z): 1998 passed / **1 failed** / 4 skipped (2003). Sole failure: `LivingRoots.Tests.SoilHealthVisualizationTests.OnTileHealthChanged_ThroughProductionModEntrySubscription_InvalidatesOverlayCacheWithinOneFrame` (`LivingRoots.Tests/SoilHealthVisualizationTests.cs:419`: `LATENCY DEFECT: reactive cache invalidation took 27,346ms, which exceeds the frame budget of 16,67ms.`). Isolated 5x rerun → **5/5 PASSED** (1–2s each).
+  - Gate 3 (`scripts/verify-scenario.sh` under Xvfb) → required only when runnable C# under `LivingRoots/` changes (**N/A for cycle 027**).
+  - Factory scripts (`check_production_gate.py`, `hub_docs_gate.py`, `check_sdd_completeness.py`, `check_work_order_dag.py`, `check_task_id_uniqueness.py`, `check_converge_append_only.py`, `fj`) → **N/A — ausentes no alvo, conforme BLOCO 0.a**.
+- **Ranking formula (denominator declared)**: `score = (Impacto × Evidência) / (Esforço × Risco)`, each 1–5 (1 = low effort/risk; max = 25 → norm = score/25 × 100).
+
+| # | Candidate | I | E | Esf | Risco | score | norm | Owner/human-gated? |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| C1 | Eliminate remaining reactive-invalidation wall-clock (`<= 16.67ms`) assertions in `LivingRoots.Tests` (`SoilHealthVisualizationTests.cs` + `VisualizationInvariantsTests.cs`) | 5 | 5 | 2 | 1 | **12.50** | **50.0%** | no (Green Zone) |
+| C4 | Reconcile remaining drifted docs (`README.md`, `026/tasks.md`, etc.) | 3 | 5 | 2 | 1 | 7.50 | 30.0% | no (`OBJETIVO`/`ROADMAP` done in BLOCO 4) |
+| C2 | Wire `pytest scripts/quality-gate/tests` into CI + remove dead `#pragma warning disable S8969` in `CompostingBinService.cs:115` | 4 | 5 | 3 | 2 | 3.33 | 13.3% | Yellow Zone (`LivingRoots/Services/`) + Gate 3 |
+| C3 | Fix 2 invalid `.archify/` candidates (`workflow-heirloom-pipeline`, `workflow-verification-pipeline`) | 2 | 5 | 2 | 2 | 2.50 | 10.0% | no (gitignored `.archify/`, `docs/architecture/` absent) |
+| C5 | Temporal Crop Rotation MVP (v0.3.0) | 5 | 3 | 5 | 5 | 0.60 | 2.4% | touches Red Zone (`ModController.cs`/`ModDataService.cs`) |
+| C6 | `.trivyignore` expiry (2026-11-30) / `RUNNER_AUDIT_STORE` (#523) / `0.2.0-beta` tag & release | — | — | — | — | — | — | **owner-gated (excluded)** |
+
+- **CHOSEN: C1 — `027-stabilize-reactive-invalidation-tests`**. Rationale: directly resolves the observed exit-14 failure in the authoritative `scripts/release-gate.sh` (`SoilHealthVisualizationTests.cs:419`) and eliminates all 4 remaining reactive-invalidation `Stopwatch <= ModConstants.MaxRenderTimeMs` flakes across `SoilHealthVisualizationTests.cs` (3) and `VisualizationInvariantsTests.cs` (`T031b`), strictly inside Green Zone (`LivingRoots.Tests/`) with zero production diff (`LivingRoots/` untouched) and zero owner-gated actions.
+- Recorded at 2026-11-19T16:22-04:00 (`20:22Z`) immediately before BLOCO 6 execution.
