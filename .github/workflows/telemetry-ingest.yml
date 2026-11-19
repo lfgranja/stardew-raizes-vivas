@@ -12,13 +12,13 @@ jobs:
     name: telemetry-ingest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Validate telemetry
         run: python3 scripts/telemetry/validate_telemetry.py docs/telemetry/execution-record.jsonl --strict
       - name: Ingest (self-check)
         run: python3 scripts/telemetry/ingest_telemetry.py telemetry-ingest-report.json docs/telemetry/execution-record.jsonl
       - name: Upload ingest report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: telemetry-ingest-report
           path: telemetry-ingest-report.json
