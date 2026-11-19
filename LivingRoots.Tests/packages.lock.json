@@ -489,8 +489,8 @@
       },
       "System.Collections.Immutable": {
         "type": "Transitive",
-        "resolved": "10.0.14",
-        "contentHash": "7kqcjP+kmcr4zaPDi+VjaImd8ESFGGPYbr9wJo5ddRrtX9JQ9p2DJlUBBvdjJmeC0KBZxYi6L5UIKcXlaq/FDw==",
+        "resolved": "11.0.0",
+        "contentHash": "Z3pTTvMGhsThIfPDboJDwBY+yCqfNCpYyL4fcPCNo4rVYhlS7Kmg4nkABanRYRSVDPZ3qiXPdGymBzMDuawPNg==",
         "dependencies": {
           "System.Memory": "4.6.3",
           "System.Runtime.CompilerServices.Unsafe": "6.1.2"
@@ -1162,7 +1162,7 @@
         "dependencies": {
           "Newtonsoft.Json": "[13.0.4, )",
           "Pathoschild.Stardew.ModBuildConfig": "[4.4.0, )",
-          "System.Collections.Immutable": "[10.0.14, )"
+          "System.Collections.Immutable": "[11.0.0, )"
         }
       },
       "livingroots.verification": {
@@ -1171,7 +1171,7 @@
           "LivingRoots": "[1.0.0, )",
           "Newtonsoft.Json": "[13.0.4, )",
           "Pathoschild.Stardew.ModBuildConfig": "[4.4.0, )",
-          "System.Collections.Immutable": "[10.0.14, )"
+          "System.Collections.Immutable": "[11.0.0, )"
         }
       },
       "livingroots.verification.runner": {
