@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading;
 using FsCheck;
 using FsCheck.Xunit;
@@ -292,21 +291,27 @@ public class VisualizationInvariantsTests
     /// <summary>
     /// T031b invariant: for any health update, the reactive invalidation
     /// the production wiring subscribes to
-    /// (<c>OnTileHealthChanged</c> → overlay cache invalidation) completes
-    /// within one frame budget (<see cref="ModConstants.MaxRenderTimeMs"/>),
-    /// so a changed reading is reflected on the next frame.
+    /// (<c>OnTileHealthChanged</c> → overlay cache invalidation) clears
+    /// the cache synchronously with zero redundant color-service calls,
+    /// and the next frame rebuilds with bounded work (at most one
+    /// <see cref="IColorInterpolationService.GetColorForHealth"/> call
+    /// per visible tile), so a changed reading is reflected on the next
+    /// frame (FR-010). Wall-clock frame-budget measurement against
+    /// <see cref="ModConstants.MaxRenderTimeMs"/> (16.67ms) belongs to
+    /// Gate 3 verification-runner evidence (<c>scripts/verify-scenario.sh</c>).
     /// </summary>
     [Property(MaxTest = 50)]
     public bool T031b_OverlayTiming_ReactiveInvalidation_WithinFrameBudget(float health)
     {
-        var renderer = BuildOverlayRenderer();
+        var (renderer, getConsultationCount) = BuildOverlayRenderer();
+        float initialHealth = SafeOverlayHealth(health);
         var tileData = new Dictionary<Point, float>
         {
-            { OverlayTile, SafeOverlayHealth(health) }
+            { OverlayTile, initialHealth }
         };
 
         var overlays = renderer.GetOverlays(Viewport, tileData);
-        if (overlays.Count == 0 || renderer.IsCacheEmpty)
+        if (overlays.Count != 1 || renderer.IsCacheEmpty || getConsultationCount() != 1)
         {
             return false;
         }
@@ -316,12 +321,22 @@ public class VisualizationInvariantsTests
             renderer.InvalidateCache();
         };
 
-        var stopwatch = Stopwatch.StartNew();
-        handler("Farm", new Vector2(OverlayTile.X, OverlayTile.Y), health);
-        stopwatch.Stop();
+        handler("Farm", new Vector2(OverlayTile.X, OverlayTile.Y), initialHealth);
+        if (!renderer.IsCacheEmpty || getConsultationCount() != 1)
+        {
+            return false;
+        }
 
-        return renderer.IsCacheEmpty
-            && stopwatch.Elapsed.TotalMilliseconds <= ModConstants.MaxRenderTimeMs;
+        float nextHealth = initialHealth == 50f ? 75f : 50f;
+        var updatedTileData = new Dictionary<Point, float>
+        {
+            { OverlayTile, nextHealth }
+        };
+        var rebuilt = renderer.GetOverlays(Viewport, updatedTileData);
+        return rebuilt.Count == 1
+            && rebuilt[0].HealthValue == nextHealth
+            && !renderer.IsCacheEmpty
+            && getConsultationCount() == 2;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -353,12 +368,17 @@ public class VisualizationInvariantsTests
         return (service, colorMock);
     }
 
-    /// <summary>Builds an <see cref="OverlayRenderer"/> for the timing invariant.</summary>
-    private static OverlayRenderer BuildOverlayRenderer()
+    /// <summary>Builds an <see cref="OverlayRenderer"/> with deterministic color-consultation tracking.</summary>
+    private static (OverlayRenderer Renderer, Func<int> GetConsultationCount) BuildOverlayRenderer()
     {
+        int consultations = 0;
         var colorMock = new Mock<IColorInterpolationService>();
         colorMock
             .Setup(c => c.GetColorForHealth(It.IsAny<float>(), It.IsAny<float>()))
+            .Callback(() =>
+            {
+                consultations++;
+            })
             .Returns(Color.White);
         colorMock
             .Setup(c => c.GetCategoryForHealth(It.IsAny<float>()))
@@ -374,7 +394,8 @@ public class VisualizationInvariantsTests
                 AccessibilityDegradation = "never"
             });
 
-        return new OverlayRenderer(colorMock.Object, configMock.Object, Mock.Of<IMonitor>(), Mock.Of<IHudNotifier>());
+        var renderer = new OverlayRenderer(colorMock.Object, configMock.Object, Mock.Of<IMonitor>(), Mock.Of<IHudNotifier>());
+        return (renderer, () => consultations);
     }
 
     /// <summary>

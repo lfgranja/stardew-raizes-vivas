@@ -10,6 +10,6 @@ jobs:
     name: policy-drift
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run policy drift check
         run: python3 scripts/ci/check_policy_drift.py docs/governance/hub-policy-manifest.json docs/governance/satellite-manifest.json

@@ -70,9 +70,17 @@ def test_build_analysis_job_exists_on_a_standard_runner():
     assert job.get("timeout-minutes"), "build-analysis must declare a timeout"
     assert int(job["timeout-minutes"]) <= 20
     uses = [str(step.get("uses", "")) for step in steps(job)]
-    assert "actions/checkout@v4" in uses, "build-analysis must check out the repo with a major-tag pin"
-    assert "actions/setup-dotnet@v4" in uses, "build-analysis must set up .NET with a major-tag pin"
-    setup = next(step for step in steps(job) if str(step.get("uses", "")) == "actions/setup-dotnet@v4")
+    assert any(re.fullmatch(r"actions/checkout@v\d+", use) for use in uses), (
+        "build-analysis must check out the repo with a major-tag pin"
+    )
+    assert any(re.fullmatch(r"actions/setup-dotnet@v\d+", use) for use in uses), (
+        "build-analysis must set up .NET with a major-tag pin"
+    )
+    setup = next(
+        step
+        for step in steps(job)
+        if re.fullmatch(r"actions/setup-dotnet@v\d+", str(step.get("uses", "")))
+    )
     assert str(setup.get("with", {}).get("dotnet-version")) == "10.0.x"
 
 
@@ -276,4 +284,5 @@ def test_reportgenerator_and_coverlet_are_pinned():
         for element in tree.getroot().iter()
         if element.tag.endswith("PackageReference")
     }
-    assert references.get("coverlet.collector") == "6.0.0"
+    # 10.1.0 is the dependabot-approved pin recorded in packages.lock.json.
+    assert references.get("coverlet.collector") == "10.1.0"
