@@ -1,8 +1,8 @@
 # Living Roots / Raízes Vivas — Game Design Document (GDD)
 
-> **Status:** v1.1 Draft — 2026-10-06 | **Tipo:** Híbrido (bíblia de implementação + visão para comunidade)
+> **Status:** v1.1 — **validado pelo maintainer (humano)** em 2026-11-20T01:04Z (rascunho original 2026-10-06) | **Tipo:** Híbrido (bíblia de implementação + visão para comunidade)
 > **Modelo:** B — Lean Living GDD (wiki, 5–15 pgs, owner por seção) + Modelo A — quatro one-pagers (visão, pilares, loops, fluxo de recursos — Schreiber GDC 2025, Librande GDC 2010). Monolito 100+ pgs é anti-padrão (GameDeveloper 2023, Featurebase 2026, ACM SIGDOC 2019).
-> **Owner:** maintainer (lfgranja) | **Changelog:** v1.0 pitch+loops+sistemas → v1.1 pilares testáveis + TDD handoff + QA/cut-list/localização + bibliografia canônica.
+> **Owner:** maintainer (lfgranja) | **Changelog:** v1.0 pitch+loops+sistemas → v1.1 pilares testáveis + TDD handoff + QA/cut-list/localização + bibliografia canônica → v1.1 validação humana (atestado do maintainer, 2026-11-20T01:04Z).
 > **Escopo:** Mod SMAPI completo para Stardew Valley 1.6 (PC Linux/macOS/Windows), Early → Mid → End game
 > **Documentos-mãe:** `ROADMAP.md`, `.specify/memory/constitution.md` v2.0.0, `specs/004-playable-compost-loop/spec.md` + `plan.md`, `README.md##Features`, `docs/design-system/*`
 > **Statement de intent confirmado:** Outcome = GDD híbrido do Living Roots; User = maintainer + cônjuge em co-op + colaboradores/jogadores cozy; Success = guiar slice 004 jogável + Gate 3 co-op verificável sem quebrar saves; Constraint = solo vivo 0–100 farm-keyed, host-authoritative, só save Stardew; Out of scope = engine standalone, economia Joja paralela infinita, localização além PT/EN no v1.
@@ -309,5 +309,14 @@ Gate 1: `GamePath=$PWD/.gamepath dotnet build -c Release` + `dotnet test --no-bu
 - **Cut list (corta primeiro):** romance Elena, console/mobile, localização além PT/EN, Green Roof jogável, greywater animado — cortam sem matar soberania.
 
 ---
+## 8. Validação humana (append-only)
 
-*Próximo passo (spec-driven, gated): validar este GDD com humano → `speckit.specify` D3 (fiação item/máquina) → `speckit.plan/tasks/implement` slice 004 → só então `speckit.specify` D1 multiplayer real. Sem código antes do sim humano.*
+- **Data/hora (UTC):** 2026-11-20T01:04Z.
+- **Atestado:** GDD v1.1 validado pelo maintainer — solicitado explicitamente nesta sessão ("Marque o GDD validado por mim"). Registro feito por solicitação do próprio maintainer; nenhuma verificação técnica nova foi executada para este atestado.
+- **Escopo:** o documento de design como referência de intenção (pitch, pilares, loop, sistemas, narrativa, UI/UX, escopo, milestones) — aprovado por quem é owner da seção.
+- **Não cobre:** implementação completa, `verified` de Gate 3, D1 (sessão real com farmhand), playtest humano de balanceamento, tag/release pública. `machine-pass` ≠ `verified` permanece (`VERIFICATION_PROTOCOL.md`).
+- **Drift documental preexistente:** números do GDD (Joja −5%, tiers 0/1–33/34–66/67–100, 989 testes, chave `soil_health_data_{saveId}`) divergem do código atual (−10, bandas 31/71, 1999/2003, `data/{sanitized}.json`). O atestado não reconcilia esses números; a correção é trabalho separado.
+
+---
+
+*Validação humana registrada na seção 8 em 2026-11-20T01:04Z. Próximo passo (spec-driven, gated): D1 multiplayer real com segundo jogador + atestação humana de Gate 3 — owner-gated; conteúdo Mid/End segue em `ROADMAP.md`/`specs/`. Validação de documento não promove `machine-pass` a `verified`.*
