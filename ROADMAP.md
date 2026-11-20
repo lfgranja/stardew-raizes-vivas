@@ -637,3 +637,12 @@ No mod combines **per-tile soil health + composting loop + mulch + rotation + po
 3. **Pest control via insects** should not be presented as science; reframe or drop.
 
 ---
+
+## Verified state note — 2026-11-20
+
+- Append-only; histórico preservado. Âncora e contagens em `OBJETIVO.md` §10 e `.specify/memory/STATE.md`.
+- HEAD do alvo `7df732b`; gate autoritativo `scripts/ci/aggregate-gate.sh` **ALL STEPS PASSED** nesta sessão. `GamePath=/home/luis/stardew-assemblies`.
+- PRs #811/#812 abertos e bloqueados por `BUILDDEPS_TOKEN is not set` no contexto Dependabot (`sdd-gate`/`verify` pass) — não mesclados; não é regressão de código.
+- Dívidas autônomas remanescentes: 2 candidatos `.archify/` inválidos; `docs/architecture/` ausente; seis gate scripts da factory materializados só como diagnóstico (N/A como autoridade).
+- human-gated / **[NV]**: D1, atestação E de Gate 3, SC-004, tag/release `0.2.0`, `RUNNER_AUDIT_STORE` (#523), segredos Dependabot e aprovação de revisor distinto.
+
