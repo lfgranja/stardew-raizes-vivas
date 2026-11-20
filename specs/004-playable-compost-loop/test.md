@@ -4,15 +4,15 @@
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261109T034318Z-7374
-- **Commit**: e6a3da14462c2b1673b824f9024eb48dc39437b6
-- **Date**: 2026-11-09T03:44:10Z
+- **Run ID**: run-20261120T012343Z-6b29
+- **Commit**: a3531bd2d3421b1d6cc04b259b0bde2cf349a510
+- **Date**: 2026-11-20T01:26:53Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261109T034318Z-7374/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261109T034318Z-7374/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261109T034318Z-7374/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261109T034318Z-7374/`
+  - SoilHealthState delta: `evidence-bundle-run-20261120T012343Z-6b29/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261120T012343Z-6b29/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261120T012343Z-6b29/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261120T012343Z-6b29/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —

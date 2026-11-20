@@ -40,6 +40,12 @@ jobs:
       - name: Install CI dependencies
         run: pip install -r scripts/quality-gate/requirements-ci.txt # NOSONAR
 
+      - name: Install test dependencies
+        run: pip install -r scripts/quality-gate/requirements-dev.txt # NOSONAR
+
+      - name: Quality gate tests
+        run: python -m pytest scripts/quality-gate/tests -q
+
       - name: Semgrep SARIF
         run: semgrep scan --config p/csharp --error --severity ERROR --metrics off --sarif --output semgrep.sarif LivingRoots/
 
