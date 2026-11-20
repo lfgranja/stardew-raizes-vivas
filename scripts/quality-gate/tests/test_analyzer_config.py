@@ -17,8 +17,8 @@ MOD_PROJECT = ROOT / "LivingRoots" / "LivingRoots.csproj"
 TEST_PROJECT = ROOT / "LivingRoots.Tests" / "LivingRoots.Tests.csproj"
 PROBE = ROOT / "scripts" / "quality-gate" / "analyzer-probe.sh"
 
-SONAR_VERSION = "10.35.0.4138"
-NETANALYZERS_VERSION = "10.0.403"
+SONAR_VERSION = "10.36.0.15337"
+NETANALYZERS_VERSION = "11.0.100"
 
 
 def parse_project(path: Path) -> ET.Element:

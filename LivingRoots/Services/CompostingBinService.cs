@@ -112,12 +112,10 @@ public class CompostingBinService(
             return;
         }
 
-#pragma warning disable S8969
         if (result.Accepted)
         {
             ApplyAcceptedAddWaste(tile, result);
         }
-#pragma warning restore S8969
     }
 
     private void ApplyRejectedAddWaste(string locationName, Vector2 tile, AddWasteResult result)
