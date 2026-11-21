@@ -13,3 +13,12 @@
 - **Dívidas autônomas**: 2 de 5 candidatos `.archify/` inválidos (sobreposição de fases/corridor; schema antigo); `docs/architecture/` ausente; seis scripts de gate da factory materializados apenas como diagnóstico (falham por baselines da factory, N/A como autoridade conforme Bloco 0.a).
 - **[NV / humano]**: D1 (sessão host+farmhand ao vivo), atestação humana E de Gate 3, execução do protocolo SC-004, tag/release `0.2.0` e canais públicos, `RUNNER_AUDIT_STORE` (#523), segredos do Dependabot e aprovação de revisor distinto.
 
+## Estado verificado — 2026-11-21 (ciclo 030)
+
+- **Âncora**: alvo `/home/luis/development/stardew-raizes-vivas`, branch `feature/030-roteiro-verificacao-funcional` @ `64781ee`; `.specify/feature.json` → `specs/030-roteiro-verificacao-funcional`; factory `b1deab1` (somente leitura).
+- **Roteiro executado**: matriz persistida em `specs/030-roteiro-verificacao-funcional/verification-matrix.md` com Camadas A (gates), B (11 grupos xUnit), C (Gate 3) e D (humano `[NV]`). B1–B11: **1378 execuções, 0 falhas**; i18n PASS; pytest 180/0; `aggregate-gate.sh` ALL STEPS PASSED.
+- **Gate 3**: `compost-growth-hardening` reexecutado após alinhamento do threshold a `[0, 31)`: `run-20261121T232308Z-64cf`, `verdict=pass`, honestidade R, 3 sinais concordantes, `--verify-bundle` exit 0. `machine-pass` host-only; nenhum `verified` humano.
+- **Contagens por script (23:27Z)**: specs=27 (23 com `spec.md`), assessments=22, validations=24, releases=24, bugs=40, pesquisa=26; `*.generated.md`=0; 0 PRs abertos ao final.
+- **PRs**: #811 (pin coverlet 10.1.1) e #812 (JsonSchema.Net 9.7.0 + lock regenerado) conduzidos para `dev` com checks ao vivo verdes e mesclados (`048342b`, `18640ce`). Nenhum force-push/auto-merge/delete de branch.
+- **[NV / humano]**: D1, atestação E de Gate 3, SC-004, tag/release `0.2.0`, `RUNNER_AUDIT_STORE` (#523), aprovador distinto. Dívida de limites legados em cenários 004/005/010 registrada, não alterada.
+

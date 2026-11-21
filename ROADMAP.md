@@ -1,5 +1,8 @@
 # ROADMAP.md - Stardew Valley: Living Roots
 
+> **STATUS ANNOTATION — 2026-11-21 (ciclo 030; estado verificado, append-only)**
+> `dev` recebeu #811 (`048342b`) e #812 (`18640ce`); **0 PRs abertos**. FONTE_FACTORY `b1deab1` (somente leitura). Roteiro de verificação funcional executado e persistido em `specs/030-roteiro-verificacao-funcional/verification-matrix.md`: B1–B11 com **1378 execuções / 0 falhas**, `aggregate-gate.sh` ALL STEPS PASSED, i18n PASS, pytest 180/0. Gate 3 do cenário `compost-growth-hardening` revalidado após alinhamento do threshold a `[0, 31)` (`run-20261121T232308Z-64cf`, `pass`, R, 3 sinais) — `machine-pass` host-only, sem `verified` humano. Contagens: specs=27, assessments=22, validations=24, releases=24, bugs=40, pesquisa=26. **[NV]**: D1, atestação E, SC-004 e tag/release `0.2.0` seguem com o maintainer.
+
 This document outlines the development roadmap for the "Living Roots" mod, detailing the progression of features from early to late game, based on agroecological principles.
 
 > **STATUS ANNOTATION — 2026-11-20 (estado verificado; append-only, substitui os snapshots acima para decisões correntes)**
@@ -549,15 +552,15 @@ Before building any of the above, the roadmap's promises were checked against th
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261120T012343Z-6b29
-- **Commit**: a3531bd2d3421b1d6cc04b259b0bde2cf349a510
-- **Date**: 2026-11-20T01:26:53Z
+- **Run ID**: run-20261121T232308Z-64cf
+- **Commit**: 64781ee76365c132bcece9ab844631c5e8026f33
+- **Date**: 2026-11-21T23:24:46Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261120T012343Z-6b29/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261120T012343Z-6b29/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261120T012343Z-6b29/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261120T012343Z-6b29/`
+  - SoilHealthState delta: `evidence-bundle-run-20261121T232308Z-64cf/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261121T232308Z-64cf/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261121T232308Z-64cf/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261121T232308Z-64cf/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
