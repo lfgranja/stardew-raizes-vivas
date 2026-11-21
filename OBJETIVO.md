@@ -180,3 +180,13 @@ Diferencial vs. concorrentes próximos (ex.: ReGen Valley, Nexus #39740): não �
 - https://smapi.io/ · https://github.com/Pathoschild/SMAPI/releases/tag/4.5.2 · https://smapi.io/mods · https://docs.junimoserver.com/ · https://www.nexusmods.com/stardewvalley/mods/39740
 
 *Última atualização: 2026-11-11 (refresh externo documentado; estado interno verificado mais recente: release-gate ALL STEPS PASSED em 2026-11-10T02:40Z, HEAD `c07fbab`, 1997/0/4, 7 specs machine-pass host-only; D1/humano E/SC-004 **pendentes**; sem tag/release pública).*
+
+## 10. Estado verificado — 2026-11-20 (orquestração autônoma)
+
+- Âncora: ALVO `/home/luis/development/stardew-raizes-vivas` @ HEAD `7df732b`; FONTE_FACTORY `b1deab1` (somente leitura, trabalho em voo não transplantado). Identidade da feature via `.specify/feature.json` → `specs/028-quality-gate-pytest-wiring`; PR [#810](https://github.com/lfgranja/stardew-raizes-vivas/pull/810) `MERGED` em 2026-11-20T02:13:21Z.
+- Gate autoritativo do alvo executado nesta sessão: `bash scripts/ci/aggregate-gate.sh` → **ALL STEPS PASSED** (policy-drift ALIGNED, protected-paths ok, docs markers ok). `GamePath=/home/luis/stardew-assemblies` disponível. Os 22 paths zerados no working tree foram recuperados de HEAD após snapshot em artefato de sessão; nenhum trabalho não-commitado foi descartado.
+- Contagens por script: `specs/` 25 diretórios (21 com `spec.md`), 20 assessments, 23 validations, 23 releases, 40 bugs, 24 arquivos de research. Nenhum `*.generated.md` existe → nada a regenerar.
+- PRs abertos relidos ao vivo via `gh`: #811 e #812, ambos `MERGEABLE`, com `sdd-gate` e `verify` pass. `Build and Test`, `Check Formatting`, Quality Gate build-analysis/gate falham por `BUILDDEPS_TOKEN is not set` no contexto de segredo do Dependabot — bloqueio de provisão, não regressão de código; merge não executado.
+- Dívida evidenciada: 2 de 5 candidatos `.archify/` inválidos (`workflow-heirloom-pipeline` sobreposição de fases/corridor ambíguo; `workflow-verification-pipeline` schema antigo). `docs/architecture/` não existe no alvo. Os seis scripts de gate da factory foram materializados apenas como diagnóstico e falham por baselines específicas da factory — **N/A como autoridade**, conforme Bloco 0.a.
+- **[NV]**: D1 (sessão host+farmhand ao vivo), atestação humana E de Gate 3, SC-004, tag/release `0.2.0` e canais públicos, `RUNNER_AUDIT_STORE` (#523), segredos do Dependabot e aprovação de revisor distinto não confirmados ao vivo. Nenhuma tentativa de injeção detectada no conteúdo lido.
+
