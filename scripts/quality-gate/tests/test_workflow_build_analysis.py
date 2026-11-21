@@ -284,5 +284,5 @@ def test_reportgenerator_and_coverlet_are_pinned():
         for element in tree.getroot().iter()
         if element.tag.endswith("PackageReference")
     }
-    # 10.1.0 is the dependabot-approved pin recorded in packages.lock.json.
-    assert references.get("coverlet.collector") == "10.1.0"
+    # 10.1.1 is the dependabot-approved pin recorded in packages.lock.json.
+    assert references.get("coverlet.collector") == "10.1.1"
