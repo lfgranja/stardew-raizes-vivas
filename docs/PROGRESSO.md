@@ -24,3 +24,10 @@
 - **Fechamento do gate (2026-11-22T00:59:31Z)**: `release-gate.sh` **ALL STEPS PASSED** no HEAD `f4eba87` (steps 1–7); `aggregate-gate.sh` ALL STEPS PASSED e pytest 180/0 no mesmo HEAD. PR #814 mesclado em `1fed5f4`; 0 PRs abertos.
 - **Reprodução do roteiro (2026-11-22)**: A ALL STEPS PASSED (release gate em `469b4c1`, 03:00:28Z); B 1378/0; C `run-20261122T030046Z-79af` pass/R/3 sinais; D `[NV]`. Evidência visual via browser (dashboard + Actions + PRs mesclados).
 
+
+## Estado verificado — 2026-11-22 (ciclo 031)
+
+- **Âncora**: alvo `/home/luis/development/lr-cycle031` (worktree de `dev` @ `f2bf6c7`), branch `feature/031-nv-remote-log-closure`; `.specify/feature.json` → `specs/031-nv-remote-log-closure`; factory `b1deab1` (somente leitura).
+- **[NV] resolvido**: causa step-level dos PRs #790–#796 verificada ao vivo via `gh run view --log-failed` (runs 44641194770, 44664287245, 44664266743) e `gh api .../dependabot/secrets` (vazio). Evidência em `research/2026-11-22-remote-nv-closure.md`.
+- **Limite de honestidade**: D1, atestação E de Gate 3, SC-004, tag/release `0.2.0`, `RUNNER_AUDIT_STORE` (#523) e aprovador distinto permanecem **[NV]**/human-gated. Nenhuma promoção adicional.
+- **Escopo**: documentação/SDD apenas; zero diff em `LivingRoots/`, `.github/workflows/` e `scripts/ci/`. Gate 3 real-game N/A.
