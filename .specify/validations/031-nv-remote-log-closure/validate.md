@@ -2,7 +2,7 @@
 
 - **Slug**: 031-nv-remote-log-closure
 - **Date**: 2026-11-22
-- **Verdict**: **APPROVED**
+- **Verdict**: **PENDENTE — SC-004 em execução (job `bg_8`, iniciado 2026-11-22T03:39:05Z)**; aprovar somente com saída real do gate
 
 ## Gate results
 
@@ -15,7 +15,7 @@
 | SC-001 | `docs/quality-gate.md:48` reescrita com evidência datada; `STATE.md` com nota de resolução | PASS |
 | SC-002 | 3 run IDs (44641194770, 44664287245, 44664266743) + 3 trechos literais em `research/2026-11-22-remote-nv-closure.md` | PASS |
 | SC-003 | `bash scripts/ci/aggregate-gate.sh` → `ALL STEPS PASSED` (sdd-gate 0 errors/30 warnings; policy-drift ALIGNED; protected paths ok; docs markers ok), 2026-11-22T03:43Z | PASS |
-| SC-004 | `GamePath=... scripts/release-gate.sh` — ver saída anexada no registro final do ciclo | PASS |
+| SC-004 | `GamePath=... scripts/release-gate.sh` — job `bg_8` em execução; etapas 1–4 OK, smoke em andamento. **Sem resultado final ainda — não promover a PASS** | PENDENTE |
 | SC-005 | `git diff --name-only dev...HEAD` → 19 arquivos; zero em `LivingRoots/`, `.github/workflows/`, `scripts/ci/`; zero em artefatos históricos 025–030 | PASS |
 | i18n | `python3 scripts/ci/i18n-parity-check.py` → `PASS (0 errors, 0 warnings)` | PASS |
 | pytest | `PYTHONPATH=scripts/quality-gate python3 -m pytest scripts/quality-gate/tests -q` → **180 passed in 139.54s** | PASS |
