@@ -552,15 +552,15 @@ Before building any of the above, the roadmap's promises were checked against th
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261121T232308Z-64cf
-- **Commit**: 64781ee76365c132bcece9ab844631c5e8026f33
-- **Date**: 2026-11-21T23:24:46Z
+- **Run ID**: run-20261122T030046Z-79af
+- **Commit**: 469b4c118490e660a9c5968cd91f94707de3c3d1
+- **Date**: 2026-11-22T03:01:37Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261121T232308Z-64cf/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261121T232308Z-64cf/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261121T232308Z-64cf/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261121T232308Z-64cf/`
+  - SoilHealthState delta: `evidence-bundle-run-20261122T030046Z-79af/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261122T030046Z-79af/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261122T030046Z-79af/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261122T030046Z-79af/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
