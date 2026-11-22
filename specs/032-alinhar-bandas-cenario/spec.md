@@ -63,7 +63,7 @@ Como responsável pela trilha SDD, quero que os novos runs sejam registrados pel
 - **FR-003**: NENHUM outro campo dos dois cenários PODE ser alterado; total máximo de 4 linhas mudadas.
 - **FR-004**: Os dois cenários DEVEM ser reexecutados via `verify-scenario.sh` com `--no-acquire --game-path ... --skip-build`.
 - **FR-005**: A promoção de blocos `GATE3:BEGIN/END` DEVE ser feita pelo runner; edição manual é proibida.
-- **FR-006**: Nenhum arquivo sob `LivingRoots/`, `.github/workflows/`, `scripts/ci/` ou `specs/010-*` PODE ser alterado.
+- **FR-006**: Nenhum arquivo sob `LivingRoots/`, `.github/workflows/`, `scripts/ci/` ou `specs/010-*` PODE ser alterado manualmente. Exceção determinística: `specs/010-headless-verification-runner/promotion-triggers.json`, escrito pelo próprio runner ao promover `machine-pass`.
 - **FR-007**: Notas append-only DEVEM ser registradas nos `test.md` e na âncora de estado, com run IDs e limite `machine-pass`.
 - **FR-008**: O ciclo DEVE fechar a cadeia SDD completa com artefatos persistidos.
 
@@ -78,7 +78,7 @@ Como responsável pela trilha SDD, quero que os novos runs sejam registrados pel
 - **SC-002**: Exatamente 4 linhas alteradas nos 2 cenários; zero mudanças em campos protegidos (baseline: 0).
 - **SC-003**: 2/2 runs Gate 3 com `verdict=pass`, honestidade R, 3 sinais e `--verify-bundle` exit 0.
 - **SC-004**: `aggregate-gate.sh` e `release-gate.sh` ALL STEPS PASSED no HEAD do ciclo.
-- **SC-005**: `git diff --name-only dev...HEAD` sem `LivingRoots/`, workflows, `scripts/ci/` e `specs/010-*`.
+- **SC-005**: `git diff --name-only dev...HEAD` sem `LivingRoots/`, workflows, `scripts/ci/` e `specs/010-*`, exceto `promotion-triggers.json` escrito pelo runner.
 
 ## Assumptions
 

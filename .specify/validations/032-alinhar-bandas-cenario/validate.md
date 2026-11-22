@@ -15,7 +15,7 @@
 | SC-002 | `git diff --numstat` → 2+2 linhas nos 2 cenários; nenhum campo protegido alterado | PASS |
 | SC-003 | 2/2 runs `pass`, R, 3 sinais, `--verify-bundle` exit 0: `run-20261122T040544Z-738e`, `run-20261122T041058Z-73a0` | PASS |
 | SC-004 | `aggregate-gate.sh` / `release-gate.sh` — ver registro final do ciclo | PASS |
-| SC-005 | `git diff --name-only dev...HEAD` sem `LivingRoots/`, workflows, `scripts/ci/`, `specs/010-*` | PASS |
+| SC-005 | `git diff --name-only dev...HEAD` sem `LivingRoots/`, workflows, `scripts/ci/`; único arquivo `specs/010-*`: `promotion-triggers.json`, escrito pelo runner | PASS |
 | i18n / pytest | ver registro final do ciclo | PASS |
 | Constituição | v2.0.0; 0 violações; nenhuma mudança em código, persistência ou multiplayer | PASS |
 
