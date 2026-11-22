@@ -11,11 +11,12 @@ Runner headless com Xvfb; `GamePath` apontando para os assemblies do jogo; `gh` 
 git diff -- specs/004-playable-compost-loop/scenarios/compost-growth-healthy.scenario.json \
   specs/005-soil-health-to-crop-growth/scenarios/soil-health-growth.scenario.json
 
-# 2. Gate 3 (dois cenários)
+# 2. Gate 3 (dois cenários) — SEM --skip-build em worktree novo:
+#    binários do avaliador são gitignored; sem build o runner produz evaluator-unavailable (W/errored).
 ./scripts/verify-scenario.sh --scenario specs/004-playable-compost-loop/scenarios/compost-growth-healthy.scenario.json \
-  --no-acquire --game-path "$HOME/.local/share/Steam/steamapps/common/Stardew Valley" --skip-build
+  --no-acquire --game-path "$HOME/.local/share/Steam/steamapps/common/Stardew Valley"
 ./scripts/verify-scenario.sh --scenario specs/005-soil-health-to-crop-growth/scenarios/soil-health-growth.scenario.json \
-  --no-acquire --game-path "$HOME/.local/share/Steam/steamapps/common/Stardew Valley" --skip-build
+  --no-acquire --game-path "$HOME/.local/share/Steam/steamapps/common/Stardew Valley"
 
 # 3. Gates determinísticos
 bash scripts/ci/aggregate-gate.sh
