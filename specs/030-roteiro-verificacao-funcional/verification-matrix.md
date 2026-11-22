@@ -10,7 +10,7 @@
 | Gate | Comando | Resultado | Registro |
 |---|---|---|---|
 | SDD/agregado | `bash scripts/ci/aggregate-gate.sh` | **ALL STEPS PASSED** (sdd-gate 0 errors / 29 warnings; policy-drift ALIGNED; protected paths OK; docs markers OK) | 2026-11-21T23:11:14Z |
-| Release (7 etapas) | `GamePath=/home/luis/stardew-assemblies bash scripts/release-gate.sh` | ver `docs/PROGRESSO.md` (nota de fechamento do ciclo) | em execução no início; saída final anexada no fechamento |
+| Release (7 etapas) | `GamePath=/home/luis/stardew-assemblies bash scripts/release-gate.sh` | **ALL STEPS PASSED** no HEAD `f4eba87` (steps 1–7 OK; suíte 1999/0/4) | 2026-11-22T00:59:31Z |
 | i18n | `python3 scripts/ci/i18n-parity-check.py` | **PASS** (key sets identical across default/en/pt; 0 errors, 0 warnings) | 2026-11-21T23:30:12Z |
 | Quality-gate pytest | `PYTHONPATH=scripts/quality-gate python3 -m pytest scripts/quality-gate/tests -q` | **180 passed** (0 falhas) | 2026-11-21T23:30:12Z |
 
@@ -44,7 +44,7 @@ Critério: `verdict=pass`, honestidade `R`, 3 sinais (`soilHealthStateDelta`, `c
 
 | Spec | Cenários | Evidência registrada | Reexecução neste ciclo |
 |---|---|---|---|
-| 004 | `compost-growth-{healthy,moderate,hardening}` | `specs/004-playable-compost-loop/test.md` (machine-pass `7374`) | `hardening` (obrigatório, deriva corrigida) |
+| 004 | `compost-growth-{healthy,moderate,hardening}` | `specs/004-playable-compost-loop/test.md` (machine-pass `run-20261121T232308Z-64cf`) | `hardening` (obrigatório, deriva corrigida) |
 | 005 | `soil-health-growth{,-poor,-moderate}` | `specs/005-soil-health-to-crop-growth/test.md` (`4cc1`) | não necessária (nenhum artefato alterado) |
 | 013 | `mulch-{decay-exemption,bare-tile-decay-exemption,7day-expiry,refused-on-ineligible}` | `specs/013-mulch-soil-cover/test.md` (`1ea4`) | não necessária |
 | 014 | `soil-health-harvest-{quality,measured-zero,unknown}` | `specs/014-soil-health-crop-quality/test.md` (`088b`) | não necessária |

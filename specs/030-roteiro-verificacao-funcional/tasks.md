@@ -48,9 +48,9 @@
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T015 Reexecutar os gates da Camada A no fechamento e colar saídas
-- [ ] T016 Confirmar zero diff em `LivingRoots/**` e persistir `validate.md` (R4) e `release.md` (R7)
-- [ ] T017 Abrir PR reviewable para `dev` via `gh pr create` com relatório de evidências; sem auto-merge/force-push/delete
+- [x] T015 Reexecutar os gates da Camada A no fechamento e colar saídas
+- [x] T016 Confirmar zero diff em `LivingRoots/**` e persistir `validate.md` (R4) e `release.md` (R7)
+- [x] T017 Abrir PR reviewable para `dev` via `gh pr create` com relatório de evidências; sem auto-merge/force-push/delete
 
 ## Dependencies
 
