@@ -31,3 +31,10 @@
 - **[NV] resolvido**: causa step-level dos PRs #790–#796 verificada ao vivo via `gh run view --log-failed` (runs 44641194770, 44664287245, 44664266743) e `gh api .../dependabot/secrets` (vazio). Evidência em `research/2026-11-22-remote-nv-closure.md`.
 - **Limite de honestidade**: D1, atestação E de Gate 3, SC-004, tag/release `0.2.0`, `RUNNER_AUDIT_STORE` (#523) e aprovador distinto permanecem **[NV]**/human-gated. Nenhuma promoção adicional.
 - **Escopo**: documentação/SDD apenas; zero diff em `LivingRoots/`, `.github/workflows/` e `scripts/ci/`. Gate 3 real-game N/A.
+
+## Estado verificado — 2026-11-22 (ciclo 032)
+
+- **Âncora**: worktree `/home/luis/development/lr-cycle032` (base `dev` @ `f2bf6c7`), branch `feature/032-alinhar-bandas-cenario`; `.specify/feature.json` → `specs/032-alinhar-bandas-cenario`; NNN=032 forçado via `--number` porque o ciclo 031 está em voo em outro worktree. Factory `b1deab1` (somente leitura).
+- **Mudança**: 4 linhas em 2 cenários ativos (`compost-growth-healthy`, `soil-health-growth`): `min 67 → 71` e descrição Healthy `[71, 100)`, coerente com `ModConstants.ModerateHealthyBandEdge = 71f`.
+- **Gate 3**: `run-20261122T040544Z-738e` (004) e `run-20261122T041058Z-73a0` (005), ambos `verdict=pass`, honestidade R, 3 sinais concordantes, `--verify-bundle` exit 0; blocos promovidos pelo mecanismo determinístico do runner. Duas tentativas `errored`/W por `evaluator-unavailable` em worktree novo foram registradas e não promovidas.
+- **Limite**: `machine-pass` host-only; D1, atestação E de Gate 3, SC-004, tag/release `0.2.0`, `RUNNER_AUDIT_STORE` (#523) e aprovador distinto permanecem `[NV]`/human-gated.

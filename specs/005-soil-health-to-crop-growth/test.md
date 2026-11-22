@@ -4,15 +4,15 @@
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261109T034443Z-4cc1
-- **Commit**: e6a3da14462c2b1673b824f9024eb48dc39437b6
-- **Date**: 2026-11-09T03:45:31Z
+- **Run ID**: run-20261122T041058Z-73a0
+- **Commit**: 7f3a4427a028300b22caeff92f03b69675eea34c
+- **Date**: 2026-11-22T04:15:17Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261109T034443Z-4cc1/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261109T034443Z-4cc1/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261109T034443Z-4cc1/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261109T034443Z-4cc1/`
+  - SoilHealthState delta: `evidence-bundle-run-20261122T041058Z-73a0/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261122T041058Z-73a0/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261122T041058Z-73a0/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261122T041058Z-73a0/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
@@ -37,3 +37,7 @@
 - `soil-health-growth-moderate` (moderate 50) rerun twice on seed 987654321: `run-20261109T033704Z-21fe` / `run-20261109T033828Z-11c4` — both **pass**; bundles verify exit 0; semantic evidence identical (`phaseDays` 4). Logs: 81/80 filtered lines, one extra identical `Pruned orphan bin record at Farm:60,15` in run 1.
 - Mutation negative control (shared edge, same as 004-moderate): `ModerateHealthyBandEdge 71f → 0f` → `run-20261109T034143Z-2623`, `phaseDays` 3 (expected 4), predicate-0 ×1.0 **false**, exit 19; post-restore `run-20261109T034443Z-4cc1` **pass**. See `verification/mutation-checks.md`.
 - GATE3 block is runner-promoted to the post-restore run `run-20261109T034443Z-4cc1` (commit `e6a3da1`); not hand-edited.
+
+## Append-only run notes (ciclo 032, 2026-11-22)
+
+- `soil-health-growth` reexecutado após alinhamento do threshold Healthy a `ModConstants.ModerateHealthyBandEdge = 71f` (`"min": 67` → `71`, descrição `[71, 100)`): `run-20261122T041058Z-73a0`, `verdict=pass`, `honestyLevel=R`, `signalsComplete=true`, `signalsAgree=true`, `thresholdsOk=true`, `--verify-bundle` exit 0. Bloco de marcadores promovido pelo mecanismo determinístico do runner; nenhuma edição manual. `machine-pass` host-only — nenhuma atestação humana reivindicada.
