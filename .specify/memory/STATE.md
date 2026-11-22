@@ -246,6 +246,12 @@
 - **Reprodução 100% determinística (2026-11-22T01:25–03:02Z)**: Camada A (`aggregate` ALL STEPS PASSED, i18n PASS, pytest 180/0, `release-gate.sh` ALL STEPS PASSED às 03:00:28Z em `469b4c1`); Camada B 11/11 grupos, 1378 execuções / 0 falhas; Camada C `hardening` reexecutado `run-20261122T030046Z-79af` (pass, R, 3 sinais, `--verify-bundle` 0) com bloco promovido no commit que contém a correção; Camada D permanece `[NV]`. Capturas via browser: dashboard do roteiro, Actions, PRs #814/#815. Nenhuma transição de estado por inferência de LLM.
 
 
+## NV remoto resolvido — ciclo 031 (2026-11-22T03:38Z)
+
+- **[NV] RESOLVIDO (escopo estrito)**: a causa step-level dos checks vermelhos dos PRs #790–#796 não é mais desconhecida. `gh run view 44641194770 --log-failed` (2026-11-19T23:52:15Z), `44664287245` (2026-11-20T02:56:37Z) e `44664266743` (2026-11-20T02:56:25Z, step `Fetch game assemblies`) exibem `##[error]BUILDDEPS_TOKEN is not set; cannot download the private build-deps release.` e `exit code 1`. `gh secret list` mostra `BUILDDEPS_TOKEN` como segredo de repositório, enquanto `gh api repos/lfgranja/stardew-raizes-vivas/dependabot/secrets` retorna lista vazia: PRs do Dependabot não receberam o segredo. Evidência completa, com comandos e trechos literais, em `research/2026-11-22-remote-nv-closure.md`.
+- **[NV] preservado**: D1 (sessão host+farmhand real), atestação humana E de Gate 3, SC-004, tag/release `0.2.0` + canais públicos, `RUNNER_AUDIT_STORE` (#523), aprovação de revisor distinto e qualquer status remoto não observado ao vivo nesta data. Nenhum foi promovido por esta nota.
+- Âncora do ciclo: `feature/031-nv-remote-log-closure`, `.specify/feature.json` → `specs/031-nv-remote-log-closure`; FONTE_FACTORY `b1deab15f482dd85871cd6c6a857ad710b89e2a6` (somente leitura). Gate autoritativo do alvo permanece `scripts/release-gate.sh` (GitHub/`gh`); scripts da factory são N/A.
+
 ## Ciclo 032 — alinhamento de bandas em cenários ativos (2026-11-22)
 
 - **Âncora**: worktree `/home/luis/development/lr-cycle032` (base `dev` @ `f2bf6c7`), branch `feature/032-alinhar-bandas-cenario`; `.specify/feature.json` → `specs/032-alinhar-bandas-cenario`. NNN=032 forçado com `--number 032` porque o ciclo 031 está em voo em outro worktree e o auto-resolvedor encontraria 031 (colisão documentada).
