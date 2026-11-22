@@ -4,15 +4,15 @@
 - **Status**: machine-pass
 - **Verdict**: pass
 - **Flaky**: false
-- **Run ID**: run-20261122T030046Z-79af
-- **Commit**: 469b4c118490e660a9c5968cd91f94707de3c3d1
-- **Date**: 2026-11-22T03:01:37Z
+- **Run ID**: run-20261122T040544Z-738e
+- **Commit**: 9c4ed61fe9b4dde2859fa103724b0242bb80248d
+- **Date**: 2026-11-22T04:13:44Z
 - **Player role**: host
 - **Signals**:
-  - SoilHealthState delta: `evidence-bundle-run-20261122T030046Z-79af/artifacts/soil-health-before-after.json`
-  - Crop-phase delta: `evidence-bundle-run-20261122T030046Z-79af/artifacts/crop-phase-dump.json`
-  - SMAPI log: `evidence-bundle-run-20261122T030046Z-79af/artifacts/smapi-log.txt`
-- **Bundle**: `evidence-bundle-run-20261122T030046Z-79af/`
+  - SoilHealthState delta: `evidence-bundle-run-20261122T040544Z-738e/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261122T040544Z-738e/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261122T040544Z-738e/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261122T040544Z-738e/`
 - **Honesty level**: R
 - **Claim**: machine-pass by automated headless run + multi-signal evidence
 - **Reviewer**: —
@@ -38,4 +38,4 @@
 
 ## Append-only run notes (ciclo 032, 2026-11-22)
 
-- Tentativa de reexecução de `compost-growth-healthy` com `--skip-build` em worktree recém-criado: `run-20261122T035125Z-18dc`, `verdict=errored`, `honestyLevel=W`, `thresholdsOk=false`, `evaluatorMissing=true` (ambos os predicados com reason `evaluator-unavailable`). Causa: binários do avaliador são gitignored e não existem em worktree novo. **Não promovido**; nenhum bloco `GATE3:BEGIN/END` alterado por esta tentativa.
+- Tentativa de reexecução de `compost-growth-healthy` com `--skip-build` em worktree recém-criado: `run-20261122T035125Z-18dc`, `verdict=errored`, `honestyLevel=W`, `thresholdsOk=false`, `evaluatorMissing=true` (ambos os predicados com reason `evaluator-unavailable`). Causa: binários do avaliador são gitignored e não existem em worktree novo. **Não promovido**; nenhum bloco de marcadores foi alterado por esta tentativa.
