@@ -42,3 +42,8 @@ Conclusão escopada: os PRs do Dependabot #790–#796 não receberam `BUILDDEPS_
 - A retenção de logs pelo GitHub é limitada: os trechos literais acima são a evidência persistida caso os runs expirem.
 - O comando `gh api .../dependabot/secrets` lista **nomes**, nunca valores; nenhuma credencial foi copiada, exibida ou versionada.
 - Nenhuma afirmação remota fora deste escopo é promovida: tudo o mais permanece `[NV]`.
+
+## Correção de atribuição (2026-11-22T05:20Z, ciclo 034)
+
+- Os três runs citados acima foram lidos em 2026-11-22 e datam de **19–20/11**, em branches `dependabot/...`. Dois deles (`coverlet.collector-10.1.1`, `JsonSchema.Net-9.7.0`) correspondem aos PRs **#811/#812** conforme `STATE.md`/`PROGRESSO.md`, não necessariamente aos PRs #790–#796 da observação original de 18/11.
+- `gh run list --limit 300` filtrado para 2026-11-18 não retornou runs nesta sessão. Portanto: **verificado** é o mecanismo (`BUILDDEPS_TOKEN` ausente no escopo Dependabot) nos runs de 19–20/11; **inferência** é estender a mesma causa aos PRs de 18/11. Nenhuma afirmação de leitura direta dos logs de 18/11 é feita.
