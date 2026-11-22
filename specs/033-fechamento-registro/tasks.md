@@ -12,12 +12,12 @@
 
 ## Phase 3: US1 — Desfecho auditável (P1)
 
-- [ ] T005 [P] [US1] Acrescentar nota datada em `.specify/memory/STATE.md` com merges #817/#818, commits, checks e limites locais
-- [ ] T006 [P] [US1] Acrescentar nota datada em `docs/PROGRESSO.md` com o mesmo conteúdo e a fila `[NV]` restante
+- [x] T005 [P] [US1] Acrescentar nota datada em `.specify/memory/STATE.md` com merges #817/#818, commits, checks e limites locais
+- [x] T006 [P] [US1] Acrescentar nota datada em `docs/PROGRESSO.md` com o mesmo conteúdo e a fila `[NV]` restante
 
 ## Phase 4: Polishing
 
-- [ ] T007 Rodar analyze read-only, hook atômico, converge, R4 validate e R7 release
+- [x] T007 Rodar analyze read-only, hook atômico, converge, R4 validate e R7 release
 - [ ] T008 Executar `aggregate-gate.sh`, `release-gate.sh`, pytest e i18n; registrar saídas
 - [ ] T009 Abrir PR reviewable para `dev/` via `gh pr create`, sem merge/auto-merge/force-push
 
