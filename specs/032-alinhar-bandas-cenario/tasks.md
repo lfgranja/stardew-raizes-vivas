@@ -24,8 +24,8 @@
 
 **Independent Test**: 2 runs `pass` com 3 sinais e blocos atualizados pelo runner.
 
-- [ ] T008 [P] [US2] Reexecutar Gate 3 de `compost-growth-healthy` com `--no-acquire --game-path ... --skip-build` e registrar run ID/veredito
-- [ ] T009 [P] [US2] Reexecutar Gate 3 de `soil-health-growth` com `--no-acquire --game-path ... --skip-build` e registrar run ID/veredito
+- [ ] T008 [P] [US2] Reexecutar Gate 3 de `compost-growth-healthy` com `--no-acquire --game-path ...` (sem `--skip-build`: worktree não tem binários gitignored) e registrar run ID/veredito
+- [ ] T009 [P] [US2] Reexecutar Gate 3 de `soil-health-growth` com `--no-acquire --game-path ...` (sem `--skip-build`) e registrar run ID/veredito
 - [ ] T010 [US2] Registrar notas append-only em `specs/004/test.md`, `specs/005/test.md` e `docs/PROGRESSO.md`, sem editar blocos `GATE3:BEGIN/END` manualmente
 
 ## Phase 5: Polishing & Cross-Cutting
