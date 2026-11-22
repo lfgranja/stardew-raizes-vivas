@@ -38,3 +38,11 @@
 - **Mudança**: 4 linhas em 2 cenários ativos (`compost-growth-healthy`, `soil-health-growth`): `min 67 → 71` e descrição Healthy `[71, 100)`, coerente com `ModConstants.ModerateHealthyBandEdge = 71f`.
 - **Gate 3**: `run-20261122T040544Z-738e` (004) e `run-20261122T041058Z-73a0` (005), ambos `verdict=pass`, honestidade R, 3 sinais concordantes, `--verify-bundle` exit 0; blocos promovidos pelo mecanismo determinístico do runner. Duas tentativas `errored`/W por `evaluator-unavailable` em worktree novo foram registradas e não promovidas.
 - **Limite**: `machine-pass` host-only; D1, atestação E de Gate 3, SC-004, tag/release `0.2.0`, `RUNNER_AUDIT_STORE` (#523) e aprovador distinto permanecem `[NV]`/human-gated.
+
+## Estado verificado — 2026-11-22 (fechamento autônomo)
+
+- **Merges**: #817 → `c3c904e` (04:50:07Z) e #818 → `686fea7` (04:56:20Z), ambos com `mergeStateStatus=CLEAN` e checks obrigatórios verdes observados ao vivo via `gh`; **0 PRs abertos**.
+- **Ciclo 031**: `[NV]` step-level de #790–#796 resolvido com logs de `gh run view --log-failed` (runs 44641194770/44664287245/44664266743) e prova de que `BUILDDEPS_TOKEN` existe como segredo de repositório mas não no escopo Dependabot.
+- **Ciclo 032**: banda Healthy alinhada a 31/71 em 2 cenários ativos (4 linhas); Gate 3 `run-20261122T040544Z-738e` e `run-20261122T041058Z-73a0`, ambos `pass`/R/3 sinais; blocos promovidos pelo runner.
+- **Gates locais**: `aggregate-gate.sh` ALL STEPS PASSED nos dois ciclos; i18n PASS 0/0; pytest 180/0; step 4 isolado do 031 = 1999/0/4. `release-gate.sh` interrompido por teto do harness durante o smoke, sem FAIL — não promovido a PASS.
+- **[NV / humano]**: D1, atestação E de Gate 3, SC-004, tag/release `0.2.0`, `RUNNER_AUDIT_STORE` (#523), aprovador distinto. Fila autônoma extinguida.
