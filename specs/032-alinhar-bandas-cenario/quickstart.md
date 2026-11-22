@@ -11,12 +11,14 @@ Runner headless com Xvfb; `GamePath` apontando para os assemblies do jogo; `gh` 
 git diff -- specs/004-playable-compost-loop/scenarios/compost-growth-healthy.scenario.json \
   specs/005-soil-health-to-crop-growth/scenarios/soil-health-growth.scenario.json
 
-# 2. Gate 3 (dois cenários) — SEM --skip-build em worktree novo:
-#    binários do avaliador são gitignored; sem build o runner produz evaluator-unavailable (W/errored).
+# 2. Gate 3 — em worktree novo, compilar o avaliador antes (binários são gitignored;
+#    sem ele o runner produz evaluator-unavailable, verdict=errored, honesty=W):
+GamePath="$HOME/.local/share/Steam/steamapps/common/Stardew Valley" \
+  dotnet build LivingRoots.Verification.Runner/LivingRoots.Verification.Runner.csproj -c Release -m:1 --disable-build-servers
 ./scripts/verify-scenario.sh --scenario specs/004-playable-compost-loop/scenarios/compost-growth-healthy.scenario.json \
-  --no-acquire --game-path "$HOME/.local/share/Steam/steamapps/common/Stardew Valley"
+  --no-acquire --game-path "$HOME/.local/share/Steam/steamapps/common/Stardew Valley" --skip-build
 ./scripts/verify-scenario.sh --scenario specs/005-soil-health-to-crop-growth/scenarios/soil-health-growth.scenario.json \
-  --no-acquire --game-path "$HOME/.local/share/Steam/steamapps/common/Stardew Valley"
+  --no-acquire --game-path "$HOME/.local/share/Steam/steamapps/common/Stardew Valley" --skip-build
 
 # 3. Gates determinísticos
 bash scripts/ci/aggregate-gate.sh
