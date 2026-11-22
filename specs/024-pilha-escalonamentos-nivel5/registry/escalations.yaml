@@ -145,3 +145,4 @@
   status: escalado-swe
   owner: "@lfgranja"
   refs: ["https://github.com/lfgranja/stardew-raizes-vivas/pull/821", "STATE.md ciclo 035", ".github/workflows/release.yml (apenas tags v*.*.*)"]
+  atualizacao_ci: "2026-11-22T05:40:50Z — após merge #822, PR #821 reexecutado no HEAD b3eaa94; gh pr checks --watch RC=0, todos pass/skipping; reviewDecision=REVIEW_REQUIRED inalterado. Registro anterior (05:31:56Z, HEAD 4b92cd8) preservado."

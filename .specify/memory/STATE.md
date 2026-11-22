@@ -282,3 +282,10 @@
 - **Bloqueio restante — SWE/owner**: proteção de `main` lida ao vivo exige `sdd-gate`, `strict:true`, **1 aprovador distinto**, `enforce_admins:true`. Nenhum aprovador foi simulado. Registro `ESC-LR-20261122-008` (status `escalado-swe`) acrescentado a `specs/024-pilha-escalonamentos-nivel5/registry/escalations.yaml`.
 - **[NV] owner**: tag `v*.*.*`/release pública — `release.yml` dispara apenas em tags; nenhuma tag foi criada. Publicação segue fora desta autorização.
 - **Próximo 80/20**: nenhum candidato autônomo restante; fila completa é humano/owner-gated.
+
+## Refresh de CI green e smoke 031 — ciclo 036 (2026-11-22T05:42Z)
+
+- **PR #821**: após o merge de #822 em `dev`, o CI foi reexecutado no HEAD `b3eaa94` e terminou **`RC=0` às 05:40:50Z** (`gh pr checks --watch`), com todos os checks `pass`/`skipping`. `mergeStateStatus=BLOCKED` apenas por `reviewDecision=REVIEW_REQUIRED`. Nenhum merge em `main` foi executado.
+- **Fila SWE**: chave `atualizacao_ci` acrescentada ao item `ESC-LR-20261122-008`, preservando o registro anterior (05:31:56Z / `4b92cd8`).
+- **Smoke 031 concluído**: `SMOKE_SKIP_INTEGRATION=1 scripts/tests/run-all.sh` isolado terminou `RC=0` às **05:42:22Z** — **51 arquivos, 50 passed, 0 failed, 1 skipped** (`test-integration.sh`). Com etapas 1–4 e 6–7 já verificadas, isso fecha a evidência local do ciclo 031 sem reivindicar a linha `ALL STEPS PASSED` do processo interrompido por teto.
+- **Próximo 80/20**: nenhum candidato autônomo; somente owner/SWE (merge em `main`, tag/release, D1, E, SC-004, `RUNNER_AUDIT_STORE`).
