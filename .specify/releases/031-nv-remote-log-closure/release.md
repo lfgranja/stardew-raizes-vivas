@@ -3,7 +3,7 @@
 - **Slug**: 031-nv-remote-log-closure
 - **Date**: 2026-11-22
 - **SemVer**: `0.1.6` (PATCH — evidência documental e estado verificado; zero mudança de comportamento jogável)
-- **Validation**: `.specify/validations/031-nv-remote-log-closure/validate.md` — APPROVED
+- **Validation**: `.specify/validations/031-nv-remote-log-closure/validate.md` — **PENDENTE** até a saída real de `scripts/release-gate.sh` (job `bg_8`); não reivindicar APPROVED antes disso
 
 ## Changelog
 
