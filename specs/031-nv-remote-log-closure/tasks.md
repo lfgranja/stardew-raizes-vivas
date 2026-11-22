@@ -32,8 +32,8 @@
 
 ## Phase 5: Polishing & Cross-Cutting
 
-- [ ] T011 Rodar `analyze` read-only e registrar 0 achados críticos; corrigir na fonte se houver conflito
-- [ ] T012 Rodar converge append-only, R4 validate e R7 release em `specs/031-nv-remote-log-closure/` e `.specify/{validations,releases}/`
+- [x] T011 Rodar `analyze` read-only e registrar 0 achados críticos; corrigir na fonte se houver conflito
+- [x] T012 Rodar converge append-only, R4 validate e R7 release em `specs/031-nv-remote-log-closure/` e `.specify/{validations,releases}/`
 - [ ] T013 Executar gates determinísticos (`aggregate-gate.sh`, `release-gate.sh`, pytest quality-gate, i18n parity) e verificar em `git diff --name-only dev...HEAD` que nenhum artefato histórico 025/030 nem path de `LivingRoots/`, `.github/workflows/` ou `scripts/ci/` foi alterado (FR-005/FR-007/SC-005)
 - [ ] T014 Abrir PR reviewable para `dev/` via `gh pr create`, sem merge/auto-merge/force-push
 
