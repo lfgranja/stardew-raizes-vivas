@@ -44,7 +44,7 @@ Critério: `verdict=pass`, honestidade `R`, 3 sinais (`soilHealthStateDelta`, `c
 
 | Spec | Cenários | Evidência registrada | Reexecução neste ciclo |
 |---|---|---|---|
-| 004 | `compost-growth-{healthy,moderate,hardening}` | `specs/004-playable-compost-loop/test.md` (machine-pass `run-20261121T232308Z-64cf`) | `hardening` (obrigatório, deriva corrigida) |
+| 004 | `compost-growth-{healthy,moderate,hardening}` | `specs/004-playable-compost-loop/test.md` (machine-pass `run-20261122T030046Z-79af`) | `hardening` (reproduzida em 2026-11-22T03:00:46Z sobre `469b4c1`) |
 | 005 | `soil-health-growth{,-poor,-moderate}` | `specs/005-soil-health-to-crop-growth/test.md` (`4cc1`) | não necessária (nenhum artefato alterado) |
 | 013 | `mulch-{decay-exemption,bare-tile-decay-exemption,7day-expiry,refused-on-ineligible}` | `specs/013-mulch-soil-cover/test.md` (`1ea4`) | não necessária |
 | 014 | `soil-health-harvest-{quality,measured-zero,unknown}` | `specs/014-soil-health-crop-quality/test.md` (`088b`) | não necessária |

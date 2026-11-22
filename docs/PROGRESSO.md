@@ -22,4 +22,5 @@
 - **PRs**: #811 (pin coverlet 10.1.1) e #812 (JsonSchema.Net 9.7.0 + lock regenerado) conduzidos para `dev` com checks ao vivo verdes e mesclados (`048342b`, `18640ce`). Nenhum force-push/auto-merge/delete de branch.
 - **[NV / humano]**: D1, atestação E de Gate 3, SC-004, tag/release `0.2.0`, `RUNNER_AUDIT_STORE` (#523), aprovador distinto. Dívida de limites legados em cenários 004/005/010 registrada, não alterada.
 - **Fechamento do gate (2026-11-22T00:59:31Z)**: `release-gate.sh` **ALL STEPS PASSED** no HEAD `f4eba87` (steps 1–7); `aggregate-gate.sh` ALL STEPS PASSED e pytest 180/0 no mesmo HEAD. PR #814 mesclado em `1fed5f4`; 0 PRs abertos.
+- **Reprodução do roteiro (2026-11-22)**: A ALL STEPS PASSED (release gate em `469b4c1`, 03:00:28Z); B 1378/0; C `run-20261122T030046Z-79af` pass/R/3 sinais; D `[NV]`. Evidência visual via browser (dashboard + Actions + PRs mesclados).
 
