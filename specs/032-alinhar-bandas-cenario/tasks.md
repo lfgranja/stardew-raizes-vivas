@@ -24,9 +24,9 @@
 
 **Independent Test**: 2 runs `pass` com 3 sinais e blocos atualizados pelo runner.
 
-- [ ] T008 [P] [US2] Compilar o avaliador no worktree (`dotnet build LivingRoots.Verification.Runner/... -c Release`) e reexecutar Gate 3 de `compost-growth-healthy` com `--no-acquire --skip-build`, registrando run ID/veredito
-- [ ] T009 [P] [US2] Reexecutar Gate 3 de `soil-health-growth` com `--no-acquire --skip-build` (avaliador já compilado) e registrar run ID/veredito
-- [ ] T010 [US2] Registrar notas append-only em `specs/004/test.md`, `specs/005/test.md` e `docs/PROGRESSO.md`, sem editar blocos `GATE3:BEGIN/END` manualmente
+- [x] T008 [P] [US2] Compilar o avaliador no worktree (`dotnet build LivingRoots.Verification.Runner/... -c Release`) e reexecutar Gate 3 de `compost-growth-healthy` com `--no-acquire --skip-build`, registrando run ID/veredito
+- [x] T009 [P] [US2] Reexecutar Gate 3 de `soil-health-growth` com `--no-acquire --skip-build` (avaliador já compilado) e registrar run ID/veredito
+- [x] T010 [US2] Registrar notas append-only em `specs/004/test.md`, `specs/005/test.md` e `docs/PROGRESSO.md`, sem editar blocos de marcadores manualmente
 
 ## Phase 5: Polishing & Cross-Cutting
 
