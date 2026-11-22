@@ -76,13 +76,13 @@
       "predicate": {
         "op": "between",
         "field": "soilHealth",
-        "min": 67,
+        "min": 71,
         "max": 100,
         "tolerance": 0.0001,
         "exclusiveMin": false,
         "exclusiveMax": true
       },
-      "description": "stored health stays in the Healthy interval [67, 100)"
+      "description": "stored health stays in the Healthy interval [71, 100)"
     }
   ],
   "expectedSignals": [
