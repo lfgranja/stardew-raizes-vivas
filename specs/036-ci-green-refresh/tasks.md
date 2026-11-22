@@ -12,13 +12,13 @@
 
 ## Phase 3: US1
 
-- [ ] T005 [P] [US1] Acrescentar `atualizacao_ci` em `specs/024-pilha-escalonamentos-nivel5/registry/escalations.yaml`
-- [ ] T006 [P] [US1] Registrar refresh em `.specify/memory/STATE.md`
-- [ ] T007 [US1] Registrar refresh em `docs/PROGRESSO.md`
+- [x] T005 [P] [US1] Acrescentar `atualizacao_ci` em `specs/024-pilha-escalonamentos-nivel5/registry/escalations.yaml`
+- [x] T006 [P] [US1] Registrar refresh em `.specify/memory/STATE.md`
+- [x] T007 [US1] Registrar refresh em `docs/PROGRESSO.md`
 
 ## Phase 4: Polishing
 
-- [ ] T008 Rodar analyze, converge, R4 validate, R7 release
+- [x] T008 Rodar analyze, converge, R4 validate, R7 release
 - [ ] T009 Executar gates e abrir PR reviewable para `dev/`
 
 ## Dependencies
