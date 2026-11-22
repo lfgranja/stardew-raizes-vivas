@@ -52,3 +52,9 @@
 - **SemVer 0.1.7 restaurado** no release 032 (PATCH, zero mudança jogável).
 - **NV — atribuição**: mecanismo `BUILDDEPS_TOKEN` ausente no escopo Dependabot verificado nos runs de **19–20/11** (`44641194770`, `44664287245`, `44664266743`); dois deles correspondem a #811/#812. Não houve leitura direta dos runs de 18/11; estender a causa a #790–#796 é inferência do mesmo mecanismo, explicitamente marcada.
 
+
+## Estado verificado — 2026-11-22 (promoção dev→main, ciclo 035)
+
+- **PR #821** `dev`→`main` aberto; CI **integralmente verde** (`gh pr checks --watch` RC=0 às 05:31:56Z). Único bloqueio: `REVIEW_REQUIRED` (1 aprovador distinto, proteção strict/enforce_admins lida ao vivo).
+- **Fila SWE**: item `ESC-LR-20261122-008` adicionado ao registro oficial de escalonamentos, status `escalado-swe`. Merge em `main`, tag `v*.*.*` e release pública permanecem **[NV]/owner-gated**. Nenhuma operação owner foi executada.
+- **Escopo do ciclo**: apenas documentação/SDD; zero código, workflow, cenário ou contrato alterado.
