@@ -29,8 +29,7 @@
 - [x] T010 [US2] Registrar notas append-only em `specs/004/test.md`, `specs/005/test.md` e `docs/PROGRESSO.md`, sem editar blocos de marcadores manualmente
 
 ## Phase 5: Polishing & Cross-Cutting
-
-- [ ] T011 Rodar `analyze` read-only, `converge`, R4 validate e R7 release
+- [x] T011 Rodar `analyze` read-only, `converge`, R4 validate e R7 release
 - [ ] T012 Executar gates determinísticos (`aggregate-gate.sh`, `release-gate.sh`, pytest, i18n) e verificar escopo do diff
 - [ ] T013 Abrir PR reviewable para `dev/` via `gh pr create`, sem merge/auto-merge/force-push
 
