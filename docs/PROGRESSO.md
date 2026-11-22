@@ -24,3 +24,10 @@
 - **Fechamento do gate (2026-11-22T00:59:31Z)**: `release-gate.sh` **ALL STEPS PASSED** no HEAD `f4eba87` (steps 1–7); `aggregate-gate.sh` ALL STEPS PASSED e pytest 180/0 no mesmo HEAD. PR #814 mesclado em `1fed5f4`; 0 PRs abertos.
 - **Reprodução do roteiro (2026-11-22)**: A ALL STEPS PASSED (release gate em `469b4c1`, 03:00:28Z); B 1378/0; C `run-20261122T030046Z-79af` pass/R/3 sinais; D `[NV]`. Evidência visual via browser (dashboard + Actions + PRs mesclados).
 
+
+## Estado verificado — 2026-11-22 (ciclo 032)
+
+- **Âncora**: worktree `/home/luis/development/lr-cycle032` (base `dev` @ `f2bf6c7`), branch `feature/032-alinhar-bandas-cenario`; `.specify/feature.json` → `specs/032-alinhar-bandas-cenario`; NNN=032 forçado via `--number` porque o ciclo 031 está em voo em outro worktree. Factory `b1deab1` (somente leitura).
+- **Mudança**: 4 linhas em 2 cenários ativos (`compost-growth-healthy`, `soil-health-growth`): `min 67 → 71` e descrição Healthy `[71, 100)`, coerente com `ModConstants.ModerateHealthyBandEdge = 71f`.
+- **Gate 3**: `run-20261122T040544Z-738e` (004) e `run-20261122T041058Z-73a0` (005), ambos `verdict=pass`, honestidade R, 3 sinais concordantes, `--verify-bundle` exit 0; blocos promovidos pelo mecanismo determinístico do runner. Duas tentativas `errored`/W por `evaluator-unavailable` em worktree novo foram registradas e não promovidas.
+- **Limite**: `machine-pass` host-only; D1, atestação E de Gate 3, SC-004, tag/release `0.2.0`, `RUNNER_AUDIT_STORE` (#523) e aprovador distinto permanecem `[NV]`/human-gated.
