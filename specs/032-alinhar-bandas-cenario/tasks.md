@@ -16,9 +16,9 @@
 
 **Independent Test**: ler os 2 cenários e confirmar `min: 71` e `[71, 100)`.
 
-- [ ] T005 [P] [US1] Alterar `min: 67 → 71` e a descrição para `[71, 100)` em `specs/004-playable-compost-loop/scenarios/compost-growth-healthy.scenario.json`
-- [ ] T006 [P] [US1] Alterar `min: 67 → 71` e a descrição para `[71, 100)` em `specs/005-soil-health-to-crop-growth/scenarios/soil-health-growth.scenario.json`
-- [ ] T007 Verificar que o diff dos 2 cenários é exatamente 4 linhas e nenhum campo protegido mudou
+- [x] T005 [P] [US1] Alterar `min: 67 → 71` e a descrição para `[71, 100)` em `specs/004-playable-compost-loop/scenarios/compost-growth-healthy.scenario.json`
+- [x] T006 [P] [US1] Alterar `min: 67 → 71` e a descrição para `[71, 100)` em `specs/005-soil-health-to-crop-growth/scenarios/soil-health-growth.scenario.json`
+- [x] T007 Verificar que o diff dos 2 cenários é exatamente 4 linhas e nenhum campo protegido mudou
 
 ## Phase 4: US2 — Evidência promovida pelo runner (P2)
 
