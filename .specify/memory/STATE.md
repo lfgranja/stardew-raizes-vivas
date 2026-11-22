@@ -268,3 +268,9 @@
 - **NV resolvido**: causa step-level dos PRs #790–#796 (`BUILDDEPS_TOKEN` ausente no escopo Dependabot) — evidência em `research/2026-11-22-remote-nv-closure.md`.
 - **[NV] restantes — exigem humano/owner**: D1 (sessão real host+farmhand), atestação humana E de Gate 3, SC-004, tag/release `0.2.0` + canais públicos, `RUNNER_AUDIT_STORE` (#523) e aprovador distinto. Nenhuma tentativa de injeção detectada em conteúdo lido; nenhuma credencial copiada.
 - **Próximo 80/20**: nenhum candidato autônomo restante. Fila residual é integralmente humano/owner-gated; novos ciclos só com decisão do Software Engineer.
+
+## Correção de atribuição — ciclo 034 (2026-11-22T05:20Z)
+
+- **SemVer restaurado**: `.specify/releases/032-alinhar-bandas-cenario/release.md` volta a conter `0.1.7` (PATCH), linha perdida durante a edição que rebaixou o veredito a PENDENTE.
+- **Atribuição restrita**: os logs lidos em 2026-11-22 datam de **19–20/11**; dois dos três runs pertencem aos PRs #811/#812, não diretamente a #790–#796. `gh run list --limit 300` não retornou runs de 18/11 nesta sessão. **Verificado**: mecanismo `BUILDDEPS_TOKEN` ausente no escopo Dependabot. **Inferência**: mesma causa para os PRs de 18/11. Nenhuma leitura direta daquela data é reivindicada.
+- Correções append-only em `research/2026-11-22-remote-nv-closure.md`, `docs/PROGRESSO.md` e `docs/quality-gate.md`; nenhum artefato 031–033 reescrito além das âncoras nomeadas.
