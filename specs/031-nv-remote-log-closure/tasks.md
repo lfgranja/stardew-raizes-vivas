@@ -19,16 +19,16 @@
 
 **Independent Test**: ler `research/2026-11-22-remote-nv-closure.md`, conferir 3 run IDs, trechos literais e timestamp.
 
-- [ ] T006 [P] [US1] Criar `research/2026-11-22-remote-nv-closure.md` com comandos, run IDs 44641194770/44664287245/44664266743, step `Fetch game assemblies` e trechos de erro
-- [ ] T007 [P] [US1] Indexar a nova pesquisa em `docs/research/index.md` com nota datada
+- [x] T006 [P] [US1] Criar `research/2026-11-22-remote-nv-closure.md` com comandos, run IDs 44641194770/44664287245/44664266743, step `Fetch game assemblies` e trechos de erro
+- [x] T007 [P] [US1] Indexar a nova pesquisa em `docs/research/index.md` com nota datada
 
 ## Phase 4: User Story 2 — Âncoras de estado honestas (P2)
 
 **Independent Test**: ler as quatro âncoras e distinguir `[NV]` resolvido de humano/owner-gated.
 
-- [ ] T008 [P] [US2] Acrescentar nota datada em `.specify/memory/STATE.md` com o `[NV]` resolvido e a lista explícita dos `[NV]` preservados
-- [ ] T009 [P] [US2] Acrescentar nota datada em `docs/PROGRESSO.md` com a âncora do ciclo 031 e o limite de honestidade
-- [ ] T010 [US2] Atualizar a seção `[NV] boundary` em `docs/quality-gate.md:48` com evidência datada, preservando a regra geral para afirmações remotas não observadas
+- [x] T008 [P] [US2] Acrescentar nota datada em `.specify/memory/STATE.md` com o `[NV]` resolvido e a lista explícita dos `[NV]` preservados
+- [x] T009 [P] [US2] Acrescentar nota datada em `docs/PROGRESSO.md` com a âncora do ciclo 031 e o limite de honestidade
+- [x] T010 [US2] Atualizar a seção `[NV] boundary` em `docs/quality-gate.md:48` com evidência datada, preservando a regra geral para afirmações remotas não observadas
 
 ## Phase 5: Polishing & Cross-Cutting
 
