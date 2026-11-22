@@ -35,3 +35,7 @@
 
 - `compost-growth-hardening` reexecutado após alinhamento do threshold de saúde do solo com `ModConstants.PoorModerateBandEdge = 31f` (`"max": 34` → `31`, `exclusiveMin: false`, `exclusiveMax: true`, descrição "Poor interval [0, 31)"): `run-20261121T232308Z-64cf`, `verdict=pass`, `honestyLevel=R`, `signalsComplete=true`, `signalsAgree=true`, `thresholdsOk=true`, 2 predicates aprovados, `--verify-bundle` exit 0.
 - Bloco de marcadores mantido pelo runner promovido para este run; não editado manualmente. `machine-pass` host-only — nenhuma atestação humana reivindicada.
+
+## Append-only run notes (ciclo 032, 2026-11-22)
+
+- Tentativa de reexecução de `compost-growth-healthy` com `--skip-build` em worktree recém-criado: `run-20261122T035125Z-18dc`, `verdict=errored`, `honestyLevel=W`, `thresholdsOk=false`, `evaluatorMissing=true` (ambos os predicados com reason `evaluator-unavailable`). Causa: binários do avaliador são gitignored e não existem em worktree novo. **Não promovido**; nenhum bloco `GATE3:BEGIN/END` alterado por esta tentativa.
