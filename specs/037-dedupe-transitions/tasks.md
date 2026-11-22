@@ -12,12 +12,12 @@
 
 ## Phase 3: US1
 
-- [ ] T005 [US1] Remover índices 275–277 de `.transitions` em `specs/010-headless-verification-runner/promotion-triggers.json`
-- [ ] T006 [US1] Rodar `test-spec-consistency.sh` e confirmar 0 duplicatas
+- [x] T005 [US1] Remover índices 275–277 de `.transitions` em `specs/010-headless-verification-runner/promotion-triggers.json`
+- [x] T006 [US1] Rodar `test-spec-consistency.sh` e confirmar 0 duplicatas
 
 ## Phase 4: Polishing
 
-- [ ] T007 Rodar analyze, converge, R4 validate, R7 release
+- [x] T007 Rodar analyze, converge, R4 validate, R7 release
 - [ ] T008 Executar gates determinísticos e abrir PR reviewable para `dev/`
 
 ## Dependencies
