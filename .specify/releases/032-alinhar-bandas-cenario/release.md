@@ -2,6 +2,7 @@
 
 - **Slug**: 032-alinhar-bandas-cenario
 - **Date**: 2026-11-22
+- **SemVer**: `0.1.7` (PATCH — correção de contrato de verificação; zero mudança de comportamento jogável)
 - **Validation**: `.specify/validations/032-alinhar-bandas-cenario/validate.md` — **PENDENTE** até saída real de `scripts/release-gate.sh` (job `bg_16`)
 
 ## Changelog
