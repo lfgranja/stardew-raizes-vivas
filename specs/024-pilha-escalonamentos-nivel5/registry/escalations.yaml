@@ -127,3 +127,21 @@
   status: triado
   owner: "@lfgranja"
   refs: ["docs/quality-gate.md", ".coverage-baseline"]
+
+- id: ESC-LR-20261122-008
+  data: 2026-11-22
+  origem: "PR dev->main #821 (promocao apos ciclos 031-034)"
+  tipo_023: autorizacao
+  bloqueio: "CI integralmente verde (gh pr checks --watch RC=0 as 05:31:56Z, todos pass/skipping), mas main exige 1 aprovador distinto (reviewDecision=REVIEW_REQUIRED, strict, enforce_admins)."
+  capacidade_faltante: []
+  autorizacao_faltante: ["aprovacao de revisor distinto no PR #821", "decisao do SWE sobre o merge em main"]
+  risco: baixo
+  impacto: "promocao tecnicamente pronta; merge owner-gated e nao executado"
+  frequencia: pontual
+  controle_atual: "PR #821 aberto, sem merge/auto-merge/force-push; checks verdes observados ao vivo via gh"
+  candidato_automacao: "nenhuma — aprovacao humana exigida pela protecao de main"
+  precondicoes: ["revisao deliberada do SWE", "merge via UI/API pelo owner"]
+  gatilho_reavaliacao: ["aprovacao concedida", "mudanca de protecao de main"]
+  status: escalado-swe
+  owner: "@lfgranja"
+  refs: ["https://github.com/lfgranja/stardew-raizes-vivas/pull/821", "STATE.md ciclo 035", ".github/workflows/release.yml (apenas tags v*.*.*)"]
