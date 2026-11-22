@@ -46,3 +46,9 @@
 - **Ciclo 032**: banda Healthy alinhada a 31/71 em 2 cenários ativos (4 linhas); Gate 3 `run-20261122T040544Z-738e` e `run-20261122T041058Z-73a0`, ambos `pass`/R/3 sinais; blocos promovidos pelo runner.
 - **Gates locais**: `aggregate-gate.sh` ALL STEPS PASSED nos dois ciclos; i18n PASS 0/0; pytest 180/0; step 4 isolado do 031 = 1999/0/4. `release-gate.sh` interrompido por teto do harness durante o smoke, sem FAIL — não promovido a PASS.
 - **[NV / humano]**: D1, atestação E de Gate 3, SC-004, tag/release `0.2.0`, `RUNNER_AUDIT_STORE` (#523), aprovador distinto. Fila autônoma extinguida.
+
+## Estado verificado — 2026-11-22 (correção de atribuição, ciclo 034)
+
+- **SemVer 0.1.7 restaurado** no release 032 (PATCH, zero mudança jogável).
+- **NV — atribuição**: mecanismo `BUILDDEPS_TOKEN` ausente no escopo Dependabot verificado nos runs de **19–20/11** (`44641194770`, `44664287245`, `44664266743`); dois deles correspondem a #811/#812. Não houve leitura direta dos runs de 18/11; estender a causa a #790–#796 é inferência do mesmo mecanismo, explicitamente marcada.
+
