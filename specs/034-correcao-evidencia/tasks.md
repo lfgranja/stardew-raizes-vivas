@@ -12,13 +12,13 @@
 
 ## Phase 3: US1
 
-- [ ] T005 [P] [US1] Restaurar SemVer `0.1.7` em `.specify/releases/032-alinhar-bandas-cenario/release.md`
-- [ ] T006 [P] [US1] Restringir atribuição em `research/2026-11-22-remote-nv-closure.md`
-- [ ] T007 [US1] Acrescentar ressalva em `.specify/memory/STATE.md`, `docs/PROGRESSO.md` e `docs/quality-gate.md`
+- [x] T005 [P] [US1] Restaurar SemVer `0.1.7` em `.specify/releases/032-alinhar-bandas-cenario/release.md`
+- [x] T006 [P] [US1] Restringir atribuição em `research/2026-11-22-remote-nv-closure.md`
+- [x] T007 [US1] Acrescentar ressalva em `.specify/memory/STATE.md`, `docs/PROGRESSO.md` e `docs/quality-gate.md`
 
 ## Phase 4: Polishing
 
-- [ ] T008 Rodar analyze, converge, R4 validate, R7 release
+- [x] T008 Rodar analyze, converge, R4 validate, R7 release
 - [ ] T009 Executar gates e abrir PR reviewable para `dev/`
 
 ## Dependencies
