@@ -58,3 +58,9 @@
 - **PR #821** `dev`→`main` aberto; CI **integralmente verde** (`gh pr checks --watch` RC=0 às 05:31:56Z). Único bloqueio: `REVIEW_REQUIRED` (1 aprovador distinto, proteção strict/enforce_admins lida ao vivo).
 - **Fila SWE**: item `ESC-LR-20261122-008` adicionado ao registro oficial de escalonamentos, status `escalado-swe`. Merge em `main`, tag `v*.*.*` e release pública permanecem **[NV]/owner-gated**. Nenhuma operação owner foi executada.
 - **Escopo do ciclo**: apenas documentação/SDD; zero código, workflow, cenário ou contrato alterado.
+
+## Estado verificado — 2026-11-22 (refresh do CI green, ciclo 036)
+
+- **PR #821**: CI reexecutado no HEAD `b3eaa94`, `RC=0` às 05:40:50Z; único bloqueio `REVIEW_REQUIRED` (aprovador distinto, SWE-gated). Fila SWE atualizada com `atualizacao_ci` sem apagar o registro anterior.
+- **Smoke 031**: **51 arquivos / 50 passed / 0 failed / 1 skipped**, `RC=0` às 05:42:22Z; evidência local do ciclo 031 completa por etapas isoladas (gate interrompido por teto do harness, sem FAIL).
+- **NV owner**: merge em `main`, tag `v*.*.*`, release pública, D1, atestação E, SC-004 e `RUNNER_AUDIT_STORE` seguem não executados.
