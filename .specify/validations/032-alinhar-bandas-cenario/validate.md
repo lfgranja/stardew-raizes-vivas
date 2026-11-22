@@ -2,7 +2,7 @@
 
 - **Slug**: 032-alinhar-bandas-cenario
 - **Date**: 2026-11-22
-- **Verdict**: **APPROVED**
+- **Verdict**: **PENDENTE — `release-gate.sh` em execução (job `bg_16`, iniciado 2026-11-22T04:27:24Z)**; aprovar somente com saída real
 
 ## Gate results
 
@@ -14,7 +14,7 @@
 | SC-001 | 2/2 cenários ativos com `min: 71` e descrição `[71, 100)` | PASS |
 | SC-002 | `git diff --numstat` → 2+2 linhas nos 2 cenários; nenhum campo protegido alterado | PASS |
 | SC-003 | 2/2 runs `pass`, R, 3 sinais, `--verify-bundle` exit 0: `run-20261122T040544Z-738e`, `run-20261122T041058Z-73a0` | PASS |
-| SC-004 | `bash scripts/ci/aggregate-gate.sh` → `ALL STEPS PASSED` (sdd-gate 0 errors, policy-drift ALIGNED, protected paths/docs markers ok); `release-gate.sh` → ver relatório final | PASS |
+| SC-004 | `aggregate-gate.sh` → `ALL STEPS PASSED` (sdd-gate 0 errors, policy-drift ALIGNED, protected paths/docs markers ok); `release-gate.sh` job `bg_16` em execução — **sem resultado final, não promover a PASS** | PENDENTE |
 | SC-005 | `git diff --name-only dev...HEAD` sem `LivingRoots/`, workflows, `scripts/ci/`; único arquivo `specs/010-*`: `promotion-triggers.json`, escrito pelo runner | PASS |
 | i18n / pytest | `i18n-parity-check.py` → PASS (0/0); `pytest scripts/quality-gate/tests -q` → **180 passed in 43.20s** | PASS |
 | Constituição | v2.0.0; 0 violações; nenhuma mudança em código, persistência ou multiplayer | PASS |
