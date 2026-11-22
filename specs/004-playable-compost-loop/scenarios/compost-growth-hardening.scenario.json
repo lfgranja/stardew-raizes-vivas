@@ -77,12 +77,12 @@
         "op": "between",
         "field": "soilHealth",
         "min": 0,
-        "max": 34,
+        "max": 31,
         "tolerance": 0.0001,
-        "exclusiveMin": true,
+        "exclusiveMin": false,
         "exclusiveMax": true
       },
-      "description": "stored health stays in the Poor interval (0, 34)"
+      "description": "stored health stays in the Poor interval [0, 31)"
     }
   ],
   "expectedSignals": [
