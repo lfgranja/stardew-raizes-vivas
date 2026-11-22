@@ -26,3 +26,9 @@
 
 24 arquivos de pesquisa contados por script; nenhum `*.generated.md` no repositório, portanto nada a regenerar. Nenhuma afirmação remota foi revalidada nesta sessão — todas permanecem `[NV]`.
 
+
+## Estado verificado — 2026-11-22 (ciclo 031)
+
+- `2026-11-22-remote-nv-closure.md` — evidência remota lida ao vivo via `gh` (run IDs 44641194770, 44664287245, 44664266743) que resolve o `[NV]` step-level dos PRs #790–#796; trechos de log e comandos persistidos, sem credenciais.
+
+Contagem revisada por script no fechamento do ciclo; nenhum `*.generated.md` no repositório. Afirmações remotas fora do escopo acima permanecem `[NV]`.
