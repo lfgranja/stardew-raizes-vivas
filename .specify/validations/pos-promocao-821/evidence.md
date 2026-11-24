@@ -18,3 +18,14 @@ Sem capturas de tela: o ALVO é headless (CLI + rollup `gh`), sem UI de produto 
 `[NV]`: efeito de produção/deploy, tag `v0.2.0`, D1, atestação E, SC-004, `RUNNER_AUDIT_STORE` e decisão sobre `enforce_admins`. Nenhuma credencial foi copiada.
 
 Rollback: `git revert` do commit documental; nenhum efeito em código, CI ou proteção de branch.
+
+## Correção pós-merge (2026-11-24T14:05Z)
+
+| Passo | Comando | Saída observada | Resultado |
+|---|---|---|---|
+| 8 | `find .specify/validations -mindepth 1 -maxdepth 1 -type d \| wc -l` no head `936ae31` | `33` (o diretório `pos-promocao-821/` entrou no merge de #826) | PASS `[EV]` |
+| 9 | recount completo no head `936ae31` | `specs=34`, `assessments=29`, `validations=33`, `releases=32`, `bugs=40`, `docs/research=5` | PASS `[EV]` |
+| 10 | `python3 scripts/ci/sdd-gate.py` + `bash scripts/tests/test-spec-consistency.sh` + `./scripts/check-protected-paths.sh` no head mesclado `936ae31` | `PASS (0 errors, 41 warnings)`; `PASS (1683 checks)`, `C-SCN-36: OK`; `all checks passed` | PASS `[EV]` |
+| 11 | `python3 -c "import yaml; ..."` + `git diff --check` na correção | `008 status=fechado`, `controle_atual_pos_merge` presente, GOV item presente; diff limpo | PASS `[EV]` |
+
+`PROGRESSO.md` passou a registrar `validations/=33` e o registry recebeu `controle_atual_pos_merge`, preservando o campo histórico `controle_atual` que descrevia #821 como aberto antes da autorização.
