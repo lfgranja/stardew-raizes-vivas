@@ -1,0 +1,25 @@
+# sanitize-vectors.tsv — one vector per line: input \t expected(accept|reject) \t category
+# NFC normalization
+café	accept	nfc
+# path traversal
+..	reject	traversal
+foo/../bar	reject	traversal
+../etc/passwd	reject	traversal
+# absolute paths
+/etc/passwd	reject	absolute
+C:\Windows	reject	absolute
+# drive letters
+C:foo	reject	drive
+# backslashes
+a\b	reject	backslash
+# NUL / control characters
+a\x00b	reject	control
+a\x01b	reject	control
+# symlink escapes
+../..	reject	symlink
+# homoglyph-confusable segments
+аdmin	reject	homoglyph
+# valid round-trips
+foo/bar	accept	valid
+a/b/c	accept	valid
+hello.txt	accept	valid

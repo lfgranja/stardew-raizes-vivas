@@ -1,0 +1,14 @@
+# T132 — Verification: tests
+
+- **Date**: 2026-11-05
+- **Command 1**: `GamePath=... dotnet test Stardew-LivingRoots.sln --no-build --configuration Release --verbosity normal`
+- **Exit**: 0
+- **Total tests**: 1630
+- **Passed**: 1626
+- **Ignored**: 4
+- **Failed**: 0
+- **Duration**: 60.7 s
+
+## Shell suite (run-all.sh, SMOKE_SKIP_INTEGRATION=1)
+
+See `launch-free.log` for the aggregate. Per-suite counts recorded there.

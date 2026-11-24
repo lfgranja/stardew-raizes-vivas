@@ -1,0 +1,50 @@
+# Commit Audit: Spec 013 — Mulch / Soil Cover
+
+Date: 2026-10-31
+
+## Implementation commits (spec 013 scope)
+
+All commits follow the atomic conventional commit format: `feat/fix/docs: <summary> — <files> — <why>`
+
+| # | Commit | Summary |
+|---|--------|---------|
+| 1 | 248500b | add mulch constants (T001) |
+| 2 | 41a3e5c | add mulch sprite placeholder (T002) |
+| 3 | 1bbde8f | add mulch i18n keys (T003) |
+| 4 | 0af26db | register mulch object/recipe/texture in OnAssetRequested (T004) |
+| 5 | 9322aab | add IMulchApplicationService interface (T005) |
+| 6 | 6e4a6c2 | add MulchTileState model (T006) |
+| 7 | 299d29c | add mulch decay hook to SoilDecayService (T007) |
+| 8 | dc01ed6 | implement mulch overlay (US3) — T008/T031 |
+| 9 | 5d9fa55 | implement MulchApplicationService (T019) |
+| 10 | c0834c4 | wire mulch application in ModController + ModEntry (T020) |
+| 11 | 20c7c3e | use MulchDecayMultiplier in decay calc + ContextTags (guard fix) |
+| 12 | da299ae | fix final newlines (format gate) |
+
+## Spec/plan/tasks commits
+
+| # | Commit | Summary |
+|---|--------|---------|
+| 13 | b0dcf4a | add spec 013 mulch soil cover |
+| 14 | d7252d9 | add spec 013 requirements checklist |
+| 15 | 42407af | clarify spec 013 mulch (5 questions resolved) |
+| 16 | b6b8466 | add plan 013 mulch |
+| 17 | 779e3a0 | add data-model 013 mulch |
+| 18 | 743cdd0 | add quickstart 013 mulch |
+| 19 | b1163b3 | add tasks 013 mulch (46 tasks) |
+| 20 | 5313c58 | remediate analysis findings C1-C7 |
+| 21 | 97918a4 | mark T001-T004 complete |
+| 22 | 3f07810 | mark T005-T007, T009, T019-T021 complete |
+| 23 | ece24cb | mark T022-T026 complete |
+| 24 | 76f5ef1 | mark verified tasks T036, T040-T043 complete |
+| 25 | dc01ed6 | mark T008, T031 complete |
+
+## Audit result
+
+- All commits follow the atomic conventional commit format: `feat/fix/docs: <summary> — <files> — <why>`
+- `git status --porcelain` is clean (no uncommitted tracked changes)
+- No commit touches multiple unrelated concerns (each commit is scoped to one file or one logical change)
+
+## Status
+
+PASS — commit audit complete.

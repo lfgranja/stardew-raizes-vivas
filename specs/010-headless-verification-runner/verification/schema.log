@@ -1,0 +1,105 @@
+### scenario schema — valid fixtures
+FILE                                           PYTHON     AJV        ERRORS   MISMATCH
+actions-coverage.scenario.json                 accept     accept     -        -
+boundary-33-poor.scenario.json                 accept     accept     -        -
+boundary-34-moderate.scenario.json             accept     accept     -        -
+boundary-66-moderate.scenario.json             accept     accept     -        -
+boundary-67-healthy-fail.scenario.json         accept     accept     -        -
+boundary-67-healthy.scenario.json              accept     accept     -        -
+cmp-boolean-string.scenario.json               accept     accept     -        -
+composite-allof.scenario.json                  accept     accept     -        -
+composite-anyof.scenario.json                  accept     accept     -        -
+compost-growth-healthy.scenario.json           accept     accept     -        -
+compost-growth-moderate.scenario.json          accept     accept     -        -
+compost-growth.scenario.json                   accept     accept     -        -
+equivalence-35-moderate.scenario.json          accept     accept     -        -
+equivalence-68-healthy.scenario.json           accept     accept     -        -
+equivalence-missing-key.scenario.json          accept     accept     -        -
+equivalence-nan-health.scenario.json           accept     accept     -        -
+equivalence-zero-health.scenario.json          accept     accept     -        -
+farmhand-host-guard.scenario.json              accept     accept     -        -
+farmhand-unchanged.scenario.json               accept     accept     -        -
+harmony-harvest-quality.scenario.json          accept     accept     -        -
+negative-crash-errored.scenario.json           accept     accept     -        -
+negative-expected-fail.scenario.json           accept     accept     -        -
+negative-incomplete-signals-partial.scenario.json accept     accept     -        -
+negative-skipped.scenario.json                 accept     accept     -        -
+negative-version-mismatch-errored.scenario.json accept     accept     -        -
+phase-days-clamp-min.scenario.json             accept     accept     -        -
+sentinel-phase-minus-one.scenario.json         accept     accept     -        -
+sentinel-poor-positive.scenario.json           accept     accept     -        -
+sentinel-untouched.scenario.json               accept     accept     -        -
+soil-quality-tier-harvest.scenario.json        accept     accept     -        -
+
+valid: total=30 python_accept=30 ajv_accept=30
+
+### scenario schema — invalid fixtures
+FILE                                           PYTHON     AJV        ERRORS   MISMATCH
+cmp-wrong-operand-type.scenario.json           reject     reject     1        -
+    first error: thresholds/0/predicate: {'op': 'cmp', 'left': 'isMainPlayer', 'operator': 'eq', 'right': 0} is not valid under any of the given schemas
+debug-console-prefix.scenario.json             reject     reject     1        -
+    first error: initCommands/0: {'kind': 'console', 'command': 'debug runmacro x.txt'} is not valid under any of the given schemas
+duplicate-signals.scenario.json                reject     reject     1        -
+    first error: expectedSignals: ['smapiLog', 'smapiLog', 'cropPhaseDelta'] has non-unique elements
+empty-summary.scenario.json                    reject     reject     1        -
+    first error: summary: '' should be non-empty
+farmhand-without-host-guard.scenario.json      reject     reject     1        -
+    first error: <root>: 'hostGuard' is a required property
+health-tier-invalid-value.scenario.json        reject     reject     1        -
+    first error: thresholds/0/predicate: {'op': 'cmp', 'left': 'healthTier', 'operator': 'eq', 'right': 'excellent', 'tolerance': 0} is not valid under any of the given schemas
+macro-traversal.scenario.json                  reject     reject     1        -
+    first error: initCommands/0: {'kind': 'macro', 'file': '../escape.txt'} is not valid under any of the given schemas
+missing-test-md-path.scenario.json             reject     reject     1        -
+    first error: <root>: 'testMdPath' is a required property
+negative-scenario-expecting-pass.scenario.json reject     reject     1        -
+    first error: expectedVerdict: 'pass' is not one of ['fail', 'errored', 'partial', 'skipped']
+null-summary.scenario.json                     reject     reject     1        -
+    first error: summary: None is not of type 'string'
+sentinel-wrong-field.scenario.json             reject     reject     1        -
+    first error: thresholds/0/predicate: {'op': 'sentinel', 'field': 'currentPhase', 'sentinel': 'SENTINEL_UNTOUCHED_99999', 'mustNotChange': True} is not valid under any of the given schemas
+too-many-steps.scenario.json                   reject     reject     1        -
+    first error: steps: [{'action': 'warp', 'target': 'farm'}, {'action': 'insertWaste', 'target': '-10,5', 'inputs': {'itemId': '771', 'count': 1}}, {'action': 'sleep', 'target': 'farm', 'days': 1}, {'action': 'sleep', 'target': 'farm', 'days': 1}, {'action': 'dumpCropPhase', 'target': 'farm'}, {'action': 'observe', 'target': '-10,5'}] is too long
+unknown-property.scenario.json                 reject     reject     1        -
+    first error: <root>: Additional properties are not allowed ('unexpectedField' was unexpected)
+wrong-schema-version.scenario.json             reject     reject     1        -
+    first error: schemaVersion: 2 was expected
+
+invalid: total=14 python_reject=14 ajv_reject=14
+
+### runner-invalid fixtures (schema-valid, runner rejects)
+FILE                                           PYTHON     AJV        RUNNER    
+between-min-greater-than-max.scenario.json     accept     accept     exit 14 (cross-field rule)
+multiplier-base-mismatch.scenario.json         accept     accept     exit 14 (cross-field rule)
+
+runner-invalid: total=2
+
+### evidence-bundle.schema.json
+specs/010-headless-verification-runner/contracts/evidence-bundle.schema.json: strict Draft 2020-12 schema, self-check ok
+specs/010-headless-verification-runner/contracts/claims.schema.json: strict Draft 2020-12 schema, self-check ok
+specs/010-headless-verification-runner/contracts/never-quarantine.schema.json: strict Draft 2020-12 schema, self-check ok
+evidence-bundle-run-20261104T082444Z-4acd/manifest.json                python=reject ajv=reject
+evidence-bundle-run-20261104T100848Z-1000/manifest.json                python=reject ajv=reject
+evidence-bundle-run-20261104T224612Z-6e69/manifest.json                python=reject ajv=reject
+evidence-bundle-run-20261104T224824Z-5cd2/manifest.json                python=reject ajv=reject
+evidence-bundle-run-20261104T225246Z-4399/manifest.json                python=reject ajv=reject
+evidence-bundle-run-20261104T233612Z-47c8/manifest.json                python=reject ajv=reject
+evidence-bundle-run-20261104T233856Z-0a6b/manifest.json                python=reject ajv=reject
+evidence-bundle-run-20261105T022914Z-3fda/manifest.json                python=accept ajv=accept
+evidence-bundle-run-20261105T023244Z-265b/manifest.json                python=accept ajv=accept
+evidence-bundle-run-20261105T023454Z-78dd/manifest.json                python=accept ajv=accept
+evidence-bundle-run-20261105T024756Z-07ba/manifest.json                python=accept ajv=accept
+evidence-bundle-run-20261104T082444Z-4acd/claims.json                  python=accept ajv=accept
+evidence-bundle-run-20261104T100848Z-1000/claims.json                  python=accept ajv=accept
+evidence-bundle-run-20261104T224612Z-6e69/claims.json                  python=accept ajv=accept
+evidence-bundle-run-20261104T224824Z-5cd2/claims.json                  python=accept ajv=accept
+evidence-bundle-run-20261104T225246Z-4399/claims.json                  python=accept ajv=accept
+evidence-bundle-run-20261104T233612Z-47c8/claims.json                  python=accept ajv=accept
+evidence-bundle-run-20261104T233856Z-0a6b/claims.json                  python=accept ajv=accept
+evidence-bundle-run-20261105T022914Z-3fda/claims.json                  python=accept ajv=accept
+evidence-bundle-run-20261105T023244Z-265b/claims.json                  python=accept ajv=accept
+evidence-bundle-run-20261105T023454Z-78dd/claims.json                  python=accept ajv=accept
+evidence-bundle-run-20261105T024756Z-07ba/claims.json                  python=accept ajv=accept
+
+### summary
+validator mismatches: 0
+EXIT=0

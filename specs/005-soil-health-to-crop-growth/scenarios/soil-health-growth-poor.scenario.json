@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 2,
+  "scenarioId": "soil-health-growth-poor-soil",
+  "featureSlug": "005-soil-health-to-crop-growth",
+  "testMdPath": "specs/005-soil-health-to-crop-growth/test.md",
+  "summary": "005: poor soil 10, 1.15x phaseDays on 60,15.",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.1.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": true
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {
+      "kind": "console",
+      "command": "lr_plant_crop 60 15 LivingRoots.Verification.LongPhaseCrop",
+      "description": "plant a verification-only crop on the target tile"
+    },
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health 60 15 10",
+      "description": "seed poor soil on the target tile"
+    }
+  ],
+  "steps": [
+    {
+      "action": "sleep",
+      "target": "farm",
+      "days": 5
+    },
+    {
+      "action": "dumpCropPhase",
+      "target": "farm"
+    },
+    {
+      "action": "observe",
+      "target": "60,15"
+    }
+  ],
+  "thresholds": [
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "multiplier",
+        "field": "phaseDays",
+        "base": "pre.phaseDays",
+        "tolerance": 0.0001,
+        "factor": 1.15
+      },
+      "description": "poor soil slows growth by 1.15x"
+    },
+    {
+      "signal": "soilHealthStateDelta",
+      "predicate": {
+        "op": "between",
+        "field": "soilHealth",
+        "min": 0,
+        "max": 31,
+        "tolerance": 0.0001,
+        "exclusiveMin": false,
+        "exclusiveMax": false
+      },
+      "description": "stored health stays in the Poor interval [0, 31)"
+    }
+  ],
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "cropPhaseDelta",
+    "smapiLog"
+  ],
+  "timeoutSeconds": 300,
+  "inputs": {
+    "season": "spring",
+    "day": 5,
+    "weather": "sunny",
+    "money": 500
+  },
+  "rngSeed": 987654321,
+  "time": "2026-10-27T12:00:00Z",
+  "scenarioKind": "positive",
+  "expectedVerdict": "pass",
+  "determinism": {
+    "idempotent": true,
+    "declaredSources": []
+  }
+}

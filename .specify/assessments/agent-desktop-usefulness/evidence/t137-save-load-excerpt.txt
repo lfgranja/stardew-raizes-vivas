@@ -1,0 +1,69 @@
+# T137 real-host evidence excerpt (durable copy)
+
+Source: `/tmp/tmp.EcGeZjLK6n/lr-save-BqbJ6l/xdg/config/StardewValley/ErrorLogs/SMAPI-latest.txt`
+Run: 2026-11-04 18:46 UTC (same session as `evidence-bundle-run-20261104T225246Z-4399`'s predecessor run)
+Copied: 2026-11-04
+
+This excerpt is the evidence behind the research claim that the game reached the
+title screen, attempted to load the milestone save, and failed with
+`File does not exist` — it did not stall after `LoadContent`.
+
+```text
+[18:46:32 INFO  SMAPI] Loaded 4 mods:
+[18:46:32 INFO  SMAPI]    Console Commands 4.5.2 by SMAPI
+[18:46:32 INFO  SMAPI]    Save Backup 4.5.2 by SMAPI
+[18:46:32 INFO  SMAPI]    Stardew Valley - Living Roots 0.0.1 by lfgranja
+[18:46:32 INFO  SMAPI]    Stardew Valley - Living Roots (Verification) 0.0.1 by lfgranja
+[18:46:33 TRACE SMAPI]    Found mod-provided API (LivingRoots.Services.LivingRootsModApi).
+[18:46:33 DEBUG SMAPI] Mods loaded and ready!
+[18:46:34 TRACE game] setGameMode( 'titleScreenGameMode (0)' )
+[18:46:35 TRACE game] Instance_LoadContent() finished, elapsed = '00:00:03.8875028'
+[18:46:35 INFO  SMAPI] Type 'help' for help, or 'help <cmd>' for a command's usage
+[18:46:35 INFO  Stardew Valley - Living Roots] The 'Stardew Valley - Living Roots' mod was loaded successfully!
+[18:46:35 TRACE Stardew Valley - Living Roots] Console command 'lr_version' registered successfully.
+[18:46:35 TRACE game] Window_ClientSizeChanged(); Window.ClientBounds={X:0 Y:0 Width:1280 Height:1024}
+[18:46:36 TRACE game] gameMode was 'titleScreenGameMode (0)', set to 'loadingMode (6)'.
+[18:46:36 TRACE SMAPI] Game loader synchronizing...
+[18:46:36 TRACE game] getLoadEnumerator('farm-year1-day5')
+[18:46:36 TRACE SMAPI] Synchronizing 'Load_ReadSave' task...
+[18:46:36 TRACE SMAPI]    task complete.
+[18:46:36 TRACE game] gameMode was 'loadingMode (6)', set to 'selectGameScreen (9)'.
+[18:46:36 DEBUG game] DebugOutput: File does not exist
+[18:46:36 TRACE game] setGameMode( 'titleScreenGameMode (0)' )
+[18:46:36 TRACE SMAPI] Game loader done.
+[18:46:36 TRACE SMAPI] Context: returning to title
+[18:46:36 TRACE game] Disconnected: ExitedToMainMenu
+```
+
+After that the game kept rendering at the title screen until the runner killed it
+(the log continues with repeated `Tooltip unknown for tile (10, 5)` /
+`Error in screen-space visualization rendering` lines through 18:51:55).
+
+## Save directory listing
+
+```text
+/tmp/tmp.EcGeZjLK6n/lr-save-BqbJ6l/xdg/config/StardewValley/Saves/farm-year1-day5/
+-rwxr-xr-x 1 luis luis  9884128 out 26  2025 Agroeco_421179919
+-rwxr-xr-x 1 luis luis    17174 out 26  2025 SaveGameInfo
+-rwxr-xr-x 1 luis luis        2 out 26  2025 spacecore-serialization-farmer.json
+-rwxr-xr-x 1 luis luis        2 out 26  2025 spacecore-serialization.json
+```
+
+The folder is named `farm-year1-day5`, but the main save file is
+`Agroeco_421179919`. The loader's `getLoadEnumerator('farm-year1-day5')` followed
+by `File does not exist` is consistent with looking for
+`Saves/<name>/<name>`; the mismatch is the likely root cause of the T137
+failure (inferred, not yet confirmed by a controlled run).
+
+## Why the bundle artifact looked like a 5-second stall
+
+`scripts/lib/signals.sh` (`signals_smapi_log_excerpt`) greps only for:
+
+```text
+elapsed
+SoilGrowthModifierCompleted|DayEnding
+not main player
+```
+
+so `artifacts/smapi-log.txt` contains only the two `Instance_*` elapsed lines and
+looks like the game stopped. The full log shows otherwise.

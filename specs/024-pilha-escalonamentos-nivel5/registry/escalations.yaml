@@ -1,0 +1,149 @@
+# Living Roots — pilha de escalonamentos (local, baseado em MDMV 024)
+# Append/update via PR. Toda bloqueio humano vira item de backlog; não se remove histórico.
+# owner: @lfgranja
+
+- id: ESC-LR-20261110-001
+  data: 2026-11-10
+  origem: "ModBuildConfig / game assemblies"
+  tipo_023: capacidade
+  bloqueio: "Build/test requerem assemblies do Stardew Valley (GamePath); em máquinas sem o jogo, dotnet build falha."
+  capacidade_faltante: ["assemblies do jogo disponíveis no host (GamePath) ou .gamepath/"]
+  autorizacao_faltante: []
+  risco: baixo
+  impacto: "bloqueia CI local e Gate 3; toil manual de setup"
+  frequencia: recorrente
+  controle_atual: "csproj default GamePath + env GamePath + .gamepath/ (gitignored)"
+  candidato_automacao: "cache de assemblies em CI (builddeps) + documentação; ver BUILDDEPS_* env"
+  precondicoes: ["repositório de builddeps privado", "token BUILDDEPS_TOKEN"]
+  gatilho_reavaliacao: ["novo host", "upgrade SMAPI"]
+  status: triado
+  owner: "@lfgranja"
+  refs: ["AGENTS.md (Prerequisite: game assemblies)", "LivingRoots.csproj"]
+
+- id: ESC-LR-20261110-002
+  data: 2026-11-10
+  origem: "Gate 3 / headless verification runner"
+  tipo_023: capacidade
+  bloqueio: "Runner headless (verify-scenario.sh) exige Xvfb + sessão gráfica do jogo; falha em ambientes sem display."
+  capacidade_faltante: ["Xvfb instalado", "game path acessível", "SMAPI headless"]
+  autorizacao_faltante: []
+  risco: medio
+  impacto: "Gate 3 não roda em CI puro; verificação manual/runner self-hosted necessária"
+  frequencia: recorrente
+  controle_atual: "SMOKE_SKIP_INTEGRATION=1 para suite launch-free; verify-scenario com --no-acquire"
+  candidato_automacao: "runner self-hosted com Xvfb + evidência bundle; Gate 3 como job opcional"
+  precondicoes: ["self-hosted runner", "game assemblies"]
+  gatilho_reavaliacao: ["CI runner com display", "mudança de cenário"]
+  status: triado
+  owner: "@lfgranja"
+  refs: ["VERIFICATION_PROTOCOL.md", "scripts/verify-scenario.sh"]
+
+- id: ESC-LR-20261110-003
+  data: 2026-11-10
+  origem: "Branch protection / PR obrigatório"
+  tipo_023: autorizacao
+  bloqueio: "Push direto em dev/main bloqueado (PR obrigatório); enforce_admins ativo. Merge exige checks verdes."
+  capacidade_faltante: ["merge via PR (gh pr merge)", "checks verdes (sdd-gate required)"]
+  autorizacao_faltante: ["aprovação humana implícita via merge"]
+  risco: baixo
+  impacto: "toil de PR por mudança; sem auto-merge cego (intencional, 022/025)"
+  frequencia: recorrente
+  controle_atual: "gh pr create/merge; required check sdd-gate (strict)"
+  candidato_automacao: "auto-merge condicionado apenas para jobs narrow lights-out (Fase 4) após evidência"
+  precondicoes: ["Fase 4 concluída", "evidência de verificação machine-checkable"]
+  gatilho_reavaliacao: ["Fase 4", "mudança de política 025"]
+  status: triado
+  owner: "@lfgranja"
+  refs: ["AGENTS.md (Git & Collaboration)", "docs/adr/002-adocao-mdmv-dark-factory.md"]
+
+- id: ESC-LR-20261110-004
+  data: 2026-11-10
+  origem: "Quality Gate / jscpd duplication baseline"
+  tipo_023: capacidade
+  bloqueio: "Duplicações jscpd pré-existentes em ModEntry.cs, HarvestPatches/HeirloomPatches, Compost/Mulch application services, CompostingBinService, LivingRootsModApi excedem o ratchet em PRs."
+  capacidade_faltante: ["refatoração para eliminar duplicações", "baseline atualizado com justificativa"]
+  autorizacao_faltante: []
+  risco: baixo
+  impacto: "Quality Gate / static falha em todo PR; ruído de CI; ratchet bloqueado"
+  frequencia: recorrente
+  controle_atual: "jscpd baseline .jscpd-baseline.json; Quality Gate não é required check (apenas sdd-gate)"
+  candidato_automacao: "refatoração incremental + atualização de baseline com evidência"
+  precondicoes: ["testes verdes após refatoração", "revisão humana"]
+  gatilho_reavaliacao: ["PR de refatoração", "mudança de threshold"]
+  status: resolvido
+  owner: "@lfgranja"
+  refs: ["docs/quality-gate.md", ".jscpd-baseline.json"]
+
+- id: ESC-LR-20261110-005
+  data: 2026-11-10
+  origem: "Multiplayer live verification (roadmap D1)"
+  tipo_023: capacidade
+  bloqueio: "Verificação multi-cliente ao vivo (host + farmhands) não realizada; stubs atestam mecanismo mas não são prova live."
+  capacidade_faltante: ["sessão live com 2+ clientes", "observação de valores consistentes"]
+  autorizacao_faltante: []
+  risco: medio
+  impacto: "Principle VI (multiplayer first-class) sem evidência live; risco de regressão MP"
+  frequencia: pontual
+  controle_atual: "ThreadSafeGameLoopEventsStub + testes de mecanismo; constitution Principle VI; cenários farmhand (agrochemical) cobrem recusa host-guard via runner (farmhand_breach detection)"
+  candidato_automacao: "cenário headless multi-cliente no runner (futuro); farmhand refusal já automatizado"
+  precondicoes: ["runner com suporte multi-cliente", "cenário de teste", "sessão live com 2 clientes"]
+  gatilho_reavaliacao: ["roadmap D1", "mudança em ModController MP sync"]
+  status: triado
+  owner: "@lfgranja"
+  refs: ["LivingRoots/Controllers/ModController.cs (FR-009/A8)", "constitution Principle VI", "docs/mp-live-verification.md", "specs/017-joja-agrochemical-tradeoff/scenarios/"]
+
+- id: ESC-LR-20261110-006
+  data: 2026-11-10
+  origem: "Spec Kit version mismatch"
+  tipo_023: capacidade
+  bloqueio: "Repo usa Spec Kit 1.2.5 (opencode); hub usa 1.3.2 (OMP). Templates/comandos compatíveis mas integração difere."
+  capacidade_faltante: ["avaliação de upgrade para 1.3.2", "migração de integração opencode->omp"]
+  autorizacao_faltante: []
+  risco: baixo
+  impacto: "drift de tooling; portarias do hub assumem 1.3.2"
+  frequencia: pontual
+  controle_atual: "ADR 002 (upgrade avaliado, não obrigatório)"
+  candidato_automacao: "PR dedicado de upgrade com validação de templates/comandos"
+  precondicoes: ["revisão de breaking changes 1.2.5->1.3.2", "testes de comandos"]
+  gatilho_reavaliacao: ["novo speckit release", "mudança de integração"]
+  status: resolvido
+  owner: "@lfgranja"
+  refs: ["docs/adr/002-adocao-mdmv-dark-factory.md", ".specify/init-options.json"]
+
+- id: ESC-LR-20261110-007
+  data: 2026-11-10
+  origem: "Quality Gate baseline (coverage)"
+  tipo_023: capacidade
+  bloqueio: "Cobertura baseline (.coverage-baseline) ratcheted; novos arquivos sem testes reduzem cobertura."
+  capacidade_faltante: ["testes para novos módulos", "atualização de baseline com evidência"]
+  autorizacao_faltante: []
+  risco: baixo
+  impacto: "quality gate pode falhar em PRs que adicionam código não testado"
+  frequencia: recorrente
+  controle_atual: "coverage baseline + reportgenerator + quality_gate coverage"
+  candidato_automacao: "geração de testes via TDD (constitution IV)"
+  precondicoes: ["testes escritos antes do código"]
+  gatilho_reavaliacao: ["nova feature", "mudança de threshold"]
+  status: triado
+  owner: "@lfgranja"
+  refs: ["docs/quality-gate.md", ".coverage-baseline"]
+
+- id: ESC-LR-20261122-008
+  data: 2026-11-22
+  origem: "PR dev->main #821 (promocao apos ciclos 031-034)"
+  tipo_023: autorizacao
+  bloqueio: "CI integralmente verde (gh pr checks --watch RC=0 as 05:31:56Z, todos pass/skipping), mas main exige 1 aprovador distinto (reviewDecision=REVIEW_REQUIRED, strict, enforce_admins)."
+  capacidade_faltante: []
+  autorizacao_faltante: ["aprovacao de revisor distinto no PR #821", "decisao do SWE sobre o merge em main"]
+  risco: baixo
+  impacto: "promocao tecnicamente pronta; merge owner-gated e nao executado"
+  frequencia: pontual
+  controle_atual: "PR #821 aberto, sem merge/auto-merge/force-push; checks verdes observados ao vivo via gh"
+  candidato_automacao: "nenhuma — aprovacao humana exigida pela protecao de main"
+  precondicoes: ["revisao deliberada do SWE", "merge via UI/API pelo owner"]
+  gatilho_reavaliacao: ["aprovacao concedida", "mudanca de protecao de main"]
+  status: escalado-swe
+  owner: "@lfgranja"
+  refs: ["https://github.com/lfgranja/stardew-raizes-vivas/pull/821", "STATE.md ciclo 035", ".github/workflows/release.yml (apenas tags v*.*.*)"]
+  atualizacao_ci: "2026-11-22T05:40:50Z — após merge #822, PR #821 reexecutado no HEAD b3eaa94; gh pr checks --watch RC=0, todos pass/skipping; reviewDecision=REVIEW_REQUIRED inalterado. Registro anterior (05:31:56Z, HEAD 4b92cd8) preservado."
+  pacote_completo_entregue: "2026-11-24T12:56:43Z — HEAD e5e57d7f1bedc86fc81185ed88cbcc9a98610bd1; gh pr checks 821 --watch RC=0 (23 passed/0 failed/1 skipped, codeql condicional); sdd-gate e Build and Test SUCCESS no head exato; reviewDecision=REVIEW_REQUIRED inalterado. ACR independente e comentario de escalonamento postados em #821; babysitter ativo com heartbeat 15min/3 retries/TTL 15min, somente leitura. Critério 80/20: score=(Impacto*Confianca*Fechamento)/(Esforco*Risco), denominador 3125; PARE por anti-loop (ciclos 036/037 apenas notas/JSON). Gap de deploy: release.yml so em tags v*.*.* — configuracao e do SWE. Nenhum merge em main, deploy, tag, auto-merge, force-push ou aprovacao simulada. Fila owner/humana permanece [NV]. Registro anterior atualizacao_ci preservado."

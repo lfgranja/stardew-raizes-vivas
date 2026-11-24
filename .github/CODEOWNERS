@@ -1,0 +1,31 @@
+# CODEOWNERS — enforcement hook for the Living Roots verification stack.
+#
+# This file is an enforcement hook, not a substitute for the accountability
+# recorded in specs/010-headless-verification-runner/GOVERNANCE-ANNEX.md.
+# It makes the single accountable owner (@lfgranja) a required reviewer for the
+# verification contracts, the runner entry points, the offline evidence
+# verifier, the dev/CI-only verification mod, and the production API surface
+# that mod consumes.
+#
+# A CODEOWNERS approval is a review gate only. It is not execution evidence,
+# it does not attest a run, and it never satisfies Gate 3 `verified`, which
+# requires a human honesty-level E attestation (spec 010 FR-016).
+
+# Spec 010: specification, contracts, schemas, scenarios, fixtures, registers,
+# and governance records.
+/specs/010-headless-verification-runner/               @lfgranja
+
+# Verification runner entry points and the offline evidence-bundle verifier.
+/scripts/verify-scenario.sh                            @lfgranja
+/scripts/verify-evidence-bundle.sh                     @lfgranja
+
+# Dev/CI-only verification mod and its .NET helper.
+/LivingRoots.Verification/                             @lfgranja
+/LivingRoots.Verification.Runner/                      @lfgranja
+
+# Production API surface consumed by the verification mod (SMAPI-free contract).
+/LivingRoots/Domain/Interfaces/ILivingRootsModApi.cs   @lfgranja
+
+# This enforcement hook and the scheduled aggregation that depends on it.
+/.github/CODEOWNERS                                    @lfgranja
+/.github/workflows/security-aggregation.yml            @lfgranja

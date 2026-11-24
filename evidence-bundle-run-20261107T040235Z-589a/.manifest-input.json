@@ -1,0 +1,232 @@
+{
+  "schemaVersion": 1,
+  "runId": "run-20261107T040235Z-589a",
+  "timestamp": "2026-11-07T04:03:15Z",
+  "toolVersions": {
+    "runner": "0.1.0",
+    "dotnet": "10.0.400"
+  },
+  "gameVersion": "1.6.14",
+  "modVersion": "0.4.0",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.4.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "buildSkipped": true
+    }
+  },
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "cropPhaseDelta",
+    "smapiLog"
+  ],
+  "subject": [
+    {
+      "name": "claims.json",
+      "digest": {
+        "sha256": "42b14777ff3d3bb90fa46ef6c1bbb38a42e90dfded5877815bceffcf14413bcd"
+      }
+    },
+    {
+      "name": "retention-receipt.json",
+      "digest": {
+        "sha256": "fc26a7ecf12970f5de089512e71c5d2ad15d49b1a131954aca44e7cab859e95a"
+      }
+    },
+    {
+      "name": "verdict.json",
+      "digest": {
+        "sha256": "2bc56380b2e76574f9c303f548362a460b764adfe2b141e912a00a12b97b5955"
+      }
+    },
+    {
+      "name": "artifacts/crop-phase-before.json",
+      "digest": {
+        "sha256": "a74a719bff098c0f535de4407b8e97901646a4c5e2efcbf3387d9154ddbaba00"
+      }
+    },
+    {
+      "name": "artifacts/crop-phase-cross-check.json",
+      "digest": {
+        "sha256": "eda7a9e0cb82bf39192ebdae85c8a972bbaea808698cc73d3cdb7dfb5d157f29"
+      }
+    },
+    {
+      "name": "artifacts/crop-phase-dump.json",
+      "digest": {
+        "sha256": "6c8ef2adb33b5c6aa7575ec3f642d74d683f80b649bf56aa8a68f198a905cd31"
+      }
+    },
+    {
+      "name": "artifacts/smapi-log.txt",
+      "digest": {
+        "sha256": "411b33cd49f6fad5b4e80df3988853a107d40b8463a21b3229aaefc628a6dfdd"
+      }
+    },
+    {
+      "name": "artifacts/soil-health-after.json",
+      "digest": {
+        "sha256": "bdfad84f45b01b24bcfb83e8187e31843f4e96f68d0dab4dd1c03fb8c6ef2e29"
+      }
+    },
+    {
+      "name": "artifacts/soil-health-before-after.json",
+      "digest": {
+        "sha256": "090cb993fa4b5e2c9fd82c3bfd20de4463460720257a442a10c8c635bdf78695"
+      }
+    },
+    {
+      "name": "artifacts/soil-health-before.json",
+      "digest": {
+        "sha256": "f29dec60de393fbe6d3da5d048cfe670345b479c5bba6fca6b1acfb6f1cf9a3d"
+      }
+    },
+    {
+      "name": "evaluation/actual.json",
+      "digest": {
+        "sha256": "0ceba98c2ad825858fb097471746143a91ca1b7f9d4a8657b755f7c833b7baab"
+      }
+    },
+    {
+      "name": "evaluation/pre.json",
+      "digest": {
+        "sha256": "77521cd47b10a8668c774b51ea37bea4719c29dd1f9acc44e775983b03251efd"
+      }
+    },
+    {
+      "name": "evaluation/thresholds.jsonl",
+      "digest": {
+        "sha256": "f4d282bb806d25068491a24a244a15ba400134e5415e69164c401f9fc69ed3df"
+      }
+    },
+    {
+      "name": "evaluation/predicates/predicate-0.json",
+      "digest": {
+        "sha256": "ebf13dc0bc93e2c248fa036eb8747e508f5624faf076e6bb20db3370d5acab99"
+      }
+    },
+    {
+      "name": "evaluation/predicates/predicate-1.json",
+      "digest": {
+        "sha256": "a761ac167b091cecccf269673aec3dd1285c691a3b155e11de25a701bb4d6704"
+      }
+    },
+    {
+      "name": "evaluation/predicates/predicate-2.json",
+      "digest": {
+        "sha256": "7bbdb771c6321e4a40df80b4c3714f892713efbbf75d010400285adb393a1176"
+      }
+    }
+  ],
+  "verdict": "pass",
+  "honestyLevel": "R",
+  "attempts": [],
+  "claimsFile": "claims.json",
+  "artifacts": [
+    "artifacts/crop-phase-before.json",
+    "artifacts/crop-phase-cross-check.json",
+    "artifacts/crop-phase-dump.json",
+    "artifacts/smapi-log.txt",
+    "artifacts/soil-health-after.json",
+    "artifacts/soil-health-before-after.json",
+    "artifacts/soil-health-before.json"
+  ],
+  "environmentOverrides": [],
+  "commands": [
+    {
+      "argv": [
+        "lr_plant_crop",
+        "60",
+        "15",
+        "LivingRoots.Verification.LongPhaseCrop"
+      ]
+    },
+    {
+      "argv": [
+        "lr_set_soil_health",
+        "60",
+        "15",
+        "50"
+      ]
+    },
+    {
+      "argv": [
+        "step",
+        "runMacro",
+        "60,15",
+        "{\"macroFile\":\"macros/agrochemical-apply.txt\"}"
+      ]
+    },
+    {
+      "argv": [
+        "step",
+        "sleep",
+        "farm"
+      ]
+    },
+    {
+      "argv": [
+        "step",
+        "dumpCropPhase",
+        "farm"
+      ]
+    },
+    {
+      "argv": [
+        "step",
+        "observe",
+        "60,15"
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "uri": "file:///home/luis/.local/share/Steam/steamapps/common/Stardew Valley/Stardew Valley.dll",
+      "sha256": "f3e97f01d3fd2b1e6094fc8d2b59950aa6cb9d6cd1bf1b39d72d58edda8aad12",
+      "name": "Stardew Valley.dll",
+      "size": 6268416,
+      "annotations": {
+        "role": "game-file"
+      }
+    },
+    {
+      "uri": "file:///home/luis/.local/share/Steam/steamapps/common/Stardew Valley/StardewModdingAPI.dll",
+      "sha256": "d0d40338afce227c7c69af555d7abd4a7077a4c9cf5fe2c2a94ae685cc79d88a",
+      "name": "StardewModdingAPI.dll",
+      "size": 1034752,
+      "annotations": {
+        "role": "game-file"
+      }
+    },
+    {
+      "uri": "file:///home/luis/development/stardew-raizes-vivas/specs/017-joja-agrochemical-tradeoff/scenarios/agrochemical-tradeoff.scenario.json",
+      "sha256": "4421d70bbe61f420ce3a50d7908f981b207e93f05d7bf032ba3efdcaa50707a5",
+      "name": "agrochemical-tradeoff.scenario.json",
+      "size": 2786,
+      "annotations": {
+        "role": "dataset-instance"
+      }
+    },
+    {
+      "uri": "file:///home/luis/development/stardew-raizes-vivas/LivingRoots/manifest.json",
+      "sha256": "5db3f9b8b1bd2ae677942ae8dfc68fac4872220cd5c54336f0e93a8af859d26d",
+      "name": "manifest.json",
+      "size": 297,
+      "annotations": {
+        "role": "mod-manifest"
+      }
+    }
+  ],
+  "seeds": [
+    {
+      "seedId": "farm-year1-day5",
+      "source": "milestoneSave",
+      "baseCommit": "c9ff596db6268550b2559fccec894eb8cfcd8d7c"
+    }
+  ]
+}

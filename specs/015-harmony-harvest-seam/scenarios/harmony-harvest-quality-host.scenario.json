@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 3,
+  "scenarioId": "harmony-harvest-quality-host",
+  "featureSlug": "015-harmony-harvest-seam",
+  "testMdPath": "specs/015-harmony-harvest-seam/test.md",
+  "summary": "015 host 3-signal attestation: Harmony Crop.harvest seam (015) produces correct poor/moderate/healthy quality+extra-harvest outcomes via 014-compatible harvest probes. D1 multiplayer not covered (blocked-feasible/T002); SC-004 D1 remains pending.",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.1.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": true
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health 60 15 90",
+      "description": "pin the target tile and location for the harvest probe scan"
+    }
+  ],
+  "steps": [
+    {
+      "action": "harvest",
+      "target": "60,15"
+    },
+    {
+      "action": "observe",
+      "target": "60,15"
+    }
+  ],
+  "thresholds": [
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "cmp", "left": "poorVanillaQuality", "operator": "eq", "right": 1},
+      "description": "poor probe vanilla harvest quality is 1"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "cmp", "left": "poorHarvestQuality", "operator": "eq", "right": 0},
+      "description": "poor soil forces harvested item quality to 0 (Harmony seam)"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "cmp", "left": "poorExtraCount", "operator": "eq", "right": 0},
+      "description": "poor soil grants no healthy extra harvest"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "cmp", "left": "moderateVanillaQuality", "operator": "eq", "right": 1},
+      "description": "moderate probe vanilla harvest quality is 1"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "cmp", "left": "moderateHarvestQuality", "operator": "eq", "right": 1},
+      "description": "moderate soil leaves vanilla harvest quality untouched"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "cmp", "left": "moderateExtraCount", "operator": "eq", "right": 0},
+      "description": "moderate soil grants no healthy extra harvest"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "cmp", "left": "healthyVanillaQuality", "operator": "eq", "right": 0},
+      "description": "healthy quality probe vanilla harvest quality is 0"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "cmp", "left": "healthyHarvestQuality", "operator": "eq", "right": 1},
+      "description": "healthy soil applies +0.08 quality boost (Harmony seam)"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "between", "field": "healthyQualityRoll", "min": 0.2, "max": 0.29, "exclusiveMin": false, "exclusiveMax": true, "tolerance": 0.0001},
+      "description": "healthy quality probe rolls inside boosted quality window"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "cmp", "left": "healthyExtraCount", "operator": "eq", "right": 1},
+      "description": "healthy soil grants +0.10 extra harvest exactly once"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "cmp", "left": "healthyExtraQuality", "operator": "eq", "right": 0},
+      "description": "extra harvest item keeps normal quality"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {"op": "between", "field": "healthyExtraRoll", "min": 0.0, "max": 0.1, "exclusiveMin": false, "exclusiveMax": true, "tolerance": 0.0001},
+      "description": "healthy extra probe rolls inside extra-harvest window"
+    }
+  ],
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "cropPhaseDelta",
+    "smapiLog"
+  ],
+  "expectedVerdict": "pass",
+  "rngSeed": 1,
+  "time": "2026-11-05T00:00:00Z",
+  "determinism": {
+    "idempotent": true,
+    "declaredSources": []
+  },
+  "scenarioKind": "positive"
+}

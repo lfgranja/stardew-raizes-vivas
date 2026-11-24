@@ -1,0 +1,165 @@
+using LivingRoots.Domain;
+using LivingRoots.Domain.Interfaces;
+using LivingRoots.Domain.Services;
+using Microsoft.Xna.Framework;
+using StardewModdingAPI;
+using StardewValley;
+using StardewValley.TerrainFeatures;
+
+namespace LivingRoots.Services;
+
+/// <summary>
+/// Implementation of ISoilDecayService that processes all tilled tiles
+/// in a location at day start and applies seasonal-multiplied decay to bare tiles.
+/// </summary>
+public class SoilDecayService(
+    ISoilHealthService soilHealthService,
+    IMonitor monitor,
+    SeasonalDecayMultiplier seasonalDecayMultiplier,
+    ISeasonProvider seasonProvider,
+    ILocationProvider locationProvider,
+    ITimeProvider timeProvider,
+    IMulchApplicationService? mulchService = null) : ISoilDecayService
+{
+    private readonly ISoilHealthService _soilHealthService = soilHealthService ?? throw new ArgumentNullException(nameof(soilHealthService));
+    private readonly IMonitor _monitor = monitor ?? throw new ArgumentNullException(nameof(monitor));
+    private readonly SeasonalDecayMultiplier _seasonalDecayMultiplier = seasonalDecayMultiplier ?? throw new ArgumentNullException(nameof(seasonalDecayMultiplier));
+    private readonly ISeasonProvider _seasonProvider = seasonProvider ?? throw new ArgumentNullException(nameof(seasonProvider));
+    private readonly ILocationProvider _locationProvider = locationProvider ?? throw new ArgumentNullException(nameof(locationProvider));
+    private readonly ITimeProvider _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    private readonly IMulchApplicationService? _mulchService = mulchService;
+
+    // T068 (FR-013): the exactly-once-per-day guard
+    // is keyed by (day, location) — the duplicate
+    // DayStarted delivery a multiplayer session
+    // produces (every connected player's notification
+    // is relayed to the host) must not decay a
+    // location twice. The day clock is
+    // Game1.dayOfMonth, the in-game day the DayStarted
+    // event fires for; the guard compares with equality
+    // rather than ordering because dayOfMonth wraps at
+    // the end of each month, so a monotonic
+    // comparison would starve the first day of the
+    // next month. Guarded under _lock: the dictionary
+    // is not safe for concurrent writes.
+    private readonly Dictionary<string, int> _lastProcessedDayByLocation = new();
+    private readonly object _lock = new();
+
+    public void ProcessDayStart(string locationName)
+    {
+        if (locationName == "Greenhouse")
+        {
+            _monitor.Log("SoilDecay: Greenhouse exempt from decay.", LogLevel.Trace);
+            return;
+        }
+
+        var location = _locationProvider.GetLocationByName(locationName);
+        if (location == null)
+        {
+            _monitor.Log($"SoilDecay: Location '{locationName}' not found, skipping.", LogLevel.Trace);
+            return;
+        }
+
+        var season = _seasonProvider.CurrentSeason.ToLowerInvariant();
+        var multiplier = _seasonalDecayMultiplier.GetMultiplier(season);
+
+        if (!TryMarkAsProcessed(locationName))
+        {
+            return;
+        }
+
+        TickMulchForAllHoeDirt(location, locationName);
+
+        if (multiplier == 0f)
+        {
+            _monitor.Log($"SoilDecay: Winter - no decay for {locationName}.", LogLevel.Trace);
+            return;
+        }
+
+        ApplyDecayToBareTiles(location, locationName, season, multiplier);
+    }
+
+    private bool TryMarkAsProcessed(string locationName)
+    {
+        var currentDay = _timeProvider.TotalDays;
+        lock (_lock)
+        {
+            if (_lastProcessedDayByLocation.TryGetValue(locationName, out var lastProcessedDay) &&
+                lastProcessedDay == currentDay)
+            {
+                _monitor.Log($"SoilDecay: {locationName} already processed for day {currentDay}, skipping duplicate.", LogLevel.Trace);
+                return false;
+            }
+
+            _lastProcessedDayByLocation[locationName] = currentDay;
+            return true;
+        }
+    }
+
+    private void TickMulchForAllHoeDirt(GameLocation location, string locationName)
+    {
+        if (_mulchService == null)
+        {
+            return;
+        }
+
+        foreach (var kvp in location.terrainFeatures.Pairs.Where(p => p.Value is HoeDirt))
+        {
+            _mulchService.TickMulch(locationName, kvp.Key);
+        }
+    }
+
+    private void ApplyDecayToBareTiles(GameLocation location, string locationName, string season, float multiplier)
+    {
+        var decayAmount = ModConstants.DailyDecayRate * multiplier;
+        int tilesProcessed = 0;
+        float totalHealthLost = 0f;
+
+        foreach (var kvp in location.terrainFeatures.Pairs)
+        {
+            if (kvp.Value is HoeDirt hoeDirt && hoeDirt.crop == null)
+            {
+                var tileDecayAmount = GetTileDecayAmount(locationName, kvp.Key, decayAmount, multiplier);
+                var actualDecay = ApplyDecayToTile(locationName, kvp.Key, tileDecayAmount);
+                if (actualDecay > 0f)
+                {
+                    totalHealthLost += actualDecay;
+                    tilesProcessed++;
+                }
+            }
+        }
+
+        _monitor.Log($"SoilDecay: Processed {tilesProcessed} bare tiles in {locationName}, " +
+                     $"total health lost: {totalHealthLost:F1}, season: {season}, " +
+                     $"multiplier: {multiplier}, decayAmount: {decayAmount:F1}",
+                     LogLevel.Trace);
+    }
+
+    private float GetTileDecayAmount(string locationName, Vector2 tile, float decayAmount, float multiplier)
+    {
+        if (_mulchService != null && _mulchService.IsMulched(locationName, tile))
+        {
+            return ModConstants.DailyDecayRate * ModConstants.MulchDecayMultiplier * multiplier;
+        }
+
+        return decayAmount;
+    }
+
+    private float ApplyDecayToTile(string locationName, Vector2 tile, float tileDecayAmount)
+    {
+        var currentHealth = _soilHealthService.GetSoilHealth(locationName, tile);
+        if (float.IsNaN(currentHealth))
+        {
+            currentHealth = 0f;
+        }
+
+        var newHealth = Math.Max(currentHealth - tileDecayAmount, 0f);
+        var actualDecay = currentHealth - newHealth;
+        if (actualDecay > 0f)
+        {
+            _soilHealthService.UpdateHealth(locationName, tile, -actualDecay);
+        }
+
+        return actualDecay;
+    }
+}

@@ -1,0 +1,13 @@
+# check docs negative — T141-T144 verification
+# Date: 2026-11-05T03:00:37Z
+# Command: bash scripts/tests/test-docs.sh
+ok - check_docs exercised (rc=0)
+ok - missing markers => 14
+ok - duplicate markers => 14
+ok - inverted markers => 14
+ok - drift case covered by promotion_check_docs contract
+ok - machine-pass vocabulary in promotion.sh
+ok - promotion never writes verified
+ok - timestamp handling (maybe absent)
+# tests: 8, passed: 8, failed: 0
+# Exit: 0

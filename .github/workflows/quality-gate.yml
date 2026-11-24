@@ -1,0 +1,336 @@
+name: Quality Gate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev
+  schedule:
+    - cron: "17 2 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    name: Quality Gate / static
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      PYTHONPATH: scripts/quality-gate
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install CI dependencies
+        run: pip install -r scripts/quality-gate/requirements-ci.txt # NOSONAR
+
+      - name: Install test dependencies
+        run: pip install -r scripts/quality-gate/requirements-dev.txt # NOSONAR
+
+      - name: Quality gate tests
+        run: python -m pytest scripts/quality-gate/tests -q
+
+      - name: Semgrep SARIF
+        run: semgrep scan --config p/csharp --error --severity ERROR --metrics off --sarif --output semgrep.sarif LivingRoots/
+
+      - name: Semgrep (file and line)
+        if: always()
+        run: semgrep scan --config p/csharp --error --severity ERROR --metrics off LivingRoots/
+
+      - name: Upload Semgrep SARIF
+        if: github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      - name: Install Gitleaks
+        run: |
+          set -euo pipefail
+          version="v8.21.2"
+          curl --proto '=https' -sSfL "https://github.com/gitleaks/gitleaks/releases/download/${version}/gitleaks_${version#v}_linux_x64.tar.gz" -o /tmp/gitleaks.tgz
+          tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks
+          sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Gitleaks (per-PR diff)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          base_sha="${{ github.event.pull_request.base.sha }}"
+          head_sha="${{ github.event.pull_request.head.sha }}"
+          if [ -n "$base_sha" ] && [ -n "$head_sha" ] && git rev-parse --verify --quiet "$base_sha" >/dev/null && git rev-parse --verify --quiet "$head_sha" >/dev/null && git merge-base --is-ancestor "$base_sha" "$head_sha" 2>/dev/null; then
+            gitleaks detect --source . --redact --no-banner --exit-code 1 \
+              --baseline-path .gitleaks-baseline.json \
+              --log-opts "$base_sha..$head_sha"
+          else
+            gitleaks detect --source . --redact --no-banner --exit-code 1 \
+              --baseline-path .gitleaks-baseline.json
+          fi
+
+      - name: Gitleaks (push/dispatch range)
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          before="${{ github.event.before }}"
+          after="${{ github.sha }}"
+          if [ "${{ github.event_name }}" = "push" ] && [ -n "$before" ] && [ "$before" != "0000000000000000000000000000000000000000" ] && [ -n "$after" ] && git rev-parse --verify --quiet "$before" >/dev/null 2>&1 && git rev-parse --verify --quiet "$after" >/dev/null 2>&1; then
+            gitleaks detect --source . --redact --no-banner --exit-code 1 \
+              --baseline-path .gitleaks-baseline.json \
+              --log-opts "$before..$after"
+          else
+            gitleaks detect --source . --redact --no-banner --exit-code 1 \
+              --baseline-path .gitleaks-baseline.json
+          fi
+
+      - name: jscpd
+        run: npx --yes jscpd@5.4.2 LivingRoots/ --format csharp --min-lines 5 --min-tokens 50 --reporters json --output jscpd-report --silent # NOSONAR
+
+      - name: Duplication gate
+        run: python -m quality_gate duplication --report jscpd-report/jscpd-report.json --baseline .jscpd-baseline.json
+
+      - name: Upload jscpd report
+        uses: actions/upload-artifact@v7
+        with:
+          name: jscpd-report
+          path: jscpd-report
+
+  sca:
+    name: Quality Gate / sca
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      PYTHONPATH: scripts/quality-gate
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install CI dependencies
+        run: pip install -r scripts/quality-gate/requirements-ci.txt # NOSONAR
+
+      - name: Trivy v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          version: v0.76.1
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+          format: json
+          output: trivy.json
+          skip-dirs: "**/bin/**,**/obj/**,**/.git/**"
+          trivyignores: ".trivyignore"
+
+      - name: Security gate
+        run: python -m quality_gate security --report trivy.json
+
+  codeql:
+    name: Quality Gate / codeql
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: CodeQL init
+        uses: github/codeql-action/init@v4
+        with:
+          languages: csharp
+          build-mode: none
+
+      - name: CodeQL analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          output: codeql-results.sarif
+          category: "csharp"
+
+      - name: CodeQL annotations
+        run: |
+          python - <<'PY'
+          import glob, json, os
+          path = "codeql-results.sarif"
+          if not os.path.exists(path):
+              raise SystemExit(0)
+          sarif_files = []
+          if os.path.isdir(path):
+              sarif_files = sorted(glob.glob(os.path.join(path, "*.sarif")))
+          else:
+              sarif_files = [path]
+          if not sarif_files:
+              raise SystemExit(0)
+          for sarif_file in sarif_files:
+              with open(sarif_file, encoding="utf-8") as handle:
+                  data = json.load(handle)
+              for run in data.get("runs", []):
+                  for result in run.get("results", []):
+                      message = result.get("message", {}).get("text", "CodeQL finding")
+                      for location in result.get("locations", []):
+                          uri = location.get("physicalLocation", {}).get("artifactLocation", {}).get("uri", "")
+                          line = location.get("physicalLocation", {}).get("region", {}).get("startLine", 1)
+                          print(f"::error file={uri},line={line}::{message}")
+          PY
+
+  build-analysis:
+    name: Quality Gate / build-analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      GamePath: ${{ github.workspace }}/.gamepath
+      BUILDDEPS_REPO: lfgranja/stardew-raizes-vivas-builddeps
+      BUILDDEPS_TAG: gamepath-v1
+      BUILDDEPS_ASSET: gamepath.zip
+      PYTHONPATH: scripts/quality-gate
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Fetch build deps
+        env:
+          GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::BUILDDEPS_TOKEN is not set; cannot download the private build-deps release."
+            exit 1
+          fi
+          mkdir -p "${GamePath}"
+          gh release download "${BUILDDEPS_TAG}" \
+              --repo "${BUILDDEPS_REPO}" \
+              --pattern "${BUILDDEPS_ASSET}" \
+              --dir "${GamePath}"
+          unzip -o "${GamePath}/${BUILDDEPS_ASSET}" -d "${GamePath}"
+          rm -f "${GamePath}/${BUILDDEPS_ASSET}"
+          mkdir -p "${GamePath}/smapi-internal"
+          if [ -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" ]; then
+            mv -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" "${GamePath}/smapi-internal/"
+          fi
+          if [ -f "${GamePath}/0Harmony.dll" ]; then
+            mv -f "${GamePath}/0Harmony.dll" "${GamePath}/smapi-internal/"
+          fi
+          # Fallback: private builddeps asset may omit 0Harmony.dll. Use
+          # Lib.Harmony 2.2.2 (MIT, same major line as SMAPI 4.x bundled
+          # Harmony) for compilation-only reference when missing. Proper fix:
+          # update the lfgranja/stardew-raizes-vivas-builddeps gamepath asset.
+          if [ ! -f "${GamePath}/smapi-internal/0Harmony.dll" ]; then
+            harmony_nupkg="$(mktemp /tmp/lib.harmony.XXXXXX.nupkg)"
+            curl --proto '=https' --tlsv1.2 -fsSL "https://api.nuget.org/v3-flatcontainer/lib.harmony/2.2.2/lib.harmony.2.2.2.nupkg" -o "${harmony_nupkg}"
+            extracted=0
+            for tfm in net6.0 net5.0 netcoreapp3.1 net48; do
+              if unzip -p "${harmony_nupkg}" "lib/${tfm}/0Harmony.dll" > "${GamePath}/smapi-internal/0Harmony.dll" 2>/dev/null && [ -s "${GamePath}/smapi-internal/0Harmony.dll" ]; then
+                extracted=1
+                break
+              fi
+            done
+            rm -f "${harmony_nupkg}"
+            if [ "${extracted}" -ne 1 ]; then
+              echo "::error::failed to obtain 0Harmony.dll (builddeps missing and NuGet fallback failed)"
+              exit 1
+            fi
+            echo "using Lib.Harmony 2.2.2 fallback for smapi-internal/0Harmony.dll (compilation only)"
+          fi
+
+      - name: Preflight - game assemblies
+        run: |
+          set -euo pipefail
+          missing=0
+          for required in \
+              "Stardew Valley.dll" \
+              "StardewModdingAPI.dll" \
+              "StardewValley.GameData.dll" \
+              "MonoGame.Framework.dll" \
+              "xTile.dll" \
+              "smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" \
+              "smapi-internal/0Harmony.dll"
+          do
+            if [ ! -f "${GamePath}/${required}" ]; then
+              echo "::error::missing ${required} under GamePath (${GamePath})"
+              missing=1
+            fi
+          done
+          if [ "${missing}" -ne 0 ]; then
+            echo "::error::GamePath does not contain a usable Stardew Valley + SMAPI install."
+            exit 1
+          fi
+
+      - name: Restore dependencies
+        run: dotnet restore --locked-mode
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test and coverage
+        run: dotnet test --no-build -c Release --collect:"XPlat Code Coverage" --settings coverlet.runsettings --results-directory ./coverage
+
+      - name: ReportGenerator
+        run: dotnet tool restore && dotnet reportgenerator -reports:'**/coverage.cobertura.xml' -targetdir:coverage-report -reporttypes:'JsonSummary;TextSummary'
+
+      - name: Coverage gate
+        run: python -m quality_gate coverage --summary coverage-report/Summary.json --baseline .coverage-baseline
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage-report
+
+  gate:
+    name: Quality Gate / gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [static, sca, build-analysis]
+    if: always()
+    permissions:
+      contents: read
+    env:
+      PYTHONPATH: scripts/quality-gate
+    steps:
+      - name: Aggregate
+        if: always()
+        run: |
+          static_result="${{ needs.static.result }}"
+          sca_result="${{ needs.sca.result }}"
+          build_result="${{ needs.build-analysis.result }}"
+          result="success"
+          for pair in "static:${static_result}" "sca:${sca_result}" "build-analysis:${build_result}"; do
+            job="${pair%%:*}"
+            value="${pair#*:}"
+            if [ "${value}" != "success" ]; then
+              result="failure"
+              echo "::error::${job} concluded ${value}"
+            fi
+          done
+          if [ "${result}" != "success" ]; then
+            exit 1
+          fi

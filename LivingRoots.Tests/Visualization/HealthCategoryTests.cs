@@ -1,0 +1,72 @@
+using LivingRoots.Domain.Visualization;
+using Xunit;
+
+namespace LivingRoots.Tests.Visualization
+{
+    public class HealthCategoryTests
+    {
+        [Fact]
+        public void EnumValues_AreExplicitlyDefined()
+        {
+            // Assert
+            Assert.Equal(0, (int)HealthCategory.Poor);
+            Assert.Equal(1, (int)HealthCategory.Moderate);
+            Assert.Equal(2, (int)HealthCategory.Healthy);
+            Assert.Equal(3, (int)HealthCategory.Unknown);
+        }
+
+        [Theory]
+        [InlineData(0, HealthCategory.Poor)]
+        [InlineData(30, HealthCategory.Poor)]
+        [InlineData(31, HealthCategory.Moderate)]
+        [InlineData(70, HealthCategory.Moderate)]
+        [InlineData(71, HealthCategory.Healthy)]
+        [InlineData(100, HealthCategory.Healthy)]
+        public void FromHealthValue_ReturnsCorrectCategory(int healthValue, HealthCategory expected)
+        {
+            // Act
+            var result = HealthCategoryExtensions.FromHealthValue(healthValue);
+
+            // Assert
+            Assert.Equal(expected, result);
+        }
+
+        [Theory]
+        [InlineData(-1f, HealthCategory.Poor)]
+        [InlineData(-100f, HealthCategory.Poor)]
+        [InlineData(101f, HealthCategory.Healthy)]
+        [InlineData(1000f, HealthCategory.Healthy)]
+        public void FromHealthValue_FiniteOutOfRange_ClampsToBoundaryCategory(float healthValue, HealthCategory expected)
+        {
+            // Act
+            var result = HealthCategoryExtensions.FromHealthValue(healthValue);
+
+            // Assert — finite out-of-range values share the
+            // ColorInterpolationService clamping contract (FR-008,
+            // SC-007); only NaN/Infinity resolve to Unknown.
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void FromHealthValue_NaN_ReturnsUnknown()
+        {
+            // Act
+            var result = HealthCategoryExtensions.FromHealthValue(float.NaN);
+
+            // Assert
+            Assert.Equal(HealthCategory.Unknown, result);
+        }
+
+        [Fact]
+        public void FromHealthValue_Infinity_ReturnsUnknown()
+        {
+            // Act
+            var resultPositive = HealthCategoryExtensions.FromHealthValue(float.PositiveInfinity);
+            var resultNegative = HealthCategoryExtensions.FromHealthValue(float.NegativeInfinity);
+
+            // Assert
+            Assert.Equal(HealthCategory.Unknown, resultPositive);
+            Assert.Equal(HealthCategory.Unknown, resultNegative);
+        }
+    }
+}

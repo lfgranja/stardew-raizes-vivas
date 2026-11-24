@@ -1,0 +1,651 @@
+# ROADMAP.md - Stardew Valley: Living Roots
+
+> **STATUS ANNOTATION — 2026-11-21 (ciclo 030; estado verificado, append-only)**
+> `dev` recebeu #811 (`048342b`) e #812 (`18640ce`); **0 PRs abertos**. FONTE_FACTORY `b1deab1` (somente leitura). Roteiro de verificação funcional executado e persistido em `specs/030-roteiro-verificacao-funcional/verification-matrix.md`: B1–B11 com **1378 execuções / 0 falhas**, `aggregate-gate.sh` ALL STEPS PASSED, i18n PASS, pytest 180/0. Gate 3 do cenário `compost-growth-hardening` revalidado após alinhamento do threshold a `[0, 31)` (`run-20261121T232308Z-64cf`, `pass`, R, 3 sinais) — `machine-pass` host-only, sem `verified` humano. Contagens: specs=27, assessments=22, validations=24, releases=24, bugs=40, pesquisa=26. **[NV]**: D1, atestação E, SC-004 e tag/release `0.2.0` seguem com o maintainer.
+
+This document outlines the development roadmap for the "Living Roots" mod, detailing the progression of features from early to late game, based on agroecological principles.
+
+> **STATUS ANNOTATION — 2026-11-20 (estado verificado; append-only, substitui os snapshots acima para decisões correntes)**
+> `dev` = `origin/dev` = `dcc4dac`, **0 PRs abertos**, 0 tags, 0 releases públicas. Conflitos de bumps resolvidos combinando SonarAnalyzer 10.36 e NetAnalyzers 11.0 sem perda; locks regenerados com `dotnet restore --force-evaluate` e validados em `--locked-mode`. CI obrigatório (`sdd-gate` + `Build and Test`) verde no head final; `aggregate-gate.sh` ALL STEPS PASSED; smoke 51/50/0/1; pytest 179/1 (pragma S8969 pré-existente). Contagens: specs=24, assessments=19, validations=22, releases=22, bugs=40, pesquisa=25. **[NV]**: Gap de evidência humana (D1, Gate 3 humano, SC-004) e decisão de tag/release `0.2.0` permanecem com o maintainer.
+
+> **STATUS ANNOTATION — 2026-11-19 (estado verificado local em `8bba3fe` + remoto observado via `gh`)**
+> **Contagens determinísticas (`8bba3fe`):** `specs/` = **23** dirs (**22** numeradas, **19** com `spec.md`), **1202 done / 295 open (1497)** tarefas, **9** specs fechadas com 0 abertas (002, 005, 008, 012, 013, 016, 017, 020, 025; e 026 mesclada via PR #803 com R4/R7 aprovados e 11 checkboxes pendentes em `tasks.md`); `.specify/assessments/` = **18** (17 com `decision.md`), `validations/` = **21**, `releases/` = **21**, `bugs/` = **40** (30 A+F+T, 2 vazios), pesquisa = **25** arquivos (20 `research/`, 4 `docs/research/`, 1 `.specify/research/`). `docs/PROGRESSO.md`, `docs/research/index.md` e `*.generated.md` não existem no alvo.
+> **Gates locais (`8bba3fe`):** `scripts/ci/aggregate-gate.sh` **PASS** (`sdd-gate`: 0 erros, 30 warnings); `scripts/release-gate.sh` passos 1–3 OK e passo 4 **FAIL (exit 14)** no teste de relógio de parede `SoilHealthVisualizationTests.cs:419` (`27,346ms > 16,67ms`; 1998 passed / 1 failed / 4 skipped / 2003; re-execução isolada 5/5 PASS), originando o ciclo **027** em `feature/027-stabilize-reactive-invalidation-tests`; `pytest scripts/quality-gate/tests` local = 179/180 (1 falha pré-existente em `CompostingBinService.cs:115`, pragma S8969 sem razão).
+> **Remoto observado (`gh`, 2026-11-19) / [NV]:** required checks em `dev` = `sdd-gate` + `Build and Test` (`strict: true`); PRs #800–#804 mescladas; **7** PRs dependabot #790–#796 abertos `[NV: logs por step não relidos]`; `Security Aggregation` vermelho por `RUNNER_AUDIT_STORE` ausente (issue #523); **0 tags, 0 releases públicas**; `machine-pass` ≠ `verified` (**0 human-verified, 0 D1, 0 SC-004**).
+
+> **STATUS ANNOTATION — 2026-11-11 (refresh externo; ver `research/2026-11-11-ecosystem-market-refresh.md`)**
+> **Estado interno:** sem re-execução de build/testes/gate nesta sessão; último snapshot verificado permanece **2026-11-10T02:40Z** (`release-gate.sh` **ALL STEPS PASSED**, 1997/0/4, 7 cenários `machine-pass` host-only, 0 human-verified, 0 D1, 0 SC-004, 0 tags/releases). **Progresso/gaps essenciais inalterados.**
+> **Ecossistema (H/M):** SDV 1.7 segue **sem data/RC** (fala pública “provavelmente 2027”, sem compromisso oficial de data); 1.6.16 permanece como patch potencial na wiki sem release; SMAPI **4.5.2** estável e “upcoming” no `develop` aponta stats/dataset, deprecação da compat list e hardening (blacklist/métricas) — sem 4.6 estável. JunimoServer **v1.4.0** estável (2026-01-17) com previews ativos (opção prática para D1).
+> **Plataformas/publicação (H):** Nexus AI policy vigente desde **2026-11-03** — disclosure obrigatório (AI-Generated/Media/Assisted), requisitos de transparência/permissões, **novos uploads já devem cumprir**; carência para mods existentes até **2027-01-02**. Impacta diretamente o checklist de 0.2.0 (disclosure, evidência de autoria humana quando aplicável, tags/licenças).
+> **Mercado (M/L):** sinais recentes mantêm Wildroot Chronicles (breeding/narrativa) e Harvest Ledger (economia/rotação, PT-BR) como adjacentes visíveis; ReGen Valley segue de baixa verificabilidade nesta coleta. Nicho de **soil health per-tile agroecológico coerente** continua sem líder claro como pacote único — validação depende de release/feedback.
+>
+> **STATUS ANNOTATION — 2026-11-10 (progress & gaps; D1 deltas parcialmente verificados; mercado fresco 2026-11-10; ver `research/2026-11-10-progress-and-gaps.md`)**
+> **Verified now (2026-11-10T02:40Z, fresh):** `release-gate.sh` → **`ALL STEPS PASSED`** no HEAD `c07fbab` (format, locked restore, build Release, **1997 passed / 0 failed / 4 skipped / 2001**, smoke **50/51 (1 skip)**, docs markers, protected paths). **Gate 3** continua **machine-pass host-only** em 7 specs (004 `7374`, 005 `4cc1`, 013 `1ea4`, 014 `088b`, 015 `29cf`, 017 `6938`, 020 `6021`) — **nenhum human-verified, 0 D1, 0 SC-004**. **Proveniência:** HEAD contém 020, manifest diz 0.1.0, zip 0.1.0 já contém assets 020; sem `release.md` da 020. **Qualidade:** `Quality Gate / static` continua vermelho (148 linhas jscpd vs baseline 111) — pré-existente, fora do `release-gate.sh`. **Git:** só `dev` e `main` local/remoto; 0 tags; 0 releases públicas.
+> **Mercado 2026-11-10 (Nexus 403; confiança M):** ReGen Valley **não verificável** (zero resultados web/fórum/ModDrop); **Wildroot Chronicles** (#48079, ex-Cropgenics, breeding, 简体中文 nativo, ~85 endorsements) capturou a atenção da categoria; **Harvest Ledger** (#48951, economia + **rotação host-authoritative**, **15 endorsements, PT-BR confirmado**) segue sem updates set–nov; **Joja Seeds** (#8746) **continua broken 1.6**; Joja Redux v2.0 com 0 endorsements; **nenhum mod standalone de soil health/rotação** e **nenhuma tradução não-inglesa de mod de agroecologia** detectada em 2026. Demanda PT-BR latente, não articulada.
+> **Ecossistema 2026-11-10 (Wiki 403; H/M/L):** SDV PC **1.6.15**; **1.7 anunciada 30/08/2025 sem data, sem RC público; 1.6.16 não verificado; guia de migração 1.7 não publicado/verificado**; **SMAPI 4.5.2** estável (SDV 1.6.14+); **lista de compatibilidade smapi.io: SUNSET CONFIRMADO**; **update check NÃO descontinuado**; stats page nova.
+> **O que ainda falta (camadas):** evidência (human E, D1, SC-004, T110, 004 T034/T037, 020 Gate 3 de colheita), distribuição (decisão de tag/release 0.2.0; 0 tags/0 releases; assets Nexus; CI dormente), gameplay (rotação/policultura, pest system, Joja completo), conteúdo/progressão (early 2/7, mid 0/6, end 0/6), infra/higiene (Spec 010 53 abertas, legado 001/003/011 211/284, zero medido, tooltip flashing partial). **80/20 inalterado:** publicar `0.2.0` beta com notas honestas → D1 → atestação humana → rotação/policultura 0.3.0. **Machine-pass ≠ verified** permanece.
+
+> **STATUS ANNOTATION — 2026-11-09 (snapshot final do dia; `dev` = `origin/dev`; spec 020; síntese em `research/2026-11-09-journey-balance-and-outlook.md`)**
+> **Verified now (2026-11-09, fresh re-run):** build Release **0 errors** (14 pre-existing warnings; `-m:1` on this host due to recorded `msbuild-release-build-sigabrt`); tests **1997 passed / 0 failed / 4 skipped** (2001). Specs closed with artifacts: **002** (38/0), **005** (146/0), **008** (184/0), **012** (11/0), **013** (46/0), **016** (43/0), **017** (127/0), **020** (35/0). Nearly closed: **004** 65/67 (open: T034 D1, T037 playtest), **014** 131/133 (open: T109 D1 blocked; T110 deferred). Partial: **015** 58/65; **018** 24/28 (farmhand-guards blocked-feasible); **019** 5/7 (owner actions); **009** 55/58 (manual). Legacy/open tracks: **001** 10/86, **003** 28/117, **010** 150/203, **011** 42/88. Totals: **1198 done / 284 open** (80.8%); active track (002 + 004–020): **968/988 = 98.0%**.
+> **Release 0.1.0 (2026-11-07, spec 017):** spec 017 Joja/Agrochemical MVP — repo/`dev` only; **no public channel, no git tag**; human attestation absent by design; validate.md **approved** (1871/0/4 @ `c9ff596`); Gate 3 host-only machine-pass (bundle `040235Z-589a`, honesty R). The 0.1.0 build was **not** Gate-3-run in isolation (delta = version string; disclosure in `.specify/releases/017-joja-agrochemical-tradeoff/release.md` remains valid).
+> **Git:** `dev` = `origin/dev`; tree clean; **0 commits ahead**; 0 open PRs; 0 tags; 0 public releases. Publication remains the maintainer's decision.
+> **Gate 3 (2026-11-09):** machine-pass host-only for 004 `run-20261109T034318Z-7374`, 005 `...-4cc1`, 013 `...-1ea4`, 014 `...-088b`, 015 `...-29cf`, 017 `...-6938`, 020 `...-6021`; all verdict `pass`, honesty R. **Machine-pass ≠ verified**: D1 (real farmhand), human-verified, SC-004 and 004 T034/T037 remain `pending`.
+> **Web research 2026-11-09:** synthesis + balance in `research/2026-11-09-journey-balance-and-outlook.md`; raw data in `research/2026-11-09-web-research-ecosystem-status.md`, `research/2026-11-09-ecosystem-market.md`, `research/2026-11-09-technical-verification.md`. SMAPI 4.5.2 stable / SDV 1.6.15 / 1.7 announced (probable 2027, no date) reconfirmed.
+> **Legend:** ✅ implemented & verified (build + tests green) · 🟡 partial/inert · ❌ not implemented · ⚠️ caveats / machine-pass only, not human-verified.
+
+> **STATUS ANNOTATION — 2026-11-07 (later same day — spec 017 Joja/Agrochemical MVP — Phase 11 CLOSED; Phase 12 CLOSED)**
+> Spec 017 Phase 11 (T105–T118) is **closed and checked off** (`c6c4e7a`; the last sub-item, T117(b) reserved-enum remarks, landed as `d69168f`); Phase 12 (T119–T124) evidence-hygiene tasks are closed as well (`4764aaa`–`2fa1a19`, `1ff107b`), with T123 executed as this annotation. Counts cited below (targeted **123/123**, full-suite **1875/0/4**) come from the committed Phase-11 re-run logs `verification/convergence-phase11-targeted.log` / `-full.log` (T119/T124), **not** from `validate.md` (which attests 119/119 and 1871/0/4 on the c9ff596 tree, 2026-11-07). "Phase 11 CLOSED" refers to artifact-backed task closure (all T105–T118 `[x]`) and the committed T124 verification, not to a committed converge artifact; post-Phase-11 converge passes are in-session records, not artifacts. **Gate 3 (017 scenario) stays machine-pass host-only** — runner-promoted markers untouched; bundle `evidence-bundle-run-20261107T040235Z-589a/`, honesty `R`, commit `c9ff596`; **no Gate-3 re-run over the 0.1.0 build** (disclosure in `release.md` stands). **Machine-pass ≠ verified**: D1 (real farmhand), `human-verified`, SC-004 remain `pending`. The 2026-11-07 annotation below (Phase 11 in progress) and the 2026-11-06 annotation (014-specific) are retained verbatim; this block supersedes the "in progress" clause only. No claim is promoted by this annotation; the two `blocked` claim rows remain `blocked`.
+> **STATUS ANNOTATION — 2026-11-07 (spec 017 Joja/Agrochemical MVP — release 0.1.0; Phase 11 converge in progress)**
+> Spec 017 has shipped to the repo at release **0.1.0** (`d3ada42`; manifest `0.0.1`→`0.1.0`; MDMV release gate; repo-scoped on `dev` — **no public channel, no tag**; human attestation ausente por desenho). **validate.md: aprovado** (2026-11-07, commit `c9ff596`; suíte 1871 passed / 0 failed / 4 skipped, targeted 119/119, format exit 0; claims validator PASS) recorded in `.specify/validations/017-joja-agrochemical-tradeoff/validate.md`. **Gate 3 (017 scenario): machine-pass host-only** — runner-promoted markers untouched; bundle `evidence-bundle-run-20261107T040235Z-589a/`, honesty `R`, commit `c9ff596`. **Machine-pass ≠ verified**: D1 (real farmhand), `human-verified` and SC-004 remain `pending`. **Phase 11 converge is in progress** (T105–T118); the next converge pass is expected to report converged or near-converged, with remaining items being human attestations/SC-004 follow-ups. The 0.1.0 build was **not Gate-3-run in isolation** — the delta vs. the attested `c9ff596` tree is the manifest `Version` string only (disclosed in `.specify/releases/017-joja-agrochemical-tradeoff/release.md`). The 2026-11-06 annotation below remains the 014-specific attestation; this block adds 017. No claim is promoted by this annotation.
+
+> **STATUS ANNOTATION — verified 2026-11-06 (spec 014 T131–T133, machine-pass host-only, tests 1747/0/4)**
+> Previous annotations (2026-11-05, 2026-11-04, 2026-11-03, 2026-11-02) are preserved below; newest verified state is this block. Legend: ✅ implemented & verified (build + tests green) · 🟡 partial/inert · ❌ not implemented · ⚠️ has caveats / not verified in-game-human. Original design text preserved; annotations added.
+> **Verified now:** build Release 0 errors (`GamePath=/home/luis/stardew-assemblies`); tests **1747 passed / 0 failed / 4 skipped** (1751); band-scale 31/71 gate PASS. Spec 014 **131/133** (`tasks.md`) — T131–T133 complete; FR-009/A8 soil-health sync + procedural harvest feedback wired/tested; `/speckit.converge` found no new actionable findings (no Phase 11). Gate 3 spec 014 scenario **machine-pass** (host-only), `verdict: pass`, `signalsComplete/Agree/thresholdsOk: true`, verifier exit 0 — bundles `evidence-bundle-run-20261106T014215Z-759d`, `evidence-bundle-run-20261106T014750Z-14b6` (`specs/014-soil-health-crop-quality/gate3-evidence.md`). **Machine-pass ≠ verified** (no human E attestation). **T109 D1 blocked** (real farmhand). **T110 deferred** (historical 34/67 contract migration). Specs: 010 **150/203**, 016 **43/43**.
+> **Git snapshot (2026-11-05 refresh):** PRs #701–#705 mesclados em `dev`; higiene concluída (local/remoto apenas `dev`/`main`). `origin/dev` em `0260fed`; `dev` local pode estar alguns commits à frente apenas com docs desta atualização — publicar quando apropriado (sem reescrever histórico).
+> **Sources (2026, high reliability, refreshed 2026-11-05):** SMAPI **4.5.2** (atual) / SDV **1.6.14+** (https://smapi.io/ ; https://github.com/Pathoschild/SMAPI/releases/tag/4.5.2); smapi.io mod-compat list com caveat de “sunset” (https://smapi.io/mods); JunimoServer headless/E2E reference (https://docs.junimoserver.com/, latest release marcado instável no site — **contexto, não evidência Living Roots**); Nexus #39740 acesso direto bloqueado (403) nesta sessão — contexto já registrado no repo (`research/2026-11-05-web-research-ecosystem-status.md`).
+
+> **2026-11-05 (preserved):** spec 010 149/203, spec 016 converged, spec 004 machine-pass `535d`, suite 1630/0/4. T138/T145 blocked by environment.
+>
+> > **2026-11-05 (refresh, pesquisa web + hygiene):** fatos externos revalidados via fontes primárias (SMAPI 4.5.2/SDV 1.6.14+, caveat compat list, JunimoServer como referência). Nexus #39740 não revalidado ao vivo (403). Estado técnico do produto **sem regressão conhecida** vs. anotação 2026-11-06: spec 014 131/133 machine-pass host-only 759d/14b6, 1747/0/4, D1/T110/humano E pendentes. Ver `research/2026-11-05-web-research-ecosystem-status.md`.
+
+---
+
+## Progresso consolidado — 2026-11-09 (snapshot final: build 0 erros / testes 1997/4/0 / `dev` = `origin/dev`)
+
+### Quanto do caminho já percorremos (verificado em 2026-11-09)
+
+**Em código + testes (evidência determinística desta sessão + artefatos commitados):**
+- ✅ Núcleo persistente de solo 0–100 por tile, decay sazonal, overlay/tooltip/hoe feedback.
+- ✅ Compost loop (spec 004, 65/67; Gate 3 `7374`) e mulch (spec 013, 46/46; Gate 3 `1ea4`).
+- ✅ Crescimento dirigido por saúde (spec 005, 146/146; Gate 3 `4cc1`).
+- ✅ Qualidade/extra de colheita (spec 014, 131/133; Gate 3 `088b`; machine-pass host-only).
+- ✅ Seam Harmony de colheita (spec 015, 58/65; Gate 3 `29cf`).
+- ✅ **Spec 017 (Joja/Agrochemical MVP, 127/127) — release 0.1.0 no repo**; Gate 3 `6938`; telegrafia + penalidade bounded + recusas + broadcast host-authoritative.
+- ✅ **Spec 020 (heirloom seeds, 35/35)** — plantio +2, semente salva determinística, registro `Data/Objects`/`Data/Crops`/`Data/Shops`; Gate 3 `6021` (só plantio).
+- ✅ Sync MP FR-009/A8 implementado/testado por unidade/regressão; **D1 ao vivo não atestado**.
+- ✅ Suite **1997/0/4**; build **0 erros** (mitigação `-m:1` registrada); format exit 0.
+
+**Cobertura por denominação (não misturar os números):**
+
+| Métrica | Valor | % | Leitura |
+|---|---:|---:|---|
+| Tarefas da trilha ativa (002 + 004–020) | 968/988 | **98,0%** | escopo não-legado quase fechado |
+| Tarefas totais (todas as specs) | 1198/1482 | **80,8%** | denominador inclui 001/003/010/011 legados |
+| Specs fechadas | 8/20 | **40,0%** | 002, 005, 008, 012, 013, 016, 017, 020 |
+| Gate 3 machine-pass | 7/20 | **35,0%** | host-only, honesty R |
+| Gate 3 human-verified | 0/20 | **0%** | nenhum cenário promovido a `verified` |
+| D1 (farmhand real) | 0/1 | **0%** | bloqueia 014/015/018 |
+| Bugs com A+F+T | 30/40 | **75,0%** | 2 dirs vazios; 1 teste obsoleto |
+| Bugs com resultado positivo | 19/40 | **47,5%** | 17 `verified` + 1 `verified (bug-specific)` + 1 `pass` |
+| Features nomeadas | 6/21 | **28,6%** | compost, mulch, crescimento, qualidade, Joja MVP, heirloom |
+| Progressão early / mid / end | 2/7 · 0/6 · 0/6 | 28,6% · 0% · 0% | compost/mulch no early; resto não iniciado |
+
+**Pendências críticas (evidência e distribuição, não código):**
+- ⚠️ **D1 real** (T109/014, T049/T057/015, 4 farmhand-guards/018) — nunca executado.
+- ⚠️ **Atestação humana/E** — 0 de 7 cenários `machine-pass`.
+- ⚠️ **SC-004 (017)** — protocolo escrito, nenhuma execução.
+- ⚠️ **Publicação** — `0.1.0` é interno; 0 tags e 0 releases públicas; README agora aponta build from source.
+- ⚠️ **Spec 010** — funcional, mas 53 tarefas abertas de escopo/verificação.
+- ⚠️ **004 T034/T037** e **009 T039/T040/T052** — manual/playtest/D1.
+
+### O que ainda falta (por camada)
+
+1. **Evidência:** human E, D1, SC-004, T110, 004 T034/T037, 009 manual; 020 só cobre plantio (colheita, semente salva, aquisição natural e D1 sem Gate 3).
+2. **Distribuição:** decidir tag/release pública; sem Nexus/CurseForge; CI remoto de build/test dormente; `Verify Scenario` best-effort.
+3. **Gameplay core:** pest system, monocultura, rotação/policultura/adubo verde/animais, Joja/monocultura completa, “new interactions” de Living Soil.
+4. **Conteúdo/progressão:** Elena, Welcome Kit, Three Sisters, cisterna, farmácia viva, Adobe Shed/Green Roof, ICLF, greywater, feira, CSA, cozinha coletiva, soberania, mais heirloom crops; mid 0/6, end 0/6.
+5. **Infra/higiene:** 010 (53), 001 (76), 003 (89), 011 (46); 5 bugs A-only, 2 AF-only, 1 FT obsoleto, 2 diretórios vazios; 31 briefings, 0 implementados.
+
+### Próximo 80/20 (ordem recomendada)
+
+1. **Decidir publicação:** manter interno ou criar tag/release `0.1.0` com notas honestas. Custo S; destrava instalação/distribuição.
+2. **README/install:** build from source + status explícito (feito nesta atualização). Custo XS.
+3. **Atestação humana/E** de 4 cenários já `machine-pass` (004, 005/013, 014, 017/020). Custo M; promove `machine-pass` → `verified`.
+4. **D1 real:** duas instâncias SMAPI sob Xvfb ou JunimoServer (server + client + JunimoTestClient :5123). Custo M–L; destrava 014/015/018.
+5. **Fechar/documentar resíduos** 004/014/015/018/019 e decidir escopo de 010 via `/speckit.converge`. Custo S–M.
+6. **Próximo slice de gameplay:** rotação/policultura MVP (fecha “BUILDS”) **ou** Joja/monocultura completa (fecha “DESTROYS”). Custo M; 020 já entregou a base heirloom. Só depois de 3/4.
+7. **1.7:** não migrar agora; monitorar anúncio de data (janela provável 2027). Custo 0.
+
+**Honestidade:** `machine-pass` ≠ `verified`; 0 atestação humana, 0 D1, 0 tag/release pública. Nenhuma claim é promovida por esta consolidação.
+
+## Progresso consolidado — 2026-11-06 (spec 014 harvest-quality machine-pass host-only + pesquisa atualizada)
+
+### Quanto do caminho já percorremos (verificado)
+
+**Em código/testes (verificado nesta sessão):**
+- ✅ Núcleo persistente de solo (`SoilHealthService`, `ModDataService`, sanitização, cache esparso), decay sazonal, overlay/tooltip/hoe feedback.
+- ✅ Composting loop (spec 004, machine-pass histórico) + mulch (spec 013) + growth modifier (spec 005).
+- ✅ **Spec 014 (131/133):** tiers Cornell CSHA 31/71, classificação/decisão de qualidade e extra-colheita com guards, composição com matemática vanilla, feedback procedural headless-safe (`HarvestFeedbackTextures`), **sync FR-009/A8** host→cliente (`DayStarted` + após `TryApplyCompostWithLock` bem-sucedido). T131–T133 completos; converge sem achados acionáveis novos.
+- ✅ Runner headless (specs 010/016) produz bundles verificáveis; **machine-pass host-only** para cenário `soil-health-harvest-quality` (`759d`, `14b6`, verifier exit 0). **Não `verified` humano.**
+- ✅ Suíte: **1747 passed / 0 failed / 4 skipped** (1751), build 0 erros, format/band-scale PASS.
+
+**Pendências críticas de evidência:**
+- ⚠️ **T109 D1 bloqueado:** convergência ao vivo com farmhand real não atestada (FR-009/A8 testada por unidade/regressão).
+- ⚠️ **T110 deferido:** contrato histórico 34/67.
+- ⚠️ Gate 3 humano/E pendente.
+
+**Não implementado (roadmap):** Joja Fertilizer/monocultura completa, heirloom pipeline, rotação/policultura/adubo verde/animais, Elena, mid/end-game (maioria), D1 ao vivo.
+
+### O que ainda falta (prioridade prática)
+
+1. **Reconciliação 014↔015 (80/20, baixo custo):** `/speckit.analyze`/convergência baseada em evidência — mapear tarefas spec 015 já cobertas por 014, duplicidades (Junimo) e bloqueios reais (D1/humano/pest); sem reescrever histórico.
+2. **D1 real (T109):** ambiente com segundo jogador + evidência honesta (FR-009/A8 testada por unidade, **não** atestada ao vivo).
+3. **Publicar docs desta atualização:** `dev` local pode estar à frente de `origin/dev` por commits de documentação; push/PR conforme decisão humana.
+4. **Pendências de specs:** 004 T034/T037 (manual/D1), 009 manual, 010 restantes, 015 abertas (validar contra 014), 011/013 residuais — priorizar por valor.
+5. **Próximo slice de gameplay (após reconciliação):** candidato 80/20 = tradeoff destrutivo/decisão (ex. Joja/monocultura, escopo controlado) com TDD + Gate 3 honesto.
+
+## Progresso consolidado — 2026-11-04 (histórico, pós-merge PRs #655/#656/#657 + pesquisa web)
+
+### Quanto do caminho já percorremos (verificado em 2026-11-04)
+
+**Em código/testes (verificado por build + testes nesta sessão):**
+- ✅ Núcleo persistente de solo (`SoilHealthService`, `ModDataService`, sanitização, cache esparso).
+- ✅ Composting loop (bin → 2 dias → composto → +15, clamped) — spec 004 (machine-pass).
+- ✅ Mulch (7 dias, decay skip, overlay tint, host-authoritative) — spec 013 (46/48).
+- ✅ Growth modifier (health → growth speed) — spec 005 (143/146).
+- ✅ Soil decay sazonal (greenhouse exempt).
+- ✅ Seam de qualidade (`HarvestQualityService`, 17 testes) + patch Harmony + wiring — specs 014/015 (infra apenas; na ocasião o patch **não havia sido executado com atestação humana** — o runner headless viria a exercitá-lo nos Gate 3 `088b`/`29cf`, em 2026-11-09).
+- ✅ DDD, segurança, concorrência, quality gate local, smoke launch (mod carrega no SMAPI).
+- ✅ UI/visualização reativa (overlay/tooltip/hoe feedback).
+
+**Verificado in-game (Gate 3):** ⚠️ machine-pass headless (spec 004, 2026-11-04) — **não** Gate 3 manual 3-sinais (E humano) pendente.
+
+**Roadmap items shipped:** 3 de 21 features nomeadas (composting, mulch, soil-health→crop-growth) + 2 promessas de core (soil decay, growth driver) + seam de harvest-quality (infra apenas).
+
+**Não implementado:** 18 de 21 features nomeadas + 7 de 13 promessas do core (qualidade de colheita real, Joja/monocultura, heirloom, mid/end-game, Elena, multiplayer ao vivo).
+
+### O que ainda falta (resumo executivo, ordem de prioridade)
+
+1. **Completar spec 010 (headless verification runner) e gerar `machine-pass`** — tarefas T130–T150 (verificação e promoção) estão pendentes. O runner está em 137/203 concluídas. **Este é o caminho obrigatório para `machine-pass` antes de qualquer verificação manual in-game.**
+2. **Rodar Gate 3 via spec 010** (3 sinais: SoilHealthState delta, Crop phase delta, SMAPI log) — captura `machine-pass` na feature 004 sem abrir o jogo manualmente.
+3. **Completar integração harvest-quality** (feedback sprites/SFX, extra-harvest gated em SC-008) — specs 014/015. **80/20 principal de gameplay.** Só após o spec 010 estar verde.
+4. **Reconciliar band scale** (3 doc-only tasks T117–T119, spec 005).
+5. **Fechar bug do test harness** (hang em test-preflight/integration/logparse).
+6. **Joja Fertilizer** (fecha loop "destrói") — próximo após harvest-quality.
+7. **Heirloom pipeline** → Three Sisters, Green Manure, Rotation Journal.
+8. **Multiplayer ao vivo (D1)** — owed desde spec 004; Constitution Principle VI.
+9. **Mid-game (6) e End-game (6)** — 0 de 12 iniciados.
+10. **Specs 001 (visualização), 011 (quality gate CI)** — em andamento/parcial.
+
+### Próximo passo — 80/20 (maior avanço, menor esforço)
+
+**Recomendação: completar spec 010 (headless verification runner) e gerar `machine-pass` na feature 004, APENAS ENTÃO `/speckit.implement` continuando specs 014/015 (harvest-quality) + `/speckit.converge`.**
+
+Justificativa (com pesquisa de mercado 2026):
+- O spec 010 é o único caminho para `machine-pass` sem abrir o jogo manualmente. Todas as 137 tarefas de implementação já estão feitas; faltam as tarefas de verificação e promoção (T130–T150).
+- Após o spec 010 gerar `machine-pass`, specs 014/015 (harvest-quality) é o único item de gameplay que faz Living Soil (71–100%) **pagar na colheita** (qualidade silver/gold/iridium + colheita extra).
+- Infraestrutura cara (Harmony, seam, testes, wiring) já mergeada — custo marginal é integração + verificação.
+- Mercado valida "qualidade dirigida por skill/solo" (Crop Quality, Simple Skills Extended); ninguém entrega per-tile com boost determinístico + feedback.
+- ReGen Valley entrega farm-wide quality a 75+/90+ avg, mas não per-tile com boost determinístico e feedback transient — nosso seam é único.
+
+**Pré-requisitos (em ordem):**
+1. **Completar spec 010 tarefas T130–T150** (verificação e promoção) — `dotnet build`, `dotnet test`, `dotnet format`, shell, schema, launch-free e2e, real-host e2e, second-host 3/3, timed dry run, audit/deletion drill, bundle negatives, check-docs negatives, acquisition negatives, suite negatives, farmhand path.
+2. **Rodar Gate 3 via spec 010** — capturar `machine-pass` na feature 004 (compost-growth-hardening.scenario.json) com três sinais.
+3. **Reconciliar band scale** (T117–T119, doc-only, spec 005).
+4. **Fechar hang do harness** (bug assess/fix, spec 008).
+
+**Somente após o spec 010 estar verde e o `machine-pass` gerado:**
+- `/speckit.implement` continuando specs 014/015 (harvest-quality integração) → `/speckit.converge`.
+- Verificação manual in-game (opcional, confirmação humana E attestation) — nunca substitui o runner.
+
+**Alternativa (se quiser fechar loop destruição primeiro):** `/speckit.specify` para "Joja Fertilizer" (boost agora, −5% saúde) — fecha o "o que destrói", custo baixo, mas não faz Living Soil pagar.
+
+**Não recomendado agora:** Elena NPC (alto custo/conteúdo), Heirloom pipeline (bloqueia 3 features, alto custo), Mid/End-game (0 de 12).
+
+### Custo vs. impacto (ranking 80/20)
+
+| Item | Custo | Impacto | Veredito |
+|------|-------|---------|----------|
+| Completar harvest-quality (014/015) | Médio | Living Soil paga na colheita | **80/20 principal** |
+| Rodar Gate 3 (in-game) | Baixo | Desbloqueia "verificado" | **Fazer já** |
+| Reconciliar band scale (T117–T119) | Baixo (doc-only) | Convergência spec 005 | **Fazer já** |
+| Fechar hang do harness | Médio | Destrava CI local | **Fazer já** |
+| Joja Fertilizer | Baixo | Fecha loop "destrói" | **Próximo após harvest-quality** |
+| Heirloom pipeline | Alto | Desbloqueia 3 features | **Depois** |
+| Elena + Welcome Kit | Muito alto | Conteúdo/NPC | **Por último** |
+| Mid/End-game (12 features) | Muito alto | Conteúdo | **Por último** |
+
+---
+
+## Where we actually are (verified, not inferred) — atualizado 2026-11-09
+
+| Metric | Value | How verified |
+|---|---|---|
+| Build | **0 erros** (14 warnings pré-existentes; `-m:1` no host) | `dotnet build Stardew-LivingRoots.sln -c Release -m:1` (re-verificado 2026-11-09) |
+| Test suite | **1997 passed / 0 failed / 4 skipped** (2001) | `dotnet test Stardew-LivingRoots.sln -c Release -m:1` (re-verificado 2026-11-09) |
+| Specs fechadas | 002, 005, 008, 012, 013, 016, **017 (0.1.0 no repo)**, **020 (heirloom)** | `specs/*/tasks.md` (0 abertas) |
+| Specs quase fechadas | 004 (2: T034 D1, T037 playtest), 014 (2: T109 D1 bloqueado, T110 deferido) | `specs/*/tasks.md` |
+| Specs parciais | 015 (7), 018 (4 farmhand-guards blocked), 019 (2 owner), 009 (3 manuais) | `specs/*/tasks.md` |
+| Specs stale/abertas | 010 (53), 001 (76), 003 (89), 011 (46) | `specs/*/tasks.md` (total 1198 done / 284 open; trilha ativa 968/988) |
+| Gate 3 | **machine-pass host-only** em 7 specs: 004 `7374`, 005 `4cc1`, 013 `1ea4`, 014 `088b`, 015 `29cf`, 017 `6938`, 020 `6021`; todos `verdict: pass`, honesty R | `specs/*/test.md`; `specs/*/verification/host-only-gate3.md`; bundles gitignored |
+| Release | **0.1.0** (spec 017) no repo/`dev`; sem canal público, sem tag; validate.md aprovado (1871/0/4 @ c9ff596) | `.specify/releases/017-joja-agrochemical-tradeoff/release.md`; manifest |
+| Git | `dev` = `origin/dev`; **0 commits à frente**; árvore limpa; sem PRs; 0 tags; 0 releases públicas | `git status -sb`; `git rev-list --count origin/dev..dev`; `git tag --list` |
+| Multiplayer | não atestado (D1 T109 bloqueado; runner host-only; farmhand-guards blocked-feasible) | `specs/014/tasks.md`; `specs/018/tasks.md`; `specs/017/verification/claim-records.md` |
+| Humano/E | **nunca executado** — machine-pass ≠ verified | `VERIFICATION_PROTOCOL.md`; claims pendentes |
+
+**One-sentence truth (2026-11-09):** Living Roots tem seis loops de gameplay em código com evidência automatizada (compost, mulch, crescimento, colheita/qualidade, tradeoff Joja, heirloom seeds), uma release 0.1.0 no repo, suite 1997/0/4 — tudo **machine-pass host-only**, **sem atesto humano e sem D1 multiplayer ao vivo**, com `dev` sincronizado com `origin/dev` mas sem tag/release pública.
+
+## Where we actually are (histórico) — atualizado 2026-11-06
+
+| Metric | Value | How verified |
+|---|---|---|
+| Build | **0 erros** (Release) | `dotnet build Stardew-LivingRoots.sln -c Release` (`GamePath=/home/luis/stardew-assemblies`) |
+| Test suite | **1747 passed / 0 failed / 4 skipped** (1751) | `dotnet test Stardew-LivingRoots.sln --no-build -c Release` |
+| Format / band-scale | clean / PASS | `dotnet format --verify-no-changes --no-restore`; `scripts/tests/test-band-scale-31-71.sh` |
+| Spec 014 | **131/133**; T131–T133 done; **T109 D1 blocked**, **T110 deferred** | `specs/014-soil-health-crop-quality/tasks.md`, `gate3-evidence.md` |
+| Spec 010 / 016 | **150/203** / **43/43** | `specs/*/tasks.md` |
+| Gate 3 (spec 014 scenario) | **machine-pass host-only** (759d, 14b6), verifier exit 0, 3-signal predicates pass — **NOT verified (human E)** | `gate3-evidence.md`, `evidence-bundle-run-20261106T014750Z-14b6/` |
+| Roadmap/realidade | soil measure/display/change/decay/compost/mulch/growth + harvest-quality tier logic/wiring/feedback/sync implemented in code with automated evidence; MP convergence not human-verified; D1 not attested | source + tests + gate3-evidence |
+| Git (refresh 2026-11-05) | PRs #701–#705 merged; hygiene done (só `dev`/`main` local/remoto). `origin/dev`=`0260fed`; `dev` local pode estar à frente apenas por docs desta sessão | `git status`, `gh pr list`, `git branch -vv/-r`, `git ls-remote --heads origin` |
+
+**One-sentence truth (2026-11-06):** Living Roots mede, persiste e muda soil health; solo afeta crescimento e, no código atual (spec 014, 131/133), também direciona qualidade/extra de colheita com guards, feedback procedural e sync FR-009/A8 — com **machine-pass headless host-only** (759d/14b6) e suíte 1747/0/4 — mas **sem atesto humano `verified`** e com **D1/T110** ainda pendentes.
+
+## Where we actually are (histórico) — 2026-11-04
+
+> **Correção (2026-11-09):** duas frases abaixo estão incorretas/obsoletas mesmo para 2026-11-04 — “No live SMAPI session ever run” e “Harvest-quality patch not executed in game”. O runner headless já produzira `machine-pass` (spec 004, bundle `4acd`) e o patch Harmony é exercitado por execuções headless. O correto é: **nenhuma sessão humana/E** e **nenhuma atestação D1**; execuções automatizadas sob Xvfb existem desde 2026-11-04. `machine-pass` ≠ `verified`.
+
+### Progress snapshot — 2026-11-04 (post-014/015 merge + pesquisa de mercado)
+
+**How far we've come (verified):**
+- ✅ Soil health per-tile, persisted, displayed (overlay/tooltip/hoe), decay (seasonal, greenhouse-exempt).
+- ✅ Composting loop end-to-end in code (bin → 2 days → compost → +15 health, clamped).
+- ✅ Mulch (7-day cover, decay skip, overlay tint, host-authoritative).
+- ✅ Growth modifier (health → growth speed).
+- ✅ Pure, testable `HarvestQualityService` seam (17 tests) + Harmony patch for `Crop.harvest` (non-suppressing two-phase, try/catch fallback) + defensive `ModEntry` wiring.
+- ✅ DDD architecture, security sanitization, async-only, multiplayer-aware patterns, quality gate (Semgrep/Trivy/jscpd), 1621+ tests.
+- ✅ Smoke validation (spec 008) implementado e verificado: real-game run exit 0 com success marker.
+
+**What still doesn't work / isn't verified:**
+- ✅ **Build verde** (0 erros, 0 warnings).
+- ✅ **Testes verdes** (1621 pass / 1 fail pré-existente / 4 skip).
+- ❌ **No live SMAPI session ever run** (Gate 3 manual 3-sinais). Every "works" claim above is code/tests, not in-game.
+- ⚠️ Harvest-quality patch not executed in game; integration (feedback sprites/SFX, extra-harvest activation) incomplete; SC-008 rollback verification still pending.
+- ✅ Band scale reconciled to Cornell CSHA 31/71 (`[0,31)/[31,71)/[71,100]`) by spec 014 FR-013/T127 (supersedes prior 34/67/0-30-70 mismatches).
+- ❌ Multiplayer live verification (D1) not proven.
+
+**What's still not implemented (roadmap):**
+- 18 of 21 named features (Elena NPC, heirloom pipeline, Three Sisters, green manure, rotation journal, Joja Fertilizer, monoculture penalty, integrated animals, insect hotels, living pharmacy, bio-construction, ICLF, greywater, weekly fair, CSA, collective kitchen, food sovereignty, cistern, rainwater harvesting).
+- Mid-game (6) and end-game (6) features: 0 of 12 started.
+- Specs 010 (headless runner): not started (0/161).
+
+---
+
+## Pesquisa de mercado e ecossistema (verificada 2026-11-03; refresh 2026-11-09)
+
+> **Refresh 2026-11-09:** ver `research/2026-11-09-web-research-ecosystem-status.md` (ecossistema e técnico) e `research/2026-11-09-ecosystem-market.md` / `research/2026-11-09-technical-verification.md` (dados brutos com fontes/limitações).
+
+Fontes primárias: Nexus Mods, CurseForge, PCGamesN/Technwz (listas de melhores mods 2026), SMAPI release notes (Pathoschild), Stardew Valley Wiki, mod docs.
+
+### Ecossistema (2026)
+
+- **SMAPI 4.5.2** (lançado 14/03/2026) para Stardew Valley 1.6.14+; 4.4.0+ (jan/2026) adicionou UI de config in-game via GMCM e builds atestados. Mods devem mirar 4.4.0+ / 1.6.14+.
+- **Stardew Valley** está em 1.6.15 (referenciado por mods recentes); sem Steam Workshop oficial — distribuição via Nexus/CurseForge + SMAPI.
+- **Nexus Mods** concentra dezenas de milhares de mods; listas de "best mods 2026" focam em QoL (Chests Anywhere, Stamina Regen, Crops Anytime Anywhere, Simple Crop Label) — **não há mod de agroecologia profunda** além de ReGen Valley e afins.
+- **Multiplayer/headless**: existem mods de servidor dedicado (always-on-server, SMAPIDedicatedServerMod) para co-op; relevante para o pilar "co-op desde o dia 1" (Principle VI).
+
+### Concorrentes diretos (landscape 2026)
+
+| Mod | Foco | Downloads (aprox.) | Sobreposição com Living Roots |
+|-----|------|-------------------|-------------------------------|
+| **ReGen Valley** (Nexus, 2025) | Soil health farm-wide (75+/90+ avg) | — | Concorrente mais próximo; **não** é per-tile com boost determinístico + feedback transient |
+| **Crop Quality** (aedenthorn, 0.2.0) | Exibe qualidade da colheita; tweaks de chances | 9.2K (CurseForge) | Complementar — exibição, não mecânica de solo |
+| **Simple Skills Extended** (Xsyy, 1.18, out/2026) | Skills com bônus de qualidade/extras, por-farmer, integra Cornucopia/SpaceCore | — | Concorrente em "qualidade dirigida por skill"; não per-tile por saúde do solo |
+| **Spore Galore** (HomesteadyEddy) | Cultivo de cogumelos + compostagem (substrato gasto → composto em 2 dias) | — | Sobrepõe compostagem; fecha loop "waste → compost → fertilizer" |
+| **Harvest Ledger** (Tigrevurmud666, 0.5.0) | Economia dinâmica com streak de rotação de culturas (+3%/+5% venda) | — | Sobrepõe rotação; valida demanda por mecânica de rotação |
+| **Tilled Soil Decay Options** (CaptainSully, 2026) | Configura decay de solo arado (atravessa estações) | — | Sobrepõe decay de solo; mostra demanda por controle de decay |
+
+### Implicações para o roadmap
+
+1. **Diferencial único confirmado**: per-tile soil health com boost determinístico de qualidade + colheita extra + feedback transient **não existe** no ecossistema. Simple Skills Extended dá bônus por skill (farm-wide), ReGen Valley dá por média da fazenda. Living Roots é o único per-tile host-authoritative com feedback. → priorizar specs 014/015 (harvest-quality) + Gate 3.
+2. **Compostagem não é diferencial** (Spore Galore já fecha o loop waste→compost). O diferencial de Living Roots é a **coerência agroecológica** (composto + mulch + rotação + policultura + adubo verde) e o **framing educativo**, não a mecânica isolada.
+3. **Rotação de culturas tem demanda validada** (Harvest Ledger streaks). Vale investir em Three Sisters / Rotation Journal / Green Manure (mid-game) após harvest-quality.
+4. **Multiplayer é diferencial real** se verificado ao vivo (D1): a maioria dos mods de solo não é host-authoritative per-tile com first-wins. Verificar D1 cedo aumenta o valor percebido.
+5. **Ecossistema está em 1.6.15 + SMAPI 4.5.x**: manter target 1.6.14+ / SMAPI 4.4.0+ (já adotado) é correto; não há pressão para migrar de framework.
+
+### Onde estamos (atualizado 2026-11-04, com pesquisa)
+
+- **Implementado e verificado por build/testes**: núcleo de solo persistente, compostagem, mulch, decay sazonal (greenhouse exempt), growth modifier, seam de harvest-quality (infra), smoke de carregamento SMAPI.
+- **Implementado mas NÃO executado in-game**: patch Harmony de `Crop.harvest`, feedback sprites/SFX, colheita extra.
+- **Não implementado**: Joja Fertilizer, Heirloom pipeline (Three Sisters, Green Manure, Rotation Journal), mid/end-game (12 features), Elena NPC, Welcome Kit, headless runner (010).
+- **Verificação real (Gate 3)**: 0 runs completos — maior gap.
+
+### O que o mercado NÃO faz (nosso espaço)
+
+- Nenhum mod combina **solo por tile + compostagem composta + mulch + rotação + policultura + manejo animal + soberania alimentar + framing educativo + multiplayer correto** num único loop coerente.
+- Nenhum mod tem **verificação formal de Gate 3 (in-game, multi-sinal)** nem **quality gate local (Semgrep/Trivy/jscpd)**.
+- Nenhum mod tem **testes property-based (FsCheck)** nem **1400+ testes**.
+
+---
+
+## Core Concept: The Soil Health Bar
+
+All mod mechanics will revolve around "Soil Health," a new property for each tillable tile on the farm (visible when using a hoe or hovering the mouse, ranging from 0% to 100%).
+
+*   **Poor Soil (0-30%):** Slow growth, high chance of pests, lower quality produce (no stars).
+*   **Medium Soil (31-70%):** Similar to the base game.
+*   **Living Soil (71-100%):** Faster growth, chance of extra harvests, higher quality (silver/gold/iridium), and enables additional agroecological practices (see separate spec — "new interactions" deferred).
+
+**What DESTROYS Soil Health:**
+
+*   Leaving soil tilled and bare (without cover or plants).
+*   Monoculture (planting the same crop repeatedly).
+*   Using chemical fertilizers (new "Joja Fertilizer" items, which provide an initial boost but cost 5% soil health).
+
+**What BUILDS Soil Health:**
+
+*   Composting and organic fertilizer application.
+*   Crop Rotation.
+*   Polyculture / Companion Planting.
+*   Green Manure.
+*   Soil Cover (Mulch).
+*   Animal Management.
+
+**Status of the core concept:**
+
+| Promise | Status | Reality |
+|---------|--------|---------|
+| Value per tile, 0-100, persisted | ✅ | `SoilHealthService`, sparse save, DoS-bounded |
+| Visible via hoe / hover | ✅ | overlay + tooltip + hoe feedback (spec 001) |
+| Poor = slow growth | ✅ | spec 005 — `ModController` growth modifier hook on `Crop.newDay` (code + tests) |
+| Poor = pests | ❌ | pest system does not exist (`briefings/pest-system-mvp.md`) |
+| Poor = no stars | ✅ | spec 014 — tiers Cornell CSHA 31/71 governam qualidade (machine-pass host-only) |
+| Medium = vanilla | ✅ | quality medium tier = vanilla baseline; `SeasonalDecayMultiplier` normal; composition with vanilla math preserved (spec 014) |
+| Living = faster growth | ✅ | spec 005 — `ModController` growth modifier hook on `Crop.newDay` (verified in code) |
+| Living = extra harvest | ✅ | spec 014 shipped — seam + patch + guards, machine-pass host-only (não human-verified) |
+| Living = better quality | ✅ | spec 014 shipped — tiers 31/71, composição vanilla, machine-pass host-only (não human-verified) |
+| Living = new interactions | ❌ | deferred to separate spec (accepted 2026-11-01) |
+| DESTROYS: bare tilled soil | ✅ | `SoilDecayService`, seasonal multiplier, greenhouse exempt |
+| DESTROYS: monoculture | ❌ | only *bare* tiles decay; a monoculture never triggers it |
+| DESTROYS: Joja Fertilizer | 🟡 | **spec 017 MVP (0.1.0)** — item `LivingRoots.JojaAgrochemical`, penalidade bounded (P=10), recusas explícitas; **não** é o sistema Joja/monocultura completo |
+| BUILDS: compost | ✅ | bin → compost → +15/application, clamped (spec 004) |
+| BUILDS: rotation / polyculture / green manure / animals | ❌ | four unimplemented |
+| BUILDS: mulch (soil cover) | ✅ | spec 013 — 1 object + 1 recipe + decay hook, 7-day duration, 0f decay multiplier |
+
+> **Banding reconciled (spec 014 FR-013/T127):** governing scale is Cornell CSHA `[0,31) / [31,71) / [71,100]` in `LivingRoots/Domain/Visualization/HealthCategory.cs` and `Constants.cs`. Historical 34/67 and 0-30/31-70/71-100 notes are migration history.
+
+---
+
+## Game Progression
+
+### 🎨 Early Game (Year 1 - Learning the Fundamentals)
+
+The focus is on survival and learning the new soil mechanics, being introduced to the basic concepts of agroecology.
+
+*   **New NPC: Elena:** An agronomist and activist who serves as the player's mentor, introducing new mechanics and quests.
+    ❌ **Not implemented.** No NPC, no dialogue, no schedule anywhere in the repo. Briefing exists: `specs/future-roadmap/briefings/elena-npc.md`. Note: an NPC is the single most content-expensive item on this roadmap (dialogue, schedules, portraits, festivals, hearts) and is *not* on the cheapest path — see the 80/20 order below.
+*   **Agroecological Welcome Kit:** Replaces the initial parsnip seeds with a kit that includes a Composter and heirloom seeds.
+    ❌ **Not implemented** (`briefings/welcome-kit.md`). Blocked by Elena (who gives the kit) and heirloom seeds (which the kit contains).
+*   **Composting:** Unlocks the Composter (new machine) to transform organic waste into "Compost" (basic fertilizer).
+    ✅ **Implemented and verified.** Crafting recipe, `Data/BigCraftables` bin, `Data/Machines` rule (`Triggers` + `DaysUntilReady = 2`), compost item with its own icon, pickup that preserves progress in `Item.modData` (FR-005c), tolerant save reader, refusal messages via `Game1.showRedMessage` in EN/PT. This is the only fully delivered gameplay loop in the mod.
+    ⚠️ **But it has never been executed inside the game** — see "Where we actually are".
+*   **Soil Cover (Mulch):** Ability to craft and apply mulch to prevent weeds and (most importantly) maintain Soil Health.
+    ✅ **Implemented and verified** (spec 013, 46/46 tasks). Crafting recipe (`LivingRoots_MulchRecipe`, fiber ×10), `Data/Objects` entry `LivingRoots_Mulch`, 16×16 sprite, 7-day duration, decay hook in `SoilDecayService` (mulched tiles skip decay), overlay tint (`MulchColor` + Dots pattern), host-authoritative lock, i18n EN/PT. This is the first *defensive* tool the player gets and the second complete gameplay loop after composting.
+    ⚠️ **Has never been executed inside the game** — Gate 3 evidence outstanding (same as composting).
+*   **Simple Polyculture (Companion Planting):** Introduction of "The Three Sisters" concept (Corn, Snap Beans, and Pumpkin) for growth bonuses and soil improvement.
+    ❌ **Not implemented** (`briefings/three-sisters-polyculture.md`). The briefing explicitly rejects reusing the three vanilla crops: Green Bean is spring-only and trellised (`IsRaised`), Pumpkin fall-only, so a complete trio **never coexists** in an open field. Requires 3 new crops + 3 seeds + a crop sheet — real asset work.
+*   **Heirloom Seeds:** Elena starts selling heirloom seeds, which are more sustainable and beneficial for the soil, in contrast to Pierre's hybrid seeds.
+    ❌ **Not implemented** (`briefings/heirloom-seeds.md`). It is the *pipeline* brief (seed → crop → produce) that Three Sisters, Green Manure and Rotation Journal all consume.
+*   **Rainwater Harvesting:** New crafting item: Small Cistern, to collect water on rainy days and reduce reliance on external sources.
+    ❌ **Not implemented** (`briefings/small-cistern.md`).
+
+**Early-game subtotal: 2 of 7 done** (composting + mulch). The player can now *build* soil (compost) and *protect* it (mulch); the other five are unreachable.
+
+---
+
+### 🎯 Mid Game (Year 2-3 - Building the System)
+
+The focus is on integrating systems and creating a self-sustaining cycle on the farm, deepening agroecological practices.
+
+*   **Crop Rotation:** Introduction of a "Rotation Journal" and classification of plants by families (e.g., Brassicas - Cauliflower, Cabbage; Solanaceae - Tomato, Pepper; Legumes - Beans, Peas). Proper rotation offers quality bonuses and improves Soil Health.
+    ❌ **Not implemented** (`briefings/rotation-journal.md`). Needs per-tile crop history — the mod already persists per-tile state, so the persistence cost is low; the family registry and UI are the cost.
+*   **Green Manure:** Elena sells "Green Manure" seeds (like clover or oats) to incorporate nutrients into the soil and give a significant boost to Soil Health.
+    ❌ **Not implemented** (`briefings/green-manure.md`). Depends on the heirloom pipeline.
+*   **Integrated Animal Management:** Animals left outside in un-fenced areas now eat weeds and insects (Pest Control) and leave manure that increases Soil Health (if mulched) or compacts it (if bare).
+    ❌ **Not implemented** (`briefings/pest-system-mvp.md`, `briefings/mobile-coop.md`).
+*   **Beneficial Insects and Beekeeping:** Beehives now have a second function: in addition to honey, they create an aura of "Beneficial Insects." "Insect Hotels" (new crafting) also attract beneficial insects for natural pest control.
+    ❌ **Not implemented** (`briefings/insect-hotels-beehive-aura.md`). ⚠️ Caution: the entomological evidence for insect hotels is weak-to-negative — see `research/2026-10-roadmap-feasibility-and-agronomy.md` §C.3. Do not present the pest-control benefit as established agronomy.
+*   **Living Pharmacy:** Learn from Elena or Linus to grow medicinal herbs (Rue, Boldo, Chamomile). These can be used to create tonics (energy buffs) or "Natural Sprays" (Pest Control without soil damage).
+    ❌ **Not implemented** (`briefings/living-pharmacy-tonics-sprays.md`). Needs 3 new crops + crafting + buffs.
+*   **Bio-construction:** Robin learns from Elena to offer new construction upgrades: Adobe Shed, Green Roof.
+    ❌ **Not implemented** (`briefings/adobe-shed-green-roof.md`).
+
+**Mid-game subtotal: 0 of 6 done.**
+
+---
+
+### 🏆 End Game (Year 4+ - Sovereignty and Community)
+
+The focus is on expanding the agroecological philosophy throughout the Valley, replacing the Joja system and achieving "Food Sovereignty."
+
+*   **ICLF (Integrated Crop-Livestock-Forestry):** new trees (e.g., Acacia, Gliricidia) that fix nitrogen, allowing cultivation between them for drought immunity and faster growth.
+    ❌ **Not implemented** (`briefings/iclf-trees.md`).
+*   **Greywater Recycling:** House upgrade that collects greywater into tanks as a passive water source.
+    ❌ **Not implemented** (`briefings/greywater-recycling.md`).
+*   **Short Supply Chains (The Stardew Fair):** a Weekly Fair (every Saturday) in the town square; residents want variety, +25% profit and friendship.
+    ❌ **Not implemented** (`briefings/weekly-fair.md`).
+*   **Community Supported Agriculture (CSA):** residents subscribe to your CSA Box; deliver a varied basket weekly.
+    ❌ **Not implemented** (`briefings/csa-box.md`).
+*   **Collective Kitchen (The New Community Center Quest):** weekly event, cooking minigame, Community Meals buffs.
+    ❌ **Not implemented** (`briefings/collective-kitchen-meals.md`).
+*   **Food Sovereignty (The Final 'Victory'):** journal metric requiring >80% average Soil Health, 10 heirloom seed types, Collective Kitchen operational, 5 CSA families; reward: Pierre stops selling Joja hybrids, Morris leaves, Elena gives the "Guardian of Living Roots" trophy.
+    ❌ **Not implemented** (`briefings/food-sovereignty-guardian-trophy.md`, `end-game-year4-plus.md`). Note: three of its four conditions (heirloom seeds, kitchen, CSA) are themselves unimplemented — the victory condition is the *last* thing that can ship, not the first.
+
+**End-game subtotal: 0 of 6 done.**
+
+---
+
+## Progress summary
+
+| Phase | Items | Shipped | Verdict |
+|-------|-------|---------|---------|
+| Core concept (soil health bar) | 13 promises | 11 em código (measure/display/decay/compost/mulch/growth/harvest-quality tires+extra sync FR-009/A8/Joja MVP) — **todos machine-pass host-only, não human-verified** | shipped em código; attestation humana pendente |
+| Early Game (Y1) | 7 | 3+ (composting, mulch, Joja MVP item — opcional/tradeoff) | loops jogáveis existem |
+| Mid Game (Y2-3) | 6 | 0 | not started |
+| End Game (Y4+) | 6 | 0 | not started |
+| **Total** | **21 named features + 13 core promises** | **5 features (004, 005, 013, 014, 017) + ~11 of 13 promises em código (machine-pass, não human-verified)** | |
+
+All 31 design briefings for the unbuilt items already exist under `specs/future-roadmap/briefings/`. What is missing is not design — it is **implementation**, and the first implementation that makes soil health *matter*.
+
+---
+
+## Roadmap order — the 80/20
+
+Ordering by *felt player impact per unit of implementation cost*, not by in-game year. Rationale and cost analysis in the answer that produced this file.
+
+1. ⚠️ **Prerequisite, not a feature:** launch the mod once and confirm the compost loop runs (`T034`/`T037` of spec 004 are blocked on exactly this). It has never been executed in a game. ~30 minutes, no code. **Still pending — Gate 3 evidence outstanding.** This is now the single biggest unverified assumption in the project and blocks "verified" status for every shipped feature, including the new harvest-quality seam.
+2. ✅ **`/speckit.specify` — Soil Health → Crop Growth (spec 005).** Done: `ModController` growth modifier hook on `Crop.newDay`, per-tile persistence and overlay reused. This was the 80/20 and it is shipped (143/146 tasks; 3 remaining are doc-only band-scale updates).
+3. ✅ **Mulch / Soil Cover (spec 013).** Shipped: 1 object + 1 recipe + decay hook, 7-day duration, 0f decay multiplier, overlay tint, host-authoritative lock, i18n EN/PT (46/46 tasks). The defensive side now exists and has a reason to exist because soil health drives growth.
+4. ✅ **Spec 014 harvest-quality — implementado e machine-pass (host-only); não `verified` humano.** Spec 017 (Joja/Agrochemical MVP) também entregue (127/127, release 0.1.0). **Falta:** **T109 D1** (farmhand real, bloqueado), **T110** (contrato histórico 34/67, deferido), e **atesto humano/E** para `verified`.
+5. **Heirloom pipeline** → then Three Sisters, Green Manure, Rotation Journal (all consume it).
+6. 🟡 **Joja Fertilizer** — MVP shipped (spec 017, 0.1.0, tradeoff bounded); o arco completo (monocultura/economia Joja) **não** implementado.
+7. **Elena + Welcome Kit + Cistern** — the content-heavy NPC epic; do it once there is a game worth tutoring.
+8. Mid-game and end-game items, as designed.
+9. **Multiplayer live verification (D1)** — owed since spec 004; Constitution Principle VI forbids declaring multiplayer complete without it.
+
+---
+
+## Reference point (external)
+
+> **Refresh 2026-11-09:** status re-verificado com fontes citadas em `research/2026-11-09-web-research-ecosystem-status.md` / `research/2026-11-09-ecosystem-market.md`. Tratar números de downloads como não-verificados ao vivo quando bloqueados; o posicionamento relativo mantém-se.
+
+`ReGen Valley` (Nexus, Nov 2025) already ships this premise end to end — per-tile soil health, cover crops, grazing, faster growth at 70+/90+ ("an extra day of growth per night") and farm-wide quality/yield at 75+/90+ average. Our differentiation is therefore **not** the soil-health mechanic; it is the agroecological grounding, the compounding compost loop, the educational framing and multiplayer correctness. Design steps 2-4 to beat it on *coherence*, not on novelty. See `research/2026-10-roadmap-feasibility-and-agronomy.md` §B.
+
+---
+
+## Agronomic grounding (what the evidence actually supports)
+
+Before building any of the above, the roadmap's promises were checked against the literature (`research/2026-10-roadmap-feasibility-and-agronomy.md` §C). The result changes the priority order:
+
+| Mechanic | Evidence | Consequence for the mod |
+|----------|----------|-------------------------|
+| Compost / manure | ✅ strong — long-term trials: manure raises organic C +13%, available N +19%, available P +47% | Build as promised. Keep +15 as an explicit game abstraction, not a simulation |
+| **Mulch / soil cover** | ✅ **strongest** — global meta-analysis (90 studies): runoff **−47.4%**, soil loss **−76.2%** | Best-supported claim in the whole roadmap. Teach real agronomy |
+| Green manure | ✅ strong — 34-yr trial: grain yield **+45%/+46%**, organic matter **+40.6%**, N total **+23%** | Build as promised |
+| Crop rotation | ✅ strong but **21–52 year** timescale — soil health +32–49% over decades | Honest framing impossible at 28-day seasons: model as abstraction, say so |
+| **Three Sisters** | 🟡 **overstated** — land-equivalent yield advantage is real, but bean yield was ~10× *lower* and squash ~20× *lower* in polyculture; one trial found **no significant difference in soil N** | Do not teach "sisters improve each other's soil". Model as an area-efficiency trade-off |
+| **Insect hotels** | ❌ **not supported** — "bee hotels differentially augment wasps rather than native bees"; authors coined *"bee-washing"*; NC State: no strong evidence either way | **Do not ship as pest control.** If built, make the doubt the lesson |
+
+**Ressalva honesta do mulch:** a revisão *Water* 2022 registra que palha pode **aumentar a abundância de insetos** — mulch tem trade-off real de pragas. Ótimo material de design de jogo (decisão, não bônus grátis).
+
+---
+
+## Recommended next action (80/20, refreshed 2026-11-09)
+
+**1) Publicação (maintainer decision):** `dev` já está sincronizado com `origin/dev` (0 à frente) e sem PRs abertos; decidir tag `0.1.0` e eventual canal público (Nexus/CurseForge) ou registrar explicitamente “não publicar”. Sem reescrita de histórico. Não executado autonomamente.
+
+**2) D1 real (T109 / 015 T049/T057):** sessão host+farmhand com evidência honesta — caminho concreto (pesquisa 2026-11-09): **duas instâncias SMAPI sob Xvfb** (host+farmhand, localhost join) ou **JunimoServer** (repo `stardew-valley-dedicated-server/server`; stable `sdvd-server-v1.4.0`, docs recomendam preview `v1.5.0-preview.140`; JunimoTestClient HTTP :5123; manual/VPS, nunca PR-gate; contas Steam + jogo). Evidência ainda não executada; machine-pass host-only ≠ D1.
+
+**3) Atestado humano/E:** roteiro manual 3-sinais (observation + save diff + SMAPI log) para promover `machine-pass` → `verified` nos cenários cobertos.
+
+**4) SC-004 (017):** executar o protocolo de compreensão (`specs/017-joja-agrochemical-tradeoff/verification/sc004-comprehension-protocol.md`).
+
+**5) Decisão de escopo spec 010:** fechar as 53 tarefas abertas ou declarar o escopo atual completo (runner funcional; promoção `machine-pass` operacional) — registrar com `/speckit.converge` append-only.
+
+**6) Próximo slice de gameplay:** **rotação/policultura MVP** (fecha a promessa “BUILDS”) **ou** **Joja/monocultura completa** (fecha “DESTROYS”); o pipeline heirloom (020) já entregou a base para Three Sisters/Green Manure/Rotation Journal/CSA. Decidir com `/speckit.specify` + TDD + Gate 3.
+
+**7) Reconciliação documental contínua:** manter `OBJETIVO.md`/`ROADMAP.md`/evidências alinhados.
+
+**Pesquisa/mercado (honesta, refresh 2026-11-09):** ver `research/2026-11-09-journey-balance-and-outlook.md` (síntese/balanço), `research/2026-11-09-web-research-ecosystem-status.md` (+ `2026-11-09-ecosystem-market.md`, `2026-11-09-technical-verification.md`). `machine-pass` ≠ `verified`; D1/humano pendentes.
+
+<details><summary>Histórico 2026-11-05 (refresh anterior)</summary>
+
+**1) Reconciliar 014↔015 (maior clareza/menor retrabalho):** `/speckit.analyze` (read-only) focado em 014+015 → mapear tarefas de 015 satisfeitas por implementação/evidência de 014, resolver duplicidades (ex.: Junimo T056/T059) e separar bloqueios reais (D1/humano/pest). Se acionável, `/speckit.converge` **append-only**. Baseado em `research/2026-11-06-next-step-80-20.md` e estado atual.
+
+**2) D1 real (T109, quando viável):** sessão host+farmhand para convergência FR-009/A8; evidência honesta. JunimoServer/`xvfb`+dedicated patterns são **referências** para investigação futura, não prova.
+
+**3) Publicar docs desta atualização:** commits locais de documentação à frente de `origin/dev` (`0260fed`) — push/PR conforme decisão humana, sem reescrever histórico.
+
+**4) Próximo slice de gameplay (após 1):** `/speckit.specify` para tradeoff destrutivo/decisão de alto valor (candidato: Joja/monocultura, escopo controlado), com TDD + Gate 3 + honesty.
+
+**Pesquisa/mercado (honesta, 2026-11-05 refresh):** SMAPI **4.5.2** / SDV **1.6.14+** confirmados (smapi.io/releases). smapi.io mod-compat tem caveat de sunset. JunimoServer = referência headless/E2E. Nexus #39740 não revalidado ao vivo (403 nesta sessão). Detalhes em `research/2026-11-05-web-research-ecosystem-status.md`. `machine-pass` ≠ `verified`; D1/humano pendentes.
+
+</details>
+
+---
+
+## Blockers that are not roadmap items (verificar antes de agir)
+
+* **Publicação pendente:** `dev` = `origin/dev` (0 à frente); sem PRs abertos; 0 tags e 0 releases públicas — tag/release/canal público são decisão do maintainer (sem reescrita de histórico).
+* **Evidência ≠ verificação humana:** machine-pass não é `verified`; D1/T110/humano E/SC-004 pendentes.
+* **CI remoto dormente:** `Build and Test` exige `BUILDDEPS_ENABLED`+`BUILDDEPS_TOKEN`; `Verify Scenario` é `continue-on-error`; `Check Formatting` é o único check sempre-ativo (só formatação — não promover a required check sozinho).
+* **Licenciamento/assets:** manter vigilância — `.gitignore` protege game assemblies; verificar periodicamente `git ls-files` para DLLs proprietárias/assets indevidos.
+* ~~`COMPLETION_SUMMARY.md` stale 26 failing / `AGENTS.md` ModConstants path~~ — corrigidos em rodadas anteriores (verificar se persistem em outras cópias/branches).
+
+---
+
+## Cycle 020 — Heirloom Seeds / Sementes Crioulas Pipeline (append-only, 2026-11-09)
+
+**Outcome**: spec 020 `Crioulo Parsnip` (one-crop template slice) implemented, verified at
+`host-only machine-pass` (run `20261109T155608Z-6021`, verdict pass, honesty R; before 50 → after 52 = +2 on the real `HoeDirt.plant` path; crop phase unchanged; host/main-player log check true). Bundle `evidence-bundle-run-20261109T155608Z-6021/` (`--verify-bundle` exit 0). Suite: **1997 passed / 0 failed / 4 skipped** (2001 total; baseline 1941 → +60, no regressions). Format clean. No manifest bump, no tag, no public channel — all remain maintainer actions.
+
+**Shipped (code)**: `LivingRoots/Domain/HeirloomIdentity.cs`, `Domain/HeirloomPlantBonusRequest.cs`, `Domain/HeirloomHarvestBonusRequest.cs`, `Domain/Services/HeirloomSoilMath.cs`, `Services/HeirloomSeedSaveService.cs`, `Patches/HeirloomPatches.cs` (`HoeDirt.plant` postfix), harvest-seam extension in `Patches/HarvestPatches.cs` (014 untouched), MP request handlers in `Controllers/ModController.cs`, `OnAssetRequested` registration (objects/crops/traveler-shop + texture branches), `ModConstants` heirloom block, `LivingRoots.Verification` `lr_give_heirloom_seed` + `lr_sow_heirloom`, 3 procedural placeholder PNGs, 7 i18n keys (default/en/pt), copy lint `scripts/tests/test-020-heirloom-copy.sh`, Gate 3 scenario + macro. Tests: HeirloomRegistration 16/16, HeirloomI18n 16/16, HeirloomSoilEffects 44/44, HeirloomSeedSave 5/5, HeirloomHarvestQualityParity 6/6.
+
+**Honesty (unchanged)**: D1 farmhand convergence, `human-verified`, and SC-004-class comprehension remain `pending`; the Gate 3 scenario attests the plant-time soil write only (it does not attest the harvest bonus, seed save, cart acquisition, or copy tone). `machine-pass` ≠ `verified`.
+
+**Docs**: assess (intake/research/problem/concept/decision — GO Option B), spec 020 (FR-001..FR-018, SC-001..SC-007), plan + Phase 0/1 (research/data-model/contracts/quickstart), checklist (requirements + multiplayer-honesty), tasks (35/35), analysis report (0 critical, 100% coverage), claim-records, validate.md, scenario + test.md (machine-pass marker auto-promoted by the runner).
+
+**Next 80/20** (per ROADMAP item 1–7): 1) maintainer publication decision; 2) D1 real; 3) human E attestation; 4) SC-004 protocol run (optional); 5) spec 010 scope decision (converge/append-only); 6) next gameplay slice (Green Manure / Three Sisters — both consume this seam); 7) documentation reconciliation. Items 1–4 require explicit human action and are deliberately left to the maintainer.
+
+## Gate 3 Verification (atualizado 2026-11-07 — máquina via spec 010 antes de manual)
+
+<!-- GATE3:BEGIN -->
+- **Status**: machine-pass
+- **Verdict**: pass
+- **Flaky**: false
+- **Run ID**: run-20261122T041058Z-73a0
+- **Commit**: 7f3a4427a028300b22caeff92f03b69675eea34c
+- **Date**: 2026-11-22T04:15:17Z
+- **Player role**: host
+- **Signals**:
+  - SoilHealthState delta: `evidence-bundle-run-20261122T041058Z-73a0/artifacts/soil-health-before-after.json`
+  - Crop-phase delta: `evidence-bundle-run-20261122T041058Z-73a0/artifacts/crop-phase-dump.json`
+  - SMAPI log: `evidence-bundle-run-20261122T041058Z-73a0/artifacts/smapi-log.txt`
+- **Bundle**: `evidence-bundle-run-20261122T041058Z-73a0/`
+- **Honesty level**: R
+- **Claim**: machine-pass by automated headless run + multi-signal evidence
+- **Reviewer**: —
+- **Review date**: —
+- **Session ID**: —
+<!-- GATE3:END -->
+
+---
+
+## Gate 3 Verification (histórico 2026-11-02 — smoke only)
+
+<!-- GATE3-HISTORY:BEGIN -->
+- **Status**: partial (automated smoke only)
+- **Verdict**: mod loads + Harmony patch registered + no crash during launch
+- **Flaky**: false
+- **Run ID**: smoke-20261102
+- **Commit**: c594fae
+- **Date**: 2026-11-02
+- **Signals**:
+  - SoilHealthState delta: not captured (requires manual play: till → compost → harvest → save → reload)
+  - Crop-phase delta: not captured (requires manual play)
+  - SMAPI log: captured — "Patched game code" + "Stardew Valley - Living Roots 0.0.1 ... loaded" + "Mods loaded and ready!"; pre-existing "Error occurred while registering game events" (NullReferenceException in headless, documented)
+- **Bundle**: verification-evidence/gate3-smoke-*.log
+- **Honesty level**: smoke-level (launch only, not full 3-signal Gate 3)
+- **Claim**: The mod loads under SMAPI 4.5.2 + Stardew 1.6.15 with Harmony patch registered (warning "Patched game code"). Full 3-signal Gate 3 (observation + save diff + SMAPI log) and multiplayer verification (D1) still require manual play or the headless runner (spec 010, not started). No "verified" claim is made for harvest-quality effects.
+<!-- GATE3-HISTORY:END -->
+
+---
+
+> **Refresh 2026-11-09:** ecossistema/mercado re-verificados — ver `research/2026-11-09-web-research-ecosystem-status.md` (fontes/limitações 2026). Dados de 2026-11-03/05 abaixo mantidos como histórico datado.
+
+## Competitive landscape (verified via web research, 2026-11-03)
+
+### Direct competitors (soil-health / regenerative farming)
+
+| Mod | Nexus DL | Approach | Differentiation vs. Living Roots |
+|-----|----------|----------|----------------------------------|
+| **ReGen Valley** (robertsvalley, v0.51, Nov 2025) | -- (new) | Per-tile soil health (baseline 25), cover crops (rye/clover/sorghum/buckwheat), rotational grazing (cows + pens + beacons), roller/no-till planter, water retention at >80, faster growth at 70+/90+, **farm-wide** yield/quality at avg 75+/90+ | Heavy on animal integration & machinery; no composting loop, no educational framing, no per-tile harvest quality, no multiplayer host-authoritative design documented. Our edge: coherence + compost loop + educational framing + multiplayer correctness. |
+| **Permaculture Farming** (wiki) | — | Mulch crop (2-day grow) prevents tilled soil from disappearing at season change | Narrow: only soil disappearance prevention. |
+| **Spoilage** (Nexus) | — | Realistic food rot + composting bin (perishables → compost) | Composting-only; no soil health, no growth/quality linkage. |
+| **Spore Galore** (Nexus) | — | Mushroom cultivation; composting bin (spent substrate → mushroom compost) | Niche (mushrooms); no soil-health system. |
+| **Crop Quality** (CurseForge) | — | Replaces days-played quality roll with a random number so same crop = same quality | Orthogonal: quality determinism, no soil linkage. |
+
+### Adjacent (quality/yield boosters, no soil)
+
+- **Quality Giant Crops** — quality roll on giant crops (vanilla formula).
+- **Farming level yield mods** — yield scales with Farming skill.
+- **Quality Sprinklers / Iridium Sprinklers** — layout optimization, no soil.
+
+### Our positioning (verified gap)
+
+No mod combines **per-tile soil health + composting loop + mulch + rotation + polyculture + animal management + educational framing + multiplayer correctness** in one coherent loop. ReGen Valley is the closest on soil mechanics but ships farm-wide (not per-tile) quality/yield and leans on machinery/animals rather than compost. Living Roots' differentiator remains coherence, the compounding compost loop, educational framing, and multiplayer correctness from day 1.
+
+### Agronomic grounding (from `research/2026-10-roadmap-feasibility-and-agronomy.md`)
+
+| Mechanic | Evidence | Consequence |
+|----------|----------|-------------|
+| Compost/manure | ✅ strong (long-term trials: +13% organic C, +19% N, +47% P) | Build as promised; +15 is a game abstraction |
+| Mulch/soil cover | ✅ strongest (meta-analysis 90 studies: −47% runoff, −76% soil loss) | Best-supported claim in the roadmap; teach real agronomy |
+| Crop rotation | ✅ strong (yield +20–25% in long trials) | Core mid-game mechanic |
+| Polyculture/intercropping | 🟡 medium (yield +20–30% in tropical systems) | Scope carefully; "Three Sisters" needs new crops |
+| Green manure | ✅ strong (N fixation) | Mid-game item |
+| Pest control via beneficial insects | ⚠️ weak-to-negative (entomology) | Do NOT present as established agronomy |
+| Beehive "beneficial insect aura" | ⚠️ weak | Treat as flavor, not science |
+
+### Market validation
+
+- Soil-health mods are a proven niche (ReGen Valley, Permaculture Farming, Spoilage, Spore Galore all ship and are downloaded).
+- "Quality driven by soil" is an open window: ReGen delivers farm-wide at 75+/90+ avg; per-tile deterministic boost + transient feedback (our seam, specs 014/015) has no equivalent competitor with in-game verification.
+- Multiplayer is mainstream (co-op is a vanilla path); Principle VI (host-authoritative, first-wins) is a real differentiator.
+- Agronomic honesty (mulch = strongest evidence) is a unique educational differentiator.
+
+### Implications for roadmap priority
+
+1. **Harvest-quality loop (specs 014/015)** remains the 80/20: only item that makes Living Soil (71–100%) visibly pay off at harvest; infrastructure already merged.
+2. **Mulch** is our strongest agronomic claim — lean on it in marketing/education.
+3. **Pest control via insects** should not be presented as science; reframe or drop.
+
+---
+
+## Verified state note — 2026-11-20
+
+- Append-only; histórico preservado. Âncora e contagens em `OBJETIVO.md` §10 e `.specify/memory/STATE.md`.
+- HEAD do alvo `7df732b`; gate autoritativo `scripts/ci/aggregate-gate.sh` **ALL STEPS PASSED** nesta sessão. `GamePath=/home/luis/stardew-assemblies`.
+- PRs #811/#812 abertos e bloqueados por `BUILDDEPS_TOKEN is not set` no contexto Dependabot (`sdd-gate`/`verify` pass) — não mesclados; não é regressão de código.
+- Dívidas autônomas remanescentes: 2 candidatos `.archify/` inválidos; `docs/architecture/` ausente; seis gate scripts da factory materializados só como diagnóstico (N/A como autoridade).
+- human-gated / **[NV]**: D1, atestação E de Gate 3, SC-004, tag/release `0.2.0`, `RUNNER_AUDIT_STORE` (#523), segredos Dependabot e aprovação de revisor distinto.
+

@@ -1,0 +1,840 @@
+  Determinando os projetos a serem restaurados...
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.EolTargetFrameworks.targets(32,5): warning NETSDK1138: não há mais suporte para a estrutura de destino 'net6.0' e ela não receberá atualizações de segurança no futuro. Confira https://aka.ms/dotnet-core-support para obter mais informações sobre a política de suporte. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Verification.Runner/LivingRoots.Verification.Runner.csproj]
+  Todos os projetos estão atualizados para restauração.
+/home/luis/.nuget/packages/system.text.encodings.web/10.0.5/buildTransitive/netcoreapp2.0/System.Text.Encodings.Web.targets(4,5): warning : System.Text.Encodings.Web 10.0.5 doesn't support net6.0 and has not been tested with it. Consider upgrading your TargetFramework to net8.0 or later. You may also set <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings> in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Verification.Runner/LivingRoots.Verification.Runner.csproj]
+/home/luis/.nuget/packages/system.io.pipelines/10.0.5/buildTransitive/netcoreapp2.0/System.IO.Pipelines.targets(4,5): warning : System.IO.Pipelines 10.0.5 doesn't support net6.0 and has not been tested with it. Consider upgrading your TargetFramework to net8.0 or later. You may also set <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings> in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Verification.Runner/LivingRoots.Verification.Runner.csproj]
+/home/luis/.nuget/packages/system.text.json/10.0.5/buildTransitive/netcoreapp2.0/System.Text.Json.targets(4,5): warning : System.Text.Json 10.0.5 doesn't support net6.0 and has not been tested with it. Consider upgrading your TargetFramework to net8.0 or later. You may also set <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings> in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Verification.Runner/LivingRoots.Verification.Runner.csproj]
+/home/luis/.nuget/packages/system.collections.immutable/10.0.5/buildTransitive/netcoreapp2.0/System.Collections.Immutable.targets(4,5): warning : System.Collections.Immutable 10.0.5 doesn't support net6.0 and has not been tested with it. Consider upgrading your TargetFramework to net8.0 or later. You may also set <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings> in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Verification.Runner/LivingRoots.Verification.Runner.csproj]
+/home/luis/.nuget/packages/system.text.encodings.web/10.0.5/buildTransitive/netcoreapp2.0/System.Text.Encodings.Web.targets(4,5): warning : System.Text.Encodings.Web 10.0.5 doesn't support net6.0 and has not been tested with it. Consider upgrading your TargetFramework to net8.0 or later. You may also set <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings> in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.nuget/packages/system.io.pipelines/10.0.5/buildTransitive/netcoreapp2.0/System.IO.Pipelines.targets(4,5): warning : System.IO.Pipelines 10.0.5 doesn't support net6.0 and has not been tested with it. Consider upgrading your TargetFramework to net8.0 or later. You may also set <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings> in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.nuget/packages/system.text.json/10.0.5/buildTransitive/netcoreapp2.0/System.Text.Json.targets(4,5): warning : System.Text.Json 10.0.5 doesn't support net6.0 and has not been tested with it. Consider upgrading your TargetFramework to net8.0 or later. You may also set <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings> in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.nuget/packages/system.collections.immutable/10.0.14/buildTransitive/netcoreapp2.0/System.Collections.Immutable.targets(4,5): warning : System.Collections.Immutable 10.0.14 doesn't support net6.0 and has not been tested with it. Consider upgrading your TargetFramework to net8.0 or later. You may also set <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings> in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.nuget/packages/system.collections.immutable/10.0.14/buildTransitive/netcoreapp2.0/System.Collections.Immutable.targets(4,5): warning : System.Collections.Immutable 10.0.14 doesn't support net6.0 and has not been tested with it. Consider upgrading your TargetFramework to net8.0 or later. You may also set <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings> in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Verification/LivingRoots.Verification.csproj]
+/home/luis/.nuget/packages/system.collections.immutable/10.0.14/buildTransitive/netcoreapp2.0/System.Collections.Immutable.targets(4,5): warning : System.Collections.Immutable 10.0.14 doesn't support net6.0 and has not been tested with it. Consider upgrading your TargetFramework to net8.0 or later. You may also set <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings> in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk. [/home/luis/development/stardew-raizes-vivas/LivingRoots/LivingRoots.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Sdks/Microsoft.NET.Sdk/targets/Microsoft.NET.EolTargetFrameworks.targets(32,5): warning NETSDK1138: não há mais suporte para a estrutura de destino 'net6.0' e ela não receberá atualizações de segurança no futuro. Confira https://aka.ms/dotnet-core-support para obter mais informações sobre a política de suporte. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Verification.Runner/LivingRoots.Verification.Runner.csproj]
+  LivingRoots.Verification.Runner -> /home/luis/development/stardew-raizes-vivas/LivingRoots.Verification.Runner/bin/Release/net6.0/LivingRoots.Verification.Runner.dll
+  LivingRoots -> /home/luis/development/stardew-raizes-vivas/LivingRoots/bin/LivingRoots.dll
+  [mod build package] Handling build with options BundleExtraAssemblies: null, EnableModDeploy: true, EnableModZip: true, GameModsDir: '/home/luis/.steam/steam/steamapps/common/Stardew Valley/Mods', IgnoreModFilePaths: null, ModDllName: 'LivingRoots', ModFolderName: 'LivingRoots', ModZipPath: '/home/luis/development/stardew-raizes-vivas/LivingRoots/bin/', ProjectDir: '/home/luis/development/stardew-raizes-vivas/LivingRoots/', ProjectVersion: '1.0.0', TargetDir: '/home/luis/development/stardew-raizes-vivas/LivingRoots/bin/'
+  [mod build package] Copying the mod files to /home/luis/.steam/steam/steamapps/common/Stardew Valley/Mods/LivingRoots...
+  [mod build package] Generating the release zip at /home/luis/development/stardew-raizes-vivas/LivingRoots/bin/LivingRoots 0.0.1.zip...
+  LivingRoots.Verification -> /home/luis/development/stardew-raizes-vivas/LivingRoots.Verification/bin/LivingRoots.Verification.dll
+  [mod build package] Handling build with options BundleExtraAssemblies: null, EnableModDeploy: true, EnableModZip: false, GameModsDir: '/home/luis/stardew-assemblies/Mods', IgnoreModFilePaths: null, ModDllName: 'LivingRoots.Verification', ModFolderName: 'LivingRoots.Verification', ModZipPath: '/home/luis/development/stardew-raizes-vivas/LivingRoots.Verification/bin/', ProjectDir: '/home/luis/development/stardew-raizes-vivas/LivingRoots.Verification/', ProjectVersion: '1.0.0', TargetDir: '/home/luis/development/stardew-raizes-vivas/LivingRoots.Verification/bin/'
+  [mod build package] Copying the mod files to /home/luis/stardew-assemblies/Mods/LivingRoots.Verification...
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277: foram encontrados conflitos entre diferentes versões do "Mono.Cecil" que não puderam ser resolvidas. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277: Há um conflito entre "Mono.Cecil, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e" e "Mono.Cecil, Version=0.11.6.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e". [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:     "Mono.Cecil, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e" foi escolhido porque era principal e "Mono.Cecil, Version=0.11.6.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e" não era. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:     As referências dependerão de "Mono.Cecil, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e" [/home/luis/.nuget/packages/mono.cecil/0.11.4/lib/netstandard2.0/Mono.Cecil.dll]. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:         /home/luis/.nuget/packages/mono.cecil/0.11.4/lib/netstandard2.0/Mono.Cecil.dll [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:           Inclusões de itens do arquivo de projeto que geraram a referência"/home/luis/.nuget/packages/mono.cecil/0.11.4/lib/netstandard2.0/Mono.Cecil.dll". [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:             /home/luis/.nuget/packages/mono.cecil/0.11.4/lib/netstandard2.0/Mono.Cecil.dll [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:     Referências que dependem de ou foram unificadas para "Mono.Cecil, Version=0.11.6.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e" []. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:         /home/luis/stardew-assemblies/StardewModdingAPI.dll [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:           Inclusões de itens do arquivo de projeto que geraram a referência"/home/luis/stardew-assemblies/StardewModdingAPI.dll". [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:             StardewModdingAPI [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:             /home/luis/development/stardew-raizes-vivas/LivingRoots/bin/LivingRoots.dll [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:             /home/luis/development/stardew-raizes-vivas/LivingRoots.Verification/bin/LivingRoots.Verification.dll [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277: foram encontrados conflitos entre diferentes versões do "Mono.Cecil.Pdb" que não puderam ser resolvidas. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277: Há um conflito entre "Mono.Cecil.Pdb, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e" e "Mono.Cecil.Pdb, Version=0.11.6.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e". [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:     "Mono.Cecil.Pdb, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e" foi escolhido porque era principal e "Mono.Cecil.Pdb, Version=0.11.6.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e" não era. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:     As referências dependerão de "Mono.Cecil.Pdb, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e" [/home/luis/.nuget/packages/mono.cecil/0.11.4/lib/netstandard2.0/Mono.Cecil.Pdb.dll]. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:         /home/luis/.nuget/packages/mono.cecil/0.11.4/lib/netstandard2.0/Mono.Cecil.Pdb.dll [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:           Inclusões de itens do arquivo de projeto que geraram a referência"/home/luis/.nuget/packages/mono.cecil/0.11.4/lib/netstandard2.0/Mono.Cecil.Pdb.dll". [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:             /home/luis/.nuget/packages/mono.cecil/0.11.4/lib/netstandard2.0/Mono.Cecil.Pdb.dll [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:     Referências que dependem de ou foram unificadas para "Mono.Cecil.Pdb, Version=0.11.6.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e" []. [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:         /home/luis/stardew-assemblies/StardewModdingAPI.dll [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:           Inclusões de itens do arquivo de projeto que geraram a referência"/home/luis/stardew-assemblies/StardewModdingAPI.dll". [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:             StardewModdingAPI [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:             /home/luis/development/stardew-raizes-vivas/LivingRoots/bin/LivingRoots.dll [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:             /home/luis/development/stardew-raizes-vivas/LivingRoots.Verification/bin/LivingRoots.Verification.dll [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+  LivingRoots.Tests -> /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/bin/Release/net6.0/LivingRoots.Tests.dll
+  [mod build package] Handling build with options BundleExtraAssemblies: 'All', EnableModDeploy: false, EnableModZip: false, GameModsDir: '/home/luis/stardew-assemblies/Mods', IgnoreModFilePaths: null, ModDllName: 'LivingRoots.Tests', ModFolderName: 'LivingRoots.Tests', ModZipPath: '/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/bin/Release/net6.0/', ProjectDir: '/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/', ProjectVersion: '1.0.0', TargetDir: '/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/bin/Release/net6.0/'
+Execução de teste para /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/bin/Release/net6.0/LivingRoots.Tests.dll (.NETCoreApp,Version=v6.0)
+1 arquivos de teste no total corresponderam ao padrão especificado.
+[xUnit.net 00:00:00.02] xUnit.net VSTest Adapter v2.8.2+699d445a1a (64-bit .NET 6.0.36)
+[xUnit.net 00:00:00.41]   Discovering: LivingRoots.Tests
+[xUnit.net 00:00:01.23]   Discovered:  LivingRoots.Tests
+[xUnit.net 00:00:01.27]   Starting:    LivingRoots.Tests
+[xUnit.net 00:00:01.48]     LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(localeFileName: "en.json") [FAIL]
+[xUnit.net 00:00:01.49]       017 i18n parity: 'en.json' is missing the required agrochemical key 'item.agrochemical.name'.
+[xUnit.net 00:00:01.49]       Stack Trace:
+[xUnit.net 00:00:01.49]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.49]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(124,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(String localeFileName)
+[xUnit.net 00:00:01.50]     LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(localeFileName: "default.json") [FAIL]
+[xUnit.net 00:00:01.50]       017 i18n parity: 'default.json' is missing the required agrochemical key 'item.agrochemical.name'.
+[xUnit.net 00:00:01.50]       Stack Trace:
+[xUnit.net 00:00:01.50]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.50]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(124,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(String localeFileName)
+[xUnit.net 00:00:01.51]     LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(localeFileName: "pt.json") [FAIL]
+[xUnit.net 00:00:01.51]       017 i18n parity: 'pt.json' is missing the required agrochemical key 'item.agrochemical.name'.
+[xUnit.net 00:00:01.51]       Stack Trace:
+[xUnit.net 00:00:01.51]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.51]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(124,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(String localeFileName)
+[xUnit.net 00:00:01.51]     LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(localeFileName: "pt.json") [FAIL]
+[xUnit.net 00:00:01.51]       017 i18n parity: 'pt.json' is missing the required agrochemical key 'message.agrochemical.applied-clamped'.
+[xUnit.net 00:00:01.51]       Stack Trace:
+[xUnit.net 00:00:01.51]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.51]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(417,0): at LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(String localeFileName)
+[xUnit.net 00:00:01.51]     LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(localeFileName: "default.json") [FAIL]
+[xUnit.net 00:00:01.51]       017 i18n parity: 'default.json' is missing the required agrochemical key 'message.agrochemical.applied-clamped'.
+[xUnit.net 00:00:01.51]       Stack Trace:
+[xUnit.net 00:00:01.51]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.51]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(417,0): at LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(String localeFileName)
+[xUnit.net 00:00:01.51]     LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(localeFileName: "en.json") [FAIL]
+[xUnit.net 00:00:01.51]       017 i18n parity: 'en.json' is missing the required agrochemical key 'message.agrochemical.applied-clamped'.
+[xUnit.net 00:00:01.51]       Stack Trace:
+[xUnit.net 00:00:01.51]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.51]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(417,0): at LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(String localeFileName)
+[xUnit.net 00:00:01.51]     LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(localeFileName: "default.json") [FAIL]
+[xUnit.net 00:00:01.51]       017 i18n parity: 'default.json' is missing the required agrochemical key 'item.agrochemical.name'.
+[xUnit.net 00:00:01.51]       Stack Trace:
+[xUnit.net 00:00:01.51]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.51]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(388,0): at LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(String localeFileName)
+[xUnit.net 00:00:01.52]     LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(localeFileName: "pt.json") [FAIL]
+[xUnit.net 00:00:01.52]       017 i18n parity: 'pt.json' is missing the required agrochemical key 'item.agrochemical.name'.
+[xUnit.net 00:00:01.52]       Stack Trace:
+[xUnit.net 00:00:01.52]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.52]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(388,0): at LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(String localeFileName)
+[xUnit.net 00:00:01.52]     LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(localeFileName: "en.json") [FAIL]
+[xUnit.net 00:00:01.52]       017 i18n parity: 'en.json' is missing the required agrochemical key 'item.agrochemical.name'.
+[xUnit.net 00:00:01.52]       Stack Trace:
+[xUnit.net 00:00:01.52]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.52]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(388,0): at LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(String localeFileName)
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(localeFileName: "en.json") [31 ms]
+  Mensagem de erro:
+   017 i18n parity: 'en.json' is missing the required agrochemical key 'item.agrochemical.name'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 124
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(localeFileName: "default.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'default.json' is missing the required agrochemical key 'item.agrochemical.name'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 124
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(localeFileName: "pt.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'pt.json' is missing the required agrochemical key 'item.agrochemical.name'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.RequiredAgrochemicalKeys_ExistWithNonEmptyStringValues(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 124
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(localeFileName: "pt.json") [1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'pt.json' is missing the required agrochemical key 'message.agrochemical.applied-clamped'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 417
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(localeFileName: "default.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'default.json' is missing the required agrochemical key 'message.agrochemical.applied-clamped'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 417
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(localeFileName: "en.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'en.json' is missing the required agrochemical key 'message.agrochemical.applied-clamped'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.ClampedSuccessMessage_AcknowledgesBoundsAndAvoidsFullPenaltyClaim(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 417
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(localeFileName: "default.json") [1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'default.json' is missing the required agrochemical key 'item.agrochemical.name'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 388
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(localeFileName: "pt.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'pt.json' is missing the required agrochemical key 'item.agrochemical.name'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 388
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(localeFileName: "en.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'en.json' is missing the required agrochemical key 'item.agrochemical.name'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.AllAgrochemicalCopy_UsesCozyNonPunitiveTone(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 388
+[xUnit.net 00:00:01.54]     LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(localeFileName: "default.json") [FAIL]
+[xUnit.net 00:00:01.54]       017 i18n parity: 'default.json' is missing the required agrochemical key 'message.agrochemical.invalid-target'.
+[xUnit.net 00:00:01.54]       Stack Trace:
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(254,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(String localeFileName)
+[xUnit.net 00:00:01.54]     LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(localeFileName: "en.json") [FAIL]
+[xUnit.net 00:00:01.54]       017 i18n parity: 'en.json' is missing the required agrochemical key 'message.agrochemical.invalid-target'.
+[xUnit.net 00:00:01.54]       Stack Trace:
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(254,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(String localeFileName)
+[xUnit.net 00:00:01.54]     LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(localeFileName: "pt.json") [FAIL]
+[xUnit.net 00:00:01.54]       017 i18n parity: 'pt.json' is missing the required agrochemical key 'message.agrochemical.invalid-target'.
+[xUnit.net 00:00:01.54]       Stack Trace:
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(254,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(String localeFileName)
+[xUnit.net 00:00:01.54]     LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(localeFileName: "pt.json") [FAIL]
+[xUnit.net 00:00:01.54]       017 i18n parity: 'pt.json' is missing the required agrochemical key 'message.agrochemical.applied-unknown-baseline'.
+[xUnit.net 00:00:01.54]       Stack Trace:
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(463,0): at LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(String localeFileName)
+[xUnit.net 00:00:01.54]     LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(localeFileName: "en.json") [FAIL]
+[xUnit.net 00:00:01.54]       017 i18n parity: 'en.json' is missing the required agrochemical key 'message.agrochemical.applied-unknown-baseline'.
+[xUnit.net 00:00:01.54]       Stack Trace:
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(463,0): at LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(String localeFileName)
+[xUnit.net 00:00:01.54]     LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(localeFileName: "default.json") [FAIL]
+[xUnit.net 00:00:01.54]       017 i18n parity: 'default.json' is missing the required agrochemical key 'message.agrochemical.applied-unknown-baseline'.
+[xUnit.net 00:00:01.54]       Stack Trace:
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(463,0): at LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(String localeFileName)
+[xUnit.net 00:00:01.54]     LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(localeFileName: "en.json") [FAIL]
+[xUnit.net 00:00:01.54]       017 i18n parity: 'en.json' is missing the required agrochemical key 'message.agrochemical.applied'.
+[xUnit.net 00:00:01.54]       Stack Trace:
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.54]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(281,0): at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(String localeFileName)
+[xUnit.net 00:00:01.55]     LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(localeFileName: "pt.json") [FAIL]
+[xUnit.net 00:00:01.55]       017 i18n parity: 'pt.json' is missing the required agrochemical key 'message.agrochemical.applied-unknown-baseline'.
+[xUnit.net 00:00:01.55]       Stack Trace:
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(308,0): at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(String localeFileName)
+[xUnit.net 00:00:01.55]     LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(localeFileName: "default.json") [FAIL]
+[xUnit.net 00:00:01.55]       017 i18n parity: 'default.json' is missing the required agrochemical key 'message.agrochemical.applied'.
+[xUnit.net 00:00:01.55]       Stack Trace:
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(281,0): at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(String localeFileName)
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(localeFileName: "default.json") [1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'default.json' is missing the required agrochemical key 'message.agrochemical.invalid-target'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 254
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(localeFileName: "en.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'en.json' is missing the required agrochemical key 'message.agrochemical.invalid-target'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 254
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(localeFileName: "pt.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'pt.json' is missing the required agrochemical key 'message.agrochemical.invalid-target'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.RefusalMessages_AreNonEmptyAndNameTheirRefusalCause(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 254
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(localeFileName: "pt.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'pt.json' is missing the required agrochemical key 'message.agrochemical.applied-unknown-baseline'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 463
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(localeFileName: "en.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'en.json' is missing the required agrochemical key 'message.agrochemical.applied-unknown-baseline'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 463
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(localeFileName: "default.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'default.json' is missing the required agrochemical key 'message.agrochemical.applied-unknown-baseline'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.UnknownBaselineMessage_RequiresNoHistorySignalAndInventsNoPriorReading(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 463
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(localeFileName: "en.json") [1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'en.json' is missing the required agrochemical key 'message.agrochemical.applied'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 281
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(localeFileName: "pt.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'pt.json' is missing the required agrochemical key 'message.agrochemical.applied-unknown-baseline'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 308
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(localeFileName: "default.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'default.json' is missing the required agrochemical key 'message.agrochemical.applied'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_StateAnAppliedSoilConsequence(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 281
+[xUnit.net 00:00:01.55]     LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(localeFileName: "pt.json") [FAIL]
+[xUnit.net 00:00:01.55]       017 i18n parity: 'pt.json' is missing the required agrochemical key 'item.agrochemical.description'.
+[xUnit.net 00:00:01.55]       Stack Trace:
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(196,0): at LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(String localeFileName)
+[xUnit.net 00:00:01.55]     LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(localeFileName: "default.json") [FAIL]
+[xUnit.net 00:00:01.55]       017 i18n parity: 'default.json' is missing the required agrochemical key 'item.agrochemical.description'.
+[xUnit.net 00:00:01.55]       Stack Trace:
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(196,0): at LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(String localeFileName)
+[xUnit.net 00:00:01.55]     LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(localeFileName: "en.json") [FAIL]
+[xUnit.net 00:00:01.55]       017 i18n parity: 'en.json' is missing the required agrochemical key 'item.agrochemical.description'.
+[xUnit.net 00:00:01.55]       Stack Trace:
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(196,0): at LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(String localeFileName)
+[xUnit.net 00:00:01.55]     LivingRoots.Tests.AgrochemicalContentParityTests.LocaleFiles_ParseAsJsonObjects_AndExposeIdentical017KeySets [FAIL]
+[xUnit.net 00:00:01.55]       017 i18n parity: 'default.json' is missing required agrochemical key(s): [item.agrochemical.description, item.agrochemical.name, message.agrochemical.action-conflict, message.agrochemical.applied, message.agrochemical.applied-clamped, message.agrochemical.applied-unknown-baseline, message.agrochemical.invalid-target, message.agrochemical.missing-input, message.agrochemical.soil-at-minimum, message.agrochemical.unsupported-authority]. default.json, en.json and pt.json must all expose the same 017 key set.
+[xUnit.net 00:00:01.55]       Stack Trace:
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(154,0): at LivingRoots.Tests.AgrochemicalContentParityTests.LocaleFiles_ParseAsJsonObjects_AndExposeIdentical017KeySets()
+[xUnit.net 00:00:01.55]     LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(localeFileName: "default.json") [FAIL]
+[xUnit.net 00:00:01.55]       017 i18n parity: 'default.json' is missing the required agrochemical key 'message.agrochemical.applied'.
+[xUnit.net 00:00:01.55]       Stack Trace:
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(358,0): at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(String localeFileName)
+[xUnit.net 00:00:01.55]     LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(localeFileName: "en.json") [FAIL]
+[xUnit.net 00:00:01.55]       017 i18n parity: 'en.json' is missing the required agrochemical key 'message.agrochemical.applied'.
+[xUnit.net 00:00:01.55]       Stack Trace:
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(358,0): at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(String localeFileName)
+[xUnit.net 00:00:01.55]     LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(localeFileName: "pt.json") [FAIL]
+[xUnit.net 00:00:01.55]       017 i18n parity: 'pt.json' is missing the required agrochemical key 'message.agrochemical.applied'.
+[xUnit.net 00:00:01.55]       Stack Trace:
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(551,0): at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key)
+[xUnit.net 00:00:01.55]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs(358,0): at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(String localeFileName)
+[xUnit.net 00:00:02.15]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_AppliesExplicitPenalty(baseline: 50, expectedPostPenalty: 40) [FAIL]
+[xUnit.net 00:00:02.15]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.15]       Stack Trace:
+[xUnit.net 00:00:02.15]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.15]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(45,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_AppliesExplicitPenalty(Single baseline, Single expectedPostPenalty)
+[xUnit.net 00:00:02.16]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_AppliesExplicitPenalty(baseline: 100, expectedPostPenalty: 90) [FAIL]
+[xUnit.net 00:00:02.16]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.16]       Stack Trace:
+[xUnit.net 00:00:02.16]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.16]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(45,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_AppliesExplicitPenalty(Single baseline, Single expectedPostPenalty)
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(localeFileName: "pt.json") [1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'pt.json' is missing the required agrochemical key 'item.agrochemical.description'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 196
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(localeFileName: "default.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'default.json' is missing the required agrochemical key 'item.agrochemical.description'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 196
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(localeFileName: "en.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'en.json' is missing the required agrochemical key 'item.agrochemical.description'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.ItemDescription_TelegraphsSoilHealthCostAndIndustrialShortcut(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 196
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.LocaleFiles_ParseAsJsonObjects_AndExposeIdentical017KeySets [41 ms]
+  Mensagem de erro:
+   017 i18n parity: 'default.json' is missing required agrochemical key(s): [item.agrochemical.description, item.agrochemical.name, message.agrochemical.action-conflict, message.agrochemical.applied, message.agrochemical.applied-clamped, message.agrochemical.applied-unknown-baseline, message.agrochemical.invalid-target, message.agrochemical.missing-input, message.agrochemical.soil-at-minimum, message.agrochemical.unsupported-authority]. default.json, en.json and pt.json must all expose the same 017 key set.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.LocaleFiles_ParseAsJsonObjects_AndExposeIdentical017KeySets() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 154
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(localeFileName: "default.json") [1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'default.json' is missing the required agrochemical key 'message.agrochemical.applied'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 358
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(localeFileName: "en.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'en.json' is missing the required agrochemical key 'message.agrochemical.applied'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 358
+  Com falha LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(localeFileName: "pt.json") [< 1 ms]
+  Mensagem de erro:
+   017 i18n parity: 'pt.json' is missing the required agrochemical key 'message.agrochemical.applied'.
+  Rastreamento de pilha:
+     at LivingRoots.Tests.AgrochemicalContentParityTests.RequireNonEmptyString(JObject locale, String localeFileName, String key) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 551
+   at LivingRoots.Tests.AgrochemicalContentParityTests.SuccessMessages_MakeNoMechanicalBuffClaims_C1ConfirmationOnly(String localeFileName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/AgrochemicalContentParityTests.cs:line 358
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_AppliesExplicitPenalty(baseline: 50, expectedPostPenalty: 40) [591 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_AppliesExplicitPenalty(Single baseline, Single expectedPostPenalty) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 45
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_AppliesExplicitPenalty(baseline: 100, expectedPostPenalty: 90) [4 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_AppliesExplicitPenalty(Single baseline, Single expectedPostPenalty) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 45
+[xUnit.net 00:00:02.16]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.UnknownBaseline_ResolvesToMaxHealth_AndWritesMeasuredNinety [FAIL]
+[xUnit.net 00:00:02.16]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.16]       Stack Trace:
+[xUnit.net 00:00:02.16]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.16]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(137,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.UnknownBaseline_ResolvesToMaxHealth_AndWritesMeasuredNinety()
+[xUnit.net 00:00:02.16]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredZero_RefusesAtSoilMinimum_WithoutWrites [FAIL]
+[xUnit.net 00:00:02.17]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.17]       Stack Trace:
+[xUnit.net 00:00:02.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(376,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredZero_RefusesAtSoilMinimum_WithoutWrites()
+[xUnit.net 00:00:02.17]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredFive_ClampsPenaltyAndReportsAppliedDelta [FAIL]
+[xUnit.net 00:00:02.17]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.17]       Stack Trace:
+[xUnit.net 00:00:02.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(343,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredFive_ClampsPenaltyAndReportsAppliedDelta()
+[xUnit.net 00:00:02.17]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_BlankLocationName_RefusesWithoutSoilAccess(locationName: "") [FAIL]
+[xUnit.net 00:00:02.17]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.17]       Stack Trace:
+[xUnit.net 00:00:02.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(470,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_BlankLocationName_RefusesWithoutSoilAccess(String locationName)
+[xUnit.net 00:00:02.17]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_BlankLocationName_RefusesWithoutSoilAccess(locationName: "   ") [FAIL]
+[xUnit.net 00:00:02.17]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.17]       Stack Trace:
+[xUnit.net 00:00:02.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(470,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_BlankLocationName_RefusesWithoutSoilAccess(String locationName)
+[xUnit.net 00:00:02.17]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_NullLocation_RefusesWithoutSoilAccess [FAIL]
+[xUnit.net 00:00:02.17]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.18]       Stack Trace:
+[xUnit.net 00:00:02.18]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.18]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(448,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_NullLocation_RefusesWithoutSoilAccess()
+[xUnit.net 00:00:02.20]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.C1_ServiceBoundary_OnlyDependsOnSoilHealth_AndNeverUsesUpdateHealth [FAIL]
+[xUnit.net 00:00:02.20]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.20]       Stack Trace:
+[xUnit.net 00:00:02.20]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.20]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(314,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.C1_ServiceBoundary_OnlyDependsOnSoilHealth_AndNeverUsesUpdateHealth()
+[xUnit.net 00:00:02.76]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_ProducesBoundedHonestPenalty [FAIL]
+[xUnit.net 00:00:02.76]       FsCheck.Xunit.PropertyFailedException : 
+[xUnit.net 00:00:02.76]       Falsifiable, after 1 test (1 shrink) (StdGen (353193635,297695379)):
+[xUnit.net 00:00:02.76]       Original:
+[xUnit.net 00:00:02.76]       NonNegativeInt 2
+[xUnit.net 00:00:02.76]       Shrunk:
+[xUnit.net 00:00:02.76]       NonNegativeInt 0
+[xUnit.net 00:00:02.76]       
+[xUnit.net 00:00:02.76]       ---- System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.76]       Stack Trace:
+[xUnit.net 00:00:02.76]         
+[xUnit.net 00:00:02.76]         ----- Inner Stack Trace -----
+[xUnit.net 00:00:02.76]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.76]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(178,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_ProducesBoundedHonestPenalty(NonNegativeInt baselineHundredths)
+[xUnit.net 00:00:02.76]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:02.76]            at FsCheck.Runner.invokeAndThrowInner@337-1.Invoke(Object[] o)
+[xUnit.net 00:00:02.76]            at <StartupCode$FSharp-Core>.$Reflect.Invoke@835-4.Invoke(T1 inp)
+[xUnit.net 00:00:02.76]            at FsCheck.Testable.evaluate[a,b](FSharpFunc`2 body, a a)
+[xUnit.net 00:00:02.77]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.UnknownBaseline_AlwaysUsesExactlyMaxSoilHealth [FAIL]
+[xUnit.net 00:00:02.77]       FsCheck.Xunit.PropertyFailedException : 
+[xUnit.net 00:00:02.77]       Falsifiable, after 1 test (1 shrink) (StdGen (356562061,297695379)):
+[xUnit.net 00:00:02.77]       Original:
+[xUnit.net 00:00:02.77]       NonNegativeInt 2
+[xUnit.net 00:00:02.77]       Shrunk:
+[xUnit.net 00:00:02.77]       NonNegativeInt 0
+[xUnit.net 00:00:02.77]       
+[xUnit.net 00:00:02.77]       ---- System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.77]       Stack Trace:
+[xUnit.net 00:00:02.77]         
+[xUnit.net 00:00:02.77]         ----- Inner Stack Trace -----
+[xUnit.net 00:00:02.77]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.77]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(241,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.UnknownBaseline_AlwaysUsesExactlyMaxSoilHealth(NonNegativeInt attempt)
+[xUnit.net 00:00:02.77]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:02.78]            at FsCheck.Runner.invokeAndThrowInner@337-1.Invoke(Object[] o)
+[xUnit.net 00:00:02.78]            at <StartupCode$FSharp-Core>.$Reflect.Invoke@835-4.Invoke(T1 inp)
+[xUnit.net 00:00:02.78]            at FsCheck.Testable.evaluate[a,b](FSharpFunc`2 body, a a)
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.UnknownBaseline_ResolvesToMaxHealth_AndWritesMeasuredNinety [4 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.UnknownBaseline_ResolvesToMaxHealth_AndWritesMeasuredNinety() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 137
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredZero_RefusesAtSoilMinimum_WithoutWrites [3 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredZero_RefusesAtSoilMinimum_WithoutWrites() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 376
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredFive_ClampsPenaltyAndReportsAppliedDelta [3 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredFive_ClampsPenaltyAndReportsAppliedDelta() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 343
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_BlankLocationName_RefusesWithoutSoilAccess(locationName: "") [2 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_BlankLocationName_RefusesWithoutSoilAccess(String locationName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 470
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_BlankLocationName_RefusesWithoutSoilAccess(locationName: "   ") [1 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_BlankLocationName_RefusesWithoutSoilAccess(String locationName) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 470
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_NullLocation_RefusesWithoutSoilAccess [1 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.InvalidTarget_NullLocation_RefusesWithoutSoilAccess() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 448
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.C1_ServiceBoundary_OnlyDependsOnSoilHealth_AndNeverUsesUpdateHealth [23 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.C1_ServiceBoundary_OnlyDependsOnSoilHealth_AndNeverUsesUpdateHealth() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 314
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_ProducesBoundedHonestPenalty [288 ms]
+  Mensagem de erro:
+   FsCheck.Xunit.PropertyFailedException : 
+Falsifiable, after 1 test (1 shrink) (StdGen (353193635,297695379)):
+Original:
+NonNegativeInt 2
+Shrunk:
+NonNegativeInt 0
+
+---- System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+  
+----- Inner Stack Trace -----
+   at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.MeasuredBaseline_ProducesBoundedHonestPenalty(NonNegativeInt baselineHundredths) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 178
+--- End of stack trace from previous location ---
+   at FsCheck.Runner.invokeAndThrowInner@337-1.Invoke(Object[] o)
+   at <StartupCode$FSharp-Core>.$Reflect.Invoke@835-4.Invoke(T1 inp)
+   at FsCheck.Testable.evaluate[a,b](FSharpFunc`2 body, a a)
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.UnknownBaseline_AlwaysUsesExactlyMaxSoilHealth [5 ms]
+  Mensagem de erro:
+   FsCheck.Xunit.PropertyFailedException : 
+Falsifiable, after 1 test (1 shrink) (StdGen (356562061,297695379)):
+Original:
+NonNegativeInt 2
+Shrunk:
+NonNegativeInt 0
+
+---- System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+  
+----- Inner Stack Trace -----
+   at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.UnknownBaseline_AlwaysUsesExactlyMaxSoilHealth(NonNegativeInt attempt) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 241
+--- End of stack trace from previous location ---
+   at FsCheck.Runner.invokeAndThrowInner@337-1.Invoke(Object[] o)
+   at <StartupCode$FSharp-Core>.$Reflect.Invoke@835-4.Invoke(T1 inp)
+   at FsCheck.Testable.evaluate[a,b](FSharpFunc`2 body, a a)
+[xUnit.net 00:00:02.79]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.SubPenaltyBaseline_AppliesOnlyAvailableDelta [FAIL]
+[xUnit.net 00:00:02.79]       FsCheck.Xunit.PropertyFailedException : 
+[xUnit.net 00:00:02.79]       Falsifiable, after 1 test (1 shrink) (StdGen (356642366,297695379)):
+[xUnit.net 00:00:02.79]       Original:
+[xUnit.net 00:00:02.79]       NonNegativeInt 1
+[xUnit.net 00:00:02.79]       Shrunk:
+[xUnit.net 00:00:02.79]       NonNegativeInt 0
+[xUnit.net 00:00:02.79]       
+[xUnit.net 00:00:02.79]       ---- System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.79]       Stack Trace:
+[xUnit.net 00:00:02.79]         
+[xUnit.net 00:00:02.79]         ----- Inner Stack Trace -----
+[xUnit.net 00:00:02.79]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.79]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(410,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.SubPenaltyBaseline_AppliesOnlyAvailableDelta(NonNegativeInt baselineHundredths)
+[xUnit.net 00:00:02.79]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:02.79]            at FsCheck.Runner.invokeAndThrowInner@337-1.Invoke(Object[] o)
+[xUnit.net 00:00:02.79]            at <StartupCode$FSharp-Core>.$Reflect.Invoke@835-4.Invoke(T1 inp)
+[xUnit.net 00:00:02.79]            at FsCheck.Testable.evaluate[a,b](FSharpFunc`2 body, a a)
+[xUnit.net 00:00:02.82]     LivingRoots.Tests.AgrochemicalApplicationServiceTests.RepeatedApplication_AppliesSameBoundedRule_WithoutHiddenState [FAIL]
+[xUnit.net 00:00:02.82]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.82]       Stack Trace:
+[xUnit.net 00:00:02.82]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.82]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs(87,0): at LivingRoots.Tests.AgrochemicalApplicationServiceTests.RepeatedApplication_AppliesSameBoundedRule_WithoutHiddenState()
+[xUnit.net 00:00:02.88]     LivingRoots.Tests.AgrochemicalPersistenceTests.SubPenaltyBaseline_Apply_Save_OmitsZeroFromSparseState_AndReloadsUnknown [FAIL]
+[xUnit.net 00:00:02.88]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.88]       Stack Trace:
+[xUnit.net 00:00:02.88]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.88]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalPersistenceTests.cs(165,0): at LivingRoots.Tests.AgrochemicalPersistenceTests.SubPenaltyBaseline_Apply_Save_OmitsZeroFromSparseState_AndReloadsUnknown()
+[xUnit.net 00:00:02.89]     LivingRoots.Tests.AgrochemicalPersistenceTests.MeasuredBaseline_Apply_SaveReload_PersistsMeasuredForty [FAIL]
+[xUnit.net 00:00:02.89]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.89]       Stack Trace:
+[xUnit.net 00:00:02.89]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.89]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalPersistenceTests.cs(118,0): at LivingRoots.Tests.AgrochemicalPersistenceTests.MeasuredBaseline_Apply_SaveReload_PersistsMeasuredForty()
+[xUnit.net 00:00:02.89]     LivingRoots.Tests.AgrochemicalPersistenceTests.UnknownBaseline_Apply_SaveReload_PersistsMeasuredNinety [FAIL]
+[xUnit.net 00:00:02.89]       System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+[xUnit.net 00:00:02.89]       Stack Trace:
+[xUnit.net 00:00:02.89]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs(19,0): at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile)
+[xUnit.net 00:00:02.89]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalPersistenceTests.cs(66,0): at LivingRoots.Tests.AgrochemicalPersistenceTests.UnknownBaseline_Apply_SaveReload_PersistsMeasuredNinety()
+[xUnit.net 00:00:03.04]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithNullFeedback_CommitsConsumesAndBroadcasts [FAIL]
+[xUnit.net 00:00:03.04]       Assert.Null() Failure: Value is not null
+[xUnit.net 00:00:03.05]       Expected: null
+[xUnit.net 00:00:03.05]       Actual:   System.NotImplementedException: 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.05]          at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+[xUnit.net 00:00:03.05]          at LivingRoots.Tests.ModControllerAgrochemicalTests.<>c__DisplayClass19_0.<TryApplyAgrochemical_WithNullFeedback_CommitsConsumesAndBroadcasts>b__1() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 612
+[xUnit.net 00:00:03.05]          at Xunit.Record.Exception(Func`1 testCode) in /_/src/xunit.core/Record.cs:line 47
+[xUnit.net 00:00:03.05]       Stack Trace:
+[xUnit.net 00:00:03.05]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(617,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithNullFeedback_CommitsConsumesAndBroadcasts()
+[xUnit.net 00:00:03.05]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUnknownBaselineSuccess_FeedbackUsesUnknownBaselineKey [FAIL]
+[xUnit.net 00:00:03.05]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.05]       Stack Trace:
+[xUnit.net 00:00:03.05]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.05]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(516,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUnknownBaselineSuccess_FeedbackUsesUnknownBaselineKey()
+[xUnit.net 00:00:03.06]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithNoHeldItem_RefusesMissingInputBeforeService [FAIL]
+[xUnit.net 00:00:03.06]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.06]       Stack Trace:
+[xUnit.net 00:00:03.06]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.06]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(362,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithNoHeldItem_RefusesMissingInputBeforeService()
+[xUnit.net 00:00:03.06]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithThrowingSuccessFeedback_CommitsConsumesBroadcastsAndDoesNotThrow [FAIL]
+[xUnit.net 00:00:03.06]       Assert.Null() Failure: Value is not null
+[xUnit.net 00:00:03.06]       Expected: null
+[xUnit.net 00:00:03.06]       Actual:   System.NotImplementedException: 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.06]          at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+[xUnit.net 00:00:03.06]          at LivingRoots.Tests.ModControllerAgrochemicalTests.<>c__DisplayClass18_0.<TryApplyAgrochemical_WithThrowingSuccessFeedback_CommitsConsumesBroadcastsAndDoesNotThrow>b__2() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 581
+[xUnit.net 00:00:03.06]          at Xunit.Record.Exception(Func`1 testCode) in /_/src/xunit.core/Record.cs:line 47
+[xUnit.net 00:00:03.06]       Stack Trace:
+[xUnit.net 00:00:03.06]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(586,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithThrowingSuccessFeedback_CommitsConsumesBroadcastsAndDoesNotThrow()
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.SubPenaltyBaseline_AppliesOnlyAvailableDelta [5 ms]
+  Mensagem de erro:
+   FsCheck.Xunit.PropertyFailedException : 
+Falsifiable, after 1 test (1 shrink) (StdGen (356642366,297695379)):
+Original:
+NonNegativeInt 1
+Shrunk:
+NonNegativeInt 0
+
+---- System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+  
+----- Inner Stack Trace -----
+   at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.SubPenaltyBaseline_AppliesOnlyAvailableDelta(NonNegativeInt baselineHundredths) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 410
+--- End of stack trace from previous location ---
+   at FsCheck.Runner.invokeAndThrowInner@337-1.Invoke(Object[] o)
+   at <StartupCode$FSharp-Core>.$Reflect.Invoke@835-4.Invoke(T1 inp)
+   at FsCheck.Testable.evaluate[a,b](FSharpFunc`2 body, a a)
+  Com falha LivingRoots.Tests.AgrochemicalApplicationServiceTests.RepeatedApplication_AppliesSameBoundedRule_WithoutHiddenState [28 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalApplicationServiceTests.RepeatedApplication_AppliesSameBoundedRule_WithoutHiddenState() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalApplicationServiceTests.cs:line 87
+  Com falha LivingRoots.Tests.AgrochemicalPersistenceTests.SubPenaltyBaseline_Apply_Save_OmitsZeroFromSparseState_AndReloadsUnknown [56 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalPersistenceTests.SubPenaltyBaseline_Apply_Save_OmitsZeroFromSparseState_AndReloadsUnknown() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalPersistenceTests.cs:line 165
+  Com falha LivingRoots.Tests.AgrochemicalPersistenceTests.MeasuredBaseline_Apply_SaveReload_PersistsMeasuredForty [5 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalPersistenceTests.MeasuredBaseline_Apply_SaveReload_PersistsMeasuredForty() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalPersistenceTests.cs:line 118
+  Com falha LivingRoots.Tests.AgrochemicalPersistenceTests.UnknownBaseline_Apply_SaveReload_PersistsMeasuredNinety [4 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service behavior is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Services.AgrochemicalApplicationService.Apply(GameLocation location, Vector2 tile) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Services/AgrochemicalApplicationService.cs:line 19
+   at LivingRoots.Tests.AgrochemicalPersistenceTests.UnknownBaseline_Apply_SaveReload_PersistsMeasuredNinety() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Services/AgrochemicalPersistenceTests.cs:line 66
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithNullFeedback_CommitsConsumesAndBroadcasts [149 ms]
+  Mensagem de erro:
+   Assert.Null() Failure: Value is not null
+Expected: null
+Actual:   System.NotImplementedException: 017 RED scaffold: agrochemical controller orchestration is not implemented.
+   at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.<>c__DisplayClass19_0.<TryApplyAgrochemical_WithNullFeedback_CommitsConsumesAndBroadcasts>b__1() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 612
+   at Xunit.Record.Exception(Func`1 testCode) in /_/src/xunit.core/Record.cs:line 47
+  Rastreamento de pilha:
+     at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithNullFeedback_CommitsConsumesAndBroadcasts() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 617
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUnknownBaselineSuccess_FeedbackUsesUnknownBaselineKey [4 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUnknownBaselineSuccess_FeedbackUsesUnknownBaselineKey() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 516
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithNoHeldItem_RefusesMissingInputBeforeService [5 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithNoHeldItem_RefusesMissingInputBeforeService() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 362
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithThrowingSuccessFeedback_CommitsConsumesBroadcastsAndDoesNotThrow [5 ms]
+  Mensagem de erro:
+   Assert.Null() Failure: Value is not null
+Expected: null
+Actual:   System.NotImplementedException: 017 RED scaffold: agrochemical controller orchestration is not implemented.
+   at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.<>c__DisplayClass18_0.<TryApplyAgrochemical_WithThrowingSuccessFeedback_CommitsConsumesBroadcastsAndDoesNotThrow>b__2() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 581
+   at Xunit.Record.Exception(Func`1 testCode) in /_/src/xunit.core/Record.cs:line 47
+  Rastreamento de pilha:
+     at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithThrowingSuccessFeedback_CommitsConsumesBroadcastsAndDoesNotThrow() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 586
+[xUnit.net 00:00:03.07]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnServiceConflictRefusal_DoesNotConsumeOrBroadcast [FAIL]
+[xUnit.net 00:00:03.07]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.07]       Stack Trace:
+[xUnit.net 00:00:03.07]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.07]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(274,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnServiceConflictRefusal_DoesNotConsumeOrBroadcast()
+[xUnit.net 00:00:03.09]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnLockContention_RefusesWithoutServiceMutationOrConsumption [FAIL]
+[xUnit.net 00:00:03.09]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.09]       Stack Trace:
+[xUnit.net 00:00:03.09]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.09]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(183,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnLockContention_RefusesWithoutServiceMutationOrConsumption()
+[xUnit.net 00:00:03.13]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnHostSuccess_OrdersLockServiceReleaseFeedbackThenBroadcastAndConsumesOnce [FAIL]
+[xUnit.net 00:00:03.13]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.13]       Stack Trace:
+[xUnit.net 00:00:03.13]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.13]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(139,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnHostSuccess_OrdersLockServiceReleaseFeedbackThenBroadcastAndConsumesOnce()
+[xUnit.net 00:00:03.13]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithWrongHeldItem_RefusesMissingInputBeforeService [FAIL]
+[xUnit.net 00:00:03.13]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.13]       Stack Trace:
+[xUnit.net 00:00:03.13]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.13]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(395,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithWrongHeldItem_RefusesMissingInputBeforeService()
+[xUnit.net 00:00:03.14]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnSoilAtMinimumRefusal_DoesNotConsumeOrBroadcast [FAIL]
+[xUnit.net 00:00:03.14]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.14]       Stack Trace:
+[xUnit.net 00:00:03.14]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.14]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(428,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnSoilAtMinimumRefusal_DoesNotConsumeOrBroadcast()
+[xUnit.net 00:00:03.14]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUnsupportedAuthority_RefusesBeforeServiceLockMutationOrConsumption [FAIL]
+[xUnit.net 00:00:03.15]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.15]       Stack Trace:
+[xUnit.net 00:00:03.15]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.15]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(65,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUnsupportedAuthority_RefusesBeforeServiceLockMutationOrConsumption()
+[xUnit.net 00:00:03.15]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUntilledFarmTile_RefusesInvalidTargetBeforeService [FAIL]
+[xUnit.net 00:00:03.15]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.15]       Stack Trace:
+[xUnit.net 00:00:03.15]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.15]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(332,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUntilledFarmTile_RefusesInvalidTargetBeforeService()
+[xUnit.net 00:00:03.16]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithoutLockService_FailsClosedWithConflictRefusal [FAIL]
+[xUnit.net 00:00:03.16]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.16]       Stack Trace:
+[xUnit.net 00:00:03.16]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.16]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(217,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithoutLockService_FailsClosedWithConflictRefusal()
+[xUnit.net 00:00:03.16]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithoutService_FailsClosedWithoutFeedback [FAIL]
+[xUnit.net 00:00:03.16]       System.NotImplementedException : 017 RED scaffold: agrochemical service is not wired.
+[xUnit.net 00:00:03.16]       Stack Trace:
+[xUnit.net 00:00:03.16]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3092,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.16]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(244,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithoutService_FailsClosedWithoutFeedback()
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnServiceConflictRefusal_DoesNotConsumeOrBroadcast [4 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnServiceConflictRefusal_DoesNotConsumeOrBroadcast() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 274
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnLockContention_RefusesWithoutServiceMutationOrConsumption [18 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnLockContention_RefusesWithoutServiceMutationOrConsumption() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 183
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnHostSuccess_OrdersLockServiceReleaseFeedbackThenBroadcastAndConsumesOnce [40 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnHostSuccess_OrdersLockServiceReleaseFeedbackThenBroadcastAndConsumesOnce() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 139
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithWrongHeldItem_RefusesMissingInputBeforeService [5 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithWrongHeldItem_RefusesMissingInputBeforeService() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 395
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnSoilAtMinimumRefusal_DoesNotConsumeOrBroadcast [4 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnSoilAtMinimumRefusal_DoesNotConsumeOrBroadcast() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 428
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUnsupportedAuthority_RefusesBeforeServiceLockMutationOrConsumption [6 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUnsupportedAuthority_RefusesBeforeServiceLockMutationOrConsumption() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 65
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUntilledFarmTile_RefusesInvalidTargetBeforeService [5 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnUntilledFarmTile_RefusesInvalidTargetBeforeService() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 332
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithoutLockService_FailsClosedWithConflictRefusal [5 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithoutLockService_FailsClosedWithConflictRefusal() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 217
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithoutService_FailsClosedWithoutFeedback [3 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical service is not wired.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3092
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithoutService_FailsClosedWithoutFeedback() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 244
+[xUnit.net 00:00:03.17]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnNonFarmLocation_RefusesInvalidTargetBeforeService [FAIL]
+[xUnit.net 00:00:03.17]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.17]       Stack Trace:
+[xUnit.net 00:00:03.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(304,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnNonFarmLocation_RefusesInvalidTargetBeforeService()
+[xUnit.net 00:00:03.17]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnClampedSuccess_FeedbackUsesClampedKeyNotFullPenaltyClaim [FAIL]
+[xUnit.net 00:00:03.17]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.17]       Stack Trace:
+[xUnit.net 00:00:03.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.17]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(489,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnClampedSuccess_FeedbackUsesClampedKeyNotFullPenaltyClaim()
+[xUnit.net 00:00:03.18]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnSoilAtMinimumRefusal_FeedbackUsesSoilAtMinimumKey [FAIL]
+[xUnit.net 00:00:03.18]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.18]       Stack Trace:
+[xUnit.net 00:00:03.18]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.18]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(545,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnSoilAtMinimumRefusal_FeedbackUsesSoilAtMinimumKey()
+[xUnit.net 00:00:03.19]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnClampedSuccess_ConsumesOneAndUsesClampedFeedback [FAIL]
+[xUnit.net 00:00:03.19]       System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.19]       Stack Trace:
+[xUnit.net 00:00:03.19]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.19]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(453,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnClampedSuccess_ConsumesOneAndUsesClampedFeedback()
+[xUnit.net 00:00:03.21]     LivingRoots.Tests.ModControllerAgrochemicalTests.ForAnyServiceRefusalOutcome_NoConsumptionNoSuccessFeedbackNoBroadcastNoSoilWrite [FAIL]
+[xUnit.net 00:00:03.21]       FsCheck.Xunit.PropertyFailedException : 
+[xUnit.net 00:00:03.21]       Falsifiable, after 1 test (0 shrinks) (StdGen (360816795,297695379)):
+[xUnit.net 00:00:03.21]       Original:
+[xUnit.net 00:00:03.21]       <null>
+[xUnit.net 00:00:03.21]       RefusedInvalidTarget
+[xUnit.net 00:00:03.21]       
+[xUnit.net 00:00:03.21]       ---- System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.21]       Stack Trace:
+[xUnit.net 00:00:03.21]         
+[xUnit.net 00:00:03.21]         ----- Inner Stack Trace -----
+[xUnit.net 00:00:03.21]         /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs(3095,0): at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId)
+[xUnit.net 00:00:03.21]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(688,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.<>c.<ForAnyServiceRefusalOutcome_NoConsumptionNoSuccessFeedbackNoBroadcastNoSoilWrite>b__21_0(AgrochemicalApplicationOutcome outcome)
+[xUnit.net 00:00:03.21]            at FsCheck.Testable.evaluate[a,b](FSharpFunc`2 body, a a)
+[xUnit.net 00:00:03.22]     LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithThrowingFeedbackOnAuthorityRefusal_DoesNotMutateOrThrow [FAIL]
+[xUnit.net 00:00:03.22]       Assert.Null() Failure: Value is not null
+[xUnit.net 00:00:03.22]       Expected: null
+[xUnit.net 00:00:03.22]       Actual:   System.NotImplementedException: 017 RED scaffold: agrochemical controller orchestration is not implemented.
+[xUnit.net 00:00:03.22]          at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+[xUnit.net 00:00:03.22]          at LivingRoots.Tests.ModControllerAgrochemicalTests.<>c__DisplayClass20_0.<TryApplyAgrochemical_WithThrowingFeedbackOnAuthorityRefusal_DoesNotMutateOrThrow>b__3() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 644
+[xUnit.net 00:00:03.22]          at Xunit.Record.Exception(Func`1 testCode) in /_/src/xunit.core/Record.cs:line 47
+[xUnit.net 00:00:03.22]       Stack Trace:
+[xUnit.net 00:00:03.22]         /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs(649,0): at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithThrowingFeedbackOnAuthorityRefusal_DoesNotMutateOrThrow()
+[xUnit.net 00:00:03.23]   Finished:    LivingRoots.Tests
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnNonFarmLocation_RefusesInvalidTargetBeforeService [6 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnNonFarmLocation_RefusesInvalidTargetBeforeService() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 304
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnClampedSuccess_FeedbackUsesClampedKeyNotFullPenaltyClaim [5 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnClampedSuccess_FeedbackUsesClampedKeyNotFullPenaltyClaim() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 489
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnSoilAtMinimumRefusal_FeedbackUsesSoilAtMinimumKey [5 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnSoilAtMinimumRefusal_FeedbackUsesSoilAtMinimumKey() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 545
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnClampedSuccess_ConsumesOneAndUsesClampedFeedback [5 ms]
+  Mensagem de erro:
+   System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+     at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_OnClampedSuccess_ConsumesOneAndUsesClampedFeedback() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 453
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.ForAnyServiceRefusalOutcome_NoConsumptionNoSuccessFeedbackNoBroadcastNoSoilWrite [23 ms]
+  Mensagem de erro:
+   FsCheck.Xunit.PropertyFailedException : 
+Falsifiable, after 1 test (0 shrinks) (StdGen (360816795,297695379)):
+Original:
+<null>
+RefusedInvalidTarget
+
+---- System.NotImplementedException : 017 RED scaffold: agrochemical controller orchestration is not implemented.
+  Rastreamento de pilha:
+  
+----- Inner Stack Trace -----
+   at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.<>c.<ForAnyServiceRefusalOutcome_NoConsumptionNoSuccessFeedbackNoBroadcastNoSoilWrite>b__21_0(AgrochemicalApplicationOutcome outcome) in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 688
+   at FsCheck.Testable.evaluate[a,b](FSharpFunc`2 body, a a)
+  Com falha LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithThrowingFeedbackOnAuthorityRefusal_DoesNotMutateOrThrow [4 ms]
+  Mensagem de erro:
+   Assert.Null() Failure: Value is not null
+Expected: null
+Actual:   System.NotImplementedException: 017 RED scaffold: agrochemical controller orchestration is not implemented.
+   at LivingRoots.Controllers.ModController.TryApplyAgrochemicalWithLock(GameLocation location, Vector2 tile, Int64 farmerId) in /home/luis/development/stardew-raizes-vivas/LivingRoots/Controllers/ModController.cs:line 3095
+   at LivingRoots.Tests.ModControllerAgrochemicalTests.<>c__DisplayClass20_0.<TryApplyAgrochemical_WithThrowingFeedbackOnAuthorityRefusal_DoesNotMutateOrThrow>b__3() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 644
+   at Xunit.Record.Exception(Func`1 testCode) in /_/src/xunit.core/Record.cs:line 47
+  Rastreamento de pilha:
+     at LivingRoots.Tests.ModControllerAgrochemicalTests.TryApplyAgrochemical_WithThrowingFeedbackOnAuthorityRefusal_DoesNotMutateOrThrow() in /home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/Controllers/ModControllerAgrochemicalTests.cs:line 649
+
+Falha na Execução de Teste.
+Total de testes: 60
+     Com falha: 60
+Tempo total: 5,3514 Segundos

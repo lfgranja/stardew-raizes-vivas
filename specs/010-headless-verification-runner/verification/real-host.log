@@ -1,0 +1,40 @@
+# T137 — Verification: real-host e2e
+
+- **Date**: 2026-11-05
+- **Status**: PASS (real host, headless, no human input)
+- **Host**: Linux, Fedora 44 KDE/Wayland (Xvfb display)
+- **Game**: Steam install at `/home/luis/.local/share/Steam/steamapps/common/Stardew Valley`
+- **Command**:
+  `./scripts/verify-scenario.sh --scenario specs/004-playable-compost-loop/scenarios/compost-growth-hardening.scenario.json --no-acquire --game-path "<steam-path>" --skip-build`
+- **Exit**: 0
+- **Duration**: ~120 s (wall clock)
+- **Bundle**: `evidence-bundle-run-20261105T024756Z-07ba/`
+- **Run ID**: `run-20261105T024756Z-07ba`
+- **Verdict**: `pass` — `signalsComplete=true`, `signalsAgree=true`, `thresholdsOk=true`
+- **Honesty**: R (runtime evidence; `verified` remains human-only)
+- **Offline verifier**: `scripts/verify-evidence-bundle.sh` → 0 (schema, digests, subject, claims/manifest honesty, R/E completeness all pass)
+- **Promotion**: runner wrote `machine-pass` into `specs/004-playable-compost-loop/test.md`, `ROADMAP.md`, and `COMPLETION_SUMMARY.md`; 3 transitions appended to `promotion-triggers.json`.
+
+## Root causes fixed before this run
+
+1. Manifest pipeline: `verify-scenario.sh` previously handed ManifestBuilder a bare `{"runId": ...}`, so every manifest failed `contracts/evidence-bundle.schema.json` (13 missing required fields) and the offline verifier never validated the schema. Fixed by `evidence_write_manifest_input` (full payload) + schema/digest/claims validation in the verifier + claims-before-manifest ordering (FR-014).
+2. `jsonschema` import failure under the isolated `HOME` set by `save_prepare`: the verifier ran with the game's isolated home and could not find the user-installed module. Fixed by restoring `RUNNER_ORIGINAL_HOME` for the verifier invocation.
+3. Harness: `smoke-validation.sh` ran `main` in a background subshell that hid cleanup state; `_reap_descendants` forked one `awk` per `/proc` entry (14-20 s). Fixed by running `main` in-shell and a single fork-free `/proc` pass (~200 ms).
+4. `ModController.RegisterEvents` logged an expected probe at `Warn`, failing the production guard test; lowered to `Trace`.
+
+## Signals captured
+
+- `artifacts/soil-health-before-after.json` (soil health delta)
+- `artifacts/crop-phase-dump.json` (crop phase / phaseDays delta)
+- `artifacts/smapi-log.txt` (SMAPI log excerpt)
+- `artifacts/crop-phase-before.json`, `crop-phase-cross-check.json`, `soil-health-before.json`, `soil-health-after.json`
+- `evaluation/actual.json`, `pre.json`, `thresholds.jsonl`, `predicates/*`
+- `verdict.json`, `claims.json`, `manifest.json`, `manifest.sha256`
+
+## Result
+
+Real-host run complete with `machine-pass`. The T137 real-host gate is now satisfied by a schema-valid, verifier-accepted bundle.
+
+## Compatibility note (append-only, 2026-11-07, 018 pass 5)
+
+- Current `--verify-bundle` on local `evidence-bundle-run-20261105T024756Z-07ba` returned **exit 19** (`bundle file not in subject: retention-receipt.json`). Historical 2026-11-05 result/observation unchanged; bundle is **legacy/incompatible with current verifier** as observed in pass 5. No deletion. See `specs/018-machine-pass-full-coverage/verification/cycle-2026-11-07-80-20-pass5.md`.

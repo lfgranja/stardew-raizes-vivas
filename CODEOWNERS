@@ -1,0 +1,14 @@
+# Living Roots — code ownership (GitHub CODEOWNERS)
+# Revision humana onde o gate determinístico não chega.
+
+# Specs and SDD artifacts
+specs/ @lfgranja
+.specify/ @lfgranja
+
+# Shared libraries / runner core
+scripts/lib/ @lfgranja
+
+# Governance and CI
+docs/governance/ @lfgranja
+.github/workflows/ @lfgranja
+scripts/ci/ @lfgranja

@@ -1,0 +1,30 @@
+=== RED GATE PHASE 5 (US3) — recorded post-implementation ===
+Date: 2026-11-03T04:03:24Z
+Note: implementation pre-existed in repo; RED gate not captured at original time. Current (post-implementation) runs shown.
+
+=== test-ci-mode.sh ===
+ok - --ci --help exits 0
+ok - ci mode defined
+ok - ci env detection
+ok - --ci flag wired
+ok - non-interactive handling
+# tests: 5, passed: 5, failed: 0
+
+=== test-reporters.sh ===
+ok - reporters lib exists
+ok - junit reporter
+ok - allure reporter
+ok - emit reporter
+ok - junit testsuite element
+# tests: 5, passed: 5, failed: 0
+
+=== test-ci-workflow.sh ===
+ok - workflow exists
+ok - self-hosted runner
+ok - builddeps token
+ok - permissions block
+ok - least-privilege contents read
+ok - invokes runner
+ok - ci flag
+ok - self-hosted gated
+# tests: 8, passed: 8, failed: 0

@@ -1,0 +1,1 @@
+{"op": "between", "field": "soilHealth", "min": 0, "max": 34, "tolerance": 0.0001, "exclusiveMin": true, "exclusiveMax": true}

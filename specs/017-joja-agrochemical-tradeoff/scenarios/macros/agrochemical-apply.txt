@@ -1,0 +1,3 @@
+/lr_give_agrochemical 1
+/lr_apply_agrochemical 60 15 Farm
+/sleep

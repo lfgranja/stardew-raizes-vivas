@@ -1,0 +1,2 @@
+/lr_place_bin 0 0 Farm
+/sleep

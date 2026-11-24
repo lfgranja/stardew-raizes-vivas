@@ -1,0 +1,649 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using LivingRoots.Domain;
+using LivingRoots.Services;
+using LivingRoots.Tests.Fixtures;
+using LivingRoots.Tests.Stubs;
+using Microsoft.Xna.Framework;
+using Moq;
+using Newtonsoft.Json.Linq;
+using StardewModdingAPI;
+using StardewValley;
+using Xunit;
+
+namespace LivingRoots.Tests;
+
+/// <summary>
+/// Tests for <see cref="CompostApplicationService.TryApplyCompost"/>.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The service rejects with <c>Game1.playSound("cancel")</c> on every failure path, so these
+/// tests install <see cref="GameStateFixture"/>, which substitutes
+/// <see cref="NoOpSoundsHelperStub"/> for the game sound helper.
+/// </para>
+/// <para>
+/// <b>Prerequisite:</b> <see cref="GameStateFixture"/> is installed by this class's constructor and
+/// is load-bearing for all six tests. Four of them need a real <c>HoeDirt</c>, because the service
+/// checks the tile type before it looks at soil health or the held item, and
+/// <c>HoeDirt</c>'s constructors all funnel into <c>initialize(Game1.currentLocation)</c>.
+/// <c>Game1.currentLocation</c> reads <c>Game1.game1</c>, whose real constructor dereferences the
+/// XNA content service provider that only MonoGame populates while booting. The fixture allocates
+/// that static without the constructor, which is what lets <c>HoeDirt</c> resolve a (null)
+/// location. Removing it breaks every test here.
+/// </para>
+/// <para>
+/// The same fixture registers the <c>(O)</c> item type definition, so an item created by
+/// <see cref="ItemFactory"/> reports <c>QualifiedItemId</c> as <c>"(O)LivingRoots.Compost"</c>
+/// rather than the bare id it assigns. The service's held-item check accepts both forms.
+/// </para>
+/// </remarks>
+public class CompostApplicationServiceTests
+{
+    private readonly Mock<ISoilHealthService> _mockSoilHealthService;
+    private readonly Mock<IMonitor> _mockMonitor;
+    private readonly PlayerProviderStub _playerStub;
+    private readonly CompostApplicationService _service;
+
+    /// <summary>Creates the service under test and installs the minimum required game state.</summary>
+    public CompostApplicationServiceTests()
+    {
+        GameStateFixture.Install();
+        _mockSoilHealthService = new Mock<ISoilHealthService>();
+        _mockMonitor = new Mock<IMonitor>();
+        _playerStub = new PlayerProviderStub();
+
+        _service = new CompostApplicationService(
+            _mockSoilHealthService.Object,
+            _playerStub,
+            _mockMonitor.Object);
+    }
+
+    /// <summary>Compost raises soil health on a valid tilled farm tile (FR-6.1).</summary>
+    [Fact]
+    public void TryApplyCompost_ValidTile_IncreasesHealth()
+    {
+        var fixture = new GameLocationFixture("Farm");
+        var tile = new Vector2(10, 10);
+        fixture.AddHoeDirtTile(10, 10);
+
+        _playerStub.CurrentItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+
+        _mockSoilHealthService.Setup(x => x.GetSoilHealth("Farm", tile)).Returns(50f);
+
+        var result = _service.TryApplyCompost(fixture.Location, tile);
+
+        Assert.True(result);
+        _mockSoilHealthService.Verify(x => x.UpdateHealth("Farm", tile, ModConstants.RestorationAmount), Times.Once);
+    }
+
+    /// <summary>A tile already at maximum health is rejected (FR-6.2).</summary>
+    [Fact]
+    public void TryApplyCompost_AtMaxHealth_ReturnsFalse()
+    {
+        var fixture = new GameLocationFixture("Farm");
+        var tile = new Vector2(10, 10);
+        fixture.AddHoeDirtTile(10, 10);
+
+        _playerStub.CurrentItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+
+        _mockSoilHealthService.Setup(x => x.GetSoilHealth("Farm", tile)).Returns(ModConstants.MaxSoilHealth);
+
+        var result = _service.TryApplyCompost(fixture.Location, tile);
+
+        Assert.False(result);
+        _mockSoilHealthService.Verify(x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()), Times.Never);
+    }
+
+    /// <summary>Compost is rejected outside the farm and the Greenhouse (FR-6.2).</summary>
+    [Fact]
+    public void TryApplyCompost_InvalidLocation_ReturnsFalse()
+    {
+        var fixture = new GameLocationFixture("Town", isFarm: false);
+        var tile = new Vector2(10, 10);
+
+        _playerStub.CurrentItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+
+        var result = _service.TryApplyCompost(fixture.Location, tile);
+
+        Assert.False(result);
+    }
+
+    /// <summary>Compost is rejected when the player is not holding compost (FR-6.2).</summary>
+    [Fact]
+    public void TryApplyCompost_NoCompostHeld_ReturnsFalse()
+    {
+        var fixture = new GameLocationFixture("Farm");
+        var tile = new Vector2(10, 10);
+        fixture.AddHoeDirtTile(10, 10);
+
+        _playerStub.CurrentItem = null;
+
+        var result = _service.TryApplyCompost(fixture.Location, tile);
+
+        Assert.False(result);
+    }
+
+    /// <summary>Compost is rejected when the target tile is not tilled soil (FR-6.2).</summary>
+    [Fact]
+    public void TryApplyCompost_NonHoeDirtTile_ReturnsFalse()
+    {
+        var fixture = new GameLocationFixture("Farm");
+        var tile = new Vector2(10, 10);
+
+        _playerStub.CurrentItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+
+        var result = _service.TryApplyCompost(fixture.Location, tile);
+
+        Assert.False(result);
+    }
+
+    /// <summary>
+    /// Health is capped at <see cref="ModConstants.MaxSoilHealth"/>: the service reports success
+    /// but the applied delta may not push the tile past the maximum (FR-6.1).
+    /// </summary>
+    [Fact]
+    public void TryApplyCompost_HealthCappedAtMax()
+    {
+        var fixture = new GameLocationFixture("Farm");
+        var tile = new Vector2(10, 10);
+        fixture.AddHoeDirtTile(10, 10);
+
+        _playerStub.CurrentItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+
+        _mockSoilHealthService.Setup(x => x.GetSoilHealth("Farm", tile)).Returns(90f);
+
+        var result = _service.TryApplyCompost(fixture.Location, tile);
+
+        Assert.True(result);
+        _mockSoilHealthService.Verify(x => x.UpdateHealth("Farm", tile, ModConstants.RestorationAmount), Times.Once);
+    }
+
+    /// <summary>
+    /// Compost application on tilled tiles with active growing crops succeeds as side-dressing
+    /// and does not harm or remove the crop (T028, FR-007).
+    /// </summary>
+    [Fact]
+    public void TryApplyCompost_TilledTileWithActiveCrop_SucceedsAndPreservesCrop()
+    {
+        var fixture = new GameLocationFixture("Farm");
+        var tile = new Vector2(10, 10);
+        fixture.AddHoeDirtTile(10, 10, hasCrop: true);
+
+        var hoeDirt = (StardewValley.TerrainFeatures.HoeDirt)fixture.Location.terrainFeatures[tile];
+        var originalCrop = hoeDirt.crop;
+        Assert.NotNull(originalCrop);
+
+        var compostItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+        compostItem.Stack = 5;
+        _playerStub.CurrentItem = compostItem;
+
+        _mockSoilHealthService.Setup(x => x.GetSoilHealth("Farm", tile)).Returns(40f);
+
+        var result = _service.TryApplyCompost(fixture.Location, tile);
+
+        Assert.True(result);
+        _mockSoilHealthService.Verify(x => x.UpdateHealth("Farm", tile, ModConstants.RestorationAmount), Times.Once);
+        Assert.Equal(4, compostItem.Stack);
+
+        // Crop must be intact and not destroyed or cleared
+        Assert.NotNull(hoeDirt.crop);
+        Assert.Same(originalCrop, hoeDirt.crop);
+    }
+
+    /// <summary>
+    /// Applying compost to an untilled tile is refused: returns false, consumes zero compost items,
+    /// leaves inventory stack untouched, and triggers HUD message/log (T029, FR-008, FR-008a).
+    /// </summary>
+    [Fact]
+    public void TryApplyCompost_UntilledTile_RefusedWithZeroCompostConsumed()
+    {
+        var fixture = new GameLocationFixture("Farm");
+        var tile = new Vector2(15, 15); // No HoeDirt added
+
+        var compostItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+        compostItem.Stack = 3;
+        _playerStub.CurrentItem = compostItem;
+
+        var result = _service.TryApplyCompost(fixture.Location, tile);
+
+        Assert.False(result);
+        Assert.Equal(3, compostItem.Stack);
+        _mockSoilHealthService.Verify(x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()), Times.Never);
+    }
+
+    /// <summary>
+    /// Applying compost on a non-farm and non-greenhouse map is refused: returns false, consumes zero
+    /// compost items, and leaves soil health untouched (T029, FR-008, FR-008a).
+    /// </summary>
+    [Fact]
+    public void TryApplyCompost_NonFarmMap_RefusedWithZeroCompostConsumed()
+    {
+        var fixture = new GameLocationFixture("Town", isFarm: false);
+        var tile = new Vector2(5, 5);
+
+        var compostItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+        compostItem.Stack = 2;
+        _playerStub.CurrentItem = compostItem;
+
+        var result = _service.TryApplyCompost(fixture.Location, tile);
+
+        Assert.False(result);
+        Assert.Equal(2, compostItem.Stack);
+        _mockSoilHealthService.Verify(x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()), Times.Never);
+    }
+
+    /// <summary>
+    /// Applying compost to a tile already at max health (100) is refused: returns false, consumes zero
+    /// compost items, and leaves soil health untouched (T029, FR-008, FR-008a).
+    /// </summary>
+    [Fact]
+    public void TryApplyCompost_MaxHealthTile_RefusedWithZeroCompostConsumed()
+    {
+        var fixture = new GameLocationFixture("Farm");
+        var tile = new Vector2(10, 10);
+        fixture.AddHoeDirtTile(10, 10);
+
+        var compostItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+        compostItem.Stack = 10;
+        _playerStub.CurrentItem = compostItem;
+
+        _mockSoilHealthService.Setup(x => x.GetSoilHealth("Farm", tile)).Returns(ModConstants.MaxSoilHealth);
+
+        var result = _service.TryApplyCompost(fixture.Location, tile);
+
+        Assert.False(result);
+        Assert.Equal(10, compostItem.Stack);
+        _mockSoilHealthService.Verify(x => x.UpdateHealth(It.IsAny<string>(), It.IsAny<Vector2>(), It.IsAny<float>()), Times.Never);
+    }
+
+    // ------------------------------------------------------------------
+    // T069 (FR-008a partial): with an injected ITranslationHelper,
+    // every refusal that owes the player text must render the
+    // translated string through the game's own red HUD message —
+    // never the raw translation key. The game de-duplicates HUD
+    // messages by text against the process-global Game1.hudMessages
+    // list (verified against Stardew Valley.dll: a repeat of an
+    // identical message refreshes the existing entry instead of
+    // adding one), so each test's stub helper renders a unique
+    // marker-prefixed translation. A shared prefix would let the
+    // two invalid-tile refusals collapse into one HUD entry and
+    // break the count-increment assertion of whichever test runs
+    // second.
+    // ------------------------------------------------------------------
+
+    /// <summary>Marker prefixing the invalid-location test's stub translations.</summary>
+    private const string InvalidLocationTranslationMarker = "PT:invalid-location:";
+
+    /// <summary>Marker prefixing the untilled-tile test's stub translations.</summary>
+    private const string UntilledTileTranslationMarker = "PT:untilled-tile:";
+
+    /// <summary>Marker prefixing the max-health test's stub translations.</summary>
+    private const string MaxHealthTileTranslationMarker = "PT:max-health-tile:";
+
+    /// <summary>
+    /// Builds a stub <see cref="ITranslationHelper"/> whose
+    /// <c>Get(key)</c> returns a translation reading
+    /// <c><paramref name="marker"/> + key</c>. The marker makes
+    /// this test's rendered text unique, so the game's HUD-message
+    /// de-duplication cannot collapse it into an entry a sibling
+    /// test already rendered.
+    /// </summary>
+    private static ITranslationHelper CreateStubTranslationHelper(string marker)
+    {
+        var mock = new Mock<ITranslationHelper>();
+        mock
+            .Setup(x => x.Get(It.IsAny<string>()))
+            .Returns((string key) => CreateTranslation(key, marker + key));
+        return mock.Object;
+    }
+
+    /// <summary>
+    /// Creates a <see cref="Translation"/> carrying <paramref name="text"/>.
+    /// SMAPI exposes no public constructor (the (locale, key, text) ctor is
+    /// internal), so the test reaches it by reflection — the same technique
+    /// AssetRegistrationTests uses to drive SMAPI's internal edit operations.
+    /// </summary>
+    private static Translation CreateTranslation(string key, string text)
+    {
+        var ctor = typeof(Translation).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
+            .First(c => c.GetParameters().Length == 3);
+        return (Translation)ctor.Invoke(new object[] { "en", key, text });
+    }
+
+    /// <summary>
+    /// Asserts exactly one new red HUD message was shown carrying
+    /// <paramref name="expectedText"/> — the translated refusal — and
+    /// that the rendered text is not the raw translation key.
+    /// </summary>
+    private static void AssertTranslatedRedMessageShown(int hudMessagesBefore, string translationKey, string expectedText)
+    {
+        Assert.Equal(hudMessagesBefore + 1, Game1.hudMessages.Count);
+        var shown = Game1.hudMessages[Game1.hudMessages.Count - 1].message;
+        Assert.Equal(expectedText, shown);
+        Assert.NotEqual(translationKey, shown);
+    }
+
+    /// <summary>
+    /// The off-limits-location refusal made with an injected translation
+    /// helper renders the translated invalid-tile text through the game's
+    /// red HUD message, never the raw key (T069, FR-008a).
+    /// </summary>
+    [Fact]
+    public void TryApplyCompost_InvalidLocation_WithTranslationHelper_ShowsTranslatedText()
+    {
+        // Arrange
+        var service = new CompostApplicationService(
+            _mockSoilHealthService.Object,
+            _playerStub,
+            _mockMonitor.Object,
+            CreateStubTranslationHelper(InvalidLocationTranslationMarker));
+
+        var fixture = new GameLocationFixture("Town", isFarm: false);
+        var tile = new Vector2(10, 10);
+        _playerStub.CurrentItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+
+        int hudMessagesBefore = Game1.hudMessages.Count;
+
+        // Act
+        var result = service.TryApplyCompost(fixture.Location, tile);
+
+        // Assert
+        Assert.False(result);
+        AssertTranslatedRedMessageShown(
+            hudMessagesBefore,
+            ModConstants.TranslationKeyCompostInvalidTile,
+            InvalidLocationTranslationMarker + ModConstants.TranslationKeyCompostInvalidTile);
+    }
+
+    /// <summary>
+    /// The untilled-tile refusal made with an injected translation helper
+    /// renders the translated invalid-tile text through the game's red HUD
+    /// message, never the raw key (T069, FR-008a).
+    /// </summary>
+    [Fact]
+    public void TryApplyCompost_UntilledTile_WithTranslationHelper_ShowsTranslatedText()
+    {
+        // Arrange
+        var service = new CompostApplicationService(
+            _mockSoilHealthService.Object,
+            _playerStub,
+            _mockMonitor.Object,
+            CreateStubTranslationHelper(UntilledTileTranslationMarker));
+
+        var fixture = new GameLocationFixture("Farm");
+        var tile = new Vector2(15, 15); // No HoeDirt added
+        _playerStub.CurrentItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+
+        int hudMessagesBefore = Game1.hudMessages.Count;
+
+        // Act
+        var result = service.TryApplyCompost(fixture.Location, tile);
+
+        // Assert
+        Assert.False(result);
+        AssertTranslatedRedMessageShown(
+            hudMessagesBefore,
+            ModConstants.TranslationKeyCompostInvalidTile,
+            UntilledTileTranslationMarker + ModConstants.TranslationKeyCompostInvalidTile);
+    }
+
+    /// <summary>
+    /// The maximum-health refusal made with an injected translation helper
+    /// renders the translated max-health text through the game's red HUD
+    /// message, never the raw key (T069, FR-008a).
+    /// </summary>
+    [Fact]
+    public void TryApplyCompost_MaxHealthTile_WithTranslationHelper_ShowsTranslatedText()
+    {
+        // Arrange
+        var service = new CompostApplicationService(
+            _mockSoilHealthService.Object,
+            _playerStub,
+            _mockMonitor.Object,
+            CreateStubTranslationHelper(MaxHealthTileTranslationMarker));
+
+        var fixture = new GameLocationFixture("Farm");
+        var tile = new Vector2(10, 10);
+        fixture.AddHoeDirtTile(10, 10);
+
+        _playerStub.CurrentItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+        _mockSoilHealthService.Setup(x => x.GetSoilHealth("Farm", tile)).Returns(ModConstants.MaxSoilHealth);
+
+        int hudMessagesBefore = Game1.hudMessages.Count;
+
+        // Act
+        var result = service.TryApplyCompost(fixture.Location, tile);
+
+        // Assert
+        Assert.False(result);
+        AssertTranslatedRedMessageShown(
+            hudMessagesBefore,
+            ModConstants.TranslationKeyCompostMaxHealth,
+            MaxHealthTileTranslationMarker + ModConstants.TranslationKeyCompostMaxHealth);
+    }
+
+    // ------------------------------------------------------------------
+    // T093 (FR-008a): the i18n seam. The refusal pipeline above is
+    // proven with stub translation helpers; this test proves the
+    // repository-side half — that a non-English locale file actually
+    // ships in LivingRoots/i18n and translates every refusal key —
+    // and drives the real locale file through the service so the
+    // rendered text is the localized string, never the English
+    // source text and never the raw key.
+    // ------------------------------------------------------------------
+
+    /// <summary>The mod's source locale file, written in English.</summary>
+    private const string DefaultLocaleFileName = "default.json";
+
+    /// <summary>
+    /// The English locale file, kept byte-identical to
+    /// <see cref="DefaultLocaleFileName"/>.
+    /// </summary>
+    private const string EnglishLocaleFileName = "en.json";
+
+    /// <summary>
+    /// The four refusal keys FR-008a requires every shipped locale to
+    /// translate (see <c>ModConstants</c> for the canonical values).
+    /// </summary>
+    private static readonly string[] RefusalTranslationKeys =
+    {
+        ModConstants.TranslationKeyCompostInvalidTile,
+        ModConstants.TranslationKeyCompostMaxHealth,
+        ModConstants.TranslationKeyCompostActionConflict,
+        ModConstants.TranslationKeyHarvestInventoryFull,
+    };
+
+    /// <summary>
+    /// Seam demand (T093, FR-008a): the repository ships only
+    /// <c>default.json</c> and <c>en.json</c> — byte-identical English —
+    /// so a non-English player currently receives the English fallback for
+    /// every refusal message. FR-008a requires at least one non-English
+    /// locale file translating the four refusal keys; Wave 13 ships it.
+    /// This assertion stays red until that locale file exists.
+    /// </summary>
+    private const string NonEnglishLocaleSeamDemand =
+        "FR-008a seam demand: LivingRoots/i18n must ship at least one non-English " +
+        "locale file (any *.json other than default.json/en.json) translating the four " +
+        "refusal keys (message.compost.invalid-tile, message.compost.max-health, " +
+        "message.compost.action-conflict, message.harvest.inventory-full). Only the " +
+        "English source locales exist so far; Wave 13 ships the first translation.";
+
+    /// <summary>
+    /// Walks up from the test output directory to the repository root,
+    /// located by <c>Stardew-LivingRoots.sln</c> (ArchitecturalPlanTests
+    /// pattern), so the test reads the locale files from the source tree
+    /// rather than from build output.
+    /// </summary>
+    private static string RepoRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        string? root = null;
+        for (var i = 0; i < 10 && directory != null; i++)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "Stardew-LivingRoots.sln")))
+            {
+                root = directory.FullName;
+                break;
+            }
+
+            directory = directory.Parent;
+        }
+
+        Assert.True(
+            root != null,
+            "Could not locate Stardew-LivingRoots.sln above the test output directory.");
+        return root!;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="fileName"/> is one of the English source
+    /// locale files every mod ships, and therefore not evidence of a
+    /// non-English translation.
+    /// </summary>
+    private static bool IsSourceLocaleFile(string? fileName)
+    {
+        return string.Equals(fileName, DefaultLocaleFileName, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(fileName, EnglishLocaleFileName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Reads a SMAPI locale file into its string-valued entries, keyed
+    /// ordinally so lookups match the translation keys exactly.
+    /// </summary>
+    /// <param name="filePath">Path to the locale JSON file.</param>
+    /// <returns>Every string entry in the file, by key.</returns>
+    private static Dictionary<string, string> ReadTranslations(string filePath)
+    {
+        var json = JObject.Parse(File.ReadAllText(filePath));
+        return json
+            .Properties()
+            .Where(property => property.Value.Type == JTokenType.String)
+            .ToDictionary(
+                property => property.Name,
+                property => property.Value.Value<string>() ?? string.Empty,
+                StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Builds an <see cref="ITranslationHelper"/> backed by the parsed
+    /// <paramref name="localized"/> locale file, resolving each key as
+    /// localized text, then the English <paramref name="fallback"/> file,
+    /// then the raw key — the same chain SMAPI's real helper walks, so the
+    /// test observes exactly what a non-English player would see.
+    /// </summary>
+    private static ITranslationHelper CreateLocaleTranslationHelper(
+        IReadOnlyDictionary<string, string> localized,
+        IReadOnlyDictionary<string, string> fallback)
+    {
+        var mock = new Mock<ITranslationHelper>();
+        mock
+            .Setup(x => x.Get(It.IsAny<string>()))
+            .Returns((string key) =>
+            {
+                if (localized.TryGetValue(key, out var localizedText))
+                {
+                    return CreateTranslation(key, localizedText);
+                }
+
+                if (fallback.TryGetValue(key, out var fallbackText))
+                {
+                    return CreateTranslation(key, fallbackText);
+                }
+
+                return CreateTranslation(key, key);
+            });
+        return mock.Object;
+    }
+
+    /// <summary>
+    /// The i18n seam (T093, FR-008a): at least one non-English locale file
+    /// must ship in <c>LivingRoots/i18n</c> translating all four refusal
+    /// keys, and a compost refusal made through that locale must render the
+    /// localized invalid-tile text through the game's red HUD message —
+    /// never the English source text and never the raw translation key.
+    /// </summary>
+    [Fact]
+    public void TryApplyCompost_RefusalText_NonEnglishLocale_RendersLocalizedTextNeverEnglishSourceNorRawKey()
+    {
+        // Arrange — discover the non-English locale files in the source tree.
+        var repoRoot = RepoRoot();
+        var i18nDirectory = Path.Combine(repoRoot, "LivingRoots", "i18n");
+        var localeFileNames = new List<string>();
+        foreach (var path in Directory.GetFiles(i18nDirectory, "*.json"))
+        {
+            var fileName = Path.GetFileName(path);
+            if (fileName != null && !IsSourceLocaleFile(fileName))
+            {
+                localeFileNames.Add(fileName);
+            }
+        }
+
+        localeFileNames.Sort(StringComparer.Ordinal);
+        Assert.True(
+            localeFileNames.Count > 0,
+            NonEnglishLocaleSeamDemand);
+
+        var localized = ReadTranslations(Path.Combine(i18nDirectory, localeFileNames[0]));
+        var english = ReadTranslations(Path.Combine(i18nDirectory, DefaultLocaleFileName));
+
+        var localizedInvalidTileText = string.Empty;
+        foreach (var key in RefusalTranslationKeys)
+        {
+            Assert.True(
+                english.ContainsKey(key),
+                $"The English source locale must define the refusal key '{key}' (FR-008a).");
+            Assert.True(
+                localized.ContainsKey(key),
+                $"Non-English locale '{localeFileNames[0]}' must translate the refusal key " +
+                $"'{key}' (FR-008a); a missing key silently falls back to English, which is " +
+                "the fallback defect this test guards against.");
+
+            var localizedText = localized[key];
+            Assert.False(
+                string.IsNullOrWhiteSpace(localizedText),
+                $"Non-English locale '{localeFileNames[0]}' must carry a non-blank " +
+                $"translation for '{key}'.");
+            Assert.False(
+                string.Equals(english[key], localizedText, StringComparison.Ordinal),
+                $"Non-English locale '{localeFileNames[0]}' must not copy the English " +
+                $"source text for '{key}'.");
+            Assert.False(
+                string.Equals(key, localizedText, StringComparison.Ordinal),
+                $"The rendered refusal for '{key}' must not be the raw translation key.");
+
+            if (key == ModConstants.TranslationKeyCompostInvalidTile)
+            {
+                localizedInvalidTileText = localizedText;
+            }
+        }
+
+        Assert.NotEmpty(localizedInvalidTileText);
+
+        var service = new CompostApplicationService(
+            _mockSoilHealthService.Object,
+            _playerStub,
+            _mockMonitor.Object,
+            CreateLocaleTranslationHelper(localized, english));
+
+        var fixture = new GameLocationFixture("Farm");
+        var tile = new Vector2(15, 15); // No HoeDirt added
+        _playerStub.CurrentItem = ItemFactory.CreateItem(ModConstants.CompostItemId);
+
+        int hudMessagesBefore = Game1.hudMessages.Count;
+
+        // Act
+        var result = service.TryApplyCompost(fixture.Location, tile);
+
+        // Assert
+        Assert.False(result);
+        AssertTranslatedRedMessageShown(
+            hudMessagesBefore,
+            ModConstants.TranslationKeyCompostInvalidTile,
+            localizedInvalidTileText);
+    }
+}
+

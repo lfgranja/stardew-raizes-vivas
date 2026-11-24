@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 4,
+  "scenarioId": "mulch-bare-tile-decay-exemption",
+  "featureSlug": "013-mulch-soil-cover",
+  "testMdPath": "specs/013-mulch-soil-cover/test.md",
+  "summary": "013 SC-004 (defensible, v4): bare HoeDirt + mulch, 6 spring day-start ticks keep soil unchanged (MulchDurationDays=7; ticks 7->6..2->1 mulched, MulchDecayMultiplier=0). cropPhaseDelta not-applicable (no-crop bare decay-path target).",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.1.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": true
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {"kind": "console", "command": "lr_till 61 15", "description": "till bare HoeDirt target (no crop; decay path applies)"},
+    {"kind": "console", "command": "lr_set_soil_health 61 15 50", "description": "seed measured moderate soil (spring decay 2*0.5=1/day when unprotected)"},
+    {"kind": "console", "command": "lr_give_mulch 1", "description": "give mulch"},
+    {"kind": "console", "command": "lr_apply_mulch 61 15", "description": "apply mulch on bare tilled tile"}
+  ],
+  "steps": [
+    {"action": "sleep", "target": "farm", "days": 6},
+    {"action": "observe", "target": "61,15"}
+  ],
+  "thresholds": [
+    {
+      "signal": "soilHealthStateDelta",
+      "predicate": {"op": "multiplier", "field": "soilHealth", "base": "pre.soilHealth", "factor": 1.0, "tolerance": 0.0001},
+      "description": "6 day-start ticks with mulch active (7->1 remaining): no decay (MulchDecayMultiplier=0), soil 50 unchanged"
+    },
+    {
+      "signal": "smapiLog",
+      "predicate": {"op": "cmp", "left": "isMainPlayer", "operator": "eq", "right": true, "tolerance": 0},
+      "description": "host/main-player context"
+    }
+  ],
+  "expectedSignals": ["soilHealthStateDelta", "smapiLog"],
+  "signalPolicy": {
+    "cropPhaseDelta": "not-applicable",
+    "not-applicableReason": "Bare HoeDirt no-crop decay-path target at 61,15; SoilDecayService applies decay only when crop==null, so crop phase is not attestable for this observed tile."
+  },
+  "timeoutSeconds": 300,
+  "inputs": {"season": "spring", "day": 5, "weather": "sunny", "money": 500},
+  "rngSeed": 123456789,
+  "time": "2026-11-07T12:00:00Z",
+  "scenarioKind": "positive",
+  "expectedVerdict": "pass",
+  "determinism": {"idempotent": true, "declaredSources": []}
+}

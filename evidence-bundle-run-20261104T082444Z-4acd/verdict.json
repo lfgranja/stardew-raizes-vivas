@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "verdict": "pass",
+  "actualVerdict": "pass",
+  "signalsComplete": true,
+  "signalsAgree": true,
+  "thresholdsOk": true,
+  "expectedVerdict": "pass",
+  "farmhandBreach": false,
+  "evaluatorMissing": false
+}

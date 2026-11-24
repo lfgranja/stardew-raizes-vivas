@@ -1,0 +1,115 @@
+name: Code Style (format only)
+
+# This workflow runs on every change and its name states its whole scope. It is the only
+# workflow that always runs, so a green result here means exactly "formatting passed" and
+# nothing more. Build and test live in build_and_test.yml, which stays dormant until the
+# game assemblies are provisioned.
+on:
+    push:
+        branches:
+            - main
+            - dev
+    pull_request:
+        types: [opened, synchronize, reopened]
+
+# No paths-ignore filter on purpose. The run is cheap, and filtering this workflow would
+# make it a hazard: if it is ever added to required_status_checks, a documentation-only
+# pull request is filtered out and then blocks forever waiting for a check that can never
+# report. Running on every change removes that failure mode entirely.
+permissions:
+    contents: read
+jobs:
+    format:
+        name: Check Formatting
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+
+        env:
+            GamePath: ${{ github.workspace }}/.gamepath
+            BUILDDEPS_REPO: lfgranja/stardew-raizes-vivas-builddeps
+            BUILDDEPS_TAG: gamepath-v1
+            BUILDDEPS_ASSET: gamepath.zip
+
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v6
+              with:
+                  # Pinned to the SDK used for local development. Keeping CI on the same major
+                  # as the local toolchain keeps `dotnet format` verdicts identical in both places.
+                  dotnet-version: '10.0.x'
+
+            - name: Fetch build deps
+              env:
+                  GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  if [ -z "${GH_TOKEN:-}" ]; then
+                    echo "::error::BUILDDEPS_TOKEN is not set; cannot download the private build-deps release."
+                    exit 1
+                  fi
+                  mkdir -p "${GamePath}"
+                  gh release download "${BUILDDEPS_TAG}" \
+                      --repo "${BUILDDEPS_REPO}" \
+                      --pattern "${BUILDDEPS_ASSET}" \
+                      --dir "${GamePath}"
+                  unzip -o "${GamePath}/${BUILDDEPS_ASSET}" -d "${GamePath}"
+                  rm -f "${GamePath}/${BUILDDEPS_ASSET}"
+                  mkdir -p "${GamePath}/smapi-internal"
+                  if [ -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" ]; then
+                    mv -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" "${GamePath}/smapi-internal/"
+                  fi
+                  if [ -f "${GamePath}/0Harmony.dll" ]; then
+                    mv -f "${GamePath}/0Harmony.dll" "${GamePath}/smapi-internal/"
+                  fi
+                  # Fallback: private builddeps asset may omit 0Harmony.dll. Use
+                  # Lib.Harmony 2.2.2 (MIT, same major line as SMAPI 4.x bundled
+                  # Harmony) for compilation-only reference when missing. Proper fix:
+                  # update the lfgranja/stardew-raizes-vivas-builddeps gamepath asset.
+                  if [ ! -f "${GamePath}/smapi-internal/0Harmony.dll" ]; then
+                    harmony_nupkg="$(mktemp /tmp/lib.harmony.XXXXXX.nupkg)"
+                    curl --proto '=https' --tlsv1.2 -fsSL "https://api.nuget.org/v3-flatcontainer/lib.harmony/2.2.2/lib.harmony.2.2.2.nupkg" -o "${harmony_nupkg}"
+                    extracted=0
+                    for tfm in net6.0 net5.0 netcoreapp3.1 net48; do
+                      if unzip -p "${harmony_nupkg}" "lib/${tfm}/0Harmony.dll" > "${GamePath}/smapi-internal/0Harmony.dll" 2>/dev/null && [ -s "${GamePath}/smapi-internal/0Harmony.dll" ]; then
+                        extracted=1
+                        break
+                      fi
+                    done
+                    rm -f "${harmony_nupkg}"
+                    if [ "${extracted}" -ne 1 ]; then
+                      echo "::error::failed to obtain 0Harmony.dll (builddeps missing and NuGet fallback failed)"
+                      exit 1
+                    fi
+                    echo "using Lib.Harmony 2.2.2 fallback for smapi-internal/0Harmony.dll (compilation only)"
+                  fi
+
+            - name: Preflight - game assemblies
+              run: |
+                  set -euo pipefail
+                  missing=0
+                  for required in \
+                      "Stardew Valley.dll" \
+                      "StardewModdingAPI.dll" \
+                      "StardewValley.GameData.dll" \
+                      "MonoGame.Framework.dll" \
+                      "xTile.dll" \
+                      "smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" \
+                      "smapi-internal/0Harmony.dll"
+                  do
+                    if [ ! -f "${GamePath}/${required}" ]; then
+                      echo "::error::missing ${required} under GamePath (${GamePath})"
+                      missing=1
+                    fi
+                  done
+                  if [ "${missing}" -ne 0 ]; then
+                    echo "::error::GamePath does not contain a usable Stardew Valley + SMAPI install."
+                    exit 1
+                  fi
+
+            - name: Restore dependencies
+              run: dotnet restore --locked-mode
+
+            - name: Check Formatting
+              run: dotnet format Stardew-LivingRoots.sln --verify-no-changes

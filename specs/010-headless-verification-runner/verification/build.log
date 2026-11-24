@@ -1,0 +1,19 @@
+# T131 — Verification: build
+# Date: 2026-11-05T02:51:05Z
+# Command: GamePath=/home/luis/.local/share/Steam/steamapps/common/Stardew\ Valley dotnet build Stardew-LivingRoots.sln --configuration Release
+# Exit: 0
+# Errors: 0
+# Warnings: 14 (MSB3277 Mono.Cecil version conflict, pre-existing)
+# Duration: 94s
+
+## Per-project tail
+    14 Aviso(s)
+    0 Erro(s)
+
+## Raw tail
+/home/luis/.local/share/mise/dotnet-root/sdk/10.0.400/Microsoft.Common.CurrentVersion.targets(2453,5): warning MSB3277:             /home/luis/development/stardew-raizes-vivas/LivingRoots.Verification/bin/LivingRoots.Verification.dll [/home/luis/development/stardew-raizes-vivas/LivingRoots.Tests/LivingRoots.Tests.csproj]
+    14 Aviso(s)
+    0 Erro(s)
+
+Tempo Decorrido 00:01:34.18
+EXIT=0

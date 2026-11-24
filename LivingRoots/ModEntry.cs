@@ -1,0 +1,875 @@
+using System;
+using System.Threading;
+using HarmonyLib;
+using LivingRoots.Controllers;
+using LivingRoots.Domain;
+using LivingRoots.Domain.Services;
+using LivingRoots.Patches;
+using LivingRoots.Services;
+using LivingRoots.Services.Visualization;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using StardewModdingAPI;
+using StardewModdingAPI.Events;
+using StardewValley;
+
+namespace LivingRoots
+{
+    /// <summary>
+    /// Main entry point for the Living Roots mod
+    /// Following the architecture pattern described in ARCHITECTURE.md
+    /// Now serves as a Composition Root where all dependencies are configured and injected
+    /// </summary>
+    public sealed class ModEntry : Mod
+    {
+        private ModController? _controller;
+
+        // T046 (spec 010): stable SMAPI-provided API instance.
+        private readonly LivingRoots.Services.LivingRootsModApi _modApi = new();
+
+        // T137 (FR-012): the mod-level subscriptions Entry takes
+        // out, retained as fields so Dispose can detach the exact
+        // delegate instances. A method-group or anonymous-lambda
+        // subscription has no readable reference and can never be
+        // released, leaking the subscriber past mod unload.
+        private IModHelper? _helper;
+        private ISoilHealthService? _soilHealthService;
+        private EventHandler<AssetRequestedEventArgs>? _onAssetRequestedHandler;
+        private Action<string, Vector2, float>? _onTileHealthChangedHandler;
+
+        private bool _disposed;  // Thread-safe visibility of disposed state - all access is protected by _disposeLock
+        private readonly object _disposeLock = new();
+
+        /*********
+        ** Public methods
+        *********/
+        /// <summary>The mod entry point, called after the mod is first loaded.</summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
+        public override void Entry(IModHelper helper)
+        {
+            try
+            {
+                WireCompositionRoot(helper);
+            }
+            catch (Exception ex)
+            {
+                // T228 (FR-014, F8): a wiring failure must not prevent the
+                // mod from loading. The generic Error line names the failure
+                // without leaking exception detail; the exception type and
+                // HResult are emitted at Trace level only (FR-015).
+                try
+                {
+                    this.Monitor?.Log(
+                        "Mod entry wiring failed; the mod will continue without its services.",
+                        LogLevel.Error);
+                    this.Monitor?.Log(
+                        $"Mod entry wiring exception details: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})",
+                        LogLevel.Trace);
+                }
+                catch
+                {
+                    // Ignore logging failures
+                }
+            }
+        }
+
+        /// <summary>
+        /// Wires the composition root. Extracted from <see cref="Entry"/> so a
+        /// failure anywhere in the graph is caught and logged in sanitized form
+        /// by the entry point (T228, FR-014).
+        /// </summary>
+        /// <param name="helper">Provides simplified APIs for writing mods.</param>
+        private void WireCompositionRoot(IModHelper helper)
+        {
+            _helper = helper;
+
+            // Subscribe to asset requested events for recipes and machines (Tasks T030 & T031).
+            // T137 (FR-012): subscribe through the stored handler field so Dispose
+            // detaches the exact delegate instance — a method-group subscription
+            // leaves no readable reference to release on unload.
+            if (_onAssetRequestedHandler == null)
+            {
+                _onAssetRequestedHandler = OnAssetRequested;
+            }
+            if (helper?.Events?.Content != null && _onAssetRequestedHandler != null)
+            {
+                helper.Events.Content.AssetRequested += _onAssetRequestedHandler;
+            }
+
+            // Create domain services - Composition Root
+            var unicodeNormalizationService = new UnicodeNormalizationService();
+            var reservedNameHandler = new ReservedNameHandler(unicodeNormalizationService);
+            var fileNameSanitizationService = new FileNameSanitizationService(unicodeNormalizationService, reservedNameHandler);
+            var pathValidationService = new PathValidationService(unicodeNormalizationService);
+            var modLogic = new ModLogic(fileNameSanitizationService, pathValidationService);
+
+            // Create application services
+            var modDataService = new ModDataService(helper!, this.Monitor, modLogic);
+
+            // Create the soil health service with the required dependencies
+            var soilHealthService = new SoilHealthService(modDataService, this.Monitor, fileNameSanitizationService);
+            _soilHealthService = soilHealthService;
+
+            // Create the save ID provider with monitor for logging
+            var saveIdProvider = new SaveIdProvider(this.Monitor);
+
+            // Create testable interface implementations (Fix-4)
+            var timeProvider = new TimeProvider();
+            var seasonProvider = new SeasonProvider();
+            var playerProvider = new PlayerProvider();
+
+            // T055 (U3, FR-019): ONE host-authoritative lock
+            // service, created here and passed to both the
+            // controller and the bin service. Two `?? new`
+            // fallbacks would hand each class a disjoint
+            // lock registry, so a tile one of them locked
+            // would look free to the other.
+            var hostAtomicLockService = new HostAtomicLockService();
+
+            // Create composting services
+            var organicWasteValidator = new OrganicWasteValidator();
+            var compostingBinFactory = new CompostingBinFactory();
+            var playerInventory = new PlayerInventory();
+            // T054 (FR-008a): SMAPI's translation helper, injected
+            // into every service that renders a refusal message so
+            // Game1.showRedMessage shows the player's language.
+            var translationHelper = helper!.Translation;
+            var locationProvider = new LocationProvider();
+            var compostingBinService = new CompostingBinService(modDataService, saveIdProvider, organicWasteValidator, this.Monitor, timeProvider, compostingBinFactory, playerInventory, locationProvider: locationProvider, hostAtomicLockService: hostAtomicLockService, translationHelper: translationHelper);
+            // Spec 010 T102: the dev/CI verification mod reaches production
+            // services through the public API. Bind here, in the sole
+            // composition root, so the API fails closed when the wiring is
+            // incomplete instead of silently accepting scenario commands.
+            _modApi.BindVerificationServices(soilHealthService, compostingBinService, locationProvider);
+            var compostApplicationService = new CompostApplicationService(soilHealthService, playerProvider, this.Monitor, translationHelper: translationHelper);
+            var mulchApplicationService = new MulchApplicationService(modDataService, playerProvider, this.Monitor);
+            // Spec 017: the agrochemical service owns only the bounded
+            // measured soil-health mutation. The controller owns authority,
+            // locking, consumption, feedback, and the FR-009 broadcast.
+            var agrochemicalApplicationService = new AgrochemicalApplicationService(soilHealthService);
+
+            // Create soil decay service
+            var seasonalDecayMultiplier = new SeasonalDecayMultiplier();
+            var soilDecayService = new SoilDecayService(soilHealthService, this.Monitor, seasonalDecayMultiplier, seasonProvider, locationProvider, timeProvider, mulchService: mulchApplicationService);
+
+            // Create visualization services (F4 — DI wiring per Phase 9/10)
+            var colorInterpolationService = new ColorInterpolationService();
+            var visualizationConfigService = new VisualizationConfigurationService(modDataService, this.Monitor, fileNameSanitizationService);
+            var hudNotifier = new HudNotifier();
+            var visualizationService = new VisualizationService(colorInterpolationService, visualizationConfigService, this.Monitor, hudNotifier, mulchService: mulchApplicationService);
+
+            // Wire reactive cache invalidation upon soil health change (T036, FR-010).
+            // T137 (FR-012): a stored named handler rather than an anonymous
+            // lambda — an anonymous subscription has no readable reference, so
+            // it can never be detached and keeps the visualization service
+            // alive through the event past mod unload.
+            _onTileHealthChangedHandler = (_, _, _) => visualizationService.InvalidateCache();
+            soilHealthService.OnTileHealthChanged += _onTileHealthChangedHandler;
+
+            // Create controller with dependency injection.
+            // T069 (FR-004): the color interpolator is the
+            // SAME instance the visualization service holds,
+            // so a configuration change applies the custom
+            // category palette live (SetCategoryColors) —
+            // without this wiring the controller's palette
+            // application is a null-conditional no-op and
+            // the interpolator keeps its ModConstants
+            // defaults.
+            // T055 (U3): the player provider (live hoe
+            // feedback — a null provider silently skips
+            // HandleHoeUsage) and the shared host atomic
+            // lock service (the same instance the bin
+            // service holds) are injected here, not left
+            // to the constructor's `?? new` fallbacks.
+            // Initialize Harmony patches for harvest quality (spec 015)
+            try
+            {
+                var harvestQualityService = new HarvestQualityService();
+                HarvestPatches.Initialize(this.Monitor, harvestQualityService, soilHealthService);
+                // Spec 020: crioulo harvest arm (deterministic seed save + Healthy-band bonus).
+                // Host applies the soil write via the shared lock; farmhands route typed
+                // requests to the host (Constitution VI) — inventory grant stays client-local.
+                HarvestPatches.InitializeHeirloomRules(
+                    hostAtomicLockService,
+                    who => who == null ? null : new FarmerInventoryAdapter(who),
+                    () => GetCurrentSeasonDayKey(),
+                    () => _controller?.BroadcastSoilHealthSnapshotIfHost(),
+                    helper,
+                    this.ModManifest);
+                // Spec 020: crioulo plant seam — +2 on heirloom plant (host-authoritative).
+                HeirloomPatches.Initialize(
+                    this.Monitor,
+                    soilHealthService,
+                    hostAtomicLockService,
+                    helper,
+                    this.ModManifest,
+                    key => LocalizeOrFallback(key, key),
+                    () => _controller?.BroadcastSoilHealthSnapshotIfHost(),
+                    () => GetCurrentSeasonDayKey());
+                // Skip Harmony patching in test environments
+                if (this.ModManifest != null && !string.IsNullOrEmpty(this.ModManifest.UniqueID) && this.Monitor != null)
+                {
+                    RegisterHarmonyPatch();
+                }
+            }
+            catch
+            {
+                // Ignore in test environment
+            }
+
+            _controller = new ModController(helper, this.Monitor!, this.ModManifest!, soilHealthService, saveIdProvider, compostingBinService, soilDecayService, compostApplicationService, visualizationService, visualizationConfigService, mulchApplicationService: mulchApplicationService, hostAtomicLockService: hostAtomicLockService, playerProvider: playerProvider, colorInterpolationService: colorInterpolationService, locationProvider: locationProvider, seasonProvider: seasonProvider, modApi: _modApi, agrochemicalApplicationService: agrochemicalApplicationService);
+
+            // Spec 017 T059: bind the dev/CI verification apply delegate after
+            // the controller exists. The controller remains the single owner of
+            // authority, locking, consumption, feedback, and the FR-009
+            // broadcast; this wiring only forwards the Dev/CI queue command into
+            // that same route. The delegate refuses everything off-host.
+            try
+            {
+                _modApi.BindAgrochemicalApplication((loc, x, y) =>
+                {
+                    var controller = _controller;
+                    if (controller == null)
+                    {
+                        return false;
+                    }
+
+                    var location = ResolveLocation(loc, name => locationProvider?.GetLocationByName(name));
+
+                    if (location == null)
+                    {
+                        return false;
+                    }
+
+                    long farmerId = 0L;
+                    try
+                    {
+                        farmerId = StardewValley.Game1.player?.UniqueMultiplayerID ?? 0L;
+                    }
+                    catch
+                    {
+                        farmerId = 0L;
+                    }
+
+                    return controller.TryApplyAgrochemicalWithLock(location, new Vector2(x, y), farmerId);
+                });
+            }
+            catch (Exception ex)
+            {
+                this.Monitor?.Log(
+                    $"Agrochemical verification wiring failed (exception type: {ex.GetType().FullName}).",
+                    LogLevel.Trace);
+            }
+
+            // 013/Wave 4: dev/CI verification mulch apply delegate. Delegates to
+            // IMulchApplicationService (held mulch item required; lr_give_mulch
+            // grants it). Host-authoritative gameplay rules remain in the service/
+            // controller paths; this is a headless verification seam.
+            try
+            {
+                _modApi.BindMulchApplication((loc, x, y) =>
+                {
+                    var location = ResolveLocation(loc, name => locationProvider?.GetLocationByName(name));
+
+                    if (location == null)
+                    {
+                        return false;
+                    }
+
+                    var player = StardewValley.Game1.player;
+                    if (player == null)
+                    {
+                        return false;
+                    }
+
+                    return mulchApplicationService.TryApplyMulch(player, location, new Vector2(x, y), out _);
+                });
+
+                // Authorized dev/CI contention seam (017 RefusedConflict/action-conflict).
+                _modApi.BindHostLockSeams(
+                    (loc, x, y, farmerId) => hostAtomicLockService.TryAcquireLock(loc, new Vector2(x, y), farmerId),
+                    (loc, x, y, farmerId) => hostAtomicLockService.ReleaseLock(loc, new Vector2(x, y), farmerId));
+            }
+            catch (Exception ex)
+            {
+                this.Monitor?.Log(
+                    $"Mulch verification wiring failed (exception type: {ex.GetType().FullName}).",
+                    LogLevel.Trace);
+            }
+
+            // T118 (FR-009/A8): host→client soil-health sync channel.
+            try
+            {
+                helper.Events.Multiplayer.ModMessageReceived += _controller.OnModMessageReceived;
+            }
+            catch (Exception ex)
+            {
+                this.Monitor?.Log($"Soil health sync subscription failed: {ex.GetType().FullName} (HResult: 0x{ex.HResult:X8})", LogLevel.Trace);
+            }
+
+            // Register events through the Controller
+            _controller.RegisterEvents();
+        }
+
+        /// <summary>
+        /// Registers the Harmony patch on Crop.harvest. Extracted into its own
+        /// method so the JIT does not resolve Harmony types while compiling
+        /// WireCompositionRoot (which would abort the whole composition root in
+        /// headless test hosts lacking 0Harmony.dll).
+        /// </summary>
+        private void RegisterHarmonyPatch()
+        {
+            try
+            {
+                var harmony = new Harmony(this.ModManifest.UniqueID);
+                var harvestMethod = AccessTools.Method(typeof(Crop), nameof(Crop.harvest));
+                if (harvestMethod != null)
+                {
+                    harmony.Patch(
+                        harvestMethod,
+                        prefix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.Harvest_Prefix)),
+                        postfix: new HarmonyMethod(typeof(HarvestPatches), nameof(HarvestPatches.Harvest_Postfix)));
+                    this.Monitor?.Log("Living Roots: Harvest Harmony patch registered.", LogLevel.Trace);
+                }
+
+                var plantMethod = AccessTools.Method(typeof(StardewValley.TerrainFeatures.HoeDirt), nameof(StardewValley.TerrainFeatures.HoeDirt.plant));
+                if (plantMethod != null)
+                {
+                    harmony.Patch(
+                        plantMethod,
+                        postfix: new HarmonyMethod(typeof(HeirloomPatches), nameof(HeirloomPatches.HeirloomPlant_Postfix)));
+                    this.Monitor?.Log("Living Roots: Heirloom plant Harmony patch registered.", LogLevel.Trace);
+                }
+            }
+            catch
+            {
+                // Ignore in test environment
+            }
+        }
+
+        /*********
+        ** Public methods (SMAPI API)
+        ********/
+
+        /// <summary>
+        /// Exposes the mod's public API (spec 010, T046). Returns the same
+        /// instance across calls, before and after <see cref="Entry"/>.
+        /// </summary>
+        public override object GetApi()
+        {
+            return _modApi;
+        }
+
+        /*********
+        ** Protected methods
+        ********/
+
+        /// <summary>Clean up resources when the mod is unloaded.</summary>
+        /// <param name="disposing">Whether to instance is being disposed.</param>
+        protected override void Dispose(bool disposing)
+        {
+            // Use a lock to ensure thread-safe disposal
+            lock (_disposeLock)
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                if (disposing)
+                {
+                    // T137 (FR-012): release the mod-level event subscriptions
+                    // Entry took out, before the controller tears down its own.
+                    UnsubscribeModEvents();
+
+                    _controller?.Dispose();
+                    _controller = null;
+                }
+
+                _disposed = true;
+            }
+
+            // Call base.Dispose after releasing the lock to prevent potential deadlocks
+            base.Dispose(disposing);
+        }
+
+        /*********
+        ** Private methods
+        *********/
+
+        /// <summary>
+        /// Releases the event subscriptions <see cref="Entry"/> took out
+        /// (T137, FR-012): the content-pipeline asset handler and the
+        /// soil-health cache-invalidation hook. Both detach through the
+        /// stored handler fields, which are then nulled, so a second
+        /// disposal is a no-op and no delegate outlives the mod.
+        /// </summary>
+        private void UnsubscribeModEvents()
+        {
+            if (_onAssetRequestedHandler != null)
+            {
+                _helper?.Events?.Content.AssetRequested -= _onAssetRequestedHandler;
+                _onAssetRequestedHandler = null;
+            }
+
+            if (_onTileHealthChangedHandler != null)
+            {
+                _soilHealthService?.OnTileHealthChanged -= _onTileHealthChangedHandler;
+                _onTileHealthChangedHandler = null;
+            }
+
+            _helper = null;
+            _soilHealthService = null;
+        }
+
+        /// <summary>Raised when an asset is requested from the content pipeline.</summary>
+        /// <param name="sender">The event sender.</param>
+        /// <param name="e">The event arguments.</param>
+        private string LocalizeOrFallback(string translationKey, string fallback)
+        {
+            var translation = _helper?.Translation;
+            if (translation == null)
+            {
+                return fallback;
+            }
+
+            var translated = translation.Get(translationKey);
+            if (string.IsNullOrWhiteSpace(translated)
+                || string.Equals(translated, translationKey, StringComparison.Ordinal))
+            {
+                return fallback;
+            }
+
+            return translated;
+        }
+
+#pragma warning disable S2325 // S2325: event handler registered as instance delegate; cannot be static
+        internal void OnAssetRequested(object? sender, AssetRequestedEventArgs e)
+        {
+            if (e.NameWithoutLocale.IsEquivalentTo("Data/CraftingRecipes"))
+            {
+                e.Edit(editor =>
+                {
+                    var data = editor.AsDictionary<string, string>().Data;
+                    // T053 (FR-001/FR-006): segment 3 is `true` so the
+                    // yield resolves as the (BC) big craftable registered
+                    // in Data/BigCraftables (a `false` yield would resolve
+                    // as an (O) object that no longer exists); segment 4
+                    // is `default` so the recipe is learned on day one
+                    // instead of requiring an unlock event.
+                    data[ModConstants.CompostingBinRecipeId] = $"388 {ModConstants.CompostingBinWoodCost} 390 {ModConstants.CompostingBinStoneCost} 771 {ModConstants.CompostingBinFiberCost}/{ModConstants.CompostCraftingTab}/{ModConstants.CompostingBinItemId} 1/true/default/Composting Bin";
+                    // T004 (spec 013): mulch recipe — fiber x10 → 1 mulch, craftable day 1.
+                    data["LivingRoots_MulchRecipe"] = $"771 10/{ModConstants.CompostCraftingTab}/{ModConstants.MulchItemId} 1/false/default/Mulch";
+                });
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Data/Objects"))
+            {
+                e.Edit(asset =>
+                {
+                    var data = asset.AsDictionary<string, StardewValley.GameData.Objects.ObjectData>().Data;
+
+                    // T053 (FR-001a/FR-006): compost is the only object
+                    // this mod contributes. The composting bin moved to
+                    // Data/BigCraftables — registering it here as well
+                    // would fork one concept into two item types and
+                    // point the recipe and the machine rules at
+                    // different items.
+                    // T078 (FR-005): the compost
+                    // entry carries its own icon.
+                    // Without Texture the game falls
+                    // back to the vanilla springobjects
+                    // sheet at SpriteIndex 0 — a
+                    // weeds/stone-adjacent sprite that
+                    // reads as another fertilizer. The
+                    // texture is served by the
+                    // CompostTextureAssetName branch
+                    // below (LoadFromModFile), and the
+                    // PNG is a single 16×16 icon, so
+                    // SpriteIndex 0 fills the frame.
+                    data[ModConstants.CompostItemId] = new StardewValley.GameData.Objects.ObjectData
+                    {
+                        Name = "Compost",
+                        DisplayName = "Compost",
+                        Description = "Organic compost rich in microbial life. Restores 15 soil health to tilled tiles.",
+                        Type = "Basic",
+                        Category = ModConstants.CompostCategoryId,
+                        Price = 10,
+                        Texture = ModConstants.CompostTextureAssetName,
+                        SpriteIndex = 0
+                    };
+                    // T004 (spec 013): mulch object — Category -26 (same as compost),
+                    // ContextTags mulch_item + compostable_item.
+                    data[ModConstants.MulchItemId] = new StardewValley.GameData.Objects.ObjectData
+                    {
+                        Name = "Mulch",
+                        DisplayName = "Mulch",
+                        Description = "Dry cover that keeps tilled soil alive. Blocks decay and weeds.",
+                        Type = "Crafting",
+                        Category = ModConstants.CompostCategoryId,
+                        Price = 5,
+                        Texture = "Mods/lfgranja.LivingRoots/Mulch",
+                        SpriteIndex = 0,
+                        ContextTags = new List<string> { ModConstants.MulchTag, "compostable_item" }
+                    };
+                    // Spec 017: the single Joja/agrochemical input. It is
+                    // deliberately Category 0 with no context tags: it must not
+                    // enter the fertilizer slot, the organic-waste/composting
+                    // validator, or any vanilla regenerative path. The mod
+                    // intercepts right-click for its only supported use.
+                    data[ModConstants.AgrochemicalItemId] = new StardewValley.GameData.Objects.ObjectData
+                    {
+                        Name = "Joja Agrochemical",
+                        DisplayName = LocalizeOrFallback(ModConstants.AgrochemicalItemNameKey, "Joja Agrochemical"),
+                        Description = LocalizeOrFallback(
+                            ModConstants.AgrochemicalItemDescriptionKey,
+                            "An industrial Joja shortcut. It works fast, but applying it costs 10 soil health. The soil consequence is bounded and recoverable through your usual soil care."),
+                        Type = "Basic",
+                        Price = 50
+                    };
+                    // Spec 020 (FR-001/FR-005): the crioulo parsnip seed.
+                    // Type Seeds / Category -74 is required for the game to
+                    // treat it as plantable. ContextTags carry heirloom_seed
+                    // (identity predicate) and never compostable_item — seeds
+                    // are NOT accepted by the fruit-tree/organic waste rule in
+                    // vanilla and we keep that boundary; the produce is the
+                    // compostable one (FR-010). DisplayName/Description route
+                    // through the 020 keys for locale parity (FR-011).
+                    data[ModConstants.HeirloomItemId] = new StardewValley.GameData.Objects.ObjectData
+                    {
+                        Name = "LivingRoots_HeirloomParsnipSeeds",
+                        DisplayName = LocalizeOrFallback(ModConstants.HeirloomSeedNameKey, "Crioulo Parsnip Seeds"),
+                        Description = LocalizeOrFallback(
+                            ModConstants.HeirloomSeedDescriptionKey,
+                            "Open-pollinated crioulo seed, saved from farm-selected parsnips. Slower than hybrid seed, but it respects the living soil and one seed comes back each harvest. Renews its own line when you save the seed."),
+                        Type = "Seeds",
+                        Category = -74,
+                        Price = ModConstants.HeirloomSeedPrice,
+                        Texture = ModConstants.HeirloomSeedsTextureAssetName,
+                        SpriteIndex = 0,
+                        ContextTags = new List<string> { ModConstants.HeirloomSeedTag, "seed_item" }
+                    };
+                    // Spec 020 (FR-001/FR-010): the crioulo produce. Category
+                    // -75 (vegetable), compostable_item so the waste path
+                    // accepts it, premium price (FR-018 tunable).
+                    data[ModConstants.HeirloomProduceItemId] = new StardewValley.GameData.Objects.ObjectData
+                    {
+                        Name = "LivingRoots_HeirloomParsnip",
+                        DisplayName = LocalizeOrFallback(ModConstants.HeirloomProduceNameKey, "Crioulo Parsnip"),
+                        Description = LocalizeOrFallback(
+                            ModConstants.HeirloomProduceDescriptionKey,
+                            "A torto crioulo parsnip, pale and sweet, saved and selected for living-soil systems. Worth a little more at the shipping bin for the care that went into it."),
+                        Type = "Basic",
+                        Category = -75,
+                        Price = ModConstants.HeirloomProducePrice,
+                        Texture = ModConstants.HeirloomProduceTextureAssetName,
+                        SpriteIndex = 0,
+                        ContextTags = new List<string> { ModConstants.HeirloomProduceTag, "compostable_item", "category_vegetable" }
+                    };
+                });
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Data/Crops"))
+            {
+                // Spec 020 (FR-001/FR-002): the crioulo parsnip crop entry.
+                // The asset is keyed by the SEED item id (1.6 contract). It
+                // grows in 7 days ([1,2,2,2]) vs vanilla parsnip's 4 — the
+                // crioulo tradeoff, mirroring landrace lateness (Korpetis
+                // 2023; see research). CountForMonoculture/Polyculture are
+                // true: crioulo crops are real food crops for the achievements.
+                e.Edit(asset =>
+                {
+                    var data = asset.AsDictionary<string, StardewValley.GameData.Crops.CropData>().Data;
+                    data[ModConstants.HeirloomItemId] = new StardewValley.GameData.Crops.CropData
+                    {
+                        Seasons = new System.Collections.Generic.List<StardewValley.Season> { StardewValley.Season.Spring },
+                        DaysInPhase = new System.Collections.Generic.List<int> { 1, 2, 2, 2 },
+                        RegrowDays = -1,
+                        IsRaised = false,
+                        IsPaddyCrop = false,
+                        NeedsWatering = true,
+                        HarvestItemId = ModConstants.HeirloomProduceItemId,
+                        HarvestMinStack = 1,
+                        HarvestMaxStack = 1,
+                        ExtraHarvestChance = 0.1,
+                        HarvestMethod = StardewValley.GameData.Crops.HarvestMethod.Grab,
+                        HarvestMinQuality = 0,
+                        TintColors = new System.Collections.Generic.List<string>(),
+                        Texture = ModConstants.HeirloomCropsTextureAssetName,
+                        SpriteIndex = 0,
+                        CountForMonoculture = true,
+                        CountForPolyculture = true
+                    };
+                });
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Data/Shops"))
+            {
+                // Spec 020 (FR-003/FR-004/FR-013): crioulo seeds travel. The
+                // Traveler (key "Traveler") sells working-capital seeds from
+                // farm to farm — no Elena/NPC required, Pierre/Joja untouched.
+                // Player-limited stock (co-op-safe) and SEASON Spring gating.
+                // Pierre ("SeedShop") and Joja are never edited. The edit is
+                // idempotent across re-requests: re-inserting an entry with an
+                // existing Id is skipped (vanilla spawns warn on duplicates).
+                e.Edit(asset =>
+                {
+                    var data = asset.AsDictionary<string, StardewValley.GameData.Shops.ShopData>().Data;
+                    if (!data.TryGetValue("Traveler", out var traveler) || traveler == null)
+                    {
+                        traveler = new StardewValley.GameData.Shops.ShopData();
+                        data["Traveler"] = traveler;
+                    }
+
+                    traveler.Items ??= new System.Collections.Generic.List<StardewValley.GameData.Shops.ShopItemData>();
+                    if (traveler.Items.All(item => !string.Equals(item.Id, ModConstants.HeirloomItemId, StringComparison.Ordinal)))
+                    {
+                        traveler.Items.Add(new StardewValley.GameData.Shops.ShopItemData
+                        {
+                            Id = ModConstants.HeirloomItemId,
+                            ItemId = ModConstants.QualifiedHeirloomItemId,
+                            Price = ModConstants.HeirloomSeedPrice,
+                            AvailableStock = 5,
+                            AvailableStockLimit = StardewValley.GameData.Shops.LimitedStockMode.Player,
+                            Condition = "SEASON Spring"
+                        });
+                    }
+                });
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.CompostTextureAssetName))
+            {
+                // T078 (FR-005): provide the compost
+                // icon as a game asset so the
+                // ObjectData.Texture pointer above
+                // resolves. Asset names under Mods/
+                // have no locale variants, so
+                // NameWithoutLocale identifies the
+                // asset exactly as Name would (the
+                // existing test doubles only mock
+                // NameWithoutLocale). LoadFromModFile
+                // paths are mod-folder-relative;
+                // Assets/compost.png is a 16×16
+                // 32-bit RGBA PNG copied to the mod
+                // folder by the csproj.
+                e.LoadFromModFile<Texture2D>("Assets/compost.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Mods/lfgranja.LivingRoots/Mulch"))
+            {
+                // Spec 013: serve the mulch icon as a game asset.
+                e.LoadFromModFile<Texture2D>("Assets/mulch.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.CompostingBinTextureAssetName))
+            {
+                // T099 (FR-001a): serve the
+                // composting bin's empty-state
+                // texture as a game asset so the
+                // BigCraftableData.Texture pointer
+                // above resolves through the game
+                // content pipeline. Same conventions
+                // as the compost icon branch: asset
+                // names under Mods/ have no locale
+                // variants, and the load path is
+                // mod-folder-relative —
+                // Assets/composting_bin_empty.png is
+                // the 16×32 RGBA empty-state sprite
+                // the csproj copies to the mod
+                // folder. No ContentPatcher
+                // dependency: e.LoadFromModFile is
+                // the pure-SMAPI equivalent (T053
+                // spike decision,
+                // briefings/spike-decision.md).
+                e.LoadFromModFile<Texture2D>("Assets/composting_bin_empty.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.CompostingBinProcessingSpriteAssetName))
+            {
+                // T099 (FR-001a): serve the
+                // composting bin's processing-state
+                // progress sprite as a game asset so
+                // the native machine interface can
+                // render the working state from the
+                // mod's own sprite — the same
+                // LoadFromModFile convention as the
+                // bin texture branch above.
+                // Assets/composting_bin_processing.png
+                // is the 16×32 RGBA processing-state
+                // sprite the csproj copies to the mod
+                // folder.
+                e.LoadFromModFile<Texture2D>("Assets/composting_bin_processing.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.CompostingBinReadySpriteAssetName))
+            {
+                // T099 (FR-001a): serve the
+                // composting bin's ready-state
+                // progress sprite as a game asset so
+                // the native machine interface can
+                // render the finished state from the
+                // mod's own sprite — the same
+                // LoadFromModFile convention as the
+                // bin texture branch above.
+                // Assets/composting_bin_ready.png is
+                // the 16×32 RGBA ready-state sprite
+                // the csproj copies to the mod folder.
+                e.LoadFromModFile<Texture2D>("Assets/composting_bin_ready.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.HeirloomSeedsTextureAssetName))
+            {
+                // Spec 020 (FR-017): serve the crioulo seed icon as a game asset.
+                // Placeholder procedural art (disclosed); final art is a
+                // maintainer deliverable. Mod-folder-relative path; the csproj
+                // copies Assets/** to the output folder.
+                e.LoadFromModFile<Texture2D>("Assets/heirloom_seeds.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.HeirloomProduceTextureAssetName))
+            {
+                // Spec 020 (FR-017): serve the crioulo produce icon as a game asset.
+                e.LoadFromModFile<Texture2D>("Assets/heirloom_produce.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo(ModConstants.HeirloomCropsTextureAssetName))
+            {
+                // Spec 020 (FR-002/FR-017): serve the crioulo crop row spritesheet
+                // as a game asset. One row, 16×32 per frame (2 seed variants +
+                // 4 phases; sheet width 128px). Placeholder procedural art.
+                e.LoadFromModFile<Texture2D>("Assets/Crops/heirloom_crops.png", AssetLoadPriority.Medium);
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Data/BigCraftables"))
+            {
+                e.Edit(asset =>
+                {
+                    var data = asset.AsDictionary<string, StardewValley.GameData.BigCraftables.BigCraftableData>().Data;
+
+                    // T053 (FR-001a/FR-001b): the bin as a native big
+                    // craftable — the machine type every vanilla
+                    // machine (keg, worm bin, crystalarium) uses. Key
+                    // is the unqualified item ID; the machine behaviour
+                    // lives in Data/Machines under the qualified (BC)
+                    // key. Fragility 0 keeps the bin pick-up-able with
+                    // any tool (FR-005c); indoor placement covers the
+                    // Greenhouse (FR-002), outdoor the farm.
+                    // T099 (FR-001a): the entry carries its own
+                    // texture asset path, so the native machine
+                    // interface renders the mod's bin instead of
+                    // falling back to the vanilla big-craftable
+                    // sheet — the asset ModEntry serves through the
+                    // CompostingBinTextureAssetName branch below
+                    // (LoadFromModFile), the T078 convention the
+                    // compost icon already uses.
+                    data[ModConstants.CompostingBinItemId] = new StardewValley.GameData.BigCraftables.BigCraftableData
+                    {
+                        Name = "CompostingBin",
+                        DisplayName = "Composting Bin",
+                        Description = "Converts organic waste into rich compost over time. One batch yields one compost.",
+                        Price = 0,
+                        Texture = ModConstants.CompostingBinTextureAssetName,
+                        Fragility = 0,
+                        CustomFields = new Dictionary<string, string>
+                        {
+                            [ModConstants.ModDataInputIdKey] = "",
+                            [ModConstants.ModDataDaysRemainingKey] = ""
+                        },
+                        CanBePlacedIndoors = true,
+                        CanBePlacedOutdoors = true
+                    };
+                });
+            }
+            else if (e.NameWithoutLocale.IsEquivalentTo("Data/Machines"))
+            {
+                e.Edit(asset =>
+                {
+                    var data = asset.AsDictionary<string, StardewValley.GameData.Machines.MachineData>().Data;
+                    var binId = $"(BC){ModConstants.MachineCompostingBinId}";
+                    data[binId] = new StardewValley.GameData.Machines.MachineData
+                    {
+                        // T053 (FR-001b): fairy dust would accelerate the
+                        // batch outside the mod's timing authority.
+                        AllowFairyDust = false,
+                        OutputRules = new System.Collections.Generic.List<StardewValley.GameData.Machines.MachineOutputRule>
+                        {
+                            new StardewValley.GameData.Machines.MachineOutputRule
+                            {
+                                Id = "Default",
+                                // T053 (FR-003): the native input filter mirrors
+                                // OrganicWasteValidator's hybrid validation:
+                                // inclusion tag "compostable_item" OR vanilla
+                                // category IDs (-74 seeds, -75 vegetables,
+                                // -79 fruits, -80 flowers, -81 greens),
+                                // with exclusion tag "not_compostable"
+                                // overriding everything. Each trigger ANDs its
+                                // tags; any matching trigger starts the rule.
+                                // The positive tag set mirrors OrganicWasteValidator's
+                                // inherited qualifying set (spec 002 FR-008)
+                                // so the native machine path and the mod's
+                                // AddWaste path accept the same items, and
+                                // !not_compostable keeps explicitly excluded
+                                // items out even when they match a category.
+                                // (T133 FR-003) Machine rule triggers use the validator-owned waste set:
+                                // inclusion tag "compostable_item" OR vanilla category IDs (-74 seeds, -75 vegetables,
+                                // -79 fruits, -80 flowers, -81 greens), with exclusion tag "not_compostable" overriding
+                                // everything. Each trigger ANDs its tags; any matching trigger starts the rule.
+                                // The positive tag set mirrors OrganicWasteValidator's
+                                // inherited qualifying set (spec 002 FR-008) so the native machine path and the mod's
+                                // AddWaste path accept the same items, and
+                                // !not_compostable keeps explicitly excluded items out even when they match a category.
+                                Triggers = new System.Collections.Generic.List<StardewValley.GameData.Machines.MachineOutputTriggerRule>
+                                {
+                                    // T133 (FR-003): derive Data/Machines triggers from the single validator-owned waste set
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "CompostableItem", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "compostable_item", "!not_compostable" }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Seeds", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_seeds", "!not_compostable" }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Vegetables", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_vegetable", "!not_compostable" }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Fruits", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_fruits", "!not_compostable" }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Flowers", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_flowers", "!not_compostable" }, RequiredCount = 1 },
+                                    new StardewValley.GameData.Machines.MachineOutputTriggerRule { Id = "Greens", Trigger = StardewValley.GameData.Machines.MachineOutputTrigger.ItemPlacedInMachine, RequiredTags = new System.Collections.Generic.List<string> { "category_greens", "!not_compostable" }, RequiredCount = 1 }
+                                },
+                                OutputItem = new System.Collections.Generic.List<StardewValley.GameData.Machines.MachineItemOutput>
+                                {
+                                    // Native payout disabled — rely on
+                                    // CollectCompost interception instead.
+                                    // Item output intentionally omitted to
+                                    // prevent dual-payout (T119).
+                                },
+                                // T053 (FR-001b): the native processing
+                                // duration — without it the output would be
+                                // ready instantly.
+                                DaysUntilReady = ModConstants.MaturationDays
+                            }
+                        }
+                    };
+                });
+            }
+        }
+        private static StardewValley.GameLocation? ResolveLocation(string loc, Func<string, StardewValley.GameLocation?>? locationProvider)
+        {
+            StardewValley.GameLocation? location = null;
+            try
+            {
+                location = locationProvider?.Invoke(loc);
+            }
+            catch
+            {
+                location = null;
+            }
+
+            if (location == null)
+            {
+                try
+                {
+                    location = StardewValley.Game1.getLocationFromName(loc);
+                }
+                catch
+                {
+                    location = null;
+                }
+            }
+            return location;
+        }
+
+        private static string GetCurrentSeasonDayKey()
+        {
+            try
+            {
+                var season = StardewValley.Game1.currentSeason;
+                return string.Format(System.Globalization.CultureInfo.InvariantCulture, "{0}:{1}:{2}", season, StardewValley.Game1.dayOfMonth, StardewValley.Game1.year);
+            }
+            catch
+            {
+                return "unknown";
+            }
+        }
+    }
+}

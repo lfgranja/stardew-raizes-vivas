@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 3,
+  "scenarioId": "soil-health-harvest-unknown",
+  "featureSlug": "014-soil-health-crop-quality",
+  "testMdPath": "specs/014-soil-health-crop-quality/test.md",
+  "summary": "014: NaN/unknown soil harvest remains vanilla (014 A7) — no forced quality, no boost; unknown probe attests vanilla main quality.",
+  "playerRole": "host",
+  "minimumGameVersion": "1.6.14",
+  "environment": {
+    "gameVersion": "1.6.14",
+    "smapiVersion": "4.4.0",
+    "modVersion": "0.1.0",
+    "apiVersion": "1.0.0",
+    "saveId": "farm-year1-day5",
+    "config": {
+      "saveMode": "save",
+      "headless": true,
+      "skipBuild": true
+    }
+  },
+  "milestoneSave": "farm-year1-day5",
+  "initCommands": [
+    {
+      "kind": "console",
+      "command": "lr_set_soil_health 60 15 NaN",
+      "description": "pin target context; matrix unknown probe uses NaN/vanilla (014 A7)"
+    }
+  ],
+  "steps": [
+    {
+      "action": "runMacro",
+      "target": "60,15",
+      "inputs": {
+        "macroFile": "macros/harvest-matrix-unknown.txt"
+      }
+    },
+    {
+      "action": "observe",
+      "target": "60,15"
+    }
+  ],
+  "thresholds": [
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "unknownHealthTier",
+        "operator": "eq",
+        "right": "unknown"
+      },
+      "description": "unknown probe recorded with unknown soil tier (NaN)"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "unknownVanillaQuality",
+        "operator": "eq",
+        "right": 1
+      },
+      "description": "unknown probe selected with vanilla quality 1 (attestable baseline)"
+    },
+    {
+      "signal": "cropPhaseDelta",
+      "predicate": {
+        "op": "cmp",
+        "left": "unknownHarvestQuality",
+        "operator": "eq",
+        "right": 1
+      },
+      "description": "NaN/unknown soil applies no harvest modification (014 A7): main quality remains vanilla"
+    },
+    {
+      "signal": "smapiLog",
+      "predicate": {
+        "op": "cmp",
+        "left": "isMainPlayer",
+        "operator": "eq",
+        "right": true
+      },
+      "description": "host/main-player only"
+    }
+  ],
+  "expectedSignals": [
+    "soilHealthStateDelta",
+    "cropPhaseDelta",
+    "smapiLog"
+  ],
+  "timeoutSeconds": 300,
+  "inputs": {
+    "season": "spring",
+    "day": 5,
+    "weather": "sunny",
+    "money": 500
+  },
+  "rngSeed": 123456789,
+  "time": "2026-11-07T12:00:00Z",
+  "scenarioKind": "positive",
+  "expectedVerdict": "pass",
+  "determinism": {
+    "idempotent": true,
+    "declaredSources": []
+  }
+}

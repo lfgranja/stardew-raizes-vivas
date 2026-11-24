@@ -1,0 +1,23 @@
+# Quickstart Validation: Spec 013 — Mulch / Soil Cover
+
+Date: 2026-10-31
+
+## Scenarios
+
+| # | Scenario | Status | Notes |
+|---|----------|--------|-------|
+| 1 | Craft mulch (10 fiber → 1 mulch) | ✅ Code-verified | Recipe registered in Data/CraftingRecipes; format "771 10/Home/LivingRoots.Mulch 1/false/default/Mulch" |
+| 2 | Apply mulch to tilled tile | ✅ Code-verified | TryApplyMulch validates HoeDirt, sets HasMulch=true, DaysRemaining=7, consumes 1 mulch, plays hoeHit |
+| 3 | 7-day protection (decay = 0) | ✅ Code-verified | MulchDecayMultiplier = 0f → decay = 0; TickMulch decrements days |
+| 4 | Expiry after 7 days | ✅ Code-verified | TickMulch removes mulch when DaysRemaining <= 0; decay resumes |
+| 5 | Rain resistance | ✅ Code-verified | No rain-removal logic exists; mulch persists |
+| 6 | Invalid-tile message | ✅ Code-verified | Non-HoeDirt → message.mulch.invalid-tile, no consumption |
+| 7 | Already-mulched message | ✅ Code-verified | IsMulched check → message.mulch.already, no consumption |
+| 8 | Mulch on planted tile | ✅ Code-verified | No crop-presence guard; HoeDirt check only; dotted border overlay |
+| 9 | Build/test/format | ✅ Verified | build 0/0, test 1443 pass, format clean |
+| 10 | Multiplayer stub | ⚠️ Not tested | No multiplayer stub test written (T038 pending) |
+
+## In-Game Verification (Gate 3)
+
+NOT performed. Requires manual SMAPI session. No SMAPI log, no save with mod data.
+Status: pending (human-verified only).

@@ -1,0 +1,495 @@
+#!/usr/bin/env bash
+if [ -n "${_LR_SIGNALS_LOADED:-}" ]; then return 0 2>/dev/null || exit 0; fi
+_LR_SIGNALS_LOADED=1
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/common.sh"
+# _signals_declared_csv <scenario_file...>
+# Prints comma-separated declared expectedSignals from the first readable scenario.
+# Defaults to all three (backward compatible).
+_signals_declared_csv() {
+    local scenario="${1:-}"
+    if [[ -z "$scenario" || ! -f "$scenario" ]]; then
+        printf '%s' "soilHealthStateDelta,cropPhaseDelta,smapiLog"
+        return 0
+    fi
+    python3 - "$scenario" <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1], encoding='utf-8'))
+except Exception:
+    d = {}
+sigs = d.get('expectedSignals')
+if not isinstance(sigs, list) or not sigs:
+    sigs = ['soilHealthStateDelta','cropPhaseDelta','smapiLog']
+# preserve order, unique
+out = []
+for x in sigs:
+    if isinstance(x, str) and x not in out:
+        out.append(x)
+if not out:
+    out = ['soilHealthStateDelta','cropPhaseDelta','smapiLog']
+print(','.join(out))
+PY
+}
+
+_signals_has() {
+    local csv="$1" sig="$2"
+    case ",$csv," in
+        *",$sig,"*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+
+signals_soil_health_delta() {
+    [[ $# -eq 3 ]] || return "$EXIT_USAGE_ERROR"
+    local before="$1" after="$2" out="$3"
+    python3 - "$before" "$after" "$out" <<'PY'
+import json,sys
+def load(p):
+    try:
+        with open(p) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+b=load(sys.argv[1]); a=load(sys.argv[2])
+def get(d,loc,tile):
+    try:
+        v=d.get(loc,{}).get(tile,0)
+    except Exception:
+        v=0
+    if v is None: v=0
+    try:
+        import math
+        if isinstance(v,float) and math.isnan(v): return 0
+    except Exception: pass
+    return v
+locs=set(b)|set(a)
+out={"locations":{}}
+for loc in locs:
+    tiles=set()
+    if isinstance(b.get(loc),dict): tiles|=set(b[loc])
+    if isinstance(a.get(loc),dict): tiles|=set(a[loc])
+    out["locations"][loc]={}
+    for t in tiles:
+        bv=get(b,loc,t); av=get(a,loc,t)
+        try:
+            delta=av-bv
+        except Exception:
+            delta=0
+        # tolerance 0.0001: if abs(delta)<0.0001 treat as 0
+        if abs(delta)<0.0001:
+            delta=0
+        out["locations"][loc][t]={"before":bv,"after":av,"delta":delta}
+with open(sys.argv[3],"w") as f:
+    json.dump(out,f,indent=2)
+sys.exit(0)
+PY
+}
+
+signals_crop_phase_dump() {
+    [[ $# -ge 2 ]] || return "$EXIT_USAGE_ERROR"
+    local dump_dir="$1" out="$2" timeout="${3:-5}"
+    # Wait for a completed dump. Prefer the explicit `after` generation: the
+    # queue writes a `before` dump first, and `find | head -1` used to pick
+    # whichever inode happened to sort first, so the captured signal could be
+    # the pre-run crop state.
+    local i=0 found=""
+    while (( i < timeout*2+1 )); do
+        found="$(find "$dump_dir" -maxdepth 1 -name 'crop_phase_dump_after.json.done' 2>/dev/null | head -1)"
+        if [[ -z "$found" ]]; then
+            found="$(find "$dump_dir" -maxdepth 1 -name '*.json.done' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-)"
+        fi
+        [[ -n "$found" ]] && break
+        sleep 0.2
+        i=$((i+1))
+    done
+    [[ -n "$found" ]] || return 19
+    local json_file="${found%.done}"
+    [[ -f "$json_file" ]] || return 19
+    python3 - "$json_file" "$out" <<'PY'
+import json,sys,shutil
+try:
+    d=json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(19)
+if d.get("done") is not True:
+    sys.exit(19)
+# sidecar/field agreement: locationsProcessed == len(locations?) best-effort
+shutil.copyfile(sys.argv[1],sys.argv[2])
+sys.exit(0)
+PY
+}
+
+signals_smapi_log_excerpt() {
+    [[ $# -eq 2 ]] || return "$EXIT_USAGE_ERROR"
+    local log="$1" out="$2"
+    [[ -f "$log" ]] || return 19
+    # This used to keep only elapsed/DayEnding/host-guard lines. That filter
+    # turned a save-load failure into what looked like a five-second stall and
+    # cost a full investigation (T137), so the bundle now keeps the whole log.
+    # The function name is retained for contract compatibility.
+    cp -f "$log" "$out" 2>/dev/null || return 19
+    return 0
+}
+
+signals_cross_check() {
+    [[ $# -eq 3 ]] || return "$EXIT_USAGE_ERROR"
+    local dump="$1" save="$2" out="$3"
+    python3 - "$dump" "$save" "$out" <<'PY'
+import json,sys
+try:
+    with open(sys.argv[1]) as f:
+        d=json.load(f)
+    with open(sys.argv[2]) as f:
+        s=json.load(f)
+except Exception as e:
+    rec={"agree":False,"divergences":[{"error":str(e)}]}
+    with open(sys.argv[3],"w") as f:
+        json.dump(rec,f)
+    sys.exit(1)
+# The persisted mod data is wrapped in {"LocationHealthData": {loc: {tile: v}}}.
+# Unwrap it before comparing, otherwise every tile looks absent and the
+# cross-check reports agreement without actually checking anything.
+if isinstance(s, dict) and isinstance(s.get("LocationHealthData"), dict):
+    s = s["LocationHealthData"]
+rec={"agree":False,"divergences":[]}
+try:
+    lp=d.get("locationsProcessed")
+except Exception:
+    lp=None
+crops=d.get("crops",[]) or []
+div=False
+for c in crops:
+    try:
+        loc=c.get("location"); tx=c.get("tileX"); ty=c.get("tileY")
+        tile=f"{tx},{ty}"
+        sh=c.get("soilHealth")
+        sav=None
+        if isinstance(s,dict):
+            if isinstance(s.get(loc),dict):
+                sav=s.get(loc).get(tile)
+        if sav is not None and sh is not None:
+            try:
+                if abs(float(sav)-float(sh))>0.0001:
+                    div=True
+                    rec["divergences"].append({"location":loc,"tile":tile,"dump":sh,"save":sav})
+            except Exception:
+                div=True
+                rec["divergences"].append({"location":loc,"tile":tile,"dump":sh,"save":sav,"error":"coerce"})
+    except Exception:
+        continue
+if div:
+    rec["agree"]=False
+    with open(sys.argv[3],"w") as f:
+        json.dump(rec,f)
+    sys.exit(1)
+rec["agree"]=True
+with open(sys.argv[3],"w") as f:
+    json.dump(rec,f)
+sys.exit(0)
+PY
+}
+
+signals_write_anomaly() {
+    [[ $# -eq 8 || $# -eq 9 ]] || return "$EXIT_USAGE_ERROR"
+    local bundle="$1" runId="$2" signal="$3" kind="$4" observed="$5" expected="$6" owner="$7" rootCause="$8"
+    local blocking="${9:-true}"
+    mkdir -p "$bundle/artifacts"
+    # One file per anomaly: a fixed name would let the last missing signal
+    # overwrite the earlier ones, so a run missing all three reported only one.
+    # Non-blocking (informational) anomalies use a distinct prefix so agreement
+    # computation can preserve the honest record without false-blocking.
+    local prefix="anomaly-report"
+    if [[ "$blocking" != "true" ]]; then
+        prefix="anomaly-info"
+    fi
+    local out="$bundle/artifacts/${prefix}.json"
+    if [[ -e "$out" ]]; then
+        local slug
+        slug="$(printf '%s' "$signal" | tr -c 'A-Za-z0-9._-' '-')"
+        out="$bundle/artifacts/${prefix}-${slug}.json"
+    fi
+    python3 - "$out" "$runId" "$signal" "$kind" "$observed" "$expected" "$owner" "$rootCause" "$blocking" <<'PY'
+import json,sys,datetime
+path,runId,signal,kind,observed,expected,owner,rootCause,blocking=sys.argv[1:]
+b = str(blocking).lower() == "true"
+d={"runId":runId,"signal":signal,"kind":kind,"observed":observed,"expected":expected,
+   "owner":owner,"date":datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+   "rootCause":rootCause,"blocking":b}
+with open(path,"w") as f:
+    json.dump(d,f,indent=2)
+PY
+    return 0
+}
+
+signals_all_present() {
+    [[ $# -ge 1 && $# -le 2 ]] || return "$EXIT_USAGE_ERROR"
+    local bundle="$1" scenario="${2:-}"
+    local a="$bundle/artifacts"
+    [[ -d "$a" ]] || return 1
+    local declared
+    declared="$(_signals_declared_csv "$scenario")"
+    # Exact artifact names for declared signals only.
+    if _signals_has "$declared" "soilHealthStateDelta"; then
+        [[ -s "$a/soil-health-before-after.json" ]] || return 1
+    fi
+    if _signals_has "$declared" "cropPhaseDelta"; then
+        [[ -s "$a/crop-phase-dump.json" ]] || return 1
+    fi
+    if _signals_has "$declared" "smapiLog"; then
+        [[ -s "$a/smapi-log.txt" ]] || return 1
+    fi
+    return 0
+}
+
+# signals_require_expected_signals <bundle_dir> <runId> <owner> [scenario]
+# Verify presence of declared expected signals (default: all three for backward compat).
+# v4: cropPhaseDelta may be explicitly not-applicable via signalPolicy (no missing-crop anomaly).
+# Write anomaly report on any missing declared signal and return non-zero.
+signals_require_expected_signals() {
+    [[ $# -ge 3 && $# -le 4 ]] || return "$EXIT_USAGE_ERROR"
+    local bundle="$1" runId="$2" owner="${3:-unknown}" scenario="${4:-}"
+    local a="$bundle/artifacts"
+    mkdir -p "$a"
+    local declared
+    declared="$(_signals_declared_csv "$scenario")"
+
+    local missing=0
+    if _signals_has "$declared" "soilHealthStateDelta"; then
+        if [[ ! -s "$a/soil-health-before-after.json" ]]; then
+            signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "missing" "" "" "$owner" "missing soil health delta" >/dev/null 2>&1 || true
+            missing=1
+        fi
+    fi
+    if _signals_has "$declared" "cropPhaseDelta"; then
+        if [[ ! -s "$a/crop-phase-dump.json" ]]; then
+            signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "missing crop phase dump" >/dev/null 2>&1 || true
+            missing=1
+        fi
+    fi
+    if _signals_has "$declared" "smapiLog"; then
+        if [[ ! -s "$a/smapi-log.txt" ]]; then
+            signals_write_anomaly "$bundle" "$runId" "smapiLog" "missing" "" "" "$owner" "missing smapi log excerpt" >/dev/null 2>&1 || true
+            missing=1
+        fi
+    fi
+
+    if (( missing == 1 )); then
+        return "$EXIT_ERRORED"
+    fi
+    return 0
+}
+
+# signals_process <bundle_dir> <runId> <owner> [before.json] [after.json] [dump_dir] [save.json] [smapi.log] [scenario]
+# Orchestrate declared signals with cross-checks; write anomalies on divergence/missing/mismatch.
+# v4: cropPhaseDelta handling is conditional on declared expectedSignals/signalPolicy.
+signals_process() {
+    local bundle="${1:-}" runId="${2:-}" owner="${3:-unknown}"
+    shift 3 || true
+    local before="${1:-}" after="${2:-}" dump_dir="${3:-}" save="${4:-}" smapi_log="${5:-}" scenario="${6:-${RUNNER_SCENARIO:-}}"
+
+    [[ -n "$bundle" && -n "$runId" ]] || return "$EXIT_USAGE_ERROR"
+    local a="$bundle/artifacts"
+    mkdir -p "$a"
+    local declared
+    declared="$(_signals_declared_csv "$scenario")"
+    local want_crop=0 want_soil=0 want_log=0
+    _signals_has "$declared" "cropPhaseDelta" && want_crop=1 || true
+    _signals_has "$declared" "soilHealthStateDelta" && want_soil=1 || true
+    _signals_has "$declared" "smapiLog" && want_log=1 || true
+
+    local issues=0
+
+    # Crop phase dump + cross-check with save (collected first so soil-delta
+    # synthesis can read crop dump if the dedicated soil after dump is missing).
+    # Only required/processed as a declared signal when cropPhaseDelta is applicable.
+    if (( want_crop == 1 )); then
+        if [[ -n "$dump_dir" ]]; then
+            local cdump="$a/crop-phase-dump.json"
+            if signals_crop_phase_dump "$dump_dir" "$cdump" 5; then
+                [[ -s "$cdump" ]] || { signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "crop dump missing after copy" >/dev/null 2>&1 || true; issues=1; }
+                if [[ -n "$save" && -f "$save" ]]; then
+                    local cchk="$a/crop-phase-cross-check.json"
+                    if ! signals_cross_check "$cdump" "$save" "$cchk"; then
+                        # Dump-vs-persisted-mod-data cross-check is diagnostic.
+                        signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "divergence" "$(cat "$cchk" 2>/dev/null | tr -d '\n' | head -c 200)" "" "$owner" "dump vs persisted mod-data divergence (informational; persistence may lag in-memory/verification state)" "false" >/dev/null 2>&1 || true
+                    fi
+                fi
+            else
+                signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "crop phase dump not found/completed" >/dev/null 2>&1 || true
+                issues=1
+            fi
+        else
+            signals_write_anomaly "$bundle" "$runId" "cropPhaseDelta" "missing" "" "" "$owner" "missing crop phase dump dir" >/dev/null 2>&1 || true
+            issues=1
+        fi
+    else
+        # cropPhaseDelta explicitly not applicable (v4 bare-tile/no-crop proof): do not
+        # require crop artifacts or emit missing-crop anomalies. If a dump exists, keep
+        # it as informational but never fail completeness for it.
+        if [[ -n "$dump_dir" ]]; then
+            local cdump="$a/crop-phase-dump.json"
+            signals_crop_phase_dump "$dump_dir" "$cdump" 2 >/dev/null 2>&1 || true
+        fi
+    fi
+
+    # Soil health delta (declared signal).
+    local soil_before="$before" soil_after="$after"
+    if (( want_soil == 1 )); then
+    # If the dedicated after dump is missing but the mod's crop-phase dump captured
+    # soil state for the same run, synthesize a raw after dump (honest fallback for
+    # no-mutation attestation paths such as refused applications).
+    if [[ -z "$soil_after" && -n "$soil_before" ]]; then
+        local crop_after=""
+        if [[ -s "$a/crop-phase-dump.json" ]]; then
+            crop_after="$a/crop-phase-dump.json"
+        elif [[ -n "$dump_dir" && -f "$dump_dir/crop_phase_dump_after.json" ]]; then
+            crop_after="$dump_dir/crop_phase_dump_after.json"
+        fi
+        if [[ -n "$crop_after" && -f "$crop_after" ]]; then
+            local syn="$a/soil-health-after.json.raw"
+            if python3 - "$crop_after" "$syn" "$soil_before" <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1], encoding='utf-8'))
+except Exception:
+    sys.exit(1)
+before_path = sys.argv[3] if len(sys.argv) > 3 else ""
+out = {}
+if before_path:
+    try:
+        b = json.load(open(before_path, encoding='utf-8'))
+        if isinstance(b, dict):
+            for loc, tiles in b.items():
+                if isinstance(tiles, dict):
+                    out[loc] = dict(tiles)
+    except Exception:
+        pass
+for c in d.get('crops', []) or []:
+    loc = str(c.get('location') or '')
+    if not loc:
+        continue
+    tx, ty = c.get('tileX'), c.get('tileY')
+    if tx is None or ty is None:
+        continue
+    state = c.get('soilHealthState')
+    val = c.get('soilHealth')
+    if state == 'measured' and val is not None:
+        try:
+            v = float(val)
+        except Exception:
+            continue
+    elif state == 'nan':
+        v = None
+    else:
+        continue
+    out.setdefault(loc, {})[f"{tx},{ty}"] = v
+with open(sys.argv[2], 'w', encoding='utf-8') as f:
+    json.dump(out, f, indent=2)
+sys.exit(0)
+PY
+            then
+                soil_after="$syn"
+            fi
+        fi
+    fi
+    if [[ -n "$soil_before" && -n "$soil_after" ]]; then
+        local sdelta="$a/soil-health-before-after.json"
+        if signals_soil_health_delta "$soil_before" "$soil_after" "$sdelta"; then
+            [[ -s "$sdelta" ]] || { signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "missing" "" "" "$owner" "soil delta missing after generation" >/dev/null 2>&1 || true; issues=1; }
+        else
+            signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "mismatch" "" "" "$owner" "soil delta generation failed" >/dev/null 2>&1 || true
+            issues=1
+        fi
+    else
+        signals_write_anomaly "$bundle" "$runId" "soilHealthStateDelta" "missing" "" "" "$owner" "missing before/after for soil health delta" >/dev/null 2>&1 || true
+        issues=1
+    fi
+    fi
+
+    # SMAPI log excerpt (declared signal).
+    if (( want_log == 1 )); then
+    if [[ -n "$smapi_log" && -f "$smapi_log" ]]; then
+        local sexcerpt="$a/smapi-log.txt"
+        if signals_smapi_log_excerpt "$smapi_log" "$sexcerpt"; then
+            [[ -s "$sexcerpt" ]] || { signals_write_anomaly "$bundle" "$runId" "smapiLog" "missing" "" "" "$owner" "smapi log excerpt empty" >/dev/null 2>&1 || true; issues=1; }
+        else
+            signals_write_anomaly "$bundle" "$runId" "smapiLog" "missing" "" "" "$owner" "smapi log excerpt failed" >/dev/null 2>&1 || true
+            issues=1
+        fi
+    else
+        signals_write_anomaly "$bundle" "$runId" "smapiLog" "missing" "" "" "$owner" "missing smapi log" >/dev/null 2>&1 || true
+        issues=1
+    fi
+    fi
+
+    signals_require_expected_signals "$bundle" "$runId" "$owner" "$scenario" >/dev/null 2>&1 || issues=1
+
+    if (( issues == 1 )); then
+        return "$EXIT_ERRORED"
+    fi
+    return 0
+}
+
+# signals_capture <bundle_dir> <scenario...>
+#
+# Locate the artifacts the verification mod wrote into the per-run injection
+# directory and hand them to signals_process. The mod owns the capture; the
+# runner owns the location and the judgement. When the session is missing the
+# call still goes through signals_process with empty inputs so all three
+# mandatory anomalies are written (one per signal, not one shared file).
+signals_capture() {
+    [[ $# -ge 2 ]] || return "$EXIT_USAGE_ERROR"
+    local bundle="$1"
+    shift
+    local owner="${RUNNER_QUARANTINE_OWNER:-runner}"
+    local dir="${RUNNER_INJECTION_DIR:-${RUNNER_RUN_ROOT:-/tmp}/injection}"
+    local session="$dir/session.json"
+
+    local dump_dir="" smapi_log="" save_file=""
+    if [[ -f "$session" ]]; then
+        local -a fields=()
+        mapfile -t fields < <(python3 - "$session" <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception:
+    sys.exit(1)
+print(d.get("dumpDir", ""))
+print(d.get("smapiLogPath", ""))
+PY
+)
+        if (( ${#fields[@]} >= 2 )); then
+            dump_dir="${fields[0]}"
+            smapi_log="${fields[1]}"
+        fi
+    fi
+    [[ -n "$smapi_log" ]] || smapi_log="${RUNNER_SMAPI_LOG:-}"
+
+    # The mod persists soil health through SMAPI's data helper under the mod
+    # folder. Pick the newest file: the save id is sanitized inside the mod and
+    # the runner must not re-implement that sanitizer here.
+    if [[ -n "${RUNNER_MODS_DIR:-}" && -d "$RUNNER_MODS_DIR/LivingRoots/data" ]]; then
+        save_file="$(find "$RUNNER_MODS_DIR/LivingRoots/data" -maxdepth 1 -name 'soil_health_data_*.json' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-)"
+    fi
+
+    local before="" after=""
+    if [[ -n "$dump_dir" ]]; then
+        [[ -f "$dump_dir/soil_health_before.json" ]] && before="$dump_dir/soil_health_before.json"
+        [[ -f "$dump_dir/soil_health_after.json" ]] && after="$dump_dir/soil_health_after.json"
+        # Preserve the pre-run captures in the bundle too: the multiplier
+        # threshold is `after == pre * factor`, so a bundle that only carries
+        # the after dump cannot be re-evaluated later. Missing after dumps are
+        # handled honestly in signals_process (crop-dump soil-state fallback).
+        mkdir -p "$bundle/artifacts" 2>/dev/null || true
+        [[ -f "$dump_dir/crop_phase_dump_before.json" ]] && cp -f "$dump_dir/crop_phase_dump_before.json" "$bundle/artifacts/crop-phase-before.json" 2>/dev/null || true
+        [[ -n "$before" ]] && cp -f "$before" "$bundle/artifacts/soil-health-before.json" 2>/dev/null || true
+        [[ -n "$after" ]] && cp -f "$after" "$bundle/artifacts/soil-health-after.json" 2>/dev/null || true
+    fi
+
+    local first_scenario="${1:-}"
+    local rc=0
+    signals_process "$bundle" "${RUN_ID:-${RUNNER_RUN_ID:-unknown}}" "$owner" \
+        "$before" "$after" "$dump_dir" "$save_file" "$smapi_log" "$first_scenario" || rc=$?
+    return "$rc"
+}

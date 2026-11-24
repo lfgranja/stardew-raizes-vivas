@@ -1,0 +1,39 @@
+# Visualization Domain
+
+Plain C# DTOs/models for soil health tile rendering — no SMAPI or XNA dependencies.
+
+## Files
+
+- **ColorDTO.cs** — Color data transfer object
+- **ColorMapping.cs** — Maps health percentage ranges to display colors
+- **HealthCategory.cs** — Enum: `Poor`, `Moderate`, `Healthy`, `Unknown`
+- **PatternType.cs** — Enum: `None`, `Stripes`, `Dots`, `Solid`
+- **TileOverlay.cs** — Tile position, color, and pattern type
+- **TooltipData.cs** — Tooltip display model
+- **HoeFeedback.cs** — Hoe feedback effect (flash + floating text)
+- **VisualizationConfiguration.cs** — Toggles for overlays, tooltips, hoe feedback; opacity settings
+
+## Health Categories
+
+| Category | Range (governing scale, spec 014/FR-013; Cornell CSHA) |
+|----------|----------------------------------------------------------------|
+| Poor | [0, 31) |
+| Moderate | [31, 71) |
+| Healthy | [67, 100] |
+| Unknown | N/A (NaN/Infinity only) |
+
+Finite out-of-range values clamp to the boundary category (below 0 → Poor, above 100 → Healthy); only NaN/Infinity resolve to Unknown.
+
+## Colors (from ModConstants)
+
+- Poor → Red
+- Moderate → Yellow
+- Healthy → Green
+- Unknown → Gray
+
+## Rules
+
+- Minimum pattern opacity: **0.7** (accessibility)
+- Default opacity: **0.5** (`ModConstants.DefaultOpacity`)
+- Reference `ModConstants` for all color and opacity values — never hardcode
+- Keep all types SMAPI/XNA-free

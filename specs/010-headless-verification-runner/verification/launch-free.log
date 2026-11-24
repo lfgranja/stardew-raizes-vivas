@@ -1,0 +1,29 @@
+# T136 — Verification: launch-free e2e (12 casos VS)
+
+- **Date**: 2026-11-05 (updated)
+- **Host**: Linux (game real available for VS-01; fake host for the rest)
+- **Result**: VS-01 closed on the real host (exit 0, machine-pass). The shell suite (`run-all.sh`, SMOKE_SKIP_INTEGRATION=1) now passes: 43 files, 42 passed, 0 failed, 1 skipped (integration). The single failure recorded in the 2026-11-04 run (`test-display-launch.sh` — launch failure propagating as 15) was caused by `run_verify` staging an empty save after `save_prepare` became milestone-aware; fixed by staging a loadable save in `scripts/tests/lib/runner-harness.sh`. No runner source change.
+
+## VS outcomes
+
+| ID | Case | Status |
+|----|------|--------|
+| VS-01 | Happy path (feature 004) | PASS on real host (exit 0, machine-pass) — see real-host.log |
+| VS-02 | Threshold violation | Covered by test-cli.sh / test-verify-cli.sh (negative scenarios) |
+| VS-03 | Incomplete signal set | Covered by test-bundle-negative.sh + runner (exit 19) |
+| VS-04 | Cache hit, no token | Covered by test-acquisition.sh |
+| VS-05 | Cache miss, acquisition | Covered by test-acquisition.sh |
+| VS-06 | Concurrent instances | Covered by test-concurrency.sh |
+| VS-07 | Version mismatch | Covered by test-version-gate.sh + test-acquisition.sh |
+| VS-08 | Flaky scenario | Covered by test-statistics.sh / test-quarantine.sh |
+| VS-09 | Quarantined scenario | Covered by test-quarantine.sh (exit 20) |
+| VS-09b | Expected failure | Covered by test-docs.sh / test-verify-cli.sh (exit 18) |
+| VS-09c | Offline acquisition ban | Covered by test-acquisition.sh (exit 9/0/14) |
+| VS-10 | Farmhand host-guard | Covered by test-injection.sh (farmhand-host-guard fixture) |
+
+## Suite evidence
+
+- `scripts/tests/run-all.sh` (SMOKE_SKIP_INTEGRATION=1): 43 files, 42 passed, 1 skipped, 0 failed.
+- `dotnet test`: 1630 tests, 1626 passed, 4 ignored, 0 failed.
+- `dotnet format --verify-no-changes`: 0 (pass).
+- `bash -n` on all scripts: pass.

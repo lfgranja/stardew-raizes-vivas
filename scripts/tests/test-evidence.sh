@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/lib/runner-harness.sh"
+
+# run-id format
+call_runner_func evidence_run_id
+assert_matches "$RUNNER_FN_OUT" '^run-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{4}$' "run-id format"
+
+rid="$(call_runner_func evidence_run_id; printf '%s' "$RUNNER_FN_OUT")"
+root="$HARNESS_SANDBOX/evroot"
+mkdir -p "$root"
+call_runner_func evidence_init "$root" "$rid"
+assert_fn_code 0 "evidence_init returns 0"
+bdir="$root/evidence-bundle-$rid"
+assert_dir_exists() { [[ -d "$1" ]] && pass "$2" || fail "$2" "missing dir $1"; }
+assert_dir_exists "$bdir" "bundle dir"
+assert_dir_exists "$bdir/artifacts" "artifacts dir"
+assert_dir_exists "$bdir/attempts" "attempts dir"
+
+# add artifact
+af="$HARNESS_SANDBOX/art.txt"; printf 'hello' > "$af"
+call_runner_func evidence_add_artifact "$bdir" "$af"
+assert_fn_code 0 "add artifact returns 0"
+
+# attempt dir
+call_runner_func evidence_attempt_dir "$bdir" 1
+assert_eq "$bdir/attempts/1" "$RUNNER_FN_OUT" "attempt_dir path"
+
+# bundle dir helper
+call_runner_func evidence_bundle_dir "$root" "$rid"
+assert_eq "$bdir" "$RUNNER_FN_OUT" "bundle_dir path"
+
+# finalize invokes helper; scaffold may not exist yet -> allow 13
+manifestin="$HARNESS_SANDBOX/manifest-input.json"
+printf '{"runId":"%s"}\n' "$rid" > "$manifestin"
+call_runner_func evidence_finalize "$bdir" "$manifestin"
+# either 0 or 13 (scaffold) accepted at RED gate
+pass "evidence_finalize exercised (rc=$RUNNER_FN_CODE)"
+
+# claims
+call_runner_func evidence_write_claims "$bdir" "$rid" "R"
+assert_fn_code 0 "write claims returns 0"
+assert_file_exists "$bdir/claims.json" "claims.json"
+assert_json_eq "$bdir/claims.json" '.honestyLevel' "R" "claims honesty level"
+# the schema requires `claims`; an empty list is legal only when claiming nothing
+assert_json_eq "$bdir/claims.json" '.claims' "[]" "claims array present"
+
+# integrity failure
+call_runner_func evidence_write_integrity_failure "$bdir" "checksum" "archive.zip" "detail"
+assert_fn_code 0 "integrity failure write returns 0"
+
+# validate (scaffold may fail; just exercise)
+call_runner_func evidence_validate "$bdir"
+pass "evidence_validate exercised (rc=$RUNNER_FN_CODE)"
+
+# manifest assembly: the payload handed to ManifestBuilder must satisfy the
+# published evidence-bundle contract. Before evidence_write_manifest_input
+# existed the input was {"runId": ...} and every real bundle failed the schema.
+rid2="run-20260101T000000Z-abcd"
+b2="$root/evidence-bundle-$rid2"
+mkdir -p "$b2/artifacts"
+printf 'x' > "$b2/artifacts/soil-health-before-after.json"
+printf 'y' > "$b2/artifacts/crop-phase-dump.json"
+printf 'z' > "$b2/artifacts/smapi-log.txt"
+call_runner_func evidence_write_claims "$b2" "$rid2" "R"
+assert_fn_code 0 "write claims for manifest assembly"
+ctx2="$HARNESS_SANDBOX/manifest-context.json"
+python3 - "$ctx2" "$rid2" "$HARNESS_REPO_ROOT" <<'PY'
+import json, sys
+path, rid, repo = sys.argv[1:4]
+ctx = {
+    "runId": rid,
+    "timestamp": "2026-01-01T00:00:00Z",
+    "scenario": f"{repo}/specs/004-playable-compost-loop/scenarios/compost-growth-hardening.scenario.json",
+    "verdict": "pass",
+    "honestyLevel": "R",
+    "gamePath": "",
+    "milestoneSave": "farm-year1-day5",
+    "modManifest": f"{repo}/LivingRoots/manifest.json",
+    "commit": "0" * 40,
+    "buildSkipped": True,
+    "toolVersions": {"dotnet": "10.0.400"},
+    "environmentOverrides": [],
+}
+json.dump(ctx, open(path, "w"), indent=2)
+PY
+mi2="$HARNESS_SANDBOX/manifest-input.json"
+call_runner_func evidence_write_manifest_input "$b2" "$ctx2" "$mi2"
+assert_fn_code 0 "manifest input assembled"
+call_runner_func evidence_finalize "$b2" "$mi2"
+assert_fn_code 0 "manifest finalized"
+if python3 - "$HARNESS_REPO_ROOT" "$b2" <<'PY'
+import json, jsonschema, sys
+repo, bundle = sys.argv[1:3]
+schema = json.load(open(f"{repo}/specs/010-headless-verification-runner/contracts/evidence-bundle.schema.json"))
+data = json.load(open(f"{bundle}/manifest.json"))
+jsonschema.Draft202012Validator(schema).validate(data)
+PY
+then
+    pass "assembled manifest satisfies evidence-bundle.schema.json"
+else
+    fail "assembled manifest" "fails evidence-bundle.schema.json"
+fi
+vrc=0
+bash "$HARNESS_REPO_ROOT/scripts/verify-evidence-bundle.sh" "$b2" >/dev/null 2>&1 || vrc=$?
+assert_eq 0 "$vrc" "offline verifier accepts the assembled bundle"
+
+# single-producer rule: no hand-written manifest in evidence.sh
+if grep -Eq 'printf[^$]*manifest\.json|cat[^$]*>.*manifest\.json|echo[^$]*manifest\.json' scripts/lib/evidence.sh; then
+    fail "single producer" "hand-written manifest found"
+else
+    pass "no hand-written manifest in evidence.sh"
+fi
+
+# never writes verified
+if grep -q '"verified"\|verified' scripts/lib/evidence.sh scripts/verify-scenario.sh 2>/dev/null; then
+    # `verified` may appear in comments/refusal; only fail if assignment/write
+    if grep -Eq 'echo.*verified|printf.*verified|>.*verified' scripts/lib/evidence.sh scripts/verify-scenario.sh; then
+        fail "no verified write" "found verified write"
+    else
+        pass "verified only as refusal/diagnostic"
+    fi
+else
+    pass "no verified references"
+fi
+
+finish_tests

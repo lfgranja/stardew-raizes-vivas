@@ -1,0 +1,84 @@
+Summary
+  Generated on: 01/11/2026 - 13:06:05
+  Coverage date: 01/11/2026 - 12:31:12
+  Parser: Cobertura
+  Assemblies: 1
+  Classes: 62
+  Files: 53
+  Line coverage: 76.9%
+  Covered lines: 3467
+  Uncovered lines: 1037
+  Coverable lines: 4504
+  Total lines: 13296
+  Branch coverage: 67.6% (1830 of 2707)
+  Covered branches: 1830
+  Total branches: 2707
+  Method coverage: 88% (485 of 551)
+  Full method coverage: 65.3% (360 of 551)
+  Covered methods: 485
+  Fully covered methods: 360
+  Total methods: 551
+
+LivingRoots                                                              76.9%
+  LivingRoots.Controllers.EventUnregisterContext                          100%
+  LivingRoots.Controllers.ModController                                  65.8%
+  LivingRoots.Controllers.RegistrationContext                             100%
+  LivingRoots.Controllers.RollbackContext                                 100%
+  LivingRoots.Controllers.UnsubscribeResults                              100%
+  LivingRoots.Domain.FileNameSanitizationService                         84.1%
+  LivingRoots.Domain.Models.CompostingBinData                             100%
+  LivingRoots.Domain.Models.CompostingBinStateData                        100%
+  LivingRoots.Domain.Models.CompostingBinStateModel                      84.2%
+  LivingRoots.Domain.Models.MulchTileState                                  0%
+  LivingRoots.Domain.ModLogic                                              50%
+  LivingRoots.Domain.MulchState                                             0%
+  LivingRoots.Domain.MulchTileEntry                                         0%
+  LivingRoots.Domain.PathValidationService                               95.4%
+  LivingRoots.Domain.ReservedNameHandler                                   78%
+  LivingRoots.Domain.Services.GreenhouseLocationRule                        0%
+  LivingRoots.Domain.Services.OrganicWasteValidator                       100%
+  LivingRoots.Domain.Services.SeasonalDecayMultiplier                     100%
+  LivingRoots.Domain.SoilHealthState                                      100%
+  LivingRoots.Domain.UnicodeNormalizationService                         92.8%
+  LivingRoots.Domain.Visualization.ColorDTO                              68.7%
+  LivingRoots.Domain.Visualization.ColorMapping                           100%
+  LivingRoots.Domain.Visualization.HealthCategoryExtensions               100%
+  LivingRoots.Domain.Visualization.HoeFeedback                            100%
+  LivingRoots.Domain.Visualization.PatternTypeExtensions                 87.5%
+  LivingRoots.Domain.Visualization.TileOverlay                            100%
+  LivingRoots.Domain.Visualization.TooltipData                            100%
+  LivingRoots.Domain.Visualization.VisualizationConfiguration             100%
+  LivingRoots.ModConstants                                                100%
+  LivingRoots.ModEntry                                                   97.5%
+  LivingRoots.Services.CompostApplicationService                          100%
+  LivingRoots.Services.CompostingBinFactory                               100%
+  LivingRoots.Services.CompostingBinService                              92.9%
+  LivingRoots.Services.FarmerInventoryAdapter                            40.7%
+  LivingRoots.Services.FileNameSanitizer                                  100%
+  LivingRoots.Services.HostAtomicLockService                              100%
+  LivingRoots.Services.HudNotifier                                          0%
+  LivingRoots.Services.LocationProvider                                     0%
+  LivingRoots.Services.ModDataService                                    69.3%
+  LivingRoots.Services.MulchApplicationService                            6.2%
+  LivingRoots.Services.PathTraversalValidator                             100%
+  LivingRoots.Services.PlayerInventory                                      0%
+  LivingRoots.Services.PlayerProvider                                       0%
+  LivingRoots.Services.ProcessLocationResult                              100%
+  LivingRoots.Services.ProcessSaveLocationResult                         83.3%
+  LivingRoots.Services.ProgressCarryingBinItem                              0%
+  LivingRoots.Services.SaveIdProvider                                     100%
+  LivingRoots.Services.SeasonProvider                                       0%
+  LivingRoots.Services.SoilDecayService                                  90.5%
+  LivingRoots.Services.SoilHealthService                                 86.2%
+  LivingRoots.Services.TileProcessingResult                               100%
+  LivingRoots.Services.TimeProvider                                         0%
+  LivingRoots.Services.UnicodeNormalizer                                  100%
+  LivingRoots.Services.Visualization.AccessibilityNotifierImpl            100%
+  LivingRoots.Services.Visualization.ColorInterpolationService           87.1%
+  LivingRoots.Services.Visualization.HoeFeedbackRenderer                   59%
+  LivingRoots.Services.Visualization.OverlayRenderer                     89.2%
+  LivingRoots.Services.Visualization.ScreenPositionDerivation            83.3%
+  LivingRoots.Services.Visualization.TooltipRenderer                       80%
+  LivingRoots.Services.Visualization.VisualizationConfigurationService   73.9%
+  LivingRoots.Services.Visualization.VisualizationService                  62%
+  LivingRoots.Services.Visualization.VisualizationTextures                  0%

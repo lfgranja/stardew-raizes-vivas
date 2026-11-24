@@ -1,0 +1,143 @@
+name: Build and Test
+
+on:
+    push:
+        branches:
+            - main
+            - dev
+    pull_request:
+        types: [opened, synchronize, reopened]
+
+# This workflow runs the real build and the full test suite. It stays dormant until the
+# BUILDDEPS_TOKEN secret is set, so that there is no check named "Build and Test" anywhere
+# rather than a check that reports green without having run anything — see
+# .specify/bugs/ci-skipped-job-false-green/.
+#
+# Pathoschild.Stardew.ModBuildConfig refuses to build unless a GamePath folder holds the
+# game's managed assemblies, and that check is unconditional. Those assemblies are
+# proprietary, too large for a GitHub secret (48 KB cap vs a ~5.2 MB base64 payload), and
+# cannot be downloaded on a hosted runner. They are instead published as a release asset in
+# the PRIVATE repository lfgranja/stardew-raizes-vivas-builddeps and materialised here.
+#
+# BUILDDEPS_TOKEN must be a credential with read access to that private repo only. The
+# built-in GITHUB_TOKEN cannot be used: it is scoped to this repository.
+#
+# Two rules govern this workflow. First, do NOT add "Check Formatting" to
+# required_status_checks: it is formatting-only and would satisfy branch protection while
+# executing zero tests. This workflow itself may be required only after a genuinely green
+# hosted run — observed on PRs #797, #798 and #800 on 2026-11-18 (maintainer authorized).
+# Second, this workflow reports on EVERY pull request, including documentation-only ones:
+# the former paths-ignore filter was removed because a required check that never reports
+# would block those PRs forever under strict branch protection.
+permissions:
+    contents: read
+jobs:
+    build-test:
+        name: Build and Test
+        runs-on: ubuntu-latest
+        if: ${{ vars.BUILDDEPS_ENABLED == 'true' }}
+        env:
+            # MSBuild promotes environment variables to properties, so setting GamePath here
+            # suppresses the package's local Steam/GOG autodetection (find-game-folder.targets
+            # only assigns GamePath when it does not already exist).
+            GamePath: ${{ github.workspace }}/.gamepath
+            BUILDDEPS_REPO: lfgranja/stardew-raizes-vivas-builddeps
+            BUILDDEPS_TAG: gamepath-v1
+            BUILDDEPS_ASSET: gamepath.zip
+
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v6
+              with:
+                  dotnet-version: '10.0.x'
+
+            - name: Fetch game assemblies
+              env:
+                  GH_TOKEN: ${{ secrets.BUILDDEPS_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  if [ -z "${GH_TOKEN:-}" ]; then
+                    echo "::error::BUILDDEPS_TOKEN is not set; cannot download the private build-deps release."
+                    exit 1
+                  fi
+                  mkdir -p "${GamePath}"
+                  gh release download "${BUILDDEPS_TAG}" \
+                      --repo "${BUILDDEPS_REPO}" \
+                      --pattern "${BUILDDEPS_ASSET}" \
+                      --dir "${GamePath}"
+                  unzip -o "${GamePath}/${BUILDDEPS_ASSET}" -d "${GamePath}"
+                  rm -f "${GamePath}/${BUILDDEPS_ASSET}"
+                  mkdir -p "${GamePath}/smapi-internal"
+                  if [ -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" ]; then
+                      mv -f "${GamePath}/SMAPI.Toolkit.CoreInterfaces.dll" "${GamePath}/smapi-internal/"
+                  fi
+                  if [ -f "${GamePath}/0Harmony.dll" ]; then
+                      mv -f "${GamePath}/0Harmony.dll" "${GamePath}/smapi-internal/"
+                  fi
+                  # Fallback: private builddeps asset may omit 0Harmony.dll. Use
+                  # Lib.Harmony 2.2.2 (MIT, same major line as SMAPI 4.x bundled
+                  # Harmony) for compilation-only reference when missing. Proper fix:
+                  # update the lfgranja/stardew-raizes-vivas-builddeps gamepath asset.
+                  if [ ! -f "${GamePath}/smapi-internal/0Harmony.dll" ]; then
+                      harmony_nupkg="$(mktemp /tmp/lib.harmony.XXXXXX.nupkg)"
+                      curl --proto '=https' --tlsv1.2 -fsSL "https://api.nuget.org/v3-flatcontainer/lib.harmony/2.2.2/lib.harmony.2.2.2.nupkg" -o "${harmony_nupkg}"
+                      extracted=0
+                      for tfm in net6.0 net5.0 netcoreapp3.1 net48; do
+                          if unzip -p "${harmony_nupkg}" "lib/${tfm}/0Harmony.dll" > "${GamePath}/smapi-internal/0Harmony.dll" 2>/dev/null && [ -s "${GamePath}/smapi-internal/0Harmony.dll" ]; then
+                              extracted=1
+                              break
+                          fi
+                      done
+                      rm -f "${harmony_nupkg}"
+                      if [ "${extracted}" -ne 1 ]; then
+                          echo "::error::failed to obtain 0Harmony.dll (builddeps missing and NuGet fallback failed)"
+                          exit 1
+                      fi
+                      echo "using Lib.Harmony 2.2.2 fallback for smapi-internal/0Harmony.dll (compilation only)"
+                  fi
+
+            - name: Preflight - game assemblies
+              run: |
+                  set -euo pipefail
+                  missing=0
+                  for required in \
+                      "Stardew Valley.dll" \
+                      "StardewModdingAPI.dll" \
+                      "StardewValley.GameData.dll" \
+                      "MonoGame.Framework.dll" \
+                      "xTile.dll" \
+                      "smapi-internal/SMAPI.Toolkit.CoreInterfaces.dll" \
+                      "smapi-internal/0Harmony.dll"
+                  do
+                      if [ ! -f "${GamePath}/${required}" ]; then
+                          echo "::error::missing ${required} under GamePath (${GamePath})"
+                          missing=1
+                      fi
+                  done
+                  if [ "${missing}" -ne 0 ]; then
+                      echo "::error::GamePath does not contain a usable Stardew Valley + SMAPI install."
+                      echo "::error::Check the ${BUILDDEPS_TAG} release asset in ${BUILDDEPS_REPO}."
+                      exit 1
+                  fi
+                  echo "GamePath (${GamePath}) looks complete."
+
+            - name: Restore dependencies
+              run: dotnet restore
+
+            - name: Build
+              run: dotnet build --no-restore --configuration Release
+
+            - name: Test
+              run: >
+                dotnet test --no-build --configuration Release --verbosity normal
+                --collect:"XPlat Code Coverage"
+                -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+            - name: Upload coverage report
+              uses: actions/upload-artifact@v7
+              with:
+                  name: coverage-opencover
+                  path: '**/coverage.opencover.xml'
+                  if-no-files-found: error

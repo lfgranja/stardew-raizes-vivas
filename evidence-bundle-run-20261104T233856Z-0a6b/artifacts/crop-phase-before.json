@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "dayKey": "spring_1",
+  "capturedAtUtc": "2026-11-04T23:39:28.5638509Z",
+  "isMainPlayer": true,
+  "locationsProcessed": 3,
+  "elapsedMilliseconds": 12,
+  "done": true,
+  "crops": [
+    {
+      "location": "Farm",
+      "tileX": 60,
+      "tileY": 15,
+      "tileKey": "60,15",
+      "seedId": "LivingRoots.Verification.LongPhaseCrop",
+      "isForageCrop": false,
+      "indexOfHarvest": 24,
+      "currentPhase": 0,
+      "dayOfCurrentPhase": 0,
+      "phaseDays": [
+        4,
+        4,
+        4,
+        4,
+        99999
+      ],
+      "basePhaseDays": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "fullyGrown": false,
+      "dead": false,
+      "soilHealth": 10,
+      "healthTier": "poor",
+      "soilHealthState": "measured",
+      "isSentinelPhase": false
+    }
+  ]
+}

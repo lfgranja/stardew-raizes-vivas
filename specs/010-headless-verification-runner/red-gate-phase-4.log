@@ -1,0 +1,38 @@
+=== scripts/tests/test-suite.sh ===
+ok - empty directory discovery returns 20 (no tests)
+ok - discovers a.scenario.json
+ok - discovers b.scenario.json
+ok - fallback *.json not used when *.scenario.json present
+ok - lexicographic order: a first
+ok - fallback discovers a.json
+ok - fallback discovers z.json
+ok - suite rerun cap is 4
+ok - aggregate fail over pass
+ok - aggregate errored over fail
+ok - aggregate pass over no-tests when pass present
+ok - aggregate no-tests alone
+ok - aggregate fail over policy
+ok - aggregate errored over policy
+ok - malformed scenario in suite rejected with 14
+# tests: 15, passed: 15, failed: 0
+
+=== scripts/tests/test-scenario-authoring.sh ===
+ok - feature-005 scenario exists
+ok - feature-005 scenario validates
+ok - testMdPath exists
+ok - exactly one GATE3:BEGIN
+ok - exactly one GATE3:END
+ok - companion markdown does not affect validation
+# tests: 6, passed: 6, failed: 0
+
+=== scripts/tests/test-zero-core-change.sh ===
+ok - 005 scenario present
+ok - runner entry point present
+ok - suite discovery present
+ok - 005 scenario validates with zero core changes
+# tests: 4, passed: 4, failed: 0
+
+
+## Deviation statement (added 2026-11-05)
+
+Implementation pre-existed; genuine RED evidence cannot be reconstructed retroactively. Tests are regression guards, not TDD RED evidence. Marking unverified, not fabricating, per tdd-guardian "absence → unverified, never violation" policy.

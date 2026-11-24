@@ -1,0 +1,10 @@
+{
+  "Name": "Stardew Valley - Living Roots",
+  "Author": "lfgranja",
+  "Version": "0.1.0",
+  "Description": "Agroecological Expansion Pack for Stardew Valley",
+  "UniqueID": "lfgranja.LivingRoots",
+  "EntryDll": "LivingRoots.dll",
+  "MinimumApiVersion": "4.4.0",
+  "MinimumGameVersion": "1.6.14"
+}

@@ -1,0 +1,273 @@
+using System;
+using Microsoft.Xna.Framework;
+
+namespace LivingRoots
+{
+    public static class ModConstants
+    {
+        // Soil Health Constants
+        public const string KeyPrefix = "soil_health_data_";
+        public const float MinSoilHealth = 0f;
+        public const float MaxSoilHealth = 100f;  // Changed from 10 to 100 to align with documentation
+
+        // Soil Health → Crop Quality Constants (spec 005/014, FR-012 "first-pass, tunable")
+        public const float SoilGrowthPoorMultiplier = 1.15f;
+        public const float SoilGrowthHealthyMultiplier = 0.85f;
+        public const float SoilQualityHealthyBoost = 0.08f; // first-pass, tunable
+        public const float SoilExtraHarvestHealthyBoost = 0.10f; // first-pass, tunable
+        public const int HarvestFeedbackDurationMs = 1000; // first-pass, tunable
+        public const float HarvestFeedbackTextOffsetX = 32f; // first-pass, tunable
+        public const int DefaultBackpackSlots = 36; // first-pass, tunable fallback
+
+        // Security Constants
+        public const int MaxTilesPerLocation = 500; // Maximum number of tiles allowed per location to prevent DoS attacks
+        public const int MaxLocationsPerSave = 50; // Maximum number of locations allowed per save to prevent DoS attacks
+        public const int MaxAbsoluteTileCoordinate = 10000; // Maximum absolute value for tile coordinates to prevent malicious save files
+        public const int MaxSaveIdLength = 200; // Maximum length for save IDs to prevent overlong filenames
+        public const int MaxLocationNameLength = 100; // Maximum length for location names to prevent overlong strings
+
+        // Additional constants for security and performance
+        public const int MaxDataKeyLength = 200; // Maximum length for generated data keys (prefix + sanitized saveId)
+        public const int MaxTilesPerSave = 30000; // Global limit for tile processing across all locations to prevent DoS attacks (slightly above theoretical max of 50 * 500 = 25,000)
+
+        // Additional constants for security and performance
+        public const int MaxFileNameLength = 255; // Standard maximum file name length to prevent OS issues
+
+        // Visualization Constants
+        public static readonly Color PoorColor = new Color(185, 28, 28); // #B91C1C
+        public static readonly Color ModerateColor = new Color(217, 119, 6); // #D97706
+        public static readonly Color HealthyColor = new Color(21, 128, 61); // #15803D
+        public static readonly Color UnknownColor = new Color(107, 114, 128); // #6B7280
+        // FR-008 (T185): the soil-health category band
+        // edges the color-interpolation service resolves
+        // on — Poor [0, 31), Moderate [31, 71), Healthy
+        // [71, 100]. Half-open intervals with edges at
+        // 31 and 71 per Cornell Soil Health Assessment
+        // Training Manual 2nd ed. 2009; paired with the
+        // category palette above. Single source of truth
+        // for ColorInterpolationService's category
+        // resolution and both interpolation ramps.
+        public const float PoorModerateBandEdge = 31f;
+        public const float ModerateHealthyBandEdge = 71f;
+        public const float ModerateBandWidth = 40f;
+        public const int TileSize = 64;
+        public const int ViewportMarginTiles = 1; // FR-018: tiles rendered beyond each viewport edge to prevent pop-in
+        public const int DegradationTileThreshold = 1000;
+        // T100 / Q6 / FR-009: lower edge of the asymmetric degradation
+        // hysteresis band. EXTRAPOLATED — NOT A STANDARD: no published
+        // hysteresis band exists for discrete tile counts. 20 tiles
+        // (~2% of the 1,000-tile threshold) follows the ~2% cross-domain
+        // convention cited in Unreal engine quality-tier blogs and DEIF
+        // control-system defaults; the number is a judgement call pending
+        // in-game measurement, and this constant is the single tuning seam.
+        // Degradation activates above DegradationTileThreshold but
+        // deactivates only at or below this edge, so panning across the
+        // threshold (e.g. 999 -> 1001 -> 999) cannot oscillate the
+        // degradation decision or re-spam the one-time degradation toast.
+        public const int DegradationRecoveryThreshold = 980;
+        public const float DefaultOpacity = 0.5f;
+        // Tolerance for float equality checks (cache/config comparison).
+        // Exact float equality is unreliable and forbidden by S1244; a
+        // range is used instead.
+        public const float FloatComparisonEpsilon = 0.0001f;
+        // Minimum pattern opacity for accessibility (FR-001). Pattern tones
+        // are opaque at PatternAlphaPinned = 1.0 regardless of this value.
+        public const float PatternMinOpacity = 0.7f;
+        // FR-001 (T131/T139): pattern element opacity is a pinned
+        // constant 1.0, independent of the configured overlay
+        // opacity — the tones are opaque and are never composited
+        // with the fill, so no configuration can make a pattern
+        // vanish. Single source of truth for the pinned pattern
+        // alpha.
+        public const float PatternAlphaPinned = 1.0f;
+        // FR-001 (T131/T139): the accessibility pattern tones —
+        // opaque white and opaque black at the pinned pattern
+        // alpha, never tinted in the category color. At least one
+        // tone always meets the 3:1 non-text contrast minimum
+        // against any fill composite: the tones' thresholds are
+        // complementary (white qualifies when the fill composite
+        // luminance is <= 0.30, black when it is >= 0.10, and
+        // 0.10 < 0.30).
+        public static readonly Color PatternWhiteTone = new(255, 255, 255, (int)(PatternAlphaPinned * 255f));
+        public static readonly Color PatternBlackTone = new(0, 0, 0, (int)(PatternAlphaPinned * 255f));
+        // FR-002 (T139): the tooltip panel — #000000 at alpha 217,
+        // the dark translucent background the tooltip readability
+        // spec pins (>=4.5:1 over bright scenes). Single source of
+        // truth for the TooltipData default panel.
+        public static readonly Color TooltipPanelColor = new(0, 0, 0, 217);
+        // FR-002 (T139): the tooltip text drop shadow — #000000 at
+        // alpha 128, drawn 1px below-right of the text.
+        public static readonly Color TooltipShadowColor = new(0, 0, 0, 128);
+        // FR-002 (T185): the tooltip text color — opaque
+        // white, the readability pole over the dark panel.
+        // Single source of truth for the TooltipRenderer's
+        // known-state and unknown-state text color (the
+        // TooltipData default stays the same white).
+        public static readonly Color TooltipTextColor = new(255, 255, 255);
+        // FR-002 (T139): the tooltip panel's offset from the
+        // cursor hotspot, in UI-scaled pixels — cursor-adjacent
+        // without occluding the cursor hotspot or the hovered
+        // tile. Single source of truth for the TooltipRenderer
+        // placement offset (ComputeTooltipPosition).
+        public const float TooltipOffsetXPixels = 16f;
+        public const float TooltipOffsetYPixels = 16f;
+        public const int FlashDurationMs = 300;
+        public const int TextDurationMs = 1000;
+        // FR-003 (T183): the floating text's upward drift
+        // rate, in screen pixels per millisecond — a
+        // screen-space rate subtracted from the derived
+        // screen position (Utility.ModifyCoordinatesForUIScale(
+        // Game1.GlobalToLocal(tileCenter))) over the text
+        // window. Single source of truth for the drift
+        // HoeFeedbackRenderer.ComputeFloatingTextAnchor
+        // applies; the zoom-anchor oracle pins the same
+        // value (FloatingTextDriftPixelsPerMs).
+        public const float FloatingTextDriftPixelsPerMs = 0.02f;
+        // FR-003 (T185): the floating health text's base
+        // tones — opaque white for the text and opaque
+        // black for its 1px drop shadow. The drawn alpha
+        // is the fade-window opacity scaled to the byte
+        // range at the draw site (HoeFeedbackRenderer),
+        // so the text and the shadow fade out together
+        // over the text window.
+        public static readonly Color FloatingTextColor = new(255, 255, 255);
+        public static readonly Color FloatingTextShadowColor = new(0, 0, 0);
+        public const double MaxRenderTimeMs = 16.67;
+        public const int TooltipDebounceMs = 50;
+        public const bool OverlaysEnabledDefault = true;
+        public const bool TooltipsEnabledDefault = true;
+        public const bool HoeFeedbackEnabledDefault = true;
+
+        // Extended palette for composting feedback. Only the sprite
+        // color is live today; bin/environment state colors are
+        // introduced with the features that consume them, not
+        // declared speculatively here.
+        // FR-012 (T185): the compost-application feedback
+        // sprite's green — the "+N" restoration text drawn
+        // above the treated tile (a text-only
+        // TemporaryAnimatedSprite). The vanilla stat-change
+        // convention green, kept beside the compost palette
+        // but distinct from the soil-overlay states above:
+        // it is a sprite color, not an overlay color.
+        public static readonly Color CompostSpriteColor = new Color(0, 128, 0);       // #008000
+
+        // Decay & Compost Constants
+        public const string CompostingBinKeyPrefix = "composting_bins_";
+        public const float DailyDecayRate = 2f;
+        public const float RestorationAmount = 15f;
+        public const int MaturationDays = 2; // 2 full days for Processing → Ready transition
+        public const int MaturationMaxLevel = 5;
+        public const int MaturationIdleResetDays = 14;
+        public const int MaturationIncrementDays = 7; // days of continuous operation per level
+        public const string CompostItemId = "LivingRoots.Compost";
+        public const string QualifiedCompostItemId = "(O)LivingRoots.Compost";
+        public const string CompostingBinItemId = "LivingRoots.CompostingBin";
+        public const string MachineCompostingBinId = "LivingRoots.CompostingBin";
+        public const string CompostingBinRecipeId = "LivingRoots.CompostingBinRecipe";
+        public const string CompostCraftingTab = "Home";
+        public const int CompostingBinWoodCost = 50;
+        public const int CompostingBinStoneCost = 25;
+        public const int CompostingBinFiberCost = 15;
+        public const int CompostCategoryId = -26;
+        public const int CompostStackMax = 999;
+        // Mulch / Soil Cover (spec 013)
+        public const string MulchItemId = "LivingRoots.Mulch";
+        public const string QualifiedMulchItemId = "(O)LivingRoots.Mulch";
+        public const int MulchDurationDays = 7;
+        public const float MulchDecayMultiplier = 0f;
+        public const string MulchTag = "mulch_item";
+        public static readonly Color MulchColor = new(146, 64, 14); // #92400E
+        // T078 (FR-005): the compost item icon,
+        // served as a named game asset so
+        // ObjectData.Texture can point at it.
+        // Convention: Mods/<UniqueID>/<name>
+        // (manifest UniqueID lfgranja.LivingRoots).
+        public const string CompostTextureAssetName = "Mods/lfgranja.LivingRoots/Compost";
+        // T099 (FR-001a): the composting bin's
+        // texture and its two progress sprites,
+        // served as named game assets so the
+        // native machine interface renders the
+        // mod's bin instead of falling back to
+        // the vanilla big-craftable sheet. Same
+        // Mods/<UniqueID>/<name> convention; the
+        // three names are the asset keys ModEntry
+        // serves through e.LoadFromModFile against
+        // the three state PNGs in Assets/ (the
+        // empty texture plus the processing and
+        // ready progress sprites).
+        public const string CompostingBinTextureAssetName = "Mods/lfgranja.LivingRoots/CompostingBin";
+        public const string CompostingBinProcessingSpriteAssetName = "Mods/lfgranja.LivingRoots/CompostingBin/Processing";
+        public const string CompostingBinReadySpriteAssetName = "Mods/lfgranja.LivingRoots/CompostingBin/Ready";
+
+        // ModData Keys
+        public const string ModDataInputIdKey = "LivingRoots.InputId";
+        public const string ModDataDaysRemainingKey = "LivingRoots.DaysRemaining";
+
+        // Translation keys (i18n/default.json, i18n/en.json) — refusal
+        // messages rendered through Game1.showRedMessage (FR-008a, T054).
+        // Single source of truth so the services, the controller refusal
+        // closure, and the i18n files cannot drift apart.
+        public const string TranslationKeyCompostInvalidTile = "message.compost.invalid-tile";
+        public const string TranslationKeyCompostMaxHealth = "message.compost.max-health";
+        public const string TranslationKeyCompostActionConflict = "message.compost.action-conflict";
+        public const string TranslationKeyHarvestInventoryFull = "message.harvest.inventory-full";
+
+        // T136 (FR-008a): the native machine rejection cue for an invalid
+        // drop-in — vanilla audio cancel cue plus machine shake. Applies
+        // worldObject.shakeTimer directly so no second shake path exists.
+        public const int BinInvalidDropInShakeTimerMs = 750;
+
+        // Spec 017: Joja / Agrochemical Tradeoff (MVP, provisional/tunable).
+        public const string AgrochemicalItemId = "LivingRoots.JojaAgrochemical";
+        public const string QualifiedAgrochemicalItemId = "(O)LivingRoots.JojaAgrochemical";
+        public const float AgrochemicalSoilPenalty = 10f; // C3 provisional, 0-100 scale — TUNING THIS CONSTANT REQUIRES SYNCING: i18n/default.json + en.json + pt.json "applied"/"description" strings and the English fallbacks in ModController.TranslateAgrochemicalMessage (tests hardcode the magnitude token).
+        public const string AgrochemicalItemNameKey = "item.agrochemical.name";
+        public const string AgrochemicalItemDescriptionKey = "item.agrochemical.description";
+        public const string TranslationKeyAgrochemicalApplied = "message.agrochemical.applied";
+        public const string TranslationKeyAgrochemicalAppliedClamped = "message.agrochemical.applied-clamped";
+        public const string TranslationKeyAgrochemicalAppliedUnknownBaseline = "message.agrochemical.applied-unknown-baseline";
+        public const string TranslationKeyAgrochemicalInvalidTarget = "message.agrochemical.invalid-target";
+        public const string TranslationKeyAgrochemicalMissingInput = "message.agrochemical.missing-input";
+        public const string TranslationKeyAgrochemicalActionConflict = "message.agrochemical.action-conflict";
+        public const string TranslationKeyAgrochemicalUnsupportedAuthority = "message.agrochemical.unsupported-authority";
+        public const string TranslationKeyAgrochemicalSoilAtMinimum = "message.agrochemical.soil-at-minimum";
+
+        // T097: commit-failure refusal key (added in Wave A scaffold; wired in Wave B)
+        public const string TranslationKeyAgrochemicalCommitFailed = "message.agrochemical.commit-failed";
+
+        // Spec 020: Heirloom Seeds / Sementes Crioulas Pipeline (Crioulo Parsnip — one-crop template).
+        // All values are provisional first-pass tunables — TUNING THIS BLOCK REQUIRES SYNCING:
+        // i18n/default.json + i18n/en.json + i18n/pt.json (crioulo item/seed strings and the
+        // seed-saved / inventory-full / authority-unsupported messages), this file, and the
+        // heirloom tests (tests hardcode the magnitudes and the keys).
+        // Agronomic stance: crioulo advantage = stability under low-input/organic conditions,
+        // never a blanket superiority claim; no nitrogen language (not a legume); Pierre hybrids
+        // remain valid for high-input systems (USDA AMS) — they are never vilified in copy.
+        // Bonuses are labeled game abstractions only; never surfaced as agronomic constants.
+        public const string HeirloomItemId = "LivingRoots.HeirloomParsnipSeeds";
+        public const string QualifiedHeirloomItemId = "(O)LivingRoots.HeirloomParsnipSeeds";
+        public const string HeirloomProduceItemId = "LivingRoots.HeirloomParsnip";
+        public const int HeirloomSeedPrice = 35; // vs vanilla parsnip seeds 20g; provisional
+        public const int HeirloomProducePrice = 45; // vs vanilla parsnip 35g; provisional
+        // Plant/harvest soil bonuses, bounded 0-100, host-authoritative (Constitution VI).
+        public const float HeirloomPlantBonus = 2f; // +2 per heirloom planting (abstraction)
+        public const float HeirloomHarvestBonus = 1f; // +1 on Healthy-band (>=71) heirloom harvest (abstraction)
+        public const int HeirloomSavedSeedYield = 1; // exactly one saved seed per harvest (deterministic cap)
+        public const string HeirloomSeedTag = "heirloom_seed";
+        public const string HeirloomProduceTag = "heirloom_produce";
+        public const string HeirloomSeedsTextureAssetName = "Mods/lfgranja.LivingRoots/HeirloomSeeds";
+        public const string HeirloomProduceTextureAssetName = "Mods/lfgranja.LivingRoots/HeirloomProduce";
+        public const string HeirloomCropsTextureAssetName = "Mods/lfgranja.LivingRoots/HeirloomCrops";
+        // i18n keys — parity EN/PT/default enforced by HeirloomI18nTests.
+        public const string HeirloomSeedNameKey = "item.heirloom.parsnip-seed.name";
+        public const string HeirloomSeedDescriptionKey = "item.heirloom.parsnip-seed.description";
+        public const string HeirloomProduceNameKey = "item.heirloom.parsnip.name";
+        public const string HeirloomProduceDescriptionKey = "item.heirloom.parsnip.description";
+        public const string TranslationKeyHeirloomSeedSaved = "message.heirloom.seed-saved";
+        public const string TranslationKeyHeirloomSeedSavedInventoryFull = "message.heirloom.seed-saved-inventory-full";
+        public const string TranslationKeyHeirloomPlantBonusAuthorityUnsupported = "message.heirloom.plant-bonus-authority-unsupported";
+        // MP typed message farmhand -> host (reuse SoilHealthSyncMessage envelope; see SoilHealthSyncMessage).
+        public const string HeirloomPlantBonusRequestMessageType = "HeirloomPlantBonusRequest";
+        public const string HeirloomHarvestBonusRequestMessageType = "HeirloomHarvestBonusRequest";
+    }
+}

@@ -1,0 +1,3 @@
+/lr_give_heirloom_seed 1
+/lr_sow_heirloom 60 15 LivingRoots.HeirloomParsnipSeeds Farm
+/sleep
