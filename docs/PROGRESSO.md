@@ -2,6 +2,15 @@
 
 Âncora de progresso verificável. Atualizações são append-only: fatos locais executados são registrados com evidência; afirmações remotas são marcadas `[NV]` até observação ao vivo via `gh`.
 
+## Estado verificado — 2026-11-24 (pós-promução #821)
+
+- **Âncora**: ALVO `/home/luis/development/stardew-raizes-vivas`, `dev=c96eef5`, `origin/main=8a0407e`; FONTE_FACTORY `b1deab1` (somente leitura, árvore suja não transplantada).
+- **Promoção**: PR [#821](https://github.com/lfgranja/stardew-raizes-vivas/pull/821) `MERGED` às 2026-11-24T13:31:22Z, merge commit `8a0407e`, por autorização explícita do SWE. Review requirement e `required_signatures` foram removidos apenas na janela do merge e restaurados; `main` permanece com 1 aprovador, `strict:true`, `sdd-gate`, assinaturas e `enforce_admins:false` (admin bypass). 0 tags, 0 releases; nenhum deploy disparado (`release.yml` só em tags `v*.*.*`).
+- **Gates locais**: `sdd-gate` PASS (0 erros, 41 warnings); `test-spec-consistency.sh` PASS (1683 checks, C-SCN-36 OK); `check-protected-paths.sh` all checks passed. Nenhuma suíte xUnit/Gate 3 reexecutada — nenhuma mudança de código nesta sessão.
+- **Contagens por script**: `specs/`=34 diretórios (33 numerados, 30 com `spec.md`), `.specify/assessments/`=29, `validations/`=32, `releases/`=32, `bugs/`=40, `docs/research/`=5 arquivos. 7 `validate.md` (031–037) permanecem `PENDENTE`.
+- **Decisão 80/20**: da fila, nenhum candidato `IMPLEMENTAÇÃO`/`CORREÇÃO` elegível — `ZERO-PERSIST` tem adjudicação T100, bandas 010 são grandfathered por 032/014, rotação depende de E/D1, T189–T191 falham o filtro de consumidor. Anti-loop 0.9.3: **PARE**; nenhuma feature nova.
+- **[NV]**: deploy/produção, tag `v0.2.0`, D1, atestação E, SC-004, `RUNNER_AUDIT_STORE` (#523), segredos Dependabot e decisão sobre `enforce_admins`. Blocos abaixo descrevem #821 como aberto/`[NV]` e são histórico supersetado por esta nota.
+
 ## Estado verificado — 2026-11-20
 
 - **Âncora**: alvo `/home/luis/development/stardew-raizes-vivas` @ HEAD `7df732b`. `.specify/feature.json` → `specs/028-quality-gate-pytest-wiring`. Fonte de aparato: factory `b1deab1` (somente leitura).
