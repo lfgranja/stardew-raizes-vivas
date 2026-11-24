@@ -1,5 +1,8 @@
 # ROADMAP.md - Stardew Valley: Living Roots
 
+> **STATUS ANNOTATION — 2026-11-24 (pós-promução #821; estado verificado, append-only)**
+> `dev=c96eef5`, `origin/main=8a0407e`; PR [#821](https://github.com/lfgranja/stardew-raizes-vivas/pull/821) `MERGED` às 13:31:22Z (`8a0407e`) por autorização explícita do SWE; 0 PRs abertos, 0 tags, 0 releases. Proteção de `main` restaurada com 1 aprovador e `enforce_admins:false` (admin bypass), registros em `.specify/queue/concurrency.jsonl:32`. Fila owner/humana restante: tag/release `0.2.0` + canais públicos, deploy (release.yml tag-only), D1, atestação E de Gate 3, SC-004, `RUNNER_AUDIT_STORE` (#523), segredos Dependabot e decisão sobre `enforce_admins`. **80/20 inalterado**: nenhum candidato `IMPLEMENTAÇÃO`/`CORREÇÃO` autônomo — T100 congela `ZERO-PERSIST`, 032/014 congelam bandas 010, rotação depende de E/D1; PARE por anti-loop. `[NV]` para todo efeito de produção.
+
 > **STATUS ANNOTATION — 2026-11-21 (ciclo 030; estado verificado, append-only)**
 > `dev` recebeu #811 (`048342b`) e #812 (`18640ce`); **0 PRs abertos**. FONTE_FACTORY `b1deab1` (somente leitura). Roteiro de verificação funcional executado e persistido em `specs/030-roteiro-verificacao-funcional/verification-matrix.md`: B1–B11 com **1378 execuções / 0 falhas**, `aggregate-gate.sh` ALL STEPS PASSED, i18n PASS, pytest 180/0. Gate 3 do cenário `compost-growth-hardening` revalidado após alinhamento do threshold a `[0, 31)` (`run-20261121T232308Z-64cf`, `pass`, R, 3 sinais) — `machine-pass` host-only, sem `verified` humano. Contagens: specs=27, assessments=22, validations=24, releases=24, bugs=40, pesquisa=26. **[NV]**: D1, atestação E, SC-004 e tag/release `0.2.0` seguem com o maintainer.
 
