@@ -15,12 +15,13 @@
 | 6 | `bash scripts/ci/aggregate-gate.sh` | `protected-path preflight: all checks passed`; `[aggregate-gate] ALL STEPS PASSED`; `RC=0` | PASS | Esta tabela |
 | 6b | `bash scripts/check-protected-paths.sh` | `protected-path preflight: all checks passed`; `RC=0` | PASS | Esta tabela |
 | 7 | `gh pr view 830 --json number,state,headRefOid,mergeStateStatus` | `830 OPEN 65f4f9b5061d434155c322113b6d6758f98a929b BLOCKED` | PASS (PR intacto) | Esta tabela |
-| 8 | Após publicação: `gh pr checks <PR>` no head exato | **A preencher após o push** — não é `[EV]` até ser executado | pending | — |
-| 9 | Após merge em `dev`: `gh pr checks 830` | **A preencher após o merge** — esperado: `Quality Gate / static` fora das falhas; `BUILDDEPS_TOKEN` permanece nas demais | pending | — |
+| 8 | `gh pr checks 832 --watch --interval 30` no head `3765dc01a3cfb5b01fb023f0928e87d4c9961f84` | `RC=0`, 10 `pass` / 0 `fail` / 2 `skipping`; `sdd-gate`, `Build and Test` e `Quality Gate / static` = `SUCCESS` | PASS | [runs do PR 832](https://github.com/lfgranja/stardew-raizes-vivas/pull/832/checks) |
+| 9 | `gh pr view 830 --json statusCheckRollup` às 2026-11-27T23:40:06Z e `gh pr view 830/829/828/831` às 23:44:46Z | #830 `MERGED` às 23:39:53Z (merge commit `65f4f9b5…`, igual ao head); #829 `CLOSED` às 23:42:22Z; #828 (`5f64baa`) e #831 (`91b6cf6`) `OPEN`. O rollup de #830 mantém os 5 `FAILURE` de 02:56Z | PASS (estado corrigido pela ACR) | [PR 830](https://github.com/lfgranja/stardew-raizes-vivas/pull/830) |
+| 10 | `gh pr comment 830 --body-file …` às 2026-11-27T23:40:58Z | `ok commented #830`; escalonamento publicado | PASS | [issuecomment-7230327583](https://github.com/lfgranja/stardew-raizes-vivas/pull/830#issuecomment-7230327583) |
 
 ## Distinção entre verde local e green remoto
 
-Os itens 2–6 são `[EV]` locais nesta worktree. Eles **não** concedem check de PR: o green remoto só existe quando `gh pr checks` reporta `pass` no SHA publicado. O mesmo vale para #830: o rollup remoto observado às 2026-11-27T02:56Z é `[EV]` daquele momento, e qualquer reavaliação posterior exige nova leitura ao vivo.
+Os itens 2–6 são `[EV]` locais na worktree `dependabot-830-static-pin`. Eles **não** concedem check de PR: o green remoto só existe quando `gh pr checks` reporta `pass` no SHA publicado — item 8 prova isso para #832. O rollup de #830 (item 9) permanece de 02:56Z mesmo após o PR ter sido marcado como `MERGED` às 23:39:53Z; `[INF]`: o GitHub reconheceu a mesclagem quando o commit `65f4f9b` entrou em `dev` via #832, sem ação direta de merge por este agente. O resultado de uma reexecução posterior é `[NV]`.
 
 ## Achados fora do escopo (advisory)
 
