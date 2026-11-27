@@ -149,6 +149,7 @@
   pacote_completo_entregue: "2026-11-24T12:56:43Z — HEAD e5e57d7f1bedc86fc81185ed88cbcc9a98610bd1; gh pr checks 821 --watch RC=0 (23 passed/0 failed/1 skipped, codeql condicional); sdd-gate e Build and Test SUCCESS no head exato; reviewDecision=REVIEW_REQUIRED inalterado. ACR independente e comentario de escalonamento postados em #821; babysitter ativo com heartbeat 15min/3 retries/TTL 15min, somente leitura. Critério 80/20: score=(Impacto*Confianca*Fechamento)/(Esforco*Risco), denominador 3125; PARE por anti-loop (ciclos 036/037 apenas notas/JSON). Gap de deploy: release.yml so em tags v*.*.* — configuracao e do SWE. Nenhum merge em main, deploy, tag, auto-merge, force-push ou aprovacao simulada. Fila owner/humana permanece [NV]. Registro anterior atualizacao_ci preservado."
   fechamento: "2026-11-24T13:31:22Z — PR #821 MERGED por autorizacao explicita do SWE; merge commit 8a0407efdb4ae75b1abd88557020365690a28c53; main 8a0407e. Review requirement e required_signatures removidos apenas na janela do merge e restaurados; protecao final: 1 aprovador, strict, sdd-gate app_id 15368, signatures true, enforce_admins false (admin bypass). Sem deploy, tag, release, auto-merge, force-push ou aprovacao simulada. Evidencia: https://github.com/lfgranja/stardew-raizes-vivas/pull/821#issuecomment-7132991209 e .specify/queue/concurrency.jsonl:32. Item fechado; reabrir so com regressao provada."
   controle_atual_pos_merge: "2026-11-24T14:05Z — o campo historico controle_atual (PR #821 aberto) descreve o estado pre-autorizacao e permanece intacto. Estado final: PR #821 MERGED em 8a0407e; main protegida com 1 aprovador, strict, sdd-gate app_id 15368, signatures true e enforce_admins false; item fechado. Nenhum babysitter ativo: servico pr821-babysitter encerrado apos o merge."
+  dependabot_bump_2026_11_27: "2026-11-27T23:39:51Z — a parte deterministica do bloqueio destes bumps foi corrigida: PR 832 mesclado em dev como e8196d1, herdando o commit 65f4f9b de #830 e atualizando SONAR_VERSION em scripts/quality-gate/tests/test_analyzer_config.py:20. gh pr checks 832 --watch RC=0 (10 pass/0 fail/2 skip) no head 3765dc0; required sdd-gate e Build and Test SUCCESS. O rollup de #830 permanece de 02:56Z porque o GitHub nao reexecutou os checks quando dev avancou; o gap de segredo do Dependabot segue owner-only e foi registrado como CI-DEP-SECRETS-BUILDDEPS. Escalonamento: https://github.com/lfgranja/stardew-raizes-vivas/pull/830#issuecomment-7230327583"
 - id: GOV-ADMIN-BYPASS
   data: 2026-11-24
   origem: "autorizacao explicita do SWE no merge de #821 — main restaurada com enforce_admins=false"
@@ -166,3 +167,20 @@
   status: escalado-swe
   owner: "@lfgranja"
   refs: ["https://github.com/lfgranja/stardew-raizes-vivas/pull/821", ".specify/queue/concurrency.jsonl:32", "STATE.md fechamento pos-promucao 2026-11-24"]
+- id: CI-DEP-SECRETS-BUILDDEPS
+  data: 2026-11-27
+  origem: "PRs #828, #829, #830 e #831 do Dependabot, base dev, RED em Build and Test, Check Formatting e Quality Gate / build-analysis"
+  tipo_023: autorizacao
+  bloqueio: "BUILDDEPS_TOKEN nao e exposto a execucoes do Dependabot; guards fail-closed em build_and_test.yml:58-63, code-style.yml:45-50 e quality-gate.yml:219-226 encerram antes da compilacao; GITHUB_TOKEN nao alcança o repo privado de builddeps"
+  capacidade_faltante: []
+  autorizacao_faltante: ["criar BUILDDEPS_TOKEN como segredo do Dependabot com leitura de lfgranja/stardew-raizes-vivas-builddeps", "decidir o destino de #828, #829, #830 e #831"]
+  risco: baixo
+  impacto: "quatro PRs de dependencia nao podem ser validados nem mesclados; nenhum check required pode ser pintado por agente"
+  frequencia: recorrente
+  controle_atual: "PR 830 aberto/BLOCKED com escalonamento publicado em https://github.com/lfgranja/stardew-raizes-vivas/pull/830#issuecomment-7230327583; parte deterministica fechada pelo PR 832 mesclado em e8196d1"
+  candidato_automacao: "nenhuma — credencial owner-only"
+  precondicoes: ["configuracao do segredo pelo SWE", "reexecucao dos checks no head exato de cada PR"]
+  gatilho_reavaliacao: ["segredo configurado", "checks reexecutados", "PRs fechados pelo owner"]
+  status: escalado-swe
+  owner: "@lfgranja"
+  refs: ["https://github.com/lfgranja/stardew-raizes-vivas/pull/830", "https://github.com/lfgranja/stardew-raizes-vivas/pull/832", "https://github.com/lfgranja/stardew-raizes-vivas/pull/830#issuecomment-7230327583", ".specify/validations/830-analyzer-pin-unblock/evidence.md", ".github/workflows/build_and_test.yml"]
