@@ -17,7 +17,7 @@ MOD_PROJECT = ROOT / "LivingRoots" / "LivingRoots.csproj"
 TEST_PROJECT = ROOT / "LivingRoots.Tests" / "LivingRoots.Tests.csproj"
 PROBE = ROOT / "scripts" / "quality-gate" / "analyzer-probe.sh"
 
-SONAR_VERSION = "10.36.0.15337"
+SONAR_VERSION = "10.37.0.15768"
 NETANALYZERS_VERSION = "11.0.100"
 
 
