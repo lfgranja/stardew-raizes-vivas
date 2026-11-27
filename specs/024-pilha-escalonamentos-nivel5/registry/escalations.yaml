@@ -173,11 +173,11 @@
   tipo_023: autorizacao
   bloqueio: "BUILDDEPS_TOKEN nao e exposto a execucoes do Dependabot; guards fail-closed em build_and_test.yml:58-63, code-style.yml:45-50 e quality-gate.yml:219-226 encerram antes da compilacao; GITHUB_TOKEN nao alcança o repo privado de builddeps"
   capacidade_faltante: []
-  autorizacao_faltante: ["criar BUILDDEPS_TOKEN como segredo do Dependabot com leitura de lfgranja/stardew-raizes-vivas-builddeps", "decidir o destino de #828, #829, #830 e #831"]
+  autorizacao_faltante: ["criar BUILDDEPS_TOKEN como segredo do Dependabot com leitura de lfgranja/stardew-raizes-vivas-builddeps", "decidir o destino de #828 e #831; #830 foi mesclado e #829 fechado automaticamente"]
   risco: baixo
-  impacto: "quatro PRs de dependencia nao podem ser validados nem mesclados; nenhum check required pode ser pintado por agente"
+  impacto: "dois PRs de dependencia permanecem bloqueados; nenhum check required pode ser pintado por agente"
   frequencia: recorrente
-  controle_atual: "PR 830 aberto/BLOCKED com escalonamento publicado em https://github.com/lfgranja/stardew-raizes-vivas/pull/830#issuecomment-7230327583; parte deterministica fechada pelo PR 832 mesclado em e8196d1"
+  controle_atual: "2026-11-27T23:44:46Z — PR 830 MERGED as 23:39:53Z (merge commit igual ao head 65f4f9b5, reconhecido pelo GitHub quando o commit entrou em dev via PR 832); rollup de 02:56Z segue com 5 FAILURE por BUILDDEPS_TOKEN; PR 829 CLOSED as 23:42:22Z; PRs 828 e 831 abertos/BLOCKED com novos heads 5f64baa e 91b6cf6. Escalonamento publicado em https://github.com/lfgranja/stardew-raizes-vivas/pull/830#issuecomment-7230327583"
   candidato_automacao: "nenhuma — credencial owner-only"
   precondicoes: ["configuracao do segredo pelo SWE", "reexecucao dos checks no head exato de cada PR"]
   gatilho_reavaliacao: ["segredo configurado", "checks reexecutados", "PRs fechados pelo owner"]
