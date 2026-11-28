@@ -303,7 +303,7 @@ public class BinPickupTests
     public void OnButtonPressed_RightClickOnProcessingBinWithEmptyHands_ReturnsBinToPlayerInventory()
     {
         var inputEvents = WireControllerEventSubscriptions();
-        var farmer = (StardewValley.Farmer)FormatterServices.GetUninitializedObject(typeof(StardewValley.Farmer));
+        var farmer = (StardewValley.Farmer)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(StardewValley.Farmer));
         var playerId = new Netcode.NetLong();
         playerId.Value = 1L;
         // Farmer's identity and inventory fields are readonly and initialised
