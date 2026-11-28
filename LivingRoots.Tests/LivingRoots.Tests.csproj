@@ -39,7 +39,7 @@
     <!-- STJ 11 has native net10 assets; aligns with the verification runner and avoids CVE-2024-30105/43485. -->
     <PackageReference Include="System.Text.Json" Version="11.0.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" />
     <!-- Provides the "XPlat Code Coverage" data collector used to emit coverage.opencover.xml -->
     <PackageReference Include="coverlet.collector" Version="10.1.1">
       <PrivateAssets>all</PrivateAssets>
