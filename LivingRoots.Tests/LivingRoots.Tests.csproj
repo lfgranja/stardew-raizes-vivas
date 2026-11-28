@@ -14,6 +14,8 @@
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <SuppressTfmSupportBuildErrors>true</SuppressTfmSupportBuildErrors>
     <RollForward>Major</RollForward>
+    <!-- SYSLIB0050: test fixtures use FormatterServices to deep-clone game state. Obsolete on net8 but behaviour is unchanged; scoped to this test project only. -->
+    <NoWarn>$(NoWarn);SYSLIB0050</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -36,6 +38,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <!-- Align with LivingRoots.Verification.Runner (11.0.0); avoids CS1705 and the vulnerable 8.0.0 asset. -->
+    <PackageReference Include="System.Text.Json" Version="11.0.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <!-- Provides the "XPlat Code Coverage" data collector used to emit coverage.opencover.xml -->
