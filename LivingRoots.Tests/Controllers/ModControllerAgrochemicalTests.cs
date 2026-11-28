@@ -1035,7 +1035,7 @@ public class ModControllerAgrochemicalTests
         // GetUninitializedObject skips — so they are installed through
         // reflection, the same constructor-bypass the GameStateFixture
         // applies to Game1.game1.
-        var farmer = (StardewValley.Farmer)FormatterServices.GetUninitializedObject(typeof(StardewValley.Farmer));
+        var farmer = (StardewValley.Farmer)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(StardewValley.Farmer));
         var playerId = new Netcode.NetLong();
         playerId.Value = 1L;
         typeof(StardewValley.Farmer)
