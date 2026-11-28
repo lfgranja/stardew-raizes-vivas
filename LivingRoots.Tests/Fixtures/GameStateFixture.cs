@@ -152,7 +152,7 @@ internal sealed class MinimalContentManager : LocalizedContentManager
 /// </remarks>
 public static class GameStateFixture
 {
-    private static readonly object SyncRoot = new();
+    private static readonly System.Threading.Lock SyncRoot = new();
     private static bool _installed;
 
     /// <summary>
@@ -177,7 +177,7 @@ public static class GameStateFixture
             // The real Game1 constructor dereferences Content.ServiceProvider, which MonoGame only
             // populates while booting the game. Allocating without it gives the static accessor a
             // target, so types like HoeDirt can resolve Game1.currentLocation (and get null).
-            var game = (Game1)FormatterServices.GetUninitializedObject(typeof(Game1));
+            var game = (Game1)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Game1));
             typeof(Game1)
                 .GetField("game1", BindingFlags.Public | BindingFlags.Static)!
                 .SetValue(null, game);
@@ -207,7 +207,7 @@ public static class GameStateFixture
         foreach (var id in new[] { "Valley", "Island" })
         {
             var data = (StardewValley.GameData.LocationContexts.LocationContextData)
-                System.Runtime.Serialization.FormatterServices.GetUninitializedObject(
+                System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(
                     typeof(StardewValley.GameData.LocationContexts.LocationContextData));
             try
             {
